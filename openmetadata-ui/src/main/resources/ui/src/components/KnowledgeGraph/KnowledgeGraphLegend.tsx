@@ -26,6 +26,8 @@ interface KnowledgeGraphLegendProps {
   counts: Record<RelationCategory, number>;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
+  selectedCategory?: RelationCategory | null;
+  onSelectCategory?: (category: RelationCategory) => void;
 }
 
 /** Width of the dash sample, wide enough to show two dash periods. */
@@ -41,6 +43,8 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
   counts,
   isCollapsed,
   onToggleCollapsed,
+  selectedCategory,
+  onSelectCategory,
 }) => {
   const { t } = useTranslation();
 
@@ -61,28 +65,24 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
   return (
     <section
       aria-label={t('label.relationship-type')}
-      className="tw:absolute tw:bottom-4 tw:left-4 tw:z-10 tw:max-w-xs tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:shadow-md"
+      className="kg-legend tw:flex tw:shrink-0 tw:flex-wrap tw:items-center tw:gap-1 tw:border-t tw:border-secondary tw:bg-primary tw:px-3 tw:py-2"
       data-testid="knowledge-graph-legend">
       <Button
         aria-expanded={!isCollapsed}
-        className="tw:w-full tw:justify-between tw:px-3 tw:py-2"
+        className="tw:shrink-0"
         color="link-gray"
         data-testid="knowledge-graph-legend-toggle"
+        iconTrailing={isCollapsed ? ChevronUp : ChevronDown}
         size="sm"
         onPress={handleToggle}>
         <Typography size="text-xs" weight="semibold">
           {t('label.relationship-plural')}
         </Typography>
-        {isCollapsed ? (
-          <ChevronUp aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ChevronDown aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        )}
       </Button>
 
       {!isCollapsed && (
         <ul
-          className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:border-t tw:border-secondary tw:px-3 tw:py-2"
+          className="tw:m-0 tw:flex tw:list-none tw:flex-wrap tw:gap-1 tw:p-0"
           data-testid="knowledge-graph-legend-items">
           {presentCategories.map((category) => {
             const style = getRelationStyle(category);
@@ -92,42 +92,49 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
                 className="tw:flex tw:items-center tw:gap-2"
                 data-testid={`legend-item-${category}`}
                 key={category}>
-                <svg
-                  aria-hidden="true"
-                  className="tw:shrink-0"
-                  height={SAMPLE_HEIGHT}
-                  viewBox={`0 0 ${SAMPLE_WIDTH} ${SAMPLE_HEIGHT}`}
-                  width={SAMPLE_WIDTH}>
-                  <line
-                    stroke={style.color}
-                    strokeDasharray={
-                      style.lineDash.length > 0
-                        ? style.lineDash.join(' ')
-                        : undefined
-                    }
-                    strokeLinecap="round"
-                    strokeWidth={2}
-                    x1={0}
-                    x2={SAMPLE_WIDTH - 6}
-                    y1={SAMPLE_HEIGHT / 2}
-                    y2={SAMPLE_HEIGHT / 2}
-                  />
-                  <path
-                    d={`M${SAMPLE_WIDTH - 7} 1 L${SAMPLE_WIDTH} ${
-                      SAMPLE_HEIGHT / 2
-                    } L${SAMPLE_WIDTH - 7} ${SAMPLE_HEIGHT - 1} Z`}
-                    fill={style.color}
-                  />
-                </svg>
-                <Typography className="tw:flex-1" size="text-xs">
-                  {t(style.labelKey)}
-                </Typography>
-                <Typography
-                  className="tw:text-tertiary"
-                  data-testid={`legend-count-${category}`}
-                  size="text-xs">
-                  {counts[category]}
-                </Typography>
+                <Button
+                  aria-pressed={selectedCategory === category}
+                  className="tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center tw:[&>[data-text]]:gap-2"
+                  color="tertiary"
+                  size="sm"
+                  onPress={() => onSelectCategory?.(category)}>
+                  <svg
+                    aria-hidden="true"
+                    className="tw:shrink-0"
+                    height={SAMPLE_HEIGHT}
+                    viewBox={`0 0 ${SAMPLE_WIDTH} ${SAMPLE_HEIGHT}`}
+                    width={SAMPLE_WIDTH}>
+                    <line
+                      stroke={style.color}
+                      strokeDasharray={
+                        style.lineDash.length > 0
+                          ? style.lineDash.join(' ')
+                          : undefined
+                      }
+                      strokeLinecap="round"
+                      strokeWidth={2}
+                      x1={0}
+                      x2={SAMPLE_WIDTH - 6}
+                      y1={SAMPLE_HEIGHT / 2}
+                      y2={SAMPLE_HEIGHT / 2}
+                    />
+                    <path
+                      d={`M${SAMPLE_WIDTH - 7} 1 L${SAMPLE_WIDTH} ${
+                        SAMPLE_HEIGHT / 2
+                      } L${SAMPLE_WIDTH - 7} ${SAMPLE_HEIGHT - 1} Z`}
+                      fill={style.color}
+                    />
+                  </svg>
+                  <Typography className="tw:flex-1" size="text-xs">
+                    {t(style.labelKey)}
+                  </Typography>
+                  <Typography
+                    className="tw:text-tertiary"
+                    data-testid={`legend-count-${category}`}
+                    size="text-xs">
+                    {counts[category]}
+                  </Typography>
+                </Button>
               </li>
             );
           })}

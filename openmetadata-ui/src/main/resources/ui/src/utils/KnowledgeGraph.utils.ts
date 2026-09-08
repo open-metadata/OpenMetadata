@@ -23,7 +23,6 @@ import {
 import { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { toString } from 'lodash';
 import {
-  BIDIRECTIONAL_CURVE_OFFSET,
   DAGRE_PORTS,
   DIMMED_OPACITY,
   EDGE_ARROW_SIZE,
@@ -52,10 +51,11 @@ import {
   ElementFocusState,
   GraphData,
   GraphInteractionCtx,
+  GraphLevelRing,
   KnowledgeGraphLayout,
+  KnowledgeGraphLevel,
 } from '../components/KnowledgeGraph/KnowledgeGraph.interface';
 import {
-  classifyMergedRelation,
   classifyRelation,
   getRelationStyle,
   RelationCategory,
@@ -386,11 +386,6 @@ const MIN_FIRST_RING_RADIUS = 360;
 // Prevents over-expansion caused by a single large ring forcing all others wide.
 const MIN_INTER_RING_GAP = 120;
 
-const ELK_KG_RADIAL_LAYOUT_OPTIONS = {
-  'elk.algorithm': 'radial',
-  'elk.spacing.nodeNode': '50',
-};
-
 /**
  * Spreads a circular ring into an ellipse shaped like the graph pane.
  *
@@ -428,7 +423,7 @@ export const stretchRingToViewport = (
 };
 
 /** Undirected BFS hop-count from the focus node, keyed by node id. */
-const computeUndirectedDepths = (
+export const computeUndirectedDepths = (
   nodes: G6NodeData[],
   edges: G6EdgeData[],
   focusId: string
@@ -443,133 +438,16 @@ const computeUndirectedDepths = (
   return bfsFromNode(adj, focusId);
 };
 
-/** Inverts a node → depth map into depth → node ids. */
-const groupIdsByDepth = (
-  depths: Map<string, number>
-): Map<number, string[]> => {
-  const byDepth = new Map<number, string[]>();
-  depths.forEach((depth, id) => {
-    const bucket = byDepth.get(depth);
-    if (bucket) {
-      bucket.push(id);
-    } else {
-      byDepth.set(depth, [id]);
-    }
-  });
+const CONCENTRIC_STRETCH = 1.35;
 
-  return byDepth;
-};
+export const normalizeGraphLevel = (value: number): KnowledgeGraphLevel =>
+  Math.min(
+    3,
+    Math.max(1, Math.floor(Number.isFinite(value) ? value : 2))
+  ) as KnowledgeGraphLevel;
 
-/**
- * Radius of each ring, expanded only as much as that ring's own nodes need
- * rather than by the widest ring in the graph. Each ring also clears the one
- * inside it by at least MIN_INTER_RING_GAP so the spokes stay separable.
- */
-const computeRingRadii = (
-  byDepth: Map<number, string[]>,
-  nodes: G6NodeData[]
-): Map<number, number> => {
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const ringRadii = new Map<number, number>();
-  const sortedDepths = [...byDepth.keys()]
-    .filter((d) => d > 0)
-    .sort((a, b) => a - b);
-  let prevRadius = 0;
-
-  sortedDepths.forEach((depth) => {
-    const nodeIds = byDepth.get(depth) ?? [];
-    const totalWidth = nodeIds.reduce((sum, id) => {
-      const size = nodeMap.get(id)?.style?.size as [number, number] | undefined;
-
-      return sum + (size?.[0] ?? NODE_WIDTH);
-    }, 0);
-    const minCircRadius =
-      (totalWidth + nodeIds.length * INTRA_RING_GAP) / (2 * Math.PI);
-    const minComfort = depth === 1 ? MIN_FIRST_RING_RADIUS : 0;
-    const radius = Math.max(
-      minCircRadius,
-      minComfort,
-      prevRadius + MIN_INTER_RING_GAP
-    );
-    ringRadii.set(depth, radius);
-    prevRadius = radius;
-  });
-
-  return ringRadii;
-};
-
-const polarPosition = (
-  cx: number,
-  cy: number,
-  radius: number,
-  angle: number
-): { x: number; y: number } => ({
-  x: cx + radius * Math.cos(angle),
-  y: cy + radius * Math.sin(angle),
-});
-
-/**
- * Angular placement from ELK's radial layout, which distributes nodes by
- * subtree size rather than spreading them evenly — our own radii are then
- * substituted for ELK's so ring spacing stays under our control.
- */
-const elkRadialAngles = async (
-  nodes: G6NodeData[],
-  edges: G6EdgeData[],
-  focusId: string
-): Promise<Map<string, number>> => {
-  const result = await ELKLayout.getElk().layout({
-    id: 'root',
-    layoutOptions: ELK_KG_RADIAL_LAYOUT_OPTIONS,
-    children: nodes.map((node) => {
-      const size = node.style?.size as [number, number] | undefined;
-
-      return {
-        id: node.id,
-        width: size?.[0] ?? NODE_WIDTH,
-        height: size?.[1] ?? NODE_HEIGHT,
-      };
-    }),
-    edges: edges.map((edge, i) => ({
-      id: String(edge.id ?? `elk-radial-edge-${i}`),
-      sources: [String(edge.source)],
-      targets: [String(edge.target)],
-    })) as ElkExtendedEdge[],
-  });
-
-  const rawPositions = new Map(
-    (result.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
-  );
-  const focusPosition = rawPositions.get(focusId) ?? { x: 0, y: 0 };
-  const angles = new Map<string, number>();
-
-  rawPositions.forEach((position, id) => {
-    if (id !== focusId) {
-      angles.set(
-        id,
-        Math.atan2(position.y - focusPosition.y, position.x - focusPosition.x)
-      );
-    }
-  });
-
-  return angles;
-};
-
-/** Evenly spaced angles per ring, used when ELK's layout is unavailable. */
-const uniformRingAngles = (
-  byDepth: Map<number, string[]>
-): Map<string, number> => {
-  const angles = new Map<string, number>();
-  byDepth.forEach((nodeIds, depth) => {
-    if (depth > 0) {
-      nodeIds.forEach((id, i) => {
-        angles.set(id, (2 * Math.PI * i) / nodeIds.length - Math.PI / 2);
-      });
-    }
-  });
-
-  return angles;
-};
+export const graphLevelToDepth = (level: number): number =>
+  normalizeGraphLevel(level) - 1;
 
 export const computeELKRadialPositions = async (
   nodes: G6NodeData[],
@@ -579,24 +457,92 @@ export const computeELKRadialPositions = async (
   cy: number
 ): Promise<Map<string, { x: number; y: number }>> => {
   const depths = computeUndirectedDepths(nodes, edges, focusId);
-  const byDepth = groupIdsByDepth(depths);
-  const ringRadii = computeRingRadii(byDepth, nodes);
-
-  // ELK gives better angles, but it can throw on some topologies; an even
-  // spread per ring is a correct, if less pretty, substitute.
-  const angles = await elkRadialAngles(nodes, edges, focusId).catch(() =>
-    uniformRingAngles(byDepth)
-  );
-
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const positions = new Map<string, { x: number; y: number }>();
+  const root = nodeMap.get(focusId);
+  if (!root) {
+    return positions;
+  }
   positions.set(focusId, { x: cx, y: cy });
+  const byDepth = new Map<number, G6NodeData[]>();
+  nodes.forEach((node) => {
+    const depth = depths.get(node.id);
+    if (depth !== undefined && depth > 0) {
+      const ring = byDepth.get(depth) ?? [];
+      ring.push(node);
+      byDepth.set(depth, ring);
+    }
+  });
+  const diagonal = (node: G6NodeData): number => {
+    const [width, height] = (node.style?.size as
+      | [number, number]
+      | undefined) ?? [NODE_WIDTH, NODE_HEIGHT];
 
-  angles.forEach((angle, id) => {
-    const radius = ringRadii.get(depths.get(id) ?? 1) ?? MIN_FIRST_RING_RADIUS;
-    positions.set(id, polarPosition(cx, cy, radius, angle));
+    return Math.hypot(width / CONCENTRIC_STRETCH, height * CONCENTRIC_STRETCH);
+  };
+  let previousRadius = 0;
+  let previousDiameter = diagonal(root);
+  [...byDepth.entries()]
+    .sort(([left], [right]) => left - right)
+    .forEach(([, ring]) => {
+      ring.sort(
+        (left, right) =>
+          String(left.data?.type ?? '').localeCompare(
+            String(right.data?.type ?? '')
+          ) || left.id.localeCompare(right.id)
+      );
+      const diameter = Math.max(...ring.map(diagonal));
+      // A bounding circle around each card guarantees separation even after the
+      // rings are stretched into ellipses. Outer rings cannot move inner ones.
+      const packingRadius =
+        ring.length > 1
+          ? (diameter + INTRA_RING_GAP) / (2 * Math.sin(Math.PI / ring.length))
+          : 0;
+      const radius = Math.max(
+        MIN_FIRST_RING_RADIUS,
+        packingRadius,
+        previousRadius + (previousDiameter + diameter) / 2 + MIN_INTER_RING_GAP
+      );
+      ring.forEach((node, index) => {
+        const angle = (2 * Math.PI * index) / ring.length - Math.PI / 2;
+        positions.set(node.id, {
+          x: cx + radius * CONCENTRIC_STRETCH * Math.cos(angle),
+          y: cy + (radius / CONCENTRIC_STRETCH) * Math.sin(angle),
+        });
+      });
+      previousRadius = radius;
+      previousDiameter = diameter;
+    });
+
+  return positions;
+};
+
+export const getGraphLevelRings = (
+  nodes: G6NodeData[],
+  focusId: string
+): GraphLevelRing[] => {
+  const focus = nodes.find((node) => node.id === focusId);
+  const x = Number(focus?.style?.x ?? 0);
+  const y = Number(focus?.style?.y ?? 0);
+  const rings = new Map<number, GraphLevelRing>();
+  nodes.forEach((node) => {
+    const level = Number(node.data?.level ?? 1);
+    if (level > 1 && !rings.has(level)) {
+      const radius = Math.hypot(
+        (Number(node.style?.x ?? 0) - x) / CONCENTRIC_STRETCH,
+        (Number(node.style?.y ?? 0) - y) * CONCENTRIC_STRETCH
+      );
+      rings.set(level, {
+        level,
+        x,
+        y,
+        radiusX: radius * CONCENTRIC_STRETCH,
+        radiusY: radius / CONCENTRIC_STRETCH,
+      });
+    }
   });
 
-  return stretchRingToViewport(positions, cx, cy);
+  return [...rings.values()].sort((left, right) => left.level - right.level);
 };
 
 export const assignRadialPorts = (
@@ -800,6 +746,11 @@ export const applyGraphLayout = async (
   const { layout, focusNodeId, width, height, hasEntity } = options;
   const isRadial = layout === 'radial';
   let nodes = enlargeFocusNode(data.nodes ?? [], focusNodeId);
+  const depths = computeUndirectedDepths(nodes, data.edges ?? [], focusNodeId);
+  nodes = nodes.map((node) => ({
+    ...node,
+    data: { ...node.data, level: (depths.get(node.id) ?? 0) + 1 },
+  }));
   let edges = data.edges ?? [];
 
   if (isRadial && hasEntity) {
@@ -922,8 +873,7 @@ export const computeLabelPlacements = (
   const sizePerEndpoint = new Map<string, number>();
 
   // Degree per endpoint, tallied in one pass. Scanning `edges` inside the
-  // per-edge callback below would make this O(E²), which the depth slider can
-  // reach: depth 5 returns hundreds of edges.
+  // per-edge callback below would make dense neighborhoods O(E²).
   const fromDegree = new Map<string, number>();
   const toDegree = new Map<string, number>();
   edges.forEach((edge) => {
@@ -958,7 +908,7 @@ export const computeLabelPlacements = (
 export const transformToG6Format = (
   data: GraphData | null,
   options: { showEdgeLabels?: boolean } = {}
-): G6GraphData => {
+): G6GraphData & { nodes: G6NodeData[]; edges: G6EdgeData[] } => {
   if (!data) {
     return { nodes: [], edges: [] };
   }
@@ -981,74 +931,32 @@ export const transformToG6Format = (
     };
   });
 
-  // Group edges by directed pair and merge parallel same-direction edges into one.
-  // This eliminates overlap when multiple relationships exist in the same direction
-  // between the same two nodes, reducing clutter to at most one edge per direction.
-  const edgeGroups = new Map<string, typeof data.edges>();
-  data.edges.forEach((edge) => {
-    const key = `${edge.from}→${edge.to}`;
-    const existing = edgeGroups.get(key);
-    if (existing) {
-      existing.push(edge);
-    } else {
-      edgeGroups.set(key, [edge]);
-    }
-  });
-
-  type MergedEdge = (typeof data.edges)[number] & {
-    mergedLabels?: string[];
-  };
-
-  const mergedEdges: MergedEdge[] = [...edgeGroups.values()].map((group) => {
-    if (group.length === 1) {
-      return group[0];
-    }
-
-    const labels = group.map((e) => e.label);
-
-    return {
-      ...group[0],
-      label: labels.join(' · '),
-      mergedLabels: labels,
-    };
-  });
-
-  const directionSet = new Set(mergedEdges.map((e) => `${e.from}→${e.to}`));
-  const labelPlacements = computeLabelPlacements(mergedEdges);
-
-  const edges: G6EdgeData[] = mergedEdges.map((edge, index) => {
-    const isBidirectional = directionSet.has(`${edge.to}→${edge.from}`);
-    // G6 computes curveOffset perpendicular to travel direction, so both
-    // edges in a bidirectional pair share the same positive value —
-    // the reversed travel direction automatically curves them to opposite
-    // visual sides.
-    const curveOffset: number | undefined = isBidirectional
-      ? BIDIRECTIONAL_CURVE_OFFSET
-      : undefined;
-    const labelPlacement = labelPlacements[index];
-
-    // The relation family — not the endpoint types — drives the edge's colour
-    // and dash, so the same kind of relationship always looks the same and the
-    // legend stays a valid key to the picture.
-    const category = classifyMergedRelation(
-      edge.mergedLabels ?? [edge.label],
+  const occurrences = new Map<string, number>();
+  const labelPlacements = computeLabelPlacements(data.edges);
+  const edges: G6EdgeData[] = data.edges.map((edge, index) => {
+    const signature = JSON.stringify([
+      edge.from,
+      edge.to,
+      edge.relationType ?? edge.label,
+    ]);
+    const occurrence = occurrences.get(signature) ?? 0;
+    occurrences.set(signature, occurrence + 1);
+    const category = classifyRelation(
+      edge.relationType ?? edge.label,
       nodeTypeById.get(edge.from) ?? '',
       nodeTypeById.get(edge.to) ?? ''
     );
 
     return {
-      id: `edge-${index}`,
+      id: JSON.stringify([signature, occurrence]),
+      type: edge.from === edge.to ? 'cubic' : 'quadratic',
       source: edge.from,
       target: edge.to,
-      data: {
-        label: edge.label,
-        category,
-        ...(edge.mergedLabels ? { mergedLabels: edge.mergedLabels } : {}),
-      } as Record<string, unknown>,
+      data: { label: edge.label, category, relationType: edge.relationType },
       style: {
         ...buildEdgeBaseStyle(category, edge.label, showEdgeLabels),
-        labelPlacement,
-        ...(curveOffset === undefined ? {} : { curveOffset }),
+        labelAutoRotate: false,
+        labelPlacement: labelPlacements[index],
       },
     };
   });
@@ -1056,15 +964,26 @@ export const transformToG6Format = (
   return { nodes, edges };
 };
 
-/**
- * The focused appearance: same family colour so the edge stays identifiable,
- * but thicker, solid, and lifted above its neighbours.
- */
-/**
- * Edge count per relation family, used to build the legend. Counts raw edges
- * rather than the merged ones the canvas draws, so the numbers match what the
- * relationship-type filter reports.
- */
+export const projectGraphToPositions = (
+  data: GraphData,
+  positioned: G6GraphData
+) => {
+  const positions = new Map(positioned.nodes?.map((node) => [node.id, node]));
+  const filtered = transformToG6Format(data);
+  const nodes = filtered.nodes.map((node) => {
+    const position = positions.get(node.id);
+
+    return {
+      ...node,
+      style: { ...node.style, ...position?.style },
+      data: { ...node.data, level: position?.data?.level },
+    };
+  });
+
+  return { ...filtered, nodes };
+};
+
+/** Counts returned relationships using the same classification as the canvas. */
 export const countRelationCategories = (
   data: GraphData | null
 ): Record<RelationCategory, number> => {
@@ -1078,7 +997,7 @@ export const countRelationCategories = (
     );
     data.edges.forEach((edge) => {
       const category = classifyRelation(
-        edge.label,
+        edge.relationType ?? edge.label,
         nodeTypeById.get(edge.from) ?? '',
         nodeTypeById.get(edge.to) ?? ''
       );
@@ -1457,6 +1376,7 @@ export const getNodeRenderKey = (nodeData: NodeData): string => {
     toString(nodeData.id),
     toString(data.label),
     toString(data.type),
+    toString(data.level),
     toString(data.colorMain),
     toString(data.colorLight),
     toString(data.highlighted),

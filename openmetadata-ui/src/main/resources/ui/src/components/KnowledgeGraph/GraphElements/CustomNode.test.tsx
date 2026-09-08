@@ -13,7 +13,6 @@
 
 import { NodeData } from '@antv/g6';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import CustomNode from './CustomNode';
 
 jest.mock('@antv/g6', () => ({}));
@@ -21,28 +20,6 @@ jest.mock('@antv/g6', () => ({}));
 jest.mock('../../../utils/TableUtils', () => ({
   getEntityIcon: jest.fn(() => <svg data-testid="entity-icon" />),
 }));
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const R = require('react');
-
-  return {
-    Box: ({
-      children,
-      ...p
-    }: React.PropsWithChildren<Record<string, unknown>>) =>
-      R.createElement('div', p, children),
-    Typography: ({
-      children,
-      'data-testid': testId,
-      style,
-      ...p
-    }: React.PropsWithChildren<{
-      'data-testid'?: string;
-      style?: React.CSSProperties;
-    }>) =>
-      R.createElement('span', { 'data-testid': testId, style, ...p }, children),
-  };
-});
 
 import { getNodeRenderKey } from '../../../utils/KnowledgeGraph.utils';
 import { getEntityIcon } from '../../../utils/TableUtils';

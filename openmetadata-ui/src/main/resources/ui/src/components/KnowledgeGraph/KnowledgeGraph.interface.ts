@@ -15,8 +15,8 @@ import type {
   Graph,
   NodeData as G6NodeData,
 } from '@antv/g6';
-import type { Key, Selection } from 'react-aria-components';
 import { EntityReference } from '../../generated/entity/type';
+import { GraphData as RdfGraphData } from '../../rest/rdfAPI.interface';
 import {
   GraphEdge,
   GraphFilterOptions,
@@ -25,7 +25,18 @@ import {
 export interface KnowledgeGraphProps {
   entity?: EntityReference;
   entityType: string;
-  depth?: number;
+  levels?: KnowledgeGraphLevel;
+}
+
+export type KnowledgeGraphLevel = 1 | 2 | 3;
+export type KnowledgeGraphLabelMode = 'auto' | 'all' | 'none';
+
+export interface GraphLevelRing {
+  level: number;
+  x: number;
+  y: number;
+  radiusX: number;
+  radiusY: number;
 }
 
 /**
@@ -48,7 +59,7 @@ export interface GraphNode {
   fullyQualifiedName?: string;
 }
 
-export interface GraphData {
+export interface GraphData extends Omit<RdfGraphData, 'nodes'> {
   nodes: GraphNode[];
   edges: GraphEdge[];
   filterOptions?: GraphFilterOptions;
@@ -71,6 +82,7 @@ export type GraphInteractionCtx = {
   setSelectedNode: (node: GraphNode | null) => void;
   setEdgeTooltip: (state: EdgeTooltipState | null) => void;
   canvasRef: React.RefObject<HTMLDivElement | null>;
+  setSelectedEdge?: (edgeId: string | null) => void;
 };
 
 export interface EdgeTooltipState {
@@ -89,34 +101,26 @@ export interface GraphFilterChoice {
   label: string;
 }
 
+export interface KnowledgeGraphFilters {
+  entityTypes: string[];
+  relationshipTypes: string[];
+}
+
 export interface KnowledgeGraphToolbarProps {
-  entityDropdownOpen: boolean;
-  entityFilterText: string;
-  entityTypeOptions: GraphFilterChoice[];
-  filteredEntityTypeOptions: GraphFilterChoice[];
-  filteredRelationshipTypeOptions: GraphFilterChoice[];
-  hasActiveFilters: boolean;
+  selectedLevel: KnowledgeGraphLevel;
   layout: KnowledgeGraphLayout;
-  relationshipDropdownOpen: boolean;
-  relationshipFilterText: string;
-  relationshipTypeOptions: GraphFilterChoice[];
-  selectedDepth: number;
-  selectedEntityTypes: string[];
-  selectedRelationshipTypes: string[];
-  showEdgeLabels: boolean;
-  onClearAll: () => void;
-  onDepthChange: (value: number | number[]) => void;
-  onEntityDropdownChange: (open: boolean) => void;
-  onEntityFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onEntityTypeSelectionChange: (keys: Selection) => void;
+  labelMode: KnowledgeGraphLabelMode;
+  nodes: GraphNode[];
+  filters: KnowledgeGraphFilters;
+  filterOptions?: GraphFilterOptions;
+  onFindNode: (nodeId: string) => void;
+  onLevelChange: (level: KnowledgeGraphLevel) => void;
+  onLayoutChange: (layout: KnowledgeGraphLayout) => void;
+  onLabelModeChange: (mode: KnowledgeGraphLabelMode) => void;
+  onFiltersChange: (filters: KnowledgeGraphFilters) => void;
   onExportJsonLd: () => Promise<void>;
   onExportPng: () => Promise<void>;
   onExportTurtle: () => Promise<void>;
-  onLayoutChange: (key: Key) => void;
-  onRelationshipDropdownChange: (open: boolean) => void;
-  onRelationshipFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRelationshipTypeSelectionChange: (keys: Selection) => void;
-  onShowEdgeLabelsChange: (isSelected: boolean) => void;
 }
 
 export interface KnowledgeGraphOverlaysProps {

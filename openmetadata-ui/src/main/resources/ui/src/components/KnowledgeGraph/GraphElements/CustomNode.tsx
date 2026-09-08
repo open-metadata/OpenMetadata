@@ -12,18 +12,28 @@
  */
 
 import { NodeData } from '@antv/g6';
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import './custom-node.less';
 
 export interface CustomNodeProps {
   nodeData: NodeData;
   nodeRenderKey: string;
+  onSelect?: (keyboard: boolean) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
+function CustomNode({
+  nodeData,
+  onSelect,
+  onFocus,
+  onBlur,
+}: Readonly<CustomNodeProps>) {
+  const { t } = useTranslation();
   const highlighted = Boolean(nodeData.data?.highlighted);
   const dimmed = Boolean(nodeData.data?.dimmed);
   const colorMain = nodeData.data?.colorMain as string | undefined;
@@ -32,17 +42,26 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
   const type = nodeData.data?.type as string;
 
   return (
-    <div
+    <Button
+      noTextPadding
+      aria-label={t('label.kg-node-description', {
+        name: label,
+        type,
+        level: nodeData.data?.level ?? 1,
+      })}
       className={classNames('knowledge-graph-custom-node', {
         highlighted,
         dimmed,
       })}
+      color="secondary"
+      data-level={nodeData.data?.level}
       data-node-id={nodeData.id}
       data-testid={`node-${label}`}
-      // The accent bar and the highlight border both take the entity-type
-      // colour, so a node's type is readable from its edge alone once the
-      // label is too small to render.
-      style={colorMain ? { borderLeftColor: colorMain } : undefined}>
+      style={colorMain ? { borderLeftColor: colorMain } : undefined}
+      title={label}
+      onBlur={onBlur}
+      onFocus={onFocus}
+      onPress={(event) => onSelect?.(event.pointerType === 'keyboard')}>
       <Box align="center" className="tw:overflow-hidden" gap={2}>
         <Box
           align="center"
@@ -54,13 +73,7 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
             height: 12,
           })}
         </Box>
-        <Typography
-          data-testid="label"
-          ellipsis={{
-            tooltip: label,
-            rows: 1,
-          }}
-          weight="semibold">
+        <Typography ellipsis data-testid="label" weight="semibold">
           {label}
         </Typography>
       </Box>
@@ -75,7 +88,7 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
         }>
         {type}
       </Typography>
-    </div>
+    </Button>
   );
 }
 

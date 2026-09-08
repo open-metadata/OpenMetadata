@@ -19,7 +19,6 @@ jest.mock('./EntityLinkUtils', () => ({
 import { Graph, NodePortStyleProps } from '@antv/g6';
 import { ELK } from 'elkjs/lib/elk-api';
 import {
-  BIDIRECTIONAL_CURVE_OFFSET,
   DAGRE_PORTS,
   DIMMED_OPACITY,
   EDGE_HIGHLIGHT_LINE_WIDTH,
@@ -47,8 +46,11 @@ import {
   findHighlightPath,
   getColorSetForType,
   getFullscreenClassNames,
+  graphLevelToDepth,
   hasActiveGraphFilters,
   isGraphEmpty,
+  normalizeGraphLevel,
+  projectGraphToPositions,
   resolveFocusNodeId,
   setupGraphEventHandlers,
   stretchRingToViewport,
@@ -84,6 +86,173 @@ const makeAdjMaps = (nodes: TestNode[], edges: TestEdge[]) => {
 const makeNodeMap = (nodes: TestNode[]) => new Map(nodes.map((n) => [n.id, n]));
 
 describe('KnowledgeGraph.utils', () => {
+  it.each([
+    [1, 0],
+    [2, 1],
+    [3, 2],
+    [8, 2],
+    [-1, 0],
+  ])('maps level %s to depth %s', (level, depth) => {
+    expect(graphLevelToDepth(level)).toBe(depth);
+  });
+
+  it('uses the default level for invalid numeric input', () => {
+    expect(normalizeGraphLevel(Number.NaN)).toBe(2);
+  });
+
+  it('preserves distinct relationships between the same directed pair', () => {
+    const graph = transformToG6Format({
+      nodes: [
+        { id: 'a', label: 'Orders', type: 'table' },
+        { id: 'b', label: 'Customer', type: 'glossaryTerm' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', label: 'Has Tag' },
+        { from: 'a', to: 'b', label: 'Has Glossary Term' },
+        { from: 'b', to: 'a', label: 'Related To' },
+      ],
+    });
+
+    expect(graph.edges).toHaveLength(3);
+    expect(new Set(graph.edges?.map((edge) => edge.id)).size).toBe(3);
+    expect(graph.edges?.map((edge) => edge.data?.category)).toEqual(
+      expect.arrayContaining(['governance', 'ontology'])
+    );
+  });
+
+  it('keeps direct neighbors in place when the outer ring is added', async () => {
+    const innerNodes = [makeNode('root'), makeNode('a'), makeNode('b')];
+    const innerEdges = [
+      makeEdge('ra', 'root', 'a'),
+      makeEdge('br', 'b', 'root'),
+    ];
+    const inner = await computeELKRadialPositions(
+      innerNodes,
+      innerEdges,
+      'root',
+      0,
+      0
+    );
+    const extended = await computeELKRadialPositions(
+      [...innerNodes, makeNode('c'), makeNode('d')],
+      [...innerEdges, makeEdge('ac', 'a', 'c'), makeEdge('bd', 'b', 'd')],
+      'root',
+      0,
+      0
+    );
+
+    expect(extended.get('a')).toEqual(inner.get('a'));
+    expect(extended.get('b')).toEqual(inner.get('b'));
+  });
+
+  it('keeps the original level and coordinates when a filter removes a connecting node', async () => {
+    const data = {
+      nodes: [
+        { id: 'root', label: 'Root', type: 'table' },
+        { id: 'bridge', label: 'Schema', type: 'databaseSchema' },
+        { id: 'outer', label: 'Other table', type: 'table' },
+      ],
+      edges: [
+        { from: 'bridge', to: 'root', label: 'Contains' },
+        { from: 'bridge', to: 'outer', label: 'Contains' },
+      ],
+    };
+    const positioned = await applyGraphLayout(transformToG6Format(data), {
+      layout: 'radial',
+      focusNodeId: 'root',
+      width: 1000,
+      height: 600,
+      hasEntity: true,
+    });
+    const filtered = projectGraphToPositions(
+      {
+        ...data,
+        nodes: data.nodes.filter((node) => node.id !== 'bridge'),
+        edges: [],
+      },
+      positioned
+    );
+    const outer = filtered.nodes.find((node) => node.id === 'outer');
+
+    expect(outer?.data?.level).toBe(3);
+    expect(outer?.style).toEqual(
+      positioned.nodes?.find((node) => node.id === 'outer')?.style
+    );
+    expect(filtered.nodes).toHaveLength(2);
+  });
+
+  it('places nodes by shortest undirected distance with cycles and cross-links', async () => {
+    const data = {
+      nodes: ['root', 'a', 'b', 'c'].map((id) => ({
+        id,
+        label: id,
+        type: 'table',
+      })),
+      edges: [
+        { from: 'a', to: 'root', label: 'Contains' },
+        { from: 'a', to: 'b', label: 'Contains' },
+        { from: 'b', to: 'root', label: 'Downstream' },
+        { from: 'c', to: 'b', label: 'Contains' },
+        { from: 'a', to: 'a', label: 'Self' },
+      ],
+    };
+    const positioned = await applyGraphLayout(transformToG6Format(data), {
+      layout: 'radial',
+      focusNodeId: 'root',
+      width: 0,
+      height: 0,
+      hasEntity: true,
+    });
+
+    expect(
+      Object.fromEntries(
+        positioned.nodes?.map((node) => [node.id, node.data?.level]) ?? []
+      )
+    ).toEqual({ root: 1, a: 2, b: 2, c: 3 });
+  });
+
+  it('packs a dense ring without overlapping node cards and ignores response ordering', async () => {
+    const nodes = Array.from({ length: 200 }, (_, index) => ({
+      id: String(index),
+      style: {
+        size: [120 + (index % 4) * 40, NODE_HEIGHT] as [number, number],
+      },
+    }));
+    const edges = nodes
+      .slice(1)
+      .map((node) => ({ id: 'e' + node.id, source: '0', target: node.id }));
+    const positions = await computeELKRadialPositions(nodes, edges, '0', 0, 0);
+    const reversed = await computeELKRadialPositions(
+      [...nodes].reverse(),
+      [...edges].reverse(),
+      '0',
+      0,
+      0
+    );
+
+    expect(positions).toEqual(reversed);
+
+    const overlaps: string[] = [];
+    nodes.forEach((left, i) => {
+      const a = positions.get(left.id);
+      nodes.slice(i + 1).forEach((right) => {
+        const b = positions.get(right.id);
+        if (
+          a &&
+          b &&
+          Math.abs(a.x - b.x) <
+            (left.style.size[0] + right.style.size[0]) / 2 &&
+          Math.abs(a.y - b.y) < NODE_HEIGHT
+        ) {
+          overlaps.push(left.id + ':' + right.id);
+        }
+      });
+    });
+
+    expect(positions.size).toBe(200);
+    expect(overlaps).toEqual([]);
+  });
+
   describe('computeNodeWidth', () => {
     it('returns minimum width for a very short label and type', () => {
       expect(computeNodeWidth('a', 'x')).toBe(120);
@@ -509,7 +678,7 @@ describe('KnowledgeGraph.utils', () => {
       );
     });
 
-    it('bows both edges of a bidirectional pair to opposite sides', () => {
+    it('preserves both directions for the parallel-edge transform', () => {
       const data = {
         nodes: [
           { id: 'n1', label: 'A', type: 'table' },
@@ -524,15 +693,16 @@ describe('KnowledgeGraph.utils', () => {
 
       expect(result.edges).toHaveLength(2);
 
-      // G6 measures curveOffset along the direction of travel, so one positive
-      // value bends each direction onto its own side — which is also what keeps
-      // the two labels apart despite sharing an anchor fraction.
-      result.edges?.forEach((edge) => {
-        expect(edge.style?.curveOffset).toBe(BIDIRECTIONAL_CURVE_OFFSET);
-      });
+      expect(
+        result.edges?.map(({ source, target }) => [source, target])
+      ).toEqual([
+        ['n1', 'n2'],
+        ['n2', 'n1'],
+      ]);
+      expect(new Set(result.edges?.map(({ id }) => id)).size).toBe(2);
     });
 
-    it('merges parallel same-direction edges into one with a combined label', () => {
+    it('retains exact labels on separate same-direction relationships', () => {
       const data = {
         nodes: [
           { id: 'n1', label: 'A', type: 'table' },
@@ -545,8 +715,11 @@ describe('KnowledgeGraph.utils', () => {
       };
       const result = transformToG6Format(data);
 
-      expect(result.edges).toHaveLength(1);
-      expect(result.edges?.[0].style?.labelText).toBe('rel1 · rel2');
+      expect(result.edges).toHaveLength(2);
+      expect(result.edges?.map((edge) => edge.style?.labelText)).toEqual([
+        'rel1',
+        'rel2',
+      ]);
     });
   });
 

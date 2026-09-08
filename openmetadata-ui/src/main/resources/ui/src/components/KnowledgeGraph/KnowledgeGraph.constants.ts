@@ -46,18 +46,18 @@ export const EXPORT_FORMAT_MAP: Partial<
 };
 
 export const NODE_WIDTH = 280;
-export const NODE_HEIGHT = 36;
+export const NODE_HEIGHT = 44;
 export const MAX_NODE_WIDTH = 280;
 export const MIN_NODE_WIDTH = 120;
 
 export const EDGE_LINE_WIDTH = 1.75;
 export const EDGE_HIGHLIGHT_LINE_WIDTH = 3;
-export const EDGE_LABEL_FONT_SIZE = 11;
+export const EDGE_LABEL_FONT_SIZE = 12;
 /**
  * Non-focused elements keep this much opacity while a path is highlighted, so
  * the surrounding graph stays as readable context instead of disappearing.
  */
-export const DIMMED_OPACITY = 0.18;
+export const DIMMED_OPACITY = 0.4;
 export const EDGE_ARROW_SIZE = 10;
 export const EDGE_HIGHLIGHT_ARROW_SIZE = 13;
 /**

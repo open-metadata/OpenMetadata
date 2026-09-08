@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,260 +14,310 @@
 import {
   Box,
   Button,
-  Divider,
   Dropdown,
-  Slider,
-  Tabs,
-  Toggle,
+  Input,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
-import type { FC } from 'react';
-import React from 'react';
+import { ChevronDown, FilterLines, Settings01 } from '@untitledui/icons';
+import { useMemo, useState } from 'react';
+import type { Key, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { normalizeGraphLevel } from '../../utils/KnowledgeGraph.utils';
 import ExportGraphPanel from '../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 import { KnowledgeGraphToolbarProps } from './KnowledgeGraph.interface';
 
-/**
- * The dropdown popover only mounts its search box when the user opens the
- * dropdown, so taking focus on mount is the behaviour they asked for — unlike
- * `autoFocus`, which steals focus on page load and is linted against.
- */
-const focusOnMount = (node: HTMLInputElement | null): void => node?.focus();
-
-/**
- * The dropdown listens for arrow/typeahead keys on its popover, which would
- * otherwise hijack typing in the search box.
- */
-const stopKeydownPropagation = (e: React.KeyboardEvent): void =>
-  e.stopPropagation();
-
-// Borders are drawn with `border`/`outline`, never `ring`: rings compile to
-// box-shadow, which WebKit does not pixel-snap, so they thin out at non-100%
-// zoom.
-const filterInputClassName =
-  'tw:w-full tw:rounded-md tw:bg-primary tw:px-2.5 tw:py-1.5 tw:text-sm' +
-  ' tw:text-primary tw:placeholder:text-placeholder tw:border' +
-  ' tw:border-primary tw:focus:border-brand tw:focus:outline-2' +
-  ' tw:focus:-outline-offset-2 tw:focus:outline-brand';
-
-/**
- * Controls above the graph canvas: layout mode, entity- and relationship-type
- * filters, traversal depth, the edge-label toggle and export. Split out of
- * KnowledgeGraph so the component that owns the canvas is not also responsible
- * for the whole control surface.
- */
-const KnowledgeGraphToolbar: FC<KnowledgeGraphToolbarProps> = ({
-  entityDropdownOpen,
-  entityFilterText,
-  entityTypeOptions,
-  filteredEntityTypeOptions,
-  filteredRelationshipTypeOptions,
-  hasActiveFilters,
+const KnowledgeGraphToolbar = ({
+  selectedLevel,
   layout,
-  relationshipDropdownOpen,
-  relationshipFilterText,
-  relationshipTypeOptions,
-  selectedDepth,
-  selectedEntityTypes,
-  selectedRelationshipTypes,
-  showEdgeLabels,
-  onClearAll,
-  onDepthChange,
-  onEntityDropdownChange,
-  onEntityFilterChange,
-  onEntityTypeSelectionChange,
+  labelMode,
+  nodes,
+  filters,
+  filterOptions,
+  onFindNode,
+  onLevelChange,
+  onLayoutChange,
+  onLabelModeChange,
+  onFiltersChange,
   onExportJsonLd,
   onExportPng,
   onExportTurtle,
-  onLayoutChange,
-  onRelationshipDropdownChange,
-  onRelationshipFilterChange,
-  onRelationshipTypeSelectionChange,
-  onShowEdgeLabelsChange,
-}) => {
+}: KnowledgeGraphToolbarProps) => {
   const { t } = useTranslation();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [entitySearch, setEntitySearch] = useState('');
+  const [relationshipSearch, setRelationshipSearch] = useState('');
+  const filterCount =
+    filters.entityTypes.length + filters.relationshipTypes.length;
+  const levels = [
+    { id: '1', label: t('label.kg-selected-entity') },
+    { id: '2', label: t('label.kg-direct-connections') },
+    { id: '3', label: t('label.kg-extended-connections') },
+  ];
+  const choices = useMemo(
+    () =>
+      nodes
+        .filter((node) =>
+          [node.label, node.fullyQualifiedName, node.type].some((value) =>
+            value?.toLowerCase().includes(findText.toLowerCase())
+          )
+        )
+        .map((node) => ({
+          id: node.id,
+          label: node.label,
+          supportingText: node.type,
+        })),
+    [nodes, findText]
+  );
+  const changeView = (key: Key) => {
+    switch (key) {
+      case 'radial':
+      case 'dagre':
+        onLayoutChange(key);
+
+        break;
+      case 'auto':
+      case 'all':
+      case 'none':
+        onLabelModeChange(key);
+
+        break;
+    }
+  };
+  const selectFilter = (
+    field: 'entityTypes' | 'relationshipTypes',
+    keys: Selection
+  ) => {
+    onFiltersChange({
+      ...filters,
+      [field]:
+        keys === 'all'
+          ? (filterOptions?.[field] ?? []).map((item) => item.id)
+          : Array.from(keys, String),
+    });
+  };
 
   return (
     <Box
-      align="center"
-      className="tw:p-sm tw:w-full"
+      className="tw:w-full tw:min-w-0"
       data-testid="knowledge-graph-controls"
-      justify="between">
-      <Box align="center" gap={4}>
-        <Typography className="tw:text-secondary" weight="medium">
-          {t('label.view-entity', { entity: t('label.mode') }) + ':'}
-        </Typography>
-        <Tabs
-          className="tw:w-auto"
-          data-testid="layout-tabs"
-          selectedKey={layout}
-          onSelectionChange={onLayoutChange}>
-          <Tabs.List
-            items={[
-              {
-                id: 'dagre',
-                label: t('label.hierarchical'),
-              },
-              {
-                id: 'radial',
-                label: t('label.radial'),
-              },
-            ]}
+      direction="col"
+      gap={3}>
+      <Box align="center" gap={3} wrap="wrap">
+        <Box align="center" gap={2}>
+          <Typography weight="medium">{t('label.kg-levels')}</Typography>
+          <Select
+            aria-label={t('label.kg-levels')}
+            className="tw:w-64 tw:max-w-full"
+            data-testid="level-chooser"
+            items={levels.map((level) => ({
+              ...level,
+              label: level.id + ' — ' + level.label,
+            }))}
+            selectedKey={String(selectedLevel)}
             size="sm"
-            type="button-minimal">
-            {(tab) => <Tabs.Item {...tab} />}
-          </Tabs.List>
-        </Tabs>
-
-        <Divider orientation="vertical" />
-        <Dropdown.Root
-          isOpen={entityDropdownOpen}
-          onOpenChange={onEntityDropdownChange}>
-          <Button
-            color="secondary"
-            isDisabled={entityTypeOptions.length === 0}
-            size="sm">
-            <Box align="center" gap={4}>
-              {selectedEntityTypes.length > 0
-                ? `${t('label.entity-type')} (${selectedEntityTypes.length})`
-                : t('label.entity-type')}
-              <ChevronDown
-                aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
-              />
-            </Box>
-          </Button>
-          <Dropdown.Popover>
-            <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
-              <input
-                aria-label={t('label.entity-type')}
-                className={filterInputClassName}
-                placeholder={t('label.search')}
-                ref={focusOnMount}
-                type="text"
-                value={entityFilterText}
-                onChange={onEntityFilterChange}
-                onKeyDown={stopKeydownPropagation}
-              />
-            </div>
-            <Dropdown.Menu
-              disallowEmptySelection={false}
-              items={filteredEntityTypeOptions}
-              selectedKeys={new Set(selectedEntityTypes)}
-              selectionMode="multiple"
-              onSelectionChange={onEntityTypeSelectionChange}>
-              {(item) => (
-                <Dropdown.Item
-                  showCheckbox
-                  id={item.id}
-                  key={item.id}
-                  label={item.label}
-                />
-              )}
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
-        <Divider orientation="vertical" />
-        <Dropdown.Root
-          isOpen={relationshipDropdownOpen}
-          onOpenChange={onRelationshipDropdownChange}>
-          <Button
-            color="secondary"
-            isDisabled={relationshipTypeOptions.length === 0}
-            size="sm">
-            <Box align="center" gap={4}>
-              {selectedRelationshipTypes.length > 0
-                ? `${t('label.relationship-type')} (${
-                    selectedRelationshipTypes.length
-                  })`
-                : t('label.relationship-type')}
-              <ChevronDown
-                aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
-              />
-            </Box>
-          </Button>
-          <Dropdown.Popover>
-            <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
-              <input
-                aria-label={t('label.relationship-type')}
-                className={filterInputClassName}
-                placeholder={t('label.search')}
-                ref={focusOnMount}
-                type="text"
-                value={relationshipFilterText}
-                onChange={onRelationshipFilterChange}
-                onKeyDown={stopKeydownPropagation}
-              />
-            </div>
-            <Dropdown.Menu
-              disallowEmptySelection={false}
-              items={filteredRelationshipTypeOptions}
-              selectedKeys={new Set(selectedRelationshipTypes)}
-              selectionMode="multiple"
-              onSelectionChange={onRelationshipTypeSelectionChange}>
-              {(item) => (
-                <Dropdown.Item
-                  showCheckbox
-                  id={item.id}
-                  key={item.id}
-                  label={item.label}
-                />
-              )}
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
-        <Divider orientation="vertical" />
-
-        <Box align="center" gap={5}>
-          <Typography className="depth-label">
-            {t('label.node-depth') + ':'}
-          </Typography>
-          <Slider
-            showHoverPreview
-            showRange
-            className="depth-slider"
-            data-testid="depth-slider"
-            labelPosition="top-floating"
-            maxValue={5}
-            minValue={1}
-            rangeCount={5}
-            step={1}
-            style={{
-              width: '150px',
-            }}
-            value={[selectedDepth]}
-            onChange={onDepthChange}
+            onSelectionChange={(key) => {
+              if (key) {
+                onLevelChange(normalizeGraphLevel(Number(key)));
+              }
+            }}>
+            {(item) => (
+              <Select.Item {...item} data-testid={'graph-level-' + item.id} />
+            )}
+          </Select>
+        </Box>
+        <Select.ComboBox
+          aria-label={t('label.kg-find-in-graph')}
+          className="tw:min-w-48 tw:max-w-sm tw:flex-1"
+          emptyState={t('label.kg-no-results')}
+          inputValue={findText}
+          items={choices}
+          placeholder={t('label.kg-find-in-graph')}
+          shortcut={false}
+          size="sm"
+          onInputChange={setFindText}
+          onSelectionChange={(key) => {
+            if (key) {
+              onFindNode(String(key));
+            }
+          }}>
+          {(item) => <Select.Item {...item} />}
+        </Select.ComboBox>
+        <Button
+          aria-expanded={filtersOpen}
+          color="secondary"
+          data-testid="graph-filters-toggle"
+          iconLeading={FilterLines}
+          size="sm"
+          onPress={() => setFiltersOpen((open) => !open)}>
+          {t('label.filter-plural')}
+          {filterCount > 0 ? ' (' + filterCount + ')' : ''}
+        </Button>
+        <Box align="center" className="tw:ml-auto" gap={2} wrap="wrap">
+          <Dropdown.Root>
+            <Button
+              color="secondary"
+              data-testid="graph-view-menu"
+              iconLeading={Settings01}
+              size="sm">
+              {t('label.view')}
+            </Button>
+            <Dropdown.Popover>
+              <Dropdown.Menu
+                aria-label={t('label.view')}
+                selectedKeys={new Set([layout, labelMode])}
+                selectionMode="multiple"
+                onAction={changeView}>
+                <Dropdown.Section>
+                  <Dropdown.SectionHeader>
+                    {t('label.layout')}
+                  </Dropdown.SectionHeader>
+                  <Dropdown.Item
+                    showCheckbox
+                    id="radial"
+                    label={t('label.kg-concentric')}
+                  />
+                  <Dropdown.Item
+                    showCheckbox
+                    id="dagre"
+                    label={t('label.hierarchical')}
+                  />
+                </Dropdown.Section>
+                <Dropdown.Section>
+                  <Dropdown.SectionHeader>
+                    {t('label.kg-relationship-labels')}
+                  </Dropdown.SectionHeader>
+                  <Dropdown.Item
+                    showCheckbox
+                    id="auto"
+                    label={t('label.kg-auto-labels')}
+                  />
+                  <Dropdown.Item
+                    showCheckbox
+                    id="all"
+                    label={t('label.kg-all-labels')}
+                  />
+                  <Dropdown.Item
+                    showCheckbox
+                    id="none"
+                    label={t('label.kg-no-labels')}
+                  />
+                </Dropdown.Section>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+          <ExportGraphPanel
+            data-testid="knowledge-graph-export"
+            supportedExports={[
+              ExportFormat.PNG,
+              ExportFormat.JSONLD,
+              ExportFormat.TURTLE,
+            ]}
+            onExportJsonLd={onExportJsonLd}
+            onExportPng={onExportPng}
+            onExportTurtle={onExportTurtle}
           />
         </Box>
-        <Divider orientation="vertical" />
-        <Toggle
-          data-testid="toggle-edge-labels"
-          isSelected={showEdgeLabels}
-          label={t('label.show-relationship-label-plural')}
-          size="sm"
-          onChange={onShowEdgeLabelsChange}
-        />
-        <Divider orientation="vertical" />
-        <ExportGraphPanel
-          data-testid="knowledge-graph-export"
-          supportedExports={[
-            ExportFormat.PNG,
-            ExportFormat.JSONLD,
-            ExportFormat.TURTLE,
-          ]}
-          onExportJsonLd={onExportJsonLd}
-          onExportPng={onExportPng}
-          onExportTurtle={onExportTurtle}
-        />
       </Box>
-
-      {hasActiveFilters && (
-        <Button color="link-gray" size="sm" onPress={onClearAll}>
-          {t('label.clear-entity', { entity: t('label.all') })}
-        </Button>
+      {(filtersOpen || filterCount > 0) && (
+        <Box align="center" gap={3} wrap="wrap">
+          <Dropdown.Root onOpenChange={() => setEntitySearch('')}>
+            <Button
+              color="secondary"
+              iconTrailing={ChevronDown}
+              isDisabled={!filterOptions?.entityTypes.length}
+              size="sm">
+              {t('label.entity-type')}
+              {filters.entityTypes.length > 0
+                ? ' (' + filters.entityTypes.length + ')'
+                : ''}
+            </Button>
+            <Dropdown.Popover>
+              <Box className="tw:px-3 tw:py-2">
+                <Input
+                  aria-label={t('label.entity-type')}
+                  placeholder={t('label.search')}
+                  size="sm"
+                  value={entitySearch}
+                  onChange={setEntitySearch}
+                  onKeyDown={(event) => event.stopPropagation()}
+                />
+              </Box>
+              <Dropdown.Menu
+                disallowEmptySelection={false}
+                items={(filterOptions?.entityTypes ?? []).filter((item) =>
+                  item.label.toLowerCase().includes(entitySearch.toLowerCase())
+                )}
+                selectedKeys={new Set(filters.entityTypes)}
+                selectionMode="multiple"
+                onSelectionChange={(keys) => selectFilter('entityTypes', keys)}>
+                {(item) => (
+                  <Dropdown.Item
+                    showCheckbox
+                    id={item.id}
+                    label={item.label + ' (' + item.count + ')'}
+                  />
+                )}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+          <Dropdown.Root onOpenChange={() => setRelationshipSearch('')}>
+            <Button
+              color="secondary"
+              iconTrailing={ChevronDown}
+              isDisabled={!filterOptions?.relationshipTypes.length}
+              size="sm">
+              {t('label.relationship-type')}
+              {filters.relationshipTypes.length > 0
+                ? ' (' + filters.relationshipTypes.length + ')'
+                : ''}
+            </Button>
+            <Dropdown.Popover>
+              <Box className="tw:px-3 tw:py-2">
+                <Input
+                  aria-label={t('label.relationship-type')}
+                  placeholder={t('label.search')}
+                  size="sm"
+                  value={relationshipSearch}
+                  onChange={setRelationshipSearch}
+                  onKeyDown={(event) => event.stopPropagation()}
+                />
+              </Box>
+              <Dropdown.Menu
+                disallowEmptySelection={false}
+                items={(filterOptions?.relationshipTypes ?? []).filter((item) =>
+                  item.label
+                    .toLowerCase()
+                    .includes(relationshipSearch.toLowerCase())
+                )}
+                selectedKeys={new Set(filters.relationshipTypes)}
+                selectionMode="multiple"
+                onSelectionChange={(keys) =>
+                  selectFilter('relationshipTypes', keys)
+                }>
+                {(item) => (
+                  <Dropdown.Item
+                    showCheckbox
+                    id={item.id}
+                    label={item.label + ' (' + item.count + ')'}
+                  />
+                )}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+          {filterCount > 0 && (
+            <Button
+              color="link-gray"
+              size="sm"
+              onPress={() =>
+                onFiltersChange({ entityTypes: [], relationshipTypes: [] })
+              }>
+              {t('label.clear-filter-plural')}
+            </Button>
+          )}
+        </Box>
       )}
     </Box>
   );

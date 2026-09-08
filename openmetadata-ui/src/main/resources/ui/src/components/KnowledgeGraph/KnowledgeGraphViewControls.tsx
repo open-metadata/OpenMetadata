@@ -41,26 +41,29 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
     <div className="knowledge-graph-action-buttons">
       <Tooltip title={t('label.zoom-in')}>
         <TooltipTrigger
+          aria-label={t('label.zoom-in')}
           className="kg-control-btn"
           data-testid="zoom-in"
           onPress={onZoomIn}>
-          <ZoomInIcon />
+          <ZoomInIcon aria-hidden="true" />
         </TooltipTrigger>
       </Tooltip>
       <Tooltip title={t('label.zoom-out')}>
         <TooltipTrigger
+          aria-label={t('label.zoom-out')}
           className="kg-control-btn"
           data-testid="zoom-out"
           onPress={onZoomOut}>
-          <ZoomOutIcon />
+          <ZoomOutIcon aria-hidden="true" />
         </TooltipTrigger>
       </Tooltip>
       <Tooltip title={t('label.fit-to-screen')}>
         <TooltipTrigger
+          aria-label={t('label.fit-to-screen')}
           className="kg-control-btn"
           data-testid="fit-screen"
           onPress={onFit}>
-          <FitScreenIcon />
+          <FitScreenIcon aria-hidden="true" />
         </TooltipTrigger>
       </Tooltip>
       <Tooltip
@@ -70,18 +73,28 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
             : t('label.full-screen-view')
         }>
         <TooltipTrigger
+          aria-label={
+            isFullscreen
+              ? t('label.exit-full-screen')
+              : t('label.full-screen-view')
+          }
           className="kg-control-btn"
           data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
           onPress={onFullscreen}>
-          {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+          {isFullscreen ? (
+            <ExitFullScreenIcon aria-hidden="true" />
+          ) : (
+            <FullscreenIcon aria-hidden="true" />
+          )}
         </TooltipTrigger>
       </Tooltip>
       <Tooltip title={t('label.refresh')}>
         <TooltipTrigger
+          aria-label={t('label.refresh')}
           className="kg-control-btn"
           data-testid="refresh"
           onPress={onRefresh}>
-          <RefreshIcon />
+          <RefreshIcon aria-hidden="true" />
         </TooltipTrigger>
       </Tooltip>
     </div>

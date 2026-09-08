@@ -25,7 +25,8 @@ export type RelationCategory =
   | 'ownership'
   | 'governance'
   | 'ontology'
-  | 'quality';
+  | 'quality'
+  | 'other';
 
 export const RELATION_CATEGORIES: RelationCategory[] = [
   'lineage',
@@ -34,6 +35,7 @@ export const RELATION_CATEGORIES: RelationCategory[] = [
   'governance',
   'ownership',
   'quality',
+  'other',
 ];
 
 /**
@@ -61,6 +63,14 @@ const RELATION_CATEGORY_STYLES: Record<
   RelationCategory,
   RelationCategoryStyle
 > = {
+  other: {
+    color: 'var(--om-color-gray-600)',
+    colorFallback: '#535862',
+    labelBg: 'var(--om-color-gray-50)',
+    labelBgFallback: '#fafafa',
+    lineDash: [12, 3, 3, 3],
+    labelKey: 'label.kg-other',
+  },
   lineage: {
     color: 'var(--om-color-blue-dark-600)',
     colorFallback: '#155eef',
@@ -270,7 +280,7 @@ const categoryFromEndpoints = (
 ): RelationCategory => {
   const source = normalizeNodeType(sourceType);
   const target = normalizeNodeType(targetType);
-  let category: RelationCategory = 'structure';
+  let category: RelationCategory = 'other';
 
   if (PEOPLE_NODE_TYPES.has(source) || PEOPLE_NODE_TYPES.has(target)) {
     category = 'ownership';
@@ -313,11 +323,17 @@ export const classifyRelation = (
   targetType = ''
 ): RelationCategory => {
   const key = normalizeRelationKey(rawLabel);
+  const endpointCategory = categoryFromEndpoints(sourceType, targetType);
 
-  return GENERIC_PREDICATES.has(key)
-    ? categoryFromEndpoints(sourceType, targetType)
-    : CATEGORY_BY_PREDICATE[key] ??
-        categoryFromEndpoints(sourceType, targetType);
+  if (GENERIC_PREDICATES.has(key)) {
+    if (endpointCategory === 'other' && sourceType && targetType) {
+      return 'structure';
+    }
+
+    return endpointCategory;
+  }
+
+  return CATEGORY_BY_PREDICATE[key] ?? endpointCategory;
 };
 
 /**
@@ -334,6 +350,7 @@ const CATEGORY_PRECEDENCE: RelationCategory[] = [
   'governance',
   'ownership',
   'structure',
+  'other',
 ];
 
 export const classifyMergedRelation = (

@@ -392,7 +392,6 @@ export const getTableDetailPageBaseTabs = ({
       children: (
         <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <KnowledgeGraph
-            depth={1}
             entity={
               tableDetails
                 ? {
@@ -402,6 +401,7 @@ export const getTableDetailPageBaseTabs = ({
                 : undefined
             }
             entityType={EntityType.TABLE}
+            levels={2}
           />
         </Suspense>
       ),

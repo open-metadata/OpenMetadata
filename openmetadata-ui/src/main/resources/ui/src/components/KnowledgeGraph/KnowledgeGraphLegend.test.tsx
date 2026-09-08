@@ -12,39 +12,12 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { PropsWithChildren } from 'react';
 import { RelationCategory } from './KnowledgeGraph.relations';
 import KnowledgeGraphLegend from './KnowledgeGraphLegend';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(() => ({ t: (key: string) => key })),
 }));
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const R = require('react');
-
-  return {
-    Button: ({
-      children,
-      onPress,
-      'data-testid': testId,
-      ...rest
-    }: PropsWithChildren<{
-      onPress?: () => void;
-      'data-testid'?: string;
-    }>) =>
-      R.createElement(
-        'button',
-        { 'data-testid': testId, onClick: onPress, ...rest },
-        children
-      ),
-    Typography: ({
-      children,
-      'data-testid': testId,
-    }: PropsWithChildren<{ 'data-testid'?: string }>) =>
-      R.createElement('span', { 'data-testid': testId }, children),
-  };
-});
 
 const noCounts: Record<RelationCategory, number> = {
   lineage: 0,
@@ -53,6 +26,7 @@ const noCounts: Record<RelationCategory, number> = {
   governance: 0,
   ownership: 0,
   quality: 0,
+  other: 0,
 };
 
 const renderLegend = (

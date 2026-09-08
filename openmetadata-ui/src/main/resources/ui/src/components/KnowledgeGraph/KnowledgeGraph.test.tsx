@@ -11,1665 +11,286 @@
  *  limitations under the License.
  */
 
-import { Graph } from '@antv/g6';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { toPng } from 'html-to-image';
-import React, { act } from 'react';
-import { useLocation } from 'react-router-dom';
-import { EntityReference } from '../../generated/entity/type';
+import { EdgeData, Graph, GraphOptions, NodeData } from '@antv/g6';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { downloadEntityGraph, getEntityGraphData } from '../../rest/rdfAPI';
-import {
-  applyGraphLayout,
-  applyInitialFocus,
-  computeELKPositions,
-  computeELKRadialPositions,
-  countRelationCategories,
-  setupGraphEventHandlers,
-  transformToG6Format,
-} from '../../utils/KnowledgeGraph.utils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { GraphData } from '../../rest/rdfAPI.interface';
 import KnowledgeGraph from './KnowledgeGraph';
-import {
-  GraphData,
-  GraphNode,
-  KnowledgeGraphProps,
-} from './KnowledgeGraph.interface';
 
 jest.mock('@antv/g6', () => ({
-  Graph: jest.fn().mockImplementation(() => ({
-    render: jest.fn().mockResolvedValue(undefined),
-    destroy: jest.fn(),
-    fitView: jest.fn().mockResolvedValue(undefined),
-    zoomTo: jest.fn(),
-    getZoom: jest.fn().mockReturnValue(1),
-    resize: jest.fn(),
-    on: jest.fn(),
-    setData: jest.fn(),
-  })),
   ExtensionCategory: { NODE: 'node' },
   register: jest.fn(),
+  Graph: jest.fn().mockImplementation((options: GraphOptions) => {
+    const mergeItems = <T extends { id?: string }>(
+      items: T[],
+      updates: Partial<T>[]
+    ) => {
+      const byId = new Map(updates.map((item) => [item.id, item]));
+
+      return items.map((item) => ({ ...item, ...byId.get(item.id) }));
+    };
+    let data: { nodes: NodeData[]; edges: EdgeData[] } = {
+      nodes: [],
+      edges: [],
+    };
+    let zoom = 1;
+    const canvas = document.createElement('canvas');
+    (options.container as HTMLElement).appendChild(canvas);
+
+    return {
+      destroyed: false,
+      getNodeData: () => data.nodes,
+      getEdgeData: () => data.edges,
+      setData: (next: typeof data) => {
+        data = next;
+      },
+      updateNodeData: (nodes: NodeData[]) => {
+        data.nodes = mergeItems(data.nodes, nodes);
+      },
+      updateEdgeData: (edges: EdgeData[]) => {
+        data.edges = mergeItems(data.edges, edges);
+      },
+      draw: jest.fn().mockResolvedValue(undefined),
+      render: jest.fn().mockResolvedValue(undefined),
+      fitView: jest.fn().mockResolvedValue(undefined),
+      focusElement: jest.fn().mockResolvedValue(undefined),
+      zoomTo: async (value: number) => {
+        zoom = value;
+      },
+      getZoom: () => zoom,
+      getViewportByCanvas: (point: [number, number]) => point,
+      on: jest.fn(),
+      resize: jest.fn(),
+      destroy() {
+        this.destroyed = true;
+        canvas.remove();
+      },
+    };
+  }),
 }));
-
 jest.mock('@antv/g6-extension-react', () => ({ ReactNode: jest.fn() }));
-
 jest.mock('../../rest/rdfAPI', () => ({
   getEntityGraphData: jest.fn(),
   downloadEntityGraph: jest.fn(),
 }));
+jest.mock('../../utils/TableUtils', () => ({ getEntityIcon: () => <svg /> }));
+jest.mock(
+  '../Explore/EntitySummaryPanel/EntitySummaryPanel.component',
+  () => () => <div />
+);
 
-jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
-jest.mock('../../utils/KnowledgeGraph.utils', () => ({
-  transformToG6Format: jest.fn(),
-  setupGraphEventHandlers: jest.fn(),
-  applyInitialFocus: jest.fn().mockResolvedValue(undefined),
-  computeELKPositions: jest.fn().mockResolvedValue(new Map()),
-  computeELKRadialPositions: jest.fn().mockResolvedValue(new Map()),
-  resolveFocusNodeId: jest.fn(
-    (nodes: Array<{ id: string }>, entityId?: string) =>
-      entityId
-        ? nodes.find((n) => n.id === entityId || n.id.endsWith(entityId))?.id ??
-          entityId
-        : ''
-  ),
-  // Mirrors the real helper's contract: it returns the laid-out graph, and the
-  // layout it picked is observable through which ELK routine it called.
-  applyGraphLayout: jest.fn(
-    async (
-      data: { nodes?: unknown[]; edges?: unknown[] },
-      options: { layout: string; hasEntity: boolean }
-    ) => {
-      if (options.layout === 'radial' && options.hasEntity) {
-        await (computeELKRadialPositions as jest.Mock)();
-      } else if (options.layout === 'dagre') {
-        await (computeELKPositions as jest.Mock)();
-      }
-
-      return data;
-    }
-  ),
-  countRelationCategories: jest.fn(() => ({
-    lineage: 0,
-    structure: 0,
-    ontology: 0,
-    governance: 0,
-    ownership: 0,
-    quality: 0,
-  })),
-  getNodeRenderKey: jest.fn(() => 'render-key'),
-  // Pure derivations: use the real behaviour so the component's empty state and
-  // "Clear all" visibility stay driven by real logic rather than a stub.
-  isGraphEmpty: jest.fn(
-    (data: { nodes?: unknown[] } | null) => !data || !data.nodes?.length
-  ),
-  hasActiveGraphFilters: jest.fn(
-    (state: {
-      layout: string;
-      selectedEntityTypes: string[];
-      selectedRelationshipTypes: string[];
-      selectedDepth: number;
-      defaultDepth: number;
-    }) =>
-      state.layout !== 'radial' ||
-      state.selectedEntityTypes.length > 0 ||
-      state.selectedRelationshipTypes.length > 0 ||
-      state.selectedDepth !== state.defaultDepth
-  ),
-  getFullscreenClassNames: jest.fn(
-    (isFullscreen: boolean, isSidebarCollapsed?: boolean) => ({
-      'full-screen-knowledge-graph': isFullscreen,
-      'sidebar-collapsed': isFullscreen && Boolean(isSidebarCollapsed),
-      'sidebar-expanded': isFullscreen && !isSidebarCollapsed,
-    })
-  ),
-  MAX_NODE_WIDTH: 280,
-  NODE_HEIGHT: 36,
-}));
-
-const mockNavigate = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn(() => ({
-    search: '',
-    pathname: '/',
-    hash: '',
-    state: null,
-  })),
-  useNavigate: jest.fn(() => mockNavigate),
-}));
-
-jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
-  useCurrentUserPreferences: jest.fn(() => ({
-    preferences: { isSidebarCollapsed: false },
-  })),
-}));
-
-jest.mock('html-to-image', () => ({ toPng: jest.fn() }));
-
-jest.mock('../../utils/EntityBreadcrumbPureUtils', () => ({
-  getEntityBreadcrumbs: jest.fn(() => [
-    { name: 'MyTable', url: '/table/MyTable', activeTitle: false },
-  ]),
-}));
-
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest.fn(({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="error-place-holder">{children}</div>
-  )),
-}));
-
-jest.mock('../common/Loader/Loader', () => ({
-  __esModule: true,
-  default: jest.fn(() => <div data-testid="loader" />),
-}));
-
-jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => ({
-  __esModule: true,
-  default: jest.fn(
-    ({
-      titleLinks,
-    }: {
-      titleLinks: Array<{ name: string; url: string; activeTitle: boolean }>;
-    }) => (
-      <nav data-testid="title-breadcrumb">
-        {titleLinks.map((l) => (
-          <span key={l.name}>{l.name}</span>
-        ))}
-      </nav>
-    )
-  ),
-}));
-
-jest.mock('../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () => ({
-  __esModule: true,
-  default: jest.fn(
-    ({
-      handleClosePanel,
-      entityDetails,
-    }: {
-      handleClosePanel: () => void;
-      entityDetails?: { details?: { id?: string } };
-    }) => (
-      <div
-        data-entity-id={entityDetails?.details?.id}
-        data-testid="entity-summary-panel">
-        <button data-testid="close-panel" onClick={handleClosePanel}>
-          Close
-        </button>
-      </div>
-    )
-  ),
-}));
-
-jest.mock('../OntologyExplorer/ExportGraphPanel', () => ({
-  __esModule: true,
-  default: jest.fn(
-    ({
-      onExportPng,
-      onExportJsonLd,
-      onExportTurtle,
-    }: {
-      onExportPng: () => void;
-      onExportJsonLd: () => void;
-      onExportTurtle: () => void;
-    }) => (
-      <div data-testid="export-graph-panel">
-        <button data-testid="export-png" onClick={onExportPng}>
-          PNG
-        </button>
-        <button data-testid="export-jsonld" onClick={onExportJsonLd}>
-          JSONLD
-        </button>
-        <button data-testid="export-turtle" onClick={onExportTurtle}>
-          Turtle
-        </button>
-      </div>
-    )
-  ),
-  ExportFormat: {
-    PNG: 'png',
-    JSONLD: 'jsonld',
-    TURTLE: 'turtle',
+const graphData: GraphData = {
+  nodes: [
+    { id: 'root', label: 'Orders', type: 'table' },
+    { id: 'neighbor', label: 'Customers', type: 'table' },
+  ],
+  edges: [
+    {
+      from: 'root',
+      to: 'neighbor',
+      label: 'Downstream',
+      relationType: 'downstream',
+    },
+    {
+      from: 'root',
+      to: 'neighbor',
+      label: 'Related to',
+      relationType: 'custom',
+    },
+  ],
+  filterOptions: {
+    entityTypes: [{ id: 'table', label: 'Table', count: 2 }],
+    relationshipTypes: [
+      { id: 'downstream', label: 'Downstream', count: 1 },
+      { id: 'custom', label: 'Related to', count: 1 },
+    ],
   },
-}));
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const R = require('react');
-
-  const Box = ({
-    children,
-    ...p
-  }: React.PropsWithChildren<Record<string, unknown>>) =>
-    R.createElement('div', p, children);
-
-  const Typography = ({
-    children,
-    'data-testid': testId,
-    ...p
-  }: React.PropsWithChildren<{ 'data-testid'?: string }>) =>
-    R.createElement('span', { 'data-testid': testId, ...p }, children);
-
-  const Button = ({
-    children,
-    onPress,
-    'data-testid': testId,
-    ...p
-  }: React.PropsWithChildren<{
-    onPress?: () => void;
-    'data-testid'?: string;
-  }>) =>
-    R.createElement(
-      'button',
-      { 'data-testid': testId, onClick: onPress, ...p },
-      children
-    );
-
-  const Divider = () => R.createElement('hr', null);
-
-  const CardContent = ({
-    children,
-    ...p
-  }: React.PropsWithChildren<Record<string, unknown>>) =>
-    R.createElement('div', { 'data-testid': 'card-content', ...p }, children);
-
-  const CardHeader = ({
-    extra,
-  }: {
-    extra?: React.ReactNode;
-    [key: string]: unknown;
-  }) => R.createElement('div', { 'data-testid': 'card-header' }, extra);
-
-  const Card = Object.assign(
-    ({
-      children,
-      'data-testid': testId,
-      ...p
-    }: React.PropsWithChildren<{ 'data-testid'?: string }>) =>
-      R.createElement('div', { 'data-testid': testId, ...p }, children),
-    { Header: CardHeader, Content: CardContent }
+  truncated: false,
+};
+const api = getEntityGraphData as jest.MockedFunction<
+  typeof getEntityGraphData
+>;
+const entity = { id: 'root', type: 'table', name: 'Orders' };
+const openGraph = () =>
+  render(
+    <ThemeProvider>
+      <MemoryRouter>
+        <KnowledgeGraph entity={entity} entityType="table" />
+      </MemoryRouter>
+    </ThemeProvider>
   );
+const press = async (element: Element) =>
+  act(async () => {
+    await userEvent.click(element);
+  });
+const chooseLevel = async (level: number) => {
+  await press(screen.getByRole('button', { name: /label.kg-levels/ }));
+  await press(screen.getByTestId('graph-level-' + level));
+};
+const openView = async () =>
+  userEvent.click(screen.getByTestId('graph-view-menu'));
 
-  const DropdownRoot = ({
-    children,
-    isOpen,
-    onOpenChange,
-  }: {
-    children: React.ReactNode;
-    isOpen?: boolean;
-    onOpenChange?: (open: boolean) => void;
-  }) =>
-    R.createElement(
-      'div',
-      {
-        'data-open': isOpen,
-        'data-testid': 'dropdown-root',
-        onClick: () => onOpenChange?.(!isOpen),
-      },
-      children
-    );
-
-  const DropdownPopover = ({ children }: { children: React.ReactNode }) =>
-    R.createElement('div', { 'data-testid': 'dropdown-popover' }, children);
-
-  const DropdownMenu = ({
-    children,
-    items,
-    onSelectionChange,
-  }: {
-    children: (item: { id: string; label: string }) => React.ReactNode;
-    items?: Array<{ id: string; label: string }>;
-    onSelectionChange?: (keys: Set<string>) => void;
-  }) =>
-    R.createElement(
-      'ul',
-      {
-        'data-testid': 'dropdown-menu',
-        onClick: (e: React.MouseEvent<HTMLUListElement>) => {
-          const id = (e.target as HTMLElement).dataset.id;
-          if (id && onSelectionChange) {
-            onSelectionChange(new Set([id]));
-          }
-        },
-      },
-      items?.map((item) =>
-        R.createElement(
-          'li',
-          {
-            key: item.id,
-            'data-id': item.id,
-            'data-testid': `menu-item-${item.id}`,
-          },
-          typeof children === 'function' ? children(item) : item.label
-        )
-      )
-    );
-
-  const DropdownItem = ({
-    id,
-    label,
-  }: {
-    id: string;
-    label: string;
-    showCheckbox?: boolean;
-  }) => R.createElement('span', { 'data-item-id': id }, label);
-
-  const Dropdown = {
-    Root: DropdownRoot,
-    Popover: DropdownPopover,
-    Menu: DropdownMenu,
-    Item: DropdownItem,
-  };
-
-  const SlideoutMenu = ({
-    children,
-    isOpen,
-    onOpenChange,
-  }: {
-    children:
-      | React.ReactNode
-      | (({ close }: { close: () => void }) => React.ReactNode);
-    isOpen?: boolean;
-    onOpenChange?: (open: boolean) => void;
-  }) => {
-    if (!isOpen) {
-      return null;
-    }
-
-    const close = () => onOpenChange?.(false);
-
-    return R.createElement(
-      'div',
-      { 'data-testid': 'slideout-menu' },
-      R.createElement(
-        'button',
-        {
-          'data-testid': 'slideout-dismiss',
-          onClick: () => onOpenChange?.(false),
-        },
-        'Dismiss'
-      ),
-      typeof children === 'function' ? children({ close }) : children
-    );
-  };
-
-  const Slider = ({
-    value,
-    onChange,
-    'data-testid': testId,
-  }: {
-    value?: number[];
-    onChange?: (val: number | number[]) => void;
-    'data-testid'?: string;
-  }) =>
-    R.createElement('input', {
-      type: 'range',
-      'data-testid': testId,
-      value: value?.[0] ?? 1,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        onChange?.(Number(e.target.value)),
-    });
-
-  const TabsList = ({
-    children,
-    items,
-  }: {
-    children: (tab: { id: string; label: string }) => React.ReactNode;
-    items?: Array<{ id: string; label: string }>;
-  }) =>
-    R.createElement(
-      'div',
-      { 'data-testid': 'tabs-list' },
-      items?.map((tab) =>
-        R.createElement(
-          'span',
-          { key: tab.id, 'data-tab-key': tab.id },
-          typeof children === 'function' ? children(tab) : tab.label
-        )
-      )
-    );
-
-  const TabsItem = ({ id, label }: { id: string; label: string }) =>
-    R.createElement('button', { 'data-tab-key': id }, label);
-
-  const Tabs = Object.assign(
-    ({
-      children,
-      selectedKey,
-      onSelectionChange,
-      'data-testid': testId,
-    }: {
-      children: React.ReactNode;
-      selectedKey?: string;
-      onSelectionChange?: (key: string) => void;
-      'data-testid'?: string;
-    }) =>
-      R.createElement(
-        'div',
-        {
-          'data-testid': testId,
-          'data-selected': selectedKey,
-          onClick: (e: React.MouseEvent<HTMLDivElement>) => {
-            const key = (e.target as HTMLElement).dataset.tabKey;
-            if (key) {
-              onSelectionChange?.(key);
-            }
-          },
-        },
-        children
-      ),
-    { List: TabsList, Item: TabsItem }
-  );
-
-  const Tooltip = ({ children }: { children: React.ReactNode }) =>
-    R.createElement('div', null, children);
-
-  const TooltipTrigger = Button;
-
-  const Toggle = ({
-    isSelected,
-    onChange,
-    label,
-    'data-testid': testId,
-  }: {
-    isSelected?: boolean;
-    onChange?: (selected: boolean) => void;
-    label?: string;
-    'data-testid'?: string;
-  }) =>
-    R.createElement('input', {
-      type: 'checkbox',
-      'aria-label': label,
-      'data-testid': testId,
-      checked: Boolean(isSelected),
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        onChange?.(e.target.checked),
-    });
-
-  return {
-    Box,
-    Typography,
-    Button,
-    Card,
-    Divider,
-    Dropdown,
-    SlideoutMenu,
-    Slider,
-    Tabs,
-    Toggle,
-    Tooltip,
-    TooltipTrigger,
-  };
+beforeEach(() => {
+  jest.useRealTimers();
+  jest.clearAllMocks();
+  api.mockReset();
+  api.mockResolvedValue(graphData);
+  (
+    downloadEntityGraph as jest.MockedFunction<typeof downloadEntityGraph>
+  ).mockResolvedValue(undefined);
 });
 
-const MockGraph = Graph as jest.MockedClass<typeof Graph>;
-
-function makeEntity(overrides: Partial<EntityReference> = {}): EntityReference {
-  return {
-    id: 'entity-123',
-    name: 'my_table',
-    fullyQualifiedName: 'db.schema.my_table',
-    type: 'table',
-    ...overrides,
-  } as EntityReference;
-}
-
-function makeGraphData(overrides: Partial<GraphData> = {}): GraphData {
-  return {
-    nodes: [
-      {
-        id: 'entity-123',
-        label: 'MyTable',
-        type: 'table',
-        fullyQualifiedName: 'db.schema.MyTable',
-      },
-      {
-        id: 'node-b',
-        label: 'OtherTable',
-        type: 'table',
-        fullyQualifiedName: 'db.schema.OtherTable',
-      },
-    ],
-    edges: [{ from: 'entity-123', to: 'node-b', label: 'hasColumn' }],
-    filterOptions: {
-      entityTypes: [{ id: 'table', label: 'Table', count: 2 }],
-      relationshipTypes: [{ id: 'hasColumn', label: 'hasColumn', count: 1 }],
-    },
-    ...overrides,
-  } as GraphData;
-}
-
-function makeG6Data(overrides: Record<string, unknown> = {}) {
-  return {
-    nodes: [
-      {
-        id: 'entity-123',
-        style: {},
-        data: { label: 'MyTable', type: 'table' },
-      },
-    ],
-    edges: [],
-    ...overrides,
-  };
-}
-
-function renderKG(props: Partial<KnowledgeGraphProps> = {}) {
-  return render(
-    <KnowledgeGraph
-      depth={1}
-      entity={makeEntity()}
-      entityType="table"
-      {...props}
-    />
-  );
-}
-
-async function waitForGraphInit() {
-  await waitFor(() => expect(MockGraph).toHaveBeenCalled());
-}
-
-function getGraphInstance() {
-  return MockGraph.mock.results[0]?.value as {
-    render: jest.Mock;
-    destroy: jest.Mock;
-    fitView: jest.Mock;
-    zoomTo: jest.Mock;
-    getZoom: jest.Mock;
-    resize: jest.Mock;
-    on: jest.Mock;
-    setData: jest.Mock;
-  };
-}
-
-async function renderWithRadial() {
-  const result = renderKG();
-  await waitFor(() =>
-    expect(screen.getByTestId('layout-tabs')).toBeInTheDocument()
-  );
-  const tabsEl = screen.getByTestId('layout-tabs');
-  const radialBtn = tabsEl.querySelector('[data-tab-key="radial"]');
-  if (radialBtn) {
-    fireEvent.click(radialBtn);
-  }
-
-  return result;
-}
-
 describe('KnowledgeGraph', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (getEntityGraphData as jest.Mock).mockResolvedValue(makeGraphData());
-    (transformToG6Format as jest.Mock).mockReturnValue(makeG6Data());
-    (computeELKPositions as jest.Mock).mockResolvedValue(
-      new Map([
-        ['entity-123', { x: 100, y: 50 }],
-        ['node-b', { x: 300, y: 50 }],
-      ])
+  it('defaults to the direct neighborhood with exactly three level choices', async () => {
+    await act(async () => {
+      openGraph();
+    });
+    await waitFor(() =>
+      expect(api).toHaveBeenCalledWith(expect.objectContaining({ depth: 1 }), {
+        signal: expect.any(AbortSignal),
+      })
     );
-    (computeELKRadialPositions as jest.Mock).mockResolvedValue(
-      new Map([
-        ['entity-123', { x: 200, y: 200 }],
-        ['node-b', { x: 350, y: 100 }],
-      ])
+    await press(screen.getByRole('button', { name: /label.kg-levels/ }));
+
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    expect(screen.getByTestId('graph-level-2')).toHaveAttribute(
+      'aria-selected',
+      'true'
     );
-    (applyInitialFocus as jest.Mock).mockResolvedValue(undefined);
-    (useLocation as jest.Mock).mockReturnValue({
-      search: '',
-      pathname: '/',
-      hash: '',
-      state: null,
-    });
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByTestId('graph-level-4')).not.toBeInTheDocument();
+
+    await screen.findByTestId('edge-Orders-Related to-Customers');
   });
 
-  describe('Initial render and data fetching', () => {
-    it('shows a loading indicator on initial mount', () => {
-      (getEntityGraphData as jest.Mock).mockReturnValue(new Promise(() => {}));
-      renderKG();
-
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
+  it.each([
+    [1, 0],
+    [2, 1],
+    [3, 2],
+  ])('requests and exports level %i as depth %i', async (level, depth) => {
+    await act(async () => {
+      openGraph();
     });
-
-    it('calls getEntityGraphData with entityId, entityType, and depth', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(getEntityGraphData).toHaveBeenCalledWith(
-          expect.objectContaining({
-            entityId: 'entity-123',
-            entityType: 'table',
-            depth: 1,
-          })
-        )
-      );
-    });
-
-    it('renders knowledge-graph-container after successful data fetch', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-    });
-
-    it('shows ErrorPlaceHolder when API returns empty nodes array', async () => {
-      (getEntityGraphData as jest.Mock).mockResolvedValue(
-        makeGraphData({ nodes: [], edges: [] })
-      );
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('error-place-holder')).toBeInTheDocument()
-      );
-    });
-
-    it('shows ErrorPlaceHolder when API returns graphData with no nodes', async () => {
-      (getEntityGraphData as jest.Mock).mockResolvedValue(
-        makeGraphData({ nodes: [], edges: [] })
-      );
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('error-place-holder')).toBeInTheDocument()
-      );
-    });
-
-    it('does not call getEntityGraphData when entity is undefined', async () => {
-      render(<KnowledgeGraph entityType="table" />);
-      await act(async () => {});
-
-      expect(getEntityGraphData).not.toHaveBeenCalled();
-    });
-
-    it('shows no-entity message when entity prop is omitted and graphData is null', async () => {
-      render(<KnowledgeGraph entityType="table" />);
-      await waitFor(() =>
-        expect(
-          screen.getByText(/label\.no-entity-selected/i)
-        ).toBeInTheDocument()
-      );
-    });
-  });
-
-  describe('Graph initialization', () => {
-    it('instantiates Graph with the container div after data loads', async () => {
-      renderKG();
-      await waitForGraphInit();
-
-      const callArgs = MockGraph.mock.calls[0][0];
-
-      expect(callArgs.container).toBeInstanceOf(HTMLElement);
-      expect(callArgs.animation).toBe(false);
-    });
-
-    it('calls transformToG6Format with the received graphData and label option', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(transformToG6Format).toHaveBeenCalledWith(
-          expect.objectContaining({
-            nodes: expect.arrayContaining([
-              expect.objectContaining({ id: 'entity-123' }),
-            ]),
-          }),
-          { showEdgeLabels: true }
-        )
-      );
-    });
-
-    it('lays out radially by default, since depth 1 is always a star', async () => {
-      renderKG();
-      await waitFor(() => expect(computeELKRadialPositions).toHaveBeenCalled());
-
-      expect(computeELKPositions).not.toHaveBeenCalled();
-    });
-
-    it('calls setupGraphEventHandlers during graph setup', async () => {
-      renderKG();
-      await waitFor(() => expect(setupGraphEventHandlers).toHaveBeenCalled());
-    });
-
-    it('calls graph.render() after construction', async () => {
-      renderKG();
-      await waitForGraphInit();
-      const gi = getGraphInstance();
-
-      await waitFor(() => expect(gi.render).toHaveBeenCalled());
-    });
-
-    it('calls applyInitialFocus after render resolves', async () => {
-      renderKG();
-      await waitFor(() => expect(applyInitialFocus).toHaveBeenCalled());
-    });
-
-    it('hides loader after graph is ready', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
-      );
-    });
-
-    it('calls graph.destroy() on unmount', async () => {
-      const { unmount } = renderKG();
-      await waitForGraphInit();
-      const gi = getGraphInstance();
-      unmount();
-
-      expect(gi.destroy).toHaveBeenCalled();
-    });
-  });
-
-  describe('Radial layout path', () => {
-    it('calls computeELKRadialPositions when layout is radial', async () => {
-      await renderWithRadial();
-      await waitFor(() => expect(computeELKRadialPositions).toHaveBeenCalled());
-    });
-
-    it('asks for a radial layout sized to the container', async () => {
-      // Port assignment itself now lives inside applyGraphLayout and is covered
-      // by its own unit tests; what the component owns is the request.
-      await renderWithRadial();
-      await waitFor(() =>
-        expect(applyGraphLayout).toHaveBeenCalledWith(
-          expect.anything(),
-          expect.objectContaining({ layout: 'radial', hasEntity: true })
-        )
-      );
-    });
-
-    it('switches to the layered layout when Hierarchical is selected', async () => {
-      renderKG();
-      await waitFor(() => expect(computeELKRadialPositions).toHaveBeenCalled());
-      (computeELKRadialPositions as jest.Mock).mockClear();
-
-      const tabsEl = screen.getByTestId('layout-tabs');
-      const dagreBtn = tabsEl.querySelector('[data-tab-key="dagre"]');
-      if (dagreBtn) {
-        fireEvent.click(dagreBtn);
-      }
-
-      await waitFor(() => expect(computeELKPositions).toHaveBeenCalled());
-
-      expect(computeELKRadialPositions).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Zoom controls', () => {
-    it('handleZoomIn calls graph.zoomTo with increased zoom factor', async () => {
-      renderKG();
-      await waitForGraphInit();
-      const gi = getGraphInstance();
-
-      fireEvent.click(screen.getByTestId('zoom-in'));
-
-      expect(gi.zoomTo).toHaveBeenCalledWith(
-        1.2,
-        expect.objectContaining({ duration: 300 })
-      );
-    });
-
-    it('handleZoomOut calls graph.zoomTo with decreased zoom factor', async () => {
-      renderKG();
-      await waitForGraphInit();
-      const gi = getGraphInstance();
-
-      fireEvent.click(screen.getByTestId('zoom-out'));
-
-      expect(gi.zoomTo).toHaveBeenCalledWith(
-        0.8,
-        expect.objectContaining({ duration: 300 })
-      );
-    });
-
-    it('handleFit calls graph.fitView then graph.zoomTo', async () => {
-      renderKG();
-      await waitForGraphInit();
-      const gi = getGraphInstance();
-
-      fireEvent.click(screen.getByTestId('fit-screen'));
-
-      await waitFor(() => {
-        expect(gi.fitView).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('Fullscreen toggle', () => {
-    it('handleFullscreen navigates with fullscreen=true when not in fullscreen', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('full-screen')).toBeInTheDocument()
-      );
-      fireEvent.click(screen.getByTestId('full-screen'));
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search: expect.stringContaining('fullscreen'),
-        })
-      );
-    });
-
-    it('handleFullscreen navigates with empty search when already in fullscreen', async () => {
-      (useLocation as jest.Mock).mockReturnValue({
-        search: '?fullscreen=true',
-        pathname: '/',
-        hash: '',
-        state: null,
-      });
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument()
-      );
-      fireEvent.click(screen.getByTestId('exit-full-screen'));
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.objectContaining({ search: '' })
-      );
-    });
-
-    it('shows TitleBreadcrumb when isFullscreen=true and entity has fullyQualifiedName', async () => {
-      (useLocation as jest.Mock).mockReturnValue({
-        search: '?fullscreen=true',
-        pathname: '/',
-        hash: '',
-        state: null,
-      });
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument()
-      );
-    });
-
-    it('does NOT show TitleBreadcrumb when not in fullscreen', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      expect(screen.queryByTestId('title-breadcrumb')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Depth change', () => {
-    it('handleDepthChange updates selectedDepth and triggers re-fetch', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('depth-slider')).toBeInTheDocument()
-      );
-
-      (getEntityGraphData as jest.Mock).mockClear();
-      fireEvent.change(screen.getByTestId('depth-slider'), {
-        target: { value: '3' },
-      });
-
-      await waitFor(() =>
-        expect(getEntityGraphData).toHaveBeenCalledWith(
-          expect.objectContaining({ depth: 3 })
-        )
-      );
-    });
-  });
-
-  describe('Layout change', () => {
-    it('handleLayoutChange updates layout from radial to dagre', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('layout-tabs')).toBeInTheDocument()
-      );
-
-      expect(screen.getByTestId('layout-tabs')).toHaveAttribute(
-        'data-selected',
-        'radial'
-      );
-
-      const dagreBtn = screen
-        .getByTestId('layout-tabs')
-        .querySelector('[data-tab-key="dagre"]');
-      if (dagreBtn) {
-        fireEvent.click(dagreBtn);
-      }
-
-      await waitFor(() =>
-        expect(screen.getByTestId('layout-tabs')).toHaveAttribute(
-          'data-selected',
-          'dagre'
-        )
-      );
-    });
-  });
-
-  describe('Entity type filter', () => {
-    it('handleEntityDropdownChange toggles entityDropdownOpen', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      const dropdownRoots = screen.getAllByTestId('dropdown-root');
-
-      expect(dropdownRoots[0]).toHaveAttribute('data-open', 'false');
-
-      fireEvent.click(dropdownRoots[0]);
-
-      expect(dropdownRoots[0]).toHaveAttribute('data-open', 'true');
-    });
-
-    it('handleEntityFilterChange updates entity filter text', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      const inputs = screen.getAllByPlaceholderText('label.search');
-      fireEvent.change(inputs[0], { target: { value: 'tab' } });
-
-      expect(inputs[0]).toHaveValue('tab');
-    });
-
-    it('entity filter input stops keydown propagation', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      const inputs = screen.getAllByPlaceholderText('label.search');
-      const event = new KeyboardEvent('keydown', {
-        key: 'ArrowDown',
-        bubbles: true,
-      });
-      const spy = jest.spyOn(event, 'stopPropagation');
-      inputs[0].dispatchEvent(event);
-
-      expect(spy).toHaveBeenCalled();
-    });
-
-    it('handleEntityTypeSelectionChange updates selectedEntityTypes', async () => {
-      renderKG();
-      await waitFor(() => expect(getEntityGraphData).toHaveBeenCalledTimes(1));
-
-      (getEntityGraphData as jest.Mock).mockClear();
-
-      const menus = screen.getAllByTestId('dropdown-menu');
-      const li = menus[0]?.querySelector('[data-id="table"]');
-      if (li) {
-        fireEvent.click(li);
-      }
-
-      await waitFor(() =>
-        expect(getEntityGraphData).toHaveBeenCalledWith(
-          expect.objectContaining({ entityTypes: ['table'] })
-        )
-      );
-    });
-  });
-
-  describe('Relationship type filter', () => {
-    it('handleRelationshipDropdownChange toggles relationshipDropdownOpen', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      const dropdownRoots = screen.getAllByTestId('dropdown-root');
-
-      expect(dropdownRoots[1]).toHaveAttribute('data-open', 'false');
-
-      fireEvent.click(dropdownRoots[1]);
-
-      expect(dropdownRoots[1]).toHaveAttribute('data-open', 'true');
-    });
-
-    it('handleRelationshipFilterChange updates relationship filter text', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      const inputs = screen.getAllByPlaceholderText('label.search');
-      fireEvent.change(inputs[1], { target: { value: 'has' } });
-
-      expect(inputs[1]).toHaveValue('has');
-    });
-
-    it('relationship filter input stops keydown propagation', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      const inputs = screen.getAllByPlaceholderText('label.search');
-      const event = new KeyboardEvent('keydown', {
-        key: 'ArrowDown',
-        bubbles: true,
-      });
-      const spy = jest.spyOn(event, 'stopPropagation');
-      inputs[1].dispatchEvent(event);
-
-      expect(spy).toHaveBeenCalled();
-    });
-  });
-
-  describe('Clear all filters', () => {
-    it('hasActiveFilters is false in initial default state (no clear button)', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      expect(screen.queryByText('label.clear-entity')).not.toBeInTheDocument();
-    });
-
-    it('shows clear-all button when hasActiveFilters is true (depth changed)', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('depth-slider')).toBeInTheDocument()
-      );
-
-      fireEvent.change(screen.getByTestId('depth-slider'), {
-        target: { value: '3' },
-      });
-
-      await waitFor(() =>
-        expect(screen.getByText('label.clear-entity')).toBeInTheDocument()
-      );
-    });
-
-    it('handleClearAll resets depth to prop value', async () => {
-      renderKG({ depth: 1 });
-      await waitFor(() =>
-        expect(screen.getByTestId('depth-slider')).toBeInTheDocument()
-      );
-
-      fireEvent.change(screen.getByTestId('depth-slider'), {
-        target: { value: '3' },
-      });
-      await waitFor(() =>
-        expect(screen.getByText('label.clear-entity')).toBeInTheDocument()
-      );
-
-      (getEntityGraphData as jest.Mock).mockClear();
-      fireEvent.click(screen.getByText('label.clear-entity'));
-
-      await waitFor(() =>
-        expect(screen.queryByText('label.clear-entity')).not.toBeInTheDocument()
-      );
-    });
-
-    it('shows clear button once the layout differs from the default', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('layout-tabs')).toBeInTheDocument()
-      );
-
-      expect(screen.queryByText('label.clear-entity')).toBeNull();
-
-      const dagreBtn = screen
-        .getByTestId('layout-tabs')
-        .querySelector('[data-tab-key="dagre"]');
-      if (dagreBtn) {
-        fireEvent.click(dagreBtn);
-      }
-
-      await waitFor(() =>
-        expect(screen.getByText('label.clear-entity')).toBeInTheDocument()
-      );
-    });
-  });
-
-  describe('Export functionality', () => {
-    it('handleExportPng calls toPng with the container element', async () => {
-      (toPng as jest.Mock).mockResolvedValue('data:image/png;base64,abc123');
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('export-png')).toBeInTheDocument()
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('export-png'));
-      });
-
-      expect(toPng).toHaveBeenCalledWith(
-        expect.any(HTMLElement),
-        expect.objectContaining({ backgroundColor: '#ffffff', pixelRatio: 2 })
-      );
-    });
-
-    it('handleExportPng creates download anchor when toPng succeeds', async () => {
-      (toPng as jest.Mock).mockResolvedValue('data:image/png;base64,abc');
-      const createElementSpy = jest.spyOn(document, 'createElement');
-
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('export-png')).toBeInTheDocument()
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('export-png'));
-      });
-
-      const anchors = createElementSpy.mock.results.filter(
-        (r) => r.value instanceof HTMLAnchorElement
-      );
-
-      expect(anchors.length).toBeGreaterThan(0);
-      expect(anchors[0].value.download).toBe('knowledge-graph.png');
-
-      createElementSpy.mockRestore();
-    });
-
-    it('handleExportJsonLd calls downloadEntityGraph with format jsonld', async () => {
-      (downloadEntityGraph as jest.Mock).mockResolvedValue(undefined);
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('export-jsonld')).toBeInTheDocument()
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('export-jsonld'));
-      });
-
+    await waitFor(() =>
+      expect(screen.getByTestId('knowledge-graph-edges').innerHTML).toContain(
+        'Downstream'
+      )
+    );
+    await chooseLevel(level);
+    await waitFor(() =>
+      expect(api).toHaveBeenLastCalledWith(expect.objectContaining({ depth }), {
+        signal: expect.any(AbortSignal),
+      })
+    );
+    await press(screen.getByTestId('knowledge-graph-export'));
+    await press(
+      screen.getByRole('menuitemradio', { name: 'label.skos-turtle' })
+    );
+    await waitFor(() =>
       expect(downloadEntityGraph).toHaveBeenCalledWith(
-        expect.objectContaining({
-          entityId: 'entity-123',
-          entityType: 'table',
-          format: 'jsonld',
-        })
-      );
-    });
-
-    it('handleExportTurtle calls downloadEntityGraph with format turtle', async () => {
-      (downloadEntityGraph as jest.Mock).mockResolvedValue(undefined);
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('export-turtle')).toBeInTheDocument()
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('export-turtle'));
-      });
-
-      expect(downloadEntityGraph).toHaveBeenCalledWith(
-        expect.objectContaining({
-          entityId: 'entity-123',
-          entityType: 'table',
-          format: 'turtle',
-        })
-      );
-    });
-
-    it('handleExport omits entityTypes when selectedEntityTypes is empty', async () => {
-      (downloadEntityGraph as jest.Mock).mockResolvedValue(undefined);
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('export-turtle')).toBeInTheDocument()
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('export-turtle'));
-      });
-
-      expect(downloadEntityGraph).toHaveBeenCalledWith(
-        expect.objectContaining({ entityTypes: undefined })
-      );
-    });
+        expect.objectContaining({ depth, format: 'turtle' })
+      )
+    );
   });
 
-  describe('Selected node / slideout panel', () => {
-    it('SlideoutMenu is not visible initially', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('knowledge-graph-container')
-        ).toBeInTheDocument()
-      );
-
-      expect(screen.queryByTestId('slideout-menu')).not.toBeInTheDocument();
+  it('keeps its canvas and zoom when labels change and keeps every relationship', async () => {
+    await act(async () => {
+      openGraph();
     });
-
-    it('SlideoutMenu appears when setSelectedNode is called with a node that has FQN', async () => {
-      let capturedCtx: { setSelectedNode?: (node: GraphNode | null) => void } =
-        {};
-      (setupGraphEventHandlers as jest.Mock).mockImplementation((ctx) => {
-        capturedCtx = ctx;
-      });
-
-      renderKG();
-      await waitFor(() => expect(setupGraphEventHandlers).toHaveBeenCalled());
-
-      act(() => {
-        capturedCtx.setSelectedNode?.({
-          id: 'entity-123',
-          label: 'MyTable',
-          type: 'table',
-          fullyQualifiedName: 'db.schema.MyTable',
-        });
-      });
-
-      await waitFor(() =>
-        expect(screen.getByTestId('slideout-menu')).toBeInTheDocument()
-      );
-
+    await screen.findByTestId('edge-Orders-Related to-Customers');
+    const canvas = screen
+      .getByTestId('knowledge-graph-canvas')
+      .querySelector('canvas');
+    const graph = (Graph as unknown as jest.Mock).mock.results[0]
+      .value as Graph;
+    await waitFor(() => expect(graph.render).toHaveBeenCalled());
+    await press(screen.getByTestId('zoom-in'));
+    const zoom = graph.getZoom();
+    await openView();
+    await press(
+      screen.getByRole('menuitemcheckbox', { name: 'label.kg-no-labels' })
+    );
+    await waitFor(() =>
       expect(
-        await screen.findByTestId('entity-summary-panel')
-      ).toBeInTheDocument();
-    });
+        graph.getEdgeData().every((edge) => edge.style?.labelText === '')
+      ).toBe(true)
+    );
 
-    it('handleClosePanel hides the slideout when close button is clicked', async () => {
-      let capturedCtx: { setSelectedNode?: (node: GraphNode | null) => void } =
-        {};
-      (setupGraphEventHandlers as jest.Mock).mockImplementation((ctx) => {
-        capturedCtx = ctx;
-      });
-
-      renderKG();
-      await waitFor(() => expect(setupGraphEventHandlers).toHaveBeenCalled());
-
-      act(() => {
-        capturedCtx.setSelectedNode?.({
-          id: 'entity-123',
-          label: 'MyTable',
-          type: 'table',
-          fullyQualifiedName: 'db.schema.MyTable',
-        });
-      });
-
-      await waitFor(() =>
-        expect(screen.getByTestId('close-panel')).toBeInTheDocument()
-      );
-
-      fireEvent.click(screen.getByTestId('close-panel'));
-
-      await waitFor(() =>
-        expect(screen.queryByTestId('slideout-menu')).not.toBeInTheDocument()
-      );
-    });
-
-    it('handleSlideoutClose called with false hides the panel', async () => {
-      let capturedCtx: { setSelectedNode?: (node: GraphNode | null) => void } =
-        {};
-      (setupGraphEventHandlers as jest.Mock).mockImplementation((ctx) => {
-        capturedCtx = ctx;
-      });
-
-      renderKG();
-      await waitFor(() => expect(setupGraphEventHandlers).toHaveBeenCalled());
-
-      act(() => {
-        capturedCtx.setSelectedNode?.({
-          id: 'entity-123',
-          label: 'MyTable',
-          type: 'table',
-          fullyQualifiedName: 'db.schema.MyTable',
-        });
-      });
-
-      await waitFor(() =>
-        expect(screen.getByTestId('slideout-menu')).toBeInTheDocument()
-      );
-
-      fireEvent.click(screen.getByTestId('slideout-dismiss'));
-
-      await waitFor(() =>
-        expect(screen.queryByTestId('slideout-menu')).not.toBeInTheDocument()
-      );
-    });
+    expect(graph.getEdgeData()).toHaveLength(2);
+    expect(
+      screen.getByTestId('knowledge-graph-canvas').querySelector('canvas')
+    ).toBe(canvas);
+    expect(graph.getZoom()).toBe(zoom);
+    expect(api).toHaveBeenCalledTimes(1);
   });
 
-  describe('Refresh', () => {
-    it('handleRefresh re-calls getEntityGraphData', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('refresh')).toBeInTheDocument()
-      );
-
-      (getEntityGraphData as jest.Mock).mockClear();
-      fireEvent.click(screen.getByTestId('refresh'));
-
-      await waitFor(() => expect(getEntityGraphData).toHaveBeenCalledTimes(1));
+  it('keeps controls on failure and retries the selected level', async () => {
+    api.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      openGraph();
     });
+    await screen.findByRole('alert');
+
+    expect(screen.getByTestId('level-chooser')).toBeVisible();
+
+    await press(screen.getByRole('button', { name: 'label.retry' }));
+    await screen.findByTestId('edge-Orders-Downstream-Customers');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  describe('Edge rendering', () => {
-    it('renders hidden edge divs with data-edge-source and data-edge-target', async () => {
-      renderKG();
-      await waitFor(() =>
-        expect(screen.getByTestId('knowledge-graph-edges')).toBeInTheDocument()
-      );
-
-      const edgeContainer = screen.getByTestId('knowledge-graph-edges');
-
-      expect(
-        edgeContainer.querySelector('[data-edge-source="entity-123"]')
-      ).toBeInTheDocument();
-      expect(
-        edgeContainer.querySelector('[data-edge-target="node-b"]')
-      ).toBeInTheDocument();
+  it('marks partial responses and keeps the prior graph on a failed refresh', async () => {
+    api.mockResolvedValueOnce({ ...graphData, truncated: true });
+    await act(async () => {
+      openGraph();
     });
+    await screen.findByTestId('graph-partial');
+    api.mockRejectedValueOnce(new Error('offline'));
+    await press(screen.getByTestId('refresh'));
+    await screen.findByRole('alert');
+
+    expect(
+      screen.getByTestId('edge-Orders-Downstream-Customers')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('graph-partial')).toBeVisible();
   });
 
-  describe('ResizeObserver', () => {
-    it('calls graph.resize when ResizeObserver fires on the container', async () => {
-      let resizeCallback: ResizeObserverCallback | null = null;
-
-      (window.ResizeObserver as jest.Mock).mockImplementation(
-        (cb: ResizeObserverCallback) => {
-          resizeCallback = cb;
-
-          return { observe: jest.fn(), disconnect: jest.fn() };
-        }
-      );
-
-      renderKG();
-      await waitForGraphInit();
-
-      const gi = getGraphInstance();
-
-      const canvas = screen.getByTestId('knowledge-graph-canvas');
-      Object.defineProperty(canvas, 'offsetWidth', {
-        value: 1200,
-        configurable: true,
-      });
-      Object.defineProperty(canvas, 'offsetHeight', {
-        value: 800,
-        configurable: true,
-      });
-
-      act(() => {
-        resizeCallback?.([], {} as ResizeObserver);
-      });
-
-      expect(gi.resize).toHaveBeenCalledWith(1200, 800);
+  it('clears filters without changing the level', async () => {
+    await act(async () => {
+      openGraph();
     });
-
-    it('disconnects ResizeObserver on unmount', async () => {
-      const mockDisconnect = jest.fn();
-
-      (window.ResizeObserver as jest.Mock).mockImplementation(
-        (_cb: ResizeObserverCallback) => ({
-          observe: jest.fn(),
-          disconnect: mockDisconnect,
-        })
-      );
-
-      const { unmount } = renderKG();
-      await waitForGraphInit();
-      unmount();
-
-      expect(mockDisconnect).toHaveBeenCalled();
+    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    await chooseLevel(3);
+    await press(screen.getByTestId('graph-filters-toggle'));
+    await press(screen.getByRole('button', { name: 'label.entity-type' }));
+    await press(screen.getByRole('menuitemcheckbox', { name: 'Table (2)' }));
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
     });
-  });
+    await press(
+      screen.getByRole('button', { name: 'label.clear-filter-plural' })
+    );
+    await waitFor(() =>
+      expect(api).toHaveBeenLastCalledWith(
+        expect.objectContaining({ depth: 2 }),
+        { signal: expect.any(AbortSignal) }
+      )
+    );
 
-  describe('Cleanup', () => {
-    it('calls graph.destroy() when the component unmounts', async () => {
-      const { unmount } = renderKG();
-      await waitForGraphInit();
-      const gi = getGraphInstance();
-      unmount();
-
-      expect(gi.destroy).toHaveBeenCalled();
-    });
-  });
-
-  describe('Relationship legend and label toggle', () => {
-    const withCounts = (counts: Partial<Record<string, number>>) =>
-      (countRelationCategories as jest.Mock).mockReturnValue({
-        lineage: 0,
-        structure: 0,
-        ontology: 0,
-        governance: 0,
-        ownership: 0,
-        quality: 0,
-        ...counts,
-      });
-
-    it('renders the legend for the relation families present in the graph', async () => {
-      withCounts({ lineage: 2, ownership: 1 });
-      renderKG();
-      await waitForGraphInit();
-
-      expect(screen.getByTestId('knowledge-graph-legend')).toBeInTheDocument();
-      expect(screen.getByTestId('legend-item-lineage')).toBeInTheDocument();
-      expect(screen.getByTestId('legend-item-ownership')).toBeInTheDocument();
-      expect(screen.queryByTestId('legend-item-quality')).toBeNull();
-    });
-
-    it('omits the legend when the graph has no relations', async () => {
-      withCounts({});
-      renderKG();
-      await waitForGraphInit();
-
-      expect(screen.queryByTestId('knowledge-graph-legend')).toBeNull();
-    });
-
-    it('collapses the legend when its header is pressed', async () => {
-      withCounts({ lineage: 1 });
-      renderKG();
-      await waitForGraphInit();
-
-      expect(
-        screen.getByTestId('knowledge-graph-legend-items')
-      ).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('knowledge-graph-legend-toggle'));
-      });
-
-      expect(screen.queryByTestId('knowledge-graph-legend-items')).toBeNull();
-    });
-
-    it('rebuilds the graph without edge labels when the toggle is turned off', async () => {
-      withCounts({ lineage: 1 });
-      renderKG();
-      await waitForGraphInit();
-
-      expect(transformToG6Format).toHaveBeenCalledWith(expect.anything(), {
-        showEdgeLabels: true,
-      });
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('toggle-edge-labels'));
-      });
-
-      await waitFor(() =>
-        expect(transformToG6Format).toHaveBeenCalledWith(expect.anything(), {
-          showEdgeLabels: false,
-        })
-      );
-    });
-
-    it('tells the interaction layer whether labels are showing', async () => {
-      withCounts({ lineage: 1 });
-      renderKG();
-      await waitForGraphInit();
-
-      expect(setupGraphEventHandlers).toHaveBeenCalledWith(
-        expect.objectContaining({ showEdgeLabels: true })
-      );
-    });
-  });
-
-  describe('Fetch failures', () => {
-    it('surfaces a toast instead of silently rendering the empty state', async () => {
-      const error = new Error('boom');
-      (getEntityGraphData as jest.Mock).mockRejectedValueOnce(error);
-
-      renderKG();
-
-      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
-
-      // The generic message is the *fallback*; the server's own message wins
-      // when the rejection is an AxiosError.
-      expect(showErrorToast).toHaveBeenCalledWith(
-        error,
-        'server.unexpected-error'
-      );
-    });
-
-    it('stops the loader when the request fails', async () => {
-      (getEntityGraphData as jest.Mock).mockRejectedValueOnce(
-        new Error('boom')
-      );
-
-      renderKG();
-
-      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
-      await waitFor(() =>
-        expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
-      );
-    });
-
-    it('keeps the previously loaded graph when a refresh fails', async () => {
-      renderKG();
-      await waitForGraphInit();
-
-      expect(screen.getByTestId('knowledge-graph-canvas')).toBeInTheDocument();
-
-      (getEntityGraphData as jest.Mock).mockRejectedValueOnce(
-        new Error('boom')
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('refresh'));
-      });
-
-      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
-
-      // Blanking the graph on a failed refresh would lose the user's context
-      // for no reason — the toast already tells them the refresh failed.
-      expect(screen.getByTestId('knowledge-graph-canvas')).toBeInTheDocument();
-    });
-  });
-
-  describe('Entity id extraction for the detail panel', () => {
-    /** Selects a node and returns the id handed to EntitySummaryPanel. */
-    const idPassedToPanel = async (nodeId: string) => {
-      let capturedCtx: { setSelectedNode?: (node: GraphNode | null) => void } =
-        {};
-      (setupGraphEventHandlers as jest.Mock).mockImplementation((ctx) => {
-        capturedCtx = ctx;
-      });
-
-      renderKG();
-      await waitFor(() => expect(setupGraphEventHandlers).toHaveBeenCalled());
-
-      act(() => {
-        capturedCtx.setSelectedNode?.({
-          id: nodeId,
-          label: 'MyTable',
-          type: 'table',
-          fullyQualifiedName: 'db.schema.MyTable',
-        });
-      });
-
-      const panel = await screen.findByTestId('entity-summary-panel');
-
-      return panel.getAttribute('data-entity-id');
-    };
-
-    const BASE = 'https://open-metadata.org/entity/table';
-
-    it('extracts a lowercase uuid from the node URI', async () => {
-      await expect(
-        idPassedToPanel(`${BASE}/f6209fa2-2dda-4887-8591-474238312f4d`)
-      ).resolves.toBe('f6209fa2-2dda-4887-8591-474238312f4d');
-    });
-
-    it('extracts an uppercase uuid, which RFC 4122 permits', async () => {
-      await expect(
-        idPassedToPanel(`${BASE}/F6209FA2-2DDA-4887-8591-474238312F4D`)
-      ).resolves.toBe('F6209FA2-2DDA-4887-8591-474238312F4D');
-    });
-
-    it('extracts a mixed-case uuid', async () => {
-      await expect(
-        idPassedToPanel(`${BASE}/F6209fa2-2DDA-4887-8591-474238312f4d`)
-      ).resolves.toBe('F6209fa2-2DDA-4887-8591-474238312f4d');
-    });
-
-    it('does not mistake a run of 36 hex-or-hyphen characters for a uuid', async () => {
-      // The looser `[a-f0-9-]{36}` form matched this, handing the panel a
-      // meaningless id rather than falling back to the URI.
-      const notAUuid = '-'.repeat(36);
-
-      await expect(idPassedToPanel(`${BASE}/${notAUuid}`)).resolves.toBe(
-        `${BASE}/${notAUuid}`
-      );
-    });
-
-    it('falls back to the full URI when the tail is not a uuid', async () => {
-      const columnUri =
-        'https://open-metadata.org/entity/column/db.schema.tbl.col';
-
-      await expect(idPassedToPanel(columnUri)).resolves.toBe(columnUri);
-    });
-  });
-
-  describe('Render failures', () => {
-    it('toasts and clears the loader when graph construction fails', async () => {
-      // applyGraphLayout rejecting stands in for any failure inside initGraph —
-      // ELK blowing up, or the Graph constructor throwing.
-      (applyGraphLayout as jest.Mock).mockRejectedValueOnce(
-        new Error('layout exploded')
-      );
-
-      renderKG();
-
-      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
-      await waitFor(() =>
-        expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
-      );
-    });
-
-    it('toasts when the G6 render call rejects', async () => {
-      MockGraph.mockImplementationOnce(
-        () =>
-          ({
-            render: jest.fn().mockRejectedValue(new Error('render exploded')),
-            destroy: jest.fn(),
-            fitView: jest.fn().mockResolvedValue(undefined),
-            zoomTo: jest.fn(),
-            getZoom: jest.fn().mockReturnValue(1),
-            resize: jest.fn(),
-            on: jest.fn(),
-            setData: jest.fn(),
-          } as unknown as Graph)
-      );
-
-      renderKG();
-
-      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
-    });
-
-    it('does not interrupt the user when fit-to-screen rejects', async () => {
-      renderKG();
-      await waitForGraphInit();
-
-      const instance = getGraphInstance();
-      instance.fitView.mockRejectedValueOnce(new Error('fit exploded'));
-      (showErrorToast as jest.Mock).mockClear();
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('fit-screen'));
-      });
-
-      // The graph is unchanged and still usable, so a failed fit is swallowed
-      // deliberately rather than toasted — but it must not reject unhandled.
-      expect(showErrorToast).not.toHaveBeenCalled();
-    });
+    expect(
+      screen.getByRole('button', { name: /label.kg-levels/ })
+    ).toHaveTextContent('3 — label.kg-extended-connections');
   });
 });

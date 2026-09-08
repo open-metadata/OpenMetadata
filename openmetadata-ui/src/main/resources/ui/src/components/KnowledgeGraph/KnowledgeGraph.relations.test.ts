@@ -81,10 +81,8 @@ describe('KnowledgeGraph.relations', () => {
       );
     });
 
-    it('falls back to structure when nothing else applies', () => {
-      expect(classifyRelation('somePredicate', 'table', 'table')).toBe(
-        'structure'
-      );
+    it('uses Other when neither the predicate nor endpoints identify a family', () => {
+      expect(classifyRelation('somePredicate', 'table', 'table')).toBe('other');
     });
 
     it('prefers a known predicate over the endpoint heuristic', () => {
@@ -94,7 +92,7 @@ describe('KnowledgeGraph.relations', () => {
 
     it('tolerates missing endpoint types', () => {
       expect(classifyRelation('downstream')).toBe('lineage');
-      expect(classifyRelation('unknownPredicate')).toBe('structure');
+      expect(classifyRelation('unknownPredicate')).toBe('other');
     });
 
     it('lets the endpoints decide for container-ish predicates', () => {

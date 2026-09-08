@@ -13,43 +13,77 @@
 
 @import (reference) '../../styles/variables.less';
 
-@knowledge-graph-card-header-height: 68px;
-
-.knowledge-graph-empty {
-  height: calc(
-    @asset-details-tab-pane-height - @knowledge-graph-card-header-height
-  );
-}
-
 .knowledge-graph-container {
   height: @asset-details-tab-pane-height;
+  min-height: calc(var(--om-space-40) * 14);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 
-  .knowledge-graph-canvas {
-    height: calc(
-      @asset-details-tab-pane-height - @knowledge-graph-card-header-height
-    );
-    background: var(--om-color-bg-primary);
-    // A faint dot grid gives the canvas a sense of scale while panning without
-    // competing with the edges for contrast.
+  .knowledge-graph-body {
+    flex: 1;
+    min-height: calc(var(--om-space-40) * 8);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background-color: var(--om-color-bg-primary);
     background-image: radial-gradient(
       circle,
       var(--om-color-border-secondary) var(--om-space-1),
       transparent var(--om-space-1)
     );
     background-size: var(--om-space-15) var(--om-space-15);
-    position: relative;
   }
 
-  // Loading and empty states
-  .knowledge-graph-loading,
-  .knowledge-graph-empty {
+  .knowledge-graph-canvas {
+    position: absolute;
+    inset: 0;
+  }
+
+  .kg-level-rings {
+    position: absolute;
+    inset: 0;
+    width: 100%;
     height: 100%;
+    pointer-events: none;
+  }
+
+  .knowledge-graph-loading {
+    position: absolute;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--om-color-bg-secondary);
-    border-radius: var(--om-radius-xl);
+    pointer-events: none;
+  }
+
+  .kg-empty-hint {
+    position: absolute;
+    top: var(--om-space-16);
+    left: var(--om-space-16);
+    right: var(--om-space-16);
+    display: flex;
+    align-items: center;
+    gap: var(--om-space-8);
+    flex-wrap: wrap;
+  }
+
+  .kg-inspector {
+    position: absolute;
+    top: var(--om-space-16);
+    right: var(--om-space-16);
+    width: calc(var(--om-space-40) * 8);
+    max-width: calc(100% - var(--om-space-16) * 2);
+    max-height: 70%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--om-space-12);
+    background: var(--om-color-bg-primary);
+    border: var(--om-space-1) solid var(--om-color-border-primary);
+    border-radius: var(--om-radius-lg);
+    box-shadow: var(--om-shadow-md);
+    z-index: var(--om-z-10);
   }
 
   .knowledge-graph-action-buttons {

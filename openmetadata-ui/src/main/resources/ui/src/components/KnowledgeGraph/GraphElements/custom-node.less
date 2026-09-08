@@ -33,6 +33,15 @@
   transition: opacity var(--om-duration-150) ease,
     box-shadow var(--om-duration-150) ease;
 
+  > [data-text] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--om-space-8);
+    width: 100%;
+    min-width: 0;
+  }
+
   .node-icon {
     display: flex;
     color: var(--om-color-text-tertiary);
@@ -55,6 +64,15 @@
   // Non-focused nodes stay visible as context but stop competing with the
   // highlighted path for attention.
   &.dimmed {
-    opacity: 0.25;
+    opacity: 0.55;
+  }
+
+  &:focus-visible {
+    outline: var(--om-space-2) solid var(--om-color-border-brand);
+    outline-offset: var(--om-space-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
