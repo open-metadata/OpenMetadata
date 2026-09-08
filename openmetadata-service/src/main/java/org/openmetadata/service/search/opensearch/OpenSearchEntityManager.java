@@ -461,7 +461,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                           .refresh(Refresh.True)
                           .retryOnConflict(3)
                           .scriptedUpsert(true)
-                          .upsert(params)
+                          // Nested JsonData wrappers serialize as {} in a generic upsert document.
+                          .upsert(JsonUtils.getMap(doc))
                           .script(
                               s ->
                                   s.inline(
