@@ -107,8 +107,9 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DatetimeAddFn, Dialects.MySQL)
+@compiles(DatetimeAddFn, Dialects.Doris)
 def _(elements, compiler, **kwargs):
-    """MySQL date and datetime function"""
+    """MySQL and Doris date and datetime function"""
     return mysql_function(elements, compiler, **kwargs)
 
 
@@ -186,8 +187,9 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 
 @compiles(TimestampAddFn, Dialects.MySQL)
+@compiles(TimestampAddFn, Dialects.Doris)
 def _(elements, compiler, **kwargs):
-    """MySQL timestamp function"""
+    """MySQL and Doris timestamp function"""
     return mysql_function(elements, compiler, **kwargs)
 
 
