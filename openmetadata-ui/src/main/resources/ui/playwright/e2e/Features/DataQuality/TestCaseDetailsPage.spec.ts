@@ -116,6 +116,30 @@ test.describe(
       expect(chart?.y).toBeLessThan(Number(parameters?.y));
     });
 
+    test('aligns the page header card with the tab body content', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await openDetailsPage(page);
+
+      const headerCard = await page
+        .getByTestId('test-case-header-container')
+        .boundingBox();
+      const grid = await page
+        .getByTestId('test-case-result-tab-container')
+        .boundingBox();
+
+      expect(headerCard).not.toBeNull();
+      expect(grid).not.toBeNull();
+      expect(Math.round(Number(headerCard?.x))).toBe(
+        Math.round(Number(grid?.x))
+      );
+      expect(
+        Math.round(Number(headerCard?.x) + Number(headerCard?.width))
+      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)));
+    });
+
     test('aligns the last run banner with the tab body grid', async ({
       page,
     }) => {
