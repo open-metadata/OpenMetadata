@@ -40,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
-import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.ColumnMetadata;
 import org.openmetadata.schema.api.data.ColumnOccurrence;
@@ -97,39 +96,10 @@ public class ColumnRepository {
   public ColumnGridResponse getColumnGridPaginated(
       SecurityContext securityContext, ColumnAggregator.ColumnAggregationRequest request)
       throws IOException {
-    ColumnGridResponse response = columnAggregator.aggregateColumns(request);
-
-    if (Boolean.TRUE.equals(request.getHasConflicts())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(ColumnGridItem::getHasVariations)
-              .collect(Collectors.toList()));
-    }
-
-    if (Boolean.TRUE.equals(request.getHasMissingMetadata())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(this::hasMissingMetadata)
-              .collect(Collectors.toList()));
-    }
-
-    // Filter by INCONSISTENT status (requires post-aggregation filtering)
-    if ("INCONSISTENT".equalsIgnoreCase(request.getMetadataStatus())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(ColumnGridItem::getHasVariations)
-              .collect(Collectors.toList()));
-    }
-
-    return response;
-  }
-
-  private boolean hasMissingMetadata(ColumnGridItem item) {
-    return item.getGroups().stream()
-        .anyMatch(
-            group ->
-                (group.getDescription() == null || group.getDescription().isEmpty())
-                    || (group.getTags() == null || group.getTags().isEmpty()));
+    // Row-level filters (metadataStatus / hasConflicts / hasMissingMetadata) are applied inside the
+    // aggregator over the fully-grouped columns, before pagination, so page counts and per-page
+    // size stay correct (#26824). Nothing to post-process here.
+    return columnAggregator.aggregateColumns(request);
   }
 
   public Column getColumnByFQN(
