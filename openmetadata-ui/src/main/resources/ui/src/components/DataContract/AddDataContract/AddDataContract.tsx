@@ -246,6 +246,13 @@ const AddDataContract: React.FC<{
       if (contract) {
         // Use filteredContract for PATCH comparison to avoid generating
         // "remove" operations for inherited fields (SLA, security, terms, semantics)
+        // Only propagate `displayName` when the user actually edited the contract
+        // title. `formValues.name` is seeded from `contract.name` (not the displayed
+        // `displayName`) and Ant Design's `setFieldsValue` does not fire
+        // `onValuesChange`, so when an unrelated field is edited `formValues.name`
+        // still equals `filteredContract.name`. Forcing `displayName` here would
+        // otherwise overwrite a divergent `displayName` with the sanitized `name`
+        // on every save. See: AddDataContract/DisplayNameOverwriteBug.test.tsx.
         await updateContract(
           contract?.id,
           compare(filteredContract ?? {}, {
@@ -253,7 +260,10 @@ const AddDataContract: React.FC<{
             ...formValues,
             semantics: validSemantics,
             security: validSecurity,
-            displayName: formValues.name,
+            ...(formValues.name !== undefined &&
+            formValues.name !== filteredContract?.name
+              ? { displayName: formValues.name }
+              : {}),
           })
         );
       } else {
