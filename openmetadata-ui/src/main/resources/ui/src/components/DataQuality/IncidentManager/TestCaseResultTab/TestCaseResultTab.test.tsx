@@ -97,13 +97,16 @@ jest.mock(
 const mockBannerComponent = () => <div>BannerComponent</div>;
 const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
 jest.mock('./TestCaseResultTabClassBase', () => ({
-  getAdditionalComponents: jest.fn().mockReturnValue([]),
-  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
-  shouldRenderDefaultGraph: jest
-    .fn()
-    .mockImplementation((...args: unknown[]) =>
-      mockShouldRenderDefaultGraph(...args)
-    ),
+  __esModule: true,
+  default: {
+    getAdditionalComponents: jest.fn().mockReturnValue([]),
+    getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+    shouldRenderDefaultGraph: jest
+      .fn()
+      .mockImplementation((...args: unknown[]) =>
+        mockShouldRenderDefaultGraph(...args)
+      ),
+  },
 }));
 jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
