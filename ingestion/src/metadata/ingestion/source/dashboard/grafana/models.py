@@ -83,6 +83,11 @@ class GrafanaPanel(BaseModel):
     fieldConfig: dict[str, Any] | None = None  # noqa: N815
     transparent: bool | None = None
     pluginVersion: str | None = None  # noqa: N815
+    collapsed: bool | None = None
+    panels: list["GrafanaPanel"] | None = Field(default_factory=list)
+
+
+GrafanaPanel.model_rebuild()
 
 
 class GrafanaDashboard(BaseModel):
