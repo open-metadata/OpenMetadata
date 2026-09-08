@@ -55,10 +55,21 @@ class PaginatedPage(BaseModel):
             body = envelope
 
         total_size = body.get(paging.total_size_field)
-        if total_size is None:
+        raw_items = body.get(paging.items_field)
+        if total_size is None and raw_items is None:
             # Defaulting the total to 0 stops the paginator after the first page,
             # so a response we cannot count would be reported as the complete
             # listing and everything beyond page one read as deleted.
-            raise Data360ResponseError(f"Missing '{paging.total_size_field}' in {context}")
+            raise Data360ResponseError(
+                f"Missing both '{paging.total_size_field}' and '{paging.items_field}' in {context}"
+            )
 
-        return cls(total_size=total_size, items=list(body.get(paging.items_field) or []))
+        items = list(raw_items or [])
+        if total_size is None:
+            # The live API omits the total-size field entirely (rather than
+            # returning 0) when there are no matching items for this object
+            # type/dataspace combination, so an empty items list here is a
+            # legitimate empty result, not a malformed response.
+            total_size = len(items)
+
+        return cls(total_size=total_size, items=items)

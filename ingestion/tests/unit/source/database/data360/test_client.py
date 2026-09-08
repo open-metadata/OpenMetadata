@@ -134,11 +134,37 @@ def test_run_paginator_raises_when_first_page_has_no_response():
         )
 
 
-def test_run_paginator_raises_when_total_size_is_missing():
-    # Defaulting a missing total to 0 stops the paginator after page one, so the
-    # truncated listing would be reported as the full set of live entities.
+def test_run_paginator_derives_total_size_from_items_when_missing():
+    # The live API omits 'totalSize' entirely (rather than returning 0) when
+    # there are no matching items for a given object type/dataspace, so a
+    # response with items but no total must not be treated as malformed.
     client = _client(restful_return_value={"dataSpaces": [{"name": "a"}]})
-    with pytest.raises(Data360ResponseError, match="Missing 'totalSize'"):
+    result = _run_paginator(
+        client=client,
+        object_type="Dataspaces",
+        path="ssot/data-spaces",
+        limit=50,
+        log_warning=MagicMock(),
+    )
+    assert result == [{"name": "a"}]
+    client.restful.assert_called_once()
+
+
+def test_run_paginator_treats_missing_total_size_with_empty_items_as_empty_result():
+    client = _client(restful_return_value={"dataSpaces": []})
+    result = _run_paginator(
+        client=client,
+        object_type="Dataspaces",
+        path="ssot/data-spaces",
+        limit=50,
+        log_warning=MagicMock(),
+    )
+    assert result == []
+
+
+def test_run_paginator_raises_when_total_size_and_items_both_missing():
+    client = _client(restful_return_value={"unexpected": "shape"})
+    with pytest.raises(Data360ResponseError, match="Missing both 'totalSize' and 'dataSpaces'"):
         _run_paginator(
             client=client,
             object_type="Dataspaces",
