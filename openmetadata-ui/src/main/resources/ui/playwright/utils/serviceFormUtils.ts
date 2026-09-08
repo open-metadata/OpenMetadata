@@ -75,7 +75,7 @@ export const selectIngestionRunnerFromDropdown = async (
     const trigger = runnerSelector.getByRole('button');
     const option = page
       .locator('.core-select-widget-popover')
-      .getByRole('option', { name: runnerDisplayName });
+      .getByRole('option', { name: runnerDisplayName, exact: true });
 
     await selectOptionWithRetry(trigger, option);
     await expect(runnerSelector).toContainText(runnerDisplayName);

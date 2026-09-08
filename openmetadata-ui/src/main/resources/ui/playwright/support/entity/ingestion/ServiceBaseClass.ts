@@ -73,7 +73,7 @@ class ServiceBaseClass {
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
   public ingestionRunner: RunnerDetails = {
     name: 'CollateSaaS',
-    displayName: 'Collate SaaS',
+    displayName: 'Collate SaaS Runner',
   };
 
   constructor(
@@ -136,7 +136,7 @@ class ServiceBaseClass {
       const trigger = runnerSelector.getByRole('button');
       const option = page
         .locator('.core-select-widget-popover')
-        .getByRole('option', { name: runnerLabel });
+        .getByRole('option', { name: runnerLabel, exact: true });
 
       await selectOptionWithRetry(trigger, option);
       await expect(runnerSelector).toContainText(runnerLabel);
