@@ -50,7 +50,7 @@ export const getRowByName = (
  */
 export const getCellByName = (
   page: Page,
-  name: string,
+  name: string | RegExp,
   options?: { exact?: boolean }
 ): Locator =>
   page
