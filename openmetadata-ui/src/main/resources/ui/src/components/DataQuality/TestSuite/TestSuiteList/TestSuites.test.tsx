@@ -409,7 +409,6 @@ jest.mock(
   })
 );
 
-
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
   () =>

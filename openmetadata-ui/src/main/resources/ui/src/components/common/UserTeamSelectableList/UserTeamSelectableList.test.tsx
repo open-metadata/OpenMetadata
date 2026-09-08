@@ -39,9 +39,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     {
-      List: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-      Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-      Panel: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+      List: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+      Item: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+      Panel: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
 }));

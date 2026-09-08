@@ -237,7 +237,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
     <span>{owners?.map((o) => o.name).join(', ')}</span>
   )),
-  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
   toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>

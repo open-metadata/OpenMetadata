@@ -105,8 +105,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Owner: jest.fn(({ owners = [] }: { owners?: unknown[] }) => (
       <div data-testid="owner-label">{owners.length}</div>
     )),
-    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
-    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 

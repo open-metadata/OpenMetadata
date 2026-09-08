@@ -12,26 +12,26 @@
  */
 
 import {
-    Avatar,
-    Box,
-    Card,
-    EmptyPlaceholder,
-    Input,
-    Owner,
-    PaginationCardDefault,
-    Typography
+  Avatar,
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Input,
+  Owner,
+  PaginationCardDefault,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
-    FC,
-    MouseEvent,
-    ReactNode,
-    useCallback,
-    useMemo,
-    useState
+  FC,
+  MouseEvent,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -44,15 +44,15 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import {
-    getClassificationTags,
-    getGlossaryTags
+  getClassificationTags,
+  getGlossaryTags,
 } from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
-    CLIPPED_NAME_CLASS,
-    COMPACT_CELL_CLIP_CLASS,
-    NAME_CELL_CLIP_CLASS
+  CLIPPED_NAME_CLASS,
+  COMPACT_CELL_CLIP_CLASS,
+  NAME_CELL_CLIP_CLASS,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';

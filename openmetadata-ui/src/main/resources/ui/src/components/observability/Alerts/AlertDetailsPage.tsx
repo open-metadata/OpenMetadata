@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Owner, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Owner,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';

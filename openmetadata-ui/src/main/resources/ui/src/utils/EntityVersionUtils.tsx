@@ -22,21 +22,21 @@ import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import type {
-    ChangeDescription,
-    FieldChange
+  ChangeDescription,
+  FieldChange,
 } from '../generated/entity/services/databaseService';
 import type { EntityReference } from '../generated/entity/type';
 import type { TestCaseParameterValue } from '../generated/tests/testCase';
 import {
-    getChangedEntityNewValue,
-    getChangedEntityOldValue,
-    getDiffByFieldName
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
 } from './EntityDiffPureUtils';
 import {
-    getAddedDiffElement,
-    getDiffDisplayValue,
-    getRemovedDiffElement,
-    getTextDiffElements
+  getAddedDiffElement,
+  getDiffDisplayValue,
+  getRemovedDiffElement,
+  getTextDiffElements,
 } from './EntityDiffUtils';
 import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
@@ -317,7 +317,10 @@ export const getOwnerVersionLabel = (
 
     if (!isEmpty(owners)) {
       return (
-        <Owner ownerDisplayName={ownerDisplayName} owners={toOwnerRefs(owners)} />
+        <Owner
+          ownerDisplayName={ownerDisplayName}
+          owners={toOwnerRefs(owners)}
+        />
       );
     }
   }

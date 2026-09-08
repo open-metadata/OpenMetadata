@@ -67,7 +67,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
         data-testid={entityName}
         style={{
           height: renderSize,
-                    width: renderSize,
+          width: renderSize,
         }}>
         <TeamsIcons
           className="owner-avatar-stack-team-icon"
@@ -87,7 +87,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
         data-testid={entityName}
         style={{
           height: renderSize,
-                    width: renderSize,
+          width: renderSize,
         }}>
         <ProfilePicture
           displayName={entityName}
@@ -198,7 +198,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
 
   return (
     <div
-      className={classNames('owner-avatar-stack tw:flex tw:items-center', className)}
+      className={classNames(
+        'owner-avatar-stack tw:flex tw:items-center',
+        className
+      )}
       data-testid="owner-avatar-stack">
       <AvatarStack
         avatarSize={renderSize}

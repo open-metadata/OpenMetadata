@@ -172,4 +172,8 @@ export * from './application/owner/owner';
 export * from './application/owner/owner-chip';
 export * from './application/owner/owner-avatar-stack';
 export * from './application/owner/owner-utils';
-export type { OwnerProps, OwnerChipProps, OwnerAvatarStackProps } from './application/owner/owner.types';
+export type {
+  OwnerProps,
+  OwnerChipProps,
+  OwnerAvatarStackProps,
+} from './application/owner/owner.types';

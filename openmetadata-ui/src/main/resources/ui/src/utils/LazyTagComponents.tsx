@@ -18,8 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../components/Customization/GenericProvider/GenericContext';

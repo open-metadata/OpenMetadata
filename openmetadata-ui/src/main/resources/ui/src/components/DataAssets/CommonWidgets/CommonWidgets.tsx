@@ -18,8 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
-    DetailPageWidgetKeys,
-    GlossaryTermDetailPageWidgetKeys
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -37,8 +37,8 @@ import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
 import {
-    ChangeDescription,
-    EntityReference
+  ChangeDescription,
+  EntityReference,
 } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -47,24 +47,24 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
-    getEntityVersionByField,
-    getEntityVersionTags
+  getEntityVersionByField,
+  getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback, {
-    TAB_CONTENT_FALLBACK
+  TAB_CONTENT_FALLBACK,
 } from '../../AppRouter/withSuspenseFallback';
 import type {
-    CustomPropertyProps,
-    ExtentionEntitiesKeys
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -147,9 +147,9 @@ const DomainLabelV2 = withSuspenseFallback(
 
 const UserTeamSelectableList = withSuspenseFallback(
   lazy(() =>
-    import('../../common/UserTeamSelectableList/UserTeamSelectableList.component').then(
-      (m) => ({ default: m.UserTeamSelectableList })
-    )
+    import(
+      '../../common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((m) => ({ default: m.UserTeamSelectableList }))
   ),
   null
 );

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    Owner,
-    Skeleton,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Owner,
+  Skeleton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
@@ -150,7 +150,9 @@ const IncidentManagerPageHeader = ({
             className="header-owner-heading"
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
-            owners={toOwnersWithHref(details?.assignee ? [details.assignee] : [])}
+            owners={toOwnersWithHref(
+              details?.assignee ? [details.assignee] : []
+            )}
             placeHolder={t('label.assignee')}
             renderOwnerContent={renderOwnerContent}
             selectorContent={

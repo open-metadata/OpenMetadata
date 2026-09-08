@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 import {
-    Badge,
-    BadgeWithIcon,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Divider,
-    Dropdown,
-    Owner,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Badge,
+  BadgeWithIcon,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Divider,
+  Dropdown,
+  Owner,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    ChevronDown,
-    Download02,
-    Flag04,
-    PlayCircle,
-    Plus,
-    Trash01,
-    Upload01
+  ChevronDown,
+  Download02,
+  Flag04,
+  PlayCircle,
+  Plus,
+  Trash01,
+  Upload01,
 } from '@untitledui/icons';
 import type { RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
@@ -46,25 +46,25 @@ import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-g
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
 
 import {
-    ContractImportFormat,
-    DataContractMode,
-    DATA_CONTRACT_ACTION_DROPDOWN_KEY
+  ContractImportFormat,
+  DataContractMode,
+  DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
-    exportContractToODCSYaml,
-    getContractResultByResultId,
-    validateContractByEntityId,
-    validateContractById
+  exportContractToODCSYaml,
+  getContractResultByResultId,
+  validateContractByEntityId,
+  validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
-    downloadContractAsODCSYaml,
-    downloadContractYamlFile,
-    getConstraintStatus
+  downloadContractAsODCSYaml,
+  downloadContractYamlFile,
+  getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';

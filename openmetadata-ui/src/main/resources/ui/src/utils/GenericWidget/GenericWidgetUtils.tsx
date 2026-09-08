@@ -21,13 +21,13 @@ import type { TagButtonProps } from '../../components/common/TagButton/TagButton
 import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
-    DUMMY_OWNER_LIST,
-    DUMMY_TAGS_LIST,
-    WIDGET_CUSTOM_PROPERTIES
+  DUMMY_OWNER_LIST,
+  DUMMY_TAGS_LIST,
+  WIDGET_CUSTOM_PROPERTIES,
 } from '../../constants/CustomizeWidgets.constants';
 import {
-    DetailPageWidgetKeys,
-    GlossaryTermDetailPageWidgetKeys
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import type { EntityReference } from '../../generated/tests/testCase';
@@ -273,7 +273,12 @@ export const WIDGET_COMPONENTS = {
     />
   ),
   [GlossaryTermDetailPageWidgetKeys.OWNER]: () => (
-    <Owner hasPermission={false} isCompactView={false} owners={toOwnerRefs(DUMMY_OWNER_LIST)} showLabel={false} />
+    <Owner
+      hasPermission={false}
+      isCompactView={false}
+      owners={toOwnerRefs(DUMMY_OWNER_LIST)}
+      showLabel={false}
+    />
   ),
   [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
     <div className="flex gap-2 flex-col">
@@ -305,7 +310,12 @@ export const WIDGET_COMPONENTS = {
   ),
 
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
-    <Owner hasPermission={false} isCompactView={false} owners={toOwnerRefs(DUMMY_OWNER_LIST)} showLabel={false} />
+    <Owner
+      hasPermission={false}
+      isCompactView={false}
+      owners={toOwnerRefs(DUMMY_OWNER_LIST)}
+      showLabel={false}
+    />
   ),
   [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
     <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />

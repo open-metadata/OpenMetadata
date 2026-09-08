@@ -27,7 +27,10 @@ export const OwnerAvatarStack = ({
   if (placement === 'vertical') {
     return (
       <div
-        className={cx('tw:flex tw:flex-col tw:items-start tw:gap-2', className)}>
+        className={cx(
+          'tw:flex tw:flex-col tw:items-start tw:gap-2',
+          className
+        )}>
         {owners.map((owner) => (
           <OwnerChip
             avatarSize={avatarSize}

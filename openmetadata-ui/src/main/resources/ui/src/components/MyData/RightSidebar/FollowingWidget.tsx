@@ -21,15 +21,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/widget/following.svg';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_MEDIUM,
-    ROUTES
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
 } from '../../../constants/constants';
 import {
-    applySortToData,
-    FOLLOWING_WIDGET_FILTER_OPTIONS,
-    getSortField,
-    getSortOrder
+  applySortToData,
+  FOLLOWING_WIDGET_FILTER_OPTIONS,
+  getSortField,
+  getSortOrder,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,8 +37,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    WidgetCommonProps,
-    WidgetConfig
+  WidgetCommonProps,
+  WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';

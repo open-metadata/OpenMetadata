@@ -255,8 +255,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
         <button>{children}</button>
       )),
     Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
-    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
-    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 

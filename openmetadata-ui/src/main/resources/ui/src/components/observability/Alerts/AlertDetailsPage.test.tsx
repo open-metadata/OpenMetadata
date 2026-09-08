@@ -12,18 +12,18 @@
  */
 
 import {
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import {
-    AlertType,
-    EventSubscription,
-    ProviderType
+  AlertType,
+  EventSubscription,
+  ProviderType,
 } from '../../../generated/events/eventSubscription';
 import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertDetailsPage from './AlertDetailsPage';
@@ -147,8 +147,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     Owner: jest.fn(() => <div data-testid="owner-label" />),
     Tabs,
-    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
-    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 
@@ -179,7 +181,6 @@ jest.mock(
     ),
   })
 );
-
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
   __esModule: true,

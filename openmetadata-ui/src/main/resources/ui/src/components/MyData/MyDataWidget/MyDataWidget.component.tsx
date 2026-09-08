@@ -20,16 +20,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/widget/my-data.svg';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_MEDIUM,
-    ROUTES
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
 } from '../../../constants/constants';
 import {
-    applySortToData,
-    getSortField,
-    getSortOrder,
-    MY_DATA_WIDGET_FILTER_OPTIONS
+  applySortToData,
+  getSortField,
+  getSortOrder,
+  MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,8 +37,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    WidgetCommonProps,
-    WidgetConfig
+  WidgetCommonProps,
+  WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';

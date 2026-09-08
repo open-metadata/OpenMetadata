@@ -33,15 +33,15 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskFromTask from '../../../pages/TasksPage/shared/DescriptionTaskFromTask';
 import TagsTaskFromTask from '../../../pages/TasksPage/shared/TagsTaskFromTask';
 import {
-    resolveTask as resolveTaskAPI,
-    Task,
-    TaskEntityStatus,
-    TaskEntityType,
-    TaskResolutionType
+  resolveTask as resolveTaskAPI,
+  Task,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskResolutionType,
 } from '../../../rest/tasksAPI';
 import {
-    formatDateTime,
-    getRelativeTime
+  formatDateTime,
+  getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -49,14 +49,14 @@ import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { getErrorText } from '../../../utils/StringUtils';
 import {
-    isDescriptionTaskType,
-    isRecognizerFeedbackTask,
-    isTagsTaskType
+  isDescriptionTaskType,
+  isRecognizerFeedbackTask,
+  isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
 import {
-    getTaskDetailPathFromTask,
-    getTaskDisplayId,
-    isTaskPendingFurtherApproval
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
+  isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

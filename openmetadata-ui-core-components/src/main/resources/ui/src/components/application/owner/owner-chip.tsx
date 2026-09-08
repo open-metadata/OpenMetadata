@@ -55,7 +55,7 @@ export const OwnerChip = ({
   const isTeam = owner.type === 'team';
   const PlaceholderIcon = owner.icon ?? (isTeam ? TeamsIcon : User01);
   const nameStr =
-    typeof displayName === 'string' ? displayName : (owner.name ?? '');
+    typeof displayName === 'string' ? displayName : owner.name ?? '';
   const hue = nameToHue(nameStr);
   const avatarStyle = isTeam
     ? {

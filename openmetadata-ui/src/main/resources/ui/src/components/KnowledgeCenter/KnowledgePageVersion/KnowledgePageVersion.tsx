@@ -28,17 +28,17 @@ import type { KnowledgePage } from '../../../interface/knowledge-center.interfac
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import {
-    getChangedEntityNewValue,
-    getChangedEntityOldValue,
-    getDiffByFieldName
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
 import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
-    getCommonExtraInfoForVersionDetails,
-    getEntityVersionByField,
-    getEntityVersionTags
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionByField,
+  getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
@@ -129,7 +129,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                     <Space direction="vertical" size={0}>
                       <Owner
                         ownerDisplayName={ownerDisplayName}
-                        owners={toOwnerRefs(knowledgePage?.owners ?? ownerRef ?? [])}
+                        owners={toOwnerRefs(
+                          knowledgePage?.owners ?? ownerRef ?? []
+                        )}
                       />
                       <span
                         className="self-center text-grey-muted"

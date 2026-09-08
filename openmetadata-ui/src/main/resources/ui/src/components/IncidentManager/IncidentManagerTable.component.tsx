@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    EmptyPlaceholder,
-    Owner,
-    Skeleton,
-    Table,
-    Tooltip,
-    TooltipTrigger
+  Box,
+  EmptyPlaceholder,
+  Owner,
+  Skeleton,
+  Table,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@untitledui/icons';
 import { useMemo } from 'react';
@@ -28,15 +28,15 @@ import { Table as TableType } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
-    Assigned,
-    Severities,
-    TestCaseResolutionStatus
+  Assigned,
+  Severities,
+  TestCaseResolutionStatus,
 } from '../../generated/tests/testCaseResolutionStatus';
 import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-    getNameFromFQN,
-    getPartialNameFromTableFQN
+  getNameFromFQN,
+  getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
@@ -48,8 +48,8 @@ import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-    ProfilerTabPath,
-    TestCasePermission
+  ProfilerTabPath,
+  TestCasePermission,
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';

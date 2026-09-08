@@ -88,7 +88,9 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <Owner owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])} />
+            <Owner
+              owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])}
+            />
           ),
         },
       ];

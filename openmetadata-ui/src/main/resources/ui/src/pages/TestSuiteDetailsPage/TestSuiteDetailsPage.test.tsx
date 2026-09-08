@@ -210,20 +210,32 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
       return Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
     })(),
-    Owner: jest.fn().mockImplementation(({ selectorContent }: { selectorContent?: React.ReactElement<{ onUpdate?: (owners: unknown[]) => void }> }) => {
-      const handleUpdate = selectorContent?.props?.onUpdate;
+    Owner: jest
+      .fn()
+      .mockImplementation(
+        ({
+          selectorContent,
+        }: {
+          selectorContent?: React.ReactElement<{
+            onUpdate?: (owners: unknown[]) => void;
+          }>;
+        }) => {
+          const handleUpdate = selectorContent?.props?.onUpdate;
 
-      return (
-        <div data-testid="owner-label">
-          OwnerLabel.component
-          <button
-            data-testid="update-owner-btn"
-            onClick={() => handleUpdate?.([{ id: 'new-owner', type: 'user' }])}>
-            Update Owner
-          </button>
-        </div>
-      );
-    }),
+          return (
+            <div data-testid="owner-label">
+              OwnerLabel.component
+              <button
+                data-testid="update-owner-btn"
+                onClick={() =>
+                  handleUpdate?.([{ id: 'new-owner', type: 'user' }])
+                }>
+                Update Owner
+              </button>
+            </div>
+          );
+        }
+      ),
   };
 });
 
