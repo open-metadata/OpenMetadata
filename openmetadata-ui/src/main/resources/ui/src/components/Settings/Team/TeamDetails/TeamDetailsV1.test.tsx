@@ -219,6 +219,7 @@ describe('TeamDetailsV1 Teams-tab search scoping', () => {
     const queryFilter = JSON.stringify(
       searchQuery.mock.calls[0][0].queryFilter
     );
+
     // Scoped to child teams of the current team (parents.id), not a global team search.
     expect(queryFilter).toContain('parents.id');
     expect(queryFilter).toContain('org-id');

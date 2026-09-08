@@ -248,6 +248,7 @@ describe('UserTab', () => {
       const queryFilter = JSON.stringify(
         searchQuery.mock.calls[0][0].queryFilter
       );
+
       // The team itself and its descendant team are both in the teams.id filter.
       expect(queryFilter).toContain(nonGroupTeam.id);
       expect(queryFilter).toContain('sub-group-1');
