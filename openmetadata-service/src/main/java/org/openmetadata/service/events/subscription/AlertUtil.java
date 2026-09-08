@@ -26,6 +26,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,6 +34,7 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +70,15 @@ public final class AlertUtil {
       Caffeine.newBuilder().maximumSize(1000).build();
 
   private static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
+
+  /** Default handler for {@link #isChangeEventAllowed}: log the event and leave it out. */
+  public static final BiConsumer<ChangeEvent, Exception> LOG_EVALUATION_ERROR =
+      (event, error) ->
+          LOG.error(
+              "Excluding change event {} on {}: alert filter evaluation failed",
+              event.getId(),
+              event.getEntityType(),
+              error);
 
   private AlertUtil() {}
 
@@ -267,13 +278,60 @@ public final class AlertUtil {
       EventSubscription eventSubscription,
       Map<ChangeEvent, Set<UUID>> events,
       Long startingTimestamp) {
+    return getFilteredEvents(eventSubscription, events, startingTimestamp, LOG_EVALUATION_ERROR);
+  }
+
+  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
+      EventSubscription eventSubscription,
+      Map<ChangeEvent, Set<UUID>> events,
+      Long startingTimestamp,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
     Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
-    return events.entrySet().stream()
-        .filter(
-            entry ->
-                checkIfChangeEventIsAllowed(
-                    entry.getKey(), eventSubscription.getFilteringRules(), watermark))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    FilteringRules filteringRules = eventSubscription.getFilteringRules();
+    Map<ChangeEvent, Set<UUID>> filteredEvents = new HashMap<>();
+    for (Map.Entry<ChangeEvent, Set<UUID>> entry : events.entrySet()) {
+      if (isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError)) {
+        filteredEvents.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return filteredEvents;
+  }
+
+  /**
+   * Evaluates one event in isolation, excluding it rather than letting the failure escape. Callers
+   * evaluate whole batches, and the consumer commits its offset either way, so an exception thrown
+   * out of a single matcher would silently drop every other event with it (issue #31331). The catch
+   * is deliberately cause-agnostic: matchers reach the store, the SpEL runtime and the event
+   * payload, and none of those failures may cost an unrelated event its notification.
+   */
+  public static boolean isChangeEventAllowed(
+      ChangeEvent event,
+      FilteringRules filteringRules,
+      Long startingTimestamp,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    boolean allowed;
+    try {
+      allowed = checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp);
+    } catch (Exception e) {
+      reportEvaluationError(onEvaluationError, event, e);
+      allowed = false;
+    }
+    return allowed;
+  }
+
+  /**
+   * Runs the failure handler without letting it become a second failure. The consumer's handler
+   * writes a dead-letter row, so a transient database error there would otherwise escape this
+   * method, abort the surrounding batch loop and lose the very events this isolation exists to
+   * protect.
+   */
+  private static void reportEvaluationError(
+      BiConsumer<ChangeEvent, Exception> onEvaluationError, ChangeEvent event, Exception error) {
+    try {
+      onEvaluationError.accept(event, error);
+    } catch (Exception handlerError) {
+      LOG.error("Failed to record unevaluable change event {}", event.getId(), handlerError);
+    }
   }
 
   /**
