@@ -615,16 +615,21 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    *
    * <p>When the IdP returns an error response (e.g. {@code login_required}, {@code
    * access_denied}, {@code server_error}) for an MCP OAuth flow, the MCP client must be
-   * redirected back to its own {@code redirect_uri} carrying {@code error}, {@code
-   * error_description}, {@code state} (the MCP client's original state), and the RFC 9207
-   * {@code iss} parameter — per RFC 6749 §4.1.2.1 and the MCP authorization spec — so it can
-   * surface a meaningful error or fall back to interactive auth. This method looks up the
-   * pending MCP auth request by {@code authRequestId} (the DB-backed state), re-validates the
-   * client's redirect URI (defense-in-depth against open redirect, mirroring {@link
-   * #handleSSOCallbackWithDbState}), builds the error response, and serves an HTML page that
-   * auto-redirects the browser to the client callback. It never invokes the web-SSO callback
-   * handler, so the buffered-response ambiguity that previously swallowed the error cannot
-   * occur.
+   * redirected back to its own {@code redirect_uri} carrying {@code error}, {@code state} (the
+   * MCP client's original state), and the RFC 9207 {@code iss} parameter, per RFC 6749
+   * §4.1.2.1 and the MCP authorization spec, so it can surface a meaningful error or fall back
+   * to interactive auth. This method looks up the pending MCP auth request by {@code
+   * authRequestId} (the DB-backed state), re-validates the client's redirect URI (defense-in-depth
+   * against open redirect, mirroring {@link #handleSSOCallbackWithDbState}), builds the error
+   * response, and serves an HTML page that auto-redirects the browser to the client callback. It
+   * never invokes the web-SSO callback handler, so the buffered-response ambiguity that
+   * previously swallowed the error cannot occur.
+   *
+   * <p>Nothing the IdP supplied is passed through verbatim. The error code is canonicalized
+   * against the spec's closed set by {@link #canonicalizeIdpErrorCode}, and the free-text
+   * {@code error_description} (OPTIONAL per RFC 6749) is not relayed at all. Both raw values are
+   * recorded in the WARN log below for the operator, which is where an arbitrary upstream string
+   * belongs rather than in a redirect this server issues or in its own markup.
    *
    * @param response The HTTP response (typically a buffered wrapper from the servlet)
    * @param authRequestId The MCP pending auth request id (without the {@code "mcp:"} prefix)
@@ -670,10 +675,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Build the OAuth error response per RFC 6749 §4.1.2.1 and the MCP spec, plus the RFC 9207
     // iss parameter (added by constructAuthorizationResponseUri when issuer is set).
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("error", errorCode);
-    if (errorDescription != null && !errorDescription.isEmpty()) {
-      queryParams.put("error_description", errorDescription);
-    }
+    String relayedError = canonicalizeIdpErrorCode(errorCode);
+    queryParams.put("error", relayedError);
     if (pendingRequest.mcpState() != null) {
       queryParams.put("state", pendingRequest.mcpState());
     }
@@ -681,12 +684,13 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         UriUtils.constructAuthorizationResponseUri(
             pendingRequest.redirectUri(), queryParams, issuer);
 
-    // The IdP-supplied error and description are logged here for the operator and relayed to the
-    // MCP client in the redirect query. They are deliberately NOT rendered into the page below.
+    // The log is the only place the raw IdP strings appear. Everything the browser and the MCP
+    // client see is built from canonicalized or server-side values.
     LOG.warn(
-        "Relaying IdP OAuth error to MCP client (error={}, description={}, client={}, "
-            + "redirectUri={})",
+        "Relaying IdP OAuth error to MCP client (idpError={}, relayedError={}, description={}, "
+            + "client={}, redirectUri={})",
         errorCode,
+        relayedError,
         errorDescription,
         pendingRequest.clientId(),
         pendingRequest.redirectUri());
@@ -1163,18 +1167,52 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   /**
+   * Authorization error codes this server will echo back to an MCP client: RFC 6749 §4.1.2.1
+   * plus the OpenID Connect Core §3.1.2.6 interaction codes.
+   */
+  private static final List<String> RELAYABLE_OAUTH_ERRORS =
+      List.of(
+          "invalid_request",
+          "unauthorized_client",
+          "access_denied",
+          "unsupported_response_type",
+          "invalid_scope",
+          "server_error",
+          "temporarily_unavailable",
+          "interaction_required",
+          "login_required",
+          "account_selection_required",
+          "consent_required");
+
+  /**
+   * Maps an IdP-supplied error code onto {@link #RELAYABLE_OAUTH_ERRORS}, returning the matched
+   * constant rather than the caller's string, so an arbitrary upstream value can never reach the
+   * MCP client or this server's own markup. An unrecognised code collapses to {@code
+   * server_error}, RFC 6749's bucket for an unexpected condition at the authorization server
+   * ({@code temporarily_unavailable} would wrongly tell the client to retry).
+   */
+  private static String canonicalizeIdpErrorCode(String errorCode) {
+    for (String relayable : RELAYABLE_OAUTH_ERRORS) {
+      if (relayable.equals(errorCode)) {
+        return relayable;
+      }
+    }
+    LOG.warn("Unrecognised IdP error code, relaying as server_error: {}", errorCode);
+    return "server_error";
+  }
+
+  /**
    * Serves an HTML page that informs the user authentication failed and auto-redirects the
    * browser to the MCP client's {@code redirect_uri} carrying the OAuth error response.
    *
    * <p>Mirrors {@link #serveSuccessPage}: a raw 302 would leave the browser on the SSO callback
    * URL with no feedback, so we render a short error page first.
    *
-   * <p>The page deliberately shows a generic message and does <b>not</b> render the IdP-supplied
-   * {@code error} / {@code error_description}. Those are attacker-influenceable strings from an
-   * external system; OpenMetadata has no reason to paint them into its own markup. They still
-   * reach the MCP client (percent-encoded in the redirect query, which is where the client reads
-   * them) and the operator (the WARN log in {@link #handleSSOErrorCallback}), so nothing is lost
-   * for diagnosis.
+   * <p>The page shows a generic message. No IdP-supplied string reaches it, in rendered form or
+   * inside {@code redirectUrl}: the error code arrives already canonicalized to a constant and
+   * the free-text description is never relayed, so the only variable parts of this page come from
+   * the registered client and this server's own config. The raw upstream values are in the WARN
+   * log in {@link #handleSSOErrorCallback} for the operator.
    */
   private void serveErrorPage(HttpServletResponse response, String redirectUrl) throws IOException {
     response.setStatus(HttpServletResponse.SC_OK);

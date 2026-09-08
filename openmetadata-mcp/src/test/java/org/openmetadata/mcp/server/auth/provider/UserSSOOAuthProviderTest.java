@@ -105,9 +105,10 @@ class UserSSOOAuthProviderTest {
     String html = body.toString();
     // The MCP client's redirect_uri is the target of the auto-redirect.
     assertThat(html).contains(MCP_REDIRECT_URI);
-    // OAuth error response parameters per RFC 6749 §4.1.2.1.
+    // OAuth error response parameters per RFC 6749 §4.1.2.1. The free-text description is
+    // deliberately not relayed; only the canonical error code is.
     assertThat(html).contains("error=login_required");
-    assertThat(html).contains("error_description=User+not+logged+in");
+    assertThat(html).doesNotContain("error_description");
     // The MCP client's original state is echoed back.
     assertThat(html).contains("state=" + MCP_STATE);
     // RFC 9207 issuer parameter.
@@ -221,9 +222,8 @@ class UserSSOOAuthProviderTest {
 
   @Test
   void handleSSOErrorCallback_doesNotRenderIdpSuppliedText() throws Exception {
-    // The error/error_description come from an external IdP and are attacker-influenceable, so
-    // they are never written into OpenMetadata's own markup - not even HTML-escaped. They still
-    // reach the MCP client percent-encoded in the redirect query, which is where it reads them.
+    // error_description is attacker-influenceable free text from an external IdP. It is never
+    // written into OpenMetadata's markup, not even HTML-escaped, and never relayed to the client.
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
     when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
@@ -237,12 +237,52 @@ class UserSSOOAuthProviderTest {
     provider.handleSSOErrorCallback(response, AUTH_REQUEST_ID, "server_error", malicious);
 
     String html = body.toString();
-    // Neither the raw payload nor any escaped rendering of it appears in the page body.
+    // The payload appears nowhere: not rendered, not escaped, and not percent-encoded inside the
+    // redirect URL either, because the description is never relayed.
     assertThat(html).doesNotContain("<script>alert(1)</script>");
     assertThat(html).doesNotContain("lt;script");
     assertThat(html).doesNotContain("alert(1)");
-    // But it is relayed to the client, percent-encoded, so diagnosis is not lost.
-    assertThat(html).contains("error_description=%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E");
+    assertThat(html).doesNotContain("%3Cscript%3E");
+    assertThat(html).doesNotContain("error_description");
+  }
+
+  @Test
+  void handleSSOErrorCallback_unknownIdpErrorCode_relayedAsServerError() throws Exception {
+    // An IdP is free to invent error codes. Relaying one verbatim would put an arbitrary upstream
+    // string into a redirect this server issues, so unknown codes collapse to the spec's
+    // server_error bucket.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    stubRegisteredClient(clientRepo);
+
+    UserSSOOAuthProvider provider = newProvider(pendingRepo, clientRepo, ISSUER);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = captureHtmlResponse(response);
+
+    provider.handleSSOErrorCallback(response, AUTH_REQUEST_ID, "vendor_weird_code", null);
+
+    String html = body.toString();
+    assertThat(html).contains("error=server_error");
+    assertThat(html).doesNotContain("vendor_weird_code");
+  }
+
+  @Test
+  void handleSSOErrorCallback_knownIdpErrorCode_relayedVerbatim() throws Exception {
+    // Codes in the RFC 6749 / OIDC Core set must survive intact, otherwise the client cannot tell
+    // a denied consent from an upstream outage.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    stubRegisteredClient(clientRepo);
+
+    UserSSOOAuthProvider provider = newProvider(pendingRepo, clientRepo, ISSUER);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = captureHtmlResponse(response);
+
+    provider.handleSSOErrorCallback(response, AUTH_REQUEST_ID, "access_denied", null);
+
+    assertThat(body.toString()).contains("error=access_denied");
   }
 
   @Test
