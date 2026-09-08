@@ -10,9 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, renderHook } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { createElement, Fragment } from 'react';
+import {
+  ThemeProvider,
+  useTheme,
+} from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
-import { OntologyEdge } from '../OntologyExplorer.interface';
-import { mergeEdges } from './useGraphData';
+import { LayoutEngine, LayoutType } from '../OntologyExplorer.constants';
+import {
+  BuildGraphDataProps,
+  OntologyEdge,
+  OntologyNode,
+} from '../OntologyExplorer.interface';
+import { mergeEdges, useGraphDataBuilder } from './useGraphData';
 
 const customRelationType = (
   overrides: Partial<GlossaryTermRelationType> & { name: string }
@@ -29,6 +41,43 @@ const edge = (
   relationType: string
 ): OntologyEdge => ({ from, to, label: relationType, relationType });
 
+const graphNode = (id: string): OntologyNode => ({
+  id,
+  label: id,
+  type: 'glossaryTerm',
+});
+
+const mockComputedStyle = (color: string): CSSStyleDeclaration =>
+  ({
+    backgroundColor: color,
+    getPropertyValue: () => '',
+  } as unknown as CSSStyleDeclaration);
+
+const GRAPH_THEME_STORAGE_KEY = 'ontology-graph-theme-test';
+let setGraphTheme: ReturnType<typeof useTheme>['setTheme'] | undefined;
+
+const ThemeCapture = () => {
+  setGraphTheme = useTheme().setTheme;
+
+  return null;
+};
+
+const GraphThemeProvider = ({ children }: { children: ReactNode }) =>
+  createElement(ThemeProvider, {
+    children: createElement(
+      Fragment,
+      null,
+      createElement(ThemeCapture),
+      children
+    ),
+    storageKey: GRAPH_THEME_STORAGE_KEY,
+  });
+
+const renderGraphData = (props: BuildGraphDataProps) =>
+  renderHook(() => useGraphDataBuilder(props), {
+    wrapper: GraphThemeProvider,
+  });
+
 // Mirrors the subset of GlossaryTermRelationSettings the backend seeds via the
 // 1.13.0 migration that the tests below exercise.
 const seededRelationTypes: GlossaryTermRelationType[] = [
@@ -37,6 +86,60 @@ const seededRelationTypes: GlossaryTermRelationType[] = [
   customRelationType({ name: 'partOf', inverseRelation: 'hasPart' }),
   customRelationType({ name: 'hasPart', inverseRelation: 'partOf' }),
 ];
+
+describe('theme-aware graph data', () => {
+  beforeEach(() => {
+    localStorage.setItem(GRAPH_THEME_STORAGE_KEY, 'light');
+    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(GRAPH_THEME_STORAGE_KEY);
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.colorScheme = '';
+    setGraphTheme = undefined;
+    jest.restoreAllMocks();
+  });
+
+  it('rebuilds resolved canvas styles when the active theme changes', () => {
+    jest
+      .spyOn(window, 'getComputedStyle')
+      .mockImplementation(() =>
+        mockComputedStyle(
+          document.documentElement.classList.contains('dark-mode')
+            ? 'rgb(12, 14, 18)'
+            : 'rgb(255, 255, 255)'
+        )
+      );
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [edge('A', 'B', 'unmappedRelation')],
+      inputNodes: [graphNode('A'), graphNode('B')],
+      layoutType: LayoutEngine.Dagre,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+    });
+
+    expect(result.current.graphData.nodes?.[0]?.style?.fill).toBe(
+      'rgb(255, 255, 255)'
+    );
+    expect(result.current.graphData.edges?.[0]?.style?.stroke).toBe(
+      'rgb(255, 255, 255)'
+    );
+
+    act(() => setGraphTheme?.('dark'));
+
+    expect(result.current.graphData.nodes?.[0]?.style?.fill).toBe(
+      'rgb(12, 14, 18)'
+    );
+    expect(result.current.graphData.edges?.[0]?.style?.stroke).toBe(
+      'rgb(12, 14, 18)'
+    );
+  });
+});
 
 describe('mergeEdges', () => {
   it('merges a symmetric pair (relatedTo + relatedTo) into one bidirectional edge', () => {

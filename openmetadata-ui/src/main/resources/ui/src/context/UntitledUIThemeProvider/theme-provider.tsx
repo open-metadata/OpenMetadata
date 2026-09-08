@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   BrandColors,
   Theme,
@@ -19,6 +26,22 @@ import {
 } from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
+  if (typeof globalThis.document === 'undefined') {
+    return;
+  }
+
+  const root = globalThis.document.documentElement;
+  const shouldUseDarkMode = theme === 'dark';
+
+  if (root.classList.contains(darkModeClass) !== shouldUseDarkMode) {
+    root.classList.toggle(darkModeClass, shouldUseDarkMode);
+  }
+  if (root.style.colorScheme !== theme) {
+    root.style.colorScheme = theme;
+  }
+};
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -237,24 +260,46 @@ export const ThemeProvider = ({
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const {
+    primaryColor,
+    hoverColor,
+    selectedColor,
+    errorColor,
+    successColor,
+    warningColor,
+    infoColor,
+  } = brandColors ?? {};
+  const [theme, setThemeState] = useState<Theme>(() => {
+    let initialTheme = defaultTheme;
+
     if (typeof globalThis !== 'undefined') {
       const savedTheme = localStorage.getItem(storageKey) as Theme | null;
 
       if (savedTheme === 'light' || savedTheme === 'dark') {
-        return savedTheme;
+        initialTheme = savedTheme;
+      } else {
+        localStorage.removeItem(storageKey);
       }
-
-      localStorage.removeItem(storageKey);
     }
 
-    return defaultTheme;
+    // Canvas consumers resolve CSS tokens during render, before effects run.
+    // Avoiding a redundant class write also preserves a server-prepainted root.
+    applyThemeToRoot(initialTheme, darkModeClass);
+
+    return initialTheme;
   });
 
-  useEffect(() => {
-    const root = globalThis.document.documentElement;
+  const setTheme = useCallback(
+    (nextTheme: Theme) => {
+      // The cascade must represent the next theme before canvas consumers rerender.
+      applyThemeToRoot(nextTheme, darkModeClass);
+      setThemeState(nextTheme);
+    },
+    [darkModeClass]
+  );
 
-    root.classList.toggle(darkModeClass, theme === 'dark');
+  useEffect(() => {
+    applyThemeToRoot(theme, darkModeClass);
 
     if (theme === 'dark') {
       localStorage.setItem(storageKey, theme);
@@ -265,24 +310,33 @@ export const ThemeProvider = ({
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
+    const activeBrandColors = {
+      primaryColor,
+      hoverColor,
+      selectedColor,
+      errorColor,
+      successColor,
+      warningColor,
+      infoColor,
+    };
 
     clearBrandCssVars(root);
-    if (brandColors && Object.values(brandColors).some(Boolean)) {
-      applyBrandCssVars(brandColors, root);
+    if (Object.values(activeBrandColors).some(Boolean)) {
+      applyBrandCssVars(activeBrandColors, root);
     }
   }, [
-    brandColors?.primaryColor,
-    brandColors?.hoverColor,
-    brandColors?.selectedColor,
-    brandColors?.errorColor,
-    brandColors?.successColor,
-    brandColors?.warningColor,
-    brandColors?.infoColor,
+    primaryColor,
+    hoverColor,
+    selectedColor,
+    errorColor,
+    successColor,
+    warningColor,
+    infoColor,
   ]);
 
   const values = useMemo(
     () => ({ theme, brandColors, setTheme }),
-    [theme, brandColors]
+    [theme, brandColors, setTheme]
   );
 
   return (

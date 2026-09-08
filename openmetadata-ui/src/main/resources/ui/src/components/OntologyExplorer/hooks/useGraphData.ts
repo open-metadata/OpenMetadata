@@ -12,6 +12,7 @@
  */
 import type { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { RelationCardinality } from '../../../generated/configuration/glossaryTermRelationSettings';
 import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -213,12 +214,23 @@ export function useGraphDataBuilder({
   graphSearchHighlight = null,
   relationTypes,
 }: BuildGraphDataProps) {
+  const { theme } = useTheme();
+  // G6 stores concrete canvas colors. Binding the resolver identity to the
+  // active theme rebuilds graph data after the provider updates its CSS tokens.
+  const themeCanvasResolver = useMemo(
+    () => ({ resolve: getCanvasColor, theme }),
+    [theme]
+  );
   const computeNodeColor = useCallback(
-    (node: OntologyNode): string =>
-      node.glossaryId && glossaryColorMap[node.glossaryId]
-        ? glossaryColorMap[node.glossaryId]
-        : 'var(--color-blue-600)',
-    [glossaryColorMap]
+    (node: OntologyNode): string => {
+      const color =
+        node.glossaryId && glossaryColorMap[node.glossaryId]
+          ? glossaryColorMap[node.glossaryId]
+          : 'var(--color-blue-600)';
+
+      return themeCanvasResolver.resolve(color, '#3b82f6');
+    },
+    [glossaryColorMap, themeCanvasResolver]
   );
 
   const mergedEdgesList = useMemo(
@@ -558,7 +570,7 @@ export function useGraphDataBuilder({
               : undefined,
           },
           style: buildDefaultRectNodeStyle(
-            getCanvasColor,
+            themeCanvasResolver.resolve,
             label,
             [effectiveWidth, height],
             pos
@@ -593,7 +605,7 @@ export function useGraphDataBuilder({
             glossaryId: node.glossaryId ?? '',
           },
           style: buildDataModeAssetNodeStyle(
-            getCanvasColor,
+            themeCanvasResolver.resolve,
             label,
             assetColor,
             pos,
@@ -626,7 +638,12 @@ export function useGraphDataBuilder({
             assetsExpanded,
             isLoadingAssets: node.isLoadingAssets ?? false,
           },
-          style: buildDataModeTermNodeStyle(getCanvasColor, label, color, pos),
+          style: buildDataModeTermNodeStyle(
+            themeCanvasResolver.resolve,
+            label,
+            color,
+            pos
+          ),
         };
       }
 
@@ -644,7 +661,7 @@ export function useGraphDataBuilder({
           glossaryId: node.glossaryId ?? '',
         },
         style: buildDefaultRectNodeStyle(
-          getCanvasColor,
+          themeCanvasResolver.resolve,
           label,
           [nodeWidth, height],
           pos
@@ -745,7 +762,7 @@ export function useGraphDataBuilder({
               : customRelationColorMap[singleEdge.relationType] ??
                 RELATION_COLORS[singleEdge.relationType] ??
                 EDGE_STROKE_COLOR;
-          const edgeColor = getCanvasColor(
+          const edgeColor = themeCanvasResolver.resolve(
             rawEdgeColor,
             explorationMode === 'data' && !isTermTermInDataMode
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
@@ -803,7 +820,8 @@ export function useGraphDataBuilder({
                 ...getEdgeRelationLabelStyle(
                   labelText,
                   singleEdge.relationType,
-                  customRelationColorMap[singleEdge.relationType]
+                  customRelationColorMap[singleEdge.relationType],
+                  themeCanvasResolver.resolve
                 ),
                 labelPosition: 'center',
                 labelAutoRotate: false,
@@ -875,7 +893,8 @@ export function useGraphDataBuilder({
           style: buildComboStyle(
             combo.label,
             color,
-            extraComboPadding(combo.glossaryId)
+            extraComboPadding(combo.glossaryId),
+            themeCanvasResolver.resolve
           ),
         });
       });
@@ -908,7 +927,12 @@ export function useGraphDataBuilder({
             isDimmed: isComboDimmed,
             extraVerticalPadding: extraComboPadding(glossaryId),
           },
-          style: buildComboStyle(name, color, extraComboPadding(glossaryId)),
+          style: buildComboStyle(
+            name,
+            color,
+            extraComboPadding(glossaryId),
+            themeCanvasResolver.resolve
+          ),
         });
       });
     }
@@ -958,6 +982,7 @@ export function useGraphDataBuilder({
     glossaries,
     cardinalityMap,
     customRelationColorMap,
+    themeCanvasResolver,
   ]);
 
   const assetToTermMap = useMemo(() => {
