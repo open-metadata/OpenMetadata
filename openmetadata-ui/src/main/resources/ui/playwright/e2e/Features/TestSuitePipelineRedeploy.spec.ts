@@ -55,14 +55,16 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(
       page.getByRole('button', { name: 'Re Deploy' })
     ).not.toBeEnabled();
-    await expect(page.locator('.ant-table-container')).toBeVisible();
+    await expect(page.getByTestId('ingestion-list-table')).toBeVisible();
 
     // beforeAll creates one test-suite pipeline per table, and there are two
     // tables -- so this is the fixture's count, not an arbitrary number. One
     // source for it, so the deploy assertion below cannot drift from the
     // selection here.
     const selectedPipelineCount = 2;
-    const rowCheckboxes = page.locator(`td [type="checkbox"]`);
+    // TableV2 selection: the sr-only checkbox input is pointer-intercepted, so
+    // target the pressable label slot rather than the raw input.
+    const rowCheckboxes = page.locator('td label[slot="selection"]');
 
     // The listing is global and can lag behind the pipelines this spec just
     // created. Wait for enough rows first: nth() on a shorter list auto-waits

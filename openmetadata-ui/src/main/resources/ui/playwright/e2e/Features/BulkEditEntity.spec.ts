@@ -46,6 +46,7 @@ import {
   validateImportStatus,
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
+import { getCellByName } from '../../utils/scopedLocators';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 interface GlossaryDetails {
@@ -692,7 +693,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Details updated
       await expect(
-        page.getByRole('cell', { name: 'Playwright Table column' })
+        getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
       // Verify Tags
