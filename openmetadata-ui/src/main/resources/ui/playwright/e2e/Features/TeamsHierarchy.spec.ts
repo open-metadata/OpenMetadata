@@ -129,6 +129,12 @@ test.describe(
         const teamSelect = page.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
         const dropdown = page.getByRole('tree');
+        // Selection chips only — the select also mirrors the typed search
+        // text as a text node (ant-select-selection-search-mirror), so a
+        // bare getByText inside the control matches even with no selection.
+        const selectedTeamChips = teamSelect.locator(
+          '.ant-select-selection-item'
+        );
 
         await test.step('Non-Group team with children is visible but not selectable', async () => {
           await teamSelect.click();
@@ -140,9 +146,9 @@ test.describe(
 
           await departmentOption.click();
 
-          // A selection would render the team name as a chip inside the
-          // select control; the search input value is not text content.
-          await expect(teamSelect.getByText(departmentTeamName)).toHaveCount(0);
+          await expect(
+            selectedTeamChips.filter({ hasText: departmentTeamName })
+          ).toHaveCount(0);
         });
 
         await test.step('Non-Group team without children is hidden', async () => {
@@ -160,7 +166,9 @@ test.describe(
 
           await groupOption.click();
 
-          await expect(teamSelect.getByText(groupTeamName)).toBeVisible();
+          await expect(
+            selectedTeamChips.filter({ hasText: groupTeamName })
+          ).toHaveCount(1);
         });
       } finally {
         await childlessDepartment.delete(apiContext);
