@@ -26,7 +26,9 @@ jest.mock('utils/EntityNameUtils', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+  Owner: jest
+    .fn()
+    .mockReturnValue(<div data-testid="owner-label">Owner</div>),
 }));
 
 jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>

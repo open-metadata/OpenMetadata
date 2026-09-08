@@ -262,7 +262,30 @@ jest.mock('../../../../utils/RouterUtils', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+  Owner: jest.fn().mockImplementation(
+    ({
+      owners,
+      placeHolder,
+    }: {
+      owners?: Array<{ id?: string; displayName?: string; name?: string }>;
+      placeHolder?: string;
+    }) => {
+      if (owners && owners.length > 0) {
+        return (
+          <>
+            {owners.map((owner, i) => (
+              <span key={owner.id ?? i}>
+                <div data-testid="avatar">Avatar</div>
+                <span>{owner.displayName || owner.name}</span>
+              </span>
+            ))}
+          </>
+        );
+      }
+
+      return placeHolder ? <span>{placeHolder}</span> : null;
+    }
+  ),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';

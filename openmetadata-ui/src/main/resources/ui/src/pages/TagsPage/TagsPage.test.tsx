@@ -328,6 +328,24 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  Owner: () => <div data-testid="owner-component" />,
+  toOwnerRef: (ref: { id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+    profileUrl: ref.profileUrl,
+  }),
+  toOwnerRefs: (refs?: Array<{ id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }>) =>
+    (refs ?? []).map((ref: { id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }) => ({
+      id: ref.id,
+      name: ref.name,
+      displayName: ref.displayName,
+      type: ref.type ?? 'user',
+      href: ref.href,
+      profileUrl: ref.profileUrl,
+    })),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
@@ -393,15 +411,20 @@ jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 
-jest.mock('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
-}));
-
 jest.mock('../../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label-v2" />),
 }));
+
+jest.mock('../../components/common/WidgetCard/WidgetCard', () =>
+  jest.fn().mockImplementation(({ children, title }: { children?: React.ReactNode; title?: string }) => (
+    <div data-testid="widget-card">
+      {title && <div>{title}</div>}
+      {children}
+    </div>
+  ))
+);
 
 jest.mock('../../utils/LazyTagComponents', () => ({
   LazyCommonWidgets: jest

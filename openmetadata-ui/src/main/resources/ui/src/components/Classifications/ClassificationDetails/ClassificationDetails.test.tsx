@@ -76,6 +76,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-tags-placeholder">{title}</div>
   ),
+  Owner: ({ owners }: { owners?: unknown[] }) => (
+    <div data-testid="owner-label">{owners?.length ? 'Owner' : ''}</div>
+  ),
+  toOwnerRef: (ref: { id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+    profileUrl: ref.profileUrl,
+  }),
+  toOwnerRefs: (refs?: Array<{ id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }>) =>
+    (refs ?? []).map((ref: { id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }) => ({
+      id: ref.id,
+      name: ref.name,
+      displayName: ref.displayName,
+      type: ref.type ?? 'user',
+      href: ref.href,
+      profileUrl: ref.profileUrl,
+    })),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -85,6 +105,15 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'TestClassification' }),
+}));
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -196,16 +225,19 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest.fn().mockImplementation(({ children, title }: { children?: React.ReactNode; title?: string }) => (
+    <div data-testid="widget-card">
+      {title && <div>{title}</div>}
+      {children}
+    </div>
+  ))
+);
+
 jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label">Domain</div>),
-}));
-
-jest.mock('../../DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label">Owner</div>),
 }));
 
 jest.mock('../../common/Badge/Badge.component', () =>

@@ -44,10 +44,31 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     <div data-testid="custom-properties-widget">Custom Properties Widget</div>
   ),
 }));
-jest.mock('../OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: () => (
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Owner: () => (
     <div data-testid="owner-label-widget">Owner Label Widget</div>
   ),
+  toOwnerRef: (ref: { id: string; type?: string; name?: string; displayName?: string; href?: string }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+  }),
+  toOwnerRefs: (refs?: Array<{ id: string; type?: string; name?: string; displayName?: string; href?: string }>) =>
+    (refs ?? []).map((ref: { id: string; type?: string; name?: string; displayName?: string; href?: string }) => ({
+      id: ref.id,
+      name: ref.name,
+      displayName: ref.displayName,
+      type: ref.type ?? 'user',
+      href: ref.href,
+    })),
+}));
+jest.mock('../../../hooks/useOwnerDisplayProps', () => ({
+  useOwnerDisplayProps: () => ({
+    toOwnersWithHref: (refs: unknown[]) => refs ?? [],
+    renderOwnerContent: (_owner: unknown, chip: unknown) => chip,
+  }),
 }));
 jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
   ReviewerLabelV2: () => (
@@ -63,6 +84,15 @@ jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),
 }));
+
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest.fn().mockImplementation(({ children, title }: { children?: React.ReactNode; title?: string }) => (
+    <div data-testid="widget-card">
+      {title && <div>{title}</div>}
+      {children}
+    </div>
+  ))
+);
 
 const mockGenericContext = {
   data: {

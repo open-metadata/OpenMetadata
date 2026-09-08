@@ -165,11 +165,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
-    Owner: jest.fn().mockReturnValue(null),
+    Owner: jest.fn().mockReturnValue(<div data-testid="owner-label" />),
     Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
       <div data-testid={testId} />
     ),
     Table: MockTable,
+    toOwnerRef: jest.fn().mockReturnValue({}),
+    toOwnerRefs: jest.fn().mockReturnValue([]),
   };
 });
 
