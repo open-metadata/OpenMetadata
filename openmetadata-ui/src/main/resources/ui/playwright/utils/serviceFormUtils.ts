@@ -50,7 +50,7 @@ export const selectOneOfOption = async (
     const trigger = selectWidget.getByRole('button');
     const option = page
       .locator('.core-one-of-field-select-popover')
-      .getByRole('option', { name: optionName });
+      .getByRole('option', { name: optionName, exact: true });
 
     await selectOptionWithRetry(trigger, option);
 
