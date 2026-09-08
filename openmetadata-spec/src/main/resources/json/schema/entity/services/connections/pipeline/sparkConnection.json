@@ -27,7 +27,9 @@
       },
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
-        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        "description": "Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not supported.",
+        "type": "boolean",
+        "default": false
       }
     },
     "additionalProperties": false

@@ -52,7 +52,11 @@ function ActivityOwnersFeed({
     try {
       if (activity.oldValue) {
         const parsed = JSON.parse(activity.oldValue);
-        oldOwners = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+        if (Array.isArray(parsed)) {
+          oldOwners = parsed;
+        } else if (parsed) {
+          oldOwners = [parsed];
+        }
       }
     } catch {
       oldOwners = [];
@@ -61,7 +65,11 @@ function ActivityOwnersFeed({
     try {
       if (activity.newValue) {
         const parsed = JSON.parse(activity.newValue);
-        newOwners = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+        if (Array.isArray(parsed)) {
+          newOwners = parsed;
+        } else if (parsed) {
+          newOwners = [parsed];
+        }
       }
     } catch {
       newOwners = [];

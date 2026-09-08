@@ -57,17 +57,20 @@ const upsertQuery = (
 const isSavedSparqlQuery = (value: unknown): value is SavedSparqlQuery => {
   const query = value as Partial<SavedSparqlQuery> | null;
 
+  const isNonNullObject = typeof query === 'object' && query !== null;
+  const hasRequiredStrings =
+    typeof query?.id === 'string' &&
+    typeof query?.name === 'string' &&
+    typeof query?.query === 'string';
+  const hasValidFormat =
+    SPARQL_FORMATS.some((format) => format === query?.format) &&
+    SPARQL_INFERENCE_LEVELS.some((inference) => inference === query?.inference);
+
   return (
-    typeof query === 'object' &&
-    query !== null &&
-    typeof query.id === 'string' &&
-    typeof query.name === 'string' &&
-    typeof query.query === 'string' &&
-    SPARQL_FORMATS.some((format) => format === query.format) &&
-    SPARQL_INFERENCE_LEVELS.some(
-      (inference) => inference === query.inference
-    ) &&
-    typeof query.savedAt === 'number'
+    isNonNullObject &&
+    hasRequiredStrings &&
+    hasValidFormat &&
+    typeof query?.savedAt === 'number'
   );
 };
 

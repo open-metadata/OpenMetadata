@@ -82,14 +82,19 @@ const CustomYAxisTick = ({
   const isSelected = selectedCategory === categoryName;
   const isHighlighted = selectedCategory && selectedCategory !== categoryName;
 
+  let tickFill = GRAY_600;
+  if (isSelected) {
+    tickFill = CHART_BLUE_1;
+  } else if (isHighlighted) {
+    tickFill = COLOR_GREY_400;
+  }
+
   return (
     <g transform={`translate(${x},${y})`}>
       <text
         cursor="pointer"
         dy={4}
-        fill={
-          isSelected ? CHART_BLUE_1 : isHighlighted ? COLOR_GREY_400 : GRAY_600
-        }
+        fill={tickFill}
         fontSize={12}
         fontWeight={isSelected ? 600 : 400}
         opacity={isHighlighted ? 0.5 : 1}
@@ -309,16 +314,15 @@ const CardinalityDistributionChart = ({
                                 selectedCategory &&
                                 selectedCategory !== entry.name;
 
+                              let cellFill = CHART_BLUE_1;
+                              if (!isSelected && isHighlighted) {
+                                cellFill = COLOR_GREY_300;
+                              }
+
                               return (
                                 <Cell
                                   cursor="pointer"
-                                  fill={
-                                    isSelected
-                                      ? CHART_BLUE_1
-                                      : isHighlighted
-                                      ? COLOR_GREY_300
-                                      : CHART_BLUE_1
-                                  }
+                                  fill={cellFill}
                                   key={`cell-${entry.name}`}
                                   opacity={isHighlighted ? 0.3 : 1}
                                   onClick={() =>

@@ -19,6 +19,28 @@ interface UseRovingFocusOptions {
   totalItems: number;
 }
 
+type RovingAction = 'next' | 'prev' | 'select';
+
+const getRovingAction = (
+  key: string,
+  vertical: boolean
+): RovingAction | null => {
+  const nextKey = vertical ? 'ArrowDown' : 'ArrowRight';
+  const prevKey = vertical ? 'ArrowUp' : 'ArrowLeft';
+
+  if (key === nextKey) {
+    return 'next';
+  }
+  if (key === prevKey) {
+    return 'prev';
+  }
+  if (key === 'Enter' || key === ' ') {
+    return 'select';
+  }
+
+  return null;
+};
+
 export function useRovingFocus({
   initialIndex = 0,
   vertical = true,
@@ -56,29 +78,18 @@ export function useRovingFocus({
         return;
       }
 
-      switch (e.key) {
-        case 'ArrowDown':
-        case 'ArrowRight':
-          if (vertical ? e.key === 'ArrowDown' : e.key === 'ArrowRight') {
-            e.preventDefault();
-            moveFocus(1);
-          }
+      const action = getRovingAction(e.key, vertical);
+      if (!action) {
+        return;
+      }
 
-          break;
-        case 'ArrowUp':
-        case 'ArrowLeft':
-          if (vertical ? e.key === 'ArrowUp' : e.key === 'ArrowLeft') {
-            e.preventDefault();
-            moveFocus(-1);
-          }
-
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          onSelect?.(focusedIndex);
-
-          break;
+      e.preventDefault();
+      if (action === 'next') {
+        moveFocus(1);
+      } else if (action === 'prev') {
+        moveFocus(-1);
+      } else {
+        onSelect?.(focusedIndex);
       }
     },
     [focusedIndex, totalItems, vertical, onSelect]
