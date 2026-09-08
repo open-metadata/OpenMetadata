@@ -1385,6 +1385,19 @@ public class OpenSearchVectorService implements VectorIndexService {
       double threshold,
       String preference,
       SubjectContext subjectContext) {
+    return search(
+        new VectorSearchParameters(
+            query, filters, size, from, k, threshold, preference, subjectContext, null));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public VectorSearchResponse search(VectorSearchParameters parameters) {
+    String query = parameters.query();
+    int size = parameters.size();
+    int from = parameters.from();
+    int k = parameters.k();
+    double threshold = parameters.threshold();
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embedQuery(query);
@@ -1402,9 +1415,10 @@ public class OpenSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, overFetchSize, rawOffset, k, filters, threshold, subjectContext);
+                queryVector, parameters.withPagination(overFetchSize, rawOffset));
         String endpoint =
-            SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
+            SearchUtils.appendPreferenceParam(
+                "/" + aliasName + "/_search", parameters.preference());
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);

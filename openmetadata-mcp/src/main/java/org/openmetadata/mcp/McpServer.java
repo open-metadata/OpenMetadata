@@ -317,8 +317,13 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
         (context, req) -> {
+          String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
+          String activePersona =
+              (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
           CatalogSecurityContext securityContext =
-              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+              activePersona == null
+                  ? jwtFilter.getCatalogSecurityContext(token)
+                  : jwtFilter.getCatalogSecurityContext(token, activePersona);
           String userName = securityContext.getUserPrincipal().getName();
           String clientName =
               (String)

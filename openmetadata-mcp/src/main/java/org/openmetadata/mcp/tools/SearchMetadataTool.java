@@ -48,6 +48,16 @@ public class SearchMetadataTool implements McpTool {
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
   private static final String NEVER_RUN_KEY = "neverRun";
+  private final PersonaSearchScope.Provider personaSearchScopeProvider;
+
+  public SearchMetadataTool() {
+    this(PersonaSearchScope::resolve);
+  }
+
+  @VisibleForTesting
+  SearchMetadataTool(PersonaSearchScope.Provider personaSearchScopeProvider) {
+    this.personaSearchScopeProvider = personaSearchScopeProvider;
+  }
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -258,11 +268,16 @@ public class SearchMetadataTool implements McpTool {
     // the text query (OpenSearchSearchManager#applyQueryFilter) and additionally applies the
     // deleted
     // filter, ranked scoring, and the search preference.
+    String effectiveQueryFilter = nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter;
+    Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
+    if (personaScope.isPresent()) {
+      effectiveQueryFilter = personaScope.orElseThrow().applyTo(effectiveQueryFilter);
+    }
     SearchRequest searchRequest =
         new SearchRequest()
             .withQuery(nullOrEmpty(query) ? MATCH_ANY_QUERY : query)
             .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-            .withQueryFilter(nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter)
+            .withQueryFilter(effectiveQueryFilter)
             .withSize(size)
             .withFrom(from)
             .withFetchSource(true)
@@ -290,7 +305,16 @@ public class SearchMetadataTool implements McpTool {
             requestedFields,
             includeAggregations,
             maxAggregationBuckets);
-    return dropExcludedTypes(enhanced, excludedTypes);
+    Map<String, Object> result = dropExcludedTypes(enhanced, excludedTypes);
+    personaScope.ifPresent(scope -> scope.annotate(result));
+    return result;
+  }
+
+  private Optional<PersonaSearchScope> personaSearchScope(
+      CatalogSecurityContext securityContext, Map<String, Object> params) {
+    return McpParams.getBoolean(params, "ignorePersonaScope", false)
+        ? Optional.empty()
+        : personaSearchScopeProvider.resolve(securityContext);
   }
 
   /**

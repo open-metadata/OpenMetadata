@@ -44,6 +44,7 @@ import org.openmetadata.service.Entity;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PersonaAIContextIT extends McpTestBase {
+  private static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
   private static Persona persona;
   private static Table table;
   private static String directMemberToken;
@@ -323,6 +324,104 @@ class PersonaAIContextIT extends McpTestBase {
     }
   }
 
+  @Test
+  void mcpSearchAppliesPersonaScopeByDefaultAndCanExplicitlyBypassIt() throws Exception {
+    String suffix = shortId();
+    Table selected = createServiceDatabaseSchemaTable("persona_mcp_selected_" + suffix);
+    Table excluded = createServiceDatabaseSchemaTable("persona_mcp_excluded_" + suffix);
+    User member = createUser("persona_mcp_member_" + suffix);
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_mcp_" + suffix)
+                .withDescription("MCP persona search scope integration test")
+                .withUsers(List.of(member.getId())),
+            Persona.class);
+    String contextPath = "personas/" + owned.getId() + "/aiContext";
+    String token = tokenFor(member);
+
+    try {
+      put(
+          contextPath,
+          new PersonaContextDefinition().withEnabled(true),
+          PersonaContextDefinition.class);
+      post(
+          contextPath + "/rules",
+          scopedFqnRule("MCP scope", selected.getFullyQualifiedName()),
+          PersonaContextDefinition.class);
+
+      Awaitility.await("MCP search consumes the active persona scope")
+          .atMost(Duration.ofSeconds(60))
+          .pollDelay(Duration.ofSeconds(1))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode scoped =
+                    searchMetadataWithPersona(owned, token, selected, excluded, false);
+                assertThat(resultFqns(scoped)).containsExactly(selected.getFullyQualifiedName());
+                assertThat(scoped.path("personaScopeApplied").asBoolean()).isTrue();
+
+                JsonNode unscoped =
+                    searchMetadataWithPersona(owned, token, selected, excluded, true);
+                assertThat(resultFqns(unscoped))
+                    .containsExactlyInAnyOrder(
+                        selected.getFullyQualifiedName(), excluded.getFullyQualifiedName());
+                assertThat(unscoped.has("personaScopeApplied")).isFalse();
+              });
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private JsonNode searchMetadataWithPersona(
+      Persona activePersona, String token, Table first, Table second, boolean ignoreScope)
+      throws Exception {
+    String queryFilter =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of(
+                "bool",
+                Map.of(
+                    "filter",
+                    List.of(
+                        Map.of("term", Map.of("entityType", Entity.TABLE)),
+                        Map.of(
+                            "terms",
+                            Map.of(
+                                "fullyQualifiedName",
+                                List.of(
+                                    first.getFullyQualifiedName(),
+                                    second.getFullyQualifiedName())))))));
+    Map<String, Object> arguments =
+        Map.of(
+            "query",
+            "*",
+            "entityType",
+            Entity.TABLE,
+            "queryFilter",
+            queryFilter,
+            "size",
+            10,
+            "ignorePersonaScope",
+            ignoreScope);
+    JsonNode response =
+        executeMcp(
+            McpTestUtils.createToolCallRequest("search_metadata", arguments),
+            token,
+            activePersona.getFullyQualifiedName());
+    JsonNode toolResult = response.path("result");
+    assertThat(toolResult.path("isError").asBoolean(false)).isFalse();
+    return OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+  }
+
+  private static Set<String> resultFqns(JsonNode response) {
+    Set<String> fqns = new HashSet<>();
+    response
+        .path("results")
+        .forEach(result -> fqns.add(result.path("fullyQualifiedName").asText()));
+    return fqns;
+  }
+
   /** Polls until the served scope includes selected assets and excludes unscoped assets. */
   private static void awaitScopeIncludes(
       Persona owner, Set<String> selectedAssets, Set<String> excludedAssets) {
@@ -462,7 +561,12 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   private JsonNode executeMcp(Map<String, Object> requestBody, String token) throws Exception {
-    HttpRequest request =
+    return executeMcp(requestBody, token, null);
+  }
+
+  private JsonNode executeMcp(Map<String, Object> requestBody, String token, String activePersona)
+      throws Exception {
+    HttpRequest.Builder request =
         HttpRequest.newBuilder()
             .uri(URI.create(getMcpUrl("/mcp")))
             .header("Content-Type", "application/json")
@@ -470,9 +574,12 @@ class PersonaAIContextIT extends McpTestBase {
             .header("Authorization", token)
             .POST(
                 HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(requestBody)))
-            .timeout(Duration.ofSeconds(30))
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            .timeout(Duration.ofSeconds(30));
+    if (activePersona != null) {
+      request.header(ACTIVE_PERSONA_HEADER, activePersona);
+    }
+    HttpResponse<String> response =
+        HTTP_CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
     assertThat(response.statusCode()).isEqualTo(200);
     return OBJECT_MAPPER.readTree(extractJsonFromResponse(response.body()));
   }

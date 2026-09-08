@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -164,6 +165,20 @@ class JwtFilterTest {
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testCatalogSecurityContextDefaultsToNoActivePersona() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+
+    assertEquals("sam", securityContext.getUserPrincipal().getName());
+    assertNull(securityContext.activePersona());
   }
 
   @Test

@@ -68,7 +68,8 @@ class OAuthHttpStatelessServerTransportProviderTest {
         .contains("MCP-Protocol-Version")
         .contains("Mcp-Method")
         .contains("Mcp-Name")
-        .contains("Mcp-Client-Name");
+        .contains("Mcp-Client-Name")
+        .contains("X-OpenMetadata-Persona");
     // Without this the browser hides the 401's challenge and the client cannot start OAuth.
     verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate");
     verify(response).setHeader("Vary", "Origin");

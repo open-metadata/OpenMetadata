@@ -300,7 +300,7 @@ public class PersonaContextBuilder {
    * only scoped rule selects tables can search those tables and nothing else. Returns an empty
    * scope — meaning unscoped search — when no enabled rule opts in.
    */
-  static SearchScope searchScope(PersonaContextDefinition definition) {
+  public static SearchScope searchScope(PersonaContextDefinition definition) {
     SearchScope scope =
         new SearchScope().withEntityTypes(new LinkedHashSet<>()).withRules(new ArrayList<>());
     if (!Boolean.TRUE.equals(definition.getEnabled())) {
