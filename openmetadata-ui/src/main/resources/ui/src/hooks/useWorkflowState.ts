@@ -20,6 +20,55 @@ import {
   NodeConfig,
 } from '../interface/workflow-builder-components.interface';
 
+type WorkflowTrigger = WorkflowDefinition['trigger'];
+
+// Pure merge helpers for updateWorkflowDefinitionWithMerge() - no hook/prop
+// dependency, so they live at module scope.
+const mergeTriggerConfig = (
+  prevTrigger: WorkflowTrigger,
+  updatesTrigger: WorkflowTrigger
+) => {
+  const prevConfig =
+    prevTrigger && typeof prevTrigger === 'object' && 'config' in prevTrigger
+      ? prevTrigger.config
+      : {};
+  const updatesConfig =
+    updatesTrigger &&
+    typeof updatesTrigger === 'object' &&
+    'config' in updatesTrigger
+      ? updatesTrigger.config
+      : {};
+
+  return { ...prevConfig, ...updatesConfig };
+};
+
+const mergeTrigger = (
+  prevTrigger: WorkflowTrigger,
+  updatesTrigger: WorkflowTrigger
+) => {
+  const prevTriggerObj =
+    prevTrigger && typeof prevTrigger === 'object' ? prevTrigger : {};
+  const updatesTriggerObj =
+    updatesTrigger && typeof updatesTrigger === 'object' ? updatesTrigger : {};
+
+  return {
+    ...prevTriggerObj,
+    ...updatesTriggerObj,
+    config: mergeTriggerConfig(prevTrigger, updatesTrigger),
+  };
+};
+
+const mergeWorkflowDefinitionUpdates = (
+  current: WorkflowDefinition,
+  updates: Partial<WorkflowDefinition>
+): WorkflowDefinition => ({
+  ...current,
+  ...updates,
+  trigger: updates.trigger
+    ? mergeTrigger(current.trigger, updates.trigger)
+    : current.trigger,
+});
+
 export interface WorkflowState {
   nodes: Node[];
   edges: Edge[];
@@ -46,6 +95,38 @@ export interface WorkflowState {
     id?: string;
   } | null;
 }
+
+const hasStartNodeSavedConfig = (startData: Node['data']): boolean =>
+  Boolean(
+    startData?.lastSaved ||
+      startData?.userModified ||
+      (startData?.name && startData?.dataAssets?.length > 0)
+  );
+
+const hasStartNodeTriggerConfig = (startData: Node['data']): boolean =>
+  Boolean(
+    startData?.triggerType || startData?.eventType || startData?.scheduleType
+  );
+
+const hasStartNodeInputOutputConfig = (startData: Node['data']): boolean =>
+  Boolean(startData?.input || startData?.output);
+
+// Pure derivation used by the start-node sync effect - no hook/prop
+// dependency, so it lives at module scope.
+const computeStartNodeConfigState = (
+  nodes: Node[]
+): { hasStart: boolean; isConfigured: boolean } => {
+  const startNode = nodes.find((node) => node.type === NodeType.StartEvent);
+  const hasStart = Boolean(startNode);
+  const startData = startNode?.data;
+  const isConfigured =
+    hasStart &&
+    (hasStartNodeSavedConfig(startData) ||
+      hasStartNodeTriggerConfig(startData) ||
+      hasStartNodeInputOutputConfig(startData));
+
+  return { hasStart, isConfigured };
+};
 
 interface UseWorkflowStateProps {
   initialConfig?: Partial<NodeConfig>;
@@ -139,37 +220,12 @@ export const useWorkflowState = ({
         }
 
         // Deep merge the updates with existing workflow definition
-        const updatedDefinition = {
-          ...prev.workflowDefinition,
-          ...updates,
-          trigger: updates.trigger
-            ? {
-                ...(prev.workflowDefinition.trigger &&
-                typeof prev.workflowDefinition.trigger === 'object'
-                  ? prev.workflowDefinition.trigger
-                  : {}),
-                ...(updates.trigger && typeof updates.trigger === 'object'
-                  ? updates.trigger
-                  : {}),
-                config: {
-                  ...(prev.workflowDefinition.trigger &&
-                  typeof prev.workflowDefinition.trigger === 'object' &&
-                  'config' in prev.workflowDefinition.trigger
-                    ? prev.workflowDefinition.trigger.config
-                    : {}),
-                  ...(updates.trigger &&
-                  typeof updates.trigger === 'object' &&
-                  'config' in updates.trigger
-                    ? updates.trigger.config
-                    : {}),
-                },
-              }
-            : prev.workflowDefinition.trigger,
-        };
-
         return {
           ...prev,
-          workflowDefinition: updatedDefinition,
+          workflowDefinition: mergeWorkflowDefinitionUpdates(
+            prev.workflowDefinition,
+            updates
+          ),
         };
       });
     },
@@ -261,22 +317,8 @@ export const useWorkflowState = ({
   };
 
   useEffect(() => {
-    const startNode = state.nodes.find(
-      (node) => node.type === NodeType.StartEvent
-    );
-    const hasStart = !!startNode;
-    const startData = startNode?.data;
     // If start node exists and has any configuration data, consider it configured
-    const hasSavedConfig =
-      startData?.lastSaved ||
-      startData?.userModified ||
-      (startData?.name && startData?.dataAssets?.length > 0);
-    const hasTriggerConfig =
-      startData?.triggerType || startData?.eventType || startData?.scheduleType;
-    const hasInputOutputConfig = startData?.input || startData?.output;
-    const isConfigured =
-      hasStart &&
-      Boolean(hasSavedConfig || hasTriggerConfig || hasInputOutputConfig);
+    const { hasStart, isConfigured } = computeStartNodeConfigState(state.nodes);
 
     if (
       state.hasStartNode !== hasStart ||

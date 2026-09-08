@@ -18,6 +18,17 @@ import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,
 } from './CardinalityDistributionChart.component';
 
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    axis: '#123456',
+    cursorFill: '#234567',
+    emptyFill: '#345678',
+    grid: '#456789',
+    inactive: '#56789a',
+    primary: '#6789ab',
+  }),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: ({
     children,
