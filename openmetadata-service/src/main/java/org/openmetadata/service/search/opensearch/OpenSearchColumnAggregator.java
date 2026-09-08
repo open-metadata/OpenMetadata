@@ -203,9 +203,11 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
   /**
    * Row-level-filter path (metadataStatus / hasConflicts / hasMissingMetadata, no tag filter). The
    * filter acts on the aggregate status of a grouped column, which is only known after grouping all
-   * of its occurrences — so we enumerate every candidate name (respecting any column-name pattern
-   * and scope filters), fetch their occurrences, group them, then filter + paginate the items in
-   * memory. This keeps the page count and per-page size consistent with the filtered result set.
+   * of a column's occurrences. We read {@code _source} for the scoped entities in one scan (the same
+   * mechanism the tag path uses), restricting {@code _source} to the column and identity fields,
+   * then group every column and filter + paginate the items in memory. This keeps the page count and
+   * per-page size consistent with the filtered set and reads every occurrence of each scanned
+   * entity, up to the {@code size(10000)}-entity scan cap.
    */
   private ColumnGridResponse aggregateColumnsWithRowFilters(ColumnAggregationRequest request)
       throws IOException {
@@ -216,6 +218,17 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
     try {
       fetchColumnsFromSource(query, allColumnsByName);
+
+      // The name-pattern wildcard in buildFilters only decides which entities are scanned;
+      // flat-object mapping can't isolate the matching column. Drop non-matching columns per
+      // column.
+      if (!nullOrEmpty(request.getColumnNamePattern())) {
+        String pattern = request.getColumnNamePattern().toLowerCase(Locale.ROOT);
+        allColumnsByName
+            .keySet()
+            .removeIf(name -> !name.toLowerCase(Locale.ROOT).contains(pattern));
+      }
+
       List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
       return ColumnAggregator.paginateFilteredItems(gridItems, request);
     } catch (OpenSearchException e) {

@@ -487,6 +487,51 @@ public class ColumnGridResourceIT {
     assertAllRowsHaveStatus(page2, MetadataStatus.COMPLETE);
   }
 
+  @Test
+  void test_getColumnGrid_metadataStatusWithColumnNamePattern(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Two COMPLETE columns; only one name contains "alpha".
+    String matchName = ns.prefix("alpha_amount");
+    String otherName = ns.prefix("zzz_other");
+    for (String colName : List.of(matchName, otherName)) {
+      Column col =
+          Columns.build(colName)
+              .withType(ColumnDataType.BIGINT)
+              .withDescription("has description")
+              .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+              .create();
+      Tables.create()
+          .name(ns.prefix("pat_" + colName))
+          .inSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(col))
+          .execute();
+    }
+    waitForSearchIndexRefresh(ns);
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&metadataStatus=COMPLETE&columnNamePattern=alpha&serviceName="
+                + service.getName());
+
+    // Combining columnNamePattern with a status filter must honor the pattern per column:
+    // the non-matching "zzz_other" column must not leak in (regression for the _source-scan path).
+    assertNotNull(response);
+    assertFalse(response.getColumns().isEmpty(), "the matching COMPLETE column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.COMPLETE);
+    assertTrue(
+        response.getColumns().stream()
+            .allMatch(c -> c.getColumnName().toLowerCase().contains("alpha")),
+        "only columns whose name matches the pattern should be returned");
+    assertEquals(
+        response.getColumns().size(),
+        response.getTotalUniqueColumns(),
+        "totalUniqueColumns must not include pattern-mismatched columns");
+  }
+
   /**
    * Every returned row must carry the requested aggregate status — the core guarantee of #26824
    * (before the fix a COMPLETE/INCOMPLETE filter leaked rows of other statuses).

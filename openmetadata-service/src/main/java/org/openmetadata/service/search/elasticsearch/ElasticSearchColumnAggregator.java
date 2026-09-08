@@ -285,8 +285,8 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
    * of a column's occurrences. We read {@code _source} for the scoped entities in one scan per
    * field-path group (the same mechanism the tag path uses), restricting {@code _source} to the
    * column and identity fields, then group every column and filter + paginate the items in memory.
-   * This keeps the page count and per-page size consistent with the filtered result set, reads all
-   * occurrences (no top_hits sampling gap), and avoids one query per name.
+   * This keeps the page count and per-page size consistent with the filtered result set and reads
+   * every occurrence of each scanned entity, up to the {@code size(10000)}-entity scan cap.
    */
   private ColumnGridResponse aggregateColumnsWithRowFilters(
       ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
@@ -309,6 +309,14 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
           throw e;
         }
       }
+    }
+
+    // The name-pattern wildcard in buildFilters only decides which entities are scanned;
+    // flat-object
+    // mapping can't isolate the matching column. Drop columns whose name doesn't match, per column.
+    if (!nullOrEmpty(request.getColumnNamePattern())) {
+      String pattern = request.getColumnNamePattern().toLowerCase(Locale.ROOT);
+      allColumnsByName.keySet().removeIf(name -> !name.toLowerCase(Locale.ROOT).contains(pattern));
     }
 
     List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
