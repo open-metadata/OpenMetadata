@@ -62,14 +62,35 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
-    const redeployResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
+    // The component awaits Promise.all over every selected pipeline, so the
+    // success toast needs all of them to deploy. Waiting on a single 200 only
+    // proves the first did: when a later deploy fails the UI shows the error
+    // toast instead, and the test then waits out its whole budget for a success
+    // toast that can never arrive. Collect every deploy and report the real
+    // status, so a genuine deploy failure fails fast and says why.
+    const deployStatuses: number[] = [];
+    page.on('response', (response) => {
+      if (
         response.request().method() === 'POST' &&
-        response.status() === 200
-    );
+        response.url().includes('/api/v1/services/ingestionPipelines/deploy')
+      ) {
+        deployStatuses.push(response.status());
+      }
+    });
+
     await page.getByRole('button', { name: 'Re Deploy' }).click();
-    await redeployResponse;
+
+    await expect
+      .poll(() => deployStatuses.length, {
+        message: 'Wait for both selected pipelines to report a deploy result',
+        timeout: 30_000,
+      })
+      .toBe(2);
+
+    expect(
+      deployStatuses,
+      'every selected pipeline must deploy for the success toast to appear'
+    ).toEqual([200, 200]);
 
     await toastNotification(page, /Pipelines Re Deploy Successfully/i);
   });
