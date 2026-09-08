@@ -126,7 +126,7 @@ jobs:
             wait_seconds: 8100
             timeout_minutes: 140
           # Collate's Jest suite — the only leg that fails on an OpenMetadata UI
-          # change that breaks a Collate unit test. ~50 min, Collate cap 90.
+          # change that breaks a Collate unit test. 16-20 min, Collate cap 90.
           - suite: Collate UI unit tests
             file: collate-ui-coverage.yml
             main_only: true
