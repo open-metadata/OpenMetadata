@@ -189,7 +189,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
@@ -10911,31 +10910,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Added columns are skipped by the existing-column loop below.
       storeColumnExtensions(entityId, addedColumns);
 
-      // Index origColumns to avoid an O(n²) stream search per updated column. ColumnKey encodes
-      // exactly what EntityUtil.columnMatch compares, so the index is equivalent to the scan for
-      // that predicate and only for it — any other predicate keeps the scan rather than silently
-      // pairing different columns than the recordListChange above did.
-      // putIfAbsent keeps the first match on a duplicate key, matching the stream findAny() this
-      // replaced — sibling columns colliding only on name case would otherwise carry forward
-      // metadata from a different column than before.
-      List<Column> scannableOrigColumns = origColumns;
-      Map<ColumnKey, Column> origColumnByKey = new HashMap<>();
-      boolean indexedLookup = columnMatch == EntityUtil.columnMatch;
-      if (indexedLookup) {
-        for (Column col : origColumns) {
-          origColumnByKey.putIfAbsent(columnLookupKey(col), col);
-        }
-      }
-
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         Column stored =
-            indexedLookup
-                ? origColumnByKey.get(columnLookupKey(updated))
-                : scannableOrigColumns.stream()
-                    .filter(c -> columnMatch.test(c, updated))
-                    .findAny()
-                    .orElse(null);
+            origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           continue;
         }
@@ -10990,30 +10968,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // NO-OP – to be overridden by entity-specific updaters when needed.
     }
 
-    record ColumnKey(String name, ColumnDataType dataType, ColumnDataType arrayDataType) {
-      @Override
-      public boolean equals(Object other) {
-        return other instanceof ColumnKey key
-            && dataType == key.dataType
-            && arrayDataType == key.arrayDataType
-            && (name == null ? key.name == null : name.equalsIgnoreCase(key.name));
-      }
-
-      @Override
-      public int hashCode() {
-        // String case conversion can expand characters and treats final sigma/dotless i
-        // differently from equalsIgnoreCase. Fold code points using the same simple casing.
-        int nameHash =
-            name == null
-                ? 0
-                : name.codePoints()
-                    .map(Character::toUpperCase)
-                    .map(Character::toLowerCase)
-                    .reduce(0, (hash, codePoint) -> 31 * hash + codePoint);
-        return Objects.hash(nameHash, dataType, arrayDataType);
-      }
-    }
-
     private static final class ColumnLineageChanges {
       private final Set<String> deletedColumnFqns = new LinkedHashSet<>();
       private final HashMap<String, String> renamedColumnFqns = new HashMap<>();
@@ -11031,10 +10985,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       private HashMap<String, String> renamedColumnFqns() {
         return new HashMap<>(renamedColumnFqns);
       }
-    }
-
-    private static ColumnKey columnLookupKey(Column col) {
-      return new ColumnKey(col.getName(), col.getDataType(), col.getArrayDataType());
     }
 
     private void updateColumnDescription(

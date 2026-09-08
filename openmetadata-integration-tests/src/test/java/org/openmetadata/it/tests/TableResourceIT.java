@@ -33,8 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -4222,29 +4220,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       assertTrue(storedLineage.contains(sourceFqn + ".keep_col"));
       assertFalse(storedLineage.contains(sourceFqn + ".delete_col"));
     }
-  }
-
-  @ParameterizedTest
-  @CsvSource({"\u03c3,\u03c2", "\u0130,i", "I,\u0131", "Column,COLUMN"})
-  void test_unicodeColumnMatchingPreservesMetadata(
-      String originalName, String updatedName, TestNamespace ns) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    CreateTable request =
-        new CreateTable()
-            .withName(ns.prefix("unicode_columns"))
-            .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withColumns(
-                List.of(
-                    ColumnBuilder.of(originalName, "BIGINT")
-                        .build()
-                        .withDescription("Steward description")
-                        .withDisplayName("Steward name")));
-    SdkClients.adminClient().tables().create(request);
-    request.setColumns(List.of(ColumnBuilder.of(updatedName, "BIGINT").build()));
-    Table updated = SdkClients.botClient().tables().createOrUpdate(request);
-    assertEquals("Steward description", updated.getColumns().getFirst().getDescription());
-    assertEquals("Steward name", updated.getColumns().getFirst().getDisplayName());
   }
 
   private static void addColumnLineage(

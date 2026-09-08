@@ -925,8 +925,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               () ->
                   columnLineageOutcome(
                       indexName, renames.size() + deletions.size(), client.updateByQuery(request)),
-              () ->
-                  client.indices().refresh(r -> r.index(request.index()).ignoreUnavailable(true))));
+              () -> client.indices().refresh(r -> r.index(request.index()))));
     } catch (IOException | ElasticsearchException e) {
       LOG.error("Error reconciling column lineage for index {}", indexName, e);
     }
@@ -939,7 +938,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     Map<String, JsonData> params =
         Map.of("columnUpdates", JsonData.of(renames), "deletedFQNs", JsonData.of(deletions));
     // A following change queries the new FQN; without a refresh it can match zero documents,
-    // so conflict retries cannot recover it. Deletes introduce no new FQNs to make searchable.
+    // so conflict retries cannot recover it.
     return UpdateByQueryRequest.of(
         req ->
             req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
@@ -950,8 +949,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                         s.source(ss -> ss.scriptString(RECONCILE_COLUMN_LINEAGE_SCRIPT))
                             .lang(ScriptLanguage.Painless)
                             .params(params))
-                .ignoreUnavailable(true)
-                .refresh(!renames.isEmpty()));
+                .refresh(true));
   }
 
   private SearchUtils.ColumnLineageFlushOutcome columnLineageOutcome(

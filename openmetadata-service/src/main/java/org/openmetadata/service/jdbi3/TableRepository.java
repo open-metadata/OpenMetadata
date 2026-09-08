@@ -35,12 +35,12 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
 import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
 import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
-import static org.openmetadata.service.lineage.ColumnLineageChildren.COLUMN_LINEAGE_SEARCH_INDICES;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -2468,7 +2468,7 @@ public class TableRepository extends EntityRepository<Table> {
       searchRepository
           .getSearchClient()
           .reconcileColumnsInUpstreamLineage(
-              COLUMN_LINEAGE_SEARCH_INDICES, renamedColumnFqns, deletedColumnFqns);
+              GLOBAL_SEARCH_ALIAS, renamedColumnFqns, deletedColumnFqns);
     }
   }
 

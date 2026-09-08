@@ -1,7 +1,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -73,27 +72,6 @@ class ColumnLineageReconciliationIT {
   }
 
   @Test
-  void deletionDoesNotForceARefresh(TestNamespace ns) throws Exception {
-    try (LineageIndex index = new LineageIndex(ns)) {
-      JsonNode refreshCount =
-          index
-              .request("GET", "/_stats/refresh", null)
-              .at("/_all/primaries/refresh/external_total");
-      assertTrue(refreshCount.isIntegralNumber());
-      index.client.deleteColumnsInUpstreamLineage(index.name, List.of("source.delete"));
-
-      assertEquals(
-          refreshCount,
-          index
-              .request("GET", "/_stats/refresh", null)
-              .at("/_all/primaries/refresh/external_total"));
-      assertEquals(
-          JsonUtils.readTree("[\"source.rename\",\"source.keep\"]"),
-          index.readSource().at("/upstreamLineage/0/columns/0/fromColumns"));
-    }
-  }
-
-  @Test
   void retriesConflictsFromAnUnrefreshedWrite(TestNamespace ns) throws Exception {
     try (LineageIndex index = new LineageIndex(ns)) {
       // The search snapshot sees the original version until an explicit refresh. This models
@@ -124,7 +102,7 @@ class ColumnLineageReconciliationIT {
           ]}]}
           """);
       index.client.reconcileColumnsInUpstreamLineage(
-          index.name + "," + index.name + "_missing",
+          index.name,
           Map.of("source.rename", "source.RENAME", "target.rename", "target.RENAME"),
           List.of("source.delete", "target.delete"));
       JsonNode expected =
