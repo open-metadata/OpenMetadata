@@ -269,7 +269,13 @@ export const editTags = async (page: Page, tagName: string) => {
   // isVisible() resolves immediately, so gate on whichever affordance renders
   // before discriminating -- otherwise a slow render picks the wrong branch
   // and the click waits out the test.
-  await expect(editIcon.or(addTagChip)).toBeVisible({ timeout: 15000 });
+  // Counted, not unioned: a combined locator would be ambiguous under strict
+  // mode on any page carrying more than one of either affordance.
+  await expect
+    .poll(async () => (await editIcon.count()) + (await addTagChip.count()), {
+      timeout: 15000,
+    })
+    .toBeGreaterThan(0);
 
   if (await editIcon.isVisible()) {
     await editIcon.click();
@@ -331,7 +337,13 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     '[data-testid="glossary-container"] [data-testid="add-tag"]'
   );
 
-  await expect(editIcon.or(addTermChip)).toBeVisible({ timeout: 15000 });
+  // Counted, not unioned: a combined locator would be ambiguous under strict
+  // mode on any page carrying more than one of either affordance.
+  await expect
+    .poll(async () => (await editIcon.count()) + (await addTermChip.count()), {
+      timeout: 15000,
+    })
+    .toBeGreaterThan(0);
 
   if (await editIcon.isVisible()) {
     await editIcon.click();

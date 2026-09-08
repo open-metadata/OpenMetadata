@@ -731,14 +731,15 @@ export const updateDescription = async (
   const editDescriptionButton = page.getByTestId('edit-description');
   const editButton = page.getByTestId('edit-button');
 
-  // Entities expose one affordance or the other. Gate on whichever renders:
-  // the previous try/catch spent a full expect timeout failing the first
-  // before it even looked for the second.
-  await expect(editDescriptionButton.or(editButton)).toBeVisible();
-
-  if (await editDescriptionButton.isVisible()) {
+  // Prefer the dedicated affordance and fall back to the generic one. These
+  // must NOT be combined with .or(): a page carries one `edit-description` but
+  // several `edit-button`s, so the union is ambiguous under strict mode where
+  // each locator alone is not.
+  try {
+    await expect(editDescriptionButton).toBeVisible();
     await editDescriptionButton.click();
-  } else {
+  } catch {
+    await expect(editButton).toBeVisible();
     await editButton.click();
   }
 
