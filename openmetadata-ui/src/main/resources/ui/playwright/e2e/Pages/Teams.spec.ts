@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import {
   EDIT_USER_FOR_TEAM_RULES,
   OWNER_TEAM_RULES,
@@ -22,6 +23,7 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -49,6 +51,7 @@ import {
   addTeamOwnerToEntity,
   addUserInTeam,
   addUserTeam,
+  applyEntityTypeFilterValue,
   checkTeamTabCount,
   createTeam,
   executionOnOwnerGroupTeam,
@@ -57,9 +60,11 @@ import {
   hardDeleteTeam,
   openAddTeamModal,
   searchTeam,
+  selectAssetsFilterFromDropdown,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
   verifyTeamListingAssetCount,
+  waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
 
 base.describe.configure({ mode: 'serial' });
@@ -711,6 +716,128 @@ test.describe('Teams Page', () => {
     }
   });
 
+  test.describe('Team assets entity type filter', () => {
+    let filterTable: TableClass;
+    let filterTopic: TopicClass;
+    let filterTeam: TeamClass;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        // Instantiate here so a retry regenerates entity names instead of
+        // re-creating the same ones and hitting 409s
+        filterTable = new TableClass();
+        filterTopic = new TopicClass();
+        filterTeam = new TeamClass();
+
+        await filterTable.create(apiContext);
+        await filterTopic.create(apiContext);
+        await filterTeam.create(apiContext);
+
+        const ownerPatch: Operation[] = [
+          {
+            op: 'add',
+            path: '/owners/-',
+            value: { id: filterTeam.responseData.id, type: 'team' },
+          },
+        ];
+        await filterTable.patch({ apiContext, patchData: ownerPatch });
+        await filterTopic.patch({ apiContext, patchData: ownerPatch });
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await filterTable.delete(apiContext);
+        await filterTopic.delete(apiContext);
+        await filterTeam.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test('should apply, toggle off and clear the entity type filter', async ({
+      page,
+    }) => {
+      const teamId = filterTeam.responseData.id ?? '';
+
+      expect(teamId).not.toBe('');
+
+      const tableCard = page.getByTestId(
+        `table-data-card_${filterTable.entityResponseData?.['fullyQualifiedName']}`
+      );
+      const topicCard = page.getByTestId(
+        `table-data-card_${filterTopic.entityResponseData?.['fullyQualifiedName']}`
+      );
+      const entityTypeFilterChip = page.getByRole('button', {
+        name: 'Entity Type',
+      });
+
+      await test.step('Apply entity type filter', async () => {
+        await filterTeam.visitTeamPage(page);
+
+        const assetsResponse = waitForTeamAssetsSearchResponse(page, teamId);
+        await page.getByTestId('assets').click();
+        const assetsSearchResponse = await assetsResponse;
+
+        expect(assetsSearchResponse.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+
+        await expect(entityTypeFilterChip).toBeVisible();
+
+        await applyEntityTypeFilterValue(page, teamId, 'table-checkbox');
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).not.toBeVisible();
+      });
+
+      await test.step('Toggle the filter off from the dropdown', async () => {
+        const removeFilterResponse = waitForTeamAssetsSearchResponse(
+          page,
+          teamId
+        );
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+        const removeSearchResponse = await removeFilterResponse;
+
+        expect(removeSearchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+        await expect(entityTypeFilterChip).not.toBeVisible();
+      });
+
+      await test.step('Clear removes the selected filter entirely', async () => {
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+        await applyEntityTypeFilterValue(page, teamId, 'table-checkbox');
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).not.toBeVisible();
+
+        const clearResponse = waitForTeamAssetsSearchResponse(page, teamId);
+        await page.getByText('Clear').click();
+        const clearSearchResponse = await clearResponse;
+
+        expect(clearSearchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+        await expect(entityTypeFilterChip).not.toBeVisible();
+      });
+    });
+  });
+
   test('Delete a user from the table', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
@@ -1173,7 +1300,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${teamID}`,
       description: 'playwright data consumer team description',
       teamType: 'BusinessUnit',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
@@ -1182,7 +1308,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${team2ID}`,
       description: 'playwright data consumer team description',
       teamType: 'Department',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
@@ -1191,7 +1316,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${team3ID}`,
       description: 'playwright data consumer team description',
       teamType: 'Division',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
