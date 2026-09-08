@@ -7,7 +7,8 @@
   "properties": {
     "query": {
       "description": "The SPARQL query string",
-      "type": "string"
+      "type": "string",
+      "maxLength": 100000
     },
     "format": {
       "description": "Response format for the query results",
@@ -18,8 +19,8 @@
     "timeout": {
       "description": "Query timeout in milliseconds",
       "type": "integer",
-      "minimum": 0,
-      "maximum": 300000,
+      "minimum": 1,
+      "maximum": 30000,
       "default": 30000
     },
     "defaultGraphUri": {

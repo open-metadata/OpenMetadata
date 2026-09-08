@@ -37,7 +37,7 @@ jobs:
   # The sole required check for this workflow. Must stay in the caller: inside
   # py-tests-shared.yml it would report as "py-tests-postgres / python / <job>".
   py-tests-status:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-status (ignored label)' || 'py-tests-status' }}
+    name: py-tests-status
     needs: python
     if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     runs-on: ubuntu-latest

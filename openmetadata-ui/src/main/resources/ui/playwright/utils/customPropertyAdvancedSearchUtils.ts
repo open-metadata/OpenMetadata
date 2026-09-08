@@ -400,6 +400,55 @@ export const getOperatorLabel = (operator: string): string => {
   return operatorMap[operator] || operator;
 };
 
+// The query builder renders native date/datetime inputs, which only accept
+// ISO-like fill values — convert from the CP display format
+// (dd-MM-yyyy[ HH:mm:ss]). Detection is pattern-based because several call
+// sites don't pass propertyType.
+const DATE_DISPLAY_PATTERN = /^(\d{2})-(\d{2})-(\d{4})$/;
+const DATE_TIME_DISPLAY_PATTERN =
+  /^(\d{2})-(\d{2})-(\d{4}) (\d{2}:\d{2}:\d{2})$/;
+
+const toNativeDateInputValue = (value: string | number): string => {
+  const stringValue = String(value);
+  let result = stringValue;
+
+  const dateTimeMatch = stringValue.match(DATE_TIME_DISPLAY_PATTERN);
+  const dateMatch = stringValue.match(DATE_DISPLAY_PATTERN);
+
+  if (dateTimeMatch) {
+    const [, day, month, year, time] = dateTimeMatch;
+    result = `${year}-${month}-${day}T${time}`;
+  } else if (dateMatch) {
+    const [, day, month, year] = dateMatch;
+    result = `${year}-${month}-${day}`;
+  }
+
+  return result;
+};
+
+// Playwright's fill() rejects datetime-local values that carry seconds even
+// when the input has step=1, so converted date values are written through the
+// native value setter (fill() is used for everything else).
+const fillPropertyValue = async (
+  input: ReturnType<Page['locator']>,
+  value: string | number
+) => {
+  const nativeValue = toNativeDateInputValue(value);
+
+  if (nativeValue === String(value)) {
+    await input.fill(String(value));
+  } else {
+    await input.evaluate((element, val) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      setter?.call(element, val);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }, nativeValue);
+  }
+};
+
 const handlePropertyValueInput = async (
   page: Page,
   ruleLocator: ReturnType<Page['locator']>,
@@ -413,7 +462,7 @@ const handlePropertyValueInput = async (
   // Fill the input only if it's visible
   if (await inputElement.isVisible()) {
     // Convert object values to JSON strings
-    const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
+    const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
     const apiResponsePromise = isEntityRefProperty
       ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
@@ -425,11 +474,14 @@ const handlePropertyValueInput = async (
       await apiResponsePromise;
     }
 
-    await inputElement.fill(stringValue);
+    await fillPropertyValue(inputElement, stringValue);
 
-    // Press Enter for multiselect operators and date types
-    if (
-      MULTISELECT_OPERATORS.includes(operator) ||
+    if (MULTISELECT_OPERATORS.includes(operator)) {
+      await page
+        .locator('[role="listbox"]:visible')
+        .getByRole('option', { name: String(value), exact: true })
+        .click();
+    } else if (
       ((operator === 'equal' || operator === 'not_equal') &&
         propertyType === 'dateTime-cp') ||
       propertyType === 'date-cp'
@@ -440,7 +492,8 @@ const handlePropertyValueInput = async (
     // Handle entity reference selection
     if (isEntityRefProperty) {
       await page
-        .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
+        .locator('[role="listbox"]:visible [role="option"]')
+        .filter({ hasText: value as string })
         .first()
         .click();
     }
@@ -459,21 +512,21 @@ export const applyCustomPropertyFilter = async (
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     'Custom Properties',
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     entityType,
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     propertyName,
     true
   );
@@ -481,7 +534,7 @@ export const applyCustomPropertyFilter = async (
   const operatorLabel = getOperatorLabel(operator);
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.locator('.rule--operator'),
     operatorLabel
   );
 
@@ -495,9 +548,9 @@ export const applyCustomPropertyFilter = async (
       const endInput = ruleLocator.locator('.rule--value input').last();
 
       await startInput.click();
-      await startInput.fill(String(rangeValue.start));
+      await fillPropertyValue(startInput, rangeValue.start);
       await endInput.click();
-      await endInput.fill(String(rangeValue.end));
+      await fillPropertyValue(endInput, rangeValue.end);
 
       await page.keyboard.press('Enter');
     } else {
@@ -531,28 +584,37 @@ export const verifySearchResults = async (
 
   if (shouldBeVisible) {
     if (!(await dashboardCard.isVisible())) {
-      await expect
-        .poll(
-          async () => {
-            const retryResponse = await page.request.get(response.url());
+      // Re-query the backend through an authenticated context. `page.request`
+      // shares cookies but NOT the app's `Authorization: Bearer <JWT>` header,
+      // so re-fetching the search URL with it returns 401 "Token not present"
+      // and the poll would never resolve. getApiContext attaches the token.
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        await expect
+          .poll(
+            async () => {
+              const retryResponse = await apiContext.get(response.url());
 
-            if (!retryResponse.ok()) {
-              return false;
+              if (!retryResponse.ok()) {
+                return false;
+              }
+
+              const searchData =
+                (await retryResponse.json()) as SearchResponseData;
+
+              return searchData.hits.hits.some(
+                (hit) => hit._source?.fullyQualifiedName === dashboardFQN
+              );
+            },
+            {
+              intervals: [1000, 2000, 5000],
+              timeout: 30000,
             }
-
-            const searchData =
-              (await retryResponse.json()) as SearchResponseData;
-
-            return searchData.hits.hits.some(
-              (hit) => hit._source?.fullyQualifiedName === dashboardFQN
-            );
-          },
-          {
-            intervals: [1000, 2000, 5000],
-            timeout: 30000,
-          }
-        )
-        .toBe(true);
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
 
       await showAdvancedSearchDialog(page);
       const retrySearchResponse = page.waitForResponse(searchResponsePattern);

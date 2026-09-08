@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyDeleteResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyDeleteResult",
+  "description": "Result of a token-protected ontology resource deletion.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyDeleteResult",
+  "properties": {
+    "resource": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "reassignedChildren": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cascaded": {
+      "type": "boolean"
+    },
+    "hardDeleted": {
+      "type": "boolean"
+    }
+  },
+  "required": ["resource", "reassignedChildren", "cascaded", "hardDeleted"],
+  "additionalProperties": false
+}

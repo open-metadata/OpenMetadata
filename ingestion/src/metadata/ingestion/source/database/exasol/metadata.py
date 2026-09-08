@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_exasol.base import EXADialect
@@ -25,7 +25,7 @@ EXADialect.get_all_table_comments = get_all_table_comments  # pyright: ignore[re
 
 class ExasolSource(CommonDbSourceService):
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")

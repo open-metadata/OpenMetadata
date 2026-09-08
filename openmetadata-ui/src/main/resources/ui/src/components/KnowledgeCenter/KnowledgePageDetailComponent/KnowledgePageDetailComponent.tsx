@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -24,14 +26,12 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
@@ -54,16 +54,14 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import {
+  ArticleDraft,
+  useArticleDraftStore,
+} from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -72,7 +70,6 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,
   getKnowledgePageByFqn,
@@ -87,7 +84,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import i18n from '../../../utils/i18next/LocalUtil';
+import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -102,6 +99,39 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
+
+// Pure helper (module scope): decides whether a locally-stashed draft should be
+// merged into the freshly fetched page, and produces the merged shape. Kept out of
+// fetchKnowledgePage to keep that function's branching low.
+function getDraftMergeCandidate(
+  draft: ArticleDraft | undefined,
+  response: KnowledgePage
+): KnowledgePage | undefined {
+  if (!draft) {
+    return undefined;
+  }
+
+  const descriptionChanged =
+    draft.description !== undefined &&
+    draft.description !== response.description;
+  const displayNameChanged =
+    draft.displayName !== undefined &&
+    draft.displayName !== response.displayName;
+  const hasChanges = descriptionChanged || displayNameChanged;
+  const serverChangedSinceDraft =
+    draft.version !== undefined && draft.version !== response.version;
+
+  if (!hasChanges || serverChangedSinceDraft) {
+    return undefined;
+  }
+
+  return {
+    ...response,
+    description: draft.description ?? response.description,
+    displayName: draft.displayName ?? response.displayName,
+  };
+}
+
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
   isRightPanelOpen?: boolean;
@@ -128,7 +158,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { setDraft, removeDraft, getDraft } = useArticleDraftStore();
   const USERId = currentUser?.id ?? '';
 
@@ -170,6 +199,39 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  // Persists a locally-stashed draft (created while offline/unsaved) back to the
+  // server once the canonical page has been fetched.
+  const syncDraftedKnowledgePage = async (
+    response: KnowledgePage,
+    pageWithDraft: KnowledgePage
+  ) => {
+    try {
+      const patch = compare(response, pageWithDraft);
+      const saved = await patchKnowledgePage(response.id, patch);
+      setKnowledgePage((prev) => {
+        if (prev?.id !== response.id) {
+          return prev;
+        }
+
+        return {
+          ...(prev ?? response),
+          description: saved.description,
+          displayName: saved.displayName,
+          version: saved.version,
+        };
+      });
+      removeDraft(response.id);
+      if (response.id === knowledgePageIdRef.current) {
+        setContentChangeState(ContentChangeState.SAVED);
+      }
+    } catch (syncError) {
+      showErrorToast(syncError as AxiosError);
+      if (response.id === knowledgePageIdRef.current) {
+        setContentChangeState(ContentChangeState.UN_SAVED);
+      }
+    }
+  };
+
   const fetchKnowledgePage = async (fqn: string) => {
     setIsLoading(true);
     try {
@@ -182,49 +244,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       });
 
       const draft = getDraft(response.id);
-      const hasChanges =
-        draft &&
-        ((draft.description !== undefined &&
-          draft.description !== response.description) ||
-          (draft.displayName !== undefined &&
-            draft.displayName !== response.displayName));
+      const pageWithDraft = getDraftMergeCandidate(draft, response);
 
-      const serverChangedSinceDraft =
-        draft?.version !== undefined && draft.version !== response.version;
-
-      if (hasChanges && !serverChangedSinceDraft) {
-        const pageWithDraft: KnowledgePage = {
-          ...response,
-          description: draft.description ?? response.description,
-          displayName: draft.displayName ?? response.displayName,
-        };
+      if (pageWithDraft) {
         setKnowledgePage(pageWithDraft);
-
-        try {
-          const patch = compare(response, pageWithDraft);
-          const saved = await patchKnowledgePage(response.id, patch);
-          setKnowledgePage((prev) => {
-            if (prev?.id !== response.id) {
-              return prev;
-            }
-
-            return {
-              ...(prev ?? response),
-              description: saved.description,
-              displayName: saved.displayName,
-              version: saved.version,
-            };
-          });
-          removeDraft(response.id);
-          if (response.id === knowledgePageIdRef.current) {
-            setContentChangeState(ContentChangeState.SAVED);
-          }
-        } catch (syncError) {
-          showErrorToast(syncError as AxiosError);
-          if (response.id === knowledgePageIdRef.current) {
-            setContentChangeState(ContentChangeState.UN_SAVED);
-          }
-        }
+        await syncDraftedKnowledgePage(response, pageWithDraft);
       } else {
         setKnowledgePage(response);
         removeDraft(response.id);
@@ -359,14 +383,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       await unFollowKnowledgePageHandler(knowledgePageId);
     } else {
       await followKnowledgePageHandler(knowledgePageId);
-    }
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
     }
   };
 
@@ -985,18 +1001,33 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.article'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: t('label.view-entity', { entity: t('label.article') }),
+              }}
+            />
+          }
+          icon={<Lock className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 
   if (!knowledgePage) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return (
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          icon={<Articles className="tw:text-secondary" />}
+          title={t('label.no-entity', { entity: t('label.article') })}
+        />
+      </div>
+    );
   }
 
   return (
@@ -1004,13 +1035,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
           threadLink={threadLink}
-          threadType={ThreadType.Conversation}
-          updateThreadHandler={updateFeed}
           onCancel={() => setThreadLink('')}
         />
       ) : null}

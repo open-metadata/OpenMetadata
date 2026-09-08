@@ -46,7 +46,9 @@ You can find further information on the Oracle connector in the <a href="https:/
 $$section
 ### Scheme $(id="scheme")
 
-**oracle+cx_oracle**: Sqlalchemy scheme to connect to Oracle.
+**oracle+oracledb**: SQLAlchemy scheme to connect to Oracle.
+
+**oracle+cx_oracle**: Deprecated compatibility value. Connections use python-oracledb.
 $$
 
 $$section

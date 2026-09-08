@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
@@ -22,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -295,6 +298,37 @@ public class EventSubscriptionResourceIT
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
     assertNotNull(subscription.getFilteringRules());
+  }
+
+  @Test
+  void test_notificationResourcesServeSupportedEventTypes() throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl() + "/v1/events/subscriptions/notification/resources"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode());
+
+    JsonNode glossaryTerm =
+        StreamSupport.stream(
+                new ObjectMapper().readTree(response.body()).get("data").spliterator(), false)
+            .filter(descriptor -> "glossaryTerm".equals(descriptor.get("name").asText()))
+            .findFirst()
+            .orElseThrow();
+    List<String> eventTypes =
+        StreamSupport.stream(glossaryTerm.get("supportedEventTypes").spliterator(), false)
+            .map(JsonNode::asText)
+            .toList();
+    assertTrue(eventTypes.contains("entityCreated"));
+    assertTrue(eventTypes.contains("threadCreated"));
+    assertTrue(eventTypes.contains("taskResolved"));
+    assertFalse(eventTypes.contains("suggestionCreated"));
+    assertFalse(eventTypes.contains("entityFieldsChanged"));
   }
 
   @Test

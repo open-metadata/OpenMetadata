@@ -273,7 +273,9 @@ jest.mock('../../common/Table/TableV2', () =>
         {dataSource.length === 0
           ? !loading && locale?.emptyText
           : dataSource.map((record, index) => (
-              <div data-testid={`glossary-row-${index}`} key={index}>
+              <div
+                data-testid={`glossary-row-${index}`}
+                key={record.fullyQualifiedName as string}>
                 {expandable?.expandIcon?.({
                   expanded: false,
                   onExpand: (rec) => expandable?.onExpand?.(true, rec),
@@ -1052,9 +1054,10 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const tagIcon = screen.getByTestId('tag-icon');
-
-        expect(tagIcon).toBeInTheDocument();
+        expect(screen.getByTestId('icon-image')).toHaveAttribute(
+          'src',
+          'https://example.com/icon.png'
+        );
       });
     });
 

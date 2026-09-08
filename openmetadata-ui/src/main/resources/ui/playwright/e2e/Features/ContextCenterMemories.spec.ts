@@ -566,6 +566,8 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
         await page.getByRole('button', { name: /cancel/i }).click();
+        await expect(dialog).not.toBeVisible();
+        await expect(page).not.toHaveURL(/memory=/);
       });
     });
 

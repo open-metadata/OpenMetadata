@@ -1,0 +1,34 @@
+@prefix hr: <https://open-metadata.org/library/hr-open/workforce/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+hr:Worker a skos:Concept ;
+  skos:prefLabel "Worker" .
+
+hr:Employee a skos:Concept ;
+  skos:prefLabel "Employee" ;
+  skos:broader hr:Worker .
+
+hr:Contractor a skos:Concept ;
+  skos:prefLabel "Contractor" ;
+  skos:broader hr:Worker .
+
+hr:Position a skos:Concept ;
+  skos:prefLabel "Position" .
+
+hr:Job a skos:Concept ;
+  skos:prefLabel "Job" ;
+  skos:broader hr:Position .
+
+hr:Organization a skos:Concept ;
+  skos:prefLabel "Organization" .
+
+hr:Department a skos:Concept ;
+  skos:prefLabel "Department" ;
+  skos:broader hr:Organization .
+
+hr:Compensation a skos:Concept ;
+  skos:prefLabel "Compensation" .
+
+hr:Benefit a skos:Concept ;
+  skos:prefLabel "Benefit" ;
+  skos:broader hr:Compensation .

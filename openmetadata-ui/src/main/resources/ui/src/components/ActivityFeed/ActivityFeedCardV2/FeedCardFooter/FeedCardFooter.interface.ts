@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Post, Thread } from '../../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../../generated/entity/feed/conversation';
 
 export interface FeedCardFooterProps {
-  feed: Thread;
-  post?: Post;
-  isPost?: boolean;
+  conversation?: Conversation;
+  conversationId: string;
+  reply?: ConversationReply;
+  isReply?: boolean;
   isForFeedTab?: boolean;
   componentsVisibility?: {
     showThreadIcon?: boolean;

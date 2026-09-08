@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { APIRequestContext, expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -24,7 +25,11 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
+import {
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
+  selectNullOption,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -32,6 +37,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
+const dataProduct = new DataProduct([domain]);
 const table = new TableClass();
 const tier = new TagClass({
   classification: 'Tier',
@@ -41,6 +47,38 @@ const tierWithoutAsset = new TagClass({
   classification: 'Tier',
 });
 let user: UserClass;
+
+// Adding an asset to a data product updates the asset's search document
+// asynchronously, and the Data Products dropdown reads its options from that
+// aggregation — so the option only exists once the table doc carries the link.
+const waitForDataProductOnAsset = async (
+  apiContext: APIRequestContext,
+  assetFqn: string,
+  dataProductName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            `"${assetFqn}"`
+          )}&index=table&from=0&size=1`
+        );
+
+        if (!response.ok()) {
+          return false;
+        }
+
+        const data = await response.json();
+        const dataProducts: { name?: string }[] =
+          data?.hits?.hits?.[0]?._source?.dataProducts ?? [];
+
+        return dataProducts.some((product) => product.name === dataProductName);
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -90,11 +128,25 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       },
     ],
   });
+
+  // The data product is created after the table is patched with its domain so
+  // the asset already belongs to the domain the data product lives in.
+  await dataProduct.create(apiContext);
+  await dataProduct.addAssets(apiContext, [
+    { id: table.entityResponseData.id, type: 'table' },
+  ]);
+  await waitForDataProductOnAsset(
+    apiContext,
+    table.entityResponseData.fullyQualifiedName,
+    dataProduct.data.name
+  );
+
   await afterAction();
 });
 
 test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
+  await dataProduct.delete(apiContext);
   await user.delete(apiContext);
   await afterAction();
 });
@@ -144,6 +196,10 @@ test('should search for empty or null filters', async ({ page }) => {
     { label: 'Owners', key: 'ownerDisplayName' },
     { label: 'Tag', key: 'tags.tagFQN' },
     { label: 'Domains', key: 'domains.displayName.keyword' },
+    {
+      label: 'Data Products',
+      key: 'dataProducts.displayName.keyword',
+    },
     { label: 'Tier', key: 'tier.tagFQN' },
   ];
 
@@ -201,6 +257,33 @@ test('should search for multiple values along with null filters', async ({
   for (const filter of items) {
     await selectNullOption(page, filter);
   }
+});
+
+test('should filter assets by data product', async ({ page }) => {
+  const filter = {
+    label: 'Data Products',
+    key: 'dataProducts.displayName.keyword',
+    // addAssets overwrites responseData with the bulk-operation report, so the
+    // display name is read from the create payload instead.
+    value: dataProduct.data.displayName,
+  };
+
+  await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+  await searchAndClickOnOption(page, filter, true);
+  await clickUpdateButtonIfVisible(page);
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.getByTestId(`search-dropdown-${filter.label}`)
+  ).toContainText('(1)');
+
+  await expect(
+    page.getByTestId(
+      `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+    )
+  ).toBeVisible();
+
+  await page.getByTestId('clear-all-chips').click();
 });
 
 test('should persist quick filter on global search', async ({ page }) => {

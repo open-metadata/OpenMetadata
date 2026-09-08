@@ -14,14 +14,44 @@
 package org.openmetadata.mcp.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ForbiddenException;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Pins {@link GetEntityTool#cleanEntityResponse}. The entity-level description must always be
@@ -31,6 +61,174 @@ import org.openmetadata.schema.utils.JsonUtils;
  * both table and column level.
  */
 class GetEntityToolTest {
+
+  @Test
+  void contentOnlyPreservesViewBasicAuthorization() throws Exception {
+    String fqn = "Knowledge.Article";
+    Page page =
+        new Page()
+            .withId(java.util.UUID.randomUUID())
+            .withName("Article")
+            .withFullyQualifiedName(fqn)
+            .withDescription("full article body");
+    Authorizer authorizer = mock(Authorizer.class);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
+          .thenReturn(page);
+      result =
+          new GetEntityTool()
+              .execute(
+                  authorizer,
+                  securityContext,
+                  Map.of("entityType", Entity.PAGE, "fqn", fqn, "include", List.of("content")));
+    }
+
+    ArgumentCaptor<OperationContext> operation = ArgumentCaptor.forClass(OperationContext.class);
+    ArgumentCaptor<ResourceContextInterface> resource =
+        ArgumentCaptor.forClass(ResourceContextInterface.class);
+    verify(authorizer, times(1)).authorize(any(), operation.capture(), resource.capture());
+    assertEquals(
+        List.of(MetadataOperation.VIEW_BASIC),
+        operation.getValue().getOperations(resource.getValue()));
+    assertEquals(Entity.PAGE, result.get("entityType"));
+    assertEquals(fqn, result.get("fullyQualifiedName"));
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("full article body");
+    assertThat(result).doesNotContainKey("description");
+  }
+
+  /**
+   * A context memory's visibility comes from its own shareConfig rather than from a role or policy,
+   * so a read by name applies that rule on top of the operation check - the same answer the REST
+   * endpoint gives.
+   */
+  @Test
+  void plainReadDeniesAnotherUsersPrivateMemory() {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("bob"), null, null));
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              new GetEntityTool()
+                  .execute(
+                      mock(Authorizer.class),
+                      securityContext,
+                      Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn)));
+    }
+  }
+
+  @Test
+  void contentReadDeniesAnotherUsersPrivateMemory() {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("bob"), null, null));
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              new GetEntityTool()
+                  .execute(
+                      mock(Authorizer.class),
+                      securityContext,
+                      Map.of(
+                          "entityType",
+                          Entity.CONTEXT_MEMORY,
+                          "fqn",
+                          fqn,
+                          "include",
+                          List.of("content"))));
+    }
+  }
+
+  /**
+   * The regression guard for the fetch itself: owners is a relationship field, absent unless the
+   * read asks for it, and an ownerless memory reads as nobody's - which would deny the owner their
+   * own private memory.
+   */
+  @Test
+  void contentReadFetchesOwnersSoTheOwnerKeepsReadingTheirOwnPrivateMemory() throws Exception {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.CONTEXT_MEMORY, fqn, Entity.FIELD_OWNERS, Include.NON_DELETED))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContext,
+                  Map.of(
+                      "entityType",
+                      Entity.CONTEXT_MEMORY,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content")));
+    }
+
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("the secret answer");
+  }
+
+  private static ContextMemory privateMemoryOwnedBy(String owner, String fqn) {
+    return new ContextMemory()
+        .withId(java.util.UUID.randomUUID())
+        .withName(fqn)
+        .withFullyQualifiedName(fqn)
+        .withAnswer("the secret answer")
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(java.util.UUID.randomUUID())
+                    .withType(Entity.USER)
+                    .withName(owner)
+                    .withFullyQualifiedName(owner)))
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+  }
+
+  private static CatalogSecurityContext securityContextFor(String userName) {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn(userName);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    return securityContext;
+  }
 
   private static Map<String, Object> column(String name, String description) {
     Map<String, Object> column = new HashMap<>();
@@ -376,5 +574,32 @@ class GetEntityToolTest {
   @SuppressWarnings("unchecked")
   private static Map<String, Object> castMap(Object value) {
     return (Map<String, Object>) value;
+  }
+
+  @Test
+  void parseReferenceSplitsOnTheFirstColonOnly() {
+    // A testCase FQN embeds colons; splitting on all of them would truncate a valid entity.
+    GetEntityTool.EntityRef parsed =
+        GetEntityTool.parseReference("testCase:svc.db.schema.tbl.col::column_values_between");
+
+    assertEquals("testCase", parsed.entityType());
+    assertEquals("svc.db.schema.tbl.col::column_values_between", parsed.fqn());
+  }
+
+  @Test
+  void parseReferenceTrimsAndAcceptsTheOrdinaryForm() {
+    GetEntityTool.EntityRef parsed =
+        GetEntityTool.parseReference("  table : sample_data.ecommerce_db.shopify.dim_address ");
+
+    assertEquals("table", parsed.entityType());
+    assertEquals("sample_data.ecommerce_db.shopify.dim_address", parsed.fqn());
+  }
+
+  @Test
+  void parseReferenceRejectsWhatCannotBeAnEntity() {
+    assertNull(GetEntityTool.parseReference(null));
+    assertNull(GetEntityTool.parseReference("no-colon-at-all"), "a bare FQN has no entity type");
+    assertNull(GetEntityTool.parseReference(":svc.db.tbl"), "an empty type is not resolvable");
+    assertNull(GetEntityTool.parseReference("table:"), "an empty FQN is not resolvable");
   }
 }

@@ -12,7 +12,8 @@
 """DataFrame validation API."""
 
 import warnings
-from typing import Any, Callable, Iterable, List, Optional, cast, final  # noqa: UP035
+from collections.abc import Callable, Iterable
+from typing import Any, cast, final
 
 from pandas import DataFrame
 
@@ -54,11 +55,9 @@ class DataFrameValidator:
 
     def __init__(
         self,
-        client: Optional[  # pyright: ignore[reportRedeclaration]  # noqa: UP045
-            OMeta[Any, Any]
-        ] = None,
+        client: OMeta[Any, Any] | None = None,
     ):
-        self._test_cases: List[TestCase] = []  # noqa: UP006
+        self._test_cases: list[TestCase] = []
 
         if client is None:
             metadata: OpenMetadata = get_client()
@@ -185,7 +184,7 @@ class DataFrameValidator:
         """
         self._check_full_table_tests_included()
 
-        results: List[ValidationResult] = []  # noqa: UP006
+        results: list[ValidationResult] = []
 
         for df in data:
             validation_result = self.validate(df, mode)

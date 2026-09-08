@@ -13,8 +13,6 @@
 OpenMetadata high-level API Custom Properties Test
 """
 
-from typing import Dict  # noqa: UP035
-
 import pytest
 
 from metadata.generated.schema.api.data.createCustomProperty import (
@@ -205,7 +203,7 @@ def _create_date_time_custom_properties(metadata):
     )
 
 
-def _create_table(metadata, schema_fqn, name: str, extensions: Dict) -> Table:  # noqa: UP006
+def _create_table(metadata, schema_fqn, name: str, extensions: dict) -> Table:
     """Helper to create a table with custom property extensions."""
     create = CreateTableRequest(
         name=name,

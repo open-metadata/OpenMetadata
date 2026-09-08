@@ -15,9 +15,8 @@ install:  ## Install the ingestion module to the current environment
 
 .PHONY: install_dev_env
 install_dev_env:  ## Install all dependencies for development (in edit mode)
-	pip install --upgrade pip "setuptools<81"
+	pip install --upgrade pip
 	pip install nox
-	pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
 
 .PHONY: install_dev
@@ -26,14 +25,12 @@ install_dev:  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	python -m pip install --upgrade pip
 	python -m pip install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	python -m pip install --upgrade pip
 	python -m pip install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
@@ -53,11 +50,13 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 .PHONY: py_format
 py_format:  ## Run ruff to lint-fix and format the Python codebase
 	ruff check --fix $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --prune
 	ruff format $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --check
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: generate_settings_docs

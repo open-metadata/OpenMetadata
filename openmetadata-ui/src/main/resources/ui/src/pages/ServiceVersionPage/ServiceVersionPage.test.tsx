@@ -48,9 +48,12 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
     ))
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(() => <div>ErrorPlaceHolder</div>),
+}));
 
 jest.mock(
   '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
@@ -59,10 +62,6 @@ jest.mock(
 
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock(

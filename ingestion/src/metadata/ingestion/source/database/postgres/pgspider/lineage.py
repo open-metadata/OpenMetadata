@@ -13,7 +13,7 @@
 PGSpider lineage module
 """
 
-from typing import Iterable, Iterator  # noqa: UP035
+from collections.abc import Iterable, Iterator
 
 from sqlalchemy.sql import text
 

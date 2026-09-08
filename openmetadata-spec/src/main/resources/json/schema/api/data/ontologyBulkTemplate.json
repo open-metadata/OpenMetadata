@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyBulkTemplate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyBulkTemplate",
+  "description": "Downloadable CSV template and bounded execution guidance for QTT bulk authoring.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyBulkTemplate",
+  "properties": {
+    "fileName": {
+      "type": "string"
+    },
+    "mediaType": {
+      "type": "string",
+      "enum": [
+        "text/csv"
+      ]
+    },
+    "headers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "csv": {
+      "type": "string"
+    },
+    "maximumSynchronousRows": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "fileName",
+    "mediaType",
+    "headers",
+    "csv",
+    "maximumSynchronousRows"
+  ],
+  "additionalProperties": false
+}

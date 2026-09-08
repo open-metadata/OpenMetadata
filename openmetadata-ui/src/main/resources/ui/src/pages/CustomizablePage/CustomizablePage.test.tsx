@@ -12,7 +12,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { useParams } from 'react-router-dom';
 import { Page, PageType } from '../../generated/system/ui/page';
@@ -23,7 +23,7 @@ import {
   mockShowErrorToast,
   mockShowSuccessToast,
 } from '../../mocks/CustomizablePage.mock';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import { getDocumentByFQN, updateDocument } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { CustomizablePage } from './CustomizablePage';
 
@@ -40,21 +40,14 @@ jest.mock(
 
 jest.mock(
   '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(
-        ({ initialPageData, handleSaveCurrentPageLayout }) => (
-          <div data-testid="customize-my-data">
-            {initialPageData.data.page.layout.map((widget: WidgetConfig) => (
-              <div key={widget.i}>{widget.i}</div>
-            ))}
-            <div role="presentation" onClick={handleSaveCurrentPageLayout}>
-              handleSaveCurrentPageLayout
-            </div>
-          </div>
-        )
-      )
+  () => {
+    return jest.fn().mockImplementation(({ onSaveLayout }) => (
+      <div data-testid="customize-my-data">
+        CustomizeMyData
+        <button onClick={() => onSaveLayout()}>Reset layout</button>
+      </div>
+    ));
+  }
 );
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -105,13 +98,6 @@ jest.mock('./CustomizeStore', () => ({
 }));
 
 jest.mock(
-  '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
-  () => {
-    return jest.fn().mockImplementation(() => <div>CustomizeMyData</div>);
-  }
-);
-
-jest.mock(
   '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage',
   () => {
     return jest
@@ -148,6 +134,11 @@ describe('CustomizablePage component', () => {
         },
       },
     });
+    (useParams as jest.Mock).mockReturnValue({
+      fqn: mockPersonaName,
+      pageFqn: PageType.LandingPage,
+    });
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -198,6 +189,18 @@ describe('CustomizablePage component', () => {
 
     expect(screen.queryByText('CustomizeMyData')).toBeInTheDocument();
     expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+  });
+
+  it('does not persist an undefined page when resetting an unsaved layout', async () => {
+    await act(async () => {
+      renderCustomizablePage();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Reset layout' }));
+    });
+
+    expect(updateDocument).not.toHaveBeenCalled();
   });
 
   it('CustomizablePage should return ErrorPlaceHolder for invalid page FQN', async () => {

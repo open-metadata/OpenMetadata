@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HookForm } from '@openmetadata/ui-core-components';
+import {
+  FieldTypes,
+  FormItemLayout,
+  HookForm,
+} from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -21,6 +25,7 @@ import {
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
@@ -86,10 +91,10 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 jest.mock(
-  '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1',
+  '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
     jest.fn().mockImplementation(({ onChange }) => (
-      <div data-testid="schedule-interval-v1">
+      <div data-testid="schedule-interval">
         <button
           data-testid="schedule-change-btn"
           onClick={() => onChange?.('0 0 * * *')}>
@@ -233,6 +238,10 @@ describe('TestCaseFormBody', () => {
       data: [],
       paging: { total: 0 },
     } as never);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('renders the three test level cards', async () => {
@@ -381,7 +390,48 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
   });
 
-  it('hides the parameter fields when dynamic assertion is enabled', async () => {
+  it('does not expose distribution-only fields from a schema capability alone', async () => {
+    mockGetListTestDefinitions.mockResolvedValue({
+      data: [DYNAMIC_DEFINITION],
+      paging: { total: 1 },
+    } as never);
+
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    await waitFor(() => {
+      expect(mockGetListTestDefinitions).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('use-dynamic-assertion')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders distribution-specific fields supplied by the class base', async () => {
+    jest
+      .spyOn(testCaseClassBase, 'createFormAdditionalFields')
+      .mockReturnValue([
+        {
+          name: 'useDynamicAssertion',
+          label: 'Dynamic Assertion',
+          type: FieldTypes.SWITCH,
+          id: 'root/useDynamicAssertion',
+          formItemLayout: FormItemLayout.HORIZONTAL,
+          props: {
+            'data-testid': 'use-dynamic-assertion',
+          },
+        },
+      ]);
     mockGetListTestDefinitions.mockResolvedValue({
       data: [DYNAMIC_DEFINITION],
       paging: { total: 1 },
@@ -405,6 +455,11 @@ describe('TestCaseFormBody', () => {
     expect(
       await screen.findByTestId('use-dynamic-assertion')
     ).toBeInTheDocument();
+
+    expect(testCaseClassBase.createFormAdditionalFields).toHaveBeenCalledWith(
+      true
+    );
+
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
 
     await act(async () => {
@@ -520,9 +575,7 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('schedule-interval-v1')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('schedule-interval')).toBeInTheDocument();
     expect(await screen.findByTestId('enable-debug-log')).toBeInTheDocument();
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
   });

@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import {
   addTeamHierarchy,
   getNewTeamDetails,
   searchTeam,
+  visitTeamsPage,
 } from '../../utils/team';
 
 // use the admin user to login
@@ -41,21 +42,9 @@ test.describe(
   'Add Nested Teams and Test TeamsSelectable',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
-
-      const getOrganizationResponse = page.waitForResponse(
-        '/api/v1/teams/name/*'
-      );
-      const permissionResponse = page.waitForResponse(
-        '/api/v1/permissions/team/name/*'
-      );
-
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-      await permissionResponse;
-      await getOrganizationResponse;
+      await visitTeamsPage(page);
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
@@ -110,8 +99,6 @@ test.describe(
     });
 
     test('Delete Parent Team', async ({ page }) => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-
       await page.getByRole('link', { name: businessTeamName }).click();
 
       await page.click('[data-testid="manage-button"]');

@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyAnnexRevision.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyAnnexRevision",
+  "description": "An immutable revision of losslessly preserved ontology axioms.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyAnnexRevision",
+  "definitions": {
+    "source": {
+      "javaType": "org.openmetadata.schema.type.OntologyAnnexSource",
+      "type": "string",
+      "enum": ["IMPORT", "AUTHORING", "MIGRATION"]
+    }
+  },
+  "properties": {
+    "glossary": {
+      "$ref": "entityReference.json"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "canonicalNQuads": {
+      "type": "string"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source": {
+      "$ref": "#/definitions/source"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "createdAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    }
+  },
+  "required": [
+    "glossary",
+    "revision",
+    "canonicalNQuads",
+    "checksum",
+    "source",
+    "createdBy",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}

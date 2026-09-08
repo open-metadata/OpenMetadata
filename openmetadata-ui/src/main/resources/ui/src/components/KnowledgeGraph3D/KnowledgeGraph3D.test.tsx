@@ -14,11 +14,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   Children,
+  cloneElement,
   isValidElement,
+  MouseEventHandler,
   PropsWithChildren,
   ReactElement,
 } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityType } from '../../enums/entity.enum';
 import { getEntityGraphData } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -37,6 +40,18 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('./nodeCanvas', () => {
+  const canvas = { toDataURL: () => 'data:image/png;base64,test' };
+
+  return {
+    avatarCanvas: jest.fn(() => canvas),
+    colorFor: jest.fn(() => '#1570ef'),
+    hexRgba: jest.fn(() => 'rgba(21, 112, 239, 0.2)'),
+    iconCanvas: jest.fn(() => canvas),
+    sizeFor: jest.fn(() => 10),
+  };
+});
+
 // The Untitled-UI Select/Checkbox (react-aria) are impractical to drive in
 // jsdom, so this lightweight mock renders native form controls the panels and
 // controls can share. Selecting the focal node and a link is driven through
@@ -44,24 +59,80 @@ jest.mock('../../utils/ToastUtils', () => ({
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
+    color: _color,
+    iconLeading: _iconLeading,
+    isDisabled,
+    onPress,
+    size: _size,
     ...props
-  }: PropsWithChildren<Record<string, unknown>>) => (
-    <button {...props}>{children}</button>
+  }: PropsWithChildren<Record<string, unknown>>) => {
+    const handlePress =
+      typeof onPress === 'function' ? (onPress as () => void) : undefined;
+
+    return (
+      <button {...props} disabled={Boolean(isDisabled)} onClick={handlePress}>
+        {children}
+      </button>
+    );
+  };
+
+  interface ButtonGroupItemProps {
+    id: string;
+    onSelect?: (id: string) => void;
+  }
+
+  const ButtonGroup = ({
+    children,
+    onSelectionChange,
+  }: PropsWithChildren<{
+    onSelectionChange?: (selection: Set<string>) => void;
+  }>) => (
+    <div>
+      {Children.map(children, (child) =>
+        isValidElement<ButtonGroupItemProps>(child)
+          ? cloneElement(child, {
+              onSelect: (id: string) => onSelectionChange?.(new Set([id])),
+            })
+          : child
+      )}
+    </div>
   );
 
-  const ButtonGroup = ({ children }: PropsWithChildren) => (
-    <div>{children}</div>
-  );
-
-  const ButtonGroupItem = ({ children }: PropsWithChildren) => (
-    <div>{children}</div>
+  const ButtonGroupItem = ({
+    children,
+    id,
+    onSelect,
+  }: PropsWithChildren<ButtonGroupItemProps>) => (
+    <button type="button" onClick={() => onSelect?.(id)}>
+      {children}
+    </button>
   );
 
   const Badge = ({ children }: PropsWithChildren) => <span>{children}</span>;
 
-  const CloseButton = (props: Record<string, unknown>) => (
-    <button data-testid="close-button" type="button" {...props} />
-  );
+  const CloseButton = ({
+    className,
+    label,
+    onClick,
+  }: Record<string, unknown>) => {
+    const handleClick =
+      typeof onClick === 'function'
+        ? (onClick as MouseEventHandler<HTMLButtonElement>)
+        : undefined;
+    const resolvedClassName =
+      typeof className === 'string' ? className : undefined;
+    const resolvedLabel = typeof label === 'string' ? label : undefined;
+
+    return (
+      <button
+        aria-label={resolvedLabel}
+        className={resolvedClassName}
+        data-testid="close-button"
+        type="button"
+        onClick={handleClick}
+      />
+    );
+  };
 
   const Checkbox = ({
     isSelected,
@@ -186,18 +257,36 @@ const GRAPH_DATA = {
   ],
   edges: [{ from: 'entity-1', to: 'con-1', label: 'mappedTo' }],
 };
+const TEST_THEME_STORAGE_KEY = 'knowledge-graph-3d-component-test';
+
+const renderInAppContext = (
+  element: ReactElement,
+  initialEntries: string[] = ['/']
+): void => {
+  render(
+    <ThemeProvider defaultTheme="light" storageKey={TEST_THEME_STORAGE_KEY}>
+      <MemoryRouter initialEntries={initialEntries}>{element}</MemoryRouter>
+    </ThemeProvider>
+  );
+};
 
 const renderGraph = (initialEntries: string[] = ['/']): void => {
-  render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <KnowledgeGraph3D entity={ENTITY} entityType={EntityType.TABLE} />
-    </MemoryRouter>
+  renderInAppContext(
+    <KnowledgeGraph3D entity={ENTITY} entityType={EntityType.TABLE} />,
+    initialEntries
   );
 };
 
 describe('KnowledgeGraph3D', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.setItem(TEST_THEME_STORAGE_KEY, 'light');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(TEST_THEME_STORAGE_KEY);
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.removeProperty('color-scheme');
   });
 
   it('should render the controls and the 3D scene once data loads', async () => {
@@ -228,11 +317,7 @@ describe('KnowledgeGraph3D', () => {
   });
 
   it('should render the no-entity placeholder and skip fetching when entity is missing', () => {
-    render(
-      <MemoryRouter>
-        <KnowledgeGraph3D entityType={EntityType.TABLE} />
-      </MemoryRouter>
-    );
+    renderInAppContext(<KnowledgeGraph3D entityType={EntityType.TABLE} />);
 
     expect(screen.getByText('label.no-entity-selected')).toBeInTheDocument();
     expect(mockGetEntityGraphData).not.toHaveBeenCalled();
@@ -276,19 +361,37 @@ describe('KnowledgeGraph3D', () => {
     });
   });
 
+  it('should fetch enough context when switching to the ontology lens', async () => {
+    mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
+
+    renderGraph();
+
+    await screen.findByTestId('kg3d-scene');
+    fireEvent.click(screen.getByText('label.ontology'));
+
+    await waitFor(() =>
+      expect(mockGetEntityGraphData).toHaveBeenCalledTimes(2)
+    );
+
+    expect(mockGetEntityGraphData.mock.calls[1][0]).toEqual({
+      entityId: 'entity-1',
+      entityType: EntityType.TABLE,
+      depth: 2,
+    });
+    expect(screen.getByTestId('kg3d-depth-select')).toHaveValue('2');
+  });
+
   it('should add column-derived nodes when "Show columns" is toggled on', async () => {
     mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
 
-    render(
-      <MemoryRouter>
-        <KnowledgeGraph3D
-          entity={{
-            ...ENTITY,
-            columns: [{ name: 'id' }, { name: 'email' }],
-          }}
-          entityType={EntityType.TABLE}
-        />
-      </MemoryRouter>
+    renderInAppContext(
+      <KnowledgeGraph3D
+        entity={{
+          ...ENTITY,
+          columns: [{ name: 'id' }, { name: 'email' }],
+        }}
+        entityType={EntityType.TABLE}
+      />
     );
 
     await screen.findByTestId('kg3d-scene');
