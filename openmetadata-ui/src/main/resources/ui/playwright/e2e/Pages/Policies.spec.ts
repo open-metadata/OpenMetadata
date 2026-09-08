@@ -377,6 +377,12 @@ test.describe(
     test('Delete policy action from manage button options', async ({
       page,
     }) => {
+      // API-create + full page reload + paginated list scan + manage/delete
+      // confirmation is 6+ heavy ops in one test. Under merge-queue load a
+      // single reload can eat 20 s alone, pushing total past the 60 s default.
+      // test.slow() triples the budget so a slow shard finishes cleanly.
+      test.slow();
+
       const { apiContext, afterAction } = await getApiContext(page);
 
       const policy = new PolicyClass();
