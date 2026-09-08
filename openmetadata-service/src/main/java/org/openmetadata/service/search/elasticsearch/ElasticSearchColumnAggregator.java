@@ -311,13 +311,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       }
     }
 
-    // The name-pattern wildcard in buildFilters only decides which entities are scanned;
-    // flat-object
-    // mapping can't isolate the matching column. Drop columns whose name doesn't match, per column.
-    if (!nullOrEmpty(request.getColumnNamePattern())) {
-      String pattern = request.getColumnNamePattern().toLowerCase(Locale.ROOT);
-      allColumnsByName.keySet().removeIf(name -> !name.toLowerCase(Locale.ROOT).contains(pattern));
-    }
+    ColumnAggregator.applyColumnNamePattern(allColumnsByName, request);
 
     List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
     return ColumnAggregator.paginateFilteredItems(gridItems, request);

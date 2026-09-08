@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
@@ -145,6 +146,21 @@ public interface ColumnAggregator {
       return status.trim().equalsIgnoreCase(itemStatus);
     }
     return true;
+  }
+
+  /**
+   * Drop columns whose name doesn't contain the request's {@code columnNamePattern}
+   * (case-insensitive). The name wildcard in the search query only scopes which entities are
+   * scanned; flat-object mapping can't isolate the matching column, so the pattern is enforced per
+   * column here. Shared by the ES and OS row-filter scans so their pattern semantics can't drift.
+   */
+  static void applyColumnNamePattern(
+      Map<String, ?> columnsByName, ColumnAggregationRequest request) {
+    if (nullOrEmptyStr(request.getColumnNamePattern())) {
+      return;
+    }
+    String pattern = request.getColumnNamePattern().toLowerCase(Locale.ROOT);
+    columnsByName.keySet().removeIf(name -> !name.toLowerCase(Locale.ROOT).contains(pattern));
   }
 
   /** A column has missing metadata if any of its groups lacks a description or tags. */

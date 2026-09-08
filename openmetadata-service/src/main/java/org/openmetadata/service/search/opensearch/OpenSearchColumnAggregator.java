@@ -218,16 +218,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
     try {
       fetchColumnsFromSource(query, allColumnsByName);
-
-      // The name-pattern wildcard in buildFilters only decides which entities are scanned;
-      // flat-object mapping can't isolate the matching column. Drop non-matching columns per
-      // column.
-      if (!nullOrEmpty(request.getColumnNamePattern())) {
-        String pattern = request.getColumnNamePattern().toLowerCase(Locale.ROOT);
-        allColumnsByName
-            .keySet()
-            .removeIf(name -> !name.toLowerCase(Locale.ROOT).contains(pattern));
-      }
+      ColumnAggregator.applyColumnNamePattern(allColumnsByName, request);
 
       List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
       return ColumnAggregator.paginateFilteredItems(gridItems, request);
