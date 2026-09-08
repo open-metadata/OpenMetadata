@@ -920,7 +920,7 @@ public class RdfRepository {
             + "VALUES ?entity { <%2$s> } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
             + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } } }",
-        KNOWLEDGE_GRAPH, entityUri, RdfExtension.ownedTriplesPattern());
+        KNOWLEDGE_GRAPH, entityUri, RdfOwnedResources.ownedTriplesPattern());
   }
 
   private static String buildIriValues(Collection<String> iris) {

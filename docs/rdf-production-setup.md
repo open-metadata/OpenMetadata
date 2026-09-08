@@ -7,6 +7,8 @@ memory starves the page cache and usually reduces throughput.
 
 The [RDF ontology contract](rdf-ontology-contract.md) documents queryable predicates and the
 full rebuild required to replace legacy lineage and extension triples when upgrading to 2.0.2.
+The [catalog scale harness](rdf-scale-validation.md) measures full rebuilds, serving queries,
+resource peaks, cancellation, and restart persistence against a specified catalog size.
 
 ## The shipped Fuseki image
 

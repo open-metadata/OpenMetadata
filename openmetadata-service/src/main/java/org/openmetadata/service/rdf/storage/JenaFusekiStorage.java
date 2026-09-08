@@ -65,7 +65,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.rdf.RdfExtension;
+import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
@@ -893,7 +893,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
             + "VALUES ?entity { %2$s } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) FILTER(%3$s) } UNION { %4$s } } }",
-        KNOWLEDGE_GRAPH, iriValues(entityUris), filter, RdfExtension.ownedTriplesPattern());
+        KNOWLEDGE_GRAPH, iriValues(entityUris), filter, RdfOwnedResources.ownedTriplesPattern());
   }
 
   private static String iriList(Set<String> predicates) {

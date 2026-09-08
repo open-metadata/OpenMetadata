@@ -28,6 +28,7 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -283,7 +284,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
-      mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+        mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+      }
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -337,7 +340,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // under load.
           "-c",
           "work_mem=32MB");
-      postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+        postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      }
+      postgres.withCreateContainerCmdModifier(
+          cmd -> {
+            final long memory = Long.getLong("dbContainerMemoryBytes", 0L);
+            final long nanoCpus = Long.getLong("dbContainerNanoCpus", 0L);
+            if (memory > 0) cmd.getHostConfig().withMemory(memory);
+            if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+          });
       postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -492,28 +504,58 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
   public static GenericContainer<?> createFusekiContainer() {
-    return fusekiContainer()
-        .withExposedPorts(FUSEKI_PORT)
-        .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-        .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-        .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
-        // World-writable tmpfs supports both root and non-root Fuseki images.
-        .withTmpFs(
-            Map.of(
-                "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
-                "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"))
-        .waitingFor(
-            Wait.forHttp("/$/ping")
-                .forPort(FUSEKI_PORT)
-                .forStatusCode(200)
-                .withStartupTimeout(Duration.ofMinutes(2)))
-        // Increase file descriptor limits for parallel test execution
-        .withCreateContainerCmdModifier(
-            cmd ->
-                cmd.getHostConfig()
-                    .withUlimits(
-                        java.util.List.of(
-                            new com.github.dockerjava.api.model.Ulimit("nofile", 65536L, 65536L))));
+    final GenericContainer<?> container =
+        fusekiContainer()
+            .withExposedPorts(FUSEKI_PORT)
+            .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
+            .waitingFor(
+                Wait.forHttp("/$/ping")
+                    .forPort(FUSEKI_PORT)
+                    .forStatusCode(200)
+                    .withStartupTimeout(Duration.ofMinutes(2)))
+            // Increase file descriptor limits for parallel test execution
+            .withCreateContainerCmdModifier(
+                cmd ->
+                    cmd.getHostConfig()
+                        .withUlimits(
+                            java.util.List.of(
+                                new com.github.dockerjava.api.model.Ulimit(
+                                    "nofile", 65536L, 65536L))));
+    if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
+      // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
+      container.withTmpFs(
+          Map.of(
+              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+    }
+    if (Boolean.getBoolean("rdfContainerStablePort")) {
+      // Docker can allocate a different ephemeral host port on restart.
+      try (ServerSocket socket = new ServerSocket(Integer.getInteger("rdfContainerHostPort", 0))) {
+        container.setPortBindings(List.of(socket.getLocalPort() + ":" + FUSEKI_PORT));
+      } catch (IOException exception) {
+        throw new IllegalStateException("Cannot reserve a stable Fuseki test port", exception);
+      }
+    }
+    final long memoryBytes = Long.getLong("rdfContainerMemoryBytes", 0L);
+    final long nanoCpus = Long.getLong("rdfContainerNanoCpus", 0L);
+    container.withCreateContainerCmdModifier(
+        cmd -> {
+          if (memoryBytes > 0) cmd.getHostConfig().withMemory(memoryBytes);
+          if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+        });
+    return container;
+  }
+
+  /** The isolated test container, for scale sampling and restart verification. */
+  public static GenericContainer<?> getFusekiContainer() {
+    return FUSEKI_CONTAINER;
+  }
+
+  /** The isolated metadata database, for scale resource sampling. */
+  public static GenericContainer<?> getDatabaseContainer() {
+    return DATABASE_CONTAINER;
   }
 
   private static GenericContainer<?> fusekiContainer() {

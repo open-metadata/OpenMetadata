@@ -812,32 +812,25 @@ public class RdfPropertyMapper {
     }
   }
 
-  /**
-   * Converts CustomProperty to structured RDF triples. Enables SPARQL queries like: "Find all
-   * entities with custom property 'costCenter' = 'Engineering'"
-   */
+  /** Projects a custom-property definition with a stable identity for rebuilds and live replay. */
   private void addCustomProperty(
       JsonNode customProp, Resource entityResource, Property linkProperty, Model model) {
     if (customProp == null || customProp.isNull()) {
       return;
     }
 
-    // Create a resource for the custom property
+    String propertyName = customProp.required("name").asText();
     String propUri =
-        baseUri + "customProperty/" + entityResource.getLocalName() + "/" + UUID.randomUUID();
+        baseUri
+            + "customProperty/"
+            + entityId(entityResource)
+            + "/"
+            + URLEncoder.encode(propertyName, StandardCharsets.UTF_8);
     Resource propNode = model.createResource(propUri);
 
-    // Link entity to custom property
     entityResource.addProperty(linkProperty, propNode);
-
-    // Add type
     propNode.addProperty(RDF.type, model.createResource(OM_NS + "CustomProperty"));
-
-    // Add property name
-    if (customProp.has("name")) {
-      propNode.addProperty(
-          model.createProperty(OM_NS, "propertyName"), customProp.get("name").asText());
-    }
+    propNode.addProperty(model.createProperty(OM_NS, "propertyName"), propertyName);
 
     // Add property value (convert to string for queryability)
     if (customProp.has("value") && !customProp.get("value").isNull()) {
@@ -865,10 +858,7 @@ public class RdfPropertyMapper {
       return;
     }
 
-    // Jena's XML local-name split can discard an all-numeric UUID entirely.
-    String entityUri = entityResource.getURI();
-    String entityId = entityUri.substring(entityUri.lastIndexOf('/') + 1);
-    String extUri = baseUri + "extension/" + entityId;
+    String extUri = baseUri + "extension/" + entityId(entityResource);
     Resource extNode = model.createResource(extUri);
 
     // Link entity to extension
@@ -879,6 +869,12 @@ public class RdfPropertyMapper {
     extNode.addProperty(RDF.type, model.createResource(OM_NS + "Extension"));
 
     extension.fields().forEachRemaining(field -> addExtensionValue(extNode, field, model));
+  }
+
+  private static String entityId(Resource entityResource) {
+    // Jena's XML local-name split can discard an all-numeric UUID entirely.
+    String entityUri = entityResource.getURI();
+    return entityUri.substring(entityUri.lastIndexOf('/') + 1);
   }
 
   private void addExtensionValue(
