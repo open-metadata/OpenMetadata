@@ -9805,12 +9805,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     /**
-     * Whether the bot performing this update is denied {@code operation} by policy. A PUT
+     * Whether the bot performing this update is denied {@code metadataOperation} by policy. A PUT
      * authorizes with the coarse EDIT_ALL operation, which does not intersect a field-level deny
      * (e.g. DisplayName-Deny on the ingestion bot), so callers re-apply the field-level check here.
      * Returns false for users the policy does not explicitly deny (including the SCIM bot).
+     *
+     * <p>The parameter is deliberately not named {@code operation}: that would shadow this
+     * updater's own {@code operation} field, which holds the PUT/PATCH {@link Operation}.
      */
-    private boolean updatingBotDeniedOperation(MetadataOperation operation) {
+    private boolean updatingBotDeniedOperation(MetadataOperation metadataOperation) {
       boolean denied = false;
       if (updatingUser != null) {
         SubjectContext subjectContext = SubjectContext.getSubjectContext(updatingUser.getName());
@@ -9819,7 +9822,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             permission.getPermissions().stream()
                 .anyMatch(
                     p ->
-                        operation.equals(p.getOperation())
+                        metadataOperation.equals(p.getOperation())
                             && Permission.Access.DENY.equals(p.getAccess()));
       }
       return denied;
