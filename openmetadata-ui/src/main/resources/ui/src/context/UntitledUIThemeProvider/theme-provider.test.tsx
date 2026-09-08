@@ -20,6 +20,12 @@ const ThemeProbe = () => {
   return (
     <>
       <span data-testid="active-theme">{theme}</span>
+      <span data-testid="theme-class-ready">
+        {String(
+          document.documentElement.classList.contains('dark-mode') ===
+            (theme === 'dark')
+        )}
+      </span>
       <button type="button" onClick={() => setTheme('dark')}>
         Use dark theme
       </button>
@@ -61,23 +67,35 @@ const setSystemTheme = (theme: 'light' | 'dark') => {
 
 describe('ThemeProvider', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
     document.documentElement.style.removeProperty('color-scheme');
   });
 
-  it('uses the system color scheme when no preference is stored', () => {
+  it('uses light mode when no preference is stored', () => {
     setSystemTheme('dark');
+
+    renderProvider();
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+    expect(localStorage.getItem('ui-theme')).toBeNull();
+  });
+
+  it('uses a stored preference instead of the default light mode', () => {
+    setSystemTheme('light');
+    localStorage.setItem('ui-theme', 'dark');
 
     renderProvider();
 
     expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
     expect(document.documentElement).toHaveClass('dark-mode');
     expect(document.documentElement).toHaveStyle({ colorScheme: 'dark' });
-    expect(localStorage.getItem('ui-theme')).toBeNull();
   });
 
-  it('uses a stored preference instead of the system color scheme', () => {
+  it('restores a stored light preference when the system theme is dark', () => {
     setSystemTheme('dark');
     localStorage.setItem('ui-theme', 'light');
 
@@ -88,20 +106,48 @@ describe('ThemeProvider', () => {
     expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
   });
 
-  it('follows system color scheme changes until a preference is selected', () => {
+  it('treats an invalid stored value as no preference', () => {
+    setSystemTheme('dark');
+    localStorage.setItem('ui-theme', 'invalid');
+
+    renderProvider();
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(localStorage.getItem('ui-theme')).toBeNull();
+  });
+
+  it('keeps light mode when the system color scheme changes', () => {
     const changeSystemTheme = setSystemTheme('light');
     renderProvider();
 
     act(() => changeSystemTheme('dark'));
 
-    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
-    expect(document.documentElement).toHaveClass('dark-mode');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
-    act(() => changeSystemTheme('dark'));
-
     expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
+  });
+
+  it('uses light mode when the stored preference cannot be read', () => {
+    jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('Storage is unavailable');
+    });
+
+    expect(() => renderProvider()).not.toThrow();
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+  });
+
+  it('updates the theme when the preference cannot be persisted', () => {
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('Storage is unavailable');
+    });
+    renderProvider();
+
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }))
+    ).not.toThrow();
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveClass('dark-mode');
   });
 
   it('persists explicit dark and light selections', () => {
@@ -117,5 +163,32 @@ describe('ThemeProvider', () => {
 
     expect(localStorage.getItem('ui-theme')).toBe('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
+  });
+
+  it('applies the root class before theme consumers render', () => {
+    setSystemTheme('light');
+    renderProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(screen.getByTestId('theme-class-ready')).toHaveTextContent('true');
+  });
+
+  it('applies a stored theme before consumers initially render', () => {
+    localStorage.setItem('ui-theme', 'dark');
+
+    renderProvider();
+
+    expect(screen.getByTestId('theme-class-ready')).toHaveTextContent('true');
+  });
+
+  it('does not rewrite a root class that already matches the stored theme', () => {
+    localStorage.setItem('ui-theme', 'dark');
+    document.documentElement.classList.add('dark-mode');
+    const toggleSpy = jest.spyOn(document.documentElement.classList, 'toggle');
+
+    renderProvider();
+
+    expect(toggleSpy).not.toHaveBeenCalled();
   });
 });

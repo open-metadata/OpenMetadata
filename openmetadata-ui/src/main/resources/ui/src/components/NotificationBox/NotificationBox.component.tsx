@@ -53,6 +53,68 @@ const isTaskNotification = (
   notification: NotificationItem
 ): notification is TaskEntity => 'taskId' in notification;
 
+const renderTaskNotificationCard = (feed: TaskEntity) => (
+  <NotificationFeedCard
+    createdBy={feed.createdBy?.name ?? ''}
+    entityFQN={feed.about?.fullyQualifiedName ?? ''}
+    entityType={feed.about?.type ?? ''}
+    key={`${feed.createdBy?.name ?? ''} ${feed.id}`}
+    taskEntity={feed}
+    timestamp={feed.createdAt}
+  />
+);
+
+const getMentionReply = (
+  feed: Conversation,
+  activeTab: string
+): ConversationReply | undefined => {
+  if (
+    activeTab !== NotificationTabsKey.CONVERSATION ||
+    !feed.replies ||
+    feed.replies.length === 0
+  ) {
+    return undefined;
+  }
+
+  return [...feed.replies]
+    .filter((reply) => reply.message.includes('<#E::user::'))
+    .sort((left, right) => right.createdAt - left.createdAt)[0] as
+    | ConversationReply
+    | undefined;
+};
+
+const renderConversationNotificationCard = (
+  feed: Conversation,
+  activeTab: string
+) => {
+  const entityType = feed.entityRef?.type ?? getEntityType(feed.about);
+  const entityFQN =
+    feed.entityRef?.fullyQualifiedName ?? getEntityFQN(feed.about);
+
+  let actualUser =
+    feed.createdBy?.name ?? feed.createdBy?.fullyQualifiedName ?? '';
+  let actualTimestamp = feed.createdAt;
+
+  const mentionReply = getMentionReply(feed, activeTab);
+
+  if (mentionReply) {
+    actualUser =
+      mentionReply.author.name ?? mentionReply.author.fullyQualifiedName ?? '';
+    actualTimestamp = mentionReply.createdAt;
+  }
+
+  return (
+    <NotificationFeedCard
+      createdBy={actualUser}
+      entityFQN={entityFQN as string}
+      entityType={entityType as string}
+      key={`${actualUser} ${feed.id}`}
+      mentionNotification={feed}
+      timestamp={actualTimestamp}
+    />
+  );
+};
+
 const NotificationBox = ({
   activeTab,
   hasMentionNotification,
@@ -75,59 +137,13 @@ const NotificationBox = ({
   );
 
   const notificationDropDownList = useMemo(() => {
-    return notifications.slice(0, 5).map((feed) => {
-      if (isTaskNotification(feed)) {
-        return (
-          <NotificationFeedCard
-            createdBy={feed.createdBy?.name ?? ''}
-            entityFQN={feed.about?.fullyQualifiedName ?? ''}
-            entityType={feed.about?.type ?? ''}
-            key={`${feed.createdBy?.name ?? ''} ${feed.id}`}
-            taskEntity={feed}
-            timestamp={feed.createdAt}
-          />
-        );
-      }
-
-      const entityType = feed.entityRef?.type ?? getEntityType(feed.about);
-      const entityFQN =
-        feed.entityRef?.fullyQualifiedName ?? getEntityFQN(feed.about);
-
-      let actualUser =
-        feed.createdBy?.name ?? feed.createdBy?.fullyQualifiedName ?? '';
-      let actualTimestamp = feed.createdAt;
-
-      if (
-        activeTab === NotificationTabsKey.CONVERSATION &&
-        feed.replies &&
-        feed.replies.length > 0
-      ) {
-        const mentionReply = [...feed.replies]
-          .filter((reply) => reply.message.includes('<#E::user::'))
-          .sort((left, right) => right.createdAt - left.createdAt)[0] as
-          | ConversationReply
-          | undefined;
-
-        if (mentionReply) {
-          actualUser =
-            mentionReply.author.name ??
-            mentionReply.author.fullyQualifiedName ??
-            '';
-          actualTimestamp = mentionReply.createdAt;
-        }
-      }
-
-      return (
-        <NotificationFeedCard
-          createdBy={actualUser}
-          entityFQN={entityFQN as string}
-          entityType={entityType as string}
-          key={`${actualUser} ${feed.id}`}
-          mentionNotification={feed}
-          timestamp={actualTimestamp}
-        />
+    return notifications
+      .slice(0, 5)
+      .map((feed) =>
+        isTaskNotification(feed)
+          ? renderTaskNotificationCard(feed)
+          : renderConversationNotificationCard(feed, activeTab)
       );
-    });
   }, [activeTab, notifications]);
 
   const getTaskNotificationData = useCallback(() => {

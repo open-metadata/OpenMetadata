@@ -36,7 +36,7 @@ import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -527,16 +527,48 @@ export const selectDataProduct = async (
   await waitForAllLoadersToDisappear(page);
   await searchBox.waitFor({ state: 'visible' });
 
-  await Promise.all([
-    page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
-    searchBox.fill(dataProduct.name),
-  ]);
+  const dataProductRow = page.getByTestId(dataProduct.name);
 
-  await waitForSearchDebounce(page);
+  // Same eventual consistency as the domain listing above: a data product
+  // created moments ago can be missing from the first query, and the listing
+  // re-queries only when the search text changes. Retry the search, reloading
+  // between attempts, so the row is clicked only once it is really there.
+  //
+  // The response wait deliberately lives outside this callback -- waits here
+  // are test-bound, so a `waitForResponse` that never matches would hang the
+  // callback and the poll could never retry it.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          await searchBox.waitFor({ state: 'visible' });
+        }
+        hasSearched = true;
+
+        await searchBox.fill('');
+        await searchBox.fill(dataProduct.name);
+
+        await waitForSearchDebounce(page);
+
+        return dataProductRow.isVisible();
+      },
+      {
+        message: `Wait for data product "${dataProduct.name}" to appear in the data product listing`,
+        // Deliberately well under the default 60s test budget: most callers of
+        // this helper do not set test.slow(), and a poll sized to the whole
+        // budget would starve the rest of the test instead of failing it.
+        timeout: 30_000,
+        intervals: [1_000, 2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
 
   await Promise.all([
     page.waitForResponse('/api/v1/dataProducts/name/*'),
-    page.getByTestId(dataProduct.name).click(),
+    dataProductRow.click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
@@ -582,13 +614,25 @@ export const verifyAssetsInDomain = async (
   }
 };
 
+/**
+ * Fill the fields AddDomainForm shares between domains, subdomains and data
+ * products.
+ *
+ * Everything is resolved through the `add-domain-form` container rather than
+ * off `page`: DomainDetails mounts the data product drawer and the subdomain
+ * drawer as siblings, so a page-global `#root/name` or `descriptionBox` can see
+ * a second copy of this very form and strict mode violate (merge queue run
+ * 33847455975 ejected #32465 that way).
+ */
 export const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
-  await page.locator('#root\\/name').fill(entity.name);
-  await page.locator('#root\\/displayName').fill(entity.displayName);
-  await page.locator(descriptionBox).fill(entity.description);
+  const form = page.getByTestId('add-domain-form');
+
+  await form.locator('#root\\/name').fill(entity.name);
+  await form.locator('#root\\/displayName').fill(entity.displayName);
+  await fillDescriptionBox(form, entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,
