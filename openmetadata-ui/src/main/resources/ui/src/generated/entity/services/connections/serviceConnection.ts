@@ -482,6 +482,13 @@ export interface Connection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
+    /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
@@ -1049,10 +1056,6 @@ export interface Connection {
      */
     namespace?:    string;
     certificates?: QlikCertificatesBy;
-    /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
     /**
      * User Directory.
      */
