@@ -36,27 +36,21 @@
       and re-painting once React reads localStorage. Mirrors Linear's inline
       splash trick (see linear.app/changelog): pre-paint reads of stable
       localStorage keys avoid a visible re-theme on cold load. The bundle's
-      ThemeProvider uses the same saved-theme then OS-theme order on mount and
-      stays in sync with the class we set here. `appStart` mark gives the bundle a
-      RUM anchor to measure HTML-parse → first paint vs. JS-ready.
+      ThemeProvider uses the same saved-theme-or-light order on mount and stays
+      in sync with the class we set here. `appStart` mark gives the bundle a RUM
+      anchor to measure HTML-parse → first paint vs. JS-ready.
     -->
     <script id="theme-restore" nonce="${cspNonce}">
+      let restoredTheme = 'light';
       try {
         const savedTheme = localStorage.getItem('ui-theme');
-        const followsDarkSystemTheme =
-          savedTheme !== 'light' &&
-          savedTheme !== 'dark' &&
-          typeof window.matchMedia === 'function' &&
-          window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const restoredTheme =
-          savedTheme === 'dark' || followsDarkSystemTheme ? 'dark' : 'light';
-
-        document.documentElement.classList.toggle(
-          'dark-mode',
-          restoredTheme === 'dark'
-        );
-        document.documentElement.style.colorScheme = restoredTheme;
+        restoredTheme = savedTheme === 'dark' ? 'dark' : 'light';
       } catch (e) {}
+      document.documentElement.classList.toggle(
+        'dark-mode',
+        restoredTheme === 'dark'
+      );
+      document.documentElement.style.colorScheme = restoredTheme;
       try {
         performance.mark('appStart');
       } catch (e) {}
@@ -265,9 +259,9 @@
 
       /*
         Dark variant — applied by the pre-paint script above for a saved dark
-        preference or a dark OS preference. Matches the dark-mode CSS variables
-        the bundle eventually sets via ThemeProvider, so the visual transition
-        from shell to React UI is seamless instead of a light→dark flash.
+        preference. Matches the dark-mode CSS variables the bundle eventually
+        sets via ThemeProvider, so the visual transition from shell to React UI
+        is seamless instead of a light→dark flash.
       */
       .dark-mode .om-boot-shell {
         background: #0e0f11;
