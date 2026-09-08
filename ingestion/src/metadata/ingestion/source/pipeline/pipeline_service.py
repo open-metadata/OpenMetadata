@@ -498,7 +498,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_api_service_names(self) -> List[str]:  # noqa: UP006
+    def get_api_service_names(self) -> list[str]:
         """
         Get the list of api service names
         """
@@ -508,7 +508,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_search_service_names(self) -> List[str]:  # noqa: UP006
+    def get_search_service_names(self) -> list[str]:
         """
         Get the list of search service names
         """

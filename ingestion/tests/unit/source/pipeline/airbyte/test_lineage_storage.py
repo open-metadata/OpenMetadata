@@ -498,12 +498,15 @@ class TestResolverRegistry:
         assert get_resolver("S3").om_type == "container"
         assert get_resolver("postgres").om_type == "table"
         assert get_resolver("redshift").om_type == "table"
+        # Warehouses are mapped so they never fall through to the API resolver.
+        assert get_resolver("snowflake").om_type == "table"
+        assert get_resolver("bigquery").om_type == "table"
         assert get_resolver("kafka").om_type == "topic"
         assert get_resolver("elasticsearch").om_type == "searchIndex"
-        # Unknown connector (a SaaS API, /dev/null, vector DB) -> API resolver, which only
-        # emits when apiServiceNames is set; otherwise the caller anchors on the pipeline.
-        assert get_resolver("hubspot").om_type == "apiCollection"
-        assert get_resolver(None).om_type == "apiCollection"
+        # Unknown connector (a SaaS API, /dev/null, vector DB) -> None: the caller then tries
+        # the opt-in API resolver and, failing that, anchors on the pipeline.
+        assert get_resolver("hubspot") is None
+        assert get_resolver(None) is None
 
 
 class TestNewEntityKinds:
@@ -565,17 +568,48 @@ class TestNewEntityKinds:
         assert edges[0].edge.fromEntity.type == "table"
         assert edges[0].edge.toEntity.type == "container"
 
-    def test_topic_without_service_names_anchors_on_pipeline(self, airbyte_source):
-        """No messagingServiceNames -> source unresolved -> pipeline-anchored, not dropped."""
+    def test_supported_source_without_service_names_drops_edge(self, airbyte_source):
+        """Kafka is a supported type; with no messagingServiceNames it drops the edge rather
+        than anchoring on the pipeline (the pipeline must not be shown as a terminal node)."""
         airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
         edges = self._lineage(
             airbyte_source,
             AirbyteSourceResponse(sourceType="kafka", configuration={}),
             PUBLIC_API_S3_DESTINATION,
         )
-        assert len(edges) == 1
-        assert edges[0].edge.fromEntity.type == "pipeline"
-        assert edges[0].edge.toEntity.type == "container"
+        assert edges == []
+
+    def test_supported_destination_not_ingested_drops_edge(self, airbyte_source):
+        """gitar #1: a supported relational destination merely not ingested in OM must NOT
+        emit a spurious source -> pipeline edge — the whole edge is dropped."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["pg"])
+        # Source (postgres) resolves; destination (postgres) FQN builds but entity is absent.
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({Table: None})
+        airbyte_source._get_table_fqn = MagicMock(return_value="pg.db.public.pokemon")
+        edges = self._lineage(
+            airbyte_source,
+            AirbyteSourceResponse(sourceType="postgres", configuration={"database": "db"}),
+            AirbyteDestinationResponse(destinationType="postgres", configuration={"database": "db"}),
+        )
+        assert edges == []
+
+    def test_unmapped_source_does_not_match_api_collection(self, airbyte_source):
+        """gitar #2: an unlisted DB type with apiServiceNames set + a same-named collection must
+        NOT produce an apiCollection edge. (Snowflake is mapped, so it never reaches the API path.)"""
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            apiServiceNames=["om28591-pokeapi"], storageServiceNames=["om28591-minio-storage"]
+        )
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({Table: None})
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        airbyte_source.metadata.es_search_from_fqn.return_value = [MOCK_API_COLLECTION]
+        airbyte_source._get_table_fqn = MagicMock(return_value="snow.db.public.pokemon")
+        edges = self._lineage(
+            airbyte_source,
+            AirbyteSourceResponse(sourceType="snowflake", configuration={"database": "db"}),
+            PUBLIC_API_S3_DESTINATION,
+        )
+        # Snowflake source is supported-but-not-found -> whole edge dropped, never apiCollection.
+        assert edges == []
 
 
 class TestApiEndpointSafeFanout:

@@ -63,14 +63,14 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     )
 
 
-def is_object_store_connector(resolved_type: Optional[str]) -> bool:  # noqa: UP045
+def is_object_store_connector(resolved_type: str | None) -> bool:
     """
     Whether the connector reads from or writes to an object store rather than a database.
     """
     return (resolved_type or "") in S3_CONNECTOR_TYPES
 
 
-def _build_s3_uri(bucket_name: Optional[str], *segments: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _build_s3_uri(bucket_name: str | None, *segments: str | None) -> str | None:
     """
     Join a bucket and path segments into a canonical ``s3://`` URI with no trailing slash.
     """
@@ -80,7 +80,7 @@ def _build_s3_uri(bucket_name: Optional[str], *segments: Optional[str]) -> Optio
     return "/".join([f"s3://{bucket_name.strip('/')}", *[part for part in parts if part]])
 
 
-def get_source_container_path(stream: AirbyteStream, source_connection: AirbyteSourceResponse) -> Optional[str]:  # noqa: UP045
+def get_source_container_path(stream: AirbyteStream, source_connection: AirbyteSourceResponse) -> str | None:
     """
     Build the S3 URI an object-store source reads a stream from.
 
@@ -105,7 +105,7 @@ def get_source_container_path(stream: AirbyteStream, source_connection: AirbyteS
 
 def get_destination_container_path(
     stream: AirbyteStream, destination_connection: AirbyteDestinationResponse
-) -> Optional[str]:  # noqa: UP045
+) -> str | None:
     """
     Build the S3 URI an object-store destination writes a stream to.
 

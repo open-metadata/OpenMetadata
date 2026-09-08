@@ -459,7 +459,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_source_table_details(
                 stream,
-                AirbyteSourceResponse(sourceType="snowflake", configuration={"database": "x"}),
+                AirbyteSourceResponse(sourceType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -504,7 +504,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_destination_table_details(
                 stream,
-                AirbyteDestinationResponse(destinationType="bigquery", configuration={"database": "x"}),
+                AirbyteDestinationResponse(destinationType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -711,7 +711,7 @@ def test_get_source_table_details_mongodb_null_database_config():
 
 
 def test_get_source_table_details_unsupported():
-    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="snowflake")) is None
+    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="dynamodb")) is None
 
 
 def test_get_destination_table_details_public_slugs():
@@ -732,4 +732,4 @@ def test_get_destination_table_details_public_slugs():
 
 
 def test_get_destination_table_details_unsupported():
-    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="snowflake")) is None
+    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="dynamodb")) is None

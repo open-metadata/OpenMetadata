@@ -333,13 +333,15 @@ def _build_registry() -> dict[str, EntityResolver]:
 CONNECTOR_RESOLVERS: dict[str, EntityResolver] = _build_registry()
 
 
-def get_resolver(resolved_type: str | None) -> EntityResolver:
+def get_resolver(resolved_type: str | None) -> EntityResolver | None:
     """
-    Resolver for a connector type. Unknown types fall back to the API resolver, which
-    only produces an edge when ``apiServiceNames`` is set — so an unsupported connector
-    (Kafka without a messaging service, a vector DB, /dev/null) resolves to None and the
-    caller anchors the known side on the pipeline.
+    Resolver for a connector type, or None when the type is not mapped to any entity kind.
+
+    A None return means "unknown connector": the caller then tries the opt-in API resolver
+    and, failing that, anchors on the pipeline. Unknown types are deliberately NOT routed to
+    the API resolver here — that would let an unmapped relational connector (Snowflake,
+    BigQuery, …) match a same-named apiCollection when apiServiceNames is set.
     """
     if not resolved_type:
-        return API_RESOLVER
-    return CONNECTOR_RESOLVERS.get(resolved_type) or CONNECTOR_RESOLVERS.get(resolved_type.lower()) or API_RESOLVER
+        return None
+    return CONNECTOR_RESOLVERS.get(resolved_type) or CONNECTOR_RESOLVERS.get(resolved_type.lower())

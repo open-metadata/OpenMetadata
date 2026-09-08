@@ -61,7 +61,7 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
-from .resolvers import DESTINATION, SOURCE, get_resolver  # noqa: TID252
+from .resolvers import API_RESOLVER, DESTINATION, SOURCE, get_resolver  # noqa: TID252
 
 logger = ingestion_logger()
 
@@ -341,16 +341,21 @@ class AirbyteSource(PipelineServiceSource):
         pipeline_reference = EntityReference(id=pipeline_entity.id.root, type="pipeline")
 
         for stream in streams:
-            from_reference = self._resolve_entity(stream, source_connection, SOURCE, pipeline_name)
-            to_reference = self._resolve_entity(stream, destination_connection, DESTINATION, pipeline_name)
+            from_reference, from_supported = self._resolve_entity(stream, source_connection, SOURCE, pipeline_name)
+            to_reference, to_supported = self._resolve_entity(
+                stream, destination_connection, DESTINATION, pipeline_name
+            )
 
+            # A supported connector whose entity is merely not ingested yet drops the edge — never
+            # imply the pipeline is a terminal source/sink for an ordinary table/container/topic.
+            if (from_reference is None and from_supported) or (to_reference is None and to_supported):
+                continue
             if from_reference is None and to_reference is None:
                 continue
 
-            # Anchor whichever side has no OpenMetadata entity on the pipeline itself, so a
-            # resolved side is never dropped. This covers API destinations — OpenMetadata accepts
-            # apiCollection only as an upstream node, never as a downstream target — and any
-            # otherwise unsupported connector. The pipeline is a valid lineage node either way.
+            # Anchor the genuinely-unsupported side (an API without apiServiceNames, /dev/null, an
+            # unknown connector) on the pipeline so the resolved side is still recorded. The pipeline
+            # is a valid lineage node either way, and apiCollection cannot be a downstream target.
             if from_reference is None:
                 from_reference = pipeline_reference
                 lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
@@ -379,19 +384,26 @@ class AirbyteSource(PipelineServiceSource):
         connection,
         direction: str,
         pipeline_name: str,
-    ) -> Optional[EntityReference]:  # noqa: UP045
+    ) -> tuple[EntityReference | None, bool]:
         """
-        Resolve a stream's OpenMetadata entity via the connector-type registry.
+        Resolve a stream's OpenMetadata entity, returning ``(reference, supported)``.
 
-        The registry maps the Airbyte connector type to the resolver for its entity kind
-        (table / container / topic / searchIndex / apiCollection). Unknown types fall back
-        to the API resolver, which only produces an edge when ``apiServiceNames`` is set — so
-        an unsupported connector resolves to None and the caller anchors on the pipeline.
+        A connector type in the registry (table / container / topic / searchIndex) is
+        *supported*: a None reference means the entity is simply not ingested yet, and the
+        caller drops the edge rather than anchoring it on the pipeline. An unknown type has
+        no OpenMetadata counterpart, so only an opt-in API service may claim it (source-side
+        ``apiCollection`` / destination-side single ``apiEndpoint``); when even that fails the
+        type is genuinely unsupported (``supported=False``) and the caller anchors it on the
+        pipeline. This keeps unmapped relational connectors from being mistaken for APIs.
         """
         resolver = get_resolver(connection.resolved_type)
-        return resolver.resolve(self, stream, connection, direction, pipeline_name)
+        if resolver is not None:
+            return resolver.resolve(self, stream, connection, direction, pipeline_name), True
 
-    def _get_container_entity_reference(self, container_path: str, pipeline_name: str) -> Optional[EntityReference]:  # noqa: UP045
+        api_reference = API_RESOLVER.resolve(self, stream, connection, direction, pipeline_name)
+        return api_reference, api_reference is not None
+
+    def _get_container_entity_reference(self, container_path: str, pipeline_name: str) -> EntityReference | None:
         """
         Look up the Container an object-store path maps to, as Glue and KafkaConnect do.
 

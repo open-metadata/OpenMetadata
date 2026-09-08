@@ -23,6 +23,9 @@ class AirbyteSource(Enum):
     MONGODB = "MongoDb"
     REDSHIFT = "Redshift"
     CLICKHOUSE = "ClickHouse"
+    SNOWFLAKE = "Snowflake"
+    BIGQUERY = "BigQuery"
+    ORACLE = "Oracle DB"
 
 
 class AirbyteDestination(Enum):
@@ -31,6 +34,9 @@ class AirbyteDestination(Enum):
     MSSQL = "MS SQL Server"
     REDSHIFT = "Redshift"
     CLICKHOUSE = "ClickHouse"
+    SNOWFLAKE = "Snowflake"
+    BIGQUERY = "BigQuery"
+    ORACLE = "Oracle"
 
 
 # The internal API reports connector types as display names (e.g. "Postgres"),
@@ -52,6 +58,16 @@ SOURCE_TYPE_LOOKUP = {
     "redshift": AirbyteSource.REDSHIFT,
     AirbyteSource.CLICKHOUSE.value: AirbyteSource.CLICKHOUSE,
     "clickhouse": AirbyteSource.CLICKHOUSE,
+    # Mainstream warehouses are mapped so they resolve as tables (or safely yield no
+    # lineage) instead of falling through to the API resolver. ponytail: BigQuery/Oracle
+    # use the default database+namespace parse; add per-connector field mapping (BigQuery
+    # project_id) when there is a live connection to verify against.
+    AirbyteSource.SNOWFLAKE.value: AirbyteSource.SNOWFLAKE,
+    "snowflake": AirbyteSource.SNOWFLAKE,
+    AirbyteSource.BIGQUERY.value: AirbyteSource.BIGQUERY,
+    "bigquery": AirbyteSource.BIGQUERY,
+    AirbyteSource.ORACLE.value: AirbyteSource.ORACLE,
+    "oracle": AirbyteSource.ORACLE,
 }
 
 DESTINATION_TYPE_LOOKUP = {
@@ -67,6 +83,13 @@ DESTINATION_TYPE_LOOKUP = {
     "redshift": AirbyteDestination.REDSHIFT,
     AirbyteDestination.CLICKHOUSE.value: AirbyteDestination.CLICKHOUSE,
     "clickhouse": AirbyteDestination.CLICKHOUSE,
+    # See SOURCE_TYPE_LOOKUP note — mapped so warehouses never route to the API resolver.
+    AirbyteDestination.SNOWFLAKE.value: AirbyteDestination.SNOWFLAKE,
+    "snowflake": AirbyteDestination.SNOWFLAKE,
+    AirbyteDestination.BIGQUERY.value: AirbyteDestination.BIGQUERY,
+    "bigquery": AirbyteDestination.BIGQUERY,
+    AirbyteDestination.ORACLE.value: AirbyteDestination.ORACLE,
+    "oracle": AirbyteDestination.ORACLE,
 }
 
 # Object-store connectors map to a Container, not a Table, so they are resolved by path
