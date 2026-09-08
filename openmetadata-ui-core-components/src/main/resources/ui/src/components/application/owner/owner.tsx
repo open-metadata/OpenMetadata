@@ -69,7 +69,7 @@ export const Owner = ({
             </div>
           )}
           <span className="tw:text-quaternary tw:text-xs">
-            {showDashPlaceholder ? '--' : (placeHolder ?? t('label.no-owners'))}
+            {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
           </span>
         </div>
       );
@@ -110,10 +110,7 @@ export const Owner = ({
   if (!isCompactView) {
     return (
       <div
-        className={cx(
-          'tw:flex tw:flex-col tw:items-start tw:gap-0',
-          className
-        )}
+        className={cx('tw:flex tw:flex-col tw:items-start tw:gap-0', className)}
         data-testid={dataTestId}>
         {(showLabel || selectorContent) && (
           <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
@@ -155,14 +152,17 @@ export const Owner = ({
 
   return (
     <div
-      className={cx('tw:flex tw:items-center tw:gap-2 tw:max-w-full', className)}
+      className={cx(
+        'tw:flex tw:items-center tw:gap-2 tw:max-w-full',
+        className
+      )}
       data-testid={dataTestId}>
       <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:max-w-full">
         {visibleOwners.map((owner, i) => (
           <OwnerChip
+            isCompactView
             avatarSize={avatarSize}
             className={ownerLabelClassName}
-            isCompactView
             key={owner.id || owner.name || String(i)}
             owner={owner}
             ownerDisplayName={ownerDisplayName}

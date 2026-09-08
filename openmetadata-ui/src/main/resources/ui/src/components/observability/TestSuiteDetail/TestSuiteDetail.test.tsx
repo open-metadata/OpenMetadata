@@ -104,7 +104,9 @@ jest.mock('hooks/useOwnerDisplayProps', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react');
-  const TabsCtx = React.createContext<((key: string) => void) | undefined>(undefined);
+  const TabsCtx = React.createContext<((key: string) => void) | undefined>(
+    undefined
+  );
 
   const Box = ({ children, ...props }: any) => <div {...props}>{children}</div>;
   const Button = ({ children, onPress, onClick, ...props }: any) => (
@@ -130,7 +132,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       </button>
     );
   };
-  const TabsPanel = ({ children }: any) => <div role="tabpanel">{children}</div>;
+  const TabsPanel = ({ children }: any) => (
+    <div role="tabpanel">{children}</div>
+  );
   const Tabs = Object.assign(
     ({ children, onSelectionChange, ...props }: any) => (
       <TabsCtx.Provider value={onSelectionChange}>
@@ -141,7 +145,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     { List: TabsList, Item: TabsItem, Panel: TabsPanel }
   );
-  const Tooltip = ({ children, title }: any) => <div title={title}>{children}</div>;
+  const Tooltip = ({ children, title }: any) => (
+    <div title={title}>{children}</div>
+  );
   const Typography = ({ children, as: As = 'span', ...props }: any) => (
     <As {...props}>{children}</As>
   );

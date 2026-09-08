@@ -254,28 +254,43 @@ jest.mock('../common/DataQualitySection/DataQualitySection', () => {
   ));
 });
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@openmetadata/ui-core-components', () => {
   const div =
     (testId?: string) =>
-    ({ children, ...props }: any) =>
-      <div data-testid={testId} {...props}>{children}</div>;
+    ({ children, ...rest }: any) =>
+      (
+        <div data-testid={testId} {...rest}>
+          {children}
+        </div>
+      );
 
   const TabsList = ({ children }: any) => <div role="tablist">{children}</div>;
-  const TabsItem = ({ children, label, id, ...props }: any) => (
-    <button role="tab" {...props}>{label ?? children}</button>
+  const TabsItem = ({ children, label, id: _id, ...rest }: any) => (
+    <button role="tab" {...rest}>
+      {label ?? children}
+    </button>
   );
-  const TabsPanel = ({ children }: any) => <div role="tabpanel">{children}</div>;
-  const Tabs = Object.assign(div(), { List: TabsList, Item: TabsItem, Panel: TabsPanel });
+  const TabsPanel = ({ children }: any) => (
+    <div role="tabpanel">{children}</div>
+  );
+  const Tabs = Object.assign(div(), {
+    List: TabsList,
+    Item: TabsItem,
+    Panel: TabsPanel,
+  });
 
   return {
     Owner: () => <div data-testid="owners-section">Owners Section</div>,
-    Button: ({ children, onPress, onClick, ...props }: any) => (
-      <button onClick={onPress ?? onClick} {...props}>{children}</button>
+    Button: ({ children, onPress, onClick, ...rest }: any) => (
+      <button onClick={onPress ?? onClick} {...rest}>
+        {children}
+      </button>
     ),
     Divider: () => <hr />,
     Tabs,
-    Typography: ({ children, as: As = 'span', ...props }: any) => (
-      <As {...props}>{children}</As>
+    Typography: ({ children, as: As = 'span', ...rest }: any) => (
+      <As {...rest}>{children}</As>
     ),
     Tooltip: ({ children }: any) => <>{children}</>,
     TooltipTrigger: ({ children }: any) => <>{children}</>,
@@ -283,15 +298,26 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Box: div(),
     PopoverTrigger: ({ children }: any) => <>{children}</>,
     Popover: div(),
-    Input: ({ value, onChange, placeholder, ...props }: any) => (
-      <input onChange={onChange} placeholder={placeholder} value={value ?? ''} {...props} />
+    Input: ({ onChange, placeholder, value, ...rest }: any) => (
+      <input
+        placeholder={placeholder}
+        value={value ?? ''}
+        onChange={onChange}
+        {...rest}
+      />
     ),
     CheckboxBase: ({ isSelected }: any) => (
-      <input readOnly checked={isSelected ?? false} type="checkbox" />
+      <input
+        readOnly
+        aria-label="checkbox"
+        checked={isSelected ?? false}
+        type="checkbox"
+      />
     ),
-    Avatar: ({ name, ...props }: any) => <span {...props}>{name}</span>,
+    Avatar: ({ name, ...rest }: any) => <span {...rest}>{name}</span>,
   };
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 jest.mock('../common/DomainsSection/DomainsSection', () => {
   return jest

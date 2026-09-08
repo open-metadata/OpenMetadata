@@ -54,9 +54,9 @@ export const AvatarStack = ({
       {visibleItems.map((item, i) => (
         <div
           // Index key is safe here — the list order is stable within a stack.
-          // eslint-disable-next-line react/no-array-index-key
-          key={i}
+
           className="tw:relative tw:shrink-0 tw:rounded-full"
+          key={i}
           style={{
             height: avatarSize,
             marginLeft: i > 0 ? `-${overlapPx}px` : undefined,

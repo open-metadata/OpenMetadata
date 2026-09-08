@@ -79,7 +79,7 @@ export const AvatarGroup = ({
     const nameStr =
       typeof rawDisplayName === 'string'
         ? rawDisplayName
-        : (owner.name ?? owner.id);
+        : owner.name ?? owner.id;
     const isTeam = owner.type === 'team';
     const colorTokens = !isTeam ? getAvatarColorTokens(nameStr) : undefined;
     const TeamIcon = owner.icon;
@@ -89,8 +89,10 @@ export const AvatarGroup = ({
         alt={nameStr}
         className={isTeam ? 'tw:opacity-60' : undefined}
         contrastBorder={!isTeam}
-        initials={!isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined}
-        placeholderIcon={isTeam ? (TeamIcon ?? TeamsIcon) : undefined}
+        initials={
+          !isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined
+        }
+        placeholderIcon={isTeam ? TeamIcon ?? TeamsIcon : undefined}
         size={resolvedSize}
         style={
           isTeam
@@ -110,7 +112,9 @@ export const AvatarGroup = ({
       <span
         className="tw:block"
         key={owner.id}
-        title={typeof rawDisplayName === 'string' ? rawDisplayName : owner.name}>
+        title={
+          typeof rawDisplayName === 'string' ? rawDisplayName : owner.name
+        }>
         {avatar}
       </span>
     );
@@ -137,15 +141,17 @@ export const AvatarGroup = ({
           {/* TooltipTrigger (AriaButton) reads FocusableContext set by AriaTooltipTrigger
               — plain <button> does not read that context so hover wiring is silently dropped */}
           <TooltipTrigger
-            aria-label={`+${overflowCount} more ${overflowTitleLabel ?? 'owners'}`}
+            aria-label={`+${overflowCount} more ${
+              overflowTitleLabel ?? 'owners'
+            }`}
             className="tw:rounded-full tw:bg-transparent tw:p-0"
             style={{
               marginLeft: `-${overlapPx}px`,
               zIndex: visibleOwners.length + 1,
             }}>
             <Avatar
-              className="tw:bg-secondary tw:text-secondary"
               contrastBorder
+              className="tw:bg-secondary tw:text-secondary"
               initials={`+${overflowCount}`}
               size={resolvedSize}
             />

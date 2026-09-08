@@ -38,7 +38,10 @@ export interface OwnerAvatarStackProps {
 
 export interface OwnerProps {
   owners?: OwnerRef[];
-  /** When true, renders owners as a horizontal row of chips (default). When false, renders a column with a header label row and avatar stack. */
+  /**
+   * When true, renders owners as a horizontal row of chips (default).
+   * When false, renders a column with a header label row and avatar stack.
+   */
   isCompactView?: boolean;
   maxVisibleOwners?: number;
   avatarSize?: AvatarSize;
