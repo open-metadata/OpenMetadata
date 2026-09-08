@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
@@ -99,6 +100,7 @@ public class AIContextBuilder {
   private static final int MAX_KNOWLEDGE_ITEMS = 50;
   private static final int MAX_ARTICLES = 20;
   private static final int MAX_JOIN_HINTS = 25;
+  static final int MAX_SAMPLE_ROWS = 10;
   static final int MAX_COLUMN_MAPPINGS_PER_EDGE = 25;
 
   /** Upper bound on the model SQL inlined into a table's data-model context, in characters. */
@@ -866,15 +868,55 @@ public class AIContextBuilder {
     return item;
   }
 
-  private static AssetContext buildAssetContext(EntityInterface entity) {
+  private AssetContext buildAssetContext(EntityInterface entity) {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
-      context.withTable(buildTableContext(table));
+      context.withTable(buildTableContext(table).withSampleData(resolveSampleData(table)));
     }
     if (entity instanceof Metric metric) {
       context.withGeneric(buildMetricContext(metric));
     }
     return context;
+  }
+
+  private TableData resolveSampleData(Table table) {
+    if (authorizer == null || securityContext == null) {
+      return null;
+    }
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+    // Resolved by id rather than wrapping the already-loaded table: the pre-resolved constructor
+    // never runs resolveEntity(), so owners and domains would be absent (TABLE_FIELDS does not ask
+    // for them) and every owner- or domain-conditioned rule would misfire — including the PII
+    // decision below, which would mask an owner's own sample data.
+    ResourceContext<Table> resourceContext =
+        new ResourceContext<>(Entity.TABLE, table.getId(), null);
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_SAMPLE_DATA),
+          resourceContext);
+      boolean canViewPii = authorizer.authorizePII(securityContext, resourceContext.getOwners());
+      return boundedSampleData(repository.getSampleData(table.getId(), canViewPii).getSampleData());
+    } catch (AuthorizationException e) {
+      LOG.debug("AIContext: sample data omitted for {}: permission denied", fqn);
+    } catch (RuntimeException e) {
+      LOG.warn("AIContext: failed to load sample data for {}: {}", fqn, e.getMessage());
+    }
+    return null;
+  }
+
+  static TableData boundedSampleData(TableData sampleData) {
+    if (sampleData == null) {
+      return null;
+    }
+    List<String> columns =
+        sampleData.getColumns() == null ? null : new ArrayList<>(sampleData.getColumns());
+    List<List<Object>> rows =
+        listOrEmpty(sampleData.getRows()).stream()
+            .limit(MAX_SAMPLE_ROWS)
+            .<List<Object>>map(row -> row == null ? null : new ArrayList<>(row))
+            .toList();
+    return new TableData().withColumns(columns).withRows(rows);
   }
 
   /**

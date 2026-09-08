@@ -478,30 +478,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void startFuseki() {
     LOG.info("Starting the configured OpenMetadata Fuseki image...");
-    FUSEKI_CONTAINER =
-        fusekiContainer()
-            .withExposedPorts(FUSEKI_PORT)
-            .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
-            // World-writable tmpfs supports both root and non-root Fuseki images.
-            .withTmpFs(
-                Map.of(
-                    "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
-                    "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"))
-            .waitingFor(
-                Wait.forHttp("/$/ping")
-                    .forPort(FUSEKI_PORT)
-                    .forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(2)))
-            // Increase file descriptor limits for parallel test execution
-            .withCreateContainerCmdModifier(
-                cmd ->
-                    cmd.getHostConfig()
-                        .withUlimits(
-                            java.util.List.of(
-                                new com.github.dockerjava.api.model.Ulimit(
-                                    "nofile", 65536L, 65536L))));
+    FUSEKI_CONTAINER = createFusekiContainer();
     FUSEKI_CONTAINER.start();
 
     fusekiEndpoint =
@@ -513,7 +490,33 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("Fuseki started: {}", fusekiEndpoint);
   }
 
-  private GenericContainer<?> fusekiContainer() {
+  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  public static GenericContainer<?> createFusekiContainer() {
+    return fusekiContainer()
+        .withExposedPorts(FUSEKI_PORT)
+        .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+        .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+        .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
+        // World-writable tmpfs supports both root and non-root Fuseki images.
+        .withTmpFs(
+            Map.of(
+                "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+                "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"))
+        .waitingFor(
+            Wait.forHttp("/$/ping")
+                .forPort(FUSEKI_PORT)
+                .forStatusCode(200)
+                .withStartupTimeout(Duration.ofMinutes(2)))
+        // Increase file descriptor limits for parallel test execution
+        .withCreateContainerCmdModifier(
+            cmd ->
+                cmd.getHostConfig()
+                    .withUlimits(
+                        java.util.List.of(
+                            new com.github.dockerjava.api.model.Ulimit("nofile", 65536L, 65536L))));
+  }
+
+  private static GenericContainer<?> fusekiContainer() {
     final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
     if (image != null && !image.isBlank()) {
       return new GenericContainer<>(DockerImageName.parse(image));
