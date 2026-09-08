@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
@@ -33,10 +34,21 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -46,6 +58,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.policies.PolicyService;
+import org.openmetadata.sdk.services.teams.RoleService;
+import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.TestUtils;
@@ -4751,6 +4766,205 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       requests.add(createRequest(ns.prefix(prefix + i), ns));
     }
     return requests;
+  }
+
+  /**
+   * Test: A bot whose policy DENIES {@code EditDisplayName} (the ingestion bot, via
+   * {@code IngestionBotPolicy}/{@code DefaultBotPolicy}) must NOT overwrite a user-curated
+   * {@code displayName} through a single-entity PUT.
+   *
+   * <p>A per-entity PUT authorizes with the coarse {@code EDIT_ALL} operation, which does not
+   * intersect the field-level {@code EditDisplayName} deny - so the bot reaches the repository,
+   * where {@code EntityRepository#updateDisplayName} re-applies that field-level deny and preserves
+   * the user value. This is the regression guard for tag ingestion blanking a curated displayName:
+   * the connector PUTs a CreateTag whose displayName is null.
+   */
+  @Test
+  void test_singleEntityPut_ingestionBot_preservesUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K request = createRequest(ns.prefix("put_denydn_"), ns);
+    if (!hasSetter(request, "setDisplayName", String.class)) return;
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    setFieldViaReflection(request, "setDisplayName", String.class, null);
+    HttpResponse<String> response = putAs(request, getBotToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        userDisplayName,
+        result.getDisplayName(),
+        "Ingestion bot (EditDisplayName denied) must NOT blank a user displayName via PUT: " + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditDisplayName} (modeling the SCIM bot, whose
+   * {@code ScimBotPolicy} carries no {@code DisplayName-Deny}) CAN still update {@code displayName}
+   * through a single-entity PUT.
+   *
+   * <p>Contrast with {@link #test_singleEntityPut_ingestionBot_preservesUserDisplayName}: the
+   * difference is purely the bot's policy, which is exactly what the in-code guard keys on. Without
+   * this, the guard would re-break SCIM displayName sync (#21879).
+   */
+  @Test
+  void test_singleEntityPut_displayNameAllowedBot_updatesDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K request = createRequest(ns.prefix("put_allowdn_"), ns);
+    if (!hasSetter(request, "setDisplayName", String.class)) return;
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    String botDisplayName = "SCIM-like Bot Display Name";
+    setFieldViaReflection(request, "setDisplayName", String.class, botDisplayName);
+    HttpResponse<String> response = putAs(request, displayNameAllowedBotToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Allowed-bot single-entity PUT should succeed: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        botDisplayName,
+        result.getDisplayName(),
+        "Bot allowed EditDisplayName (SCIM-like) must update displayName via PUT: " + fqn);
+  }
+
+  /** Whether this entity's create request exposes {@code setterName}, so the test can skip. */
+  private boolean hasSetter(K createRequest, String setterName, Class<?> paramType) {
+    try {
+      createRequest.getClass().getMethod(setterName, paramType);
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  /**
+   * Single-entity createOrUpdate (PUT) over raw HTTP using the given bearer token. The SDK fluent
+   * clients always authenticate as admin, so the raw call is how a test drives a per-entity PUT as
+   * a specific bot identity.
+   */
+  protected HttpResponse<String> putAs(K request, String token) {
+    try {
+      String url = SdkClients.getServerUrl() + getResourcePath();
+      if (url.endsWith("/")) {
+        url = url.substring(0, url.length() - 1);
+      }
+      java.net.http.HttpRequest httpRequest =
+          java.net.http.HttpRequest.newBuilder()
+              .uri(java.net.URI.create(url))
+              .header("Authorization", "Bearer " + token)
+              .header("Content-Type", "application/json")
+              .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+              .build();
+      return java.net.http.HttpClient.newHttpClient()
+          .send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      throw new RuntimeException("Single-entity PUT failed: " + e.getMessage(), e);
+    }
+  }
+
+  // Lazily provisioned (once per session) bot whose policy allows EditAll and does NOT deny
+  // EditDisplayName, modeling the SCIM bot. API-created bots are force-assigned DefaultBotRole
+  // (which denies EditDisplayName), so that role is stripped via a raw JSON-Patch after creation.
+  private static volatile String displayNameAllowedBotToken;
+
+  protected static synchronized String displayNameAllowedBotToken() {
+    if (displayNameAllowedBotToken == null) {
+      displayNameAllowedBotToken = provisionDisplayNameAllowedBot();
+    }
+    return displayNameAllowedBotToken;
+  }
+
+  private static String provisionDisplayNameAllowedBot() {
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      String suffix = UUID.randomUUID().toString().substring(0, 8);
+      Policy policy =
+          new PolicyService(admin.getHttpClient())
+              .create(
+                  new CreatePolicy()
+                      .withName("displayNameAllowedBotPolicy_" + suffix)
+                      .withRules(
+                          List.of(
+                              new Rule()
+                                  .withName("AllowEditAll")
+                                  .withResources(List.of("All"))
+                                  .withOperations(
+                                      List.of(
+                                          MetadataOperation.EDIT_ALL,
+                                          MetadataOperation.VIEW_ALL,
+                                          MetadataOperation.CREATE))
+                                  .withEffect(Rule.Effect.ALLOW))));
+      Role role =
+          new RoleService(admin.getHttpClient())
+              .create(
+                  new CreateRole()
+                      .withName("displayNameAllowedBotRole_" + suffix)
+                      .withPolicies(List.of(policy.getName())));
+      String email = "displayname-allowed-bot-" + suffix + "@open-metadata.org";
+      User bot =
+          new UserService(admin.getHttpClient())
+              .create(
+                  new CreateUser()
+                      .withName("displayname-allowed-bot-" + suffix)
+                      .withEmail(email)
+                      .withIsBot(true)
+                      .withAuthenticationMechanism(
+                          new AuthenticationMechanism()
+                              .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                              .withConfig(
+                                  new JWTAuthMechanism()
+                                      .withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+                      .withRoles(List.of(role.getId())));
+      stripDefaultBotRole(bot.getId().toString(), role.getId().toString());
+      return JwtAuthProvider.tokenFor(email, email, new String[] {role.getName()}, 86400);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to provision displayName-allowed bot: " + e.getMessage(), e);
+    }
+  }
+
+  // Replace the bot's roles (auto-assigned DefaultBotRole + the custom role) with ONLY the custom
+  // role via a raw JSON-Patch, so its effective policy no longer denies EditDisplayName.
+  private static void stripDefaultBotRole(String botId, String roleId) throws Exception {
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/roles\",\"value\":[{\"id\":\""
+            + roleId
+            + "\",\"type\":\"role\"}]}]";
+    java.net.http.HttpRequest req =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(SdkClients.getServerUrl() + "/v1/users/" + botId))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+    HttpResponse<String> resp =
+        java.net.http.HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+    if (resp.statusCode() != 200) {
+      throw new IllegalStateException(
+          "Failed to strip DefaultBotRole: " + resp.statusCode() + " " + resp.body());
+    }
   }
 
   private String getBotToken() {
