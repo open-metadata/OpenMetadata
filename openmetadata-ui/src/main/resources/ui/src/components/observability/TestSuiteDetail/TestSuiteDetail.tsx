@@ -32,6 +32,7 @@ import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-s
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
@@ -45,7 +46,6 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
@@ -229,6 +229,11 @@ const TestSuiteDetail = () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
+  const getCopyTooltipTitle = () =>
+    hasCopied
+      ? t('message.link-copy-to-clipboard')
+      : t('label.copy-item', { item: t('label.url-uppercase') });
+
   const activeTabContent = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
@@ -361,15 +366,7 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <Tooltip
-                    placement="top"
-                    title={
-                      hasCopied
-                        ? t('message.link-copy-to-clipboard')
-                        : t('label.copy-item', {
-                            item: t('label.url-uppercase'),
-                          })
-                    }>
+                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
                     <Button
                       aria-label={t('label.copy-item', {
                         item: t('label.url-uppercase'),

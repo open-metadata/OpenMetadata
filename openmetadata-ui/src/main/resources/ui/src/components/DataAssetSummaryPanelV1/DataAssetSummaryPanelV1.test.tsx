@@ -77,6 +77,21 @@ jest.mock('../../hooks/useChangeSummary', () => ({
   useChangeSummary: jest.fn(),
 }));
 
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: () => ({
+    rules: [],
+    entityRules: {},
+    isFetched: true,
+  }),
+}));
+
+jest.mock('../../hooks/useOwnerDisplayProps', () => ({
+  useOwnerDisplayProps: () => ({
+    toOwnersWithHref: (owners: unknown[]) => owners,
+    renderOwnerContent: undefined,
+  }),
+}));
+
 jest.mock('../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
@@ -239,12 +254,43 @@ jest.mock('../common/DataQualitySection/DataQualitySection', () => {
   ));
 });
 
-jest.mock('../common/OwnersSection/OwnersSection', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="owners-section">Owners Section</div>
-    ));
+jest.mock('@openmetadata/ui-core-components', () => {
+  const div =
+    (testId?: string) =>
+    ({ children, ...props }: any) =>
+      <div data-testid={testId} {...props}>{children}</div>;
+
+  const TabsList = ({ children }: any) => <div role="tablist">{children}</div>;
+  const TabsItem = ({ children, label, id, ...props }: any) => (
+    <button role="tab" {...props}>{label ?? children}</button>
+  );
+  const TabsPanel = ({ children }: any) => <div role="tabpanel">{children}</div>;
+  const Tabs = Object.assign(div(), { List: TabsList, Item: TabsItem, Panel: TabsPanel });
+
+  return {
+    Owner: () => <div data-testid="owners-section">Owners Section</div>,
+    Button: ({ children, onPress, onClick, ...props }: any) => (
+      <button onClick={onPress ?? onClick} {...props}>{children}</button>
+    ),
+    Divider: () => <hr />,
+    Tabs,
+    Typography: ({ children, as: As = 'span', ...props }: any) => (
+      <As {...props}>{children}</As>
+    ),
+    Tooltip: ({ children }: any) => <>{children}</>,
+    TooltipTrigger: ({ children }: any) => <>{children}</>,
+    Badge: div(),
+    Box: div(),
+    PopoverTrigger: ({ children }: any) => <>{children}</>,
+    Popover: div(),
+    Input: ({ value, onChange, placeholder, ...props }: any) => (
+      <input onChange={onChange} placeholder={placeholder} value={value ?? ''} {...props} />
+    ),
+    CheckboxBase: ({ isSelected }: any) => (
+      <input readOnly checked={isSelected ?? false} type="checkbox" />
+    ),
+    Avatar: ({ name, ...props }: any) => <span {...props}>{name}</span>,
+  };
 });
 
 jest.mock('../common/DomainsSection/DomainsSection', () => {

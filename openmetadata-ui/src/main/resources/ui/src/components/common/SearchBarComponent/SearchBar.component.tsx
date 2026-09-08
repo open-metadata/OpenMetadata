@@ -80,6 +80,11 @@ const Searchbar = ({
     onSearch('');
   };
 
+  const loadingSlot =
+    showLoadingStatus && loadingState === 'waiting' ? (
+      <Loader size="small" type="default" />
+    ) : undefined;
+
   const trailingSlot =
     showClearSearch && userSearch ? (
       <button
@@ -89,9 +94,9 @@ const Searchbar = ({
         onClick={handleClear}>
         <CloseOutlined aria-hidden className="tw:size-3" />
       </button>
-    ) : showLoadingStatus && loadingState === 'waiting' ? (
-      <Loader size="small" type="default" />
-    ) : undefined;
+    ) : (
+      loadingSlot
+    );
 
   return (
     <div

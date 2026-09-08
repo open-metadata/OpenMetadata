@@ -15,11 +15,11 @@ import { Avatar } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import { ComponentProps, useMemo } from 'react';
+import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import Loader from '../Loader/Loader';
@@ -95,21 +95,27 @@ const ProfilePicture = ({
     isTeam,
   });
 
-  const placeholder = isPicLoading && !profileURL ? (
-    <Loader
-      size={numericWidth <= 24 ? 'x-small' : 'small'}
-      type={isSolid ? 'white' : 'default'}
-    />
-  ) : (
-    <span
-      style={{
-        color: isSolid ? '#fff' : color,
-        fontSize: initialsSize,
-        fontWeight: isSolid ? 400 : 500,
-      }}>
-      {character}
-    </span>
-  );
+  const getPlaceholder = () => {
+    if (isPicLoading && !profileURL) {
+      return (
+        <Loader
+          size={numericWidth <= 24 ? 'x-small' : 'small'}
+          type={isSolid ? 'white' : 'default'}
+        />
+      );
+    }
+
+    return (
+      <span
+        style={{
+          color: isSolid ? '#fff' : color,
+          fontSize: initialsSize,
+          fontWeight: isSolid ? 400 : 500,
+        }}>
+        {character}
+      </span>
+    );
+  };
 
   if (isTeam) {
     return (
@@ -130,7 +136,7 @@ const ProfilePicture = ({
       className={className}
       contrastBorder={!isSolid}
       data-testid="profile-avatar"
-      placeholder={placeholder}
+      placeholder={getPlaceholder()}
       size={avatarSize}
       src={profileURL || undefined}
       style={{

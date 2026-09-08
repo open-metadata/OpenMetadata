@@ -95,9 +95,70 @@ jest.mock('components/common/DomainLabel/DomainLabel.component', () => ({
   DomainLabel: () => <div data-testid="domain-label">domain-label</div>,
 }));
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: () => <div data-testid="owner-label">owner-label</div>,
+jest.mock('hooks/useOwnerDisplayProps', () => ({
+  useOwnerDisplayProps: () => ({
+    toOwnersWithHref: (owners: unknown[]) => owners,
+    renderOwnerContent: undefined,
+  }),
 }));
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = require('react');
+  const TabsCtx = React.createContext<((key: string) => void) | undefined>(undefined);
+
+  const Box = ({ children, ...props }: any) => <div {...props}>{children}</div>;
+  const Button = ({ children, onPress, onClick, ...props }: any) => (
+    <button onClick={onPress ?? onClick} {...props}>
+      {children}
+    </button>
+  );
+  const Dialog = Object.assign(
+    ({ children }: any) => <div role="dialog">{children}</div>,
+    { Content: ({ children }: any) => <div>{children}</div> }
+  );
+  const DialogTrigger = ({ children }: any) => <div>{children}</div>;
+  const Modal = ({ children }: any) => <div>{children}</div>;
+  const ModalOverlay = ({ children }: any) => <div>{children}</div>;
+  const Owner = () => <div data-testid="owner-label">owner-label</div>;
+  const TabsList = ({ children }: any) => <div role="tablist">{children}</div>;
+  const TabsItem = ({ children, id, label }: any) => {
+    const onSelectionChange = React.useContext(TabsCtx);
+
+    return (
+      <button role="tab" onClick={() => onSelectionChange?.(id)}>
+        {label ?? children}
+      </button>
+    );
+  };
+  const TabsPanel = ({ children }: any) => <div role="tabpanel">{children}</div>;
+  const Tabs = Object.assign(
+    ({ children, onSelectionChange, ...props }: any) => (
+      <TabsCtx.Provider value={onSelectionChange}>
+        <div data-testid="tabs" {...props}>
+          {children}
+        </div>
+      </TabsCtx.Provider>
+    ),
+    { List: TabsList, Item: TabsItem, Panel: TabsPanel }
+  );
+  const Tooltip = ({ children, title }: any) => <div title={title}>{children}</div>;
+  const Typography = ({ children, as: As = 'span', ...props }: any) => (
+    <As {...props}>{children}</As>
+  );
+
+  return {
+    Box,
+    Button,
+    Dialog,
+    DialogTrigger,
+    Modal,
+    ModalOverlay,
+    Owner,
+    Tabs,
+    Tooltip,
+    Typography,
+  };
+});
 
 jest.mock('components/common/EntityDescription/Description', () => ({
   __esModule: true,

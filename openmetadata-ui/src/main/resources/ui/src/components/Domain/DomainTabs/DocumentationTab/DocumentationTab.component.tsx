@@ -13,7 +13,6 @@
 import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { useTranslation } from 'react-i18next';
 import Description from '../../../../components/common/EntityDescription/Description';
 import { EntityField } from '../../../../constants/Feeds.constants';
@@ -21,26 +20,30 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePa
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
-    DataProduct,
-    TagLabel,
-    TagSource
+  DataProduct,
+  TagLabel,
+  TagSource,
 } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { ChangeDescription, EntityReference } from '../../../../generated/entity/type';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../../generated/entity/type';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
 
 import {
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -50,8 +53,8 @@ import '../../domain.less';
 import { DomainExpertWidget } from '../../DomainExpertsWidget/DomainExpertWidget';
 import { DomainTypeWidget } from '../../DomainTypeWidget/DomainTypeWidget';
 import {
-    DocumentationEntity,
-    DocumentationTabProps
+  DocumentationEntity,
+  DocumentationTabProps,
 } from './DocumentationTab.interface';
 const DocumentationTab = ({
   isVersionsView = false,
@@ -151,6 +154,42 @@ const DocumentationTab = ({
     }
   };
 
+  const renderOwnerEditButton = () => {
+    if (!isVersionsView && editOwnerPermission) {
+      return (
+        <UserTeamSelectableList
+          hasPermission={Boolean(editOwnerPermission)}
+          listHeight={200}
+          multiple={{
+            user: entityRules.canAddMultipleUserOwners,
+            team: entityRules.canAddMultipleTeamOwner,
+          }}
+          owner={(domain as Domain | DataProduct).owners}
+          onUpdate={async (updatedOwners?: EntityReference[]) => {
+            await onUpdate({ ...domain, owners: updatedOwners });
+          }}>
+          {isEmpty((domain as Domain | DataProduct).owners) ? (
+            <WidgetPlusButton
+              data-testid="add-owner"
+              title={t('label.add-entity', {
+                entity: t('label.owner-plural'),
+              })}
+            />
+          ) : (
+            <WidgetEditButton
+              data-testid="edit-owner"
+              title={t('label.edit-entity', {
+                entity: t('label.owner-plural'),
+              })}
+            />
+          )}
+        </UserTeamSelectableList>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <ResizablePanels
       className="h-full domain-height-with-resizable-panel no-right-panel-splitter"
@@ -181,37 +220,7 @@ const DocumentationTab = ({
           <div className="d-flex flex-column gap-5">
             <WidgetCard
               dataTestId="domain-owner-name"
-              headerExtra={
-                !isVersionsView && editOwnerPermission ? (
-                  <UserTeamSelectableList
-                    hasPermission={Boolean(editOwnerPermission)}
-                    listHeight={200}
-                    multiple={{
-                      user: entityRules.canAddMultipleUserOwners,
-                      team: entityRules.canAddMultipleTeamOwner,
-                    }}
-                    owner={(domain as Domain | DataProduct).owners}
-                    onUpdate={async (updatedOwners?: EntityReference[]) => {
-                      await onUpdate({ ...domain, owners: updatedOwners });
-                    }}>
-                    {isEmpty((domain as Domain | DataProduct).owners) ? (
-                      <WidgetPlusButton
-                        data-testid="add-owner"
-                        title={t('label.add-entity', {
-                          entity: t('label.owner-plural'),
-                        })}
-                      />
-                    ) : (
-                      <WidgetEditButton
-                        data-testid="edit-owner"
-                        title={t('label.edit-entity', {
-                          entity: t('label.owner-plural'),
-                        })}
-                      />
-                    )}
-                  </UserTeamSelectableList>
-                ) : null
-              }
+              headerExtra={renderOwnerEditButton()}
               isExpandDisabled={isEmpty(
                 (domain as Domain | DataProduct).owners
               )}

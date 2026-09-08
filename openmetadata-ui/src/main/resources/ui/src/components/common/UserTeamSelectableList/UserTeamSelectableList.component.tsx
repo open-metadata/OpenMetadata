@@ -26,7 +26,6 @@ import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
@@ -38,6 +37,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
@@ -290,6 +290,12 @@ export const UserTeamSelectableList = ({
     }
   };
 
+  const getEditTriggerTitle = () =>
+    !isOpen
+      ? tooltipText ??
+        t('label.edit-entity', { entity: t('label.owner-plural') })
+      : undefined;
+
   const defaultTrigger = hasPermission ? (
     <span ref={triggerRef}>
       <EditIconButton
@@ -297,14 +303,7 @@ export const UserTeamSelectableList = ({
         data-testid="edit-owner"
         icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
         size="small"
-        title={
-          !isOpen
-            ? tooltipText ??
-              t('label.edit-entity', {
-                entity: t('label.owner-plural'),
-              })
-            : undefined
-        }
+        title={getEditTriggerTitle()}
         onClick={(e) => {
           e.stopPropagation();
           setPopupVisible(true);
@@ -319,6 +318,34 @@ export const UserTeamSelectableList = ({
     return null;
   }
 
+  const renderPreviewSection = () =>
+    previewSelected ? (
+      <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-3 tw:bg-secondary tw:border-b tw:border-primary">
+        <span className="tw:text-sm tw:text-tertiary">
+          {t('label.selected-entity', {
+            entity: label ?? t('label.owner-plural'),
+          })}
+        </span>
+        <div className="tw:flex tw:flex-wrap tw:gap-1 tw:max-h-24 tw:overflow-y-auto">
+          {selectedUsers.map((user) => {
+            return (
+              <UserTag
+                closable
+                avatarType="outlined"
+                className="user-team-pills"
+                id={user.name ?? ''}
+                isTeam={user.type === EntityType.TEAM}
+                key={user.id}
+                name={getEntityName(user)}
+                size={UserTagSize.small}
+                onRemove={() => onRemove(user.id)}
+              />
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
   const popoverContent = (
     // Stop click/enter from bubbling to parent collapsible panels
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
@@ -326,40 +353,12 @@ export const UserTeamSelectableList = ({
       className="tw:w-80"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
-      {previewSelected && (
-        <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-3 tw:bg-secondary tw:border-b tw:border-primary">
-          <span className="tw:text-sm tw:text-tertiary">
-            {t('label.selected-entity', {
-              entity: label ?? t('label.owner-plural'),
-            })}
-          </span>
-          <div className="tw:flex tw:flex-wrap tw:gap-1 tw:max-h-24 tw:overflow-y-auto">
-            {selectedUsers.map((user) => {
-              return (
-                <UserTag
-                  closable
-                  avatarType="outlined"
-                  className="user-team-pills"
-                  id={user.name ?? ''}
-                  isTeam={user.type === EntityType.TEAM}
-                  key={user.id}
-                  name={getEntityName(user)}
-                  size={UserTagSize.small}
-                  onRemove={() => onRemove(user.id)}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {renderPreviewSection()}
       <Tabs
         data-testid="select-owner-tabs"
         selectedKey={activeTab}
         onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
-        <Tabs.List
-          className="tw:px-2 tw:pt-2"
-          size="sm"
-          type="underline">
+        <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
           <Tabs.Item badge={count.team} id="teams">
             {t('label.team-plural')}
           </Tabs.Item>

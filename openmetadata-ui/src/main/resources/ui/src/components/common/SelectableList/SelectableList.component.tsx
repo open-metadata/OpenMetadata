@@ -12,10 +12,10 @@
  */
 
 import {
-    Button,
-    CheckboxBase,
-    Tooltip,
-    TooltipTrigger
+  Button,
+  CheckboxBase,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -24,8 +24,8 @@ import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
-    ADD_USER_CONTAINER_HEIGHT,
-    pagingObject
+  ADD_USER_CONTAINER_HEIGHT,
+  pagingObject,
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
@@ -271,7 +271,7 @@ export const SelectableList = ({
           </div>
         )}
         {uniqueOptions.length > 0 && (
-          <ul ref={containerRef} className="tw:p-0 tw:m-0 tw:list-none" role="list">
+          <ul className="tw:p-0 tw:m-0 tw:list-none" ref={containerRef}>
             <VirtualList
               className="selectable-list-virtual-list tw:px-2 tw:pb-2"
               data={uniqueOptions}
