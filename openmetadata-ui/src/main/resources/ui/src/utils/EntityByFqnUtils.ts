@@ -52,170 +52,169 @@ import { getTeamByName } from '../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../rest/testAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
 import { getUserByName } from '../rest/userAPI';
+import { getOwnHandler } from './RecordUtils';
+
+type EntityByFqnHandler = (
+  entityFQN: string,
+  fields?: string
+) => Promise<EntityUnion>;
+
+const SERVICE_ENTITY_TYPES: readonly (keyof typeof ServiceCategoryPlural)[] = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.METADATA_SERVICE,
+];
+
+const entityByFqnHandlerEntries: [string, EntityByFqnHandler][] = [
+  [EntityType.TABLE, (fqn, fields) => getTableDetailsByFQN(fqn, { fields })],
+  [
+    EntityType.TEST_CASE,
+    (fqn) =>
+      getTestCaseByFqn(fqn, {
+        fields: [TabSpecificField.OWNERS],
+      }),
+  ],
+  [EntityType.TOPIC, (fqn, fields) => getTopicByFqn(fqn, { fields })],
+  [EntityType.DASHBOARD, (fqn, fields) => getDashboardByFqn(fqn, { fields })],
+  [EntityType.CHART, (fqn, fields) => getChartByFqn(fqn, { fields })],
+  [EntityType.PIPELINE, (fqn, fields) => getPipelineByFqn(fqn, { fields })],
+  [EntityType.MLMODEL, (fqn, fields) => getMlModelByFQN(fqn, { fields })],
+  [
+    EntityType.DATABASE,
+    (fqn) =>
+      getDatabaseDetailsByFQN(fqn, {
+        fields: TabSpecificField.OWNERS,
+      }),
+  ],
+  [
+    EntityType.DATABASE_SCHEMA,
+    (fqn) =>
+      getDatabaseSchemaDetailsByFQN(fqn, {
+        fields: TabSpecificField.OWNERS,
+        include: Include.All,
+      }),
+  ],
+  [
+    EntityType.GLOSSARY_TERM,
+    (fqn) =>
+      getGlossaryTermByFQN(fqn, {
+        fields: TabSpecificField.OWNERS,
+      }),
+  ],
+  [
+    EntityType.GLOSSARY,
+    (fqn) =>
+      getGlossariesByName(fqn, {
+        fields: TabSpecificField.OWNERS,
+      }),
+  ],
+  [
+    EntityType.CONTAINER,
+    (fqn) =>
+      getContainerByFQN(fqn, {
+        fields: TabSpecificField.OWNERS,
+        include: Include.All,
+      }),
+  ],
+  [
+    EntityType.DASHBOARD_DATA_MODEL,
+    (fqn, fields) => getDataModelByFqn(fqn, { fields }),
+  ],
+  [
+    EntityType.STORED_PROCEDURE,
+    (fqn, fields) => getStoredProceduresByFqn(fqn, { fields }),
+  ],
+  [
+    EntityType.DOMAIN,
+    (fqn) =>
+      getDomainByName(fqn, {
+        fields: TabSpecificField.OWNERS,
+      }),
+  ],
+  [
+    EntityType.DATA_PRODUCT,
+    (fqn) =>
+      getDataProductByName(fqn, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
+      }),
+  ],
+  [EntityType.TAG, (fqn) => getTagByFqn(fqn)],
+  [
+    EntityType.API_COLLECTION,
+    (fqn, fields) => getApiCollectionByFQN(fqn, { fields }),
+  ],
+  [
+    EntityType.API_ENDPOINT,
+    (fqn, fields) => getApiEndPointByFQN(fqn, { fields }),
+  ],
+  [
+    EntityType.METRIC,
+    (fqn) =>
+      getMetricByFqn(fqn, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.DOMAINS,
+        ],
+      }),
+  ],
+  [
+    EntityType.BOT,
+    (fqn) =>
+      getBotByName(fqn, {
+        fields: [EntityType.BOT],
+      }),
+  ],
+  [EntityType.EVENT_SUBSCRIPTION, (fqn) => getAlertsFromName(fqn)],
+  [EntityType.ROLE, (fqn) => getRoleByName(fqn, '')],
+  [EntityType.POLICY, (fqn) => getPolicyByName(fqn, '')],
+  [EntityType.CLASSIFICATION, (fqn) => getClassificationByName(fqn)],
+  [EntityType.TYPE, (fqn) => getTypeByFQN(fqn)],
+  [EntityType.TEAM, (fqn) => getTeamByName(fqn)],
+  [EntityType.USER, (fqn) => getUserByName(fqn)],
+  [EntityType.TEST_SUITE, (fqn) => getTestSuiteByName(fqn)],
+  [EntityType.KPI, (fqn) => getKPIByName(fqn)],
+  [EntityType.SEARCH_INDEX, (fqn) => getSearchIndexDetailsByFQN(fqn)],
+  [
+    EntityType.APP_MARKET_PLACE_DEFINITION,
+    (fqn) => getMarketPlaceApplicationByFqn(fqn),
+  ],
+  [EntityType.APPLICATION, (fqn) => getApplicationByName(fqn)],
+  [EntityType.PERSONA, (fqn) => getPersonaByName(fqn)],
+  [EntityType.INGESTION_PIPELINE, (fqn) => getIngestionPipelineByFqn(fqn)],
+  [EntityType.SERVICE, (fqn) => getServiceByFQN(EntityType.SERVICE, fqn)],
+  [EntityType.DATA_CONTRACT, (fqn) => getContract(fqn)],
+  [EntityType.QUERY, (fqn) => getQueryByFqn(fqn)],
+  [
+    EntityType.KNOWLEDGE_PAGE,
+    (fqn, fields) => getKnowledgePageByFqn(fqn, { fields }),
+  ],
+  [
+    EntityType.KNOWLEDGE_CENTER,
+    (fqn, fields) => getKnowledgePageByFqn(fqn, { fields }),
+  ],
+  ...SERVICE_ENTITY_TYPES.map<[string, EntityByFqnHandler]>((serviceType) => [
+    serviceType,
+    (fqn) => getServiceByFQN(ServiceCategoryPlural[serviceType], fqn),
+  ]),
+];
+
+const entityByFqnHandlers: Record<string, EntityByFqnHandler> =
+  Object.fromEntries(entityByFqnHandlerEntries);
 
 export const getEntityByFqnUtil = (
   entityType: string,
   entityFQN: string,
   fields?: string
 ): Promise<EntityUnion> | null => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      return getTableDetailsByFQN(entityFQN, { fields });
+  const handler = getOwnHandler(entityByFqnHandlers, entityType);
 
-    case EntityType.TEST_CASE:
-      return getTestCaseByFqn(entityFQN, {
-        fields: [TabSpecificField.OWNERS],
-      });
-
-    case EntityType.TOPIC:
-      return getTopicByFqn(entityFQN, { fields });
-
-    case EntityType.DASHBOARD:
-      return getDashboardByFqn(entityFQN, { fields });
-
-    case EntityType.CHART:
-      return getChartByFqn(entityFQN, { fields });
-
-    case EntityType.PIPELINE:
-      return getPipelineByFqn(entityFQN, { fields });
-
-    case EntityType.MLMODEL:
-      return getMlModelByFQN(entityFQN, { fields });
-
-    case EntityType.DATABASE:
-      return getDatabaseDetailsByFQN(entityFQN, {
-        fields: TabSpecificField.OWNERS,
-      });
-
-    case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsByFQN(entityFQN, {
-        fields: TabSpecificField.OWNERS,
-        include: Include.All,
-      });
-
-    case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermByFQN(entityFQN, {
-        fields: TabSpecificField.OWNERS,
-      });
-
-    case EntityType.GLOSSARY:
-      return getGlossariesByName(entityFQN, {
-        fields: TabSpecificField.OWNERS,
-      });
-
-    case EntityType.CONTAINER:
-      return getContainerByFQN(entityFQN, {
-        fields: TabSpecificField.OWNERS,
-        include: Include.All,
-      });
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelByFqn(entityFQN, { fields });
-
-    case EntityType.STORED_PROCEDURE:
-      return getStoredProceduresByFqn(entityFQN, { fields });
-
-    case EntityType.DOMAIN:
-      return getDomainByName(entityFQN, {
-        fields: TabSpecificField.OWNERS,
-      });
-
-    case EntityType.DATA_PRODUCT:
-      return getDataProductByName(entityFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
-      });
-
-    case EntityType.TAG:
-      return getTagByFqn(entityFQN);
-
-    case EntityType.API_COLLECTION:
-      return getApiCollectionByFQN(entityFQN, { fields });
-
-    case EntityType.API_ENDPOINT:
-      return getApiEndPointByFQN(entityFQN, { fields });
-
-    case EntityType.METRIC:
-      return getMetricByFqn(entityFQN, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.DOMAINS,
-        ],
-      });
-
-    case EntityType.BOT:
-      return getBotByName(entityFQN, {
-        fields: [EntityType.BOT],
-      });
-
-    case EntityType.EVENT_SUBSCRIPTION:
-      return getAlertsFromName(entityFQN);
-
-    case EntityType.ROLE:
-      return getRoleByName(entityFQN, '');
-
-    case EntityType.POLICY:
-      return getPolicyByName(entityFQN, '');
-
-    case EntityType.CLASSIFICATION:
-      return getClassificationByName(entityFQN);
-
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.API_SERVICE:
-    case EntityType.SECURITY_SERVICE:
-    case EntityType.METADATA_SERVICE:
-      return getServiceByFQN(ServiceCategoryPlural[entityType], entityFQN);
-
-    case EntityType.TYPE:
-      return getTypeByFQN(entityFQN);
-
-    case EntityType.TEAM:
-      return getTeamByName(entityFQN);
-
-    case EntityType.USER:
-      return getUserByName(entityFQN);
-
-    case EntityType.TEST_SUITE:
-      return getTestSuiteByName(entityFQN);
-
-    case EntityType.KPI:
-      return getKPIByName(entityFQN);
-
-    case EntityType.SEARCH_INDEX:
-      return getSearchIndexDetailsByFQN(entityFQN);
-
-    case EntityType.APP_MARKET_PLACE_DEFINITION:
-      return getMarketPlaceApplicationByFqn(entityFQN);
-
-    case EntityType.APPLICATION:
-      return getApplicationByName(entityFQN);
-
-    case EntityType.PERSONA:
-      return getPersonaByName(entityFQN);
-
-    case EntityType.INGESTION_PIPELINE:
-      return getIngestionPipelineByFqn(entityFQN);
-
-    case EntityType.SERVICE:
-      return getServiceByFQN(EntityType.SERVICE, entityFQN);
-
-    case EntityType.DATA_CONTRACT:
-      return getContract(entityFQN);
-
-    case EntityType.QUERY:
-      return getQueryByFqn(entityFQN);
-
-    case EntityType.KNOWLEDGE_PAGE:
-    case EntityType.KNOWLEDGE_CENTER:
-      return getKnowledgePageByFqn(entityFQN, { fields });
-
-    default:
-      return null;
-  }
+  return handler ? handler(entityFQN, fields) : null;
 };
