@@ -60,6 +60,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Slf4j
 @Path("/v1/personas")
@@ -304,13 +305,24 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   @Path("/{id}/aiContext")
   @Operation(
       operationId = "getPersonaAiContextConfiguration",
-      summary = "Get a persona AI context configuration")
+      summary = "Get a persona AI context configuration",
+      description =
+          "Reading the rules is not privileged — the same `contextDefinition` is already served by "
+              + "`GET /personas/name/{fqn}?fields=contextDefinition` under VIEW_BASIC. Editing them, "
+              + "materializing them into a document, and the cache diagnostics that come with it "
+              + "(`cacheState`, `lastError`, `lastGeneratedAt`, per-rule `matchedCount`) stay "
+              + "admin-only.")
   public PersonaContextDefinition getAiContextConfiguration(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id) {
-    authorizer.authorizeAdmin(securityContext);
-    return configurationWithDerivedState(getPersona(uriInfo, id));
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Persona persona = getPersona(uriInfo, id);
+    return PersonaContextAccess.isAdminOrBot(securityContext)
+        ? configurationWithDerivedState(persona)
+        : storedDefinition(persona);
   }
 
   @PUT
@@ -325,7 +337,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Valid PersonaContextDefinition requested) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
-    PersonaContextDefinition definition = editableDefinition(original);
+    PersonaContextDefinition definition = storedDefinition(original);
     definition.setEnabled(requested.getEnabled());
     definition.setCharacterBudget(requested.getCharacterBudget());
     definition.setCacheTtlMinutes(requested.getCacheTtlMinutes());
@@ -346,7 +358,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Valid ContextRule requestedRule) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
-    PersonaContextDefinition definition = editableDefinition(original);
+    PersonaContextDefinition definition = storedDefinition(original);
     ContextRule rule = sanitizedRule(requestedRule);
     rule.setId(UUID.randomUUID());
     List<ContextRule> rules = new ArrayList<>(listOrEmpty(definition.getRules()));
@@ -370,11 +382,19 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Valid ContextRule requestedRule) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
-    PersonaContextDefinition definition = editableDefinition(original);
+    PersonaContextDefinition definition = storedDefinition(original);
     List<ContextRule> rules = new ArrayList<>(listOrEmpty(definition.getRules()));
     int ruleIndex = findRule(rules, ruleId);
     ContextRule rule = sanitizedRule(requestedRule);
     rule.setId(ruleId);
+    // A null here means "leave the delivery mode alone", not "legacy". The field has no schema
+    // default, so null is also what a client sends when it simply omits it, and this endpoint
+    // replaces the whole rule — without carrying the stored value over, any round-trip that dropped
+    // the field would silently send a scoped rule back to preloading. A genuinely legacy rule is
+    // stored null, so it carries null over and keeps preloading.
+    if (rule.getFilteredInSearch() == null) {
+      rule.setFilteredInSearch(rules.get(ruleIndex).getFilteredInSearch());
+    }
     rules.set(ruleIndex, rule);
     definition.setRules(rules);
     Persona updated = persistDefinition(uriInfo, securityContext, original, definition);
@@ -394,7 +414,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @PathParam("ruleId") UUID ruleId) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
-    PersonaContextDefinition definition = editableDefinition(original);
+    PersonaContextDefinition definition = storedDefinition(original);
     List<ContextRule> rules = new ArrayList<>(listOrEmpty(definition.getRules()));
     rules.remove(findRule(rules, ruleId));
     definition.setRules(rules);
@@ -542,7 +562,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return repository.get(uriInfo, id, getFields(FIELDS), Include.NON_DELETED, false);
   }
 
-  private PersonaContextDefinition editableDefinition(Persona persona) {
+  private PersonaContextDefinition storedDefinition(Persona persona) {
     PersonaContextDefinition definition =
         persona.getContextDefinition() == null
             ? new PersonaContextDefinition()
@@ -564,7 +584,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   }
 
   private PersonaContextDefinition configurationWithDerivedState(Persona persona) {
-    PersonaContextDefinition definition = editableDefinition(persona);
+    PersonaContextDefinition definition = storedDefinition(persona);
     PersonaContextCache.CacheSnapshot snapshot =
         PersonaContextCache.getInstance().snapshot(persona);
     definition.setCacheState(snapshot.state());

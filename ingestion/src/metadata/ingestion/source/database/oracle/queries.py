@@ -331,6 +331,7 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
             col.data_default,
             com.comments,
             col.virtual_column,
+            col.char_used,
             {identity_cols}
         FROM {prefix}_TAB_COLS{dblink} col
         LEFT JOIN {prefix}_COL_COMMENTS{dblink} com
