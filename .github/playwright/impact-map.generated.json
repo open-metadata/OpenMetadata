@@ -2061,14 +2061,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/ImportOntologyModal.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyImportRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/IncidentManager.component.tsx"
       ],
       "specs": [
@@ -2164,22 +2156,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/KnowledgeGraph3D.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/KnowledgeGraph.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/KnowledgeGraph3DControls.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/KnowledgeGraph.spec.ts"
       ]
     },
     {
@@ -2566,56 +2542,11 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyAiQueryPanel.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyAiFlagRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyAuthoringInspector.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyAuthoringRdf.spec.ts",
-        "playwright/e2e/Features/OntologyConceptAttributesRdf.spec.ts",
-        "playwright/e2e/Features/OntologyConceptRealizationRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyBulkAuthoring.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyBulkOperationFields.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyBulkResultPanel.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyConceptAttributes.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyConceptAttributesRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts"
       ]
     },
     {
@@ -2624,15 +2555,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyStudio.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyConceptRealization.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyConceptRealizationRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts"
       ]
     },
     {
@@ -2649,30 +2571,9 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyDataGraph.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyDataExploreRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyDeleteImpactPanel.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyEditLeaseStatus.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyAuthoringRdf.spec.ts",
-        "playwright/e2e/Features/OntologyConceptAttributesRdf.spec.ts",
-        "playwright/e2e/Features/OntologyConceptRealizationRdf.spec.ts",
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts"
       ]
     },
@@ -2686,14 +2587,10 @@
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraphPerf.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermRelationsGraph.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermRelationsGraphNested.spec.ts",
-        "playwright/e2e/Features/OntologyAiFlagRdf.spec.ts",
-        "playwright/e2e/Features/OntologyDataExploreRdf.spec.ts",
-        "playwright/e2e/Features/OntologyLibraryRdf.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts",
         "playwright/e2e/Features/OntologyStudioCardinality.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
-        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
-        "playwright/e2e/Features/OntologyStudioRdf.spec.ts"
+        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts"
       ]
     },
     {
@@ -2706,24 +2603,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyLibraryCatalogue.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyLibraryRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyLibraryDetail.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyLibraryRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyModelingWorkbench.tsx"
       ],
       "specs": [
@@ -2732,63 +2611,12 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyQueryResults.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyQueryRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyStudioQueryConsole.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyAiFlagRdf.spec.ts",
-        "playwright/e2e/Features/OntologyQueryRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyTermEditor.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyAuthoringRdf.spec.ts",
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyTreeView.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyDataExploreRdf.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
         "playwright/e2e/Features/OntologyStudioIntegration.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyVisualQueryBuilder.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyQueryRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/PortOverlay.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyAuthoringRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/RelationshipTypePicker.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyAuthoringRdf.spec.ts"
       ]
     },
     {
@@ -4931,39 +4759,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyBulkSubmission.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyImpactReport.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyImportResult.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts",
-        "playwright/e2e/Features/OntologyImportRoundTripRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyPackInstallResult.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyLibraryRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/apiEndpoint.ts"
       ],
       "specs": [
@@ -4988,27 +4783,10 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/glossary.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts",
-        "playwright/e2e/Features/OntologyLibraryRdf.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/query.ts"
       ],
       "specs": [
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/relationshipType.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyAuthoringRdf.spec.ts"
       ]
     },
     {
@@ -5026,7 +4804,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/Container.spec.ts",
-        "playwright/e2e/Features/OntologyDataExploreRdf.spec.ts",
         "playwright/e2e/Features/SearchIndexNestedColumns.spec.ts",
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
@@ -5047,14 +4824,6 @@
       ],
       "specs": [
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/entity/type.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyDataExploreRdf.spec.ts"
       ]
     },
     {
@@ -5469,11 +5238,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/OntologyExplorerPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyAiFlagRdf.spec.ts",
-        "playwright/e2e/Features/OntologyDataExploreRdf.spec.ts",
-        "playwright/e2e/Features/OntologyGovernanceRdf.spec.ts",
-        "playwright/e2e/Features/OntologyLibraryRdf.spec.ts",
-        "playwright/e2e/Features/OntologyRbacRdf.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts",
         "playwright/e2e/Features/OntologyStudioCardinality.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",

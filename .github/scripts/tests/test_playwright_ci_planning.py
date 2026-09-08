@@ -3168,3 +3168,87 @@ def test_generator_drops_testids_owned_by_too_many_files(tmp_path):
     # None of the 4 loader owners were emitted — the testId was too broadly used.
     assert all("openmetadata-ui" not in s or "loader" not in s for s in sources)
     assert not any("A.tsx" in s or "B.tsx" in s for s in sources)
+
+
+def test_generator_skips_specs_delegated_by_the_hand_authored_map(tmp_path):
+    """
+    Specs delegated to a dedicated workflow (Auth → SSO-login-nightly,
+    KnowledgeGraph + Ontology*Rdf → knowledge-graph-postgresql-e2e, …) must
+    not appear in the generated map. `select_playwright_tests` already
+    strips them via `remove_delegated_specs`, but keeping them out at
+    generation time is what makes the committed file a truthful
+    representation of the postgres PR gate's actual routing.
+
+    Regression guard for the pre-fix state where the generator hardcoded a
+    tuple of prefixes (`Auth/`, `nightly/`, `Http2/`, `VisualRegression/`)
+    but missed the two Feature-file globs from `impact-map.json.delegatedSpecs`
+    (`KnowledgeGraph.spec.ts`, `Ontology*Rdf.spec.ts`), so 13 delegated
+    specs leaked into the generated file with source→spec entries that would
+    have been stripped at plan time — noise for a reviewer and a false
+    signal that a source edit under one of those routes to the postgres
+    PR gate.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    # Miniature repo with:
+    #   - impact-map.json listing one glob and one exact-file delegated pattern
+    #   - one delegated spec matching each
+    #   - one normal spec whose import touches the SAME source as the
+    #     delegated ones (so the source's spec set has a delegated + a
+    #     non-delegated entry; only the non-delegated must survive)
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "src/components/Widget").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+    (ui / "playwright/e2e/Auth").mkdir(parents=True)
+    (tmp_path / ".github/playwright").mkdir(parents=True)
+    (tmp_path / ".github/playwright/impact-map.json").write_text(
+        json.dumps(
+            {
+                "delegatedSpecs": [
+                    "playwright/e2e/Auth/**",
+                    "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+                    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
+                ],
+            }
+        )
+    )
+    (
+        ui / "src/components/Widget/Widget.tsx"
+    ).write_text('export const W = () => <div data-testid="widget-open" />;\n')
+
+    # Delegated specs — must NOT appear in the generated map.
+    for delegated in (
+        "playwright/e2e/Auth/SSOLogin.spec.ts",
+        "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+        "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    ):
+        (ui / delegated).write_text(
+            "test('opens', async ({ page }) => {\n"
+            "  await page.getByTestId('widget-open').click();\n"
+            "});\n"
+        )
+
+    # Non-delegated spec — SHOULD appear.
+    (ui / "playwright/e2e/Features/UsesWidget.spec.ts").write_text(
+        "test('opens', async ({ page }) => {\n"
+        "  await page.getByTestId('widget-open').click();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    all_specs = {spec for entry in result["mappings"] for spec in entry["specs"]}
+
+    # Non-delegated spec routed correctly.
+    assert "playwright/e2e/Features/UsesWidget.spec.ts" in all_specs
+
+    # No delegated spec appears anywhere in the generated map.
+    for delegated in (
+        "playwright/e2e/Auth/SSOLogin.spec.ts",
+        "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+        "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    ):
+        assert delegated not in all_specs, (
+            f"{delegated} matches impact-map.json.delegatedSpecs and must not "
+            "appear in the generated map — it runs under a dedicated workflow "
+            "that the postgres PR gate does not schedule."
+        )

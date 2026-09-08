@@ -43,6 +43,7 @@ the coverage gap this script closes.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
 import sys
@@ -98,19 +99,33 @@ SRC_TESTID_RE = re.compile(r"""data-testid=['"]([^'"]+)['"]""")
 # to every use site of `loader` would explode the output.
 TESTID_MAX_OWNERS = 3
 
-# Delegated spec globs are managed by the hand-authored map already —
-# regenerating them here would double-schedule them or list them under the
-# wrong project. Keep them out of the generated map entirely.
-DELEGATED_SPEC_PATTERNS = (
-    "playwright/e2e/Auth/",
-    "playwright/e2e/nightly/",
-    "playwright/e2e/Http2/",
-    "playwright/e2e/VisualRegression/",
-)
+# Delegated spec globs are managed by the hand-authored map already — they
+# run under a dedicated workflow (Auth → playwright-sso-login-nightly.yml,
+# Features/KnowledgeGraph.spec.ts + Features/Ontology*Rdf.spec.ts →
+# playwright-knowledge-graph-postgresql-e2e.yml, etc.) that the postgres PR
+# gate does NOT schedule. Regenerating them here would emit source→spec
+# entries that select_playwright_tests would then strip via its
+# `remove_delegated_specs` pass — pointless noise in the file and misleading
+# to a reviewer skimming it.
+#
+# The source of truth is `impact-map.json.delegatedSpecs`. Loaded at build
+# time so a change to that list (e.g. Ontology*Rdf added, KnowledgeGraph
+# renamed) automatically prunes the generated map on the next regen — no
+# second constant to update in lock-step.
+IMPACT_MAP_PATH = Path(".github/playwright/impact-map.json")
 
 
-def is_delegated(spec_rel: str) -> bool:
-    return any(spec_rel.startswith(prefix) for prefix in DELEGATED_SPEC_PATTERNS)
+def load_delegated_specs(repo_root: Path) -> list[str]:
+    impact_map_path = repo_root / IMPACT_MAP_PATH
+    if not impact_map_path.exists():
+        return []
+    data = json.loads(impact_map_path.read_text(encoding="utf-8"))
+    return list(data.get("delegatedSpecs", []))
+
+
+def is_delegated(spec_rel: str, delegated_patterns: list[str]) -> bool:
+    """Match `spec_rel` against the hand-authored delegated glob list."""
+    return any(fnmatch.fnmatchcase(spec_rel, pattern) for pattern in delegated_patterns)
 
 
 # Files under `src/` that are NOT product code — unit tests, Jest mocks, and
@@ -253,12 +268,13 @@ def build_src_testid_index(repo_root: Path) -> dict[str, set[str]]:
 def build_map(repo_root: Path) -> dict:
     spec_root_abs = (repo_root / SPEC_ROOT).resolve()
     src_testid_index = build_src_testid_index(repo_root)
+    delegated_patterns = load_delegated_specs(repo_root)
 
     # spec_rel → set of source files (relative to repo root, POSIX)
     spec_sources: dict[str, set[str]] = {}
     for spec_path in sorted(spec_root_abs.rglob("*.spec.ts")):
         spec_rel = spec_path.relative_to(repo_root / UI_ROOT).as_posix()
-        if is_delegated(spec_rel):
+        if is_delegated(spec_rel, delegated_patterns):
             continue
 
         # (1) Import-graph signal.
