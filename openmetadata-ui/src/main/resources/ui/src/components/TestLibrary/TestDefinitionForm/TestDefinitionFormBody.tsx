@@ -31,6 +31,7 @@ import {
   lazy,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -57,6 +58,23 @@ const CodeEditor = withSuspenseFallback(
 
 const toOptions = (values: string[]): FormSelectItem[] =>
   values.map((value) => ({ id: value, label: value }));
+
+// Built once at module scope, never per render. These lists are derived from
+// enums and can never change, but rebuilding them inside the component handed
+// `Select` a new `items` array on every render — and a new collection identity
+// makes react-aria tear down and remount the open listbox, detaching the
+// option the user (or Playwright) is mid-click on. Focusing any field re-renders
+// this component via `onActiveFieldChange`, so simply opening a select and
+// clicking an option raced the remount: locally the click won, under CI load it
+// lost and the popover closed with the field left empty.
+const ENTITY_TYPE_OPTIONS = toOptions(Object.values(EntityType));
+const TEST_PLATFORM_OPTIONS = toOptions(Object.values(TestPlatform));
+const DATA_QUALITY_DIMENSION_OPTIONS = toOptions(
+  Object.values(DataQualityDimensions)
+);
+const SUPPORTED_SERVICE_OPTIONS = toOptions(Object.values(DatabaseServiceType));
+const SUPPORTED_DATA_TYPE_OPTIONS = toOptions(Object.values(DataType));
+const TEST_DATA_TYPE_OPTIONS = toOptions(Object.values(TestDataType));
 
 const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   form,
@@ -158,165 +176,177 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     [handleActiveField]
   );
 
-  const primaryFields: FieldProp[] = [
-    {
-      name: 'name',
-      label: t('label.name'),
-      type: FieldTypes.TEXT,
-      required: true,
-      id: 'root/name',
-      doc: resolveDoc('name'),
-      placeholder: t('label.enter-entity-name', {
-        entity: t('label.test-definition'),
-      }),
-      rules: {
-        required: t('message.field-text-is-required', {
-          fieldText: t('label.name'),
+  // Memoized so a focus-driven re-render (onFocusCapture -> setActiveField in
+  // the parent) does not hand the react-aria Selects a new props object and
+  // rebuild their collection, which detaches an option mid-click.
+  const primaryFields: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'name',
+        label: t('label.name'),
+        type: FieldTypes.TEXT,
+        required: true,
+        id: 'root/name',
+        doc: resolveDoc('name'),
+        placeholder: t('label.enter-entity-name', {
+          entity: t('label.test-definition'),
         }),
-      },
-      props: {
-        'data-testid': 'test-definition-name',
-        isDisabled: isEditMode || isReadOnlyField,
-      } as FieldProp['props'],
-    },
-    {
-      name: 'displayName',
-      label: t('label.display-name'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/displayName',
-      doc: resolveDoc('displayName'),
-      placeholder: t('label.enter-entity-name', {
-        entity: t('label.display-name'),
-      }),
-      props: {
-        'data-testid': 'display-name',
-      } as FieldProp['props'],
-    },
-    {
-      name: 'description',
-      label: t('label.description'),
-      type: FieldTypes.TEXTAREA,
-      required: false,
-      id: 'root/description',
-      doc: resolveDoc('description'),
-      placeholder: t('label.enter-entity-description', {
-        entity: t('label.test-definition'),
-      }),
-      props: {
-        'data-testid': 'description',
-      } as FieldProp['props'],
-    },
-  ];
-
-  const classificationFields: FieldProp[] = [
-    {
-      name: 'entityType',
-      label: t('label.entity-type'),
-      type: FieldTypes.SELECT,
-      required: true,
-      id: 'root/entityType',
-      doc: resolveDoc('entityType'),
-      placeholder: t('label.select-field', { field: t('label.entity-type') }),
-      rules: {
-        required: t('message.field-text-is-required', {
-          fieldText: t('label.entity-type'),
-        }),
-      },
-      props: {
-        'data-testid': 'entity-type',
-        isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(EntityType)),
-      } as FieldProp['props'],
-    },
-    {
-      name: 'testPlatforms',
-      label: t('label.test-platform-plural'),
-      type: FieldTypes.MULTI_SELECT,
-      required: true,
-      id: 'root/testPlatforms',
-      doc: resolveDoc('testPlatforms'),
-      placeholder: t('label.select-field', {
-        field: t('label.test-platform-plural'),
-      }),
-      rules: {
-        required: t('message.field-text-is-required', {
-          fieldText: t('label.test-platform-plural'),
-        }),
-      },
-      props: {
-        'data-testid': 'test-platforms',
-        isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(TestPlatform)),
-      } as FieldProp['props'],
-    },
-    {
-      name: 'dataQualityDimension',
-      label: t('label.data-quality-dimension'),
-      type: FieldTypes.SELECT,
-      required: false,
-      id: 'root/dataQualityDimension',
-      doc: resolveDoc('dataQualityDimension'),
-      placeholder: t('label.select-field', {
-        field: t('label.data-quality-dimension'),
-      }),
-      props: {
-        'data-testid': 'data-quality-dimension',
-        options: toOptions(Object.values(DataQualityDimensions)),
-      } as FieldProp['props'],
-    },
-    {
-      name: 'supportedServices',
-      label: t('label.supported-service-plural'),
-      type: FieldTypes.MULTI_SELECT,
-      required: false,
-      id: 'root/supportedServices',
-      doc: resolveDoc('supportedServices'),
-      helperText: t('message.supported-services-help'),
-      helperTextType: HelperTextType.TOOLTIP,
-      placeholder: t('message.empty-means-all-services'),
-      props: {
-        'data-testid': 'supported-services',
-        isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(DatabaseServiceType)),
-      } as FieldProp['props'],
-    },
-    {
-      name: 'supportedDataTypes',
-      label: t('label.supported-data-type-plural'),
-      type: FieldTypes.MULTI_SELECT,
-      required: false,
-      id: 'root/supportedDataTypes',
-      doc: resolveDoc('supportedDataTypes'),
-      placeholder: t('label.select-field', {
-        field: t('label.supported-data-type-plural'),
-      }),
-      rules: {
-        validate: (value?: FormSelectItem[]) => {
-          const platforms = (form.getValues('testPlatforms') ??
-            []) as FormSelectItem[];
-          const hasOpenMetadata = platforms.some(
-            (platform) =>
-              (typeof platform === 'object' ? platform?.id : platform) ===
-              TestPlatform.OpenMetadata
-          );
-          let result: string | boolean = true;
-          if (hasOpenMetadata && (value ?? []).length === 0) {
-            result = t('message.field-text-is-required', {
-              fieldText: t('label.supported-data-type-plural'),
-            });
-          }
-
-          return result;
+        rules: {
+          required: t('message.field-text-is-required', {
+            fieldText: t('label.name'),
+          }),
         },
+        props: {
+          'data-testid': 'test-definition-name',
+          isDisabled: isEditMode || isReadOnlyField,
+        } as FieldProp['props'],
       },
-      props: {
-        'data-testid': 'supported-data-types',
-        isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(DataType)),
-      } as FieldProp['props'],
-    },
-  ];
+      {
+        name: 'displayName',
+        label: t('label.display-name'),
+        type: FieldTypes.TEXT,
+        required: false,
+        id: 'root/displayName',
+        doc: resolveDoc('displayName'),
+        placeholder: t('label.enter-entity-name', {
+          entity: t('label.display-name'),
+        }),
+        props: {
+          'data-testid': 'display-name',
+        } as FieldProp['props'],
+      },
+      {
+        name: 'description',
+        label: t('label.description'),
+        type: FieldTypes.TEXTAREA,
+        required: false,
+        id: 'root/description',
+        doc: resolveDoc('description'),
+        placeholder: t('label.enter-entity-description', {
+          entity: t('label.test-definition'),
+        }),
+        props: {
+          'data-testid': 'description',
+        } as FieldProp['props'],
+      },
+    ],
+    [t, resolveDoc, isReadOnlyField, isEditMode]
+  );
+
+  // Memoized so a focus-driven re-render (onFocusCapture -> setActiveField in
+  // the parent) does not hand the react-aria Selects a new props object and
+  // rebuild their collection, which detaches an option mid-click.
+  const classificationFields: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'entityType',
+        label: t('label.entity-type'),
+        type: FieldTypes.SELECT,
+        required: true,
+        id: 'root/entityType',
+        doc: resolveDoc('entityType'),
+        placeholder: t('label.select-field', { field: t('label.entity-type') }),
+        rules: {
+          required: t('message.field-text-is-required', {
+            fieldText: t('label.entity-type'),
+          }),
+        },
+        props: {
+          'data-testid': 'entity-type',
+          isDisabled: isReadOnlyField,
+          options: ENTITY_TYPE_OPTIONS,
+        } as FieldProp['props'],
+      },
+      {
+        name: 'testPlatforms',
+        label: t('label.test-platform-plural'),
+        type: FieldTypes.MULTI_SELECT,
+        required: true,
+        id: 'root/testPlatforms',
+        doc: resolveDoc('testPlatforms'),
+        placeholder: t('label.select-field', {
+          field: t('label.test-platform-plural'),
+        }),
+        rules: {
+          required: t('message.field-text-is-required', {
+            fieldText: t('label.test-platform-plural'),
+          }),
+        },
+        props: {
+          'data-testid': 'test-platforms',
+          isDisabled: isReadOnlyField,
+          options: TEST_PLATFORM_OPTIONS,
+        } as FieldProp['props'],
+      },
+      {
+        name: 'dataQualityDimension',
+        label: t('label.data-quality-dimension'),
+        type: FieldTypes.SELECT,
+        required: false,
+        id: 'root/dataQualityDimension',
+        doc: resolveDoc('dataQualityDimension'),
+        placeholder: t('label.select-field', {
+          field: t('label.data-quality-dimension'),
+        }),
+        props: {
+          'data-testid': 'data-quality-dimension',
+          options: DATA_QUALITY_DIMENSION_OPTIONS,
+        } as FieldProp['props'],
+      },
+      {
+        name: 'supportedServices',
+        label: t('label.supported-service-plural'),
+        type: FieldTypes.MULTI_SELECT,
+        required: false,
+        id: 'root/supportedServices',
+        doc: resolveDoc('supportedServices'),
+        helperText: t('message.supported-services-help'),
+        helperTextType: HelperTextType.TOOLTIP,
+        placeholder: t('message.empty-means-all-services'),
+        props: {
+          'data-testid': 'supported-services',
+          isDisabled: isReadOnlyField,
+          options: SUPPORTED_SERVICE_OPTIONS,
+        } as FieldProp['props'],
+      },
+      {
+        name: 'supportedDataTypes',
+        label: t('label.supported-data-type-plural'),
+        type: FieldTypes.MULTI_SELECT,
+        required: false,
+        id: 'root/supportedDataTypes',
+        doc: resolveDoc('supportedDataTypes'),
+        placeholder: t('label.select-field', {
+          field: t('label.supported-data-type-plural'),
+        }),
+        rules: {
+          validate: (value?: FormSelectItem[]) => {
+            const platforms = (form.getValues('testPlatforms') ??
+              []) as FormSelectItem[];
+            const hasOpenMetadata = platforms.some(
+              (platform) =>
+                (typeof platform === 'object' ? platform?.id : platform) ===
+                TestPlatform.OpenMetadata
+            );
+            let result: string | boolean = true;
+            if (hasOpenMetadata && (value ?? []).length === 0) {
+              result = t('message.field-text-is-required', {
+                fieldText: t('label.supported-data-type-plural'),
+              });
+            }
+
+            return result;
+          },
+        },
+        props: {
+          'data-testid': 'supported-data-types',
+          isDisabled: isReadOnlyField,
+          options: SUPPORTED_DATA_TYPE_OPTIONS,
+        } as FieldProp['props'],
+      },
+    ],
+    [t, resolveDoc, isReadOnlyField, form]
+  );
 
   const enabledField: FieldProp = {
     name: 'enabled',
@@ -466,7 +496,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
               props: {
                 'data-testid': `parameter-data-type-${index}`,
                 isDisabled: isReadOnlyField,
-                options: toOptions(Object.values(TestDataType)),
+                options: TEST_DATA_TYPE_OPTIONS,
               },
             } as FieldProp)}
             {getField({

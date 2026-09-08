@@ -180,7 +180,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 const renderMenu = () =>
   render(
     <MemoryRouter>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider>
         <AIUserMenu />
       </ThemeProvider>
     </MemoryRouter>

@@ -92,6 +92,11 @@ const TopicDetailsPage: FunctionComponent = () => {
     [topicFQN]
   );
 
+  const isTopicQueryEnabled = useMemo(
+    () => Boolean(topicFQN && canViewTopic && !permissionsLoading),
+    [topicFQN, canViewTopic, permissionsLoading]
+  );
+
   const {
     data: topicDetails,
     isLoading: topicLoading,
@@ -99,7 +104,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   } = useQuery({
     queryKey: topicCacheKey,
     queryFn: topicQueryFn(topicFQN, TOPIC_DEFAULT_FIELDS),
-    enabled: Boolean(topicFQN && canViewTopic && !permissionsLoading),
+    enabled: isTopicQueryEnabled,
   });
 
   const isError = useMemo(
