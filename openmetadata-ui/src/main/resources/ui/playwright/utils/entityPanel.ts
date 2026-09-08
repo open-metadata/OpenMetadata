@@ -107,12 +107,26 @@ export const openEntitySummaryPanel = async ({
         return false;
       }
     }
+    // The global search box lives in the NavBar, which is not mounted the
+    // instant /explore resolves. fill() auto-waits with no timeout of its own,
+    // so calling it on an absent box hangs this callback forever -- and a poll
+    // cannot interrupt a pending callback, so the retry-and-reload this helper
+    // is built around never happened and the test died on its own timeout with
+    // nothing to show for it. Bound the wait and let the poll do its job.
+    const searchBox = page.getByTestId('searchBox');
+
+    try {
+      await searchBox.waitFor({ state: 'visible', timeout: 15_000 });
+    } catch {
+      return false;
+    }
+
     const searchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/search/query')
     );
-    await page.getByTestId('searchBox').fill(entityName);
+    await searchBox.fill(entityName);
     await searchResponsePromise;
-    await page.getByTestId('searchBox').press('Enter');
+    await searchBox.press('Enter');
     await waitForAllLoadersToDisappear(page);
 
     // Select the entity-type tab as part of each search attempt: for callers that
