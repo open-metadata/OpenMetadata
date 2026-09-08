@@ -18,8 +18,8 @@
  * sibling specs in this folder cover other entity types via the same factory.
  */
 
-import { test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
