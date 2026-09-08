@@ -12,6 +12,10 @@
 
 from unittest.mock import patch
 
+from metadata.generated.schema.entity.services.connections.database.cassandra.cloudConfig import (
+    CloudConfig,
+    CloudConfig1,
+)
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
     CassandraConnection as CassandraConnectionConfig,
 )
@@ -25,6 +29,17 @@ def _config() -> CassandraConnectionConfig:
     return CassandraConnectionConfig(hostPort="localhost:9042")
 
 
+def _cloud_config(token: str | None = "astra-token") -> CassandraConnectionConfig:
+    return CassandraConnectionConfig(
+        authType=CloudConfig(
+            cloudConfig=CloudConfig1(
+                token=token,
+                secureConnectBundle="/tmp/secure-connect-bundle.zip",
+            )
+        )
+    )
+
+
 def test_cassandra_connection_is_base_connection():
     assert issubclass(CassandraConnection, BaseConnection)
 
@@ -35,6 +50,22 @@ def test_get_client_connects_a_cluster_session():
     mock_cluster.assert_called_once()
     mock_cluster.return_value.connect.assert_called_once_with()
     assert session is mock_cluster.return_value.connect.return_value
+
+
+def test_get_client_unwraps_astra_token():
+    with patch(f"{CONNECTION_MODULE}.Cluster") as mock_cluster:
+        _ = CassandraConnection(_cloud_config()).client
+
+    auth_provider = mock_cluster.call_args.kwargs["auth_provider"]
+    assert auth_provider.password == "astra-token"
+
+
+def test_get_client_allows_missing_astra_token():
+    with patch(f"{CONNECTION_MODULE}.Cluster") as mock_cluster:
+        _ = CassandraConnection(_cloud_config(token=None)).client
+
+    auth_provider = mock_cluster.call_args.kwargs["auth_provider"]
+    assert auth_provider.password is None
 
 
 def test_close_shuts_down_the_cluster():
