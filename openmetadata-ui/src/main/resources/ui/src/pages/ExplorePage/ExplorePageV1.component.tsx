@@ -292,7 +292,7 @@ const ExplorePageV1: FC<unknown> = () => {
   // queryFilter state lands, and react-router applies the submit's own
   // navigate in a transition *after* that state update — firing here at
   // that moment re-pushes the stale pre-submit URL over the new filter.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+
   useEffect(() => {
     if (!isEmpty(parsedSearch)) {
       handlePageChange(page, size);
