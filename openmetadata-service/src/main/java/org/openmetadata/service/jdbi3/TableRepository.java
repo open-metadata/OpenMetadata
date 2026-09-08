@@ -2465,16 +2465,10 @@ public class TableRepository extends EntityRepository<Table> {
 
     private void flushColumnLineageSearchUpdates(
         List<String> deletedColumnFqns, HashMap<String, String> renamedColumnFqns) {
-      if (!renamedColumnFqns.isEmpty()) {
-        searchRepository
-            .getSearchClient()
-            .updateColumnsInUpstreamLineage(COLUMN_LINEAGE_SEARCH_INDICES, renamedColumnFqns);
-      }
-      if (!deletedColumnFqns.isEmpty()) {
-        searchRepository
-            .getSearchClient()
-            .deleteColumnsInUpstreamLineage(COLUMN_LINEAGE_SEARCH_INDICES, deletedColumnFqns);
-      }
+      searchRepository
+          .getSearchClient()
+          .reconcileColumnsInUpstreamLineage(
+              COLUMN_LINEAGE_SEARCH_INDICES, renamedColumnFqns, deletedColumnFqns);
     }
   }
 

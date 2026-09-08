@@ -10990,7 +10990,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // NO-OP – to be overridden by entity-specific updaters when needed.
     }
 
-    private record ColumnKey(String name, ColumnDataType dataType, ColumnDataType arrayDataType) {}
+    record ColumnKey(String name, ColumnDataType dataType, ColumnDataType arrayDataType) {
+      @Override
+      public boolean equals(Object other) {
+        return other instanceof ColumnKey key
+            && dataType == key.dataType
+            && arrayDataType == key.arrayDataType
+            && (name == null ? key.name == null : name.equalsIgnoreCase(key.name));
+      }
+
+      @Override
+      public int hashCode() {
+        // String case conversion can expand characters and treats final sigma/dotless i
+        // differently from equalsIgnoreCase. Fold code points using the same simple casing.
+        int nameHash =
+            name == null
+                ? 0
+                : name.codePoints()
+                    .map(Character::toUpperCase)
+                    .map(Character::toLowerCase)
+                    .reduce(0, (hash, codePoint) -> 31 * hash + codePoint);
+        return Objects.hash(nameHash, dataType, arrayDataType);
+      }
+    }
 
     private static final class ColumnLineageChanges {
       private final Set<String> deletedColumnFqns = new LinkedHashSet<>();
@@ -11012,10 +11034,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private static ColumnKey columnLookupKey(Column col) {
-      return new ColumnKey(
-          col.getName() == null ? null : col.getName().toLowerCase(Locale.ROOT),
-          col.getDataType(),
-          col.getArrayDataType());
+      return new ColumnKey(col.getName(), col.getDataType(), col.getArrayDataType());
     }
 
     private void updateColumnDescription(

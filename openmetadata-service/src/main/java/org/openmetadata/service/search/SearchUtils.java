@@ -857,10 +857,8 @@ public final class SearchUtils {
   /**
    * Report a column-lineage reconciliation, distinguishing "nothing to do" from "we cannot tell".
    *
-   * <p>The flush runs once per request now rather than once per consolidation pass, so a write lost
-   * to a version conflict is no longer re-issued by a later pass — a conflict is a dropped rewrite,
-   * not a retryable hiccup, and warns. {@code updatedDocuments == 0} for a non-empty request stays
-   * at debug: it is the ordinary result whenever nothing downstream references the columns, which
+   * <p>Unresolved conflicts are dropped rewrites and warn. {@code updatedDocuments == 0} for a
+   * non-empty request stays at debug: nothing downstream may reference the columns, which
    * is most column deletes and renames during ingestion, so warning on it would be noise. It is
    * also what a missing index (tolerated via {@code ignoreUnavailable}) or a misresolved index
    * selector looks like, but that failure mode is caught at build time by the test pinning the
@@ -876,7 +874,7 @@ public final class SearchUtils {
     } else if (outcome.versionConflicts() > 0) {
       LOG.warn(
           "{} in upstream lineage for index {} hit {} version conflict(s); those documents kept "
-              + "their previous column FQNs and are not retried. {} document(s) updated for {} "
+              + "their previous column FQNs after reconciliation. {} document(s) updated for {} "
               + "requested FQN(s).",
           outcome.operation(),
           outcome.indexName(),

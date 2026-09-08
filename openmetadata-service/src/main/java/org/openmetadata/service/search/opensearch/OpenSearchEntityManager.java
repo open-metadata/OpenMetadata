@@ -3,11 +3,10 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
-import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.RECONCILE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
@@ -48,6 +47,7 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -58,6 +58,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch._types.ErrorCause;
@@ -958,125 +959,85 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void updateColumnsInUpstreamLineage(
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot update columns in upstream lineage.");
-      return;
-    }
-
-    if (originalUpdatedColumnFqnMap == null || originalUpdatedColumnFqnMap.isEmpty()) {
-      LOG.debug("No column updates provided for upstream lineage update.");
-      return;
-    }
-
-    try {
-      Map<String, JsonData> params =
-          Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
-      Query impactedLineageQuery =
-          buildLineageColumnsQuery(new ArrayList<>(originalUpdatedColumnFqnMap.keySet()));
-
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
-              req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                      .query(impactedLineageQuery)
-                      .conflicts(Conflicts.Proceed)
-                      .script(
-                          s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(
-                                              l ->
-                                                  l.builtin(
-                                                      os.org.opensearch.client.opensearch._types
-                                                          .BuiltinScriptLanguage.Painless))
-                                          .source(UPDATE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
-                      // A missing index must not abort cleanup of the remaining ones
-                      .ignoreUnavailable(true)
-                      // refresh=false trades read-after-write for throughput: forcing a refresh
-                      // across every column-lineage index on each column-touching write is far
-                      // more expensive than the reconciliation itself. The update is applied
-                      // immediately; only its visibility waits for the index refresh interval, so
-                      // a lineage read issued right after the write can still see the old column
-                      // FQN for that interval.
-                      .refresh(Refresh.False));
-
-      SearchUtils.logColumnLineageFlush(
-          new SearchUtils.ColumnLineageFlushOutcome(
-              "Column rename",
-              indexName,
-              originalUpdatedColumnFqnMap.size(),
-              zeroIfNull(updateResponse.updated()),
-              zeroIfNull(updateResponse.versionConflicts()),
-              updateResponse.failures().stream()
-                  .map(BulkByScrollFailure::cause)
-                  .map(ErrorCause::reason)
-                  .toList()));
-
-    } catch (Exception e) {
-      LOG.error("Error while updating columns in upstream lineage: {}", e.getMessage(), e);
-    }
+    reconcileColumnsInUpstreamLineage(indexName, originalUpdatedColumnFqnMap, List.of());
   }
 
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+    reconcileColumnsInUpstreamLineage(indexName, Map.of(), deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot delete columns from upstream lineage.");
+      LOG.error(
+          "Search client is not available. Cannot reconcile column lineage for index {}",
+          indexName);
       return;
     }
-
-    if (deletedColumns == null || deletedColumns.isEmpty()) {
-      LOG.debug("No deleted columns provided for upstream lineage cleanup.");
+    Map<String, String> renames = renamedColumns == null ? Map.of() : renamedColumns;
+    List<String> deletions = CommonUtil.listOrEmpty(deletedColumns);
+    if (renames.isEmpty() && deletions.isEmpty()) {
       return;
     }
-
     try {
-      Map<String, JsonData> params =
-          Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
-      Query impactedLineageQuery = buildLineageColumnsQuery(deletedColumns);
-
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
-              req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                      .query(impactedLineageQuery)
-                      .conflicts(Conflicts.Proceed)
-                      .script(
-                          s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(
-                                              l ->
-                                                  l.builtin(
-                                                      os.org.opensearch.client.opensearch._types
-                                                          .BuiltinScriptLanguage.Painless))
-                                          .source(DELETE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
-                      // A missing index must not abort cleanup of the remaining ones
-                      .ignoreUnavailable(true)
-                      // refresh=false trades read-after-write for throughput: forcing a refresh
-                      // across every column-lineage index on each column-touching write is far
-                      // more expensive than the reconciliation itself. The update is applied
-                      // immediately; only its visibility waits for the index refresh interval, so
-                      // a lineage read issued right after the write can still see the old column
-                      // FQN for that interval.
-                      .refresh(Refresh.False));
-
+      UpdateByQueryRequest request = buildColumnLineageRequest(indexName, renames, deletions);
       SearchUtils.logColumnLineageFlush(
-          new SearchUtils.ColumnLineageFlushOutcome(
-              "Column delete",
-              indexName,
-              deletedColumns.size(),
-              zeroIfNull(updateResponse.updated()),
-              zeroIfNull(updateResponse.versionConflicts()),
-              updateResponse.failures().stream()
-                  .map(BulkByScrollFailure::cause)
-                  .map(ErrorCause::reason)
-                  .toList()));
-
-    } catch (Exception e) {
-      LOG.error("Error while deleting columns from upstream lineage: {}", e.getMessage(), e);
+          ColumnLineageReconciler.reconcile(
+              renames,
+              () ->
+                  columnLineageOutcome(
+                      indexName, renames.size() + deletions.size(), client.updateByQuery(request)),
+              () ->
+                  client.indices().refresh(r -> r.index(request.index()).ignoreUnavailable(true))));
+    } catch (IOException | OpenSearchException e) {
+      LOG.error("Error reconciling column lineage for index {}", indexName, e);
     }
+  }
+
+  private UpdateByQueryRequest buildColumnLineageRequest(
+      String indexName, Map<String, String> renames, List<String> deletions) {
+    List<String> affectedColumns = new ArrayList<>(renames.keySet());
+    affectedColumns.addAll(deletions);
+    Map<String, JsonData> params =
+        Map.of("columnUpdates", JsonData.of(renames), "deletedFQNs", JsonData.of(deletions));
+    // Refresh once per diff so later requests see the updated FQNs and document versions.
+    // Update-by-query does not support refresh=wait_for.
+    return UpdateByQueryRequest.of(
+        req ->
+            req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                .query(buildLineageColumnsQuery(affectedColumns))
+                .conflicts(Conflicts.Proceed)
+                .script(
+                    s ->
+                        s.inline(
+                            i ->
+                                i.lang(l -> l.builtin(BuiltinScriptLanguage.Painless))
+                                    .source(RECONCILE_COLUMN_LINEAGE_SCRIPT)
+                                    .params(params)))
+                .ignoreUnavailable(true)
+                .refresh(Refresh.True));
+  }
+
+  private SearchUtils.ColumnLineageFlushOutcome columnLineageOutcome(
+      String indexName, int requestedFqns, UpdateByQueryResponse response) {
+    List<String> failures =
+        new ArrayList<>(
+            response.failures().stream()
+                .map(BulkByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .toList());
+    if (Boolean.TRUE.equals(response.timedOut())) {
+      failures.add("Column lineage update-by-query timed out");
+    }
+    return new SearchUtils.ColumnLineageFlushOutcome(
+        "Column reconciliation",
+        indexName,
+        requestedFqns,
+        zeroIfNull(response.updated()),
+        zeroIfNull(response.versionConflicts()),
+        failures);
   }
 
   @Override

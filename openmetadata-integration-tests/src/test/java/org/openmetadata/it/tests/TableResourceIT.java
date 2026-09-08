@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -3879,11 +3881,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
     sourceReq.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
     Table sourceTable = client.tables().create(sourceReq);
-    // Bump past 0.1 so consolidateChanges() is eligible for both PATCHes below. It is also what
-    // makes a case-only rename reach the deferred flush at all: on a non-consolidating PATCH the
-    // rename records no field change (columnMatch is case-insensitive, so the column is neither
-    // added nor deleted, and the per-column updaters never track name), so reactUpdate() treats
-    // the request as a no-op and skips the flush.
+    // Bump past 0.1 so consolidateChanges() is eligible for both PATCHes below.
     sourceTable.setDescription("lineage revert test source");
     sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
 
@@ -4054,8 +4052,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                   getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
                       .contains(childColFqn));
 
-      // Rename the struct child. Paired with a description edit for the same reason as the
-      // top-level rename test: a case-only rename records no field change on its own.
+      // Include a description edit to cover metadata and nested lineage in the same PATCH.
       sourceTable.setDescription("nested column renamed");
       sourceTable.setColumns(List.of(structColumn("struct_col", "CHILD_COL")));
       sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
@@ -4140,6 +4137,114 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                   !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
                       .contains(droppedColFqn));
     }
+  }
+
+  @Test
+  void test_renamedAndDeletedColumnsInSamePatchPropagateInSearch(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("mixed_lineage_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            ColumnBuilder.of("rename_col", "BIGINT").build(),
+                            ColumnBuilder.of("delete_col", "BIGINT").build(),
+                            ColumnBuilder.of("keep_col", "BIGINT").build())));
+    source.setDescription("Enable session consolidation");
+    source = client.tables().update(source.getId().toString(), source);
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("mixed_lineage_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("target_col", "BIGINT").build())));
+    String sourceFqn = source.getFullyQualifiedName();
+    String targetFqn = target.getFullyQualifiedName() + ".target_col";
+    List<String> originalColumns =
+        List.of(sourceFqn + ".rename_col", sourceFqn + ".delete_col", sourceFqn + ".keep_col");
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference().withId(source.getId()).withType(Entity.TABLE))
+                        .withToEntity(
+                            new EntityReference().withId(target.getId()).withType(Entity.TABLE))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(originalColumns)
+                                            .withToColumn(targetFqn))))));
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                          .contains(sourceFqn + ".delete_col")));
+      source.setColumns(
+          List.of(
+              ColumnBuilder.of("RENAME_COL", "BIGINT").build(),
+              ColumnBuilder.of("keep_col", "BIGINT").build()));
+      client.tables().update(source.getId().toString(), source);
+      JsonNode expectedColumns =
+          JsonUtils.valueToTree(
+              List.of(
+                  new ColumnLineage()
+                      .withFromColumns(List.of(sourceFqn + ".RENAME_COL", sourceFqn + ".keep_col"))
+                      .withToColumn(targetFqn)));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                JsonNode lineage =
+                    JsonUtils.readTree(
+                        getUpstreamLineageFromIndex(searchClient, target.getId().toString()));
+                assertEquals(expectedColumns, lineage.get(0).path("columns"));
+              });
+      String storedLineage =
+          client.lineage().getEntityLineage(Entity.TABLE, target.getId().toString(), "1", "0");
+      assertTrue(storedLineage.contains(sourceFqn + ".RENAME_COL"));
+      assertTrue(storedLineage.contains(sourceFqn + ".keep_col"));
+      assertFalse(storedLineage.contains(sourceFqn + ".delete_col"));
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"\u03c3,\u03c2", "\u0130,i", "I,\u0131", "Column,COLUMN"})
+  void test_unicodeColumnMatchingPreservesMetadata(
+      String originalName, String updatedName, TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable request =
+        new CreateTable()
+            .withName(ns.prefix("unicode_columns"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    ColumnBuilder.of(originalName, "BIGINT")
+                        .build()
+                        .withDescription("Steward description")
+                        .withDisplayName("Steward name")));
+    SdkClients.adminClient().tables().create(request);
+    request.setColumns(List.of(ColumnBuilder.of(updatedName, "BIGINT").build()));
+    Table updated = SdkClients.botClient().tables().createOrUpdate(request);
+    assertEquals("Steward description", updated.getColumns().getFirst().getDescription());
+    assertEquals("Steward name", updated.getColumns().getFirst().getDisplayName());
   }
 
   private static void addColumnLineage(
