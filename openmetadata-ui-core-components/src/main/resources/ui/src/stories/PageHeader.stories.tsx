@@ -54,6 +54,35 @@ const Frame = ({ children }: { children: React.ReactNode }) => (
   <div className="tw:bg-secondary tw:p-4">{children}</div>
 );
 
+const DENSITY_COPY = {
+  compact: {
+    subtitle: 'Reduced vertical padding for denser application shells',
+    title: 'Compact density — 12px',
+  },
+  comfortable: {
+    subtitle: 'Default vertical padding for standard page layouts',
+    title: 'Comfortable density — 16px',
+  },
+} as const;
+
+const renderDensityStory = (args: React.ComponentProps<typeof PageHeader>) => {
+  const density = args.density ?? 'comfortable';
+  const copy = DENSITY_COPY[density];
+
+  // Keep the explanatory copy synchronized when the Storybook density control
+  // overrides the preset selected from the sidebar.
+  return (
+    <Frame>
+      <PageHeader
+        {...args}
+        density={density}
+        subtitle={copy.subtitle}
+        title={copy.title}
+      />
+    </Frame>
+  );
+};
+
 export const Basic: Story = {
   args: {
     title: 'Snowflake',
@@ -69,27 +98,17 @@ export const Basic: Story = {
 export const CompactDensity: Story = {
   args: {
     density: 'compact',
-    subtitle: 'Reduced vertical padding for denser application shells',
-    title: 'Compact density — 12px',
+    ...DENSITY_COPY.compact,
   },
-  render: (args) => (
-    <Frame>
-      <PageHeader {...args} />
-    </Frame>
-  ),
+  render: renderDensityStory,
 };
 
 export const ComfortableDensity: Story = {
   args: {
     density: 'comfortable',
-    subtitle: 'Default vertical padding for standard page layouts',
-    title: 'Comfortable density — 16px',
+    ...DENSITY_COPY.comfortable,
   },
-  render: (args) => (
-    <Frame>
-      <PageHeader {...args} />
-    </Frame>
-  ),
+  render: renderDensityStory,
 };
 
 // Variation 1 — the standard header assembled from convenience props: an `icon`
