@@ -14,7 +14,7 @@
 
 import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
-import { debounce, isNil } from 'lodash';
+import { debounce, escape, isNil } from 'lodash';
 import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
@@ -164,8 +164,12 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           return item.avatarEle;
         }
 
+        // Escape all search-index-sourced values (names are user-editable)
+        // before interpolating into the innerHTML template below
         const breadcrumbsData = item.breadcrumbs
-          ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
+          ? item.breadcrumbs
+              .map((obj: { name: string }) => escape(obj.name))
+              .join('/')
           : '';
 
         const breadcrumbEle = breadcrumbsData
@@ -182,7 +186,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
         );
 
         const typeSpan = !breadcrumbEle
-          ? `<span class="text-grey-muted text-xs">${item.type}</span>`
+          ? `<span class="text-grey-muted text-xs">${escape(item.type)}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
@@ -191,7 +195,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             ${breadcrumbEle}
             <div class="d-flex flex-col">
               ${typeSpan}
-              <span class="font-medium truncate w-56">${item.name}</span>
+              <span class="font-medium truncate w-56">${escape(
+                item.name
+              )}</span>
             </div>
           </div>
         </div>`;
@@ -229,9 +235,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             setTimeout(() => toggleMentionList(false), 0);
           },
           onSelect: (
-            item: Record<string, any>,
+            item: Record<string, unknown>,
 
-            insertItem: (item: Record<string, any>) => void
+            insertItem: (item: Record<string, unknown>) => void
           ) => {
             insertItem(item);
           },

@@ -14,7 +14,7 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { useEffect, useState } from 'react';
+import { ComponentProps, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
@@ -109,11 +109,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     }
   };
 
-  const handleTagChange = (value: string, option: any) => {
+  const handleTagChange: NonNullable<
+    ComponentProps<typeof AsyncSelect>['onChange']
+  > = (value, option) => {
+    const selectedOption = Array.isArray(option) ? option[0] : option;
     const updatedData = {
       ...termBoostData,
-      field: option.field,
-      value: value,
+      field: selectedOption?.field,
+      value: value as string,
     };
 
     setTermBoostData(updatedData);

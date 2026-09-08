@@ -1,0 +1,102 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/ontologyChangeSet.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyChangeSet",
+  "description": "A durable ontology authoring session with typed operations and optimistic version guards.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.OntologyChangeSet",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "state": {
+      "javaType": "org.openmetadata.schema.type.OntologyChangeSetState",
+      "type": "string",
+      "enum": ["DRAFT", "SUBMITTED", "APPLIED", "APPLY_FAILED", "DISCARDED"],
+      "default": "DRAFT"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "glossaries": {
+      "description": "Ontology models affected by this change set.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "state": {
+      "$ref": "#/definitions/state"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyChangeOperation.json"
+      },
+      "default": []
+    },
+    "undoCursor": {
+      "description": "Number of active operations at the current undo/redo position.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "reviewTask": {
+      "description": "Review task created when a suggester submits the change set.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "applicationResult": {
+      "$ref": "../../type/ontologyChangeApplicationResult.json"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "displayName",
+    "fullyQualifiedName",
+    "description",
+    "glossaries",
+    "state",
+    "operations",
+    "undoCursor"
+  ],
+  "additionalProperties": false
+}

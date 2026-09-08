@@ -30,7 +30,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SystemSettingsException;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -93,6 +93,27 @@ class SystemRepositoryPatchSettingTest {
     assertEquals(1, updated.getRelationTypes().size());
     assertEquals("prescribes", updated.getRelationTypes().get(0).getName());
     settingsCacheMock.verify(() -> SettingsCache.invalidateSettings(SETTING_NAME));
+  }
+
+  @Test
+  void typedPreparationRunsBeforeGlossarySettingsArePersisted() {
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(ORIGINAL_JSON);
+    when(systemDAO.updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), anyString()))
+        .thenReturn(1);
+
+    systemRepository.patchGlossaryTermRelationSettings(
+        appendRelationTypePatch(),
+        settings -> {
+          settings.getRelationTypes().getFirst().setDisplayName("Prescribes");
+          return settings;
+        });
+
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(systemDAO)
+        .updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), updatedJson.capture());
+    GlossaryTermRelationSettings updated =
+        JsonUtils.readValue(updatedJson.getValue(), GlossaryTermRelationSettings.class);
+    assertEquals("Prescribes", updated.getRelationTypes().getFirst().getDisplayName());
   }
 
   @Test

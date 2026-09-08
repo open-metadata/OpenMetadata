@@ -69,6 +69,12 @@ public final class DataQualityDashboardPage extends PageObject {
    * Recharts only renders segments for non-zero data and the rendering order isn't
    * stable across data shapes, so this method asserts the navigation contract
    * rather than a specific segment-to-status mapping.
+   *
+   * <p>The status filter is multi-select, so a segment may map to one status
+   * ({@code testCaseStatus=Failed}) or several, which serialize with bracket array
+   * syntax ({@code testCaseStatus[]=Failed&testCaseStatus[]=Aborted}, URL-encoded as
+   * {@code testCaseStatus%5B%5D=}). The pattern accepts the bare, literal-bracket, and
+   * encoded-bracket forms so both single- and multi-status pies satisfy the contract.
    */
   public DataQualityDashboardPage clickPieChartSegmentExpectsStatusNav(final String chartId) {
     final Locator segment =

@@ -139,7 +139,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -201,7 +201,7 @@ jobs:
           du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Integration Test Runtime
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-build-postgres-elasticsearch-redis-${{ github.run_id }}
           overwrite: true
@@ -244,7 +244,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -438,7 +438,7 @@ jobs:
       - name: Upload Integration Test Diagnostics
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-postgres-elasticsearch-redis-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -451,7 +451,7 @@ jobs:
       - name: Upload Integration Test Reports
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-reports-postgres-elasticsearch-redis-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml

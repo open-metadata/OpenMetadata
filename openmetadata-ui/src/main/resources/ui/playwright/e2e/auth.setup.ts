@@ -127,7 +127,9 @@ setup('authenticate all users', async ({ browser }) => {
     const newAdminPage = await browser.newPage();
     await admin.login(newAdminPage);
 
-    await newAdminPage.waitForURL('**/my-data');
+    await newAdminPage.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data'
+    );
 
     await mkdir('playwright/.auth', { recursive: true });
     await writeFile(

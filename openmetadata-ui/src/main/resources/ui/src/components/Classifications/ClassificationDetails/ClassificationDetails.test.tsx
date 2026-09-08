@@ -424,6 +424,43 @@ describe('ClassificationDetails', () => {
     expect(screen.getByTestId('disable-button')).toBeInTheDocument();
   });
 
+  it('should hide import and export options for system classifications but show them for user classifications', async () => {
+    const systemClassification = {
+      ...mockClassification,
+      provider: ProviderType.System,
+    };
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={systemClassification}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('system-badge')).toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('export-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('export-button')).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('import-button')).toBeInTheDocument();
+  });
+
   it('should toggle classification enabled state when disable button is clicked', async () => {
     const systemClassification = {
       ...mockClassification,
@@ -489,6 +526,7 @@ describe('ClassificationDetails', () => {
       EditAll: false,
       Delete: false,
       EditDisplayName: false,
+      ViewAll: false,
     };
 
     render(

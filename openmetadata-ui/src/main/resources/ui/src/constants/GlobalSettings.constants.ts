@@ -106,4 +106,5 @@ export enum GlobalSettingOptions {
   WORKFLOW_DEFINITIONS = 'workflow-definitions',
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
+  APP_MODE = 'appMode',
 }

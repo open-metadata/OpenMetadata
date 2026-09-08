@@ -1,0 +1,45 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.ontology-studio-query-editor .CodeMirror {
+  height: auto;
+  min-height: 138px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-regular);
+  line-height: 1.6;
+}
+
+.ontology-studio-query-editor .CodeMirror-scroll {
+  min-height: 138px;
+  max-height: 240px;
+}
+
+.ontology-studio-query-editor .CodeMirror-gutters {
+  display: none;
+}
+
+.ontology-studio-query-editor .CodeMirror-lines {
+  padding: var(--om-space-12) var(--om-space-16);
+}
+
+.ontology-studio-query-editor pre.CodeMirror-line,
+.ontology-studio-query-editor pre.CodeMirror-line-like {
+  padding: 0;
+}
+
+.ontology-studio-query-editor .CodeMirror-code > div:nth-child(-n + 2) span {
+  color: var(--color-utility-purple-600);
+}

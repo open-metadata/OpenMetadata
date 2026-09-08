@@ -544,6 +544,26 @@ export function getNewColumnFromColDiff<
   });
 }
 
+function formatAddedColumnData<A extends TableColumn | ContainerColumn>(
+  arr: Array<A>,
+  col: A,
+  updateAll?: boolean
+) {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, col.name) || updateAll) {
+      i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', i.description ?? '');
+      i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+      i.name = getTextDiff('', i.name);
+      if (!isEmpty(i.children)) {
+        formatAddedColumnData(i?.children as Array<A>, col, true);
+      }
+    } else {
+      formatAddedColumnData(i?.children as Array<A>, col);
+    }
+  });
+}
+
 function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = []
@@ -552,22 +572,7 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
     const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
 
     newCol.forEach((col) => {
-      const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, col.name) || updateAll) {
-            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getTextDiff('', i.description ?? '');
-            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-            i.name = getTextDiff('', i.name);
-            if (!isEmpty(i.children)) {
-              formatColumnData(i?.children as Array<A>, true);
-            }
-          } else {
-            formatColumnData(i?.children as Array<A>);
-          }
-        });
-      };
-      formatColumnData(colList);
+      formatAddedColumnData(colList, col);
     });
   } catch (err) {
     // eslint-disable-next-line no-console

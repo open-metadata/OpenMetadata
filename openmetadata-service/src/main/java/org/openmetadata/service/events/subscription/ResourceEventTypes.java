@@ -17,6 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.Entity;
 
 /**
  * Populates {@code FilterResourceDescriptor.supportedEventTypes}: the event types an alert on a
@@ -50,13 +51,18 @@ public final class ResourceEventTypes {
           EventType.POST_CREATED,
           EventType.POST_UPDATED);
 
+  /** Ontology imports use entityType=GLOSSARY and reach glossary and "all" alerts. */
+  private static final List<EventType> GLOSSARY_EVENTS = List.of(EventType.ONTOLOGY_IMPORTED);
+
   /** Reachable only through "all": their entity types are not notification resources. */
   private static final List<EventType> ALL_ONLY_EVENTS =
       List.of(
           EventType.LOGICAL_TEST_CASE_ADDED,
           EventType.ENTITY_LINEAGE_ADDED,
           EventType.ENTITY_LINEAGE_UPDATED,
-          EventType.ENTITY_LINEAGE_DELETED);
+          EventType.ENTITY_LINEAGE_DELETED,
+          EventType.ONTOLOGY_RELATIONSHIP_TYPE_UPDATED,
+          EventType.ONTOLOGY_CHANGE_SET_APPLIED);
 
   /**
    * Legacy thread-tasks emit these with entityType=THREAD, so they reach the thread's parent entity
@@ -95,7 +101,11 @@ public final class ResourceEventTypes {
     Set<EventType> eventTypes = new LinkedHashSet<>(ENTITY_EVENTS);
     eventTypes.addAll(THREAD_EVENTS);
     eventTypes.addAll(LEGACY_TASK_EVENTS);
-    if (ALL_RESOURCE.equalsIgnoreCase(resource)) {
+    final boolean isAllResource = ALL_RESOURCE.equalsIgnoreCase(resource);
+    if (Entity.GLOSSARY.equalsIgnoreCase(resource) || isAllResource) {
+      eventTypes.addAll(GLOSSARY_EVENTS);
+    }
+    if (isAllResource) {
       eventTypes.addAll(ALL_ONLY_EVENTS);
     }
     return List.copyOf(eventTypes);

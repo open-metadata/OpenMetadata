@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.service.Entity.CONVERSATION;
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
@@ -27,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -43,7 +46,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -60,6 +62,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class AlertsRuleEvaluator {
   private static final String FIELD_TEST_SUITES_AND_OWNERS =
       Entity.FIELD_TEST_SUITES + "," + Entity.FIELD_OWNERS;
+  private static final String FIELD_TEST_SUITES_AND_DOMAINS =
+      Entity.FIELD_TEST_SUITES + "," + Entity.FIELD_DOMAINS;
 
   /**
    * Resolves the change-event entity itself even once it is soft-deleted — a delete event must still
@@ -82,8 +86,8 @@ public class AlertsRuleEvaluator {
               Entity.FIELD_DOMAINS, Include.NON_DELETED));
 
   private final ChangeEvent changeEvent;
-  private EntityReference threadSubject;
-  private boolean threadSubjectResolved;
+  private EntityReference feedSubject;
+  private boolean feedSubjectResolved;
 
   public AlertsRuleEvaluator(ChangeEvent event) {
     this.changeEvent = event;
@@ -101,8 +105,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return threadSubjectMatchesType(originEntities);
+    if (isFeedEvent()) {
+      return feedSubjectMatchesType(originEntities);
     }
 
     String changeEventEntity = changeEvent.getEntityType();
@@ -125,8 +129,8 @@ public class AlertsRuleEvaluator {
     boolean matched = false;
     if (changeEvent != null && changeEvent.getEntity() != null) {
       matched =
-          THREAD.equals(changeEvent.getEntityType())
-              ? threadSubjectMatchesOwner(ownerNameList)
+          isFeedEvent()
+              ? feedSubjectMatchesOwner(ownerNameList)
               : matchesEntityOrTestSuiteOwner(getEntity(changeEvent), ownerNameList);
     }
     return matched;
@@ -171,8 +175,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return threadSubjectMatchesFqn(entityFqns);
+    if (isFeedEvent()) {
+      return feedSubjectMatchesFqn(entityFqns);
     }
 
     EntityInterface entity = getEntity(changeEvent);
@@ -217,8 +221,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return threadSubjectMatchesId(entityIds);
+    if (isFeedEvent()) {
+      return feedSubjectMatchesId(entityIds);
     }
 
     return matchesAnyId(getEntity(changeEvent).getId(), entityIds);
@@ -488,8 +492,8 @@ public class AlertsRuleEvaluator {
     boolean matched = false;
     if (changeEvent != null) {
       matched =
-          THREAD.equals(changeEvent.getEntityType())
-              ? threadSubjectMatchesDomain(fieldChangeUpdate)
+          isFeedEvent()
+              ? feedSubjectMatchesDomain(fieldChangeUpdate)
               : matchesEntityOrTestSuiteDomain(getEntity(changeEvent), fieldChangeUpdate);
     }
     return matched;
@@ -502,8 +506,12 @@ public class AlertsRuleEvaluator {
     boolean matched = matchesAnyDomainFqn(domains, domainFqns);
     if (!matched && TEST_CASE.equals(changeEvent.getEntityType())) {
       // If we did not match on the domain and are dealing with a test case,
-      // check if the match happens on the test suite domain
-      matched = testSuiteMatcher(listOrEmpty(((TestCase) entity).getTestSuites()), domainFqns);
+      // check if the match happens on the test suite domain. The suites are re-read rather than
+      // taken from the payload because testSuiteMatcher needs their domains, which the serialized
+      // change event does not carry.
+      matched =
+          testSuiteMatcher(
+              resolveTestSuites((TestCase) entity, FIELD_TEST_SUITES_AND_DOMAINS), domainFqns);
     }
     return matched;
   }
@@ -556,16 +564,6 @@ public class AlertsRuleEvaluator {
             JsonUtils.pojoToJson(event.getEntity())));
   }
 
-  public static Thread getThreadEntity(ChangeEvent event) {
-    Thread entity;
-    if (event.getEntity() instanceof String str) {
-      entity = JsonUtils.readValue(str, Thread.class);
-    } else {
-      entity = JsonUtils.convertValue(event.getEntity(), Thread.class);
-    }
-    return entity;
-  }
-
   @Function(
       name = "matchConversationUser",
       input = "List of comma separated user names to matchConversationUser",
@@ -578,8 +576,7 @@ public class AlertsRuleEvaluator {
     }
 
     boolean isTask = TASK.equals(changeEvent.getEntityType());
-    // Filter applies to conversation (Thread) and incident/task (Task) change events
-    if (!THREAD.equals(changeEvent.getEntityType()) && !isTask) {
+    if (!CONVERSATION.equals(changeEvent.getEntityType()) && !isTask) {
       return false;
     }
 
@@ -588,19 +585,19 @@ public class AlertsRuleEvaluator {
     }
 
     List<MessageParser.EntityLink> mentions =
-        isTask ? getTaskMentions(getTask(changeEvent)) : getThreadMentions(getThread(changeEvent));
+        isTask
+            ? getTaskMentions(getTask(changeEvent))
+            : getConversationMentions(getConversation(changeEvent));
     return matchesMentionedUserOrTeam(mentions, usersOrTeamName);
   }
 
-  private List<MessageParser.EntityLink> getThreadMentions(Thread thread) {
-    List<MessageParser.EntityLink> mentions;
-    if (thread.getPostsCount() == 0) {
-      mentions = MessageParser.getEntityLinks(thread.getMessage());
-    } else {
-      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+  private List<MessageParser.EntityLink> getConversationMentions(Conversation conversation) {
+    String message = conversation.getMessage();
+    if (!nullOrEmpty(conversation.getReplies())) {
+      ConversationReply latestReply = conversation.getReplies().getLast();
+      message = latestReply.getMessage();
     }
-    return mentions;
+    return nullOrEmpty(message) ? List.of() : MessageParser.getEntityLinks(message);
   }
 
   // A mention notification must fire only for the comment that triggered this event. addComment
@@ -660,6 +657,23 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
+  public static Conversation getConversation(ChangeEvent event) {
+    try {
+      Conversation conversation;
+      if (event.getEntity() instanceof String str) {
+        conversation = JsonUtils.readValue(str, Conversation.class);
+      } else {
+        conversation = JsonUtils.convertValue(event.getEntity(), Conversation.class);
+      }
+      return conversation;
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Change Event Data Asset is not a Conversation %s",
+              JsonUtils.pojoToJson(event.getEntity())));
+    }
+  }
+
   public static Thread getThread(ChangeEvent event) {
     try {
       Thread thread;
@@ -672,7 +686,7 @@ public class AlertsRuleEvaluator {
     } catch (Exception ex) {
       throw new IllegalArgumentException(
           String.format(
-              "Change Event Data Asset is not an Thread %s",
+              "Change Event Data Asset is not a Thread %s",
               JsonUtils.pojoToJson(event.getEntity())));
     }
   }
@@ -719,30 +733,38 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
-  // Scoping filters on a thread event are about the thread's parent entity, not the thread.
+  // Scoping filters on a feed event are about its parent entity, not the feed entity itself.
   // Memoized: every matcher in one evaluation asks for the same subject.
-  private EntityReference threadSubject() {
-    if (!threadSubjectResolved) {
-      threadSubjectResolved = true;
+  private EntityReference feedSubject() {
+    if (!feedSubjectResolved) {
+      feedSubjectResolved = true;
       if (changeEvent.getEntity() != null) {
-        threadSubject = getThread(changeEvent).getEntityRef();
+        feedSubject =
+            CONVERSATION.equals(changeEvent.getEntityType())
+                ? getConversation(changeEvent).getEntityRef()
+                : getThread(changeEvent).getEntityRef();
       }
     }
-    return threadSubject;
+    return feedSubject;
   }
 
-  private boolean threadSubjectMatchesType(List<String> entityTypes) {
-    EntityReference subject = threadSubject();
+  private boolean isFeedEvent() {
+    return THREAD.equals(changeEvent.getEntityType())
+        || CONVERSATION.equals(changeEvent.getEntityType());
+  }
+
+  private boolean feedSubjectMatchesType(List<String> entityTypes) {
+    EntityReference subject = feedSubject();
     return subject != null && entityTypes.contains(subject.getType());
   }
 
-  private boolean threadSubjectMatchesFqn(List<String> entityFqns) {
-    EntityReference subject = threadSubject();
+  private boolean feedSubjectMatchesFqn(List<String> entityFqns) {
+    EntityReference subject = feedSubject();
     return subject != null && matchesFqnOrDescendant(subject.getFullyQualifiedName(), entityFqns);
   }
 
-  private boolean threadSubjectMatchesId(List<String> entityIds) {
-    EntityReference subject = threadSubject();
+  private boolean feedSubjectMatchesId(List<String> entityIds) {
+    EntityReference subject = feedSubject();
     return subject != null && matchesAnyId(subject.getId(), entityIds);
   }
 
@@ -768,17 +790,17 @@ public class AlertsRuleEvaluator {
     return parsed;
   }
 
-  private boolean threadSubjectMatchesOwner(List<String> ownerNameList) {
+  private boolean feedSubjectMatchesOwner(List<String> ownerNameList) {
     EntityInterface subject =
-        Entity.getEntityOrNull(threadSubject(), Entity.FIELD_OWNERS, Include.NON_DELETED);
+        Entity.getEntityOrNull(feedSubject(), Entity.FIELD_OWNERS, Include.NON_DELETED);
     return subject != null
         && !nullOrEmpty(subject.getOwners())
         && matchOwners(subject.getOwners(), ownerNameList);
   }
 
-  private boolean threadSubjectMatchesDomain(List<String> domainFqns) {
+  private boolean feedSubjectMatchesDomain(List<String> domainFqns) {
     EntityInterface subject =
-        Entity.getEntityOrNull(threadSubject(), Entity.FIELD_DOMAINS, Include.NON_DELETED);
+        Entity.getEntityOrNull(feedSubject(), Entity.FIELD_DOMAINS, Include.NON_DELETED);
     return subject != null && matchesAnyDomainFqn(subject.getDomains(), domainFqns);
   }
 

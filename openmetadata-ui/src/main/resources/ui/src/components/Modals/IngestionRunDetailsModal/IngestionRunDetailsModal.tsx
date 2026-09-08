@@ -31,6 +31,32 @@ import {
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 
+const renderFailuresRow = (record: StepSummary) =>
+  record.failures ? (
+    <Row gutter={[16, 16]}>
+      {record.failures.map((failure) => (
+        <Col key={failure.name} span={24}>
+          <ConnectionStepCard
+            isTestingConnection={false}
+            key={failure.name}
+            testConnectionStep={{
+              name: failure.name,
+              mandatory: false,
+              description: failure.error,
+            }}
+            testConnectionStepResult={{
+              name: failure.name,
+              passed: false,
+              mandatory: false,
+              message: failure.error,
+              errorLog: failure.stackTrace,
+            }}
+          />
+        </Col>
+      ))}
+    </Row>
+  ) : undefined;
+
 function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
   pipelineStatus,
   handleCancel,
@@ -92,32 +118,7 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
 
   const expandable: ExpandableConfig<StepSummary> = useMemo(
     () => ({
-      expandedRowRender: (record) => {
-        return record.failures ? (
-          <Row gutter={[16, 16]}>
-            {record.failures.map((failure) => (
-              <Col key={failure.name} span={24}>
-                <ConnectionStepCard
-                  isTestingConnection={false}
-                  key={failure.name}
-                  testConnectionStep={{
-                    name: failure.name,
-                    mandatory: false,
-                    description: failure.error,
-                  }}
-                  testConnectionStepResult={{
-                    name: failure.name,
-                    passed: false,
-                    mandatory: false,
-                    message: failure.error,
-                    errorLog: failure.stackTrace,
-                  }}
-                />
-              </Col>
-            ))}
-          </Row>
-        ) : undefined;
-      },
+      expandedRowRender: renderFailuresRow,
       indentSize: 0,
       expandIcon: () => null,
       expandedRowKeys: expandedKeys,

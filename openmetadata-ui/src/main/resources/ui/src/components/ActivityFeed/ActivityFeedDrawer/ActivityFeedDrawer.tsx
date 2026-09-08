@@ -15,7 +15,6 @@ import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
 import { FC, lazy, useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
 import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
@@ -24,6 +23,8 @@ import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-drawer.less';
+
+const ACTIVITY_FEED_DRAWER_CLASS = 'activity-feed-drawer';
 
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
@@ -60,7 +61,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   if (selectedTask) {
     return (
       <Drawer
-        className={classNames('activity-feed-drawer', className)}
+        className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
         closable={false}
         open={open}
         title={
@@ -89,7 +90,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   if (selectedActivity) {
     return (
       <Drawer
-        className={classNames('activity-feed-drawer', className)}
+        className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
         closable={false}
         open={open}
         title={
@@ -116,15 +117,14 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
 
   return (
     <Drawer
-      className={classNames('activity-feed-drawer', className)}
+      className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
       closable={false}
       open={open}
       title={
         <FeedPanelHeader
           className="p-x-md"
-          entityLink={selectedThread?.about ?? ''}
+          entityLink={selectedThread.about ?? ''}
           feed={selectedThread}
-          threadType={selectedThread?.type ?? ThreadType.Conversation}
           onCancel={hideDrawer}
         />
       }

@@ -476,13 +476,14 @@ describe('TaskTabNew Component', () => {
         teams: [],
       },
     });
-    getResolvedTaskFormSchema.mockImplementation((taskType, taskCategory) =>
-      Promise.resolve(
-        actualTaskFormSchemaUtils.getDefaultTaskFormSchema(
-          taskType,
-          taskCategory
+    getResolvedTaskFormSchema.mockImplementation(
+      (taskType: TaskEntityType, taskCategory: TaskCategory) =>
+        Promise.resolve(
+          actualTaskFormSchemaUtils.getDefaultTaskFormSchema(
+            taskType,
+            taskCategory
+          )
         )
-      )
     );
     isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
