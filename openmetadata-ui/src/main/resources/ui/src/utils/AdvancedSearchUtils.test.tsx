@@ -21,6 +21,7 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
   TAG_ASSETS_DROPDOWN_ITEMS,
+  TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import {
   EntityFields,
@@ -695,6 +696,20 @@ describe('AdvancedSearchUtils tests', () => {
     it('should return TAG_ASSETS_DROPDOWN_ITEMS for TAG type', () => {
       expect(getAssetsPageQuickFilters(AssetsOfEntity.TAG)).toEqual(
         TAG_ASSETS_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return TEAM_ASSETS_DROPDOWN_ITEMS for TEAM type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.TEAM)).toEqual(
+        TEAM_ASSETS_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should include the entity type filter for TEAM type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.TEAM)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: EntityFields.ENTITY_TYPE }),
+        ])
       );
     });
 

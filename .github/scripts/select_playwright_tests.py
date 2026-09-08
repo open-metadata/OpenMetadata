@@ -15,6 +15,37 @@ UI_ROOT = "openmetadata-ui/src/main/resources/ui/"
 RUNNABLE_SPEC_PREFIX = f"{UI_ROOT}playwright/e2e/"
 LINEAGE_MATRIX_SPEC = "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts"
 
+# Path prefixes that always mean "product/test code" — a change here that is
+# also unmapped by the impact-map is treated as "we don't know what to run,
+# so run everything." Mirrors the `e2e` filter in the check-changes job so the
+# planner cannot escalate on paths that check-changes already excluded.
+# Extend this only for genuinely code-bearing roots; adding docs or media
+# paths defeats the escalation.
+UNMAPPED_CODE_ROOTS = (
+    "openmetadata-service/",
+    "openmetadata-ui/",
+    "openmetadata-ui-core-components/",
+    "openmetadata-spec/",
+    "openmetadata-integration-tests/",
+    "openmetadata-dist/",
+    "openmetadata-clients/",
+    "openmetadata-sdk/",
+    "openmetadata-shaded-deps/",
+    "openmetadata-airflow-apis/",
+    "openmetadata-mcp/",
+    "openmetadata-k8s-operator/",
+    "common/",
+    "openspec/",
+    "ingestion/",
+    "bootstrap/",
+    "conf/",
+    "docker/development/",
+)
+
+
+def is_code_path(path: str) -> bool:
+    return path.startswith(UNMAPPED_CODE_ROOTS)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -152,35 +183,64 @@ def main() -> None:
                 unmapped_files.append(changed_file)
 
         unmapped_change = bool(unmapped_files)
-        if unmapped_change:
-            for entry in impact_map["canary"]:
-                add_selection(selected, entry, repo_root)
+        unmapped_code_files = [path for path in unmapped_files if is_code_path(path)]
 
-        remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
+        # Escalate to a full run when a code path the impact-map does not
+        # cover has changed. Docs-only unmapped changes (README, CHANGELOG,
+        # images, generated markdown, …) stay on the smoke + canary plan
+        # because they cannot break a spec.
+        #
+        # Rationale: the map is hand-maintained and lags real coverage.
+        # Every gap has caused at least one "PR CI green, merge-queue red"
+        # cycle. This closes that gap by making "unknown code" mean
+        # "run everything," which is strictly a coverage widening — every
+        # mapping added later demotes its own paths from full back to
+        # targeted, so this rule never blocks the map from shrinking again.
+        if unmapped_code_files:
+            plan = {
+                "version": 1,
+                "mode": "full",
+                "reason": (
+                    "unmapped code paths changed — running the full suite so "
+                    "coverage does not depend on the impact-map being current"
+                ),
+                "directChangedSpecs": sorted(direct_changed_specs),
+                "unmappedCodeFiles": sorted(unmapped_code_files),
+                "changedFiles": changed_files,
+                "selectors": [],
+            }
+        else:
+            if unmapped_change:
+                for entry in impact_map["canary"]:
+                    add_selection(selected, entry, repo_root)
 
-        plan = {
-            "version": 1,
-            "mode": "targeted",
-            "reason": "pull requests run smoke, changed specs, and impact-mapped coverage",
-            "sharedInfrastructureChanged": shared_infrastructure_changed,
-            "unmappedChange": unmapped_change,
-            "unmappedFiles": unmapped_files,
-            "delegatedChangedSpecs": sorted(delegated_changed_specs),
-            "deletedChangedSpecs": sorted(deleted_changed_specs),
-            "directChangedSpecs": sorted(direct_changed_specs),
-            "changedFiles": changed_files,
-            # Drop specs that are delegated to a dedicated lane (@ontology-rdf /
-            # @knowledge-graph, Auth, nightly, VisualRegression, …). A directly
-            # changed delegated spec already routes to delegatedChangedSpecs
-            # above; this also drops ones pulled in by a source->spec mapping
-            # glob (e.g. `OntologyStudio*.spec.ts` matching the RDF spec), which
-            # otherwise plan a postgres shard with zero runnable tests.
-            "selectors": [
-                {"spec": spec, "projects": sorted(projects)}
-                for spec, projects in sorted(selected.items())
-                if not matches(spec, impact_map.get("delegatedSpecs", []))
-            ],
-        }
+            remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
+
+            plan = {
+                "version": 1,
+                "mode": "targeted",
+                "reason": "pull requests run smoke, changed specs, and impact-mapped coverage",
+                "sharedInfrastructureChanged": shared_infrastructure_changed,
+                "unmappedChange": unmapped_change,
+                "unmappedFiles": unmapped_files,
+                "delegatedChangedSpecs": sorted(delegated_changed_specs),
+                "deletedChangedSpecs": sorted(deleted_changed_specs),
+                "directChangedSpecs": sorted(direct_changed_specs),
+                "changedFiles": changed_files,
+                # Drop specs that are delegated to a dedicated lane
+                # (@ontology-rdf / @knowledge-graph, Auth, nightly,
+                # VisualRegression, …). A directly changed delegated spec
+                # already routes to delegatedChangedSpecs above; this also
+                # drops ones pulled in by a source->spec mapping glob
+                # (e.g. `OntologyStudio*.spec.ts` matching the RDF spec),
+                # which otherwise plan a postgres shard with zero runnable
+                # tests.
+                "selectors": [
+                    {"spec": spec, "projects": sorted(projects)}
+                    for spec, projects in sorted(selected.items())
+                    if not matches(spec, impact_map.get("delegatedSpecs", []))
+                ],
+            }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
