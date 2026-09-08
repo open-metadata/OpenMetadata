@@ -27,10 +27,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.awaitility.core.ConditionTimeoutException;
 import org.flowable.engine.ManagementService;
@@ -48,6 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -3624,6 +3627,190 @@ public class WorkflowDefinitionResourceIT {
     }
 
     LOG.info("test_MixedEntityTypesWithReviewerSupport completed successfully");
+  }
+
+  /**
+   * Regression guard for #31692. A custom approval workflow assigns its task to <b>owners</b>
+   * (addOwners=true, addReviewers=false) on a {@code tag} — a Group-2 entity that used to wire
+   * {@code updateReviewers() -> updateTaskWithNewReviewers}. The workflow triggers on {@code Created}
+   * only, so changing the tag's reviewers afterwards cannot re-trigger it; the ONLY thing that could
+   * mutate the open task's assignees on a reviewer change was the removed repository sync. After the
+   * removal, changing reviewers must leave the owner-assigned approval task's assignees untouched —
+   * the added reviewer must NOT be injected as an approver. Before the removal this test fails: the
+   * repository overwrites the task's assignees with the reviewer list inside the PATCH transaction.
+   */
+  @Test
+  @Order(220)
+  void test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask(TestNamespace ns)
+      throws Exception {
+    LOG.info("Starting test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask");
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = "ownerAssignedTagApproval_" + UUID.randomUUID();
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Owner Assigned Tag Approval",
+              "description": "Approval task assigned to owners, triggered on tag creation only",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["tag"],
+                  "events": ["Created"]
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "ApproveTag",
+                  "displayName": "Approve Tag",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1,
+                    "stageId": "review",
+                    "stageDisplayName": "Review",
+                    "taskStatus": "Open",
+                    "assigneeStrategy": "reviewers-and-assignees",
+                    "transitionMetadata": [
+                      {"id": "approve", "label": "Approve", "targetStageId": "approved", "targetTaskStatus": "Approved", "resolutionType": "Approved", "formRef": "approve", "requiresComment": false},
+                      {"id": "reject", "label": "Reject", "targetStageId": "rejected", "targetTaskStatus": "Rejected", "resolutionType": "Rejected", "formRef": "reject", "requiresComment": true}
+                    ]
+                  },
+                  "inputNamespaceMap": {"relatedEntity": "global"}
+                },
+                {"name": "endApproved", "displayName": "End Approved", "type": "endEvent", "subType": "endEvent"},
+                {"name": "endRejected", "displayName": "End Rejected", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "ApproveTag"},
+                {"from": "ApproveTag", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTag", "to": "endRejected", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(workflowName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class),
+                RequestOptions.builder().build());
+    JsonNode created = MAPPER.readTree(createResponse);
+    assertTrue(created.has("id"));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    ensureWorkflowEventConsumerIsActive(client);
+
+    // Classification + tag owned by USER1 with USER2 as an initial reviewer.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(
+                        ns.prefix("revguard")
+                            .substring(0, Math.min(25, ns.prefix("revguard").length())))
+                    .withDescription("Classification for reviewer-change approval guard"));
+    CreateTag createTag =
+        new CreateTag()
+            .withName("guardTag")
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Owner-assigned approval guard tag")
+            .withOwners(List.of(shared.USER1_REF))
+            .withReviewers(List.of(shared.USER2_REF));
+    Tag tag = client.tags().create(createTag);
+
+    Task task = awaitOpenApprovalTaskForEntity(tag.getFullyQualifiedName());
+    Set<UUID> assignees = assigneeIds(task);
+    assertTrue(
+        assignees.contains(shared.USER1.getId()),
+        "Owner must be assigned to the approval task, assignees=" + assignees);
+    assertFalse(
+        assignees.contains(shared.USER2.getId()),
+        "Reviewer must not be assigned to an owners-only approval task, assignees=" + assignees);
+
+    // Change reviewers: add USER3. The Created-only workflow cannot re-trigger on this Updated
+    // event.
+    JsonNode reviewerPatch =
+        MAPPER.readTree(
+            String.format(
+                "[{\"op\":\"replace\",\"path\":\"/reviewers\",\"value\":"
+                    + "[{\"id\":\"%s\",\"type\":\"user\"},{\"id\":\"%s\",\"type\":\"user\"}]}]",
+                shared.USER2.getId(), shared.USER3.getId()));
+    client.tags().patch(tag.getId().toString(), reviewerPatch);
+
+    // The open approval task's assignees must be unchanged — still the owner, never the reviewers.
+    Task afterPatch = openApprovalTaskById(tag.getFullyQualifiedName(), task.getId());
+    assertNotNull(
+        afterPatch, "The owner-assigned approval task must remain open after the reviewer change");
+    Set<UUID> afterAssignees = assigneeIds(afterPatch);
+    assertTrue(
+        afterAssignees.contains(shared.USER1.getId()),
+        "Owner must remain assigned after the reviewer change, assignees=" + afterAssignees);
+    assertFalse(
+        afterAssignees.contains(shared.USER3.getId()),
+        "A newly added reviewer must not be injected into an owners-only task, assignees="
+            + afterAssignees);
+    assertFalse(
+        afterAssignees.contains(shared.USER2.getId()),
+        "Reviewers must not leak into an owners-only task, assignees=" + afterAssignees);
+
+    LOG.info("test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask completed successfully");
+  }
+
+  private Task awaitOpenApprovalTaskForEntity(String entityFqn) {
+    await("open approval task for " + entityFqn)
+        .atMost(Duration.ofMinutes(5))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> !openApprovalTasks(entityFqn).isEmpty());
+    List<Task> tasks = openApprovalTasks(entityFqn);
+    assertFalse(tasks.isEmpty(), "Expected an open approval task for " + entityFqn);
+    return tasks.get(0);
+  }
+
+  private Task openApprovalTaskById(String entityFqn, UUID taskId) {
+    return openApprovalTasks(entityFqn).stream()
+        .filter(t -> taskId.equals(t.getId()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private List<Task> openApprovalTasks(String entityFqn) {
+    List<Task> tasks;
+    try {
+      ListResponse<Task> response =
+          SdkClients.adminClient()
+              .tasks()
+              .listWithFilters(
+                  Map.of(
+                      "limit",
+                      "100",
+                      "status",
+                      TaskEntityStatus.Open.value(),
+                      "aboutEntity",
+                      entityFqn));
+      tasks = response.getData() == null ? List.of() : response.getData();
+    } catch (RuntimeException e) {
+      tasks = List.of();
+    }
+    return tasks;
+  }
+
+  private Set<UUID> assigneeIds(Task task) {
+    return task.getAssignees() == null
+        ? Set.of()
+        : task.getAssignees().stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   @Test
