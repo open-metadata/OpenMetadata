@@ -301,8 +301,8 @@ public interface RdfStorageInterface extends AutoCloseable {
     private final String relationshipType;
     // Full predicate URI to write. Set by RdfRepository.bulkAddRelationships via
     // getRelationshipPredicate so bulkStoreRelationships writes the same predicate
-    // that addRelationship/removeRelationship would (e.g. prov:wasDerivedFrom for
-    // "upstream"), instead of a naive "<baseUri>ontology/<relationshipType>"
+    // that addRelationship/removeRelationship would (e.g. prov:used for
+    // "uses"), instead of a naive "<baseUri>ontology/<relationshipType>"
     // concat that wouldn't match the live remove path.
     private final String predicateUri;
 

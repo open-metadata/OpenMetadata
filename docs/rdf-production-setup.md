@@ -5,6 +5,9 @@ Production sizing must account for two different memory consumers: the Fuseki JV
 operating-system page cache used by TDB2's memory-mapped indexes. Giving the JVM all container
 memory starves the page cache and usually reduces throughput.
 
+The [RDF ontology contract](rdf-ontology-contract.md) documents queryable predicates and the
+full rebuild required to replace legacy lineage and extension triples when upgrading to 2.0.2.
+
 ## The shipped Fuseki image
 
 `docker/rdf-store/` builds the supported image (`openmetadata-fuseki:6.2.0`):

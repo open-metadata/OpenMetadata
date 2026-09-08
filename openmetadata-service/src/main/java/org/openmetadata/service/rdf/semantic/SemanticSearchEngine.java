@@ -227,11 +227,11 @@ public class SemanticSearchEngine {
               <%s> ?relationship ?related .
               FILTER(?relationship IN (om:relatedTo, om:similarTo))
             } UNION {
-              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?related .
+              <%s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?related .
               BIND(prov:wasDerivedFrom AS ?relationship)
             } UNION {
-              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?related .
-              BIND(om:UPSTREAM AS ?relationship)
+              <%s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?related .
+              BIND(om:downstream AS ?relationship)
             } UNION {
               <%s> (om:belongsTo/om:inDomain|om:belongsTo/om:hasGlossaryTerm) ?related .
               BIND(om:relatedTo AS ?relationship)

@@ -49,7 +49,7 @@ class RdfMutationUpdateShapeTest {
 
     assertEquals(1, countOccurrences(update, "WHERE"), update);
     assertTrue(update.contains("UNION"), update);
-    assertTrue(update.contains("VALUES ?s"), update);
+    assertTrue(update.contains("VALUES ?entity"), update);
     assertDoesNotThrow(() -> UpdateAction.parseExecute(update, dataset));
     assertFalse(graph.contains(entity, predicate, outgoingObject));
     assertFalse(graph.contains(incomingSubject, predicate, entity));

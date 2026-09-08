@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -111,7 +113,7 @@ public class RdfPropertyMapper {
   // unset — without any relationship-hook firing. JenaFusekiStorage.storeEntity
   // uses this set (unioned with the predicates actually emitted in the current
   // model) to scope its DELETE, so old values get cleaned up while
-  // hook-managed predicates (om:UPSTREAM, om:owns/contains/…, etc.) stay
+  // hook-managed predicates (om:upstream/om:downstream, om:owns/contains/…, etc.) stay
   // intact. Add to this set when a new URI-valued direct predicate is
   // introduced in this class; the unit test
   // RdfTranslatorManagedPredicatesTest will fail otherwise.
@@ -863,8 +865,10 @@ public class RdfPropertyMapper {
       return;
     }
 
-    // Create a resource for the extension
-    String extUri = baseUri + "extension/" + entityResource.getLocalName();
+    // Jena's XML local-name split can discard an all-numeric UUID entirely.
+    String entityUri = entityResource.getURI();
+    String entityId = entityUri.substring(entityUri.lastIndexOf('/') + 1);
+    String extUri = baseUri + "extension/" + entityId;
     Resource extNode = model.createResource(extUri);
 
     // Link entity to extension
@@ -874,30 +878,25 @@ public class RdfPropertyMapper {
     // Add type
     extNode.addProperty(RDF.type, model.createResource(OM_NS + "Extension"));
 
-    // Iterate through extension fields and add them as key-value pairs
-    Iterator<Map.Entry<String, JsonNode>> fields = extension.fields();
-    while (fields.hasNext()) {
-      Map.Entry<String, JsonNode> field = fields.next();
-      String key = field.getKey();
-      JsonNode value = field.getValue();
+    extension.fields().forEachRemaining(field -> addExtensionValue(extNode, field, model));
+  }
 
-      // Create a property for each extension key in the om: namespace
-      Property extKeyProp = model.createProperty(OM_NS, "ext_" + key);
-
-      if (value.isTextual()) {
-        extNode.addProperty(extKeyProp, value.asText());
-      } else if (value.isNumber()) {
-        if (value.isInt()) {
-          extNode.addProperty(extKeyProp, model.createTypedLiteral(value.asInt()));
-        } else if (value.isDouble()) {
-          extNode.addProperty(extKeyProp, model.createTypedLiteral(value.asDouble()));
-        }
-      } else if (value.isBoolean()) {
-        extNode.addProperty(extKeyProp, model.createTypedLiteral(value.asBoolean()));
-      } else {
-        // For complex values, store as string representation
-        extNode.addProperty(extKeyProp, value.toString());
-      }
+  private void addExtensionValue(
+      Resource extension, Map.Entry<String, JsonNode> field, Model model) {
+    // User-defined keys are data, not additions to the OpenMetadata vocabulary.
+    String key = URLEncoder.encode(field.getKey(), StandardCharsets.UTF_8);
+    Resource entry = model.createResource(extension.getURI() + "/property/" + key);
+    extension.addProperty(model.createProperty(OM_NS, "hasExtensionProperty"), entry);
+    entry.addProperty(RDF.type, model.createResource(OM_NS + "ExtensionProperty"));
+    entry.addProperty(model.createProperty(OM_NS, "extensionKey"), field.getKey());
+    Property valueProperty = model.createProperty(OM_NS, "extensionValue");
+    JsonNode value = field.getValue();
+    if (value.isNumber()) {
+      entry.addLiteral(valueProperty, model.createTypedLiteral(value.numberValue()));
+    } else if (value.isBoolean()) {
+      entry.addLiteral(valueProperty, value.booleanValue());
+    } else {
+      entry.addProperty(valueProperty, value.isTextual() ? value.asText() : value.toString());
     }
   }
 

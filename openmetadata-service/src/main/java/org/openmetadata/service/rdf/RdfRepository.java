@@ -740,6 +740,15 @@ public class RdfRepository {
         return;
       }
       String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
+      if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
+        insertQuery =
+            RdfLineage.legacyDeleteUpdate(
+                    KNOWLEDGE_GRAPH,
+                    entityUri(relationship.getFromEntity(), relationship.getFromId()),
+                    entityUri(relationship.getToEntity(), relationship.getToId()))
+                + ";\n"
+                + insertQuery;
+      }
       storageService.executeSparqlUpdate(insertQuery);
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
@@ -775,7 +784,11 @@ public class RdfRepository {
     String relationshipType = relationship.getRelationshipType().value();
     Property predicate = getRelationshipPredicate(relationshipType, model);
 
-    fromResource.addProperty(predicate, toResource);
+    if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
+      RdfLineage.addToModel(model, fromResource, toResource);
+    } else {
+      fromResource.addProperty(predicate, toResource);
+    }
 
     return model;
   }
@@ -792,7 +805,7 @@ public class RdfRepository {
   // Keep static — the mapping has no per-instance state, and constructing
   // RELATIONSHIP_HOOK_PREDICATES at class init needs a static accessor.
   static String getRelationshipPredicateUri(String relationshipType) {
-    return switch (relationshipType.toLowerCase()) {
+    return switch (relationshipType.toLowerCase(Locale.ROOT)) {
       case "contains" -> "https://open-metadata.org/ontology/contains";
       case "uses" -> "http://www.w3.org/ns/prov#used";
       case "owns" -> "https://open-metadata.org/ontology/owns";
@@ -801,7 +814,7 @@ public class RdfRepository {
       case "relatedto" -> "https://open-metadata.org/ontology/relatedTo";
       case "appliedto" -> "https://open-metadata.org/ontology/appliedTo";
       case "testedby" -> "https://open-metadata.org/ontology/testedBy";
-      case "upstream" -> "http://www.w3.org/ns/prov#wasDerivedFrom";
+      case "upstream" -> RdfLineage.DOWNSTREAM;
       case "downstream" -> "http://www.w3.org/ns/prov#wasInfluencedBy";
       case "joinedwith" -> "https://open-metadata.org/ontology/joinedWith";
       case "processedby" -> "http://www.w3.org/ns/prov#wasGeneratedBy";
@@ -811,7 +824,7 @@ public class RdfRepository {
 
   // Predicate URIs that addRelationship / bulkAddRelationships /
   // removeRelationship operate on, EXCLUDING the lineage edge predicates
-  // (prov:wasDerivedFrom, om:UPSTREAM, om:hasLineageDetails) which are managed
+  // (prov:wasDerivedFrom, om:upstream, om:downstream, om:hasLineageDetails) which are managed
   // independently by addLineageWithDetails. Used by
   // clearOutgoingEntityRelationships and JenaFusekiStorage.bulkStoreRelationships
   // to scope the per-source DELETE so translator-managed URI triples
@@ -903,10 +916,11 @@ public class RdfRepository {
   /** Builds one update that removes both incoming and outgoing triples for an entity. */
   public static String buildEntityDeleteUpdate(String entityUri) {
     return String.format(
-        "DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { "
-            + "{ VALUES ?s { <%s> } ?s ?p ?o } UNION "
-            + "{ ?s ?p <%s> . BIND(<%s> AS ?o) } } }",
-        KNOWLEDGE_GRAPH, KNOWLEDGE_GRAPH, entityUri, entityUri, entityUri);
+        "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
+            + "VALUES ?entity { <%2$s> } "
+            + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
+            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } } }",
+        KNOWLEDGE_GRAPH, entityUri, RdfExtension.ownedTriplesPattern());
   }
 
   private static String buildIriValues(Collection<String> iris) {
@@ -947,10 +961,28 @@ public class RdfRepository {
       return;
     }
 
+    bulkAddLineage(
+        relationships.stream()
+            .filter(relationship -> relationship.getRelationshipType() == Relationship.UPSTREAM)
+            .map(
+                relationship ->
+                    new LineageEdgeData(
+                        relationship.getFromEntity(),
+                        relationship.getFromId(),
+                        relationship.getToEntity(),
+                        relationship.getToId(),
+                        null))
+            .toList(),
+        writeMode);
+    final List<EntityRelationship> entityRelationships =
+        relationships.stream()
+            .filter(relationship -> relationship.getRelationshipType() != Relationship.UPSTREAM)
+            .toList();
+
     try {
       // Pre-compute predicate URIs via getRelationshipPredicate so they match
       // exactly what addRelationship/removeRelationship write/expect (e.g.
-      // UPSTREAM → prov:wasDerivedFrom, USES → prov:used). Without this the
+      // USES → prov:used). Without this the
       // bulk path would emit `om:<relationshipType>` (lowercase value) and a
       // later removeRelationship for the same edge would target a different
       // predicate URI, leaving the bulk-written triple in place.
@@ -962,7 +994,7 @@ public class RdfRepository {
       // using this model to mint Property URIs for predicate-string extraction.
       Model tempModel = ModelFactory.createDefaultModel();
       try {
-        for (EntityRelationship relationship : relationships) {
+        for (EntityRelationship relationship : entityRelationships) {
           String relType = relationship.getRelationshipType().value();
           String predicateUri = getRelationshipPredicate(relType, tempModel).getURI();
           relationshipDataList.add(
@@ -1110,13 +1142,7 @@ public class RdfRepository {
     Resource fromResource = model.createResource(fromUri);
     Resource toResource = model.createResource(toUri);
 
-    // PROV-O: to wasDerivedFrom from (reverse direction for semantic correctness)
-    Property derivedFrom = model.createProperty("http://www.w3.org/ns/prov#", "wasDerivedFrom");
-    toResource.addProperty(derivedFrom, fromResource);
-
-    // OpenMetadata-specific upstream for compatibility
-    Property upstream = model.createProperty("https://open-metadata.org/ontology/", "UPSTREAM");
-    fromResource.addProperty(upstream, toResource);
+    RdfLineage.addToModel(model, fromResource, toResource);
 
     if (lineageDetails != null) {
       // Deterministic URI: re-indexing the same lineage produces the same URI,
@@ -1389,6 +1415,7 @@ public class RdfRepository {
       return "";
     }
     StringBuilder exactTriples = new StringBuilder();
+    StringBuilder sourceOutputValues = new StringBuilder();
     Set<String> detailsUris = new LinkedHashSet<>();
     for (LineageDeleteTarget target : targets) {
       exactTriples
@@ -1396,6 +1423,20 @@ public class RdfRepository {
           .append(target.fromUri())
           .append("> <https://open-metadata.org/ontology/UPSTREAM> <")
           .append(target.toUri())
+          .append(">)")
+          .append(" (<")
+          .append(target.fromUri())
+          .append("> <")
+          .append(RdfLineage.DOWNSTREAM)
+          .append("> <")
+          .append(target.toUri())
+          .append(">)")
+          .append(" (<")
+          .append(target.toUri())
+          .append("> <")
+          .append(RdfLineage.UPSTREAM)
+          .append("> <")
+          .append(target.fromUri())
           .append(">)")
           .append(" (<")
           .append(target.toUri())
@@ -1408,13 +1449,19 @@ public class RdfRepository {
           .append(target.detailsUri())
           .append(">)");
       detailsUris.add(target.detailsUri());
+      sourceOutputValues
+          .append(" (<")
+          .append(target.fromUri())
+          .append("> <")
+          .append(target.toUri())
+          .append(">)");
     }
     String detailValues = buildIriValues(detailsUris);
     return String.format(
         "DELETE { GRAPH <%1$s> { ?deleteSubject ?deletePredicate ?deleteObject } } WHERE { "
             + "GRAPH <%1$s> { "
             + "{ VALUES (?deleteSubject ?deletePredicate ?deleteObject) {%2$s } "
-            + "?deleteSubject ?deletePredicate ?deleteObject } UNION "
+            + "?deleteSubject ?deletePredicate ?deleteObject } UNION { %4$s } UNION "
             + "{ VALUES ?details { %3$s } ?details "
             + "(<https://open-metadata.org/ontology/hasColumnLineage>|"
             + "<http://www.w3.org/ns/prov#hadPlan>) ?deleteSubject . "
@@ -1423,7 +1470,10 @@ public class RdfRepository {
             + "UNION { VALUES ?deleteObject { %3$s } "
             + "?deleteSubject <http://www.w3.org/ns/prov#generated> ?deleteObject . "
             + "BIND(<http://www.w3.org/ns/prov#generated> AS ?deletePredicate) } } }",
-        KNOWLEDGE_GRAPH, exactTriples, detailValues);
+        KNOWLEDGE_GRAPH,
+        exactTriples,
+        detailValues,
+        RdfLineage.legacyReverseDeletePattern(sourceOutputValues.toString()));
   }
 
   private String entityUri(String entityType, UUID entityId) {
@@ -1458,12 +1508,20 @@ public class RdfRepository {
               + relationship.getToEntity()
               + "/"
               + relationship.getToId();
+      if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
+        storageService.executeSparqlUpdate(
+            buildLineageDeleteStatements(
+                fromUri,
+                toUri,
+                lineageDetailsUri(relationship.getFromId(), relationship.getToId())));
+        return;
+      }
       // Relationships are written to the knowledge graph (see storeRelationship
       // / bulkStoreRelationships / addRelationship) so the DELETE must target
       // the same named graph. A bare DELETE in the default graph never matched
       // any of the stored triples and removeRelationship was effectively a
       // no-op. Also use getRelationshipPredicate so the predicate URI matches
-      // exactly what addRelationship wrote (e.g. UPSTREAM → prov:wasDerivedFrom),
+      // exactly what addRelationship wrote (e.g. USES → prov:used),
       // not a naive "<baseUri>ontology/<relationshipType>" concat.
       Model tempModel = ModelFactory.createDefaultModel();
       String predicateUri;
@@ -3338,7 +3396,8 @@ public class RdfRepository {
 
         String fromUri = subjectUri;
         String toUri = objectUri;
-        String canonicalPredicate = predicate;
+        String canonicalPredicate =
+            RdfLineage.LEGACY_UPSTREAM.equals(predicate) ? RdfLineage.DOWNSTREAM : predicate;
         if (isReverseDirectionPredicate(predicate)) {
           fromUri = objectUri;
           toUri = subjectUri;
@@ -3347,15 +3406,11 @@ public class RdfRepository {
           // which is the wrong direction by PROV-O semantics. Substitute the
           // forward-direction equivalent.
           canonicalPredicate = forwardEquivalentPredicate(predicate);
-          // Re-derive relationType from the canonical predicate so it matches
-          // the new (from, to) orientation. Otherwise prov:wasInfluencedBy gives
-          // relationType=downstream + predicate=om:UPSTREAM, which is internally
-          // inconsistent and would also miss dedup against an existing UPSTREAM
-          // edge written with the same subject/object.
-          relationType = extractEntityRelationType(canonicalPredicate);
-          if (relationType == null || relationType.isBlank()) {
-            continue;
-          }
+        }
+        // Graph edges point from source to output. The API relation names that
+        // source's role; the RDF predicate names the object's role.
+        if (RdfLineage.DOWNSTREAM.equals(canonicalPredicate)) {
+          relationType = "upstream";
         }
 
         String edgeKey = fromUri + "|" + relationType + "|" + toUri;
@@ -3750,6 +3805,9 @@ public class RdfRepository {
   }
 
   private boolean isReverseDirectionPredicate(String predicateUri) {
+    if (RdfLineage.UPSTREAM.equals(predicateUri)) {
+      return true;
+    }
     String localName = extractUriLocalName(predicateUri);
     if (localName == null || localName.isBlank()) {
       return false;
@@ -3763,12 +3821,8 @@ public class RdfRepository {
    * equivalent so the canonicalized edge in {@link #parseEntityGraphEdgesFromResults}
    * carries a predicate that matches its (from, to) orientation.
    *
-   * <p>Both `prov:wasDerivedFrom` and `prov:wasInfluencedBy` are reverse-direction
-   * causation predicates: in `B wasDerivedFrom A` / `B wasInfluencedBy A`, A is
-   * the source and B is the effect. After we flip subject/object so the edge
-   * reads source→target, the canonical forward predicate is `om:UPSTREAM` in
-   * both cases. (OM does not store a separate `om:DOWNSTREAM` URI — downstream
-   * is derived by reading the same UPSTREAM edge from the other side.)
+   * <p>After reversing an upstream or PROV causation edge, the predicate must
+   * also describe the source-to-output direction: {@code om:downstream}.
    */
   private String forwardEquivalentPredicate(String reversePredicateUri) {
     String localName = extractUriLocalName(reversePredicateUri);
@@ -3777,7 +3831,7 @@ public class RdfRepository {
     }
     String normalized = localName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     return switch (normalized) {
-      case "wasderivedfrom", "wasinfluencedby" -> "https://open-metadata.org/ontology/UPSTREAM";
+      case "wasderivedfrom", "wasinfluencedby", "upstream" -> RdfLineage.DOWNSTREAM;
       default -> reversePredicateUri;
     };
   }

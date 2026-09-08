@@ -65,6 +65,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfExtension;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
@@ -869,8 +870,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     //                   EMPTY between writes - the new translator output simply omits the triple -
     //                   and the old literal would persist unless swept here.
     //   ?p IN (...)     URI-valued triples for predicates the translator owns, so its fresh output
-    //                   replaces the prior values. Hook-managed URI predicates (om:UPSTREAM,
-    //                   om:owns / om:contains, lineage, ...) are absent from the set and survive.
+    //                   replaces the prior values. Hook-managed URI predicates, including
+    //                   om:upstream, om:downstream, om:owns and om:contains, survive.
     //
     // The two used to be separate DELETE...WHERE operations chained with ';'. They cannot be:
     // Fuseki rejects an update request carrying more than one WHERE-bearing operation with
@@ -879,11 +880,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // Operations without a WHERE (INSERT DATA) are unaffected and may still be chained.
     // Merging is exactly equivalent - !isIRI(?o) || (isIRI(?o) && ?p IN (P)) reduces to
     // !isIRI(?o) || ?p IN (P) - and it scans the entity's triples once instead of twice.
-    String filter =
-        predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
-    return String.format(
-        "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(%s) } }",
-        KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filter);
+    return buildPredicateScopedDelete(Set.of(entityUri), predicates);
   }
 
   private static String buildPredicateScopedDelete(Set<String> entityUris, Set<String> predicates) {
@@ -893,9 +890,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     String filter =
         predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
     return String.format(
-        "DELETE { GRAPH <%s> { ?entity ?p ?o } } WHERE { GRAPH <%s> { "
-            + "VALUES ?entity { %s } ?entity ?p ?o . FILTER(%s) } }",
-        KNOWLEDGE_GRAPH, KNOWLEDGE_GRAPH, iriValues(entityUris), filter);
+        "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
+            + "VALUES ?entity { %2$s } "
+            + "{ ?entity ?p ?o . BIND(?entity AS ?subject) FILTER(%3$s) } UNION { %4$s } } }",
+        KNOWLEDGE_GRAPH, iriValues(entityUris), filter, RdfExtension.ownedTriplesPattern());
   }
 
   private static String iriList(Set<String> predicates) {
@@ -1224,7 +1222,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // accumulate across updates because no hook ever cleans them up — owner /
     // tag / glossary-term URIs aren't in entity_relationship. Predicate
     // scoping lets the translator's fresh output replace the prior values,
-    // while hook-managed predicates (om:UPSTREAM, om:hasLineageDetails,
+    // while hook-managed predicates (om:upstream/om:downstream, om:hasLineageDetails,
     // om:owns / om:contains / …) are untouched so relationship and lineage
     // state survives a metadata-only update.
     //
