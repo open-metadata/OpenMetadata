@@ -14,20 +14,19 @@ SQL Queries used during ingestion
 
 import textwrap
 
-# Column metadata is read from v_catalog.columns / v_catalog.view_columns only.
-# Column comments used to be resolved here with a per-table
+# Fast path: column metadata is read from v_catalog.columns / v_catalog.view_columns
+# only. Column comments used to be resolved here with a per-table
 # `LEFT JOIN v_catalog.comments`, which cost 1-13s per table and dominated the
-# ingestion time (see issue #29429). They are now fetched in a single bulk query
-# (`VERTICA_COLUMN_COMMENTS`) and looked up from an in-memory cache, mirroring how
-# table comments are handled by `get_all_table_comments`.
+# ingestion time (see issue #29429). They are now bulk-fetched per schema
+# (`VERTICA_SCHEMA_COLUMN_COMMENTS`) and looked up from an in-memory cache,
+# mirroring how table comments are handled by `get_all_table_comments`.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
         SELECT
           column_name,
           data_type,
           column_default,
-          is_nullable,
-          table_schema
+          is_nullable
         FROM v_catalog.columns
         WHERE lower(table_name) = '{table}'
           AND {schema_condition}
@@ -36,27 +35,65 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
           column_name,
           data_type,
           '' AS column_default,
-          true AS is_nullable,
-          table_schema
+          true AS is_nullable
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
           AND {schema_condition}
     """
 )
 
-# Bulk-fetch every column comment in one shot. `v_catalog.comments` only holds a
-# row per object that actually has a comment, so the result set is bounded by the
-# number of commented columns (sparse) rather than the total column count.
+# Fallback path: the original per-table join, still used when the schema-scoped
+# comment cache is unavailable -- either the schema holds more than
+# MAX_SCHEMA_COMMENTS comments (bulk-caching it would be unbounded memory), or
+# reflection was invoked without a schema so there is no schema to scope to.
+# Slower, but it always resolves every comment.
+VERTICA_GET_COLUMNS_WITH_COMMENTS = textwrap.dedent(
+    """
+        SELECT
+          column_name,
+          data_type,
+          column_default,
+          is_nullable,
+          comment
+        FROM
+          v_catalog.columns col
+          LEFT JOIN v_catalog.comments cm
+            ON col.table_schema = cm.object_schema
+            AND col.table_name = cm.object_name
+            AND col.column_name = cm.child_object
+            AND cm.object_type = 'COLUMN'
+        WHERE lower(table_name) = '{table}'
+          AND {schema_condition}
+        UNION ALL
+        SELECT
+          column_name,
+          data_type,
+          '' AS column_default,
+          true AS is_nullable,
+          '' AS comment
+        FROM v_catalog.view_columns
+        WHERE lower(table_name) = '{table}'
+          AND {schema_condition}
+    """
+)
+
+# Bulk-fetch the column comments of a single schema. `v_catalog.comments` only
+# holds a row per object that actually has a comment, so the result set is bounded
+# by the number of commented columns (sparse) rather than the total column count.
 # For a COLUMN row: object_schema = schema, object_name = table, child_object = column.
-VERTICA_COLUMN_COMMENTS = textwrap.dedent(
+#
+# Filtering and limiting happen in the database so an oversized schema never
+# materialises client-side.
+VERTICA_SCHEMA_COLUMN_COMMENTS = textwrap.dedent(
     """
     SELECT
-      object_schema AS schema,
       object_name   AS table_name,
       child_object  AS column_name,
       comment       AS column_comment
     FROM v_catalog.comments
     WHERE object_type = 'COLUMN'
+      AND LOWER(object_schema) = LOWER(:schema)
+    LIMIT :limit
     """
 )
 

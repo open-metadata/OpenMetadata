@@ -11,19 +11,20 @@
 """
 Unit tests for the Vertica connector metadata reflection (issue #29429).
 
-These cover the column-comment bulk-caching that replaces the old per-table
-``LEFT JOIN v_catalog.comments`` (the dominant ingestion cost), verifying that:
+These cover the schema-scoped column-comment cache that replaces the old
+per-table ``LEFT JOIN v_catalog.comments`` (the dominant ingestion cost),
+verifying that:
 
-* column comments are resolved from a single bulk query instead of a per-table
-  join,
-* the bulk comment query runs only once and is reused across tables,
-* ``VERTICA_GET_COLUMNS`` no longer joins ``v_catalog.comments``,
-* the cache is invalidated when the database changes, and
+* a normal schema costs exactly one bulk comment query, reused across tables,
+* the previous schema is released when a worker moves to another schema,
+* a schema above ``MAX_SCHEMA_COMMENTS`` falls back to the per-table join
+  without losing any comment,
+* concurrent workers stay independent through their own ``info_cache``,
+* ``VERTICA_GET_COLUMNS`` no longer joins ``v_catalog.comments``, and
 * ``VerticaDialect`` enables SQLAlchemy statement caching.
 """
 
 import threading
-import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -32,36 +33,36 @@ import pytest
 # The dialect lives in the optional ``vertica`` plugin; skip cleanly when absent.
 pytest.importorskip("sqlalchemy_vertica")
 
-from sqlalchemy_vertica.base import VerticaDialect  # noqa: E402
+from sqlalchemy_vertica.base import VerticaDialect
 
 # Importing the module applies the OpenMetadata monkeypatches onto VerticaDialect
-# (get_columns, get_all_column_comments, supports_statement_cache, ...).
-import metadata.ingestion.source.database.vertica.metadata  # noqa: E402,F401
-from metadata.ingestion.source.database.vertica.queries import (  # noqa: E402
-    VERTICA_COLUMN_COMMENTS,
+# (get_columns, supports_statement_cache, ...).
+import metadata.ingestion.source.database.vertica.metadata  # noqa: F401
+from metadata.ingestion.source.database.vertica.queries import (
+    VERTICA_SCHEMA_COLUMN_COMMENTS,
 )
-from metadata.utils.sqlalchemy_utils import (  # noqa: E402
-    get_all_column_comments,
-    get_column_comment_wrapper,
+from metadata.utils.sqlalchemy_utils import (
+    MAX_SCHEMA_COMMENTS,
+    SCHEMA_COLUMN_COMMENTS_CACHE_KEY,
+    get_schema_column_comments,
 )
 
 
-def _column_row(name, data_type="varchar", default=None, nullable=True, schema="public"):
-    """Row shape returned by VERTICA_GET_COLUMNS (attribute access)."""
+def _column_row(name, data_type="varchar", default=None, nullable=True, comment=None):
+    """Row shape returned by the VERTICA_GET_COLUMNS family (attribute access)."""
     return SimpleNamespace(
         column_name=name,
         data_type=data_type,
         column_default=default,
         is_nullable=nullable,
-        table_schema=schema,
+        comment=comment,
     )
 
 
-def _comment_row(schema, table, column, comment):
-    """Row shape returned by VERTICA_COLUMN_COMMENTS (``._mapping`` access)."""
+def _comment_row(table, column, comment):
+    """Row shape returned by VERTICA_SCHEMA_COLUMN_COMMENTS (``._mapping`` access)."""
     return SimpleNamespace(
         _mapping={
-            "schema": schema,
             "table_name": table,
             "column_name": column,
             "column_comment": comment,
@@ -69,21 +70,28 @@ def _comment_row(schema, table, column, comment):
     )
 
 
-def _make_connection(columns_by_table, comment_rows, database="testdb"):
+def _is_comment_query(statement):
+    # The bulk comment query is the only one selecting ``column_comment``; the
+    # per-table fallback also touches v_catalog.comments, so match on the alias.
+    return "column_comment" in str(statement)
+
+
+def _make_connection(columns_by_table, comments_by_schema, database="testdb"):
     """
-    Build a mock connection that routes queries by their SQL text:
-    the comment bulk query -> comment_rows, the per-table columns query ->
-    the rows registered for that table name.
+    Mock connection routing by SQL text: the bulk comment query resolves against
+    ``comments_by_schema`` using the bound ``:schema``, and the per-table columns
+    query resolves against the rows registered for that table name.
     """
     connection = MagicMock()
     connection.engine.url.database = database
 
-    def _execute(query, *_args, **_kwargs):
-        text = str(query)
-        if "v_catalog.comments" in text:
-            return iter(list(comment_rows))
+    def _execute(query, params=None, *_args, **_kwargs):
+        statement = str(query)
+        if _is_comment_query(statement):
+            schema = (params or {}).get("schema")
+            return iter(list(comments_by_schema.get(schema, [])))
         for table, rows in columns_by_table.items():
-            if f"'{table}'" in text:
+            if f"'{table}'" in statement:
                 return iter(list(rows))
         return iter([])
 
@@ -98,21 +106,21 @@ def _new_dialect():
 
 
 def _comment_query_count(connection):
-    return sum(
-        1
-        for call in connection.execute.call_args_list
-        if "v_catalog.comments" in str(call.args[0])
-    )
+    return sum(1 for call in connection.execute.call_args_list if _is_comment_query(call.args[0]))
 
 
-def test_get_columns_resolves_comments_from_bulk_cache():
+def _executed_columns_queries(connection):
+    return [str(call.args[0]) for call in connection.execute.call_args_list if "v_catalog.columns" in str(call.args[0])]
+
+
+def test_get_columns_resolves_comments_from_schema_cache():
     dialect = _new_dialect()
     connection = _make_connection(
         columns_by_table={"t1": [_column_row("c1"), _column_row("c2")]},
-        comment_rows=[_comment_row("public", "t1", "c1", "c1 comment")],
+        comments_by_schema={"public": [_comment_row("t1", "c1", "c1 comment")]},
     )
 
-    columns = list(dialect.get_columns(connection, "t1", schema="public"))
+    columns = list(dialect.get_columns(connection, "t1", schema="public", info_cache={}))
     comment_by_name = {c["name"]: c["comment"] for c in columns}
 
     assert comment_by_name["c1"] == "c1 comment"
@@ -123,27 +131,116 @@ def test_get_columns_resolves_comments_from_bulk_cache():
     assert _comment_query_count(connection) == 1
 
 
-def test_bulk_comment_query_runs_once_across_tables():
+def test_one_bulk_comment_query_per_schema():
     dialect = _new_dialect()
+    info_cache = {}
     connection = _make_connection(
-        columns_by_table={
-            "t1": [_column_row("c1")],
-            "t2": [_column_row("cx")],
+        columns_by_table={"t1": [_column_row("c1")], "t2": [_column_row("cx")]},
+        comments_by_schema={
+            "public": [
+                _comment_row("t1", "c1", "c1 comment"),
+                _comment_row("t2", "cx", "cx comment"),
+            ]
         },
-        comment_rows=[
-            _comment_row("public", "t1", "c1", "c1 comment"),
-            _comment_row("public", "t2", "cx", "cx comment"),
-        ],
     )
 
-    t1 = {c["name"]: c["comment"] for c in dialect.get_columns(connection, "t1", schema="public")}
-    t2 = {c["name"]: c["comment"] for c in dialect.get_columns(connection, "t2", schema="public")}
+    t1 = {
+        c["name"]: c["comment"] for c in dialect.get_columns(connection, "t1", schema="public", info_cache=info_cache)
+    }
+    t2 = {
+        c["name"]: c["comment"] for c in dialect.get_columns(connection, "t2", schema="public", info_cache=info_cache)
+    }
 
     assert t1["c1"] == "c1 comment"
     assert t2["cx"] == "cx comment"
     # The whole point of the fix: the second table reuses the cache, so the
-    # comment catalog is still queried only once in total.
+    # comment catalog is queried exactly once for the schema.
     assert _comment_query_count(connection) == 1
+
+
+def test_previous_schema_is_released_when_worker_changes_schema():
+    dialect = _new_dialect()
+    info_cache = {}
+    connection = _make_connection(
+        columns_by_table={},
+        comments_by_schema={
+            "schema_a": [_comment_row("t", "c", "from A")],
+            "schema_b": [_comment_row("t", "c", "from B")],
+        },
+    )
+
+    first = get_schema_column_comments(dialect, connection, VERTICA_SCHEMA_COLUMN_COMMENTS, "schema_a", info_cache)
+    assert first == {("t", "c"): "from A"}
+    assert _comment_query_count(connection) == 1
+
+    # Same schema again -> served from the cache, no extra query.
+    get_schema_column_comments(dialect, connection, VERTICA_SCHEMA_COLUMN_COMMENTS, "schema_a", info_cache)
+    assert _comment_query_count(connection) == 1
+
+    # Moving to another schema replaces the entry rather than accumulating.
+    second = get_schema_column_comments(dialect, connection, VERTICA_SCHEMA_COLUMN_COMMENTS, "schema_b", info_cache)
+    assert second == {("t", "c"): "from B"}
+    # Exactly one slot is kept, so schema_a's comments are no longer resident.
+    assert info_cache[SCHEMA_COLUMN_COMMENTS_CACHE_KEY] == ("schema_b", {("t", "c"): "from B"})
+
+
+def test_oversized_schema_returns_none_and_caches_the_verdict():
+    dialect = _new_dialect()
+    info_cache = {}
+    connection = _make_connection(
+        columns_by_table={},
+        comments_by_schema={"big": [_comment_row("t", f"c{i}", f"comment {i}") for i in range(3)]},
+    )
+
+    result = get_schema_column_comments(
+        dialect, connection, VERTICA_SCHEMA_COLUMN_COMMENTS, "big", info_cache, max_comments=2
+    )
+
+    # Over the limit -> the partial result is discarded so memory stays bounded.
+    assert result is None
+    assert info_cache[SCHEMA_COLUMN_COMMENTS_CACHE_KEY] == ("big", None)
+
+    # The verdict is cached, so the probe runs once per schema, not once per table.
+    repeated = get_schema_column_comments(
+        dialect, connection, VERTICA_SCHEMA_COLUMN_COMMENTS, "big", info_cache, max_comments=2
+    )
+    assert repeated is None
+    assert _comment_query_count(connection) == 1
+
+
+def test_oversized_schema_falls_back_to_per_table_join_without_losing_comments():
+    dialect = _new_dialect()
+    oversized = [_comment_row(f"t{i}", "c", f"comment {i}") for i in range(MAX_SCHEMA_COMMENTS + 1)]
+    connection = _make_connection(
+        # The fallback resolves the comment from the join itself, not from the cache.
+        columns_by_table={"t1": [_column_row("c1", comment="joined comment")]},
+        comments_by_schema={"public": oversized},
+    )
+
+    columns = list(dialect.get_columns(connection, "t1", schema="public", info_cache={}))
+    comment_by_name = {c["name"]: c["comment"] for c in columns}
+
+    # No comment is lost: only the optimisation is skipped for this schema.
+    assert comment_by_name["c1"] == "joined comment"
+    columns_queries = _executed_columns_queries(connection)
+    assert columns_queries, "expected a v_catalog.columns query"
+    assert all("v_catalog.comments" in query for query in columns_queries)
+
+
+def test_get_columns_without_schema_uses_the_join_fallback():
+    # Reflected with schema=None there is no schema to scope the cache to, so the
+    # per-table join resolves the comments instead of silently dropping them.
+    dialect = _new_dialect()
+    connection = _make_connection(
+        columns_by_table={"t1": [_column_row("c1", comment="the comment")]},
+        comments_by_schema={},
+    )
+
+    columns = list(dialect.get_columns(connection, "t1", schema=None, info_cache={}))
+    comment_by_name = {c["name"]: c["comment"] for c in columns}
+
+    assert comment_by_name["c1"] == "the comment"
+    assert _comment_query_count(connection) == 0
 
 
 def test_comment_lookup_is_case_insensitive():
@@ -152,154 +249,70 @@ def test_comment_lookup_is_case_insensitive():
     # lowercase on both sides so the comment is not silently dropped.
     dialect = _new_dialect()
     connection = _make_connection(
-        columns_by_table={"t1": [_column_row("MyCol", schema="Public")]},
-        comment_rows=[_comment_row("public", "t1", "mycol", "case-folded comment")],
+        columns_by_table={"t1": [_column_row("MyCol")]},
+        comments_by_schema={"Public": [_comment_row("T1", "MYCOL", "case-folded comment")]},
     )
 
-    columns = list(dialect.get_columns(connection, "T1", schema="Public"))
+    columns = list(dialect.get_columns(connection, "T1", schema="Public", info_cache={}))
     comment_by_name = {c["name"]: c["comment"] for c in columns}
 
     assert comment_by_name["MyCol"] == "case-folded comment"
 
 
-def test_get_columns_resolves_comments_when_schema_is_none():
-    # When reflected with schema=None, VERTICA_GET_COLUMNS spans every schema, so
-    # the comment key must be taken from each row's own table_schema rather than
-    # the (missing) argument, otherwise comments are silently dropped.
+def test_concurrent_workers_use_separate_info_caches():
+    # The dialect is shared across the worker threads that reflect schemas in
+    # parallel, but each worker owns its info_cache. No shared state, no lock, and
+    # no cross-worker thrashing: each worker loads its own schema exactly once.
     dialect = _new_dialect()
+    schemas = ["schema_a", "schema_b", "schema_c", "schema_d"]
     connection = _make_connection(
-        columns_by_table={"t1": [_column_row("c1", schema="realschema")]},
-        comment_rows=[_comment_row("realschema", "t1", "c1", "the comment")],
+        columns_by_table={},
+        comments_by_schema={schema: [_comment_row("t", "c", f"from {schema}")] for schema in schemas},
     )
 
-    columns = list(dialect.get_columns(connection, "t1", schema=None))
-    comment_by_name = {c["name"]: c["comment"] for c in columns}
+    start = threading.Barrier(len(schemas))
+    lock = threading.Lock()
+    results = {}
 
-    assert comment_by_name["c1"] == "the comment"
-
-
-def test_bulk_population_is_atomic():
-    # The dialect is shared across the worker threads that reflect schemas in
-    # parallel, so the cache must be published in a single assignment: a reader
-    # must never observe a half-built dict. We assert the dialect does not expose
-    # the new dict until every row has been consumed.
-    dialect = _new_dialect()
-    observed = []
-
-    def rows():
-        # Produced lazily as the loop iterates. At this point the cache must still
-        # be built in a local variable, not yet assigned onto the dialect.
-        observed.append(getattr(dialect, "all_column_comments", None))
-        yield _comment_row("public", "t1", "c1", "c1 comment")
-        yield _comment_row("public", "t1", "c2", "c2 comment")
-
-    connection = MagicMock()
-    connection.engine.url.database = "db"
-    connection.execute.return_value = rows()
-
-    get_all_column_comments(dialect, connection, VERTICA_COLUMN_COMMENTS)
-
-    # Nothing was published while rows were still being read (atomic publish).
-    assert observed == [None]
-    assert dialect.all_column_comments[("public", "t1", "c1")] == "c1 comment"
-    assert dialect.all_column_comments[("public", "t1", "c2")] == "c2 comment"
-
-
-def test_first_load_runs_bulk_query_once_under_concurrency():
-    # The dialect is shared across worker threads reflecting schemas in parallel.
-    # On the first load they all see an empty cache; double-checked locking must
-    # ensure only one thread runs the expensive bulk query while the rest wait and
-    # reuse the published result.
-    dialect = _new_dialect()
-    comment_query_calls = []
-    start = threading.Barrier(5)
-
-    def _execute(query, *_args, **_kwargs):
-        if "v_catalog.comments" in str(query):
-            comment_query_calls.append(1)
-            time.sleep(0.05)  # widen the load window so all threads race the load
-            return iter([_comment_row("public", "t1", "c1", "c1 comment")])
-        return iter([])
-
-    connection = MagicMock()
-    connection.engine.url.database = "db"
-    connection.execute.side_effect = _execute
-
-    results = []
-
-    def worker():
+    def worker(schema):
+        info_cache = {}
         start.wait()
-        results.append(
-            get_column_comment_wrapper(
-                dialect,
-                connection,
-                VERTICA_COLUMN_COMMENTS,
-                table_name="t1",
-                column_name="c1",
-                schema="public",
+        # Two lookups per worker: the second must be served from that worker's own
+        # cache, so every worker still costs exactly one bulk query.
+        for _ in range(2):
+            comments = get_schema_column_comments(
+                dialect, connection, VERTICA_SCHEMA_COLUMN_COMMENTS, schema, info_cache
             )
-        )
+            with lock:
+                results[schema] = comments
 
-    threads = [threading.Thread(target=worker) for _ in range(5)]
+    threads = [threading.Thread(target=worker, args=(schema,)) for schema in schemas]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
 
-    assert all(result == "c1 comment" for result in results)
-    # Five racing threads, but the costly comment catalog is queried exactly once.
-    assert len(comment_query_calls) == 1
+    # Every worker resolved its own schema, unaffected by the others.
+    for schema in schemas:
+        assert results[schema] == {("t", "c"): f"from {schema}"}
+    # One bulk query per worker, not one per lookup.
+    assert _comment_query_count(connection) == len(schemas)
 
 
-def test_get_columns_query_does_not_join_comments():
+def test_fast_path_query_does_not_join_comments():
     dialect = _new_dialect()
     connection = _make_connection(
         columns_by_table={"t1": [_column_row("c1")]},
-        comment_rows=[],
+        comments_by_schema={"public": []},
     )
 
-    list(dialect.get_columns(connection, "t1", schema="public"))
+    list(dialect.get_columns(connection, "t1", schema="public", info_cache={}))
 
-    columns_queries = [
-        str(call.args[0])
-        for call in connection.execute.call_args_list
-        if "v_catalog.columns" in str(call.args[0])
-    ]
+    columns_queries = _executed_columns_queries(connection)
     assert columns_queries, "expected a v_catalog.columns query"
     for query in columns_queries:
         assert "v_catalog.comments" not in query
         assert "comment" not in query.lower()
-
-
-def test_column_comment_cache_is_invalidated_on_db_switch():
-    dialect = SimpleNamespace()
-    # Bind the bulk loader so the wrapper can call self.get_all_column_comments.
-    dialect.get_all_column_comments = get_all_column_comments.__get__(dialect)
-
-    conn_a = MagicMock()
-    conn_a.engine.url.database = "db_a"
-    conn_a.execute.return_value = iter([_comment_row("public", "t", "c", "from A")])
-
-    first = get_column_comment_wrapper(
-        dialect, conn_a, VERTICA_COLUMN_COMMENTS, table_name="t", column_name="c", schema="public"
-    )
-    second = get_column_comment_wrapper(
-        dialect, conn_a, VERTICA_COLUMN_COMMENTS, table_name="t", column_name="c", schema="public"
-    )
-    assert first == second == "from A"
-    # Same DB -> cache reused, loaded only once.
-    assert conn_a.execute.call_count == 1
-
-    conn_b = MagicMock()
-    conn_b.engine.url.database = "db_b"
-    conn_b.execute.return_value = iter([_comment_row("public", "t", "c", "from B")])
-
-    switched = get_column_comment_wrapper(
-        dialect, conn_b, VERTICA_COLUMN_COMMENTS, table_name="t", column_name="c", schema="public"
-    )
-    # Different DB -> cache invalidated and reloaded from the new connection.
-    assert switched == "from B"
-    assert conn_b.execute.call_count == 1
 
 
 def test_vertica_dialect_enables_statement_cache():
