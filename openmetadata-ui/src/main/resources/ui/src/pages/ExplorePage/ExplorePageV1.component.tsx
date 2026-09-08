@@ -287,11 +287,17 @@ const ExplorePageV1: FC<unknown> = () => {
     searchCriteria,
   ]);
 
+  // Key this URL-normalizing navigate on location.search, NOT on the
+  // parsedSearch memo: parsedSearch also recomputes when the provider's
+  // queryFilter state lands, and react-router applies the submit's own
+  // navigate in a transition *after* that state update — firing here at
+  // that moment re-pushes the stale pre-submit URL over the new filter.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   useEffect(() => {
     if (!isEmpty(parsedSearch)) {
       handlePageChange(page, size);
     }
-  }, [page, size, parsedSearch]);
+  }, [page, size, location.search]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
