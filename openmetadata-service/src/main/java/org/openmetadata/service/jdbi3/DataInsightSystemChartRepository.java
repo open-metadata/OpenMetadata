@@ -9,8 +9,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,8 +23,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -61,25 +66,22 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private ScheduledExecutorService scheduler;
   private final Map<String, StreamingSession> activeSessions;
 
+  /**
+   * Every entity type reachable under {@link #DI_SEARCH_INDEX}, i.e. the ones DataInsightsApp
+   * ingests plus the ones aliased in from a live index. Derived from {@link DataAssetType} so this
+   * set cannot drift from the types Data Insights actually covers; it is used only to enumerate
+   * index names when building the custom-chart field catalog.
+   *
+   * <p>Iteration order is the enum's declaration order. The catalog appends records per type as it
+   * walks this set, so a salted order would vary the record order per JVM start and any consumer
+   * that resolves a duplicated field name by taking the first record would resolve it differently
+   * after a restart.
+   */
   public static final Set<String> dataAssetTypes =
-      Set.of(
-          "table",
-          "storedProcedure",
-          "databaseSchema",
-          "database",
-          "chart",
-          "dashboard",
-          "dashboardDataModel",
-          "pipeline",
-          "topic",
-          "container",
-          "searchIndex",
-          "mlmodel",
-          "dataProduct",
-          "glossaryTerm",
-          "tag",
-          "testCaseResult",
-          "testCaseResolutionStatus");
+      Collections.unmodifiableSet(
+          Arrays.stream(DataAssetType.values())
+              .map(DataAssetType::value)
+              .collect(Collectors.<String, LinkedHashSet<String>>toCollection(LinkedHashSet::new)));
 
   public static final String DI_SEARCH_INDEX_PREFIX = "di-data-assets";
 
