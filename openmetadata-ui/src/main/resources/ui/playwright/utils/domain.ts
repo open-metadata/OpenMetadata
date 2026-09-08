@@ -442,10 +442,30 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     )
     .toBe(true);
 
-  await Promise.all([
-    domainRow.click(),
-    page.waitForResponse('/api/v1/domains/name/*'),
-  ]);
+  // Wait on the detail panel reflecting the target domain, not on the
+  // `/api/v1/domains/name/*` response. Two failure modes made the old
+  // `Promise.all([click, waitForResponse(...)])` pattern flake, and both
+  // are avoided by asserting on the DOM instead:
+  //
+  //   1. Listener race. `Promise.all` constructs the click promise before
+  //      the response listener, so on a fast round-trip the response can
+  //      arrive before Playwright is subscribed and the wait hangs until
+  //      the 60s timeout — the same ordering hazard documented in
+  //      playwright/utils/waitHelpers.ts.
+  //   2. No-op click. DomainTreeView.handleSelectionChange short-circuits
+  //      when the clicked FQN already equals `selectedFqnRef.current`
+  //      (returning to /domain restores the last-visited node), so
+  //      clicking that row issues no API call at all and the response
+  //      never fires — this is the mode that hit the second selectDomain
+  //      call in "Verify domain tags and glossary terms".
+  await domainRow.click();
+
+  const displayName = domain.displayName ?? domain.name;
+  await expect(
+    page
+      .getByTestId('domain-details')
+      .getByTestId('entity-header-display-name')
+  ).toContainText(displayName);
 
   await waitForAllLoadersToDisappear(page);
 };
