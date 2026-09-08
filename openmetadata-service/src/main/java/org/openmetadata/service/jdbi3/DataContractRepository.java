@@ -1201,39 +1201,85 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
-    // ensure pipeline is deployed before running
-    // we deploy the pipeline during post create
-    if (!pipeline.getDeployed()) {
-      prepareAndDeployIngestionPipeline(pipeline, testSuite);
-    }
+    refreshDeployedPipelineBeforeRun(pipeline, testSuite);
     prepareAndRunIngestionPipeline(pipeline, testSuite);
   }
 
+  /**
+   * The pipeline service pins the bot JWT into the generated DAG configuration when a pipeline is
+   * deployed and never reads it again, so a contract deployed once keeps running with the token it
+   * was born with. Re-deploying on every validation rewrites that configuration with a freshly
+   * minted token, which is what makes a rotated or expired token self-healing (issue #24806).
+   * Refreshing an already deployed pipeline is best-effort so that an installation which validated
+   * fine before this refresh existed cannot start failing because of it. That fallback assumes the
+   * deploy left the previous DAG artifacts usable, which holds for every failure that reaches a
+   * decision before Airflow rewrites them - transport failures, a payload the deploy endpoint
+   * rejects, and a DagBag reparse failure, which happens only after both files have been written in
+   * full with the new token. It does not hold if the write itself fails part way through
+   * (DagDeployer.store_airflow_pipeline_config and store_and_validate_dag_file truncate in place and
+   * validate afterwards), which can leave a half-written config or DAG file. That hazard is not
+   * introduced here - every deploy caller runs the same non-atomic code - but this is the only
+   * caller that does not surface it, so a persistent failure shows up as a WARN plus a failing DAG
+   * run rather than an aborted validation.
+   *
+   * <p>Only runners that pin the credentials at deploy time are refreshed. The Kubernetes and Argo
+   * runners rebuild the whole run spec from the pipeline on every run, so they already carry the
+   * current token; re-deploying them would rewrite a ConfigMap, a Secret and a CronWorkflow per
+   * validation - and DataContractValidationApp sweeps every contract nightly - to fix a problem they
+   * do not have. Those keep the pre-refresh behaviour of deploying only when nothing is deployed
+   * yet.
+   */
+  private void refreshDeployedPipelineBeforeRun(IngestionPipeline pipeline, TestSuite testSuite) {
+    boolean alreadyDeployed = Boolean.TRUE.equals(pipeline.getDeployed());
+    if (alreadyDeployed && !pipelineServiceClient.pinsCredentialsAtDeployTime()) {
+      return;
+    }
+    try {
+      prepareAndDeployIngestionPipeline(pipeline, testSuite);
+    } catch (RuntimeException e) {
+      if (!alreadyDeployed) {
+        throw e;
+      }
+      LOG.warn(
+          "Could not refresh DQ pipeline '{}' before validation, running the DAG already deployed: {}",
+          pipeline.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
   private void prepareAndDeployIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
-    pipeline.setOpenMetadataServerConnection(
-        SecretsManagerFactory.getSecretsManager()
-            .encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    boolean alreadyDeployed = Boolean.TRUE.equals(pipeline.getDeployed());
+    refreshOpenMetadataServerConnection(pipeline);
 
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     PipelineServiceClientResponse response =
         ingestionPipelineRepository.deployIngestionPipeline(pipeline, testSuite);
-    if (response.getCode() == 200) {
+    // Re-deploying an already deployed pipeline must not reach createOrUpdate: storeEntity runs
+    // encryptIngestionPipeline with store=true, a remote write on an external secrets manager, and
+    // the only thing this branch persists is a deployed flag that is already true.
+    if (response.getCode() == Response.Status.OK.getStatusCode() && !alreadyDeployed) {
       pipeline.setDeployed(true);
       ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
     }
   }
 
   private void prepareAndRunIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
+    // Do not fold this refresh into the deploy step. On a first deploy, createOrUpdate runs
+    // storeEntity -> encryptIngestionPipeline, which swaps openMetadataServerConnection for its
+    // store=true form - a secret reference rather than the token on an external secrets manager.
+    // Rebuilding here is what puts the usable token back before the runner reads it.
+    refreshOpenMetadataServerConnection(pipeline);
+    pipelineServiceClient.runPipeline(pipeline, testSuite);
+  }
+
+  private void refreshOpenMetadataServerConnection(IngestionPipeline pipeline) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
     pipeline.setOpenMetadataServerConnection(
         SecretsManagerFactory.getSecretsManager()
             .encryptOpenMetadataConnection(openMetadataServerConnection, false));
-
-    pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {

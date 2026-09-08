@@ -30,6 +30,7 @@ from sqlalchemy.pool import StaticPool
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Matchers, collect_checks
 from metadata.core.connections.test_connection.checks.database import DEFAULT_SAMPLE_ROWS, DatabaseStep
+from metadata.core.connections.test_connection.records import Evidence
 from metadata.core.connections.test_connection.runner import TestConnectionRunner
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
@@ -484,3 +485,61 @@ def test_get_databases_counts_the_databases_it_found():
 
 def test_get_databases_reports_a_floor_when_the_sample_is_capped():
     assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+
+
+# ── GetTables / GetViews: TOP-1 existence probe, not a sorted reflection ─────
+#
+# A database with hundreds of thousands of tables makes inspector.get_table_names()
+# (ORDER BY, no cap) blow past the per-step timeout, since SQL Server has to sort
+# every row before returning the first one. These checks only need to know
+# *something* is visible, so they run their own TOP 1 / no ORDER BY probe instead.
+#
+# The probe's SQL is T-SQL (TOP, sys.tables/sys.views), which SQLite - the rest of
+# this file's stand-in engine - cannot run. run_sql is mocked instead, with a
+# side_effect that still calls the real summarize callback the check builds, so
+# the check's own found/empty/caveat logic runs for real; only the query
+# execution itself is faked.
+
+
+def _fake_run_sql(rows: list[tuple]):
+    def run(client, statement, summarize, max_rows=1):
+        return Evidence(summary=summarize(rows), command=statement)
+
+    return run
+
+
+def _probe_evidence(step: DatabaseStep, rows: list[tuple]):
+    checks = MssqlChecks(db=Borrowed.of(MagicMock()), get_databases_statement="SELECT 1")
+    with patch(f"{CONNECTION_MODULE}.run_sql", side_effect=_fake_run_sql(rows)) as mock_run_sql:
+        evidence = collect_checks(checks)[step]()
+    return evidence, mock_run_sql.call_args.args[1]
+
+
+def test_get_tables_probes_with_top_1_and_no_order_by():
+    evidence, statement = _probe_evidence(DatabaseStep.GetTables, rows=[("big_tbl_0",)])
+    assert "TOP 1" in statement
+    assert "ORDER BY" not in statement
+    assert "sys.tables" in statement
+    assert "is_ms_shipped = 0" in statement
+    assert evidence.summary == "tables visible"
+
+
+def test_get_tables_warns_but_does_not_fail_when_database_is_empty():
+    evidence, _ = _probe_evidence(DatabaseStep.GetTables, rows=[])
+    assert evidence.summary == "no tables visible"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible"
+
+
+def test_get_views_stays_silent_when_there_are_no_views():
+    """Unlike GetTables, an empty view list is normal - no caveat."""
+    evidence, statement = _probe_evidence(DatabaseStep.GetViews, rows=[])
+    assert "sys.views" in statement
+    assert evidence.summary == "no views visible"
+    assert evidence.caveat is None
+
+
+def test_get_views_reports_visible_views():
+    evidence, _ = _probe_evidence(DatabaseStep.GetViews, rows=[("v",)])
+    assert evidence.summary == "views visible"
+    assert evidence.caveat is None

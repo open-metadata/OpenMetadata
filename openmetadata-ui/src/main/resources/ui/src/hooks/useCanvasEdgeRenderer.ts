@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  MutableRefObject,
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
 import { Theme } from '../context/UntitledUIThemeProvider/theme-provider.interface';
@@ -59,6 +66,84 @@ export interface CanvasButtonHitData {
   button: CanvasButton;
   edge: Edge;
 }
+
+const getEdgeButtonFlags = (edgeData: Edge['data']) => {
+  const {
+    isColumnLineage,
+    edge: edgeDetails,
+    columnFunctionValue,
+    isExpanded,
+  } = edgeData ?? {};
+
+  return {
+    hasPipeline: Boolean(
+      !isColumnLineage &&
+        edgeDetails?.pipeline &&
+        getEntityName(edgeDetails.pipeline)
+    ),
+    hasFunction: Boolean(!isColumnLineage && columnFunctionValue && isExpanded),
+  };
+};
+
+const getCanvasButtonHit = (
+  ctx: CanvasRenderingContext2D,
+  edge: Edge,
+  edgePathCacheRef: MutableRefObject<
+    WeakMap<
+      Edge,
+      {
+        edgePath: string;
+        edgeCenterX: number;
+        edgeCenterY: number;
+        sourceX: number;
+        sourceY: number;
+        targetX: number;
+        targetY: number;
+      }
+    >
+  >,
+  hoveredButtonRef: MutableRefObject<CanvasButton | null>,
+  isDQEnabled: boolean,
+  getButtonColors: () => CanvasButtonColors
+): CanvasButtonHitData | null => {
+  const edgeData = edge.data ?? {};
+  const { hasPipeline, hasFunction } = getEdgeButtonFlags(edgeData);
+
+  if (!hasPipeline && !hasFunction) {
+    return null;
+  }
+
+  const cachedPathData = edgePathCacheRef.current.get(edge);
+
+  if (!cachedPathData) {
+    return null;
+  }
+
+  const button = createCanvasButton(
+    cachedPathData.edgeCenterX,
+    cachedPathData.edgeCenterY,
+    edge.id,
+    hasPipeline ? ECanvasButtonType.Pipeline : ECanvasButtonType.Function,
+    edgeData.edge?.pipeline?.pipelineStatus?.executionStatus,
+    edgeData.isPipelineRootNode
+  );
+
+  const isButtonHovered =
+    hoveredButtonRef.current?.edgeId === edge.id &&
+    hoveredButtonRef.current?.type === button.type;
+
+  ctx.save();
+  drawCanvasButton(
+    ctx,
+    button,
+    getButtonColors(),
+    isButtonHovered,
+    isDQEnabled
+  );
+  ctx.restore();
+
+  return { button, edge };
+};
 
 export function useCanvasEdgeRenderer({
   canvasRef,
@@ -283,6 +368,11 @@ export function useCanvasEdgeRenderer({
     // Resolve lazily inside the scheduled draw so the root theme class is current,
     // while graphs without pipeline/function controls avoid unnecessary DOM probes.
     let buttonColors: CanvasButtonColors | undefined;
+    const getButtonColors = () => {
+      buttonColors ??= resolveCanvasButtonColors();
+
+      return buttonColors;
+    };
 
     visibleEdges.forEach((edge) => {
       ctx.save();
@@ -293,46 +383,17 @@ export function useCanvasEdgeRenderer({
         hitPaths.push({ edge, path });
       }
 
-      const {
-        isColumnLineage,
-        edge: edgeDetails,
-        columnFunctionValue,
-        isExpanded,
-        isPipelineRootNode,
-      } = edge.data || {};
+      const buttonHit = getCanvasButtonHit(
+        ctx,
+        edge,
+        edgePathCacheRef,
+        hoveredButtonRef,
+        isDQEnabled,
+        getButtonColors
+      );
 
-      const hasPipeline =
-        !isColumnLineage &&
-        edgeDetails?.pipeline &&
-        getEntityName(edgeDetails.pipeline);
-      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
-
-      if (hasPipeline || hasFunction) {
-        const cachedPathData = edgePathCacheRef.current.get(edge);
-
-        if (!cachedPathData) {
-          return;
-        }
-
-        const button = createCanvasButton(
-          cachedPathData.edgeCenterX,
-          cachedPathData.edgeCenterY,
-          edge.id,
-          hasPipeline ? ECanvasButtonType.Pipeline : ECanvasButtonType.Function,
-          edgeDetails?.pipeline?.pipelineStatus?.executionStatus,
-          isPipelineRootNode
-        );
-
-        const isHovered =
-          hoveredButtonRef.current?.edgeId === edge.id &&
-          hoveredButtonRef.current?.type === button.type;
-
-        buttonColors ??= resolveCanvasButtonColors();
-        ctx.save();
-        drawCanvasButton(ctx, button, buttonColors, isHovered, isDQEnabled);
-        ctx.restore();
-
-        canvasButtons.push({ button, edge });
+      if (buttonHit) {
+        canvasButtons.push(buttonHit);
       }
     });
 
