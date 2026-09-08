@@ -3,27 +3,28 @@ name: Merge green backport PRs
 # yamllint disable-line rule:comments
 run-name: "Auto-merge check for ${{ inputs.pr && format('PR #{0}', inputs.pr) || github.event.check_suite.head_sha }}"
 
-# Second half of the backport pipeline (see backport-labeled-prs.yaml). A
-# backport PR that goes green merges itself; a backport PR that goes red stays
-# open and pings the author of the PR it was backported from. Nobody has to
-# touch a backport that works.
+# Second half of the backport pipeline (see backport-labeled-prs.yaml):
 #
-# Why this is a separate, event-driven workflow rather than `gh pr merge --auto`:
-# auto-merge waits for *required* status checks, and the release branches have
-# none configured (`required_status_checks: null` on `1.13` and `2.0`). With no
-# required checks, `--auto` merges the PR immediately — before CI has even
-# started — which would be worse than the direct push this replaced. So wait for
-# real check completions and decide from the actual results.
+#   checks pass -> merge it, nobody is involved
+#   checks fail -> the author of the PR this was backported from is asked to look
 #
-# `check_suite: completed` alone is enough: every check on a PR in this
-# repository is a GitHub Actions check run, so there are no third-party commit
-# statuses to catch. Adding a `status:` trigger would start a run on every
-# status of every commit in the repo to cover a case that does not exist.
+# The sibling workflow in openmetadata-collate and ai-platform gives Claude one
+# pass at repairing a red backport before involving a person. That token is not
+# available to this repository, so a red backport goes straight to its author.
 #
-# Failure mode by design: "all required checks pass" means "every check that
-# ran passed". If no check ever reports, this does nothing and the PR stays
-# open — a backport is never merged blind. Use the manual dispatch below if a
-# PR ever stalls that way.
+# Why this is event-driven rather than `gh pr merge --auto`: auto-merge waits on
+# *required* status checks, and the release branches have none configured
+# (`required_status_checks: null` on `1.13` and `2.0`). With no required checks,
+# `--auto` merges immediately — before CI has even started — which would be
+# worse than the direct push this replaced.
+#
+# `check_suite: completed` alone is enough: every check on a PR here is a GitHub
+# Actions check run, so there are no third-party commit statuses to catch. A
+# `status:` trigger would start a run on every status of every commit in the
+# repo for a case that does not arise.
+#
+# If no check ever reports, nothing merges and the PR stays open. A backport is
+# never merged blind; the manual dispatch below covers that case.
 
 # yamllint disable-line rule:truthy
 on:
@@ -41,10 +42,15 @@ permissions:
   pull-requests: write
 
 jobs:
-  merge:
+  automerge:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Provenance gate. Matching on the branch name alone would be an access
+      # control hole: anyone able to open a PR could name a branch
+      # `backport/2.0/pr-1`, target a release branch, and have arbitrary code
+      # merged by this workflow the moment one check passed. So establish that
+      # this PR really came from backport-labeled-prs.yaml before touching it.
       - name: Find the backport PR
         id: find
         env:
@@ -54,24 +60,51 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -uo pipefail
-          # Only ever touch what this pipeline owns. `backport/<target>/pr-<n>`
-          # is written by nothing else, and a backport never targets main.
-          FILTER='select(.headRefName | startswith("backport/")) | select(.baseRefName != "main")'
           if [ -n "${INPUT_PR:-}" ]; then
-            PR=$(gh pr view "$INPUT_PR" --repo "$REPO" \
-                   --json number,headRefName,baseRefName,state \
-                   --jq "select(.state == \"OPEN\") | $FILTER | .number // empty")
+            PR="$INPUT_PR"
           else
             PR=$(gh pr list --repo "$REPO" --state open --limit 100 \
-                   --json number,headRefName,headRefOid,baseRefName \
-                   --jq "[.[] | select(.headRefOid == \"$SHA\") | $FILTER][0].number // empty")
+                   --json number,headRefOid \
+                   --jq "[.[] | select(.headRefOid == \"$SHA\")][0].number // empty")
           fi
           if [ -z "$PR" ]; then
-            echo "No open backport PR to act on; nothing to do."
-          else
-            echo "Backport PR: #$PR"
+            echo "No open PR at ${SHA:-$INPUT_PR}; nothing to do."
+            echo "pr=" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+
+          # Herestring, not a heredoc: a heredoc terminator has to sit at
+          # column 0 after YAML dedents this block, which makes the security
+          # gate below silently dependent on this step's indentation.
+          INFO=$(gh pr view "$PR" --repo "$REPO" \
+                   --json state,isCrossRepository,baseRefName,headRefName,body \
+                   --jq '[.state, .isCrossRepository, .baseRefName, .headRefName,
+                          (.body | contains("<!-- automated-backport -->"))] | @tsv')
+          IFS=$'\t' read -r STATE CROSS BASE HEAD MARKED <<< "$INFO"
+
+          # Every one of these must hold. A fork PR can never be ours: the
+          # backport branch is pushed into this repository. The body marker is
+          # written by backport-labeled-prs.yaml and is what separates a real
+          # backport from a branch someone happened to name that way.
+          REASON=""
+          [ "$STATE"  = "OPEN"  ] || REASON="state is $STATE"
+          [ "$CROSS"  = "false" ] || REASON="from a fork"
+          [ "$BASE"  != "main"  ] || REASON="targets main"
+          [ "$MARKED" = "true"  ] || REASON="no automated-backport marker in the body"
+          case "$HEAD" in
+            "backport/$BASE/pr-"[0-9]*) ;;
+            *) REASON="head \`$HEAD\` is not backport/$BASE/pr-<n>" ;;
+          esac
+
+          if [ -n "$REASON" ]; then
+            echo "PR #$PR is not an automated backport ($REASON); ignoring."
+            echo "pr=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "Backport PR: #$PR -> $BASE"
+          {
+            echo "pr=$PR"
+            echo "base=$BASE"
+            echo "head=$HEAD"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Evaluate checks
         id: checks
@@ -99,6 +132,7 @@ jobs:
           else
             VERDICT=green
           fi
+
           echo "verdict=$VERDICT"
           echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
 
@@ -116,23 +150,21 @@ jobs:
           gh pr comment "$PR" --repo "$REPO" \
             --body "🤖 All checks passed — merged automatically by the backport pipeline."
 
-      # A red backport is the one case that needs a person, so say so where the
-      # author will see it. Marker-gated: check events keep arriving after the
-      # first failure and this must not become a comment storm.
+      # ---------------------------------------------------------------- report
       - name: Report a red backport
         if: steps.checks.outputs.verdict == 'failed'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.find.outputs.pr }}
+          BASE: ${{ steps.find.outputs.base }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -uo pipefail
           MARKER='<!-- backport-automerge-failed -->'
           if gh pr view "$PR" --repo "$REPO" --json comments \
                --jq '.comments[].body' | grep -qF "$MARKER"; then
-            echo "Already reported on #$PR."
-            exit 0
+            echo "Already reported on #$PR."; exit 0
           fi
 
           # backport-labeled-prs.yaml records the original author in the body.
@@ -140,7 +172,6 @@ jobs:
           # creation time is best-effort and may not have stuck.
           AUTHOR=$(gh pr view "$PR" --repo "$REPO" --json body --jq '.body' \
                      | sed -n 's/^| Author | @\([A-Za-z0-9_-]*\) |.*/\1/p' | head -1)
-          BASE=$(gh pr view "$PR" --repo "$REPO" --json baseRefName --jq .baseRefName)
           FAILED=$(gh pr checks "$PR" --repo "$REPO" --json bucket,name \
                      --jq '[.[] | select(.bucket == "fail" or .bucket == "cancel") | .name]
                            | unique | join(", ")' 2>/dev/null || true)

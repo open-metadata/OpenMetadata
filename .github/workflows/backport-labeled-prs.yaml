@@ -61,6 +61,42 @@ jobs:
     outputs:
       release_branches: ${{ steps.resolve.outputs.release_branches }}
     steps:
+      # `To release` is what causes code to reach a release branch, and GitHub
+      # has no per-label permission — anyone with triage access can apply it.
+      # So authorise it here: find who actually applied the label and require
+      # them to be a member of the organisation. Every outcome that is not a
+      # confirmed member stops the backport; "we could not tell" is never
+      # treated as a pass.
+      - name: Authorise the label
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          ORG: ${{ github.repository_owner }}
+        run: |
+          set -uo pipefail
+          ACTOR=$(gh api "repos/$REPO/issues/$PR/timeline" --paginate \
+                    --jq '[.[] | select(.event == "labeled" and .label.name == "To release")
+                               | .actor.login] | last // empty' 2>/dev/null || true)
+          if [ -z "$ACTOR" ]; then
+            echo "::error::Could not determine who applied the 'To release' label; refusing to backport."
+            exit 1
+          fi
+          echo "Label applied by: $ACTOR"
+
+          CODE=$(gh api "orgs/$ORG/members/$ACTOR" --silent -i 2>/dev/null | head -1 | grep -oE '[0-9]{3}' | head -1)
+          case "${CODE:-000}" in
+            204)
+              echo "$ACTOR is a member of $ORG; proceeding." ;;
+            404)
+              gh pr comment "$PR" --repo "$REPO" --body "🤖 The \`To release\` label was applied by @$ACTOR, who is not a member of the \`$ORG\` organisation, so this PR was **not** backported. Backports are restricted to the team. Ask a maintainer to re-apply the label if this change should ship in a release."
+              echo "::error::'To release' was applied by $ACTOR, who is not an $ORG member. No backport was attempted."
+              exit 1 ;;
+            *)
+              echo "::error::Could not verify $ACTOR's membership of $ORG (HTTP ${CODE:-none}). Refusing to backport rather than guessing. The token needs the organisation 'members: read' permission."
+              exit 1 ;;
+          esac
+
       # The old workflow ran this with a bare `curl -s`, so an unreachable
       # endpoint produced an empty branch list, a skipped matrix, and no signal
       # whatsoever — a labelled PR silently missed the release. Retry, then fail
@@ -210,6 +246,10 @@ jobs:
 
           BODY="$RUNNER_TEMP/body.md"
           {
+            # Provenance marker. backport-automerge.yaml refuses to merge a
+            # PR without it, so a branch a person hand-names `backport/...`
+            # cannot ride the auto-merge path into a release branch.
+            printf '<!-- automated-backport -->\n'
             printf 'Automated backport of #%s to `%s`.\n\n' "$PR_NUMBER" "$TARGET"
             printf '| | |\n|---|---|\n'
             printf '| Source PR | #%s |\n' "$PR_NUMBER"
@@ -271,8 +311,14 @@ jobs:
       # marked every step `continue-on-error` and so reported success while the
       # change silently missed the release — the failure mode this whole change
       # exists to remove. Fail the branch's leg so the run list shows it.
-      - name: Fail on unresolved conflict
-        if: steps.pick.outputs.state == 'conflict'
+      - name: Fail if the change did not reach the release branch
+        if: steps.target.outputs.exists == 'false' || steps.pick.outputs.state == 'conflict'
+        env:
+          EXISTS: ${{ steps.target.outputs.exists }}
         run: |
-          echo "::error::Backport to $TARGET conflicts and needs a human. See the comment on PR #$PR_NUMBER."
+          if [ "$EXISTS" = "false" ]; then
+            echo "::error::Branch $TARGET is marked for release but does not exist here, so PR #$PR_NUMBER was not backported to it."
+          else
+            echo "::error::Backport to $TARGET conflicts and needs a human. See the comment on PR #$PR_NUMBER."
+          fi
           exit 1
