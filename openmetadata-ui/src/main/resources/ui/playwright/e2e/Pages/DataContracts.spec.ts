@@ -223,7 +223,10 @@ test.describe('Data Contracts', () => {
             .catch(() => false);
 
           if (hasSchemaFields) {
-            await page.getByRole('checkbox', { name: 'Select all' }).check();
+            await page
+              .getByRole('checkbox', { name: 'Select all' })
+              .locator('xpath=ancestor::label[1]')
+              .click();
 
             await expect(
               page.getByRole('checkbox', { name: 'Select all' })
@@ -468,7 +471,10 @@ test.describe('Data Contracts', () => {
             page.locator('td').filter({ hasText: NEW_TABLE_TEST_CASE.name })
           ).toBeVisible();
 
-          await page.getByRole('checkbox', { name: 'Select all' }).check();
+          await page
+            .getByRole('checkbox', { name: 'Select all' })
+            .locator('xpath=ancestor::label[1]')
+            .click();
 
           await expect(
             page.getByRole('checkbox', { name: 'Select all' })
@@ -527,7 +533,10 @@ test.describe('Data Contracts', () => {
           await qualityResponse;
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByRole('checkbox', { name: 'Select all' }).uncheck();
+          await page
+            .getByRole('checkbox', { name: 'Select all' })
+            .locator('xpath=ancestor::label[1]')
+            .click();
 
           await expect(
             page.getByRole('checkbox', { name: 'Select all' })
@@ -606,7 +615,10 @@ test.describe('Data Contracts', () => {
 
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByRole('checkbox', { name: 'Select all' }).click();
+          await page
+            .getByRole('checkbox', { name: 'Select all' })
+            .locator('xpath=ancestor::label[1]')
+            .click();
 
           await expect(
             page.getByRole('checkbox', { name: 'Select all' })
@@ -768,7 +780,10 @@ test.describe('Data Contracts', () => {
         await columnResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByRole('checkbox', { name: 'Select all' }).check();
+        await page
+          .getByRole('checkbox', { name: 'Select all' })
+          .locator('xpath=ancestor::label[1]')
+          .click();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -785,7 +800,10 @@ test.describe('Data Contracts', () => {
         await columnResponse2;
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByRole('checkbox', { name: 'Select all' }).check();
+        await page
+          .getByRole('checkbox', { name: 'Select all' })
+          .locator('xpath=ancestor::label[1]')
+          .click();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -802,7 +820,10 @@ test.describe('Data Contracts', () => {
         await columnResponse3;
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByRole('checkbox', { name: 'Select all' }).check();
+        await page
+          .getByRole('checkbox', { name: 'Select all' })
+          .locator('xpath=ancestor::label[1]')
+          .click();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -810,7 +831,10 @@ test.describe('Data Contracts', () => {
 
         // Now UnSelect the Selected Columns of 3rd Page
 
-        await page.getByRole('checkbox', { name: 'Select all' }).uncheck();
+        await page
+          .getByRole('checkbox', { name: 'Select all' })
+          .locator('xpath=ancestor::label[1]')
+          .click();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -870,7 +894,10 @@ test.describe('Data Contracts', () => {
         await columnResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByRole('checkbox', { name: 'Select all' }).uncheck();
+        await page
+          .getByRole('checkbox', { name: 'Select all' })
+          .locator('xpath=ancestor::label[1]')
+          .click();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -912,7 +939,7 @@ test.describe('Data Contracts', () => {
         for (let i = 1; i <= 5; i++) {
           await page
             .locator(
-              `[data-row-key="${entityFQN}.test_col_000${i}"] input[type="checkbox"]`
+              `[data-row-key="${entityFQN}.test_col_000${i}"] label[slot="selection"]`
             )
             .click();
         }
@@ -1371,7 +1398,7 @@ test.describe('Data Contracts', () => {
     // First level column should be selectable
     await page
       .locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] input[type="checkbox"]`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] label[slot="selection"]`
       )
       .click();
 
@@ -1388,18 +1415,22 @@ test.describe('Data Contracts', () => {
       ).not.toBeVisible();
     }
 
-    // Expand the Column and check if they are disabled
+    // Expand the Column and check if they are disabled. The schema rows are
+    // React Aria pressable (selectable), so a real pointer click on the inner
+    // expand icon triggers the row's press + selection and the expansion's
+    // layout shift, leaving Playwright's click waiting on a never-stable
+    // element. Firing the icon's own click handler expands without the press.
     await page
       .locator(
         `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[2]}"] [data-testid="expand-icon"]`
       )
-      .click();
+      .dispatchEvent('click');
 
     await page
       .locator(
         `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[4]}"] [data-testid="expand-icon"]`
       )
-      .click();
+      .dispatchEvent('click');
 
     // This Nested column should be closed on initial
     for (let i = 3; i <= 6; i++) {
@@ -1438,7 +1469,10 @@ test.describe('Data Contracts', () => {
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
-    await page.getByRole('checkbox', { name: 'Select all' }).check();
+    await page
+      .getByRole('checkbox', { name: 'Select all' })
+      .locator('xpath=ancestor::label[1]')
+      .click();
 
     await expect(
       page.getByRole('checkbox', { name: 'Select all' })
@@ -1520,25 +1554,25 @@ test.describe('Data Contracts', () => {
     // Old column should be visible and we should un-check them
     await page
       .locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[0]}"] input[type="checkbox"]`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[0]}"] label[slot="selection"]`
       )
       .click();
 
     await page
       .locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] input[type="checkbox"]`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] label[slot="selection"]`
       )
       .click();
 
     // Select newly added column
     await page
       .locator(
-        `[data-row-key="${entityFQN}.new_column_0"] input[type="checkbox"]`
+        `[data-row-key="${entityFQN}.new_column_0"] label[slot="selection"]`
       )
       .click();
     await page
       .locator(
-        `[data-row-key="${entityFQN}.new_column_1"] input[type="checkbox"]`
+        `[data-row-key="${entityFQN}.new_column_1"] label[slot="selection"]`
       )
       .click();
 
