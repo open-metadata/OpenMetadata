@@ -29,8 +29,10 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const isInputTypeFile = props.schema.uiFieldType === 'file';
   const isInputTypeFileOrInput = props.schema.uiFieldType === 'fileOrInput';
 
-   const handleChange = (nextValue: string) =>
-    props.onChange(nextValue === '' ? props.options.emptyValue ?? undefined : nextValue);
+  const handleChange = (nextValue: string) =>
+    props.onChange(
+      nextValue === '' ? props.options.emptyValue ?? undefined : nextValue
+    );
 
   const getPasswordInput = useCallback(
     (disabled?: boolean) => (

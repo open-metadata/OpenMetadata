@@ -74,12 +74,12 @@ test.describe(
       // saslPassword was set when the service was created — the API returns it
       // as '*********'. The form must display this masked value as dots (not an
       // empty field) so the user knows a secret is stored.
-      await expect(
-        page.locator(String.raw`#root\/saslPassword`)
-      ).toHaveValue(MASKED_PASSWORD);
+      await expect(page.locator(String.raw`#root\/saslPassword`)).toHaveValue(
+        MASKED_PASSWORD
+      );
     });
 
-    test('saving after clearing does not send replace/\'\' for the password field', async ({
+    test("saving after clearing does not send replace/'' for the password field", async ({
       page,
     }) => {
       await navigateToEditConnection(page, kafkaService.entity.name);
@@ -112,9 +112,6 @@ test.describe(
         value?: unknown;
       }>;
 
-      // Guard against the 1.13 regression: clearing the password must not
-      // produce replace/'' in the PATCH. An empty string would cause the
-      // backend to store '' instead of properly removing the secret.
       const passwordOp = patchBody.find((op) =>
         op.path.endsWith('/saslPassword')
       );
@@ -163,9 +160,9 @@ test.describe(
 
       // On main, CorePasswordWidget converts '' → undefined so the password is
       // preserved by compare() (no diff). Re-opening shows the masked value.
-      await expect(
-        page.locator(String.raw`#root\/saslPassword`)
-      ).toHaveValue('');
+      await expect(page.locator(String.raw`#root\/saslPassword`)).toHaveValue(
+        ''
+      );
     });
 
     test('saving without clearing preserves the masked password — regression guard', async ({
