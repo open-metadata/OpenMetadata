@@ -39,6 +39,7 @@ SOURCE_HASH_EXCLUDE_FIELDS = {
 }
 
 VOLATILE_ENTITY_REFERENCE_FIELDS = {"href", "deleted", "inherited"}
+VOLATILE_CERTIFICATION_FIELDS = {"appliedDate", "expiryDate"}
 
 
 def _normalize_whitespace(text: str | None) -> str | None:
@@ -124,6 +125,22 @@ def _sort_columns(columns: list[Any]) -> list[Any]:
     return sorted_columns
 
 
+def _strip_volatile_certification_fields(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a shallow copy of data with certification.appliedDate/expiryDate removed.
+
+    Kept separate from _normalize_for_hash so it operates on the typed create-request
+    dict rather than on the loosely-typed output of _remove_volatile_fields.
+    """
+    certification = data.get("certification")
+    if not isinstance(certification, dict):
+        return data
+    return {
+        **data,
+        "certification": {k: v for k, v in certification.items() if k not in VOLATILE_CERTIFICATION_FIELDS},
+    }
+
+
 def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize a create request dict to ensure deterministic hashing.
@@ -141,7 +158,7 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
        otherwise destabilize the hash if a connector ever populates them with
        a run-time-relative value
     """
-    result = _remove_volatile_fields(data)
+    result = _remove_volatile_fields(_strip_volatile_certification_fields(data))
 
     if "columns" in result and isinstance(result["columns"], list):
         result["columns"] = _sort_columns(result["columns"])
@@ -157,11 +174,6 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
 
     if "schemaDefinition" in result and result["schemaDefinition"]:  # noqa: RUF019
         result["schemaDefinition"] = _normalize_whitespace(result["schemaDefinition"])
-
-    if "certification" in result and isinstance(result["certification"], dict):
-        result["certification"] = {
-            k: v for k, v in result["certification"].items() if k not in ("appliedDate", "expiryDate")
-        }
 
     return result
 
