@@ -1002,8 +1002,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     affectedColumns.addAll(deletions);
     Map<String, JsonData> params =
         Map.of("columnUpdates", JsonData.of(renames), "deletedFQNs", JsonData.of(deletions));
-    // Refresh once per diff so later requests see the updated FQNs and document versions.
-    // Update-by-query does not support refresh=wait_for.
+    // A following change queries the new FQN; without a refresh it can match zero documents,
+    // so conflict retries cannot recover it. Deletes introduce no new FQNs to make searchable.
     return UpdateByQueryRequest.of(
         req ->
             req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
@@ -1017,7 +1017,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                     .source(RECONCILE_COLUMN_LINEAGE_SCRIPT)
                                     .params(params)))
                 .ignoreUnavailable(true)
-                .refresh(Refresh.True));
+                .refresh(renames.isEmpty() ? Refresh.False : Refresh.True));
   }
 
   private SearchUtils.ColumnLineageFlushOutcome columnLineageOutcome(

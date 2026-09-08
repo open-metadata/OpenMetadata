@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -41,6 +42,54 @@ class ColumnLineageReconciliationIT {
           JsonUtils.readTree("[\"source.Rename\",\"source.keep\"]"),
           source.at("/upstreamLineage/0/columns/0/fromColumns"));
       assertEquals("unrelated", source.path("description").asText());
+    }
+  }
+
+  @Test
+  void sequentialRenamesMatchTheNewFqn(TestNamespace ns) throws Exception {
+    try (LineageIndex index = new LineageIndex(ns)) {
+      index.client.updateColumnsInUpstreamLineage(
+          index.name, new HashMap<>(Map.of("source.rename", "source.RENAME")));
+      index.client.updateColumnsInUpstreamLineage(
+          index.name, new HashMap<>(Map.of("source.RENAME", "source.Rename")));
+
+      assertEquals(
+          JsonUtils.readTree("[\"source.Rename\",\"source.delete\",\"source.keep\"]"),
+          index.readSource().at("/upstreamLineage/0/columns/0/fromColumns"));
+    }
+  }
+
+  @Test
+  void deletionMatchesTheNewlyRenamedFqn(TestNamespace ns) throws Exception {
+    try (LineageIndex index = new LineageIndex(ns)) {
+      index.client.updateColumnsInUpstreamLineage(
+          index.name, new HashMap<>(Map.of("source.rename", "source.RENAME")));
+      index.client.deleteColumnsInUpstreamLineage(index.name, List.of("source.RENAME"));
+
+      assertEquals(
+          JsonUtils.readTree("[\"source.delete\",\"source.keep\"]"),
+          index.readSource().at("/upstreamLineage/0/columns/0/fromColumns"));
+    }
+  }
+
+  @Test
+  void deletionDoesNotForceARefresh(TestNamespace ns) throws Exception {
+    try (LineageIndex index = new LineageIndex(ns)) {
+      JsonNode refreshCount =
+          index
+              .request("GET", "/_stats/refresh", null)
+              .at("/_all/primaries/refresh/external_total");
+      assertTrue(refreshCount.isIntegralNumber());
+      index.client.deleteColumnsInUpstreamLineage(index.name, List.of("source.delete"));
+
+      assertEquals(
+          refreshCount,
+          index
+              .request("GET", "/_stats/refresh", null)
+              .at("/_all/primaries/refresh/external_total"));
+      assertEquals(
+          JsonUtils.readTree("[\"source.rename\",\"source.keep\"]"),
+          index.readSource().at("/upstreamLineage/0/columns/0/fromColumns"));
     }
   }
 
