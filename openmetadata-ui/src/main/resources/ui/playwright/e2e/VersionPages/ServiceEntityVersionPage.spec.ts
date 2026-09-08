@@ -105,7 +105,7 @@ test.describe('Service Version pages', () => {
         const patchData: Operation[] = [
           {
             op: 'add',
-            path: '/tags/0',
+            path: '/tags/-',
             value: {
               labelType: 'Manual',
               state: 'Confirmed',
@@ -115,7 +115,7 @@ test.describe('Service Version pages', () => {
           },
           {
             op: 'add',
-            path: '/tags/1',
+            path: '/tags/-',
             value: {
               labelType: 'Manual',
               state: 'Confirmed',

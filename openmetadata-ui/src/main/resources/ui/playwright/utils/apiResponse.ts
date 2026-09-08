@@ -193,16 +193,19 @@ export const createOrFetch = async <T = ResponseBody>(
       `${label}: fetch existing "${entityFqn}"`
     );
 
-    // A soft-deleted entity keeps its name, so it is a legitimate source of the
-    // 409 -- but handing it back gives the caller an id that 404s on the very
-    // next write, which is how a stale fixture surfaces as "instance not found"
-    // several calls later, far from the cause. Restoring is not right either:
-    // restore is async and returns the entity mid-history, while callers expect
-    // a fresh one. Fail here, where the situation is still legible.
+    // `include=all` above will happily return a soft-deleted entity, and handing
+    // one back gives the caller an id that 404s on its next write -- surfacing
+    // as "instance not found" several calls later, far from the cause.
+    //
+    // No caller is known to reach this: fixture names carry a uuid, and the
+    // shared fixtures are hard-deleted in teardown, so a soft-deleted name
+    // collision should not be constructible. It is kept because the cost is one
+    // comparison and the alternative failure is very hard to read -- not because
+    // it was observed. Delete it rather than build on it if it stays unreached.
     if ((existing as { deleted?: boolean })?.deleted) {
       throw new Error(
-        `${label}: "${entityFqn}" already exists but is soft-deleted, so it cannot be ` +
-          `used or written to. Hard-delete the leftover, or give this fixture a unique name.`
+        `${label}: "${entityFqn}" exists but is soft-deleted, so it cannot be written ` +
+          `to. Something is reusing a name across a delete -- do not silently adopt it.`
       );
     }
 

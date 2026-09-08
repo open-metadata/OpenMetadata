@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Response } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
@@ -57,8 +57,13 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeEnabled();
     await expect(page.locator('.ant-table-container')).toBeVisible();
 
-    await page.locator(`td [type="checkbox"]`).first().click();
-    await page.locator(`td [type="checkbox"]`).nth(1).click();
+    // One source for how many pipelines this selects, so the deploy assertion
+    // below cannot drift from the selection above.
+    const selectedPipelineCount = 2;
+
+    for (let index = 0; index < selectedPipelineCount; index++) {
+      await page.locator(`td [type="checkbox"]`).nth(index).click();
+    }
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
@@ -69,28 +74,36 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     // toast that can never arrive. Collect every deploy and report the real
     // status, so a genuine deploy failure fails fast and says why.
     const deployStatuses: number[] = [];
-    page.on('response', (response) => {
+    const collectDeploy = (response: Response) => {
       if (
         response.request().method() === 'POST' &&
         response.url().includes('/api/v1/services/ingestionPipelines/deploy')
       ) {
         deployStatuses.push(response.status());
       }
-    });
+    };
+    page.on('response', collectDeploy);
 
-    await page.getByRole('button', { name: 'Re Deploy' }).click();
+    try {
+      await page.getByRole('button', { name: 'Re Deploy' }).click();
 
-    await expect
-      .poll(() => deployStatuses.length, {
-        message: 'Wait for both selected pipelines to report a deploy result',
-        timeout: 30_000,
-      })
-      .toBe(2);
+      await expect
+        .poll(() => deployStatuses.length, {
+          message: 'Wait for every selected pipeline to report a deploy result',
+          timeout: 30_000,
+        })
+        .toBe(selectedPipelineCount);
 
-    expect(
-      deployStatuses,
-      'every selected pipeline must deploy for the success toast to appear'
-    ).toEqual([200, 200]);
+      expect(
+        deployStatuses,
+        'every selected pipeline must deploy for the success toast to appear'
+      ).toEqual(Array(selectedPipelineCount).fill(200));
+    } finally {
+      // Scope the listener to the action it observes: left attached it would
+      // keep collecting for the page's lifetime, and a second test in this
+      // describe would then assert against another test's deploys too.
+      page.off('response', collectDeploy);
+    }
 
     await toastNotification(page, /Pipelines Re Deploy Successfully/i);
   });
