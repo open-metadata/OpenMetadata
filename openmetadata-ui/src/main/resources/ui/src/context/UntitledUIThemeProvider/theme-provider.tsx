@@ -231,18 +231,22 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
   }
 };
 
+const BRAND_CSS_VAR_KEYWORDS = [
+  'brand',
+  'error',
+  'success',
+  'warning',
+  'info',
+  'blue',
+];
+
 const clearBrandCssVars = (root: HTMLElement) => {
   const allSet = Array.from(root.style);
   allSet
     .filter(
       (p) =>
         p.startsWith('--tw-') &&
-        (p.includes('brand') ||
-          p.includes('error') ||
-          p.includes('success') ||
-          p.includes('warning') ||
-          p.includes('info') ||
-          p.includes('blue'))
+        BRAND_CSS_VAR_KEYWORDS.some((keyword) => p.includes(keyword))
     )
     .forEach((p) => root.style.removeProperty(p));
 };

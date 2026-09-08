@@ -98,8 +98,6 @@ test.describe.serial(
   'Description Task Workflows',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup users and entities', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -387,6 +385,7 @@ test.describe.serial(
       page,
       browser,
     }) => {
+      test.slow();
       const responseFieldPath = 'default.name.last_name';
       const editedSuggestion =
         'Edited suggestion accepted for the api response schema field';

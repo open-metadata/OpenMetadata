@@ -106,8 +106,6 @@ test.describe('Tag Page with Admin Roles', () => {
   const user1 = new UserClass();
   const domain = new Domain();
 
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
@@ -456,8 +454,6 @@ test.describe('Tag Page with Admin Roles', () => {
 });
 
 test.describe('Tag Page with Data Consumer Roles', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -498,6 +494,10 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     adminPage,
     dataConsumerPage,
   }) => {
+    // Three full navigation cycles (add, filter check, remove) overrun the
+    // default budget on slow CI shards — the merge-queue ejection in #32629.
+    test.slow();
+
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataConsumerPage);
 
@@ -531,8 +531,6 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 });
 
 test.describe('Tag Page with Data Steward Roles', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -585,8 +583,6 @@ test.describe('Tag Page with Data Steward Roles', () => {
 });
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -634,6 +630,14 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     adminPage,
     limitedAccessPage,
   }) => {
+    // Two authenticated contexts (admin + limitedAccess) plus asset setup,
+    // add and remove flows on a separate user, and two full tag.visitPage
+    // navigations. Empirically ~90 s on a fresh CI runner — the default 60 s
+    // budget makes the second visitPage race with test teardown, leaving
+    // removeAssetsFromTag's response wait dangling with a closed context on
+    // retry. test.slow() extends the budget to what the flow actually needs.
+    test.slow();
+
     const { afterAction } = await getApiContext(adminPage);
     const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
       adminPage
