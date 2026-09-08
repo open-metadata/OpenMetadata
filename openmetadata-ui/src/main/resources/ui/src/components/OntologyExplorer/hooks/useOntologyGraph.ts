@@ -28,7 +28,6 @@ import {
   COMBO_COLOR_FALLBACK,
   COMBO_INTERIOR_PADDING_SIDES,
   COMBO_INTERIOR_PADDING_TOP,
-  DATA_MODE_ASSET_COUNT_BADGE_BG,
   DATA_MODE_ASSET_LOAD_PAGE_SIZE,
   DATA_MODE_LOAD_MORE_BADGE_BG,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
@@ -54,7 +53,8 @@ import {
   NODE_BADGE_OFFSET_Y,
   NODE_BORDER_COLOR,
   NODE_BORDER_RADIUS,
-  NODE_LABEL_FILL_INVERSE,
+  NODE_FILL_DEFAULT,
+  NODE_LABEL_FILL,
   NODE_LINE_WIDTH,
   NODE_SELECTED_HALO_FILL,
   NODE_SELECTED_HALO_LINE_WIDTH,
@@ -99,7 +99,6 @@ import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
  * written positions back to all nodes.
  */
 const LAYOUT_TIMEOUT_MS = 15_000;
-const DATA_MODE_ASSET_TYPES = new Set(['dataAsset', 'metric']);
 
 function runLayout(graph: Graph): Promise<void> {
   const layoutDone = new Promise<void>((resolve, reject) => {
@@ -209,28 +208,6 @@ export function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   return idx === 1;
 }
 
-function dispatchStudioEditNodeClick(
-  container: HTMLDivElement,
-  event: IElementEvent,
-  nodeId: string,
-  position: { x: number; y: number },
-  isEditPort: boolean
-): boolean {
-  const detail: OntologyEditNodeClickDetail = {
-    clientX: event.clientX ?? position.x,
-    clientY: event.clientY ?? position.y,
-    isPort: isEditPort,
-    nodeId,
-  };
-  const editEvent = new CustomEvent(ONTOLOGY_EDIT_NODE_CLICK_EVENT, {
-    cancelable: true,
-    detail,
-  });
-  const isHandled = !container.dispatchEvent(editEvent);
-
-  return isEditPort || isHandled;
-}
-
 export function stripNodePositionsForDataMode<T extends { style?: unknown }>(
   nodes: T[]
 ): T[] {
@@ -276,400 +253,6 @@ interface GraphComboMeta {
   extraVerticalPadding?: number;
 }
 
-function getSelectedNodeStyle(isSelected: boolean): Record<string, unknown> {
-  if (!isSelected) {
-    return {};
-  }
-
-  return {
-    stroke: getCanvasColor(NODE_SELECTED_STROKE, '#1570ef'),
-    lineWidth: NODE_SELECTED_LINE_WIDTH,
-    haloStroke: getCanvasColor(NODE_SELECTED_STROKE, '#1570ef'),
-    haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
-    haloStrokeOpacity: 0.7,
-    haloFill: getCanvasColor(
-      NODE_SELECTED_HALO_FILL,
-      'rgba(21, 112, 239, 0.06)'
-    ),
-    haloFillOpacity: 1,
-  };
-}
-
-function buildRuntimeDataAssetStyle(
-  datum: NodeData,
-  meta: GraphNodeMeta
-): Record<string, unknown> {
-  const ontologyNode = meta.ontologyNode;
-  const assetColor = meta.assetColor ?? NODE_BORDER_COLOR;
-  const label = meta.label ?? datum.id;
-  const entityTypeLabel =
-    ontologyNode?.entityRef?.type !== undefined
-      ? entityUtilClassBase.getFormattedEntityType(ontologyNode.entityRef.type)
-      : undefined;
-  const entityIconUrl = serviceUtilClassBase.getServiceTypeLogo({
-    entityType: ontologyNode?.entityRef?.type,
-    serviceType: ontologyNode?.serviceLabel,
-  });
-
-  return {
-    ...buildDataModeAssetNodeStyle(
-      getCanvasColor,
-      label,
-      assetColor,
-      undefined,
-      entityTypeLabel,
-      entityIconUrl
-    ),
-    testId: 'ontology-asset-node',
-    nodeId: ontologyNode?.id ?? datum.id,
-    zIndex: 2,
-    opacity: meta.isDimmed ? DIMMED_NODE_OPACITY : 1,
-  };
-}
-
-function getDataModeTermBadgeText(
-  isLoadingAssets: boolean,
-  assetsExpanded: boolean,
-  assetCount: number
-): string {
-  if (isLoadingAssets) {
-    return '...';
-  }
-
-  return assetsExpanded ? '\u2212' : `+${assetCount}`;
-}
-
-function getAssetCountBadgeDiameter(
-  isLoadingAssets: boolean,
-  assetsExpanded: boolean,
-  badgeText: string
-): number {
-  if (isLoadingAssets) {
-    return DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE;
-  }
-  if (assetsExpanded) {
-    return badgeText.length > 2
-      ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
-      : DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
-  }
-
-  return Math.max(
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN +
-      badgeText.length * DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR
-  );
-}
-
-function buildDataModeTermBadges(
-  hasAssetBadge: boolean,
-  showLoadMore: boolean,
-  badgeText: string,
-  remaining: number,
-  assetCountBadgeDiameter: number
-): Array<Record<string, unknown>> {
-  if (!hasAssetBadge) {
-    return [];
-  }
-  const assetCountBadge = {
-    className: 'badge-data-mode-asset-count',
-    text: badgeText,
-    placement: 'top-right' as const,
-    offsetX: NODE_BADGE_OFFSET_X,
-    offsetY: NODE_BADGE_OFFSET_Y,
-    textAlign: 'center' as const,
-    fontSize: 12,
-    fontWeight: 700,
-    fill: getCanvasColor(NODE_LABEL_FILL_INVERSE, '#ffffff'),
-    background: true,
-    backgroundFill: getCanvasColor(DATA_MODE_ASSET_COUNT_BADGE_BG, '#181D27'),
-    backgroundWidth: assetCountBadgeDiameter,
-    backgroundHeight: assetCountBadgeDiameter,
-    backgroundRadius: assetCountBadgeDiameter / 2,
-    backgroundStroke: 'none',
-    backgroundLineWidth: 0,
-    padding: DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
-    backgroundOpacity: 1,
-  };
-  if (!showLoadMore) {
-    return [assetCountBadge];
-  }
-  const loadMoreText = `Load ${remaining} more`;
-  const loadMoreHorizontalPadding = 4;
-  const loadMoreWidth = Math.max(
-    60,
-    loadMoreHorizontalPadding * 2 + loadMoreText.length * 7
-  );
-  const loadMoreBadge = {
-    className: 'badge-data-mode-load-more',
-    text: loadMoreText,
-    placement: 'top-left' as const,
-    offsetX: -(loadMoreWidth / 2),
-    offsetY: 0,
-    textAlign: 'center' as const,
-    fontSize: 11,
-    fontWeight: 600,
-    fill: getCanvasColor(NODE_LABEL_FILL_INVERSE, '#ffffff'),
-    background: true,
-    backgroundFill: getCanvasColor(DATA_MODE_LOAD_MORE_BADGE_BG, '#155EEF'),
-    backgroundWidth: loadMoreWidth,
-    backgroundHeight: DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
-    backgroundRadius: 6,
-    backgroundStroke: 'none',
-    backgroundLineWidth: 0,
-    padding: [4, loadMoreHorizontalPadding, 4, loadMoreHorizontalPadding] as [
-      number,
-      number,
-      number,
-      number
-    ],
-    backgroundOpacity: 1,
-  };
-
-  return [assetCountBadge, loadMoreBadge];
-}
-
-function buildRuntimeDataTermStyle(
-  datum: NodeData,
-  meta: GraphNodeMeta
-): Record<string, unknown> {
-  const {
-    color: termColor = NODE_BORDER_COLOR,
-    assetCount = 0,
-    isLoadingAssets = false,
-    assetsExpanded = false,
-    loadedAssetCount = 0,
-  } = meta;
-  const hasAssetBadge = assetCount > 0 || isLoadingAssets;
-  const remaining = Math.max(0, assetCount - loadedAssetCount);
-  const showLoadMore =
-    assetsExpanded &&
-    loadedAssetCount > 0 &&
-    assetCount > DATA_MODE_ASSET_LOAD_PAGE_SIZE &&
-    remaining > 0;
-  const badgeText = getDataModeTermBadgeText(
-    isLoadingAssets,
-    assetsExpanded,
-    assetCount
-  );
-  const badgeDiameter = getAssetCountBadgeDiameter(
-    isLoadingAssets,
-    assetsExpanded,
-    badgeText
-  );
-  const badges = buildDataModeTermBadges(
-    hasAssetBadge,
-    showLoadMore,
-    badgeText,
-    remaining,
-    badgeDiameter
-  );
-
-  return {
-    ...buildDataModeTermNodeStyle(
-      getCanvasColor,
-      meta.label ?? datum.id,
-      termColor
-    ),
-    zIndex: 2,
-    opacity: meta.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    badge: hasAssetBadge,
-    badges,
-    labelFill: getCanvasColor(NODE_LABEL_FILL_INVERSE, '#ffffff'),
-    ...getSelectedNodeStyle(Boolean(meta.isSelected)),
-  };
-}
-
-function buildRuntimeStudioNodeStyle(
-  datum: NodeData,
-  meta: GraphNodeMeta
-): Record<string, unknown> {
-  const isIsolated = meta.ontologyNode?.type === 'glossaryTermIsolated';
-  const accentColor = isIsolated
-    ? '#F79009'
-    : meta.studioAccentColor ?? '#84CAFF';
-  const borderColor = isIsolated
-    ? '#FEDF89'
-    : getCanvasColor(NODE_BORDER_COLOR, '#E9EAEB');
-  const size = (datum.style?.size as [number, number] | undefined) ?? [150, 36];
-  const label = meta.label ?? datum.id;
-  const selectedStyle = getSelectedNodeStyle(Boolean(meta.isSelected));
-
-  return {
-    ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
-    label: false,
-    studioLabelText: label,
-    studioAccentColor: accentColor,
-    zIndex: 2,
-    opacity: meta.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: meta.isSelected
-      ? getCanvasColor(NODE_SELECTED_STROKE, '#1570ef')
-      : borderColor,
-    lineWidth: meta.isSelected ? NODE_SELECTED_LINE_WIDTH : NODE_LINE_WIDTH,
-    ...selectedStyle,
-  };
-}
-
-function buildHierarchyBadge(
-  meta: GraphNodeMeta,
-  badgeColor: string,
-  nodeWidth: number
-): Array<Record<string, unknown>> {
-  if (!meta.hierarchyBadge) {
-    return [];
-  }
-  const fontSize = 10;
-  const horizontalPadding = 4;
-  const backgroundWidth = Math.max(24, nodeWidth - horizontalPadding * 2);
-  const textMaxWidth = Math.max(
-    24,
-    backgroundWidth - HIERARCHY_BADGE_TEXT_INSET
-  );
-
-  return [
-    {
-      text: truncateHierarchyBadgeToFitWidth(
-        meta.hierarchyBadge,
-        textMaxWidth,
-        fontSize
-      ),
-      placement: 'top',
-      offsetX: -nodeWidth / 2 + horizontalPadding,
-      offsetY: HIERARCHY_BADGE_OFFSET_Y,
-      textAlign: 'left',
-      fontSize,
-      fontWeight: 600,
-      fill: getCanvasColor(NODE_LABEL_FILL_INVERSE, '#ffffff'),
-      wordWrap: false,
-      maxLines: 1,
-      background: true,
-      backgroundFill: badgeColor,
-      backgroundWidth,
-      backgroundRadius: [8, 8, 0, 0],
-      backgroundStroke: badgeColor,
-      backgroundLineWidth: 1,
-      padding: [4, horizontalPadding, 4, horizontalPadding],
-      backgroundOpacity: 1,
-    },
-  ];
-}
-
-function getDefaultNodeSelectionStyle(
-  isSelected: boolean,
-  nodeBorderColor: string
-): { lineWidth: number; stroke: string } {
-  return isSelected
-    ? {
-        lineWidth: NODE_SELECTED_LINE_WIDTH,
-        stroke: getCanvasColor(NODE_SELECTED_STROKE, '#1570ef'),
-      }
-    : { lineWidth: 1, stroke: nodeBorderColor };
-}
-
-function buildRuntimeDefaultNodeStyle(
-  datum: NodeData,
-  meta: GraphNodeMeta,
-  glossaryColorMap: Record<string, string>
-): Record<string, unknown> {
-  const hasHierarchyBadge = Boolean(meta.hierarchyBadge);
-  const badgeGlossaryId =
-    meta.ontologyNode?.originalGlossary ?? meta.ontologyNode?.glossaryId;
-  let badgeGlossaryColor = NODE_BORDER_COLOR;
-  if (badgeGlossaryId) {
-    badgeGlossaryColor = glossaryColorMap[badgeGlossaryId] ?? NODE_BORDER_COLOR;
-  }
-  const badgeColor = getCanvasColor(badgeGlossaryColor, BRAND_BLUE_FALLBACK);
-  const nodeBorderColor = hasHierarchyBadge
-    ? badgeColor
-    : getCanvasColor(NODE_BORDER_COLOR, '#E9EAEB');
-  const size = (datum.style?.size as [number, number] | undefined) ?? [200, 40];
-  const label = meta.label ?? datum.id;
-  const badges = buildHierarchyBadge(meta, badgeColor, size[0]);
-  const selectionStyle = getDefaultNodeSelectionStyle(
-    Boolean(meta.isSelected),
-    nodeBorderColor
-  );
-
-  return {
-    ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
-    zIndex: 2,
-    opacity: meta.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    ...selectionStyle,
-    ...(hasHierarchyBadge
-      ? {
-          radius: [
-            0,
-            NODE_BORDER_RADIUS,
-            NODE_BORDER_RADIUS,
-            NODE_BORDER_RADIUS,
-          ],
-        }
-      : {}),
-    badge: hasHierarchyBadge,
-    badges,
-  };
-}
-
-function buildRuntimeNodeStyle(
-  datum: NodeData,
-  isDataMode: boolean,
-  glossaryColorMap: Record<string, string>
-): Record<string, unknown> {
-  const meta = (datum.data ?? {}) as GraphNodeMeta;
-  const isAsset = DATA_MODE_ASSET_TYPES.has(meta.ontologyNode?.type ?? '');
-  if (isDataMode && isAsset) {
-    return buildRuntimeDataAssetStyle(datum, meta);
-  }
-  if (isDataMode) {
-    return buildRuntimeDataTermStyle(datum, meta);
-  }
-  if (meta.studioMode) {
-    return buildRuntimeStudioNodeStyle(datum, meta);
-  }
-
-  return buildRuntimeDefaultNodeStyle(datum, meta, glossaryColorMap);
-}
-
-function buildRuntimeEdgeStyle(
-  datum: { data?: unknown; style?: unknown },
-  isDataMode: boolean,
-  showEdgeLabels: boolean
-): Record<string, unknown> {
-  const meta = (datum.data ?? {}) as GraphEdgeMeta;
-  const {
-    isHighlighted = false,
-    isClickedEdge = false,
-    isEdgeDimmed = false,
-    edgeColor = EDGE_STROKE_COLOR,
-  } = meta;
-  const labelOpacity = isEdgeDimmed ? DIMMED_EDGE_LABEL_OPACITY : 1;
-  const base = {
-    zIndex: 1,
-    stroke: getCanvasColor(edgeColor, '#9196B1'),
-    lineWidth:
-      isHighlighted || isClickedEdge
-        ? EDGE_LINE_WIDTH_HIGHLIGHTED
-        : EDGE_LINE_WIDTH_DEFAULT,
-    lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
-    opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
-    endArrow: !isDataMode,
-    // G6 merges updates, so non-dimmed edges must restore a prior faded label.
-    labelOpacity,
-    labelBackgroundOpacity: labelOpacity,
-  };
-  const merged = (datum.style ? { ...base, ...datum.style } : base) as Record<
-    string,
-    unknown
-  >;
-  if (!showEdgeLabels) {
-    merged.label = false;
-    merged.labelText = '';
-  } else if (merged.labelText) {
-    merged.label = true;
-  }
-
-  return merged;
-}
-
 interface UseOntologyGraphProps {
   containerRef: React.RefObject<HTMLDivElement>;
   graphData: GraphData;
@@ -703,55 +286,551 @@ interface UseOntologyGraphProps {
   studioMode?: boolean;
 }
 
-function getGraphFingerprints(
-  inputNodes: OntologyNode[],
-  mergedEdgesList: UseOntologyGraphProps['mergedEdgesList'],
-  explorationMode: UseOntologyGraphProps['explorationMode'],
-  layoutType: LayoutEngineType,
-  expandedTermIds?: Set<string>
-): { asset: string; term: string } {
-  const isDataMode = explorationMode === 'data';
-  const nodeTypeById = new Map(inputNodes.map((node) => [node.id, node.type]));
-  const termNodes = isDataMode
-    ? inputNodes.filter((node) => !DATA_MODE_ASSET_TYPES.has(node.type))
-    : inputNodes;
-  const termEdges = isDataMode
-    ? mergedEdgesList.filter(
-        (edge) =>
-          !DATA_MODE_ASSET_TYPES.has(nodeTypeById.get(edge.from) ?? '') &&
-          !DATA_MODE_ASSET_TYPES.has(nodeTypeById.get(edge.to) ?? '')
-      )
-    : mergedEdgesList;
+function computeAssetCountBadgeDiameter(
+  isLoadingAssets: boolean,
+  assetsExpanded: boolean,
+  badgeText: string
+): number {
+  if (isLoadingAssets) {
+    return DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE;
+  }
+  if (assetsExpanded) {
+    return badgeText.length > 2
+      ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
+      : DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
+  }
+
+  return Math.max(
+    DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
+    DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN +
+      badgeText.length * DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR
+  );
+}
+
+function buildTermAssetBadges(
+  hasAssetBadge: boolean,
+  showLoadMore: boolean,
+  badgeText: string,
+  assetCountBadgeDiameter: number,
+  assetCountBadgeR: number,
+  remaining: number
+) {
+  if (!hasAssetBadge) {
+    return [];
+  }
+
+  const loadMoreText = `Load ${remaining} more`;
+  const loadMoreHPad = 4;
+  const loadMoreCharW = 7;
+  const loadMoreH = DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
+  const loadMoreW = Math.max(
+    60,
+    loadMoreHPad * 2 + loadMoreText.length * loadMoreCharW
+  );
+  const loadMoreOffsetX = -(loadMoreW / 2);
+
+  return [
+    {
+      className: 'badge-data-mode-asset-count',
+      text: badgeText,
+      placement: 'top-right' as const,
+      offsetX: NODE_BADGE_OFFSET_X,
+      offsetY: NODE_BADGE_OFFSET_Y,
+      textAlign: 'center' as const,
+      fontSize: 12,
+      fontWeight: 700,
+      fill: NODE_FILL_DEFAULT,
+      background: true,
+      backgroundFill: NODE_LABEL_FILL,
+      backgroundWidth: assetCountBadgeDiameter,
+      backgroundHeight: assetCountBadgeDiameter,
+      backgroundRadius: assetCountBadgeR,
+      backgroundStroke: 'none',
+      backgroundLineWidth: 0,
+      padding: DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
+      backgroundOpacity: 1,
+    },
+    ...(showLoadMore
+      ? [
+          {
+            className: 'badge-data-mode-load-more',
+            text: loadMoreText,
+            placement: 'top-left' as const,
+            offsetX: loadMoreOffsetX,
+            offsetY: 0,
+            textAlign: 'center' as const,
+            fontSize: 11,
+            fontWeight: 600,
+            fill: NODE_FILL_DEFAULT,
+            background: true,
+            backgroundFill: DATA_MODE_LOAD_MORE_BADGE_BG,
+            backgroundWidth: loadMoreW,
+            backgroundHeight: loadMoreH,
+            backgroundRadius: 6,
+            backgroundStroke: 'none',
+            backgroundLineWidth: 0,
+            padding: [4, loadMoreHPad, 4, loadMoreHPad] as [
+              number,
+              number,
+              number,
+              number
+            ],
+            backgroundOpacity: 1,
+          },
+        ]
+      : []),
+  ];
+}
+
+function buildDataModeAssetStyle(
+  datum: NodeData,
+  d: GraphNodeMeta,
+  ontNode: OntologyNode | undefined
+): Record<string, unknown> {
+  const assetColor = d?.assetColor;
+  const ac = assetColor ?? NODE_BORDER_COLOR;
+  const label = d?.label ?? datum.id;
+  const entityTypeLabel =
+    ontNode?.entityRef?.type !== undefined
+      ? entityUtilClassBase.getFormattedEntityType(ontNode.entityRef.type)
+      : undefined;
+  const entityIconUrl = serviceUtilClassBase.getServiceTypeLogo({
+    entityType: ontNode?.entityRef?.type,
+    serviceType: ontNode?.serviceLabel,
+  });
 
   return {
-    asset: isDataMode
-      ? [...(expandedTermIds ?? new Set<string>())].sort().join('|')
-      : '',
-    term: [
-      termNodes.map((node) => node.id).join(','),
-      termEdges.length.toString(),
-      termEdges
-        .map((edge) => `${edge.from}>${edge.to}:${edge.relationType}`)
-        .join(','),
-      layoutType,
-      explorationMode,
-    ].join('||'),
+    ...buildDataModeAssetNodeStyle(
+      getCanvasColor,
+      label,
+      ac,
+      undefined,
+      entityTypeLabel,
+      entityIconUrl
+    ),
+    testId: 'ontology-asset-node',
+    nodeId: ontNode?.id ?? datum.id,
+    zIndex: 2,
+    opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
   };
 }
 
-function patchGraphDataInPlace(
+function computeShowLoadMore(
+  assetsExpanded: boolean,
+  loadedAssetCount: number,
+  assetCount: number,
+  remaining: number
+): boolean {
+  return (
+    assetsExpanded &&
+    loadedAssetCount > 0 &&
+    assetCount > DATA_MODE_ASSET_LOAD_PAGE_SIZE &&
+    remaining > 0
+  );
+}
+
+function buildTermAssetBadgeInfo(d: GraphNodeMeta): {
+  hasAssetBadge: boolean;
+  badges: ReturnType<typeof buildTermAssetBadges>;
+} {
+  const assetCount = d?.assetCount ?? 0;
+  const isLoadingAssets = d?.isLoadingAssets ?? false;
+  const hasAssetBadge = assetCount > 0 || isLoadingAssets;
+  const assetsExpanded = d?.assetsExpanded ?? false;
+  const loadedAssetCount = d?.loadedAssetCount ?? 0;
+  const remaining = Math.max(0, assetCount - loadedAssetCount);
+  const showLoadMore = computeShowLoadMore(
+    assetsExpanded,
+    loadedAssetCount,
+    assetCount,
+    remaining
+  );
+  let badgeText: string;
+  if (isLoadingAssets) {
+    badgeText = '...';
+  } else if (assetsExpanded) {
+    badgeText = '−';
+  } else {
+    badgeText = `+${assetCount}`;
+  }
+  const assetCountBadgeDiameter = computeAssetCountBadgeDiameter(
+    isLoadingAssets,
+    assetsExpanded,
+    badgeText
+  );
+  const assetCountBadgeR = assetCountBadgeDiameter / 2;
+
+  const badges = buildTermAssetBadges(
+    hasAssetBadge,
+    showLoadMore,
+    badgeText,
+    assetCountBadgeDiameter,
+    assetCountBadgeR,
+    remaining
+  );
+
+  return { hasAssetBadge, badges };
+}
+
+function buildDataModeTermStyle(
+  datum: NodeData,
+  d: GraphNodeMeta
+): Record<string, unknown> {
+  const tc = d?.color ?? NODE_BORDER_COLOR;
+  const label = d?.label ?? datum.id;
+  const { hasAssetBadge, badges } = buildTermAssetBadgeInfo(d);
+
+  return {
+    ...buildDataModeTermNodeStyle(getCanvasColor, label, tc),
+    zIndex: 2,
+    opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
+    badge: hasAssetBadge,
+    badges,
+    labelFill: NODE_FILL_DEFAULT,
+    ...(d?.isSelected && {
+      stroke: NODE_SELECTED_STROKE,
+      lineWidth: NODE_SELECTED_LINE_WIDTH,
+      haloStroke: NODE_SELECTED_STROKE,
+      haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
+      haloStrokeOpacity: 0.7,
+      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFillOpacity: 1,
+    }),
+  };
+}
+
+function buildStudioNodeStyle(
+  datum: NodeData,
+  d: GraphNodeMeta,
+  ontNode: OntologyNode | undefined
+): Record<string, unknown> {
+  const isIsolated = ontNode?.type === 'glossaryTermIsolated';
+  const accentColor = isIsolated ? '#F79009' : d.studioAccentColor ?? '#84CAFF';
+  const borderColor = isIsolated ? '#FEDF89' : '#E9EAEB';
+  const size = (datum.style?.size as [number, number] | undefined) ?? [150, 36];
+  const label = d?.label ?? datum.id;
+
+  return {
+    ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
+    label: false,
+    studioLabelText: label,
+    studioAccentColor: accentColor,
+    zIndex: 2,
+    opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
+    stroke: d?.isSelected ? NODE_SELECTED_STROKE : borderColor,
+    lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : NODE_LINE_WIDTH,
+    ...(d?.isSelected && {
+      haloStroke: NODE_SELECTED_STROKE,
+      haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
+      haloStrokeOpacity: 0.7,
+      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFillOpacity: 1,
+    }),
+  };
+}
+
+function computeHierarchyBadgeColor(
+  ontNode: OntologyNode | undefined,
+  glossaryColorMap: Record<string, string>
+): string {
+  const badgeGlossaryId = ontNode?.originalGlossary ?? ontNode?.glossaryId;
+  const badgeGlossaryColor = badgeGlossaryId
+    ? glossaryColorMap[badgeGlossaryId] ?? NODE_BORDER_COLOR
+    : NODE_BORDER_COLOR;
+
+  return getCanvasColor(badgeGlossaryColor, BRAND_BLUE_FALLBACK);
+}
+
+function buildHierarchyBadges(
+  hierarchyBadge: string | undefined,
+  nodeW: number,
+  badgeColor: string
+) {
+  const hierarchyBadgeFontSize = 10;
+  const hierarchyBadgePaddingH = 4;
+  const badgeBackgroundW = Math.max(24, nodeW - hierarchyBadgePaddingH * 2);
+  const badgeTextMaxW = Math.max(
+    24,
+    badgeBackgroundW - HIERARCHY_BADGE_TEXT_INSET
+  );
+  const hierarchyBadgeText = truncateHierarchyBadgeToFitWidth(
+    String(hierarchyBadge ?? ''),
+    badgeTextMaxW,
+    hierarchyBadgeFontSize
+  );
+  const hierarchyBadgeOffsetX = -nodeW / 2 + hierarchyBadgePaddingH;
+
+  return [
+    {
+      text: hierarchyBadgeText,
+      placement: 'top',
+      offsetX: hierarchyBadgeOffsetX,
+      offsetY: HIERARCHY_BADGE_OFFSET_Y,
+      textAlign: 'left',
+      fontSize: hierarchyBadgeFontSize,
+      fontWeight: 600,
+      fill: NODE_FILL_DEFAULT,
+      wordWrap: false,
+      maxLines: 1,
+      background: true,
+      backgroundFill: badgeColor,
+      backgroundWidth: badgeBackgroundW,
+      backgroundRadius: [8, 8, 0, 0],
+      backgroundStroke: badgeColor,
+      backgroundLineWidth: 1,
+      padding: [4, hierarchyBadgePaddingH, 4, hierarchyBadgePaddingH],
+      backgroundOpacity: 1,
+    },
+  ];
+}
+
+function buildDefaultNodeStyle(
+  datum: NodeData,
+  d: GraphNodeMeta,
+  ontNode: OntologyNode | undefined,
+  glossaryColorMap: Record<string, string>
+): Record<string, unknown> {
+  const hasHierarchyBadge = Boolean(d?.hierarchyBadge);
+  const badgeColor = computeHierarchyBadgeColor(ontNode, glossaryColorMap);
+  const nodeBorderColor = hasHierarchyBadge ? badgeColor : NODE_BORDER_COLOR;
+  const size = (datum.style?.size as [number, number] | undefined) ?? [200, 40];
+  const label = d?.label ?? datum.id;
+  const nodeW = size[0];
+
+  return {
+    ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
+    zIndex: 2,
+    opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
+    stroke: d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+    lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : 1,
+    ...(hasHierarchyBadge && {
+      radius: [0, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS],
+    }),
+    badge: hasHierarchyBadge,
+    badges: hasHierarchyBadge
+      ? buildHierarchyBadges(d.hierarchyBadge, nodeW, badgeColor)
+      : [],
+  };
+}
+
+function computeEdgeLineWidth(
+  isHighlighted: boolean,
+  isClickedEdge: boolean
+): number {
+  return isHighlighted || isClickedEdge
+    ? EDGE_LINE_WIDTH_HIGHLIGHTED
+    : EDGE_LINE_WIDTH_DEFAULT;
+}
+
+function buildBaseEdgeStyle(d: GraphEdgeMeta, isDataMode: boolean) {
+  const isHighlighted = d?.isHighlighted ?? false;
+  const isClickedEdge = d?.isClickedEdge ?? false;
+  const isEdgeDimmed = d?.isEdgeDimmed ?? false;
+  const edgeColor = d?.edgeColor ?? EDGE_STROKE_COLOR;
+  const edgeLineWidth = computeEdgeLineWidth(isHighlighted, isClickedEdge);
+
+  return {
+    zIndex: 1,
+    stroke: edgeColor,
+    lineWidth: edgeLineWidth,
+    lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
+    opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
+    endArrow: !isDataMode,
+    // Reset label opacity on non-dimmed edges: G6 merges style updates,
+    // so an un-dimmed edge would otherwise retain a stale dimmed label
+    // opacity — a bold line with an unreadable relation label.
+    ...(isEdgeDimmed
+      ? {
+          labelOpacity: DIMMED_EDGE_LABEL_OPACITY,
+          labelBackgroundOpacity: DIMMED_EDGE_LABEL_OPACITY,
+        }
+      : { labelOpacity: 1, labelBackgroundOpacity: 1 }),
+  };
+}
+
+function applyEdgeLabelVisibility(
+  merged: Record<string, unknown>,
+  showEdgeLabels: boolean
+): void {
+  if (showEdgeLabels) {
+    if (merged.labelText) {
+      merged.label = true;
+    }
+  } else {
+    merged.label = false;
+    merged.labelText = '';
+  }
+}
+
+function computeTermFingerprint(
+  inputNodes: OntologyNode[],
+  mergedEdgesList: Array<{ from: string; to: string; relationType: string }>,
+  isDataMode: boolean,
+  layoutType: LayoutEngineType,
+  explorationMode: 'model' | 'data' | 'hierarchy'
+): string {
+  const assetTypeSet = new Set(['dataAsset', 'metric']);
+  const nodeTypeById = new Map(inputNodes.map((n) => [n.id, n.type]));
+
+  const termNodes = isDataMode
+    ? inputNodes.filter((n) => !assetTypeSet.has(n.type))
+    : inputNodes;
+  const termEdges = isDataMode
+    ? mergedEdgesList.filter(
+        (e) =>
+          !assetTypeSet.has(nodeTypeById.get(e.from) ?? '') &&
+          !assetTypeSet.has(nodeTypeById.get(e.to) ?? '')
+      )
+    : mergedEdgesList;
+
+  return [
+    termNodes.map((n) => n.id).join(','),
+    termEdges.length.toString(),
+    termEdges.map((e) => `${e.from}>${e.to}:${e.relationType}`).join(','),
+    layoutType,
+    explorationMode,
+  ].join('||');
+}
+
+interface FingerprintFlagsParams {
+  inputNodes: OntologyNode[];
+  mergedEdgesList: Array<{ from: string; to: string; relationType: string }>;
+  isDataMode: boolean;
+  layoutType: LayoutEngineType;
+  explorationMode: 'model' | 'data' | 'hierarchy';
+  dataSignature?: string;
+  expandedTermIds?: Set<string>;
+  prevDataSignature: string;
+  prevTermFingerprint: string;
+  prevAssetFingerprint: string;
+  prevLayoutType: LayoutEngineType | null;
+}
+
+function computeFingerprintFlags(params: FingerprintFlagsParams) {
+  const {
+    inputNodes,
+    mergedEdgesList,
+    isDataMode,
+    layoutType,
+    explorationMode,
+    dataSignature,
+    expandedTermIds,
+    prevDataSignature,
+    prevTermFingerprint,
+    prevAssetFingerprint,
+    prevLayoutType,
+  } = params;
+
+  const dataSignatureChanged = prevDataSignature !== dataSignature;
+  const newTermFingerprint = computeTermFingerprint(
+    inputNodes,
+    mergedEdgesList,
+    isDataMode,
+    layoutType,
+    explorationMode
+  );
+  const newAssetFingerprint = isDataMode
+    ? [...(expandedTermIds ?? new Set<string>())].sort().join('|')
+    : '';
+
+  const termFingerprintChanged =
+    dataSignatureChanged || newTermFingerprint !== prevTermFingerprint;
+  const assetFingerprintChanged = newAssetFingerprint !== prevAssetFingerprint;
+  const layoutTypeChanged =
+    prevLayoutType !== null && prevLayoutType !== layoutType;
+
+  return {
+    newTermFingerprint,
+    newAssetFingerprint,
+    termFingerprintChanged,
+    assetFingerprintChanged,
+    layoutTypeChanged,
+    dataSignatureChanged,
+  };
+}
+
+function computeSyncRouteFlags(
+  graph: Graph,
+  graphData: GraphData,
+  termFingerprintChanged: boolean,
+  assetFingerprintChanged: boolean
+) {
+  const structuralChanged = termFingerprintChanged || assetFingerprintChanged;
+  const topologySynced = isGraphTopologySynced(graph, graphData);
+  const canPatchInPlace = !structuralChanged && topologySynced;
+  const shouldPatchAssetOnly =
+    assetFingerprintChanged && !termFingerprintChanged && topologySynced;
+
+  return { topologySynced, canPatchInPlace, shouldPatchAssetOnly };
+}
+
+function commitTermFingerprintIfChanged(
+  ref: React.MutableRefObject<string>,
+  changed: boolean,
+  value: string
+): void {
+  if (changed) {
+    ref.current = value;
+  }
+}
+
+function commitFingerprints(
+  termFingerprintRef: React.MutableRefObject<string>,
+  assetFingerprintRef: React.MutableRefObject<string>,
+  flags: {
+    termFingerprintChanged: boolean;
+    assetFingerprintChanged: boolean;
+    newTermFingerprint: string;
+    newAssetFingerprint: string;
+  }
+): void {
+  if (flags.termFingerprintChanged) {
+    termFingerprintRef.current = flags.newTermFingerprint;
+  }
+  if (flags.assetFingerprintChanged) {
+    assetFingerprintRef.current = flags.newAssetFingerprint;
+  }
+}
+
+function computeLayoutContext(
+  graphData: GraphData,
+  layoutType: LayoutEngineType,
+  inputNodes: OntologyNode[],
+  explorationMode: 'model' | 'data' | 'hierarchy',
+  isDataMode: boolean
+) {
+  const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
+  const isHierarchyMode = explorationMode === 'hierarchy';
+  const isModelView = explorationMode === 'model';
+  const layoutOptions = getLayoutConfig(layoutType, inputNodes.length, {
+    hasCombos,
+    isDataMode,
+    isHierarchyMode,
+    isModelView,
+  });
+  const useComboGridLayout = shouldUseComboGridLayout(layoutType, {
+    hasCombos,
+    isHierarchyMode,
+    isModelView,
+  });
+
+  return { layoutOptions, useComboGridLayout, isModelView };
+}
+
+function attemptInPlacePatch(
   graph: Graph,
   graphData: GraphData,
   isDataMode: boolean
 ): boolean {
   try {
-    const nodes = isDataMode
-      ? stripNodePositionsForDataMode(graphData.nodes ?? [])
-      : graphData.nodes ?? [];
-    graph.updateNodeData(nodes);
+    let nodesToUpdate = graphData.nodes ?? [];
+    if (isDataMode) {
+      nodesToUpdate = stripNodePositionsForDataMode(nodesToUpdate);
+    }
+    graph.updateNodeData(nodesToUpdate);
     graph.updateEdgeData(graphData.edges ?? []);
     graph.draw().catch(() => {
-      // The graph can be destroyed while a fire-and-forget repaint is pending.
+      // fire-and-forget paint; graph may be destroyed if tab was changed
     });
 
     return true;
@@ -760,201 +839,202 @@ function patchGraphDataInPlace(
   }
 }
 
-interface CurrentGraphPositions {
-  centerX: number;
-  maxY: number;
-  positions: Record<string, [number, number]>;
+function tryInPlacePatch(
+  graph: Graph,
+  graphData: GraphData,
+  isDataMode: boolean,
+  canPatchInPlace: boolean
+): boolean {
+  return canPatchInPlace && attemptInPlacePatch(graph, graphData, isDataMode);
 }
 
-function getCurrentGraphPositions(graph: Graph): CurrentGraphPositions {
+interface AdditiveUpdateContext {
+  isAdditiveOnly: boolean;
+  currentPositions: Record<string, [number, number]>;
+  centerX: number;
+  maxY: number;
+  addedNodes: NodeData[];
+}
+
+function computeAdditiveUpdateContext(
+  graph: Graph,
+  graphData: GraphData
+): AdditiveUpdateContext {
+  const currentNodeIds = new Set(graph.getNodeData().map((n) => String(n.id)));
+  const newNodeIdSet = new Set(
+    (graphData.nodes ?? []).map((n) => String(n.id))
+  );
+  const noneRemoved = [...currentNodeIds].every((id) => newNodeIdSet.has(id));
+  const isAdditiveOnly =
+    noneRemoved && (graphData.nodes?.length ?? 0) > currentNodeIds.size;
+
+  if (!isAdditiveOnly) {
+    return {
+      isAdditiveOnly: false,
+      currentPositions: {},
+      centerX: 0,
+      maxY: 0,
+      addedNodes: [],
+    };
+  }
+
   let maxY = 0;
   let sumX = 0;
   let positionedCount = 0;
-  const positions: Record<string, [number, number]> = {};
-  graph.getNodeData().forEach((node) => {
+  const currentPositions: Record<string, [number, number]> = {};
+
+  graph.getNodeData().forEach((n) => {
     try {
-      const position = graph.getElementPosition(String(node.id));
-      if (position) {
-        positions[String(node.id)] = [position[0], position[1]];
-        maxY = Math.max(maxY, position[1]);
-        sumX += position[0];
-        positionedCount += 1;
+      const pos = graph.getElementPosition(String(n.id));
+      if (pos) {
+        currentPositions[String(n.id)] = [pos[0], pos[1]];
+        maxY = Math.max(maxY, pos[1]);
+        sumX += pos[0];
+        positionedCount++;
       }
     } catch {
-      // Nodes can exist before their first layout has assigned a position.
+      // not yet positioned
     }
   });
 
-  return {
-    centerX: positionedCount > 0 ? sumX / positionedCount : 0,
-    maxY,
-    positions,
-  };
+  const centerX = positionedCount > 0 ? sumX / positionedCount : 0;
+  const addedNodes = (graphData.nodes ?? []).filter(
+    (n) => !currentNodeIds.has(String(n.id))
+  );
+
+  return { isAdditiveOnly: true, currentPositions, centerX, maxY, addedNodes };
 }
 
-function getAffectedAssetRingPositions(
+function computePrecomputedAssetPositions(
   addedNodes: NodeData[],
-  assetToTermMap: Record<string, string[]>,
-  currentPositions: Record<string, [number, number]>
+  currentPositions: Record<string, [number, number]>,
+  assetToTermMap: Record<string, string[]>
 ): Record<string, [number, number]> {
-  const addedNodeIds = new Set(addedNodes.map((node) => String(node.id)));
+  const addedNodeIds = new Set(addedNodes.map((n) => String(n.id)));
   const termsWithNewAssets = new Set<string>();
   addedNodeIds.forEach((assetId) => {
-    assetToTermMap[assetId]?.forEach((termId) =>
-      termsWithNewAssets.add(termId)
-    );
+    const termIds = assetToTermMap[assetId];
+    termIds?.forEach((termId) => termsWithNewAssets.add(termId));
   });
+
   const affectedAssetsByTerm = new Map<string, string[]>();
   Object.entries(assetToTermMap).forEach(([assetId, termIds]) => {
     termIds.forEach((termId) => {
       if (!termsWithNewAssets.has(termId)) {
         return;
       }
-      const assets = affectedAssetsByTerm.get(termId) ?? [];
-      assets.push(assetId);
-      affectedAssetsByTerm.set(termId, assets);
+      const list = affectedAssetsByTerm.get(termId) ?? [];
+      list.push(assetId);
+      affectedAssetsByTerm.set(termId, list);
     });
   });
-  const ringPositions: Record<string, [number, number]> = {};
+
+  const precomputedAssetPositions: Record<string, [number, number]> = {};
   affectedAssetsByTerm.forEach((assetIds, termId) => {
-    const termPosition = currentPositions[termId];
-    if (!termPosition) {
+    const termPos = currentPositions[termId];
+    if (!termPos) {
       return;
     }
-    const positions = computeAssetRingPositions(
-      termPosition[0],
-      termPosition[1],
-      assetIds
-    );
-    Object.entries(positions).forEach(([assetId, position]) => {
-      ringPositions[assetId] = [position.x, position.y];
+    const [termX, termY] = termPos;
+    const ringPositions = computeAssetRingPositions(termX, termY, assetIds);
+    Object.entries(ringPositions).forEach(([assetId, pos]) => {
+      precomputedAssetPositions[assetId] = [pos.x, pos.y];
     });
   });
 
-  return ringPositions;
+  return precomputedAssetPositions;
 }
 
-function bakeAdditiveNodePositions(
-  nodes: NodeData[],
-  currentPositions: CurrentGraphPositions,
-  ringPositions: Record<string, [number, number]>,
-  addedNodeCount: number
+function buildAdditiveBakedNodes(
+  graphData: GraphData,
+  context: AdditiveUpdateContext,
+  precomputedAssetPositions: Record<string, [number, number]>
 ): NodeData[] {
-  const columns = Math.max(1, Math.ceil(Math.sqrt(addedNodeCount)));
-  let newIndex = 0;
+  const { currentPositions, centerX, maxY } = context;
+  const COLS = Math.max(1, Math.ceil(Math.sqrt(context.addedNodes.length)));
+  let newIdx = 0;
 
-  return nodes.map((node) => {
+  return (graphData.nodes ?? []).map((node) => {
     const id = String(node.id);
-    const retainedPosition =
-      ringPositions[id] ?? currentPositions.positions[id];
-    if (retainedPosition) {
+
+    const ringPos = precomputedAssetPositions[id];
+    if (ringPos) {
       return {
         ...node,
-        style: {
-          ...node.style,
-          x: retainedPosition[0],
-          y: retainedPosition[1],
-        },
+        style: { ...node.style, x: ringPos[0], y: ringPos[1] },
       };
     }
-    const column = newIndex % columns;
-    const row = Math.floor(newIndex / columns);
-    newIndex += 1;
+
+    const existingPos = currentPositions[id];
+    if (existingPos) {
+      return {
+        ...node,
+        style: { ...node.style, x: existingPos[0], y: existingPos[1] },
+      };
+    }
+
+    const col = newIdx % COLS;
+    const row = Math.floor(newIdx / COLS);
+    newIdx++;
 
     return {
       ...node,
       style: {
         ...node.style,
-        x: currentPositions.centerX + (column - columns / 2) * 220,
-        y: currentPositions.maxY + 200 + row * 120,
+        x: centerX + (col - COLS / 2) * 220,
+        y: maxY + 200 + row * 120,
       },
     };
   });
 }
 
-function applyAdditiveGraphUpdate(
+function applyAdditiveUpdate(
   graph: Graph,
   graphData: GraphData,
   isDataMode: boolean,
+  context: AdditiveUpdateContext,
   assetToTermMap: Record<string, string[]>
-): boolean {
-  const currentNodeIds = new Set(
-    graph.getNodeData().map((node) => String(node.id))
-  );
-  const nextNodes = graphData.nodes ?? [];
-  const nextNodeIds = new Set(nextNodes.map((node) => String(node.id)));
-  const noneRemoved = [...currentNodeIds].every((id) => nextNodeIds.has(id));
-  const isAdditiveOnly = noneRemoved && nextNodes.length > currentNodeIds.size;
-  if (!isAdditiveOnly) {
-    return false;
-  }
-  const addedNodes = nextNodes.filter(
-    (node) => !currentNodeIds.has(String(node.id))
-  );
-  const currentPositions = getCurrentGraphPositions(graph);
-  // Adding one asset changes every sibling angle, so only affected rings are
-  // recomputed while all unrelated positions remain untouched.
-  const ringPositions = isDataMode
-    ? getAffectedAssetRingPositions(
-        addedNodes,
-        assetToTermMap,
-        currentPositions.positions
+): void {
+  const precomputedAssetPositions = isDataMode
+    ? computePrecomputedAssetPositions(
+        context.addedNodes,
+        context.currentPositions,
+        assetToTermMap
       )
     : {};
-  const bakedNodes = bakeAdditiveNodePositions(
-    nextNodes,
-    currentPositions,
-    ringPositions,
-    addedNodes.length
-  );
-  const addedNodeIds = new Set(addedNodes.map((node) => String(node.id)));
-  const currentEdgeIds = new Set(
-    graph.getEdgeData().map((edge) => String(edge.id))
-  );
-  const newEdges = (graphData.edges ?? []).filter(
-    (edge) => !currentEdgeIds.has(String(edge.id))
-  );
-  const existingNodes = bakedNodes.filter(
-    (node) => !addedNodeIds.has(String(node.id))
-  );
-  const newNodes = bakedNodes.filter((node) =>
-    addedNodeIds.has(String(node.id))
+
+  const bakedData = {
+    ...graphData,
+    nodes: buildAdditiveBakedNodes(
+      graphData,
+      context,
+      precomputedAssetPositions
+    ),
+  };
+
+  const addedNodeIds = new Set(context.addedNodes.map((n) => String(n.id)));
+  const currentEdgeIds = new Set(graph.getEdgeData().map((e) => String(e.id)));
+  const newEdges = (bakedData.edges ?? []).filter(
+    (e) => !currentEdgeIds.has(String(e.id))
   );
 
-  if (existingNodes.length > 0) {
-    graph.updateNodeData(existingNodes);
+  const existingNodesToUpdate = (bakedData.nodes ?? []).filter(
+    (n) => !addedNodeIds.has(String(n.id))
+  );
+  const newNodesToAdd = (bakedData.nodes ?? []).filter((n) =>
+    addedNodeIds.has(String(n.id))
+  );
+
+  if (existingNodesToUpdate.length > 0) {
+    graph.updateNodeData(existingNodesToUpdate);
   }
-  graph.addNodeData(newNodes);
+  graph.addNodeData(newNodesToAdd);
   if (newEdges.length > 0) {
     graph.addEdgeData(newEdges);
   }
   graph.draw().catch(() => {
-    // The graph can be destroyed while a fire-and-forget repaint is pending.
+    // fire-and-forget paint; graph may be destroyed if tab was changed
   });
-
-  return true;
-}
-
-function getActiveGraph(
-  graph: Graph | null,
-  inputNodeCount: number
-): Graph | null {
-  return graph && inputNodeCount > 0 ? graph : null;
-}
-
-function didTermFingerprintChange(
-  dataSignatureChanged: boolean,
-  nextFingerprint: string,
-  currentFingerprint: string
-): boolean {
-  return dataSignatureChanged || nextFingerprint !== currentFingerprint;
-}
-
-function didLayoutTypeChange(
-  previousLayoutType: LayoutEngineType | null,
-  layoutType: LayoutEngineType
-): boolean {
-  return previousLayoutType !== null && previousLayoutType !== layoutType;
 }
 
 export function useOntologyGraph({
@@ -1001,21 +1081,6 @@ export function useOntologyGraph({
 
   const inputNodesRef = useRef(inputNodes);
   inputNodesRef.current = inputNodes;
-
-  const graphDataRef = useRef(graphData);
-  graphDataRef.current = graphData;
-
-  const glossaryColorMapRef = useRef(glossaryColorMap);
-  glossaryColorMapRef.current = glossaryColorMap;
-
-  const onNodeClickRef = useRef(onNodeClick);
-  onNodeClickRef.current = onNodeClick;
-
-  const onNodeDoubleClickRef = useRef(onNodeDoubleClick);
-  onNodeDoubleClickRef.current = onNodeDoubleClick;
-
-  const onPaneClickRef = useRef(onPaneClick);
-  onPaneClickRef.current = onPaneClick;
 
   const expandedTermIdsRef = useRef(expandedTermIds);
   expandedTermIdsRef.current = expandedTermIds;
@@ -1521,6 +1586,7 @@ export function useOntologyGraph({
     [buildIntraComboLayout]
   );
 
+  const DATA_MODE_ASSET_TYPES = new Set(['dataAsset', 'metric']);
   const termNodeCount = useMemo(
     () =>
       explorationMode === 'data'
@@ -1554,9 +1620,7 @@ export function useOntologyGraph({
 
     const isDataMode = explorationMode === 'data';
     const isHierarchyMode = explorationMode === 'hierarchy';
-    const hasCombos = Boolean(
-      graphDataRef.current.combos && graphDataRef.current.combos.length > 0
-    );
+    const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
     const isModelView = explorationMode === 'model';
     const useComboGridLayout = shouldUseComboGridLayout(layoutType, {
       hasCombos,
@@ -1567,7 +1631,7 @@ export function useOntologyGraph({
       container,
       width,
       height,
-      data: graphDataRef.current,
+      data: graphData,
       padding: 0,
       zoomRange: [MIN_ZOOM, MAX_ZOOM],
       zoom: DEFAULT_ZOOM,
@@ -1577,8 +1641,25 @@ export function useOntologyGraph({
           typeof datum.type === 'string' && datum.type.length > 0
             ? datum.type
             : 'rect',
-        style: (datum: NodeData) =>
-          buildRuntimeNodeStyle(datum, isDataMode, glossaryColorMapRef.current),
+        style: (datum: NodeData) => {
+          const d = (datum.data ?? {}) as GraphNodeMeta;
+          const ontNode = d?.ontologyNode;
+          const isAsset =
+            ontNode?.type === 'dataAsset' || ontNode?.type === 'metric';
+          const isTerm = isDataMode && !isAsset;
+
+          if (isDataMode && isAsset) {
+            return buildDataModeAssetStyle(datum, d, ontNode);
+          }
+          if (isTerm) {
+            return buildDataModeTermStyle(datum, d);
+          }
+          if (d?.studioMode) {
+            return buildStudioNodeStyle(datum, d, ontNode);
+          }
+
+          return buildDefaultNodeStyle(datum, d, ontNode, glossaryColorMap);
+        },
       },
       edge: {
         type: () =>
@@ -1588,12 +1669,17 @@ export function useOntologyGraph({
         animation: {
           enter: false,
         },
-        style: (datum) =>
-          buildRuntimeEdgeStyle(
-            datum,
-            isDataMode,
-            settingsRef.current.showEdgeLabels
-          ),
+        style: (datum) => {
+          const d = (datum.data ?? {}) as GraphEdgeMeta;
+          const base = buildBaseEdgeStyle(d, isDataMode);
+
+          const merged = (
+            datum.style ? { ...base, ...datum.style } : { ...base }
+          ) as Record<string, unknown>;
+          applyEdgeLabelVisibility(merged, settingsRef.current.showEdgeLabels);
+
+          return merged;
+        },
       },
       combo: {
         type: 'glossary-combo',
@@ -1615,7 +1701,7 @@ export function useOntologyGraph({
       },
       layout: studioMode
         ? { type: 'preset', animation: false }
-        : getLayoutConfig(layoutType, inputNodesRef.current.length, {
+        : getLayoutConfig(layoutType, inputNodes.length, {
             hasCombos,
             isDataMode,
             isHierarchyMode,
@@ -1652,6 +1738,33 @@ export function useOntologyGraph({
       }
     };
 
+    // Dispatches the studio edit-node-click event; returns true when the
+    // click was fully handled by the edit gesture (edit port, or a listener
+    // that cancelled the event) and should not fall through to onNodeClick.
+    const dispatchStudioEditClick = (
+      id: string,
+      position: { x: number; y: number },
+      e: IElementEvent
+    ): boolean => {
+      const isEditPort = hasShapeClass(
+        e.originalTarget,
+        STUDIO_EDIT_PORT_CLASS_NAME
+      );
+      const detail: OntologyEditNodeClickDetail = {
+        clientX: e.clientX ?? position.x,
+        clientY: e.clientY ?? position.y,
+        isPort: isEditPort,
+        nodeId: id,
+      };
+      const editEvent = new CustomEvent(ONTOLOGY_EDIT_NODE_CLICK_EVENT, {
+        cancelable: true,
+        detail,
+      });
+      const isHandled = !container.dispatchEvent(editEvent);
+
+      return isEditPort || isHandled;
+    };
+
     const handleNodeClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (!id) {
@@ -1665,22 +1778,19 @@ export function useOntologyGraph({
         x: e.clientX ?? 0,
         y: e.clientY ?? 0,
       });
-      const isEditPort = hasShapeClass(
-        e.originalTarget,
-        STUDIO_EDIT_PORT_CLASS_NAME
-      );
-      if (
-        studioMode &&
-        isEditModeRef.current &&
-        dispatchStudioEditNodeClick(container, e, id, position, isEditPort)
-      ) {
-        return;
+      if (studioMode && isEditModeRef.current) {
+        const shouldStop = dispatchStudioEditClick(id, position, e);
+        if (shouldStop) {
+          return;
+        }
       }
-      onNodeClickRef.current(resolveNodeForCallback(node), position, {
-        dataModeAssetBadgeClick:
-          isDataMode && isDataModeAssetBadgeShape(e.originalTarget),
-        dataModeLoadMoreBadgeClick:
-          isDataMode && isDataModeLoadMoreBadgeShape(e.originalTarget),
+      const dataModeAssetBadgeClick =
+        isDataMode && isDataModeAssetBadgeShape(e.originalTarget);
+      const dataModeLoadMoreBadgeClick =
+        isDataMode && isDataModeLoadMoreBadgeShape(e.originalTarget);
+      onNodeClick(resolveNodeForCallback(node), position, {
+        dataModeAssetBadgeClick,
+        dataModeLoadMoreBadgeClick,
       });
     };
 
@@ -1689,7 +1799,7 @@ export function useOntologyGraph({
       if (id) {
         const node = findNodeById(id);
         if (node) {
-          onNodeDoubleClickRef.current(resolveNodeForCallback(node));
+          onNodeDoubleClick(resolveNodeForCallback(node));
         }
       }
     };
@@ -1724,7 +1834,7 @@ export function useOntologyGraph({
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
-      onPaneClickRef.current();
+      onPaneClick();
     });
 
     const handleEdgeClick = (e: IElementEvent) => {
@@ -1810,17 +1920,19 @@ export function useOntologyGraph({
     };
 
     let renderCancelled = false;
-    const drawInitialGraph = async () => {
+
+    const applyInitialPositioningStrategy = async () => {
       if (studioMode) {
         await positionStudioNodes(graph);
-        if (!renderCancelled) {
-          await graph.draw();
+        if (renderCancelled) {
+          return;
         }
+        await graph.draw();
 
         return;
       }
       if (hasBakedPositions) {
-        applyBakedPositions(graph, graphDataRef.current.nodes ?? []);
+        applyBakedPositions(graph, graphData.nodes ?? []);
         if (isDataMode) {
           positionAssetNodes(graph);
         }
@@ -1840,50 +1952,45 @@ export function useOntologyGraph({
 
         return;
       }
-
       await runLayout(graph);
-      if (!renderCancelled) {
-        await graph.draw();
+      if (renderCancelled) {
+        return;
       }
+      await graph.draw();
     };
-    const resetInitialViewport = async () => {
+
+    const finalizeInitialViewport = async () => {
       if (studioMode) {
         await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
         await graph.translateTo([0, 0], { duration: 0 });
-
-        return;
+      } else {
+        await fitAndClampZoom();
       }
+      recomputeGraphBounds();
+    };
 
-      await fitAndClampZoom();
-    };
-    const recoverInitialRender = async () => {
-      try {
-        await graph.draw();
-        if (renderCancelled) {
-          return;
-        }
-        await resetInitialViewport();
-        recomputeGraphBounds();
-      } catch {
-        // Graph may have been destroyed while the recovery draw was pending.
-      }
-    };
     const runRender = async () => {
       suppressEdgeCheck(1500);
       try {
-        await drawInitialGraph();
+        await applyInitialPositioningStrategy();
         if (renderCancelled) {
           return;
         }
-        await resetInitialViewport();
-        recomputeGraphBounds();
+        await finalizeInitialViewport();
       } catch {
         if (renderCancelled) {
           return;
         }
         // Layout or draw failed — attempt a bare draw so at least something
         // renders, then restore a usable viewport.
-        await recoverInitialRender();
+        try {
+          await graph.draw();
+          if (!renderCancelled) {
+            await finalizeInitialViewport();
+          }
+        } catch {
+          // Graph may have been destroyed; ignore.
+        }
       }
     };
 
@@ -1928,132 +2035,106 @@ export function useOntologyGraph({
     };
   }, [
     applyBakedPositions,
-    containerRef,
     termNodeCount,
     explorationMode,
     hasBakedPositions,
     layoutType,
     studioMode,
-    positionAssetNodes,
-    positionCircularNodes,
-    positionModelModeNodes,
     positionStudioNodes,
     recomputeGraphBounds,
-    suppressEdgeCheck,
   ]);
 
   useEffect(() => {
-    const graph = getActiveGraph(graphRef.current, inputNodes.length);
-    if (!graph) {
+    const graph = graphRef.current;
+    if (!graph || inputNodes.length === 0) {
       return;
     }
-
-    const dataSignatureChanged = prevDataSignatureRef.current !== dataSignature;
 
     const isDataMode = explorationMode === 'data';
-    const { asset: newAssetFingerprint, term: newTermFingerprint } =
-      getGraphFingerprints(
-        inputNodes,
-        mergedEdgesList,
-        explorationMode,
-        layoutType,
-        expandedTermIds
+    const fp = computeFingerprintFlags({
+      inputNodes,
+      mergedEdgesList,
+      isDataMode,
+      layoutType,
+      explorationMode,
+      dataSignature,
+      expandedTermIds,
+      prevDataSignature: prevDataSignatureRef.current,
+      prevTermFingerprint: termFingerprintRef.current,
+      prevAssetFingerprint: assetFingerprintRef.current,
+      prevLayoutType: prevLayoutTypeRef.current,
+    });
+    prevLayoutTypeRef.current = layoutType;
+
+    const nextDataSignature = dataSignature ?? '';
+
+    if (justInitializedRef.current) {
+      justInitializedRef.current = false;
+      prevDataSignatureRef.current = nextDataSignature;
+      termFingerprintRef.current = fp.newTermFingerprint;
+      assetFingerprintRef.current = fp.newAssetFingerprint;
+
+      return;
+    }
+
+    if (fp.dataSignatureChanged) {
+      prevDataSignatureRef.current = nextDataSignature;
+    }
+
+    const route = computeSyncRouteFlags(
+      graph,
+      graphData,
+      fp.termFingerprintChanged,
+      fp.assetFingerprintChanged
+    );
+
+    if (tryInPlacePatch(graph, graphData, isDataMode, route.canPatchInPlace)) {
+      return;
+    }
+
+    // Additive-only change: all existing nodes still present + new ones added.
+    // Skip layout entirely — bake current positions for existing nodes and place
+    // new nodes in a grid below the existing graph.  This prevents Dagre from
+    // re-running on thousands of nodes on every scroll-append, which would time
+    // out and leave the graph blank.
+    const additiveContext = computeAdditiveUpdateContext(graph, graphData);
+
+    if (additiveContext.isAdditiveOnly) {
+      applyAdditiveUpdate(
+        graph,
+        graphData,
+        isDataMode,
+        additiveContext,
+        assetToTermMapRef.current
+      );
+      commitTermFingerprintIfChanged(
+        termFingerprintRef,
+        fp.termFingerprintChanged,
+        fp.newTermFingerprint
       );
 
-    const termFingerprintChanged = didTermFingerprintChange(
-      dataSignatureChanged,
-      newTermFingerprint,
-      termFingerprintRef.current
-    );
-    const assetFingerprintChanged =
-      newAssetFingerprint !== assetFingerprintRef.current;
-    const layoutTypeChanged = didLayoutTypeChange(
-      prevLayoutTypeRef.current,
-      layoutType
-    );
-    prevLayoutTypeRef.current = layoutType;
-    const finishInitialSync = () => {
-      if (!justInitializedRef.current) {
-        return false;
-      }
-      justInitializedRef.current = false;
-      prevDataSignatureRef.current = dataSignature ?? '';
-      termFingerprintRef.current = newTermFingerprint;
-      assetFingerprintRef.current = newAssetFingerprint;
-
-      return true;
-    };
-    if (finishInitialSync()) {
       return;
     }
 
-    if (dataSignatureChanged) {
-      prevDataSignatureRef.current = dataSignature ?? '';
-    }
-    const structuralChanged = termFingerprintChanged || assetFingerprintChanged;
-    const topologySynced = isGraphTopologySynced(graph, graphData);
-    const canPatchInPlace = !structuralChanged && topologySynced;
-    const applySynchronousUpdate = () => {
-      if (
-        canPatchInPlace &&
-        patchGraphDataInPlace(graph, graphData, isDataMode)
-      ) {
-        return true;
-      }
-      if (
-        applyAdditiveGraphUpdate(
-          graph,
-          graphData,
-          isDataMode,
-          assetToTermMapRef.current
-        )
-      ) {
-        if (termFingerprintChanged) {
-          termFingerprintRef.current = newTermFingerprint;
-        }
+    // expandedTermIds toggled but asset fetch not yet complete — topology is
+    // already in sync (same nodes/edges), so update in-place to avoid the
+    // graph.setData() path which resets the camera.
+    if (route.shouldPatchAssetOnly) {
+      assetFingerprintRef.current = fp.newAssetFingerprint;
+      attemptInPlacePatch(graph, graphData, isDataMode);
 
-        return true;
-      }
-      // An expansion can change badges before its asset request changes
-      // topology; patching keeps the camera stable during that interim render.
-      const canPatchAssetToggle =
-        assetFingerprintChanged && !termFingerprintChanged && topologySynced;
-      if (canPatchAssetToggle) {
-        assetFingerprintRef.current = newAssetFingerprint;
-        patchGraphDataInPlace(graph, graphData, isDataMode);
-
-        return true;
-      }
-
-      return false;
-    };
-    if (applySynchronousUpdate()) {
       return;
     }
-    const recordChangedFingerprints = () => {
-      if (termFingerprintChanged) {
-        termFingerprintRef.current = newTermFingerprint;
-      }
-      if (assetFingerprintChanged) {
-        assetFingerprintRef.current = newAssetFingerprint;
-      }
-    };
-    recordChangedFingerprints();
 
-    const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
-    const isHierarchyMode = explorationMode === 'hierarchy';
-    const isModelViewLocal = explorationMode === 'model';
-    const layoutOptions = getLayoutConfig(layoutType, inputNodes.length, {
-      hasCombos,
-      isDataMode,
-      isHierarchyMode,
-      isModelView: isModelViewLocal,
-    });
-    const useComboGridLayout = shouldUseComboGridLayout(layoutType, {
-      hasCombos,
-      isHierarchyMode,
-      isModelView: isModelViewLocal,
-    });
+    commitFingerprints(termFingerprintRef, assetFingerprintRef, fp);
+
+    const layoutContext = computeLayoutContext(
+      graphData,
+      layoutType,
+      inputNodes,
+      explorationMode,
+      isDataMode
+    );
 
     if (cancelPendingUpdateRef.current) {
       cancelPendingUpdateRef.current();
@@ -2063,49 +2144,65 @@ export function useOntologyGraph({
       cancelled = true;
     };
 
-    const capturePreUpdatePositions = () => {
-      const positions: Record<string, [number, number]> = {};
-      if (!isDataMode || termFingerprintChanged) {
-        return positions;
+    const capturePreUpdatePositions = (): Record<string, [number, number]> => {
+      const preUpdatePositions: Record<string, [number, number]> = {};
+      if (!isDataMode || fp.termFingerprintChanged) {
+        return preUpdatePositions;
       }
-      inputNodesRef.current.forEach((node) => {
+      inputNodesRef.current.forEach((n) => {
         try {
-          const position = graph.getElementPosition(node.id);
-          if (position) {
-            positions[node.id] = [position[0], position[1]];
+          const pos = graph.getElementPosition(n.id);
+          if (pos) {
+            preUpdatePositions[n.id] = [pos[0], pos[1]];
           }
         } catch {
-          // A newly added node may not have a position until the next draw.
+          // not yet positioned
         }
       });
 
-      return positions;
+      return preUpdatePositions;
     };
-    const restorePreUpdatePositions = (
-      positions: Record<string, [number, number]>
-    ) => {
-      const updates = (graphData.nodes ?? []).flatMap((node) => {
-        const position = positions[String(node.id)];
-        if (!position) {
-          return [];
-        }
 
-        return [
-          {
+    const restoreDataModePositions = (
+      preUpdatePositions: Record<string, [number, number]>
+    ) => {
+      const updates = (graphData.nodes ?? [])
+        .map((node) => {
+          const snapshotPos = preUpdatePositions[String(node.id)];
+          if (!snapshotPos) {
+            return null;
+          }
+
+          return {
             id: node.id,
             style: {
               ...((node.style as Record<string, unknown>) ?? {}),
-              x: position[0],
-              y: position[1],
+              x: snapshotPos[0],
+              y: snapshotPos[1],
             },
-          },
-        ];
-      });
+          };
+        })
+        .filter((u): u is NonNullable<typeof u> => u !== null);
       if (updates.length > 0) {
         graph.updateNodeData(updates);
       }
     };
-    const applyUpdateLayout = async (
+
+    const applyBakedPositionsForUpdate = (
+      preUpdatePositions: Record<string, [number, number]>
+    ) => {
+      const hasSnapshot =
+        isDataMode &&
+        !fp.termFingerprintChanged &&
+        Object.keys(preUpdatePositions).length > 0;
+      if (hasSnapshot) {
+        restoreDataModePositions(preUpdatePositions);
+      } else {
+        applyBakedPositions(graph, graphData.nodes ?? []);
+      }
+    };
+
+    const applyUpdateLayoutStrategy = async (
       preUpdatePositions: Record<string, [number, number]>
     ) => {
       if (studioMode) {
@@ -2113,47 +2210,43 @@ export function useOntologyGraph({
 
         return;
       }
-      if (useComboGridLayout) {
+      if (layoutContext.useComboGridLayout) {
         positionModelModeNodes(graph);
 
         return;
       }
-      if (isModelViewLocal && layoutType === LayoutEngine.Circular) {
+      if (layoutContext.isModelView && layoutType === LayoutEngine.Circular) {
         positionCircularNodes(graph);
 
         return;
       }
       if (hasBakedPositions) {
-        const canRestorePositions =
-          isDataMode &&
-          !termFingerprintChanged &&
-          Object.keys(preUpdatePositions).length > 0;
-        if (canRestorePositions) {
-          restorePreUpdatePositions(preUpdatePositions);
-        } else {
-          applyBakedPositions(graph, graphData.nodes ?? []);
-        }
+        applyBakedPositionsForUpdate(preUpdatePositions);
 
         return;
       }
-      graph.setLayout(layoutOptions);
+      graph.setLayout(layoutContext.layoutOptions);
       try {
         await runLayout(graph);
       } catch {
-        // Drawing with default positions is preferable to leaving a blank graph.
+        // Layout timed out or failed — draw with default positions rather
+        // than leave the graph blank.
       }
     };
-    const updateViewportAfterDraw = async () => {
-      if (studioMode && termFingerprintChanged) {
+
+    const finalizeUpdateViewport = async () => {
+      if (studioMode && fp.termFingerprintChanged) {
         await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
         await graph.translateTo([0, 0], { duration: 0 });
-
-        return;
-      }
-      if (!studioMode && (termFingerprintChanged || layoutTypeChanged)) {
+      } else if (
+        !studioMode &&
+        (fp.termFingerprintChanged || fp.layoutTypeChanged)
+      ) {
         await fitViewWithMinZoom(graph);
       }
+      recomputeGraphBounds();
     };
+
     const runUpdate = async () => {
       suppressEdgeCheck(1500);
       try {
@@ -2161,27 +2254,38 @@ export function useOntologyGraph({
         if (cancelled) {
           return;
         }
-        setClickedEdgeIdRef.current(null);
-        const preUpdatePositions = capturePreUpdatePositions();
-        graph.setData(graphData);
-        await applyUpdateLayout(preUpdatePositions);
 
-        // Asset positions are derived from baked term coordinates before draw,
-        // avoiding the visible second paint previously needed for spiral layout.
+        setClickedEdgeIdRef.current(null);
+
+        const preUpdatePositions = capturePreUpdatePositions();
+
+        graph.setData(graphData);
+
+        await applyUpdateLayoutStrategy(preUpdatePositions);
+
+        // In data mode, positions are baked into node data (style.x/y), so
+        // positionAssetNodes can read from node data before draw() — eliminating
+        // the second draw that caused visible node movement when opening a spiral.
         if (isDataMode) {
           positionAssetNodes(graph);
         }
-        if (cancelled || graph.destroyed) {
-          return;
-        }
-        await graph.draw();
+
         if (cancelled) {
           return;
         }
-        await updateViewportAfterDraw();
-        recomputeGraphBounds();
+        if (graph.destroyed) {
+          return;
+        }
+        await graph.draw();
+
+        if (cancelled) {
+          return;
+        }
+
+        await finalizeUpdateViewport();
       } catch {
-        // Draw rejections are expected when navigation destroys an in-flight graph.
+        // Swallow rejections from graph.draw() that arrive after the graph was
+        // destroyed (tab navigation while a draw was in flight).
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -2211,7 +2315,6 @@ export function useOntologyGraph({
     positionStudioNodes,
     studioMode,
     recomputeGraphBounds,
-    suppressEdgeCheck,
   ]);
 
   return {

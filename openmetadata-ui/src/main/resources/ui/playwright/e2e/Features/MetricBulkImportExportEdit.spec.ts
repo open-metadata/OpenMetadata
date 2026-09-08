@@ -1338,11 +1338,18 @@ test.describe(
         page,
         page.getByText(fixtures.tag.fullyQualifiedName)
       );
+      // Match the chip itself, not its `title`. The title is an implementation
+      // detail of how the tooltip is delivered — a native attribute today, a
+      // <Tooltip> wrapper under #32211, which renders the text into a popover and
+      // leaves no `title` in the DOM at all. The assertion here is "the grid shows
+      // this glossary term", so key it on the chip and the term name, which hold
+      // either way. The chip renders the term as a ` / ` hierarchy, so match on the
+      // leaf name rather than the dotted FQN.
       await expectVisibleAfterHorizontalScroll(
         page,
-        page.locator(
-          `[title="${fixtures.nestedGlossaryTerm.fullyQualifiedName}"]`
-        )
+        page
+          .locator('.csv-chip-glossary')
+          .filter({ hasText: fixtures.nestedGlossaryTerm.name })
       );
       await expectVisibleAfterHorizontalScroll(page, page.getByText('Tier2'));
       await expectVisibleAfterHorizontalScroll(

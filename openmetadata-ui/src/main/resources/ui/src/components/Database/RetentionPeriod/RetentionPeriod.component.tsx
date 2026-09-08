@@ -35,16 +35,15 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
-// Format a single duration unit with correct pluralization, e.g. (2, 'year') -> '2 years'
-const formatDurationUnit = (value: number | undefined, unit: string) => {
-  if (!value) {
-    return '';
-  }
+// Pluralize a duration component, e.g. pluralizeDurationUnit(2, 'year') => '2 years'
+const pluralizeDurationUnit = (value: number, unit: string): string => {
+  const pluralSuffix = value > 1 ? 's' : '';
 
-  const suffix = value > 1 ? 's' : '';
-
-  return `${value} ${unit}${suffix}`;
+  return value ? `${value} ${unit}${pluralSuffix}` : '';
 };
+
+const ISO_DURATION_REGEX =
+  /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/;
 
 // Helper function to detect and format ISO 8601 duration
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
@@ -52,37 +51,26 @@ const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
     return NO_DATA_PLACEHOLDER;
   }
 
-  const isoDurationRegex =
-    /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/;
-  // Check if the string matches the ISO 8601 duration format
-  if (isoDurationRegex.test(retentionPeriod)) {
-    const duration = Duration.fromISO(retentionPeriod);
-
-    const years = formatDurationUnit(duration.years, 'year');
-    const months = formatDurationUnit(duration.months, 'month');
-    const weeks = formatDurationUnit(duration.weeks, 'week');
-    const days = formatDurationUnit(duration.days, 'day');
-    const hours = formatDurationUnit(duration.hours, 'hour');
-    const minutes = formatDurationUnit(duration.minutes, 'minute');
-    const seconds = formatDurationUnit(duration.seconds, 'second');
-
-    const formattedDuration = [
-      years,
-      months,
-      weeks,
-      days,
-      hours,
-      minutes,
-      seconds,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    return formattedDuration || NO_DATA_PLACEHOLDER;
+  // If it's not ISO, return the plain string
+  if (!ISO_DURATION_REGEX.test(retentionPeriod)) {
+    return retentionPeriod;
   }
 
-  // If it's not ISO, return the plain string
-  return retentionPeriod;
+  const duration = Duration.fromISO(retentionPeriod);
+
+  const formattedDuration = [
+    pluralizeDurationUnit(duration.years, 'year'),
+    pluralizeDurationUnit(duration.months, 'month'),
+    pluralizeDurationUnit(duration.weeks, 'week'),
+    pluralizeDurationUnit(duration.days, 'day'),
+    pluralizeDurationUnit(duration.hours, 'hour'),
+    pluralizeDurationUnit(duration.minutes, 'minute'),
+    pluralizeDurationUnit(duration.seconds, 'second'),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return formattedDuration || NO_DATA_PLACEHOLDER;
 };
 const RetentionPeriod = ({
   retentionPeriod,
