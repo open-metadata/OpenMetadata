@@ -1454,11 +1454,29 @@ const TableV2 = <T extends object>(
                 Boolean(entry)
               );
 
-      rest.rowSelection.onChange(
-        selected.map(({ key }) => key),
-        selected.map(({ record }) => record),
-        { type: selectionMode === 'single' ? 'single' : 'multiple' }
-      );
+      let selectedKeys: React.Key[] = selected.map(({ key }) => key);
+      const selectedRecords = selected.map(({ record }) => record);
+
+      // AntD's `preserveSelectedRowKeys` keeps rows selected on other pages.
+      // React Aria's collection is only the current page, so onSelectionChange
+      // reports the current page alone; without merging, selecting on a new page
+      // (or clearing the current one) would silently drop every off-page
+      // selection. Re-attach the previously selected keys that aren't on this
+      // page. Their records aren't loaded here, which matches AntD's own
+      // behavior under preserveSelectedRowKeys.
+      if (rest.rowSelection.preserveSelectedRowKeys) {
+        const currentPageKeys = new Set(
+          rowEntries.map(({ key }) => String(key))
+        );
+        const preservedKeys = (rest.rowSelection.selectedRowKeys ?? []).filter(
+          (key) => !currentPageKeys.has(String(key))
+        );
+        selectedKeys = [...preservedKeys, ...selectedKeys];
+      }
+
+      rest.rowSelection.onChange(selectedKeys, selectedRecords, {
+        type: selectionMode === 'single' ? 'single' : 'multiple',
+      });
     },
     [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
   );
