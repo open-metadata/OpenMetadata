@@ -12,52 +12,89 @@
  */
 @import '../variables.less';
 
-.table-query-editor > .CodeMirror {
+// CodeMirror 5 shipped `height: 300px` in its own stylesheet, and every rule
+// below either inherited that default or overrode it. CodeMirror 6 has no
+// stylesheet and grows with its content instead, so keep the old default here
+// and let the more specific overrides win as they always did.
+.cm-editor {
+  height: 300px;
+
+  // A fixed-height editor needs its viewport to scroll in CodeMirror 6.
+  .cm-scroller {
+    overflow: auto;
+  }
+
+  // Ant Design injects a global `::selection { color: #fff }`. CodeMirror 5 never
+  // felt it — its visible text is display-only, with the real selection in an
+  // offscreen textarea — but CodeMirror 6 selects the content element itself, so
+  // the white text landed on v6's pale drawn selection band and became
+  // unreadable. The band stays; the text colour is pinned to the editor's own.
+  // (`inherit` cannot be used: browsers chain ::selection inheritance through
+  // the ancestors' ::selection colour, which is the white we are overriding.)
+  ::selection {
+    background: transparent;
+    color: var(--tw-color-text-primary);
+  }
+
+  // CodeMirror 6 draws a dotted focus outline of its own. The editor is what
+  // keyboard users land on, so recolour it rather than removing it.
+  &.cm-focused {
+    outline: 1px solid var(--tw-color-border-brand);
+  }
+}
+
+// These are descendant selectors, not `> .cm-editor`: @uiw/react-codemirror
+// renders a wrapper div (.cm-theme-*) around the editor, and the class can land
+// either on that wrapper (editorClass) or on .schema-editor-container
+// (className), so the editor is a child in one case and a grandchild in the
+// other. CodeMirror 5 needed two selectors for the same reason.
+.table-query-editor .cm-editor {
   height: auto !important;
 }
 .custom-query-editor {
   border: @global-border;
   border-radius: @border-rad-base;
-  .CodeMirror {
+  .cm-editor {
     border-radius: @border-rad-base;
     height: 200px;
   }
 }
 .query-editor-h-200 {
-  .CodeMirror {
+  .cm-editor {
     height: 200px;
   }
 }
 
 .query-editor-min-h-60 {
-  .CodeMirror {
+  .cm-editor {
     min-height: 60px;
   }
 }
-.full-screen-editor-height > .CodeMirror,
-.full-screen-editor-height > .react-codemirror2 > .CodeMirror {
+.full-screen-editor-height .cm-editor {
   height: calc(100vh - 250px) !important;
 }
 
-.CodeMirror-wrap pre.CodeMirror-line {
+// Was scoped to wrapped editors (.CodeMirror-wrap) in v5; CodeMirror 6 has no
+// equivalent marker class, and the padding is harmless when not wrapping.
+.cm-editor .cm-line {
   padding-right: var(--om-space-100);
 }
 
 .custom-code-mirror-theme {
-  .CodeMirror {
+  .cm-editor {
     background: var(--om-legacy-color-f4f7f9);
   }
-  .CodeMirror-gutters {
+  .cm-gutters {
     background-color: var(--tw-color-bg-primary);
   }
-  .CodeMirror-linenumber {
+  .cm-lineNumbers .cm-gutterElement {
     color: @text-color;
   }
 }
 
 .code-editor-new-style {
   border-radius: @border-rad-sm;
-  .CodeMirror-gutters {
+  .cm-gutters {
     display: none;
   }
 

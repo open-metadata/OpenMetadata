@@ -12,7 +12,6 @@
       "lodash-es",
       "luxon",
       "js-yaml",
-      "codemirror",
       "dagre",
       "diff",
       "katex",

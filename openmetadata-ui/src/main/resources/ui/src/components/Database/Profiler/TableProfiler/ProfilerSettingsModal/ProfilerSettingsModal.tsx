@@ -29,7 +29,6 @@ import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
   lazy,
