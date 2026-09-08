@@ -339,6 +339,18 @@ const TestCaseResultTab = ({
           isSidePanelVisible
         )}`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
+            AlertComponent && (
+              <div className="tw:w-full">
+                <AlertComponent />
+              </div>
+            )}
+          {testCaseData && (
+            <div className="test-case-result-tab-graph tw:w-full">
+              <TestSummary data={testCaseData} />
+            </div>
+          )}
+
           <div className="tw:w-full">
             <Description
               wrapInCard
@@ -389,18 +401,6 @@ const TestCaseResultTab = ({
               onEditParameter={() => setIsParameterEdit(true)}
             />
           ) : null}
-
-          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
-            AlertComponent && (
-              <div className="tw:w-full">
-                <AlertComponent />
-              </div>
-            )}
-          {testCaseData && (
-            <div className="test-case-result-tab-graph tw:w-full">
-              <TestSummary data={testCaseData} />
-            </div>
-          )}
 
           {hasAdditionalComponents(additionalComponents) &&
             additionalComponents.map(({ Component, id }) => (

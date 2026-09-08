@@ -669,4 +669,20 @@ describe('TestCaseResultTab', () => {
       expect(selectedTags[0].tagFQN).toBe('PII.Sensitive');
     });
   });
+
+  // TCD-0 — the page shell. The mock leads the main column with the result
+  // history region; Description sits below it, not above.
+  describe('main column order', () => {
+    it('renders the result history chart above the description', async () => {
+      render(<TestCaseResultTab />);
+
+      const chart = await screen.findByText('TestSummary');
+      const description = await screen.findByText('Description');
+
+      expect(
+        chart.compareDocumentPosition(description) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+  });
 });
