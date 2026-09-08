@@ -33,6 +33,7 @@ import { getAllPersonas } from '../../../rest/PersonaAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getScopedRuleCount } from '../../../utils/PersonaAIContextUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const PERSONA_PAGE_SIZE = 50;
@@ -84,7 +85,7 @@ const ContextCenterAIContextPage = () => {
 
     return (
       <Card
-        className="tw:cursor-pointer tw:px-5 tw:py-4.5 tw:shadow-xs tw:transition tw:hover:bg-primary_hover"
+        className="tw:cursor-pointer tw:px-5 tw:py-4.5 tw:shadow-xs tw:transition tw:hover:bg-primary_hover tw:mb-3"
         data-testid={`ai-context-persona-${persona.name}`}
         key={persona.id}
         onClick={() =>
@@ -102,8 +103,8 @@ const ContextCenterAIContextPage = () => {
               weight="semibold">
               {getEntityName(persona)}
             </Typography>
-            <Typography className="tw:truncate tw:text-tertiary" size="text-sm">
-              {persona.description || t('label.no-description')}
+            <Typography ellipsis className="tw:text-tertiary" size="text-sm">
+              {stripMarkdown(persona.description || '') || t('label.no-description')}
             </Typography>
           </Box>
           <Box align="center" className="tw:shrink-0" gap={2}>
@@ -136,7 +137,7 @@ const ContextCenterAIContextPage = () => {
           title={t('label.ai-context')}
         />
       </div>
-      <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:gap-3 tw:overflow-y-auto tw:px-5 tw:pb-5">
+      <div className="context-center-content-section tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:px-5 tw:pb-5">
         {isLoading && <Loader />}
         {!isLoading && personas.length === 0 && (
           <EmptyPlaceholder
