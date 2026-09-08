@@ -38,7 +38,9 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="knowledge-graph-action-buttons">
+    <div
+      className="knowledge-graph-action-buttons"
+      data-testid="graph-view-controls">
       <Tooltip title={t('label.zoom-in')}>
         <TooltipTrigger
           aria-label={t('label.zoom-in')}

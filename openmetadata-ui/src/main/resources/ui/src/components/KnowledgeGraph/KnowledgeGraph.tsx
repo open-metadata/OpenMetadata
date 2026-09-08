@@ -218,9 +218,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         pixelRatio: 2,
         filter: (node) =>
           !(node instanceof HTMLElement) ||
-          !['graph-inspector', 'knowledge-graph-edges'].includes(
-            node.dataset.testid ?? ''
-          ),
+          ![
+            'graph-inspector',
+            'knowledge-graph-edges',
+            'graph-view-controls',
+          ].includes(node.dataset.testid ?? ''),
       });
       const link = document.createElement('a');
       link.href = url;

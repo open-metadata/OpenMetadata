@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  EdgeData,
-  ExtensionCategory,
-  Graph,
-  IElementEvent,
-  NodeData,
-  register,
-} from '@antv/g6';
+import type { EdgeData, IElementEvent, NodeData } from '@antv/g6';
+import { ExtensionCategory, Graph, register } from '@antv/g6';
 import { ReactNode as AntVReactNode } from '@antv/g6-extension-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import CustomNode from '../../components/KnowledgeGraph/GraphElements/CustomNode';

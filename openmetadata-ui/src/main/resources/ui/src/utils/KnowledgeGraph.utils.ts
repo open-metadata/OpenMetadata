@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import {
+import type {
   EdgeData as G6EdgeData,
   Graph,
   GraphData as G6GraphData,
@@ -20,7 +20,7 @@ import {
   NodeData,
   NodePortStyleProps,
 } from '@antv/g6';
-import { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { toString } from 'lodash';
 import {
   DAGRE_PORTS,
@@ -1183,7 +1183,6 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
    * is readable even in a crowded graph.
    */
   const applyPathHighlight = (nodeId: string): void => {
-    ctx.pendingHighlightRef.current = nodeId;
     const { nodeIds: pathNodes, edgeIds: pathEdges } = findHighlightPath(
       ctx.focusNodeId,
       nodeId,
@@ -1207,15 +1206,10 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
 
     applyStates(nextEdgeStates, nextNodeStates);
 
-    // Guard against stale async draws: if the user moved to a different node before this draw runs, skip it.
-    if (ctx.pendingHighlightRef.current !== nodeId) {
-      return;
-    }
     void graph.draw();
   };
 
   const clearAllHighlights = (): void => {
-    ctx.pendingHighlightRef.current = null;
     const nextEdgeStates = new Map<string, ElementFocusState>();
     allEdgeIds.forEach((id) => nextEdgeStates.set(id, 'base'));
     const nextNodeStates = new Map<string, ElementFocusState>();
@@ -1242,12 +1236,15 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
       return;
     }
     const node = graphDataNodes.find((n) => n.id === nodeId);
-    if (node?.type && node?.fullyQualifiedName) {
-      window.open(
-        getEntityLinkFromType(node.fullyQualifiedName, node.type as EntityType),
-        '_blank',
-        'noopener,noreferrer'
-      );
+    if (!node?.type || !node.fullyQualifiedName) {
+      return;
+    }
+    const entityLink = getEntityLinkFromType(
+      node.fullyQualifiedName,
+      node.type as EntityType
+    );
+    if (entityLink) {
+      window.open(entityLink, '_blank', 'noopener,noreferrer');
     }
   });
 

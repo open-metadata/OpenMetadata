@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NodeData } from '@antv/g6';
+import type { NodeData } from '@antv/g6';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';

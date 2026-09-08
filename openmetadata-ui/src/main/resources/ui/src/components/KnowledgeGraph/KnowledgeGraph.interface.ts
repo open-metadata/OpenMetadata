@@ -77,7 +77,6 @@ export type GraphInteractionCtx = {
   graphDataNodes: GraphNode[];
   /** Mirrors the toolbar toggle so restoring an edge redraws its label or not. */
   showEdgeLabels: boolean;
-  pendingHighlightRef: React.MutableRefObject<string | null>;
   selectedNodeIdRef: React.MutableRefObject<string | null>;
   setSelectedNode: (node: GraphNode | null) => void;
   setEdgeTooltip: (state: EdgeTooltipState | null) => void;
