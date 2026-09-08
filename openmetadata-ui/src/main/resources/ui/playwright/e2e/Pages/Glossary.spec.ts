@@ -773,10 +773,18 @@ test.describe('Glossary tests', () => {
     // and table columns are also count as assets
     const allAssets = [...assetsToBeAddedViaUI, table1, table1.children[0]];
     // A term on a table is inherited by every one of its columns, nested ones included, so each
-    // column is listed as an asset too. Only `table` is tagged at the table level here — `table1`
-    // has the term on a single column — so it contributes its full flattened column set.
+    // column is listed as an asset too. `table` is the only one tagged at the table level, so it is
+    // the only one contributing its whole column tree; `table1` carries the term on a single column,
+    // already counted above. Derived from `children` rather than the hand-curated
+    // `entityLinkColumnsName`, so the two cannot drift apart.
+    const countFlattenedColumns = (columns: TableClass['children']): number =>
+      columns.reduce(
+        (total, column) =>
+          total + 1 + countFlattenedColumns(column.children ?? []),
+        0
+      );
     const expectedAssetCount =
-      allAssets.length + table.entityLinkColumnsName.length;
+      allAssets.length + countFlattenedColumns(table.children);
 
     try {
       await test.step('Assign Glossary Term to table column', async () => {

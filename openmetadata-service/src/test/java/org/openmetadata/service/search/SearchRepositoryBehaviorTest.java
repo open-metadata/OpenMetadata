@@ -1651,6 +1651,40 @@ class SearchRepositoryBehaviorTest {
     assertEquals("Tier.Tier1", addedTags.get(1).getTagFQN());
   }
 
+  /**
+   * The bulk asset APIs have no real ChangeDescription, so SearchRepository.propagateTagChangeToChildren
+   * synthesises one carrying TagLabel objects rather than the JSON string a PATCH records. This pins
+   * that shape down: the script and params must come out the same either way.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void inheritedFieldChangesAcceptTagLabelObjectsNotJustJsonStrings() throws Exception {
+    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("g.term")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.PROPAGATED);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(),
+            List.of(new FieldChange().withName("tags").withOldValue(List.of(tag))));
+
+    Pair<String, Map<String, Object>> updates =
+        invokeGetInheritedFieldChanges(changeDescription, tableEntity);
+
+    assertTrue(
+        updates.getLeft().contains("params.tagDeleted"),
+        () -> "delete script not generated: " + updates.getLeft());
+    List<TagLabel> deletedTags = (List<TagLabel>) updates.getRight().get("tagDeleted");
+    assertNotNull(deletedTags, "tagDeleted params missing");
+    assertEquals(1, deletedTags.size(), "the label list must survive conversion");
+    assertEquals("g.term", deletedTags.getFirst().getTagFQN());
+  }
+
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesDeleteTagsMarksThemAsPropagated() throws Exception {

@@ -1881,6 +1881,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the descriptor-driven child fan-out never
+        // fires from here. Drive it explicitly or entity children (test cases, test suites) never
+        // pick the term up.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
       }
     }
 
@@ -2161,10 +2165,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(
+            asset, List.of(), List.of(removedLabel(term)));
       }
     }
 
     return result.withSuccessRequest(success);
+  }
+
+  /**
+   * The label shape the child-doc cascade matches on. Only the FQN is compared, but the labelType
+   * has to read as system-applied so the delete script leaves a child's own manual label alone.
+   */
+  private static TagLabel removedLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withSource(TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.PROPAGATED);
   }
 
   /**

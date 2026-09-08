@@ -362,6 +362,24 @@ public class TagLabelUtil {
     return result;
   }
 
+  /**
+   * Batch fetch derived tags once for a whole entity's tag set, degrading to no derived tags on
+   * failure exactly as {@link #addDerivedTagsGracefully} does. Callers hydrating many fields should
+   * prefetch through this and pass the result to {@link #addDerivedTagsWithPreFetched}, rather than
+   * calling {@code addDerivedTagsGracefully} per field — that issues one query per field.
+   */
+  public static Map<String, List<TagLabel>> batchFetchDerivedTagsGracefully(
+      List<TagLabel> tagLabels) {
+    try {
+      return batchFetchDerivedTags(tagLabels);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags. Proceeding without derived. Error: {}",
+          ex.getMessage());
+      return Collections.emptyMap();
+    }
+  }
+
   /** Add derived tags using a pre-fetched map to avoid per-tag DB lookups. */
   public static List<TagLabel> addDerivedTagsWithPreFetched(
       List<TagLabel> tagLabels, Map<String, List<TagLabel>> derivedTagsMap) {

@@ -116,9 +116,14 @@ const joinOwners = (owners?: Array<Pick<EntityReference, 'type' | 'name'>>) =>
 
 type MetricTag = NonNullable<Metric['tags']>[number];
 
+// A projected or recomputed label is not the entity's own: exporting it and re-importing would
+// store it as a manual tag, pinning a label that should vanish when its source is removed.
+const isSystemGeneratedTag = (tag: MetricTag) =>
+  tag.labelType === LabelType.Derived ||
+  tag.labelType === LabelType.Propagated;
+
 const isManualMetricClassificationTag = (tag: MetricTag) =>
-  tag.source === TagSource.Classification &&
-  tag.labelType !== LabelType.Derived;
+  tag.source === TagSource.Classification && !isSystemGeneratedTag(tag);
 
 const isManualMetricTierTag = (tag: MetricTag) =>
   isManualMetricClassificationTag(tag) &&
@@ -136,7 +141,7 @@ const joinMetricTags = (metric: Metric, source: TagSource) =>
             return isManualMetricEditableTag(tag);
           }
 
-          return tag.source === TagSource.Glossary;
+          return tag.source === TagSource.Glossary && !isSystemGeneratedTag(tag);
         })
         .map((tag) => tag.tagFQN)
         .join(CSV_FIELD_SEPARATOR)

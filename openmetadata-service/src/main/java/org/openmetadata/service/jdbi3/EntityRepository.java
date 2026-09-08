@@ -6090,7 +6090,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out DERIVED tags as they are system-generated
+    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
+    // entity's own labels, so they must never reach tag_usage.
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
             .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
@@ -6124,7 +6125,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out DERIVED tags as they are system-generated
+    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
+    // entity's own labels, so they must never reach tag_usage.
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
             .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))

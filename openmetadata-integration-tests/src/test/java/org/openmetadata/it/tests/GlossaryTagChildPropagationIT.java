@@ -34,20 +34,27 @@ import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Regression for issue #31756 — a glossary term applied to a Table must reach its columns on both
@@ -88,7 +95,8 @@ public class GlossaryTagChildPropagationIT {
     try {
       Fixture fixture = createSchema(client, ns);
       database = fixture.database();
-      Table table = createTableWithNestedColumn(client, fixture.schema(), ns.prefix("prop_table"));
+      Table table =
+          createTableWithNestedColumn(client, fixture.schema(), ns.shortPrefix("prop_tbl"));
       GlossaryTerm term = createTerm(client, ns, "prop");
 
       applyTermToTable(client, table, term);
@@ -126,7 +134,7 @@ public class GlossaryTagChildPropagationIT {
       Fixture fixture = createSchema(client, ns);
       database = fixture.database();
       Table table =
-          createTableWithNestedColumn(client, fixture.schema(), ns.prefix("manual_table"));
+          createTableWithNestedColumn(client, fixture.schema(), ns.shortPrefix("manual_tbl"));
       GlossaryTerm term = createTerm(client, ns, "manual");
 
       // The column carries the term itself, before the table ever does.
@@ -172,7 +180,7 @@ public class GlossaryTagChildPropagationIT {
       Fixture fixture = createSchema(client, ns);
       database = fixture.database();
       Table table =
-          createTableWithNestedColumn(client, fixture.schema(), ns.prefix("search_table"));
+          createTableWithNestedColumn(client, fixture.schema(), ns.shortPrefix("search_tbl"));
       GlossaryTerm term = createTerm(client, ns, "search");
       String columnFqn = table.getFullyQualifiedName() + "." + TOP_LEVEL_COLUMN;
 
@@ -181,6 +189,38 @@ public class GlossaryTagChildPropagationIT {
 
       clearTableTags(client, table);
       awaitColumnDocHasTerm(client, columnFqn, term, false);
+    } finally {
+      cleanUp(client, database);
+    }
+  }
+
+  /**
+   * Ram's first question on #31756: tag a table, then delete the asset from the glossary term's
+   * Assets tab — does the term still show on the table's test cases?
+   *
+   * <p>Test cases are entities, not fields, so nothing rebuilds their docs from the parent the way
+   * column docs are rebuilt. The bulk API also re-indexes through {@code updateEntity(ref)}, which
+   * clears the change description, so the descriptor-driven cascade never fired and the term stayed
+   * on the test case doc. {@code SearchRepository.propagateTagChangeToChildren} drives it explicitly.
+   */
+  @Test
+  void bulkRemoveFromGlossary_clearsPropagatedLabelFromTestCaseSearchDoc(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Database database = null;
+    try {
+      Fixture fixture = createSchema(client, ns);
+      database = fixture.database();
+      Table table =
+          createTableWithNestedColumn(client, fixture.schema(), ns.shortPrefix("bulk_tbl"));
+      GlossaryTerm term = createTerm(client, ns, "bulk");
+      TestCase testCase = createTestCase(client, ns, table);
+
+      applyTermToTable(client, table, term);
+      awaitTestCaseDocHasTerm(client, testCase.getFullyQualifiedName(), term, true);
+
+      bulkRemoveAssetFromTerm(client, term, table);
+      awaitTestCaseDocHasTerm(client, testCase.getFullyQualifiedName(), term, false);
     } finally {
       cleanUp(client, database);
     }
@@ -199,14 +239,14 @@ public class GlossaryTagChildPropagationIT {
             .databases()
             .create(
                 new CreateDatabase()
-                    .withName(ns.prefix("glossary_prop_db"))
+                    .withName(ns.shortPrefix("prop_db"))
                     .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
     DatabaseSchema schema =
         client
             .databaseSchemas()
             .create(
                 new CreateDatabaseSchema()
-                    .withName(ns.prefix("glossary_prop_schema"))
+                    .withName(ns.shortPrefix("prop_sch"))
                     .withDatabase(database.getFullyQualifiedName()));
     return new Fixture(database, schema);
   }
@@ -228,15 +268,22 @@ public class GlossaryTagChildPropagationIT {
                 .withColumns(List.of(topLevel)));
   }
 
+  /**
+   * The glossary is registered with {@code trackRoot} so TestNamespaceExtension tears it down;
+   * without it a glossary and term leak per test and accumulate on a shared cluster. Deleting the
+   * glossary removes its terms, so the term needs no separate registration.
+   */
   private static GlossaryTerm createTerm(
       OpenMetadataClient client, TestNamespace ns, String suffix) {
     Glossary glossary =
-        client
-            .glossaries()
-            .create(
-                new CreateGlossary()
-                    .withName(ns.prefix("prop_glossary_" + suffix))
-                    .withDescription("Glossary for child tag propagation"));
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            client
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.prefix("prop_glossary_" + suffix))
+                        .withDescription("Glossary for child tag propagation")));
     return client
         .glossaryTerms()
         .create(
@@ -374,6 +421,69 @@ public class GlossaryTagChildPropagationIT {
       }
     }
     return result;
+  }
+
+  private static TestCase createTestCase(OpenMetadataClient client, TestNamespace ns, Table table) {
+    return client
+        .testCases()
+        .create(
+            new CreateTestCase()
+                .withName(ns.shortPrefix("prop_tc"))
+                .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+                .withTestDefinition("tableRowCountToEqual")
+                .withParameterValues(
+                    List.of(new TestCaseParameterValue().withName("value").withValue("100"))));
+  }
+
+  /** Removes the table through the glossary Assets tab route, not a table PATCH. */
+  private static void bulkRemoveAssetFromTerm(
+      OpenMetadataClient client, GlossaryTerm term, Table table) throws Exception {
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withAssets(List.of(table.getEntityReference()))
+            .withDryRun(false);
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/" + term.getId() + "/assets/remove",
+            request,
+            BulkOperationResult.class);
+  }
+
+  private static void awaitTestCaseDocHasTerm(
+      OpenMetadataClient client, String testCaseFqn, GlossaryTerm term, boolean expected) {
+    await("test_case_search_index term presence=" + expected + " for " + testCaseFqn)
+        .atMost(AWAIT_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String rawJson =
+                  client
+                      .search()
+                      .query("fullyQualifiedName.keyword:\"" + testCaseFqn + "\"")
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = MAPPER.readTree(rawJson).path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(),
+                  () -> "test case " + testCaseFqn + " not yet indexed; raw=" + rawJson);
+              JsonNode tags = hits.get(0).path("_source").path("tags");
+              boolean present = false;
+              for (JsonNode tag : tags) {
+                if (term.getFullyQualifiedName().equals(tag.path("tagFQN").asText())) {
+                  present = true;
+                  break;
+                }
+              }
+              if (expected) {
+                assertTrue(present, () -> "test case doc missing the term; tags=" + tags);
+              } else {
+                assertFalse(present, () -> "test case doc still carries the term; tags=" + tags);
+              }
+            });
   }
 
   private static void cleanUp(OpenMetadataClient client, Database database) {

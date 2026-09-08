@@ -2038,7 +2038,7 @@ public class SearchRepository {
     EntityInterface entity =
         entityRepository.get(
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
-    entity.setChangeDescription(null);
+    clearChangeDescriptions(entity);
     updateEntityIndex(entity);
   }
 
@@ -2068,7 +2068,7 @@ public class SearchRepository {
     EntityInterface entity =
         entityRepository.get(
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
-    entity.setChangeDescription(null);
+    clearChangeDescriptions(entity);
     updateEntityIndex(entity);
     propagateInheritedDomainsForType(
         entityReference.getType(),
@@ -2116,7 +2116,7 @@ public class SearchRepository {
                 ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
         final List<? extends EntityInterface> entities =
             entityRepository.get(null, chunk, fields, Include.NON_DELETED);
-        entities.forEach(entity -> entity.setChangeDescription(null));
+        entities.forEach(SearchRepository::clearChangeDescriptions);
         if (!entities.isEmpty()) {
           updateEntitiesIndex(entities);
         }
@@ -2693,6 +2693,56 @@ public class SearchRepository {
         }
       }
     }
+  }
+
+  /**
+   * Cascades a tag add/remove from the bulk asset APIs onto the asset's child search docs.
+   *
+   * <p>Those APIs write {@code tag_usage} directly and then re-index the asset through {@link
+   * #updateEntity(EntityReference)}, which deliberately clears the change description — so {@code
+   * requiresPropagation} closes the gate and the descriptor-driven fan-out never runs. Children that
+   * are entities rather than fields (test cases, test suites) are only reachable this way: unlike
+   * columns, nothing rebuilds their docs from the parent, so a term removed through the glossary
+   * Assets tab used to linger on them and keep them listed under the term.
+   *
+   * <p>Failures are queued for retry rather than thrown: the caller has already committed the
+   * {@code tag_usage} change, so the search index is what needs to catch up.
+   */
+  public void propagateTagChangeToChildren(
+      EntityInterface entity, List<TagLabel> addedTags, List<TagLabel> deletedTags) {
+    if (entity == null || entity.getId() == null || nullOrEmpty(entity.getEntityReference())) {
+      return;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (!checkIfIndexingIsSupported(entityType) || nullOrEmpty(entityIndexMap.get(entityType))) {
+      return;
+    }
+    try {
+      propagateInheritedFieldsToChildren(
+          entityType,
+          entity.getId().toString(),
+          tagChangeDescription(addedTags, deletedTags),
+          entityIndexMap.get(entityType),
+          entity);
+    } catch (IOException e) {
+      SearchIndexRetryQueue.enqueue(entity, "propagateTagChangeToChildren", e);
+    }
+  }
+
+  private static ChangeDescription tagChangeDescription(
+      List<TagLabel> addedTags, List<TagLabel> deletedTags) {
+    ChangeDescription changeDescription = new ChangeDescription();
+    if (!nullOrEmpty(addedTags)) {
+      changeDescription
+          .getFieldsAdded()
+          .add(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue(addedTags));
+    }
+    if (!nullOrEmpty(deletedTags)) {
+      changeDescription
+          .getFieldsDeleted()
+          .add(new FieldChange().withName(Entity.FIELD_TAGS).withOldValue(deletedTags));
+    }
+    return changeDescription;
   }
 
   private List<String> filterChildAliasesByCapability(
@@ -3927,6 +3977,19 @@ public class SearchRepository {
     Map<String, Object> parameters = new HashMap<>();
     String script = getScriptWithParams(entity, parameters, changeDescription);
     return new ScriptedPartialUpdate(script, parameters);
+  }
+
+  /**
+   * Suppresses child propagation for a doc rebuilt from the database. Clearing only {@code
+   * changeDescription} is not enough: {@link #getEffectiveChangeDescription} prefers {@code
+   * incrementalChangeDescription}, and a freshly re-read entity still carries whichever one its last
+   * real update wrote. That stale delta gets replayed as a fresh cascade — so a caller re-indexing an
+   * asset right after removing a tag would replay the earlier *add* and put the tag back on every
+   * child doc, racing its own removal because both fan out as async update-by-query.
+   */
+  private static void clearChangeDescriptions(EntityInterface entity) {
+    entity.setChangeDescription(null);
+    entity.setIncrementalChangeDescription(null);
   }
 
   private ChangeDescription getEffectiveChangeDescription(EntityInterface entity) {

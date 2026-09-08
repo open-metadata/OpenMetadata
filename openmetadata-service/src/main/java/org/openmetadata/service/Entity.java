@@ -15,7 +15,8 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 import static org.openmetadata.service.util.EntityUtil.mergeTags;
 
@@ -994,17 +995,21 @@ public final class Entity {
     // Get Flattened Fields
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
-    // Fetch All tags belonging to Prefix. "%" rather than ".%" so the parent's own row arrives in
-    // the same query — its glossary terms are projected onto every field below. The DAO returns
-    // null
-    // for an entity type that does not support tags.
+    // Fetch all tags belonging to the prefix. "%" rather than ".%" so the parent's own row arrives
+    // in the same query — its glossary terms are projected onto every field below. The DAO returns
+    // null for an entity type that does not support tags.
     Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(fqnPrefix, "%");
     Map<String, List<TagLabel>> allTags = prefixTags == null ? Map.of() : prefixTags;
     List<TagLabel> propagatedTags =
         propagatedParentTags(allTags.get(FullyQualifiedName.buildHash(fqnPrefix)));
+    // Prefetched once for the whole entity: every field now carries at least the projected label,
+    // so resolving derived tags per field would issue one query per column.
+    Map<String, List<TagLabel>> derivedTags =
+        batchFetchDerivedTagsGracefully(
+            allTags.values().stream().flatMap(List::stream).collect(Collectors.toList()));
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
-        setFieldTags(c, allTags, propagatedTags);
+        setFieldTags(c, allTags, propagatedTags, derivedTags);
       } else {
         c.setTags(c.getTags());
       }
@@ -1032,14 +1037,20 @@ public final class Entity {
   }
 
   private static <T extends FieldInterface> void setFieldTags(
-      T field, Map<String, List<TagLabel>> allTags, List<TagLabel> propagatedTags) {
+      T field,
+      Map<String, List<TagLabel>> allTags,
+      List<TagLabel> propagatedTags,
+      Map<String, List<TagLabel>> derivedTags) {
     List<TagLabel> fieldTags =
         allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName()));
     List<TagLabel> merged = new ArrayList<>(listOrEmpty(fieldTags));
     // A label the field carries itself wins over the projected one (tagLabelMatch ignores
     // labelType), so an explicitly applied term stays MANUAL rather than turning into PROPAGATED.
     mergeTags(merged, propagatedTags);
-    field.setTags(merged.isEmpty() ? new ArrayList<>() : addDerivedTagsGracefully(merged));
+    field.setTags(
+        merged.isEmpty()
+            ? new ArrayList<>()
+            : new ArrayList<>(addDerivedTagsWithPreFetched(merged, derivedTags)));
   }
 
   public static SearchIndex buildSearchIndex(String entityType, Object entity) {
