@@ -24,13 +24,18 @@ upstream lineage node but rejects it as a downstream target (``container -> apiC
 HTTP 500), so an API *destination* is anchored on the pipeline instead of emitting a rejected edge.
 """
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -54,6 +59,7 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteStream,
     AirbyteWorkspace,
 )
+from metadata.ingestion.source.pipeline.airbyte.resolvers import get_resolver
 from metadata.ingestion.source.pipeline.airbyte.utils import (
     get_destination_container_path,
     get_source_container_path,
@@ -462,3 +468,162 @@ class TestPipelineToContainerLineage:
         )
 
         assert edges == []
+
+
+def _stub(entity_id, fqn=None):
+    """Minimal entity double: resolvers read only ``.id`` and ``.fullyQualifiedName``."""
+    return SimpleNamespace(id=entity_id, fullyQualifiedName=fqn)
+
+
+def _route_get_by_name(mapping):
+    """get_by_name side effect: pipeline lookup returns the pipeline, everything else by class."""
+
+    def _fn(entity=None, fqn=None, **_):
+        return MOCK_PIPELINE if entity is Pipeline else mapping.get(entity)
+
+    return _fn
+
+
+TOPIC_ID = "11111111-1111-4111-8111-111111111111"
+SEARCH_ID = "22222222-2222-4222-8222-222222222222"
+TABLE_ID = "33333333-3333-4333-8333-333333333333"
+ENDPOINT_ID = "44444444-4444-4444-8444-444444444444"
+
+
+class TestResolverRegistry:
+    """The connector-type registry dispatches every kind, unknowns fall back to API."""
+
+    def test_dispatch_maps_types_to_entity_kinds(self):
+        assert get_resolver("s3").om_type == "container"
+        assert get_resolver("S3").om_type == "container"
+        assert get_resolver("postgres").om_type == "table"
+        assert get_resolver("redshift").om_type == "table"
+        assert get_resolver("kafka").om_type == "topic"
+        assert get_resolver("elasticsearch").om_type == "searchIndex"
+        # Unknown connector (a SaaS API, /dev/null, vector DB) -> API resolver, which only
+        # emits when apiServiceNames is set; otherwise the caller anchors on the pipeline.
+        assert get_resolver("hubspot").om_type == "apiCollection"
+        assert get_resolver(None).om_type == "apiCollection"
+
+
+class TestNewEntityKinds:
+    """Registry ships topic / searchIndex / warehouse resolution, each via the shared loop."""
+
+    def _lineage(self, source, connection_source, connection_dest):
+        source.client.get_source.return_value = connection_source
+        source.client.get_destination.return_value = connection_dest
+        return [
+            either.right
+            for either in source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        ]
+
+    def test_kafka_source_to_s3_yields_topic_to_container(self, airbyte_source):
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            messagingServiceNames=["kafka_svc"], storageServiceNames=["om28591-minio-storage"]
+        )
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({Topic: _stub(TOPIC_ID)})
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        with patch("metadata.ingestion.source.pipeline.airbyte.resolvers.fqn.build", return_value="kafka_svc.pokemon"):
+            edges = self._lineage(
+                airbyte_source,
+                AirbyteSourceResponse(sourceType="kafka", configuration={}),
+                PUBLIC_API_S3_DESTINATION,
+            )
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "topic"
+        assert edges[0].edge.toEntity.type == "container"
+
+    def test_s3_source_to_elasticsearch_yields_container_to_search_index(self, airbyte_source):
+        airbyte_source.source_config.lineageInformation = LineageInformation(searchServiceNames=["es_svc"])
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({SearchIndex: _stub(SEARCH_ID)})
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        with patch("metadata.ingestion.source.pipeline.airbyte.resolvers.fqn.build", return_value="es_svc.pokemon"):
+            edges = self._lineage(
+                airbyte_source,
+                AirbyteSourceResponse(sourceType="s3", configuration={"bucket": "om28591-airbyte-dest"}),
+                AirbyteDestinationResponse(destinationType="elasticsearch", configuration={}),
+            )
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "container"
+        assert edges[0].edge.toEntity.type == "searchIndex"
+
+    def test_warehouse_source_to_s3_yields_table_to_container(self, airbyte_source):
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["warehouse"], storageServiceNames=["om28591-minio-storage"]
+        )
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({Table: _stub(TABLE_ID)})
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        airbyte_source._get_table_fqn = MagicMock(return_value="warehouse.db.public.pokemon")
+        edges = self._lineage(
+            airbyte_source,
+            AirbyteSourceResponse(sourceType="redshift", configuration={"database": "db"}),
+            PUBLIC_API_S3_DESTINATION,
+        )
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "table"
+        assert edges[0].edge.toEntity.type == "container"
+
+    def test_topic_without_service_names_anchors_on_pipeline(self, airbyte_source):
+        """No messagingServiceNames -> source unresolved -> pipeline-anchored, not dropped."""
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        edges = self._lineage(
+            airbyte_source,
+            AirbyteSourceResponse(sourceType="kafka", configuration={}),
+            PUBLIC_API_S3_DESTINATION,
+        )
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "pipeline"
+        assert edges[0].edge.toEntity.type == "container"
+
+
+class TestApiEndpointSafeFanout:
+    """
+    API destinations: apiCollection cannot be a downstream target, so resolve to the
+    collection's single apiEndpoint — and only when exactly one endpoint exists.
+    """
+
+    def _lineage(self, airbyte_source, endpoints):
+        airbyte_source.source_config.lineageInformation = LineageInformation(apiServiceNames=["om28591-pokeapi"])
+        airbyte_source.client.get_source.return_value = AirbyteSourceResponse(
+            sourceType="s3", configuration={"bucket": "om28591-airbyte-dest"}
+        )
+        airbyte_source.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="hubspot", configuration={}
+        )
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+
+        def _es(entity_type=None, fqn_search_string=None, **_):
+            if entity_type is APICollection:
+                return [MOCK_API_COLLECTION]
+            if entity_type is APIEndpoint:
+                return endpoints
+            return []
+
+        airbyte_source.metadata.es_search_from_fqn.side_effect = _es
+        return [
+            either.right
+            for either in airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        ]
+
+    def test_single_endpoint_emits_container_to_api_endpoint(self, airbyte_source):
+        endpoint = _stub(ENDPOINT_ID, fqn="om28591-pokeapi.pokemon./pokemon/{name}/get")
+        edges = self._lineage(airbyte_source, [endpoint])
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "container"
+        assert edges[0].edge.toEntity.type == "apiEndpoint"
+        assert str(edges[0].edge.toEntity.id.root) == ENDPOINT_ID
+
+    def test_multiple_endpoints_skips_and_anchors_on_pipeline(self, airbyte_source):
+        endpoints = [
+            _stub(ENDPOINT_ID, "om28591-pokeapi.pokemon./pokemon/{name}/get"),
+            _stub("55555555-5555-4555-8555-555555555555", "om28591-pokeapi.pokemon./pokemon/get"),
+        ]
+        edges = self._lineage(airbyte_source, endpoints)
+        assert len(edges) == 1
+        # Ambiguous (2 endpoints) -> destination unresolved -> anchored on pipeline, never guessed.
+        assert edges[0].edge.fromEntity.type == "container"
+        assert edges[0].edge.toEntity.type == "pipeline"

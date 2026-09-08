@@ -21,12 +21,16 @@ class AirbyteSource(Enum):
     POSTGRES = "Postgres"
     MSSQL = "Microsoft SQL Server (MSSQL)"
     MONGODB = "MongoDb"
+    REDSHIFT = "Redshift"
+    CLICKHOUSE = "ClickHouse"
 
 
 class AirbyteDestination(Enum):
     MYSQL = "MySQL"
     POSTGRES = "Postgres"
     MSSQL = "MS SQL Server"
+    REDSHIFT = "Redshift"
+    CLICKHOUSE = "ClickHouse"
 
 
 # The internal API reports connector types as display names (e.g. "Postgres"),
@@ -42,6 +46,12 @@ SOURCE_TYPE_LOOKUP = {
     AirbyteSource.MONGODB.value: AirbyteSource.MONGODB,
     "mongodb": AirbyteSource.MONGODB,
     "mongodb-v2": AirbyteSource.MONGODB,
+    # Warehouses that expose a top-level `database` (schema comes from the stream
+    # namespace), so they resolve through the default table-detail path.
+    AirbyteSource.REDSHIFT.value: AirbyteSource.REDSHIFT,
+    "redshift": AirbyteSource.REDSHIFT,
+    AirbyteSource.CLICKHOUSE.value: AirbyteSource.CLICKHOUSE,
+    "clickhouse": AirbyteSource.CLICKHOUSE,
 }
 
 DESTINATION_TYPE_LOOKUP = {
@@ -51,6 +61,12 @@ DESTINATION_TYPE_LOOKUP = {
     "postgres": AirbyteDestination.POSTGRES,
     AirbyteDestination.MSSQL.value: AirbyteDestination.MSSQL,
     "mssql": AirbyteDestination.MSSQL,
+    # Warehouses expose top-level `database` + `schema`, mapping straight to the
+    # OM table FQN through the default destination table-detail path.
+    AirbyteDestination.REDSHIFT.value: AirbyteDestination.REDSHIFT,
+    "redshift": AirbyteDestination.REDSHIFT,
+    AirbyteDestination.CLICKHOUSE.value: AirbyteDestination.CLICKHOUSE,
+    "clickhouse": AirbyteDestination.CLICKHOUSE,
 }
 
 # Object-store connectors map to a Container, not a Table, so they are resolved by path
@@ -64,3 +80,10 @@ S3_CONNECTOR_TYPES = frozenset({"S3", "s3"})
 S3_SOURCE_BUCKET_KEY = "bucket"
 S3_DESTINATION_BUCKET_KEY = "s3_bucket_name"
 S3_DESTINATION_PATH_KEY = "s3_bucket_path"
+
+# Message-queue connectors resolve to a Topic and search connectors to a SearchIndex,
+# both keyed on the stream name. Each frozenset holds the internal-API display name and
+# the public-API slug. Kept small on purpose — add a type (e.g. "Google PubSub") once
+# there is a live connection to confirm its reported type string.
+MESSAGING_CONNECTOR_TYPES = frozenset({"Kafka", "kafka"})
+SEARCH_CONNECTOR_TYPES = frozenset({"Elasticsearch", "ElasticSearch", "elasticsearch"})
