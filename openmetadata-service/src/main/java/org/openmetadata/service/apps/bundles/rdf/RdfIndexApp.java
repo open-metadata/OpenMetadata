@@ -110,6 +110,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private volatile String buildDataset;
   private volatile ScheduledFuture<?> rebuildHeartbeat;
   private volatile RuntimeException rebuildLeaseFailure;
+  private long initialProjectionFailureVersion;
+  private boolean rebuildsEntireProjection;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
 
@@ -224,10 +226,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
+      initialProjectionFailureVersion = RdfProjectionHealth.failureVersion();
       jobData.setRdfBuildDataset(null);
       jobData.setRdfRebuildId(null);
       rebuildLeaseFailure = null;
       jobData.setEntities(resolveEntityTypes(jobData.getEntities()));
+      rebuildsEntireProjection =
+          Boolean.TRUE.equals(jobData.getRecreateIndex())
+              && jobData.getEntities().containsAll(getAll());
       if (jobData.getEntities().isEmpty()) {
         throw new IllegalStateException(
             "No repository-backed entity types configured for RDF indexing");
@@ -1144,14 +1150,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private static void recordRebuildTransition(
+  private void recordRebuildTransition(
       final EventPublisherJob.Status currentStatus, final EventPublisherJob.Status newStatus) {
     if (currentStatus != newStatus) {
       switch (newStatus) {
         case RUNNING -> OntologyMetrics.recordGraphRebuildStarted();
         case COMPLETED, SUCCESS -> {
           OntologyMetrics.recordGraphRebuildCompleted();
-          RdfProjectionHealth.markReady();
+          if (rebuildsEntireProjection) {
+            RdfProjectionHealth.markReady(initialProjectionFailureVersion);
+          }
         }
         case FAILED, ACTIVE_ERROR, STOPPED -> OntologyMetrics.recordGraphRebuildFailed();
         case STARTED, ACTIVE, STOP_IN_PROGRESS -> {}

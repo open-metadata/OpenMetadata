@@ -63,6 +63,33 @@ CREATE TABLE IF NOT EXISTS rdf_rebuild_journal (
 );
 CREATE INDEX IF NOT EXISTS idx_rdf_rebuild_journal_run ON rdf_rebuild_journal (rebuildId, id);
 
+-- Live writes survive executor saturation and server restarts. Separate producer and consumer
+-- fences preserve commit order without making request threads wait for the triplestore.
+CREATE TABLE IF NOT EXISTS rdf_live_write_guard (
+    id VARCHAR(32) NOT NULL PRIMARY KEY
+);
+INSERT INTO rdf_live_write_guard (id) VALUES ('enqueue'), ('drain') ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS rdf_live_write_queue (
+    id BIGSERIAL PRIMARY KEY,
+    payload TEXT NOT NULL,
+    createdAt BIGINT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    nextAttemptAt BIGINT NOT NULL DEFAULT 0,
+    lastError TEXT
+);
+
+-- A rebuild can acknowledge only failures known before it started. Queue failures are tracked
+-- by the outstanding work itself and recover automatically after successful replay.
+CREATE TABLE IF NOT EXISTS rdf_projection_health (
+    id VARCHAR(32) NOT NULL PRIMARY KEY,
+    failureVersion BIGINT NOT NULL DEFAULT 0,
+    repairedVersion BIGINT NOT NULL DEFAULT 0,
+    lastError TEXT,
+    updatedAt BIGINT NOT NULL DEFAULT 0
+);
+INSERT INTO rdf_projection_health (id) VALUES ('active') ON CONFLICT (id) DO NOTHING;
+
 -- Pipeline alert starting watermark - OpenMetadata 2.0.2
 
 -- Alerts must not fire for pipeline executions that finished before the alert existed (#31782).

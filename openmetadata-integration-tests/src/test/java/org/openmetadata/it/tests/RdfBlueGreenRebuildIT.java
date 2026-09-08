@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
@@ -50,12 +49,13 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
+import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore.JournalLimits;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
@@ -76,92 +76,23 @@ public class RdfBlueGreenRebuildIT {
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final Path ROOT = repositoryRoot();
+  private static final Path ROOT = RdfTestDatabase.repositoryRoot();
   private static GenericContainer<?> fuseki;
   private static String endpoint;
 
   enum Database {
-    POSTGRES("postgres:15", 5432, "postgres"),
-    MYSQL("mysql:8.0", 3306, "mysql");
-    final String image;
-    final int port;
-    final String migration;
-    GenericContainer<?> container;
+    POSTGRES,
+    MYSQL;
+    RdfTestDatabase database;
     Jdbi jdbi;
 
-    Database(String image, int port, String migration) {
-      this.image = image;
-      this.port = port;
-      this.migration = migration;
-    }
-
-    void start() throws Exception {
-      container =
-          new GenericContainer<>(image)
-              .withExposedPorts(port)
-              .withEnv("POSTGRES_PASSWORD", "rdf-test")
-              .withEnv("POSTGRES_DB", "rdf")
-              .withEnv("MYSQL_ROOT_PASSWORD", "rdf-test")
-              .withEnv("MYSQL_DATABASE", "rdf")
-              .withStartupTimeout(Duration.ofMinutes(3));
-      container.start();
-      final String driver = this == POSTGRES ? "postgresql" : "mysql";
-      final String suffix = this == MYSQL ? "?allowPublicKeyRetrieval=true&useSSL=false" : "";
-      final String url =
-          "jdbc:"
-              + driver
-              + "://"
-              + container.getHost()
-              + ":"
-              + container.getMappedPort(port)
-              + "/rdf"
-              + suffix;
-      jdbi = Jdbi.create(url, this == POSTGRES ? "postgres" : "root", "rdf-test");
-      org.awaitility.Awaitility.await()
-          .atMost(Duration.ofMinutes(2))
-          .ignoreExceptions()
-          .until(
-              () ->
-                  jdbi.withHandle(
-                          handle -> handle.createQuery("SELECT 1").mapTo(Integer.class).one())
-                      == 1);
-      initializeSchema();
-    }
-
-    private void initializeSchema() {
-      createTable("1.3.0", "change_event_consumers");
-      createTable("1.13.0", "rdf_index_job");
-      createTable("1.13.0", "rdf_index_partition");
-      createTable("2.1.0", "rdf_inference_rule");
-      for (int pass = 0; pass < 2; pass++) {
-        applyReleaseMigration();
-      }
+    void start() {
+      database = new RdfTestDatabase(RdfTestDatabase.Backend.valueOf(name()));
+      jdbi = database.jdbi();
     }
 
     void applyReleaseMigration() {
-      final List<String> statements = migrationStatements("2.0.2");
-      jdbi.useHandle(handle -> statements.forEach(handle::execute));
-    }
-
-    private void createTable(final String version, final String table) {
-      final String create =
-          migrationStatements(version).stream()
-              .filter(statement -> statement.contains("CREATE TABLE IF NOT EXISTS " + table + " ("))
-              .findFirst()
-              .orElseThrow(() -> new IllegalStateException("Missing migration for table " + table));
-      jdbi.useHandle(handle -> handle.execute(create));
-    }
-
-    private List<String> migrationStatements(final String version) {
-      final Path path =
-          ROOT.resolve(
-              "bootstrap/sql/migrations/native/"
-                  + version
-                  + "/"
-                  + migration
-                  + "/schemaChanges.sql");
-      return MigrationFile.parseSQLFile(
-          path.toFile(), this == MYSQL ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
+      database.applyReleaseMigration();
     }
   }
 
@@ -186,12 +117,42 @@ public class RdfBlueGreenRebuildIT {
   @AfterAll
   static void stopServices() {
     for (Database database : Database.values()) {
-      if (database.container != null) {
-        database.container.close();
+      if (database.database != null) {
+        database.database.close();
       }
     }
     if (fuseki != null) {
       fuseki.close();
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void durableLiveReplayFollowsTheServingDatasetAcrossPromotion(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final UUID id = UUID.randomUUID();
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), id, "snapshot");
+      final RdfLiveWriteStore queue = new RdfLiveWriteStore(database.jdbi, fixture.clock);
+      queue.enqueue(livePayload(id, "before-promotion"));
+      assertTrue(
+          queue.processNext(
+              payload ->
+                  JsonUtils.readValue(payload, RdfMutation.class)
+                      .apply(fixture.other.routedStorage())));
+      fixture.primary.promote(target, "test");
+      assertName(fixture.other.routedStorage(), id, "before-promotion");
+
+      queue.enqueue(livePayload(id, "after-promotion"));
+      assertTrue(
+          queue.processNext(
+              payload ->
+                  JsonUtils.readValue(payload, RdfMutation.class)
+                      .apply(fixture.other.routedStorage())));
+      assertName(fixture.other.routedStorage(), id, "after-promotion");
+      try (RdfStorageInterface previous = raw("openmetadata")) {
+        assertName(previous, id, "before-promotion");
+      }
     }
   }
 
@@ -526,6 +487,7 @@ public class RdfBlueGreenRebuildIT {
             handle.execute("DELETE FROM rdf_rebuild_state");
             handle.execute("DELETE FROM rdf_active_dataset");
             handle.execute("DELETE FROM rdf_inference_rule");
+            handle.execute("DELETE FROM rdf_live_write_queue");
           });
       store = new RdfRebuildStore(database.jdbi, clock, limits);
       primary = manager(true);
@@ -591,6 +553,18 @@ public class RdfBlueGreenRebuildIT {
             .withWriteMaxRetries(0));
   }
 
+  private static String livePayload(final UUID id, final String name) {
+    final Model model = ModelFactory.createDefaultModel();
+    try {
+      model
+          .createResource(BASE + "entity/table/" + id)
+          .addProperty(model.createProperty(NAME), name);
+      return JsonUtils.pojoToJson(RdfMutation.EntityWrite.capture("table", id, model));
+    } finally {
+      model.close();
+    }
+  }
+
   private static void write(final RdfStorageInterface storage, final UUID id, final String name) {
     final Model model = ModelFactory.createDefaultModel();
     try {
@@ -652,17 +626,6 @@ public class RdfBlueGreenRebuildIT {
     } finally {
       model.close();
     }
-  }
-
-  private static Path repositoryRoot() {
-    Path path = Path.of("").toAbsolutePath();
-    while (path != null && !Files.isDirectory(path.resolve("bootstrap/sql/migrations"))) {
-      path = path.getParent();
-    }
-    if (path == null) {
-      throw new IllegalStateException("Cannot locate repository migrations");
-    }
-    return path;
   }
 
   private static final class MutableClock extends Clock {

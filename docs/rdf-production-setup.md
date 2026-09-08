@@ -128,6 +128,44 @@ parse time sit inside the lock. On a slow link every byte of a bulk write extend
 single-writer critical section; latency between the indexer and Fuseki is a direct multiplier on
 rebuild time.
 
+## Live write recovery
+
+The 2.0.2 migration creates the live queue and shared projection health tables for MySQL and
+PostgreSQL. Pending work survives server restarts and executor rejection. A failed operation stays
+at the head of the queue, with its attempt count and error recorded, and retries after 1, 2, 4, …,
+up to 60 seconds. Later operations wait so a failed add cannot be replayed after its matching delete.
+A crash after Jena commits but before SQL acknowledges causes replay; entity reconciliation and
+set-based relationship updates tolerate that repeated delivery. Recovery uses the current serving
+dataset and participates in the existing blue/green mutation journal.
+
+`GET /v1/rdf/status` reports `DEGRADED` after a failed live operation or when the oldest queued
+operation is at least 30 seconds old. Every server reads the same SQL state. Successful replay
+clears the queue condition automatically; it does not require an indexing-app run. Failures outside
+the durable queue remain recorded separately. Only a successful recreate run covering all entity
+types acknowledges those failures, and only those known before that run started.
+
+Inspect outstanding work without reading entity payloads:
+
+```sql
+SELECT id, createdAt, attempts, nextAttemptAt, lastError
+FROM rdf_live_write_queue ORDER BY id LIMIT 50;
+
+SELECT failureVersion, repairedVersion, updatedAt, lastError
+FROM rdf_projection_health WHERE id = 'active';
+```
+
+The queue retains unacknowledged operations rather than expiring them. Monitor SQL disk usage and
+`ontology.rdf.queue.pending` / `ontology.rdf.queue.lag` during prolonged outages. The pending gauge
+reports the shared backlog on each server; aggregate it with `max` across instances. An invalid command
+can block later work; correct the reported underlying error so replay can resume. Do not delete
+queue rows to make status green. Failed operations remain visible until recovered.
+
+Writes already dropped by older releases have no recovery record and need a one-time rebuild.
+The metadata commit and queue insert are still separate transactions: a process crash in that
+short interval, or a SQL outage that prevents enqueueing, is outside the queue's delivery guarantee.
+Enqueue failures are logged and degrade projection health when SQL is available; a failed health
+write is retried while that process remains alive. This is not a transactional metadata outbox.
+
 ## Write throughput
 
 TDB2 is a single-writer store, and the indexing pipeline is built around that fact: partition
@@ -137,12 +175,16 @@ write throughput by design — reader parallelism keeps the writer fed, and the 
 one transaction open on Fuseki at a time, so client timeouts measure actual server work instead of
 queue position.
 
-Live metadata hooks use the same policy: they enqueue after the metadata transaction commits and
-execute asynchronously. OpenMetadata clamps live Fuseki writes to one regardless of
-`ASYNC_MAX_CONCURRENT_RDF_WRITES`; raising that value on TDB2 does not add throughput. The queue
-remains bounded and preserves per-entity ordering. At its 1,000-write capacity, submission applies
-up to 30 seconds of backpressure before dropping the update and marking the RDF projection degraded.
-Other storage engines retain their configured concurrency.
+Live metadata hooks persist replayable operations in `rdf_live_write_queue` after the metadata
+transaction commits, then execute asynchronously. A database fence permits one live writer across
+all servers, regardless of `ASYNC_MAX_CONCURRENT_RDF_WRITES`. Producers use a separate, short SQL
+transaction and do not wait for the triplestore. Each server holds at most one drain task and loads
+one pending operation at a time; reaching 1,000 pending operations no longer discards writes.
+Entity operations carry only type and ID. Replay reads current metadata without the entity cache,
+so it does not restore an old entity snapshot or copy service connection credentials into the queue.
+
+This adds a small SQL transaction per live hook and an entity read per replay. Measure ingestion
+request latency and queue lag under the expected load when comparing throughput.
 
 Throughput therefore depends on the number and size of write transactions:
 
@@ -182,7 +224,7 @@ Start with the defaults and tune one setting at a time:
 | `RDF_STREAMING_APPEND_ENABLED` | `true` | Stream appends as RDF Thrift instead of materializing a combined model. |
 | `RDF_GZIP_REQUESTS` | `false` | Gzip streamed append bodies (never deflate). |
 | `RDF_REQUEST_TIMEOUT_MS` | `60000` | Maximum client wait for one RDF request. |
-| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | `8` | In-flight live RDF writes; Fuseki is automatically clamped to one. |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | `8` | Legacy setting; durable live delivery serializes writes across servers to preserve ordering. |
 
 Insert-only appends are budgeted separately and far more generously than reconciling updates
 because the limiting factor is transaction count rather than request size. Collapsing a rebuild

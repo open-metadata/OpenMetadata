@@ -27,6 +27,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -163,6 +164,7 @@ public class RdfRepository {
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
+  private final BiFunction<String, UUID, EntityInterface> projectionEntityLoader;
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -196,6 +198,7 @@ public class RdfRepository {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.relationshipTypeResolverSupplier = RdfRepository::configuredRelationshipTypeResolver;
+    this.projectionEntityLoader = RdfRepository::loadProjectionEntity;
     if (config.getEnabled() != null && config.getEnabled()) {
       final RdfStorageInterface configuredStorage = RdfStorageFactory.createStorage(config);
       this.datasetManager =
@@ -239,6 +242,20 @@ public class RdfRepository {
       final RdfStorageInterface storageService,
       final JsonLdTranslator translator,
       final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier) {
+    this(
+        config,
+        storageService,
+        translator,
+        relationshipTypeResolverSupplier,
+        RdfRepository::loadProjectionEntity);
+  }
+
+  RdfRepository(
+      final RdfConfiguration config,
+      final RdfStorageInterface storageService,
+      final JsonLdTranslator translator,
+      final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier,
+      final BiFunction<String, UUID, EntityInterface> projectionEntityLoader) {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
@@ -246,6 +263,7 @@ public class RdfRepository {
     this.materializationStorageService = storageService;
     this.translator = translator;
     this.relationshipTypeResolverSupplier = relationshipTypeResolverSupplier;
+    this.projectionEntityLoader = projectionEntityLoader;
   }
 
   static int resolveBulkEntityBatchSize(RdfConfiguration config) {
@@ -311,7 +329,8 @@ public class RdfRepository {
             ? storageService
             : requireDatasetManager().buildStorage(new BuildTarget(rebuildId, dataset));
     final RdfRepository view =
-        new RdfRepository(config, storage, translator, relationshipTypeResolverSupplier);
+        new RdfRepository(
+            config, storage, translator, relationshipTypeResolverSupplier, projectionEntityLoader);
     view.setAppendPayloadBudgetOverride(appendBudget);
     return view;
   }
@@ -471,6 +490,29 @@ public class RdfRepository {
     storageService.ensureStorageReady();
   }
 
+  public void refreshEntity(final String entityType, final UUID entityId) {
+    final EntityInterface entity;
+    try {
+      entity = projectionEntityLoader.apply(entityType, entityId);
+    } catch (EntityNotFoundException exception) {
+      // A queued update can outlive a hard delete. Reconcile that tombstone instead of restoring
+      // an obsolete snapshot or leaving an unrecoverable retry at the head of the queue.
+      delete(new EntityReference().withType(entityType).withId(entityId));
+      return;
+    }
+    createOrUpdate(entity);
+  }
+
+  private static EntityInterface loadProjectionEntity(
+      final String entityType, final UUID entityId) {
+    return Entity.getEntity(
+        entityType,
+        entityId,
+        String.join(",", RdfIndexingFields.forEntityType(entityType)),
+        Include.ALL,
+        false);
+  }
+
   public void createOrUpdate(EntityInterface entity) {
     if (!isEnabled()) {
       return;
@@ -488,7 +530,7 @@ public class RdfRepository {
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
     } catch (Exception e) {
-      RdfProjectionHealth.markDegraded();
+      RdfProjectionHealth.markDegraded(e);
       LOG.error(
           "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
           entity.getId(),
@@ -667,9 +709,10 @@ public class RdfRepository {
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
-    } catch (Exception e) {
-      RdfProjectionHealth.markDegraded();
+    } catch (RuntimeException e) {
+      RdfProjectionHealth.markDegraded(e);
       LOG.error("Failed to delete entity {} from RDF", entityReference.getId(), e);
+      throw new IllegalStateException("Failed to delete entity from RDF", e);
     }
   }
 
@@ -700,7 +743,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(insertQuery);
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
-      RdfProjectionHealth.markDegraded();
+      RdfProjectionHealth.markDegraded(e);
       LOG.error("Failed to add relationship to RDF", e);
       throw new RuntimeException("Failed to add relationship to RDF", e);
     }
@@ -1439,9 +1482,10 @@ public class RdfRepository {
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed relationship {} from RDF store", relationship);
-    } catch (Exception e) {
-      RdfProjectionHealth.markDegraded();
+    } catch (RuntimeException e) {
+      RdfProjectionHealth.markDegraded(e);
       LOG.error("Failed to remove relationship from RDF", e);
+      throw new IllegalStateException("Failed to remove relationship from RDF", e);
     }
   }
 
@@ -3914,14 +3958,15 @@ public class RdfRepository {
         storageService.executeSparqlUpdate(insertQuery);
         LOG.debug("Added glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
       }
-    } catch (Exception e) {
-      RdfProjectionHealth.markDegraded();
+    } catch (RuntimeException e) {
+      RdfProjectionHealth.markDegraded(e);
       LOG.error(
           "Failed to add glossary term relation {} -> {} ({})",
           fromTermId,
           toTermId,
           relationType,
           e);
+      throw new IllegalStateException("Failed to add glossary term relation to RDF", e);
     }
   }
 
@@ -3951,14 +3996,15 @@ public class RdfRepository {
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
-    } catch (Exception e) {
-      RdfProjectionHealth.markDegraded();
+    } catch (RuntimeException e) {
+      RdfProjectionHealth.markDegraded(e);
       LOG.error(
           "Failed to remove glossary term relation {} -> {} ({})",
           fromTermId,
           toTermId,
           relationType,
           e);
+      throw new IllegalStateException("Failed to remove glossary term relation from RDF", e);
     }
   }
 
@@ -3989,7 +4035,7 @@ public class RdfRepository {
       storageService.executeSparqlUpdate(buildGlossaryTermRelationDeleteUpdate());
       LOG.info("Cleared all glossary term relations from RDF store");
     } catch (RuntimeException exception) {
-      RdfProjectionHealth.markDegraded();
+      RdfProjectionHealth.markDegraded(exception);
       LOG.error("Failed to clear glossary term relations from RDF", exception);
       throw new IllegalStateException(
           "Failed to clear glossary term relations from RDF", exception);
