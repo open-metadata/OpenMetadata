@@ -36,6 +36,7 @@ from metadata.ingestion.source.database.common_db_source import (
 )
 from metadata.ingestion.source.database.redshift.datashare import (
     RedshiftDatashareCatalog,
+    build_columns,
 )
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -230,7 +231,10 @@ class DatashareStrategy(RedshiftMetadataStrategy):
         inspector: Inspector,
         table_type: TableType,
     ) -> "list[ReflectedColumn]":
-        return self.catalog.get_columns(self.database_name, schema_name, table_name)  # pyright: ignore[reportReturnType]
+        rows = self.catalog.get_schema_column_info(self.database_name, schema_name).get(table_name, [])
+        # The inspector is the one for the connected database; only its dialect is
+        # used here, to build the columns the same way reflection would.
+        return build_columns(inspector.dialect, rows)  # pyright: ignore[reportReturnType]
 
     def table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
         return self._table_remarks.get((schema_name, table_name))

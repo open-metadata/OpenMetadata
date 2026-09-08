@@ -224,7 +224,15 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         return None
 
     def get_database_names_raw(self) -> Iterable[str]:
-        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
+        # `SHOW DATABASES` already lists the databases while classifying them, and
+        # unlike `pg_database` it leaves out template0/template1/padb_harvest -
+        # system databases the walk would otherwise try to connect to. Falls back
+        # to `pg_database` on a cluster or role that cannot run it.
+        database_types = self.datashare.database_types
+        if database_types is not None:
+            yield from database_types
+        else:
+            yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
         """Prepares the needed data for doing incremental metadata extraction for a given database.

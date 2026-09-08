@@ -20,29 +20,25 @@ Their metadata is only reachable through the cross-database ``SVV_ALL_*``
 catalog views, which are queried from the connection to a local database.
 """
 
+from collections import defaultdict
 from collections.abc import Callable
+from typing import Any
 
 from sqlalchemy.engine import Connection
-from sqlalchemy.sql import sqltypes, text
+from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.redshift.models import RedshiftDatashareTable
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_TYPES,
-    REDSHIFT_GET_DATASHARE_COLUMNS,
+    REDSHIFT_GET_DATASHARE_SCHEMA_COLUMN_INFO,
     REDSHIFT_GET_DATASHARE_TABLES,
     REDSHIFT_GET_SCHEMAS_FOR_DATABASE,
     REDSHIFT_SHOW_DATABASES,
 )
-from metadata.ingestion.source.database.redshift.utils import ischema_names
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-# Data types whose (precision, scale) is meaningful. Every numeric type reports
-# a precision in SVV_ALL_COLUMNS - `integer` comes back as precision 32, scale 0 -
-# so rendering it for anything else would produce `integer(32,0)`.
-SCALED_NUMERIC_TYPES = {"numeric", "decimal"}
 
 # Every other `database_type` - `shared`, `auto mounted catalog` - is a database
 # the cluster does not hold locally and therefore may refuse a connection to.
@@ -61,45 +57,41 @@ def _table_type(raw_table_type: str | None) -> TableType:
     return TableType.Regular
 
 
-def _system_data_type(
-    data_type: str,
-    character_maximum_length: int | None,
-    numeric_precision: int | None,
-    numeric_scale: int | None,
-) -> str:
-    """Rebuild the type as the source would spell it, e.g. ``character varying(64)``.
-    The connected path takes this from ``format_type``, which is not available
-    across databases."""
-    if character_maximum_length is not None:
-        return f"{data_type}({character_maximum_length})"
-    if numeric_precision is not None and data_type.strip().lower() in SCALED_NUMERIC_TYPES:
-        return f"{data_type}({numeric_precision},{numeric_scale or 0})"
-    return data_type
+def build_columns(dialect: Any, rows: list[Any]) -> list[dict]:
+    """Turn catalog rows into the column dictionaries the source consumes.
 
+    The rows already carry the reflected shape, so this is the same construction
+    the dialect performs for a connected database - which is the point: the type
+    handling lives in one place instead of being reimplemented per source.
 
-def _column_type(
-    data_type: str,
-    character_maximum_length: int | None,
-    numeric_precision: int | None,
-    numeric_scale: int | None,
-) -> object:
-    """SQLAlchemy type for a catalog data type, so that length and precision reach
-    the Column entity the same way reflection delivers them. ``ischema_names`` is
-    the same mapping reflection resolves against, so shared and local tables end up
-    with the same types. A type missing from it falls back to the raw name, which
-    the column type parser still maps."""
-    type_class = ischema_names.get(data_type.strip().lower())
-    if not isinstance(type_class, type):
-        return data_type
-    try:
-        if character_maximum_length is not None and issubclass(type_class, sqltypes.String):
-            return type_class(length=character_maximum_length)
-        if numeric_precision is not None and data_type.strip().lower() in SCALED_NUMERIC_TYPES:
-            return type_class(precision=numeric_precision, scale=numeric_scale)
-        return type_class()
-    except TypeError:
-        logger.debug("Could not instantiate %s for data type [%s]", type_class, data_type)
-        return data_type
+    Domains are deliberately empty. They would have to come from the connection,
+    which points at a different database than the one being read.
+    """
+    columns = []
+    for row in rows:
+        column_info = dialect._get_column_info(  # pylint: disable=protected-access
+            name=row.name,
+            format_type=row.format_type,
+            default=row.default,
+            notnull=row.notnull,
+            domains={},
+            enums=[],
+            schema=row.schema,
+            encode=row.encode,
+            comment=row.comment,
+        )
+        # A type the dialect cannot resolve comes back as the class itself rather
+        # than an instance. The raw spelling is more use to the column type parser
+        # than an unusable class - that is how `array<struct<...>>` stays an ARRAY
+        # instead of degrading to UNKNOWN.
+        if isinstance(column_info["type"], type):
+            column_info["type"] = row.format_type
+        column_info["distkey"] = row.distkey
+        column_info["sortkey"] = row.sortkey
+        column_info["ordinal_position"] = row.attnum
+        column_info["system_data_type"] = row.format_type
+        columns.append(column_info)
+    return columns
 
 
 class RedshiftDatashareCatalog:
@@ -111,21 +103,28 @@ class RedshiftDatashareCatalog:
 
     def __init__(self, connection_provider: Callable[[], Connection]) -> None:
         self._connection_provider = connection_provider
-        self._shared_database_names: set[str] | None = None
+        self._database_types: dict[str, str] | None = None
+        self._fetched_database_types = False
+        self._schema_columns: tuple[tuple[str, str], dict[str, list]] | None = None
 
     @property
-    def shared_database_names(self) -> set[str]:
-        """Databases the cluster does not hold locally, and so may refuse a
-        connection to. Empty when neither source can be read, which leaves the
-        caller with the plain connection error it would have raised anyway."""
-        if self._shared_database_names is None:
-            self._shared_database_names = self._fetch_non_local_databases()
-        return self._shared_database_names
+    def database_types(self) -> dict[str, str] | None:
+        """``{database_name: database_type}`` for every database the cluster
+        reports, or None when neither source can be read.
 
-    def _fetch_non_local_databases(self) -> set[str]:
-        """``SHOW DATABASES`` first: it is the only source that reports a catalog
-        database mounted from Glue. ``SVV_REDSHIFT_DATABASES`` is the fallback for
-        clusters that predate it, and sees datashares from remote clusters."""
+        ``SHOW DATABASES`` answers both "which databases are there" and "which of
+        them are local" in one call, so the walk does not need a separate
+        enumeration. It is also the only source that reports a catalog database
+        mounted from Glue, and unlike ``pg_database`` it omits the system
+        databases. ``SVV_REDSHIFT_DATABASES`` is the fallback for clusters that
+        predate it; it sees only datashares from remote clusters.
+        """
+        if not self._fetched_database_types:
+            self._fetched_database_types = True
+            self._database_types = self._fetch_database_types()
+        return self._database_types
+
+    def _fetch_database_types(self) -> dict[str, str] | None:
         for query, source in (
             (REDSHIFT_SHOW_DATABASES, "SHOW DATABASES"),
             (REDSHIFT_GET_DATABASE_TYPES, "SVV_REDSHIFT_DATABASES"),
@@ -135,17 +134,26 @@ class RedshiftDatashareCatalog:
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning("%s unavailable (%s); trying the next source.", source, exc)
                 continue
-            # A missing type reads as local: only a type the cluster positively
-            # reports as something else is worth attempting the catalog views for.
             return {
-                str(row.database_name)
+                str(row.database_name): str(row.database_type or "").strip().lower()
                 for row in rows
                 if row.database_name is not None
-                and (database_type := str(row.database_type or "").strip().lower())
-                and database_type != LOCAL_DATABASE_TYPE
             }
         logger.warning("Could not classify databases; those that refuse a connection will be skipped.")
-        return set()
+        return None
+
+    @property
+    def shared_database_names(self) -> set[str]:
+        """Databases the cluster does not hold locally, and so may refuse a
+        connection to. Empty when nothing could be classified, which leaves the
+        caller with the plain connection error it would have raised anyway."""
+        # A missing type reads as local: only a type the cluster positively
+        # reports as something else is worth attempting the catalog views for.
+        return {
+            name
+            for name, database_type in (self.database_types or {}).items()
+            if database_type and database_type != LOCAL_DATABASE_TYPE
+        }
 
     def get_schema_names(self, database_name: str) -> list[str]:
         rows = self._connection_provider().execute(text(REDSHIFT_GET_SCHEMAS_FOR_DATABASE), {"database": database_name})
@@ -166,35 +174,24 @@ class RedshiftDatashareCatalog:
             if row.table_name is not None
         ]
 
-    def get_columns(self, database_name: str, schema_name: str, table_name: str) -> list[dict]:
-        """Column dictionaries shaped like the ones the Redshift dialect returns
-        from reflection, so that the shared column handling applies unchanged."""
+    def get_schema_column_info(self, database_name: str, schema_name: str) -> dict[str, list]:
+        """``{table_name: [column rows]}`` for one schema, in the shape reflection
+        returns.
+
+        One query per schema rather than per table, matching the connected path -
+        which matters more here, since every row crosses a database boundary.
+        Only the most recent schema is held, the same single-schema cache the
+        dialect keeps, so walking many schemas does not accumulate.
+        """
+        key = (database_name, schema_name)
+        if self._schema_columns is not None and self._schema_columns[0] == key:
+            return self._schema_columns[1]
         rows = self._connection_provider().execute(
-            text(REDSHIFT_GET_DATASHARE_COLUMNS),
-            {"database": database_name, "schema": schema_name, "table": table_name},
+            text(REDSHIFT_GET_DATASHARE_SCHEMA_COLUMN_INFO),
+            {"database": database_name, "schema": schema_name},
         )
-        columns = []
+        by_table: dict[str, list] = defaultdict(list)
         for row in rows:
-            data_type = str(row.data_type or "")
-            columns.append(
-                {
-                    "name": row.column_name,
-                    "type": _column_type(
-                        data_type,
-                        row.character_maximum_length,
-                        row.numeric_precision,
-                        row.numeric_scale,
-                    ),
-                    "system_data_type": _system_data_type(
-                        data_type,
-                        row.character_maximum_length,
-                        row.numeric_precision,
-                        row.numeric_scale,
-                    ),
-                    "nullable": str(row.is_nullable or "").strip().lower() == "yes",
-                    "default": row.column_default,
-                    "comment": row.remarks,
-                    "ordinal_position": row.ordinal_position,
-                }
-            )
-        return columns
+            by_table[str(row.table_name)].append(row)
+        self._schema_columns = (key, dict(by_table))
+        return self._schema_columns[1]

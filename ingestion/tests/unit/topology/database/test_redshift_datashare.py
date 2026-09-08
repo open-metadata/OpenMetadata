@@ -19,16 +19,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from sqlalchemy.sql import sqltypes
+from sqlalchemy_redshift.dialect import RedshiftDialect
 
 from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.redshift.datashare import (
-    _column_type,
-    _system_data_type,
-    _table_type,
-)
+from metadata.ingestion.source.database.redshift.datashare import _table_type
 from metadata.ingestion.source.database.redshift.metadata import (
     RedshiftSource,
 )
@@ -74,6 +71,10 @@ DATABASE_ROWS = [
     SimpleNamespace(database_name=SHARED_DATABASE, database_type="auto mounted catalog"),
 ]
 
+# pg_database hands back the system databases too; SHOW DATABASES does not.
+# tuples: the pg_database path reads them positionally
+PG_DATABASE_ROWS = [(name,) for name in (LOCAL_DATABASE, SHARED_DATABASE, "template0", "padb_harvest")]
+
 SCHEMA_ROWS = [
     SimpleNamespace(database_name=SHARED_DATABASE, schema_name="public"),
     SimpleNamespace(database_name=SHARED_DATABASE, schema_name="sales"),
@@ -90,29 +91,31 @@ STORED_PROCEDURE_ROWS = [
     )
 ]
 
+def _column_row(name, format_type, table_name="orders", notnull=False, comment=None, attnum=1):
+    """A row of REDSHIFT_GET_DATASHARE_SCHEMA_COLUMN_INFO, whose format_type the
+    query builds so that both paths hand the dialect the same thing."""
+    return SimpleNamespace(
+        **{
+            "schema": "public",
+            "table_name": table_name,
+            "name": name,
+            "format_type": format_type,
+            "default": None,
+            "notnull": notnull,
+            "encode": None,
+            "comment": comment,
+            "distkey": None,
+            "sortkey": 0,
+            "attnum": attnum,
+        }
+    )
+
+
 COLUMN_ROWS = [
-    SimpleNamespace(
-        column_name="order_id",
-        data_type="integer",
-        character_maximum_length=None,
-        numeric_precision=32,
-        numeric_scale=0,
-        is_nullable="NO",
-        column_default=None,
-        ordinal_position=1,
-        remarks=None,
-    ),
-    SimpleNamespace(
-        column_name="customer",
-        data_type="character varying",
-        character_maximum_length=64,
-        numeric_precision=None,
-        numeric_scale=None,
-        is_nullable="YES",
-        column_default=None,
-        ordinal_position=2,
-        remarks="Customer name",
-    ),
+    _column_row("order_id", "integer", notnull=True, attnum=1),
+    _column_row("customer", "character varying(64)", comment="Customer name", attnum=2),
+    # Spelling a datashare of Glue-backed external tables reports
+    _column_row("payload", "array<struct<a:string>>", attnum=3),
 ]
 
 
@@ -137,10 +140,13 @@ class RedshiftSourceFixture:
         self.show_databases_error = None
         self.svv_databases_error = None
         self.schema_rows = SCHEMA_ROWS
+        self._svv_all_columns_calls = 0
 
     def _execute(self, statement, params=None):
         """Answer each catalog view with the rows a consumer cluster would return"""
         query = str(statement).upper()
+        if "PG_DATABASE" in query:
+            return MagicMock(fetchall=lambda: PG_DATABASE_ROWS)
         if "SHOW DATABASES" in query:
             if self.show_databases_error:
                 raise self.show_databases_error
@@ -157,6 +163,8 @@ class RedshiftSourceFixture:
             return TABLE_ROWS
         if "SVV_ALL_COLUMNS" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
+            self.assertEqual(params["schema"], "public")
+            self._svv_all_columns_calls += 1
             return COLUMN_ROWS
         if "PG_PROC_INFO" in query:
             return MagicMock(all=lambda: STORED_PROCEDURE_ROWS)
@@ -315,18 +323,26 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
             "Shared orders",
         )
 
-    def test_columns_are_built_from_the_catalog(self):
-        self._enter_datashare_mode()
-        columns, constraints, foreign_columns = self.redshift_source.get_columns_and_constraints(
+    def _catalog_columns(self):
+        inspector = MagicMock()
+        # Only the dialect is used, and it must be the real one: the merged path
+        # builds columns exactly as reflection does.
+        inspector.dialect = RedshiftDialect()
+        inspector.dialect._domains = {}
+        return self.redshift_source.get_columns_and_constraints(
             schema_name="public",
             table_name="orders",
             db_name=SHARED_DATABASE,
-            inspector=MagicMock(),
+            inspector=inspector,
             table_type=TableType.Regular,
         )
+
+    def test_columns_are_built_from_the_catalog(self):
+        self._enter_datashare_mode()
+        columns, constraints, foreign_columns = self._catalog_columns()
         self.assertEqual(constraints, [])
         self.assertEqual(foreign_columns, [])
-        self.assertEqual([column.name.root for column in columns], ["order_id", "customer"])
+        self.assertEqual([column.name.root for column in columns], ["order_id", "customer", "payload"])
         self.assertEqual(columns[0].dataType, DataType.INT)
         self.assertEqual(columns[0].dataTypeDisplay, "integer")
         self.assertEqual(columns[0].ordinalPosition, 1)
@@ -334,6 +350,25 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self.assertEqual(columns[1].dataLength, 64)
         self.assertEqual(columns[1].dataTypeDisplay, "character varying(64)")
         self.assertEqual(columns[1].description.root, "Customer name")
+
+    def test_a_type_the_dialect_cannot_resolve_keeps_its_source_spelling(self):
+        """`array<struct<...>>` has no SQLAlchemy type. The dialect hands back an
+        unusable class for it, so the raw spelling has to survive or the column
+        degrades to UNKNOWN."""
+        self._enter_datashare_mode()
+        columns, _, _ = self._catalog_columns()
+        payload = columns[2]
+        self.assertEqual(payload.dataType, DataType.ARRAY)
+        self.assertEqual(payload.dataTypeDisplay, "array<struct<a:string>>")
+
+    def test_columns_are_read_once_per_schema_not_once_per_table(self):
+        """The rows cross a database boundary, so the per-table query this
+        replaced was an N+1."""
+        self._enter_datashare_mode()
+        before = self._svv_all_columns_calls
+        self._catalog_columns()
+        self._catalog_columns()
+        self.assertEqual(self._svv_all_columns_calls - before, 1)
 
     def test_stored_procedures_are_not_read_from_the_local_database(self):
         """The catalog views carry none, and the local connection's would be wrong"""
@@ -345,6 +380,37 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self._enter_datashare_mode()
         self.assertIsNone(
             self.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", MagicMock())
+        )
+
+
+class RedshiftDatabaseListingTest(RedshiftSourceFixture, unittest.TestCase):
+    """One SHOW DATABASES replaces the pg_database listing plus the classifier"""
+
+    def test_databases_come_from_show_databases(self):
+        self.assertEqual(
+            list(self.redshift_source.get_database_names_raw()),
+            [LOCAL_DATABASE, SHARED_DATABASE],
+        )
+
+    def test_system_databases_are_not_walked(self):
+        """pg_database reports template0 / padb_harvest, which the walk then tries
+        to connect to. SHOW DATABASES omits them."""
+        listed = list(self.redshift_source.get_database_names_raw())
+        self.assertNotIn("template0", listed)
+        self.assertNotIn("padb_harvest", listed)
+
+    def test_listing_and_classification_share_one_round_trip(self):
+        list(self.redshift_source.get_database_names_raw())
+        self.redshift_source.datashare.shared_database_names  # noqa: B018
+        self.assertEqual(self.connection.execute.call_count, 1)
+
+    def test_falls_back_to_pg_database_when_show_is_unavailable(self):
+        """A cluster or role that cannot run either classifier keeps the old listing"""
+        self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
+        self.svv_databases_error = RuntimeError("permission denied")
+        self.assertEqual(
+            list(self.redshift_source.get_database_names_raw()),
+            [LOCAL_DATABASE, SHARED_DATABASE, "template0", "padb_harvest"],
         )
 
 
@@ -399,7 +465,7 @@ class RedshiftBaseStrategyTest(RedshiftSourceFixture, unittest.TestCase):
 
 
 class RedshiftDatashareHelpersTest(unittest.TestCase):
-    """SVV_ALL_* reports free-form type and table type names"""
+    """SVV_ALL_TABLES reports free-form table type names"""
 
     def test_table_type(self):
         self.assertEqual(_table_type("TABLE"), TableType.Regular)
@@ -408,22 +474,6 @@ class RedshiftDatashareHelpersTest(unittest.TestCase):
         self.assertEqual(_table_type("view"), TableType.View)
         self.assertEqual(_table_type("EXTERNAL TABLE"), TableType.External)
         self.assertEqual(_table_type(None), TableType.Regular)
-
-    def test_system_data_type(self):
-        self.assertEqual(_system_data_type("character varying", 64, None, None), "character varying(64)")
-        self.assertEqual(_system_data_type("numeric", None, 8, 2), "numeric(8,2)")
-        # Every numeric type reports a precision; only scaled ones should show it
-        self.assertEqual(_system_data_type("integer", None, 32, 0), "integer")
-
-    def test_column_type(self):
-        self.assertEqual(str(_column_type("character varying", 64, None, None)), "VARCHAR(64)")
-        self.assertEqual(str(_column_type("numeric", None, 8, 2)), "NUMERIC(8, 2)")
-        self.assertEqual(str(_column_type("integer", None, 32, 0)), "INTEGER")
-        self.assertEqual(str(_column_type("super", None, None, None)), "SUPER")
-        # The Hive spellings a Data Catalog datashare reports resolve too
-        self.assertEqual(str(_column_type("string", 32, None, None)), "VARCHAR(32)")
-        # A type the dialect does not know keeps its source spelling for the parser
-        self.assertEqual(_column_type("int", None, None, None), "int")
 
 
 if __name__ == "__main__":
