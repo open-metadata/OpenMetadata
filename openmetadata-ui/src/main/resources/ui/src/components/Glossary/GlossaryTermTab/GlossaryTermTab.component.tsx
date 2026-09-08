@@ -1975,7 +1975,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           loading={isTableLoading}
           locale={{
             emptyText: (
-              <div className="tw:relative tw:min-h-[220px]">
+              <div
+                className="tw:relative tw:min-h-[220px]"
+                data-testid={
+                  isSearchActive
+                    ? 'no-search-results-placeholder'
+                    : 'no-filtered-results-placeholder'
+                }>
                 {isSearchActive ? (
                   <NoSearchResultsPlaceholder />
                 ) : (
