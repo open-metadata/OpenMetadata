@@ -1,0 +1,377 @@
+---
+name: Backport labeled PRs to release branches
+# yamllint disable-line rule:comments
+run-name: Backport PR #${{ github.event.pull_request.number }} to release branches
+
+# Replaces the old direct-push cherry-pick (auto-cherry-pick-labeled-prs.yaml).
+#
+# Why this exists: the previous workflow pushed cherry-picks straight onto the
+# release branches. Two consequences we kept paying for:
+#
+#   1. A conflicting cherry-pick just failed, and failed *green* — every step
+#      was `continue-on-error`, so the run reported success. It left a comment
+#      saying "please cherry-pick manually" and stopped, so the fix quietly
+#      missed the release unless somebody happened to read the comment.
+#   2. Nothing validated the result before it landed. `Release Branch Validate`
+#      only matches `[0-9]+.[0-9]+.[0-9]+`, and the branches we actually
+#      backport to are `1.13` and `2.0` — two components — so a cherry-pick
+#      landed having run no CI at all. `auto-revert-release.yml` exists to
+#      revert what breaks afterwards, which is after the fact and only covers
+#      the checks it knows about.
+#
+# So: cherry-pick onto a scratch branch instead, and open a PR. The release
+# branch only ever moves through a PR that CI has run on, and a backport that
+# cannot be applied fails loudly instead of reporting success.
+#
+# Difference from the sibling workflow in openmetadata-collate and ai-platform:
+# those hand a conflicting cherry-pick to Claude, which resolves it and opens
+# the PR anyway. CLAUDE_CODE_OAUTH_TOKEN is not available to this repository, so
+# here a conflict stops with instructions instead. Everything else — the branch
+# source, the state machine, the PR — is deliberately identical, so the three
+# files stay diffable.
+
+# yamllint disable-line rule:truthy
+on:
+  # pull_request_target, not pull_request: this repository takes fork PRs, and a
+  # `pull_request` run from a fork gets a read-only token that cannot push a
+  # branch or open a PR. The usual danger of pull_request_target — running with
+  # secrets against attacker-controlled code — does not apply here: this only
+  # ever fires after a merge, checks out `main`, and cherry-picks a commit that
+  # is already in `main`. No PR head is ever checked out or executed.
+  pull_request_target:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # Endpoint that returns the branches currently marked for release, as JSON.
+  # Org-level Actions variable, shared with the sibling repos.
+  CURRENT_RELEASE_ENDPOINT: ${{ vars.CURRENT_RELEASE_ENDPOINT }}
+
+jobs:
+  plan:
+    if: github.event.pull_request.merged == true &&
+        contains(github.event.pull_request.labels.*.name, 'To release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release_branches: ${{ steps.resolve.outputs.release_branches }}
+    steps:
+      # `To release` is what causes code to reach a release branch, and GitHub
+      # has no per-label permission — triage access is enough to apply one. So
+      # authorise it here: find who actually applied the label, and require them
+      # to have write access to this repository. On a private repo that is the
+      # team; on the public one it is the maintainers, and every other GitHub
+      # user reports `read`, which this rejects. Every outcome that is not a
+      # confirmed writer stops the backport; "we could not tell" is never
+      # treated as a pass.
+      - name: Authorise the label
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          ACTOR=$(gh api "repos/$REPO/issues/$PR/timeline" --paginate \
+                    --jq '[.[] | select(.event == "labeled" and .label.name == "To release")
+                               | .actor.login] | last // empty' 2>/dev/null || true)
+          if [ -z "$ACTOR" ]; then
+            echo "::error::Could not determine who applied the 'To release' label; refusing to backport."
+            exit 1
+          fi
+          echo "Label applied by: $ACTOR"
+
+          PERM=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" \
+                   --jq '.permission' 2>/dev/null || true)
+          case "$PERM" in
+            admin|maintain|write)
+              echo "$ACTOR has $PERM access; proceeding." ;;
+            read|triage|none)
+              # Read and triage are listed explicitly: triage is enough to apply
+              # a label but not to be trusted with a release branch, and on a
+              # public repository every GitHub user reports read.
+              gh pr comment "$PR" --repo "$REPO" --body "🤖 The \`To release\` label was applied by @$ACTOR, whose access to this repository is \`$PERM\` — not write — so this PR was **not** backported. Backports are restricted to the team. Ask a maintainer to re-apply the label if this change should ship in a release."
+              echo "::error::'To release' was applied by $ACTOR, whose access is '$PERM'. No backport was attempted."
+              exit 1 ;;
+            *)
+              echo "::error::Could not read $ACTOR's access to $REPO (got '${PERM:-nothing}'). Refusing to backport rather than guessing."
+              exit 1 ;;
+          esac
+
+      # The old workflow ran this with a bare `curl -s`, so an unreachable
+      # endpoint produced an empty branch list, a skipped matrix, and no signal
+      # whatsoever — a labelled PR silently missed the release. Retry, then fail
+      # loudly, then say so on the PR.
+      - name: Resolve release branches
+        id: resolve
+        run: |
+          set -uo pipefail
+          if [ -z "${CURRENT_RELEASE_ENDPOINT:-}" ]; then
+            echo "::error::CURRENT_RELEASE_ENDPOINT is not set; cannot determine release branches."
+            exit 1
+          fi
+          RESPONSE=$(curl -fsS --max-time 20 --retry 3 --retry-delay 5 \
+            "$CURRENT_RELEASE_ENDPOINT") || {
+            echo "::error::Could not reach CURRENT_RELEASE_ENDPOINT. No backport was attempted."
+            exit 1
+          }
+          BRANCHES=$(printf '%s' "$RESPONSE" | jq -c '.collate_branches // []') || {
+            echo "::error::CURRENT_RELEASE_ENDPOINT returned something that is not JSON."
+            exit 1
+          }
+          echo "Branches currently marked for release: $BRANCHES"
+          echo "release_branches=$BRANCHES" >> "$GITHUB_OUTPUT"
+
+      # An empty list is legitimate — it means no branch is marked to_release
+      # right now. Legitimate, but not something to swallow: the label was
+      # applied for a reason and the author should know it went nowhere.
+      - name: Report that nothing is marked for release
+        if: steps.resolve.outputs.release_branches == '[]'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "🤖 This PR is labelled \`To release\`, but no release branch is currently marked for release, so nothing was backported. Re-run this workflow, or backport by hand, once a branch is marked."
+
+  backport:
+    needs: plan
+    if: needs.plan.outputs.release_branches != '' && needs.plan.outputs.release_branches != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      # One branch failing must not cancel the backport to the others.
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.plan.outputs.release_branches) }}
+    # Never cancel: a half-finished backport is worse than a duplicate run.
+    concurrency:
+      group: backport-${{ github.event.pull_request.number }}-${{ matrix.branch }}
+      cancel-in-progress: false
+    env:
+      TARGET: ${{ matrix.branch }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+      HEAD_BRANCH: backport/${{ matrix.branch }}/pr-${{ github.event.pull_request.number }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      # GitHub does not run workflows on a PR opened by GITHUB_TOKEN. Falling
+      # back to it would open a backport PR with no CI on it, which deletes the
+      # entire reason this workflow exists — so refuse to start instead.
+      # RELEASE_BOT_TOKEN is the identity the other release automation here
+      # already uses (auto-revert-release.yml, playwright baseline refresh).
+      - name: Require the release bot token
+        env:
+          TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+        run: |
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::RELEASE_BOT_TOKEN is not available. Refusing to fall back to GITHUB_TOKEN, because a PR it opens gets no CI and an untested backport is what this workflow exists to prevent."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          # Full history: cherry-pick needs the merge commit and the release
+          # branch's ancestry.
+          fetch-depth: 0
+          show-progress: false
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+
+      - name: Check target branch exists
+        id: target
+        run: |
+          set -uo pipefail
+          if git ls-remote --exit-code --heads origin "$TARGET" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Branch $TARGET is marked for release but does not exist in this repository."
+          fi
+
+      - name: Attempt cherry-pick
+        id: pick
+        if: steps.target.outputs.exists == 'true'
+        run: |
+          set -uo pipefail
+          git config user.name "OpenMetadata Release Bot"
+          git config user.email "release-bot@open-metadata.org"
+
+          git fetch --no-tags origin "$TARGET"
+          git checkout -B "$HEAD_BRANCH" "origin/$TARGET"
+
+          LOG="$RUNNER_TEMP/cherry-pick.log"
+          if git cherry-pick -x "$MERGE_SHA" >"$LOG" 2>&1; then
+            STATE=clean
+          elif [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+            # Unmerged paths present ⇒ a genuine content conflict.
+            STATE=conflict
+          elif grep -q 'now empty' "$LOG"; then
+            # Cherry-pick reduced to nothing: the change is already on $TARGET.
+            STATE=empty
+          else
+            # Anything else (unknown SHA, a merge commit needing -m, ...) is a
+            # bug in our assumptions, not a conflict. Fail loudly.
+            cat "$LOG"
+            echo "::error::cherry-pick of $MERGE_SHA onto $TARGET failed for an unexpected reason."
+            exit 1
+          fi
+          cat "$LOG"
+
+          {
+            echo "state=$STATE"
+            echo "conflicts<<EOF"
+            git diff --name-only --diff-filter=U
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$STATE" = "conflict" ]; then
+            git cherry-pick --abort
+          fi
+
+      # A conflict used to end here with instructions and a red run, which left
+      # the backport undone until somebody picked it up by hand. CLAUDE_CODE_
+      # OAUTH_TOKEN is a repository secret of openmetadata-collate and cannot be
+      # read from here, so the resolution happens there instead: it checks out
+      # this repository, resolves, and opens the PR back here, which
+      # backport-automerge.yaml then merges on green like any other backport.
+      #
+      # Same channel maven-build-collate.yml already uses in this direction.
+      # Fire and forget on purpose — a resolution takes minutes and holding a
+      # runner open for it buys nothing; the resolver reports its own outcome
+      # onto this PR.
+      - name: Build resolver inputs
+        id: rinputs
+        if: steps.pick.outputs.state == 'conflict'
+        run: |
+          set -uo pipefail
+          # Built with jq, not string-interpolated: a PR title containing a
+          # quote or a newline would otherwise produce invalid JSON, and the
+          # title is attacker-influenced text going into a dispatch payload.
+          JSON=$(jq -cn --arg pr "$PR_NUMBER" --arg sha "$MERGE_SHA" \
+                        --arg target "$TARGET" --arg title "$PR_TITLE" \
+                        --arg author "$PR_AUTHOR" \
+                        '{pr: $pr, sha: $sha, target: $target, title: $title, author: $author}')
+          echo "json=$JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Hand the conflict to the resolver
+        id: dispatch
+        if: steps.pick.outputs.state == 'conflict'
+        uses: benc-uk/workflow-dispatch@v1.3.2
+        with:
+          workflow: Resolve an OpenMetadata backport conflict
+          repo: open-metadata/openmetadata-collate
+          ref: main
+          token: ${{ secrets.COLLATE_PAT }}
+          inputs: ${{ steps.rinputs.outputs.json }}
+
+      - name: Push and open PR
+        id: pr
+        if: steps.pick.outputs.state == 'clean'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+        run: |
+          set -uo pipefail
+
+          # --force, not --force-with-lease: the branch is recreated from
+          # origin/$TARGET on every run and lives in a namespace only this
+          # workflow writes to, so a re-run should overwrite it outright.
+          if ! git push --force origin "HEAD:refs/heads/$HEAD_BRANCH"; then
+            echo "::error::Could not push $HEAD_BRANCH; nothing was backported to $TARGET."
+            exit 1
+          fi
+
+          BODY="$RUNNER_TEMP/body.md"
+          {
+            # Provenance marker. backport-automerge.yaml refuses to merge a
+            # PR without it, so a branch a person hand-names `backport/...`
+            # cannot ride the auto-merge path into a release branch.
+            printf '<!-- automated-backport -->\n'
+            printf 'Automated backport of #%s to `%s`.\n\n' "$PR_NUMBER" "$TARGET"
+            printf '| | |\n|---|---|\n'
+            printf '| Source PR | #%s |\n' "$PR_NUMBER"
+            printf '| Author | @%s |\n' "$PR_AUTHOR"
+            printf '| Merge commit | `%s` |\n' "$MERGE_SHA"
+            printf '| Method | Clean cherry-pick — identical to the commit on `main`. |\n\n'
+            printf -- '---\n\n'
+            printf 'Opened by the backport workflow so this change is tested before it '
+            printf 'reaches `%s`. **It merges itself once every check passes** — no ' "$TARGET"
+            printf 'review needed. If a check fails it stays open and the author of '
+            printf '#%s is asked to look.\n\n' "$PR_NUMBER"
+            printf '<sub>[run log](%s)</sub>\n' "$RUN_URL"
+          } > "$BODY"
+
+          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+            --head "$HEAD_BRANCH" --base "$TARGET" \
+            --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --repo "$GITHUB_REPOSITORY" --body-file "$BODY"
+            URL=$(gh pr view "$EXISTING" --repo "$GITHUB_REPOSITORY" --json url --jq .url)
+          else
+            URL=$(gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base "$TARGET" \
+              --head "$HEAD_BRANCH" \
+              --title "[$TARGET] $PR_TITLE" \
+              --body-file "$BODY")
+            # Best-effort: the author may not be assignable (an outside
+            # contributor, or a bot). Not worth failing a good backport over.
+            gh pr edit "$URL" --repo "$GITHUB_REPOSITORY" --add-assignee "$PR_AUTHOR" || true
+          fi
+          # An empty URL means the push landed but no PR opened, so the change
+          # sits on a branch nobody is looking at. That must not pass as success.
+          if [ -z "$URL" ]; then
+            echo "::error::No PR was opened against $TARGET; the backport is not in review."
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on the source PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PICK: ${{ steps.pick.outputs.state }}
+          CONFLICTS: ${{ steps.pick.outputs.conflicts }}
+          URL: ${{ steps.pr.outputs.url }}
+          EXISTS: ${{ steps.target.outputs.exists }}
+          DISPATCH: ${{ steps.dispatch.outcome }}
+        run: |
+          set -uo pipefail
+          if [ "$EXISTS" = "false" ]; then
+            BODY="🤖 Branch \`$TARGET\` is marked for release but does not exist in this repository, so there was nothing to backport to."
+          elif [ -n "$URL" ]; then
+            BODY="🤖 Backport to \`$TARGET\` opened as $URL (clean cherry-pick). It merges once CI is green."
+          elif [ "$PICK" = "empty" ]; then
+            BODY="🤖 Nothing to backport to \`$TARGET\` — this change is already on that branch."
+          elif [ "$PICK" = "conflict" ] && [ "$DISPATCH" = "success" ]; then
+            BODY=$(printf '🤖 The cherry-pick to `%s` conflicts, so it has been handed to Claude to adapt. It will open the backport PR here and comment again — nothing is needed from you unless it reports otherwise.\n\nConflicting paths:\n```\n%s\n```\n\n<sub>[run log](%s)</sub>' \
+              "$TARGET" "$CONFLICTS" "$RUN_URL")
+          elif [ "$PICK" = "conflict" ]; then
+            BODY=$(printf '🤖 **Backport to `%s` needs you.** The cherry-pick conflicts and the resolver could not be reached, so this change is **not** on `%s`.\n\nConflicting paths:\n```\n%s\n```\n\nTo finish it by hand:\n```bash\ngit fetch origin\ngit checkout -b %s origin/%s\ngit cherry-pick -x %s\n# resolve the conflicts, then:\ngit push origin %s\ngh pr create --base %s --head %s --title "[%s] %s"\n```\n\nThat PR merges itself once its checks pass, same as an automatic one.\n\n<sub>[run log](%s)</sub>' \
+              "$TARGET" "$TARGET" "$CONFLICTS" \
+              "$HEAD_BRANCH" "$TARGET" "$MERGE_SHA" "$HEAD_BRANCH" \
+              "$TARGET" "$HEAD_BRANCH" "$TARGET" "$PR_TITLE" "$RUN_URL")
+          else
+            BODY="🤖 **Backport to \`$TARGET\` failed.** Nothing was pushed and no PR was opened — this change is not on that branch. [Run log]($RUN_URL)."
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+
+      # A conflict is a real, unfinished backport. The workflow this replaces
+      # marked every step `continue-on-error` and so reported success while the
+      # change silently missed the release — the failure mode this whole change
+      # exists to remove. Fail the branch's leg so the run list shows it.
+      - name: Fail if the change did not reach the release branch
+        # A conflict is no longer a failure here: it has been handed to the
+        # resolver, which owns the outcome from that point. A handoff that
+        # could not be dispatched fails the job on its own step.
+        if: steps.target.outputs.exists == 'false'
+        run: |
+          echo "::error::Branch $TARGET is marked for release but does not exist here, so PR #$PR_NUMBER was not backported to it."
+          exit 1

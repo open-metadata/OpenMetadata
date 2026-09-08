@@ -17,12 +17,14 @@
     "totalDocuments": {
       "description": "Total number of documents across all indexes.",
       "type": "integer",
-      "format": "int64"
+      "format": "int64",
+      "existingJavaType": "java.lang.Long"
     },
     "totalSizeInBytes": {
       "description": "Total storage size in bytes.",
       "type": "integer",
-      "format": "int64"
+      "format": "int64",
+      "existingJavaType": "java.lang.Long"
     },
     "totalSizeFormatted": {
       "description": "Human-readable total storage size.",
@@ -73,10 +75,10 @@
       "javaType": "org.openmetadata.schema.api.search.SearchStatsResponse$IndexStats",
       "properties": {
         "name": { "description": "Index name.", "type": "string" },
-        "documents": { "description": "Number of documents in the index.", "type": "integer", "format": "int64" },
+        "documents": { "description": "Number of documents in the index.", "type": "integer", "format": "int64", "existingJavaType": "java.lang.Long" },
         "primaryShards": { "description": "Number of primary shards.", "type": "integer" },
         "replicaShards": { "description": "Number of replica shards.", "type": "integer" },
-        "sizeInBytes": { "description": "Index size in bytes.", "type": "integer", "format": "int64" },
+        "sizeInBytes": { "description": "Index size in bytes.", "type": "integer", "format": "int64", "existingJavaType": "java.lang.Long" },
         "sizeFormatted": { "description": "Human-readable index size.", "type": "string" },
         "health": { "description": "Index health status.", "type": "string" },
         "aliases": { "description": "List of aliases pointing to this index.", "type": "array", "items": { "type": "string" } }
@@ -87,7 +89,7 @@
       "javaType": "org.openmetadata.schema.api.search.SearchStatsResponse$OrphanIndex",
       "properties": {
         "name": { "description": "Orphan index name.", "type": "string" },
-        "sizeInBytes": { "description": "Index size in bytes.", "type": "integer", "format": "int64" },
+        "sizeInBytes": { "description": "Index size in bytes.", "type": "integer", "format": "int64", "existingJavaType": "java.lang.Long" },
         "sizeFormatted": { "description": "Human-readable index size.", "type": "string" }
       }
     }
