@@ -39,7 +39,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
-import org.openmetadata.service.migration.utils.FlywayMigrationFile;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 class MigrationWorkflowTest {
@@ -72,7 +71,7 @@ class MigrationWorkflowTest {
 
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, config, false);
 
     workflow.loadMigrations();
 
@@ -94,7 +93,6 @@ class MigrationWorkflowTest {
             nativeRoot.toString(),
             ConnectionType.POSTGRES,
             extensionRoot.toString(),
-            null,
             config,
             false);
 
@@ -119,7 +117,6 @@ class MigrationWorkflowTest {
             nativeRoot.toString(),
             ConnectionType.POSTGRES,
             extensionRoot.toString(),
-            null,
             config,
             false);
 
@@ -151,7 +148,6 @@ class MigrationWorkflowTest {
             nativeRoot.toString(),
             ConnectionType.POSTGRES,
             extensionRoot.toString(),
-            null,
             config,
             false);
 
@@ -183,7 +179,6 @@ class MigrationWorkflowTest {
             nativeRoot.toString(),
             ConnectionType.POSTGRES,
             extensionRoot.toString(),
-            null,
             config,
             false);
 
@@ -209,7 +204,6 @@ class MigrationWorkflowTest {
             nativeRoot.toString(),
             ConnectionType.POSTGRES,
             extensionRoot.toString(),
-            null,
             config,
             false);
 
@@ -237,7 +231,7 @@ class MigrationWorkflowTest {
 
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, config, false);
 
     workflow.loadMigrations();
 
@@ -255,7 +249,7 @@ class MigrationWorkflowTest {
 
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, config, false);
 
     workflow.loadMigrations();
 
@@ -272,7 +266,7 @@ class MigrationWorkflowTest {
 
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, config, false);
 
     workflow.loadMigrations();
 
@@ -296,7 +290,6 @@ class MigrationWorkflowTest {
             nativeRoot.toString(),
             ConnectionType.POSTGRES,
             extensionRoot.toString(),
-            null,
             config,
             false);
 
@@ -317,7 +310,7 @@ class MigrationWorkflowTest {
 
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, config, false);
 
     workflow.loadMigrations();
 
@@ -329,7 +322,7 @@ class MigrationWorkflowTest {
   void validateMigrationsForServerReflectsPendingState() throws Exception {
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.POSTGRES, null, null, config, false);
+            jdbi, tempDir.toString(), ConnectionType.POSTGRES, null, config, false);
 
     setMigrations(workflow, List.of(mock(MigrationProcess.class)));
     assertThrows(IllegalStateException.class, workflow::validateMigrationsForServer);
@@ -339,79 +332,12 @@ class MigrationWorkflowTest {
   }
 
   @Test
-  void prePopulateFlywayMigrationSqlLogsImportsEachStatementOnce() throws Exception {
-    Path flywayRoot = Files.createDirectories(tempDir.resolve("flyway"));
-    Path postgresDir = Files.createDirectories(flywayRoot.resolve("org.postgresql.Driver"));
-    Files.writeString(
-        postgresDir.resolve("v001__baseline.sql"),
-        "CREATE TABLE sample(id INTEGER);\nINSERT INTO sample VALUES (1);");
-
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi,
-            tempDir.resolve("native").toString(),
-            ConnectionType.POSTGRES,
-            null,
-            flywayRoot.toString(),
-            config,
-            false);
-
-    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
-
-    invokePrivate(workflow, "prePopulateFlywayMigrationSQLLogs");
-
-    verify(migrationDAO)
-        .upsertServerMigrationSQL(eq("0.0.1"), eq("CREATE TABLE sample(id INTEGER)"), anyString());
-    verify(migrationDAO)
-        .upsertServerMigrationSQL(eq("0.0.1"), eq("INSERT INTO sample VALUES (1)"), anyString());
-  }
-
-  @Test
-  void flywayCopyWithReprocessingDoesNotDuplicateParsedStatements() throws Exception {
-    Path flywayRoot = Files.createDirectories(tempDir.resolve("flyway"));
-    Path postgresDir = Files.createDirectories(flywayRoot.resolve("org.postgresql.Driver"));
-    Path sqlFile = postgresDir.resolve("v001__baseline.sql");
-    Files.writeString(sqlFile, "CREATE TABLE sample(id INTEGER);");
-    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
-
-    FlywayMigrationFile file =
-        new FlywayMigrationFile(sqlFile.toFile(), migrationDAO, ConnectionType.POSTGRES, config);
-    file.parseSQLFiles();
-
-    MigrationFile copied = file.copyWithReprocessing(true);
-    copied.parseSQLFiles();
-
-    assertEquals(1, copied.getSchemaChanges().size());
-    assertTrue(copied.isReprocessing());
-  }
-
-  @Test
-  void migrateFlywayToServerChangeLogsSkipsWhenAlreadyMigrated() throws Exception {
-    when(handle.createQuery(anyString()).mapTo(Integer.class).one()).thenReturn(1);
-
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi,
-            tempDir.resolve("native").toString(),
-            ConnectionType.POSTGRES,
-            null,
-            tempDir.resolve("flyway").toString(),
-            config,
-            false);
-
-    invokePrivate(workflow, "migrateFlywayToServerChangeLogs");
-
-    verify(handle, never()).createUpdate(anyString());
-  }
-
-  @Test
   void runMigrationWorkflowsExecutesStepsAndPersistsMetrics() throws Exception {
     MigrationWorkflow workflow =
         new MigrationWorkflow(
             jdbi,
             tempDir.resolve("native").toString(),
             ConnectionType.POSTGRES,
-            null,
             null,
             config,
             false);
@@ -447,7 +373,6 @@ class MigrationWorkflowTest {
             tempDir.resolve("native").toString(),
             ConnectionType.POSTGRES,
             null,
-            null,
             config,
             false);
     MigrationProcess process = mock(MigrationProcess.class);
@@ -478,7 +403,6 @@ class MigrationWorkflowTest {
             jdbi,
             tempDir.resolve("native").toString(),
             ConnectionType.POSTGRES,
-            null,
             null,
             config,
             false);
@@ -513,8 +437,7 @@ class MigrationWorkflowTest {
         List.of(createMigrationFile("1.12.9", false), createMigrationFile("1.13.0", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -534,8 +457,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.13.0", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -573,8 +495,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.13.0", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -593,8 +514,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.13.0", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -611,8 +531,7 @@ class MigrationWorkflowTest {
         List.of(createMigrationFile("1.13.5", false), createMigrationFile("2.0.0", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -631,8 +550,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.13.0-collate", true));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -653,8 +571,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.13.0-collate", true));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -695,8 +612,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -748,8 +664,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -780,8 +695,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -812,8 +726,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2-collate", true));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -840,8 +753,7 @@ class MigrationWorkflowTest {
     List<String> executedMigrations = List.of("1.12.0", "1.12.1", "1.12.1-collate");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> firstResult =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -878,8 +790,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.0-collate", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -897,8 +808,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.1-collate", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -923,8 +833,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -961,8 +870,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.10.5", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -1000,8 +908,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.0", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
 
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
@@ -1023,8 +930,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
     List<MigrationFile> result = workflow.resolveApplyMigrations(available);
 
     long reprocessCount =
@@ -1045,8 +951,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+        new MigrationWorkflow(jdbi, tempDir.toString(), ConnectionType.MYSQL, null, config, false);
     List<MigrationFile> result = workflow.resolveApplyMigrations(available);
 
     assertEquals(1, result.size());

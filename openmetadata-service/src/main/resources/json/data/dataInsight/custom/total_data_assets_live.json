@@ -1,0 +1,17 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ "testSuite", "testCase" ],
+    "groupBy" : "entityType.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "service.name.keyword"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "total_data_assets_live",
+  "isSystemChart" : true,
+  "name" : "total_data_assets_live"
+}

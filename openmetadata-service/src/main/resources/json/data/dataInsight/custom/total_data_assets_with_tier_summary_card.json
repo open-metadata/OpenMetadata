@@ -1,0 +1,13 @@
+{
+  "chartDetails" : {
+    "metrics" : [ {
+      "filter" : "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[{\"term\":{\"entityType.keyword\":\"tag\"}},{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}},{\"term\":{\"entityType.keyword\":\"dataProduct\"}}]}}}",
+      "formula" : "(count(k='id.keyword',q='NOT tier.keyword:\"NoTier\"')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "SummaryCard"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "total_data_assets_with_tier_summary_card",
+  "isSystemChart" : true,
+  "name" : "total_data_assets_with_tier_summary_card"
+}

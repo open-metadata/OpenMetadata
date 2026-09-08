@@ -1,0 +1,20 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "sum(k='tagSources.Ingested')+sum(k='tagSources.Manual')+sum(k='tagSources.Propagated')",
+      "name" : "manual"
+    }, {
+      "formula" : "sum(k='tagSources.Generated')",
+      "name" : "ai"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "tag_source_breakdown",
+  "isSystemChart" : true,
+  "name" : "tag_source_breakdown"
+}

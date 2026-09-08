@@ -146,12 +146,15 @@ build; the edit-block hook covers all three (I3). *Breaks if violated:* editing 
 the next `make generate`; schema↔model drift. Runbook:
 [`.claude/rules/schema-first.md`](.claude/rules/schema-first.md).
 
-**I5 — Migrations are append-only.** Files under `bootstrap/sql/migrations/{flyway,native}` are never
-edited once shipped; a change is a *new* version (`bootstrap/MIGRATION_SYSTEM.md`). *Enforces:* **not
-enforced** — there is no CI check and no runtime checksum-abort (the stored per-version checksum is not
-validated to fail startup). *Breaks if violated:* an edited applied migration **silently** never re-runs on
-existing databases (its version is already in `SERVER_CHANGE_LOG`) yet *does* run on fresh installs →
-schema drift with no error. Runbook: [`.claude/rules/migrations.md`](.claude/rules/migrations.md).
+**I5 — Migrations are append-only above the 2.0 baseline.** Files under
+`bootstrap/sql/migrations/native` are never edited once shipped; a change is a *new* version. Everything
+below 2.0.0 is frozen into `bootstrap/sql/migrations/baseline` and must never be re-added — the runner
+filters that range out on baseline-managed databases (`bootstrap/MIGRATION_SYSTEM.md`). *Enforces:*
+**partially** — the floor and the 2.0 upgrade gate are enforced at runtime, but append-only above the
+floor is not (no CI check, and the stored per-version checksum is not validated). *Breaks if violated:*
+an edited applied migration **silently** never re-runs on existing databases (its version is already in
+`SERVER_CHANGE_LOG`) yet *does* run on fresh installs → schema drift with no error; a re-added pre-2.0
+version never runs at all. Runbook: [`.claude/rules/migrations.md`](.claude/rules/migrations.md).
 
 ### Non-invariants — documented rules the code does NOT keep (do not treat as invariants)
 Stated with measured counts so they aren't mistaken for boundaries that hold (08a):

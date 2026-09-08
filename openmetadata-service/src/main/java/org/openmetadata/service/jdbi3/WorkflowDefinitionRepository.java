@@ -63,6 +63,36 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
   }
 
+  /** Deploy definitions that exist in OpenMetadata but are missing from Flowable. */
+  public int deployMissingWorkflowDefinitions() {
+    if (!WorkflowHandler.isInitialized()) {
+      LOG.warn("WorkflowHandler is not initialized; skipping missing workflow deployment");
+      return 0;
+    }
+
+    int deployed = 0;
+    WorkflowHandler handler = WorkflowHandler.getInstance();
+    for (WorkflowDefinition definition :
+        listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter())) {
+      deployed += deployIfMissing(handler, definition);
+    }
+    LOG.info("Deployed {} previously undeployed workflow definition(s)", deployed);
+    return deployed;
+  }
+
+  private int deployIfMissing(WorkflowHandler handler, WorkflowDefinition definition) {
+    try {
+      if (!handler.isDeployed(definition)) {
+        handler.deploy(new Workflow(definition));
+        LOG.info("Deployed missing workflow '{}'", definition.getName());
+        return 1;
+      }
+    } catch (RuntimeException exception) {
+      LOG.warn("Failed to deploy workflow '{}': {}", definition.getName(), exception.getMessage());
+    }
+    return 0;
+  }
+
   @Override
   protected void setFields(
       WorkflowDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {

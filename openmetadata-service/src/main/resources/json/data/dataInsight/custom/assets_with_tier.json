@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "(count(q='tags.tagFQN: tier.*')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "assets_with_tier",
+  "isSystemChart" : true,
+  "name" : "assets_with_tier"
+}

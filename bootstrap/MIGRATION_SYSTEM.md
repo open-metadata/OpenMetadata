@@ -1,163 +1,105 @@
 # OpenMetadata Migration System
 
-This document describes the migration system architecture and execution order for OpenMetadata database schema and data migrations.
+## Overview
 
-## Migration System Overview
+OpenMetadata manages its own database schema. There are two kinds of input:
 
-OpenMetadata uses a hybrid migration system that combines:
-1. **Legacy Flyway migrations** (being phased out)
-2. **Native OpenMetadata migrations** (current system)
-3. **Extension migrations** (for custom/plugin functionality)
+1. **The baseline** (`bootstrap/sql/migrations/baseline/`) — the consolidated pre-2.0 schema,
+   installed once on an empty database instead of replaying the history that produced it.
+2. **Native migrations** (`bootstrap/sql/migrations/native/{version}/`) — everything from `2.0.0`
+   onward, applied incrementally, plus optional **extension migrations** supplied by downstream
+   distributions via `extensionPath`.
 
-## Migration Execution Order
+Flyway is gone entirely — the runner, the legacy `v0xx` scripts, and the dependency itself.
+Statement splitting is handled by `SqlStatementSplitter`.
 
-The migration system executes in a specific order to ensure database consistency:
-
-```
-1. Flyway Migrations (Legacy)
-   ├── v000__create_server_change_log.sql  (Creates migration tracking tables)
-   ├── v001__*.sql
-   ├── v002__*.sql
-   └── ...
-
-2. Native OpenMetadata Migrations
-   ├── 1.1.0/
-   ├── 1.1.1/
-   ├── 1.2.0/
-   └── ...
-
-3. Extension Migrations
-   ├── custom-extension-1.0.0/
-   └── ...
-```
-
-## Migration Tracking Tables
-
-### SERVER_CHANGE_LOG
-Primary table for tracking all migration executions:
-- `installed_rank`: Auto-increment sequence number
-- `version`: Migration version identifier (PRIMARY KEY)
-- `migrationFileName`: Path to the migration file
-- `checksum`: Hash of migration content for integrity validation
-- `installed_on`: Timestamp of migration execution
-- `metrics`: JSON/JSONB field for migration execution metrics
-
-### SERVER_MIGRATION_SQL_LOGS
-Detailed SQL execution logs:
-- `version`: Migration version identifier
-- `sqlStatement`: Individual SQL statement executed
-- `checksum`: Hash of the SQL statement (PRIMARY KEY)
-- `executedAt`: Timestamp of SQL execution
-
-## Migration Logic
-
-The migration workflow follows this decision tree:
+## Execution order
 
 ```
-IF native migrations are already executed:
-    └── Skip all Flyway migrations (they've already run)
-    └── Execute remaining native migrations
-    └── Execute extension migrations
-
-ELSE IF no native migrations executed:
-    ├── Execute Flyway migrations (creates SERVER_CHANGE_LOG tables)
-    ├── Execute native migrations  
-    └── Execute extension migrations
+baseline (empty database only)
+   └── native >= 2.0.0, in version order
+          └── extension migrations, in version order
 ```
 
-## File Structure
+## Upgrade gate
+
+A database must already be on **2.0.0 or later** for this release to migrate it. Anything older —
+including a database still carrying the pre-native `DATABASE_CHANGE_LOG` table — is rejected with
+instructions to upgrade through the latest 2.0.x first. The gate runs before the force branch, so
+`--force` cannot skip it.
+
+## Baseline decision
+
+On every migrate the runner resolves one of:
+
+| Action | When | Effect |
+|---|---|---|
+| `RUN` | Empty database | Install the baseline, record one `2.0.0-baseline` step |
+| `RESUME` | Only a `STARTED` baseline row exists (a crash) | Wipe and re-install, refusing if entity rows are present |
+| `SKIP` | Real migration history already exists | Nothing |
+| `ABORT` | Entity tables but no migration history | Refuse and tell the operator to restore or drop-create |
+| `DISABLED` | No baseline files shipped | Continue for an existing database; fail with the missing path when an empty database requires the baseline |
+
+Once a database is baseline-managed, every version below 2.0.0 is filtered out of the available
+set — so a stray pre-2.0 directory can never be replayed on top of the baseline.
+
+## Tracking tables
+
+`SERVER_CHANGE_LOG` (one row per step) and `SERVER_MIGRATION_SQL_LOGS` (one row per executed
+statement, keyed by MD5). Both are created and maintained by the runner itself — see
+`MigrationHistoryTable` for the DDL and `MigrationHistoryTableUpgrader` for the in-place column
+upgrade applied to databases that predate them.
+
+Each history row describes a step:
+
+- `migrationType` — `BASELINE`, `NATIVE`, `EXTENSION`, or `FLYWAY` (legacy rows, backfilled).
+- `status` — `STARTED` when the step begins, then `COMPLETED`, or `FAILED` if a phase threw while
+  running under `--force`. Only `COMPLETED` counts as applied, so a crash leaves a visible marker
+  and the version stays pending.
+
+`./bootstrap/openmetadata-ops.sh info` prints this as a Version / Type / Status / Installed-On
+table; `repair` clears unfinished (`STARTED` / `FAILED`) native and extension rows so the next run
+retries them. It preserves a `STARTED` baseline row because that marker is what selects the guarded
+wipe-and-resume path after an interrupted fresh install.
+
+## File layout
 
 ```
 bootstrap/sql/migrations/
-├── flyway/
-│   ├── com.mysql.cj.jdbc.Driver/     # MySQL-specific Flyway migrations
-│   │   ├── v000__create_server_change_log.sql
-│   │   ├── v001__*.sql
-│   │   └── ...
-│   └── org.postgresql.Driver/        # PostgreSQL-specific Flyway migrations
-│       ├── v000__create_server_change_log.sql
-│       ├── v001__*.sql
-│       └── ...
-├── native/
-│   ├── 1.1.0/
-│   │   ├── mysql/schemaChanges.sql
-│   │   └── postgres/schemaChanges.sql
-│   ├── 1.1.1/
-│   └── ...
-└── extensions/                       # Custom extension migrations
-    └── [extension-name]/
-        ├── mysql/
-        └── postgres/
+├── baseline/
+│   ├── README.md                     # freeze policy + regeneration
+│   ├── mysql/schema.sql
+│   └── postgres/schema.sql
+└── native/
+    └── {version}/
+        ├── mysql/{schemaChanges,postDataMigrationSQLScript}.sql
+        └── postgres/{schemaChanges,postDataMigrationSQLScript}.sql
 ```
 
-## Migration Implementation Classes
+## Key classes
 
-- `MigrationWorkflow`: Orchestrates the entire migration process
-- `FlywayMigrationFile`: Adapter for legacy Flyway migrations
-- `MigrationFile`: Handler for native OpenMetadata migrations
-- `MigrationProcess`: Executes individual migration steps
-
-## SQL Statement Parsing
-
-**Important**: While OpenMetadata has removed Flyway as the migration framework, we still use **Flyway's SQL parsers** for reliable statement splitting:
-
-- **MySQL**: Uses `org.flywaydb.database.mysql.MySQLParser`
-- **PostgreSQL**: Uses `org.flywaydb.database.postgresql.PostgreSQLParser`
-
-This ensures proper handling of:
-- Complex SQL statements with string literals containing semicolons
-- Comments (both `--` and `/* */` style)
-- Escaped characters and quotes
-- Database-specific SQL syntax
-
-The parsers split SQL files into individual statements via `SqlStatementIterator`, which is far more reliable than simple string splitting.
-
-**Dependencies**: Requires `flyway-core` and `flyway-mysql` for SQL parsing only (not migration management).
-
-## Key Design Decisions
-
-1. **Hybrid Approach**: Custom migration management + Flyway SQL parsing for reliability
-2. **Backward Compatibility**: Flyway migrations continue to work during transition period
-3. **Single Source of Truth**: All migrations are tracked in `SERVER_CHANGE_LOG` regardless of type
-4. **Database Agnostic**: Separate migration files for MySQL and PostgreSQL
-5. **Execution Order**: Flyway → Native → Extensions ensures proper dependency resolution
-6. **Migration Tracking**: v000 Flyway migration creates the tracking infrastructure before any other migrations
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Missing SERVER_CHANGE_LOG table**:
-   - Ensure v000 Flyway migration has executed
-   - Check database permissions
-
-2. **Migration version conflicts**:
-   - Verify no duplicate version numbers across migration types
-   - Check migration file naming conventions
-
-3. **Database-specific failures**:
-   - Ensure correct SQL syntax for target database (MySQL vs PostgreSQL)
-   - Validate database-specific features (JSON vs JSONB, AUTO_INCREMENT vs SERIAL)
-
-### Migration Recovery
-
-If migrations fail:
-1. Check `SERVER_CHANGE_LOG` table for last successful migration
-2. Review `SERVER_MIGRATION_SQL_LOGS` for failed SQL statements
-3. Fix underlying issues and restart migration process
-4. Use `--force` flag only if absolutely necessary
+- `MigrationWorkflow` — discovery, the upgrade gate, the baseline floor, pending computation, execution
+- `BaselineWorkflow` / `BaselineFiles` — baseline decision and installation
+- `MigrationProcessImpl` — default per-version process (SQL only); a version with Java work supplies
+  `org.openmetadata.service.migration.{mysql,postgres}.v{version}.Migration`
+- `MigrationFile` — one native/extension directory; parses SQL and resolves the Java class
+- `SqlStatementSplitter` — statement splitting (comments, quoting, PostgreSQL dollar-quoting)
+- `MigrationVersionUtil` — version parsing/comparison, the 2.0.0 floor, the baseline version constant
 
 ## Configuration
 
-Migration paths are configured in `MigrationConfiguration`:
-- `nativePath`: Path to native OpenMetadata migrations
-- `flywayPath`: Path to legacy Flyway migrations  
-- `extensionPath`: Path to extension migrations
-
-Example:
 ```yaml
 migrationConfiguration:
-  nativePath: "bootstrap/sql/migrations/native"
-  flywayPath: "bootstrap/sql/migrations/flyway"
-  extensionPath: "bootstrap/sql/migrations/extensions"
+  nativePath: "./bootstrap/sql/migrations/native"
+  extensionPath: ""
+  # baselinePath: defaults to a "baseline" directory beside nativePath
 ```
+
+`flywayPath` is accepted but ignored; it remains only so existing configuration files still parse.
+
+## Adding a migration
+
+1. Create `native/{version}/{mysql,postgres}/schemaChanges.sql` (both dialects, idempotent).
+2. Add `postDataMigrationSQLScript.sql` if work must follow the data migration.
+3. For Java work, add `migration/{mysql,postgres}/v{version}/Migration.java`.
+4. Never touch the baseline or re-add a pre-2.0 version.

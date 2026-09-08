@@ -22,12 +22,14 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.service.migration.utils.MigrationVersionUtil;
 
 class OntologySqlMigrationParityTest {
   private static final Pattern MYSQL_TABLE_COLLATION =
@@ -43,33 +45,35 @@ class OntologySqlMigrationParityTest {
           "rdf_inference_rule");
 
   @Test
-  void mysqlCleanAndUpgradeTableCollationsStayAligned() throws IOException {
+  void mysqlFreshInstallAndUpgradeTableCollationsStayAligned() throws IOException {
     final DialectSql mysql =
         dialects().filter(dialect -> dialect.name().equals("mysql")).findFirst().orElseThrow();
 
-    assertEquals(CANONICAL_MYSQL_TABLE_COLLATIONS, tableCollations(read(mysql.cleanSchema())));
-    assertEquals(CANONICAL_MYSQL_TABLE_COLLATIONS, tableCollations(read(mysql.schemaChanges())));
+    assertEquals(
+        CANONICAL_MYSQL_TABLE_COLLATIONS, ontologyTableCollations(readFreshInstall(mysql)));
+    assertEquals(
+        CANONICAL_MYSQL_TABLE_COLLATIONS, ontologyTableCollations(read(mysql.schemaChanges())));
   }
 
-  @ParameterizedTest(name = "{0} clean and 2.1 upgrade schemas stay aligned")
+  @ParameterizedTest(name = "{0} fresh install and 2.1 upgrade schemas stay aligned")
   @MethodSource("dialects")
-  void cleanAndUpgradeSchemasStayAligned(final DialectSql dialect) throws IOException {
-    final String clean = read(dialect.cleanSchema());
+  void freshInstallAndUpgradeSchemasStayAligned(final DialectSql dialect) throws IOException {
+    final String freshInstall = readFreshInstall(dialect);
     final String upgrade = read(dialect.schemaChanges());
 
     for (final String table : ONTOLOGY_TABLES) {
-      assertContains(clean, table, dialect.name() + " clean schema");
+      assertContains(freshInstall, table, dialect.name() + " fresh-install schema");
       assertContains(upgrade, table, dialect.name() + " 2.1 migration");
     }
-    assertRelationshipColumns(clean, dialect);
+    assertRelationshipColumns(freshInstall, dialect);
     assertRelationshipColumns(upgrade, dialect);
   }
 
-  @ParameterizedTest(name = "{0} custom ontology storage exists in clean and upgrade schemas")
+  @ParameterizedTest(name = "{0} custom ontology storage exists in fresh install and upgrade")
   @MethodSource("dialects")
   void customOntologyStorageStaysAligned(final DialectSql dialect) throws IOException {
     assertContains(
-        read(dialect.cleanSchema()), "rdf_custom_ontology", dialect.name() + " clean schema");
+        readFreshInstall(dialect), "rdf_custom_ontology", dialect.name() + " fresh-install schema");
     assertContains(
         read(dialect.schemaChanges()), "rdf_custom_ontology", dialect.name() + " 2.1.0 migration");
   }
@@ -108,17 +112,55 @@ class OntologySqlMigrationParityTest {
     return Files.readString(path).toLowerCase(Locale.ROOT);
   }
 
-  private static Set<String> tableCollations(final String sql) {
-    return MYSQL_TABLE_COLLATION
-        .matcher(sql)
-        .results()
-        .map(result -> result.group(1))
+  private static String readFreshInstall(final DialectSql dialect) throws IOException {
+    final StringBuilder sql = new StringBuilder(read(dialect.baselineSchema()));
+    for (final Path schemaChanges : liveSchemaChanges(dialect)) {
+      sql.append('\n').append(read(schemaChanges));
+    }
+    return sql.toString();
+  }
+
+  private static List<Path> liveSchemaChanges(final DialectSql dialect) throws IOException {
+    try (Stream<Path> versions = Files.list(dialect.nativeMigrations())) {
+      return versions
+          .filter(Files::isDirectory)
+          .filter(path -> MigrationVersionUtil.isParseable(version(path)))
+          .filter(path -> !MigrationVersionUtil.isBelowMinimum(version(path)))
+          .sorted(
+              (left, right) -> MigrationVersionUtil.compareVersions(version(left), version(right)))
+          .map(path -> path.resolve(dialect.name() + "/schemaChanges.sql"))
+          .filter(Files::isRegularFile)
+          .toList();
+    }
+  }
+
+  private static String version(final Path path) {
+    return path.getFileName().toString();
+  }
+
+  private static Set<String> ontologyTableCollations(final String sql) {
+    return ONTOLOGY_TABLES.stream()
+        .map(table -> tableCollation(sql, table))
         .collect(Collectors.toUnmodifiableSet());
+  }
+
+  private static String tableCollation(final String sql, final String table) {
+    final Pattern createTable =
+        Pattern.compile("create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?" + Pattern.quote(table));
+    final Matcher tableStart = createTable.matcher(sql);
+    assertTrue(tableStart.find(), "MySQL schema is missing table " + table);
+    final int tableEnd = sql.indexOf(';', tableStart.start());
+    assertTrue(tableEnd > tableStart.start(), "MySQL schema has an incomplete table " + table);
+
+    final Matcher collation =
+        MYSQL_TABLE_COLLATION.matcher(sql.substring(tableStart.start(), tableEnd));
+    assertTrue(collation.find(), "MySQL table is missing a default collation: " + table);
+    return collation.group(1);
   }
 
   private static Stream<DialectSql> dialects() {
     final Path root = repositoryRoot();
-    final Path migrations = root.resolve("bootstrap/sql/migrations/native/2.1.0");
+    final Path migrations = root.resolve("bootstrap/sql/migrations/native");
     return Stream.of(
         dialect(root, migrations, "mysql", "relationship_type_id_index"),
         dialect(root, migrations, "postgres", "entity_relationship_type_id_index"));
@@ -128,15 +170,17 @@ class OntologySqlMigrationParityTest {
       final Path root, final Path migrations, final String name, final String relationshipIndex) {
     return new DialectSql(
         name,
-        root.resolve("bootstrap/sql/schema/" + name + ".sql"),
-        migrations.resolve(name + "/schemaChanges.sql"),
-        migrations.resolve(name + "/postDataMigrationSQLScript.sql"),
+        root.resolve("bootstrap/sql/migrations/baseline/" + name + "/schema.sql"),
+        migrations,
+        migrations.resolve("2.1.0/" + name + "/schemaChanges.sql"),
+        migrations.resolve("2.1.0/" + name + "/postDataMigrationSQLScript.sql"),
         relationshipIndex);
   }
 
   private static Path repositoryRoot() {
     Path current = Path.of("").toAbsolutePath();
-    while (current != null && !Files.exists(current.resolve("bootstrap/sql/schema/mysql.sql"))) {
+    while (current != null
+        && !Files.exists(current.resolve("bootstrap/sql/migrations/baseline/mysql/schema.sql"))) {
       current = current.getParent();
     }
     if (current == null) {
@@ -147,7 +191,8 @@ class OntologySqlMigrationParityTest {
 
   private record DialectSql(
       String name,
-      Path cleanSchema,
+      Path baselineSchema,
+      Path nativeMigrations,
       Path schemaChanges,
       Path postDataMigration,
       String relationshipIndex) {

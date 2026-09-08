@@ -1,1 +1,0 @@
--- Placeholder for 1.12.7 MySQL post-data migration script
