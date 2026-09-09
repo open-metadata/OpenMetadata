@@ -309,12 +309,32 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
+  // The shard-side upload step has a fallback that re-uploads under
+  // `<baseName>-retry` so a first-attempt FinalizeArtifact 403 (leaving a
+  // ghost reservation that would 409 a same-name retry) can still land the
+  // results. Collapse each shardId's primary + retry back to a single
+  // shardId here, preferring the `-retry` copy when both are present (a
+  // successful retry means the primary was incomplete or its finalize
+  // failed).
   if (fs.existsSync(resultsDir)) {
+    const dirsByShard = new Map();
     for (const dir of fs.readdirSync(resultsDir).sort()) {
+      if (!dir.startsWith('playwright-results-json-')) continue;
       const jsonPath = path.join(resultsDir, dir, 'results.json');
       if (!fs.existsSync(jsonPath)) continue;
-
-      const shardNum = dir.replace('playwright-results-json-', '');
+      const suffix = dir.replace('playwright-results-json-', '');
+      const isRetry = suffix.endsWith('-retry');
+      const shardNum = isRetry ? suffix.slice(0, -'-retry'.length) : suffix;
+      const existing = dirsByShard.get(shardNum);
+      // Retry beats primary; otherwise first-writer wins for stable ordering.
+      if (!existing || (isRetry && !existing.isRetry)) {
+        dirsByShard.set(shardNum, { dir, isRetry });
+      }
+    }
+    for (const [shardNum, { dir }] of Array.from(dirsByShard.entries()).sort(
+      ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
+    )) {
+      const jsonPath = path.join(resultsDir, dir, 'results.json');
       let report;
       try {
         report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
@@ -406,15 +426,26 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
+  // ci-status.json is bundled into the same artifact as results.json, so the
+  // primary + retry collapse rule above applies here too — pick the retry
+  // when both are present.
   const statusByShard = new Map();
+  const statusIsRetryByShard = new Map();
   if (fs.existsSync(resultsDir)) {
     for (const dir of fs.readdirSync(resultsDir).sort()) {
+      if (!dir.startsWith('playwright-results-json-')) continue;
       const statusPath = path.join(resultsDir, dir, 'ci-status.json');
       if (!fs.existsSync(statusPath)) continue;
-      const shardNum = dir.replace('playwright-results-json-', '');
+      const suffix = dir.replace('playwright-results-json-', '');
+      const isRetry = suffix.endsWith('-retry');
+      const shardNum = isRetry ? suffix.slice(0, -'-retry'.length) : suffix;
+      if (statusByShard.has(shardNum) && !isRetry && statusIsRetryByShard.get(shardNum)) {
+        continue;
+      }
       try {
         const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
         statusByShard.set(shardNum, status);
+        statusIsRetryByShard.set(shardNum, isRetry);
       } catch (error) {
         addInfrastructureIssue(`Shard ${shardNum} uploaded invalid execution status JSON: ${error.message}`);
       }
