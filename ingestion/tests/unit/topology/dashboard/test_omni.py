@@ -710,3 +710,41 @@ def test_yield_dashboard_lineage_details_uses_field_references(omni_source):
     ]
     assert len(edges) == 1
     assert (edges[0].edge.fromEntity.type, edges[0].edge.toEntity.type) == ("dashboardDataModel", "dashboard")
+
+
+def test_get_users_pages_on_when_total_results_is_absent():
+    """``totalResults`` is optional in a SCIM ListResponse; a server that omits it
+    must not have its later pages silently dropped."""
+    from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
+        OmniConnection as OmniConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.omni.client import SCIM_PAGE_SIZE, OmniApiClient
+
+    client = OmniApiClient(OmniConnectionConfig(hostPort="https://acme.omniapp.co", token="t"))
+    full = [{"id": str(i), "displayName": f"U{i}"} for i in range(SCIM_PAGE_SIZE)]
+    client.scim_client = MagicMock()
+    client.scim_client.get.side_effect = [
+        {"Resources": full},
+        {"Resources": [{"id": "last", "displayName": "Last"}]},
+    ]
+
+    users = client.get_users()
+    assert len(users) == SCIM_PAGE_SIZE + 1
+    assert users[-1].id == "last"
+    assert [c.kwargs["data"]["startIndex"] for c in client.scim_client.get.call_args_list] == [
+        1,
+        1 + SCIM_PAGE_SIZE,
+    ]
+
+
+def test_get_users_stops_on_an_empty_page():
+    from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
+        OmniConnection as OmniConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    client = OmniApiClient(OmniConnectionConfig(hostPort="https://acme.omniapp.co", token="t"))
+    client.scim_client = MagicMock()
+    client.scim_client.get.side_effect = [{"Resources": [], "totalResults": 0}]
+    assert client.get_users() == []
+    assert client.scim_client.get.call_count == 1

@@ -361,9 +361,16 @@ class OmniApiClient:
                 result = UsersResponse.model_validate(payload)
                 page = result.Resources or []
                 users.extend(page)
-                total = result.totalResults or 0
-                start_index += result.itemsPerPage or len(page) or SCIM_PAGE_SIZE
-                if not page or start_index > total:
+                if not page:
+                    break
+                # ``startIndex`` is the 1-based index of the first result, so advance
+                # by what this page actually returned. ``totalResults`` is optional:
+                # without it, keep paging while the server hands back full pages.
+                start_index += len(page)
+                if result.totalResults is not None:
+                    if start_index > result.totalResults:
+                        break
+                elif len(page) < SCIM_PAGE_SIZE:
                     break
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
