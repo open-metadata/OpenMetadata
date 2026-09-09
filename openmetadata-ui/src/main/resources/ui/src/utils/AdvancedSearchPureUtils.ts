@@ -319,7 +319,7 @@ export const getOptionsFromAggregationBucket = (
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
     .map((option) => {
-      let label = labelFormatter ? labelFormatter(option.key) : option.key;
+      let label = option.key;
 
       if (sourceFields) {
         const topHitsData = (option as Record<string, unknown>)[
@@ -338,6 +338,12 @@ export const getOptionsFromAggregationBucket = (
         if (extracted) {
           label = extracted;
         }
+      }
+
+      // Runs after the sourceFields resolution so formatters (entity type,
+      // tier) see the original-cased value, not the lowercased bucket key.
+      if (labelFormatter) {
+        label = labelFormatter(label);
       }
 
       return { key: option.key, label, count: option.doc_count ?? 0 };

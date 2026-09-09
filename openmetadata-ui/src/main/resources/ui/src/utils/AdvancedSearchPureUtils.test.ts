@@ -157,6 +157,28 @@ describe('getOptionsFromAggregationBucket', () => {
       expect(option.label).toBe('My Domain');
     });
 
+    it('applies the label formatter after sourceFields resolution', () => {
+      const bucket = {
+        key: 'tier.tier1',
+        doc_count: 2,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { tier: { tagFQN: 'Tier.Tier1' } } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        (label) => label.split('.').pop() ?? label,
+        'tier.tagFQN'
+      );
+
+      expect(option.key).toBe('tier.tier1');
+      // The formatter received the resolved 'Tier.Tier1', not the bucket key.
+      expect(option.label).toBe('Tier1');
+    });
+
     it('falls back to bucket key when no top_hits data is present', () => {
       const bucket = {
         key: 'my domain',

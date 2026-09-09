@@ -17,6 +17,7 @@ import { isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -25,6 +26,7 @@ import {
   getOptionsFromAggregationBucket,
   getQuickFilterSourceFields,
 } from '../../utils/AdvancedSearchPureUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
@@ -36,6 +38,7 @@ import {
   getCanonicalEntityType,
   getExploreQueryFilterMust,
 } from '../../utils/ExploreUtils';
+import { getNameFromFQN } from '../../utils/FqnUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -54,33 +57,62 @@ const ENTITY_TYPE_FILTER_KEYS: ReadonlySet<string> = new Set([
 const formatEntityTypeLabel = (value: string): string =>
   getEntityNameLabel(getCanonicalEntityType(value));
 
+// The filter value stays the raw tier FQN (tier.tier1); only the visible
+// label becomes the tier name (Tier1).
+const formatTierLabel = (value: string): string => {
+  const tierName = getNameFromFQN(value);
+
+  return tierName.charAt(0).toUpperCase() + tierName.slice(1);
+};
+
 // Human-readable entity-type labels are an Explore-page affordance. The
 // Untitled-UI drawer dropdown (Add Assets) keys its options off the raw label,
 // so keep raw entity-type values there to preserve its stable option ids.
 const getOptionLabelFormatter = (
   key: string,
   skipEntityTypeLabel = false
-): ((value: string) => string) | undefined =>
-  ENTITY_TYPE_FILTER_KEYS.has(key) && !skipEntityTypeLabel
-    ? formatEntityTypeLabel
-    : undefined;
+): ((value: string) => string) | undefined => {
+  if (ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return skipEntityTypeLabel ? undefined : formatEntityTypeLabel;
+  }
 
-const addEntityTypeIcons = (
+  return key === EntityFields.TIER ? formatTierLabel : undefined;
+};
+
+const addOptionIcons = (
   key: string,
   opts: SearchDropdownOption[]
 ): SearchDropdownOption[] => {
-  if (!ENTITY_TYPE_FILTER_KEYS.has(key)) {
-    return opts;
+  if (ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return opts.map((opt) => ({
+      ...opt,
+      icon:
+        searchClassBase.getEntityIconWithBg(
+          getCanonicalEntityType(opt.key),
+          EntityIconSize.Size14
+        ) ?? undefined,
+    }));
   }
 
-  return opts.map((opt) => ({
-    ...opt,
-    icon:
+  if (key === EntityFields.SERVICE_TYPE) {
+    return opts.map((opt) => ({
+      ...opt,
+      icon:
+        getServiceLogo(opt.key, 'tw:size-3.5 tw:object-contain') ?? undefined,
+    }));
+  }
+
+  if (key === EntityFields.DOMAINS) {
+    const domainIcon =
       searchClassBase.getEntityIconWithBg(
-        getCanonicalEntityType(opt.key),
+        EntityType.DOMAIN,
         EntityIconSize.Size14
-      ) ?? undefined,
-  }));
+      ) ?? undefined;
+
+    return opts.map((opt) => ({ ...opt, icon: domainIcon }));
+  }
+
+  return opts;
 };
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -187,7 +219,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      setOptions(addOptionIcons(key, staticOptions));
 
       return;
     }
@@ -230,7 +262,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
 
     setOptions(
-      addEntityTypeIcons(
+      addOptionIcons(
         key,
         uniqWith(
           getOptionsFromAggregationBucket(
@@ -253,7 +285,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      setOptions(addOptionIcons(key, staticOptions));
       // Owns the newest request, so no in-flight fetch will clear the loader.
       setIsOptionsLoading(false);
 
@@ -297,7 +329,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
-      setOptions(addEntityTypeIcons(key, filteredOptions));
+      setOptions(addOptionIcons(key, filteredOptions));
       // Owns the newest request, so no in-flight fetch will clear the loader.
       setIsOptionsLoading(false);
 
@@ -337,7 +369,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       }
 
       setOptions(
-        addEntityTypeIcons(
+        addOptionIcons(
           key,
           uniqWith(
             getOptionsFromAggregationBucket(
