@@ -643,6 +643,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       )}
 
       <ReindexFailures
+        appName={data.appName}
         visible={showFailuresDrawer}
         onClose={() => setShowFailuresDrawer(false)}
       />
