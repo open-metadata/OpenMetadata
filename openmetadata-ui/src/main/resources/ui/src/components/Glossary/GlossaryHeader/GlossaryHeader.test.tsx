@@ -110,8 +110,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../Modals/IconColorModal/IconColorModal', () => {
-  return jest.fn().mockImplementation(() => <p>IconColorModal</p>);
+jest.mock('../../Modals/StyleModal/StyleModal.component', () => {
+  return jest.fn().mockImplementation(() => <p>StyleModal</p>);
 });
 
 jest.mock('../../Entity/Voting/Voting.component', () => {

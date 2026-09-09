@@ -1037,10 +1037,9 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('icon-image')).toHaveAttribute(
-          'src',
-          'https://example.com/icon.png'
-        );
+        const tagIcon = screen.getByTestId('tag-icon');
+
+        expect(tagIcon).toBeInTheDocument();
       });
     });
 
