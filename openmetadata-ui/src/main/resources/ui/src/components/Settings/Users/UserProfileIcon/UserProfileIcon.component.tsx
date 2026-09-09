@@ -30,12 +30,12 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-  getImageWithResolutionAndFallback,
-  ImageQuality,
+    getImageWithResolutionAndFallback,
+    ImageQuality
 } from '../../../../utils/ProfilerUtils';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+    getTeamAndUserDetailsPath,
+    getUserPath
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
@@ -71,6 +71,7 @@ const renderLimitedListMenuItem = ({
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
   const items = listItems.slice(0, sizeLimit);
+
   return isEmpty(items)
     ? [
         {
@@ -118,6 +119,7 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
     return false;
   }, []);
 
@@ -142,6 +144,7 @@ export const UserProfileIcon = () => {
 
   const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
     const userName = getEntityName(currentUser) || TERM_USER;
+
     return {
       userName,
       roles: currentUser?.isAdmin
@@ -161,6 +164,7 @@ export const UserProfileIcon = () => {
         }
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
+
         return Array.from(uniquePersonasMap.values());
       })(),
     };
@@ -169,6 +173,7 @@ export const UserProfileIcon = () => {
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => {
       const isDefaultPersona = defaultPersona?.id === item.id;
+
       return (
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
@@ -267,6 +272,7 @@ export const UserProfileIcon = () => {
       }
     }
     const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
+
     return [
       ...(defaultMatch ? [defaultMatch] : []),
       ...(selectedMatch ? [selectedMatch] : []),

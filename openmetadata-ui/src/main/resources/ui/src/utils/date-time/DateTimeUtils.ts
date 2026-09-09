@@ -13,11 +13,11 @@
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import {
-  DAY_SECONDS,
-  HOUR_SECONDS,
-  MINUTE_SECONDS,
-  MONTH_SECONDS,
-  YEAR_SECONDS,
+    DAY_SECONDS,
+    HOUR_SECONDS,
+    MINUTE_SECONDS,
+    MONTH_SECONDS,
+    YEAR_SECONDS
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
@@ -37,11 +37,14 @@ const loadCronstrue = (): Promise<CronstrueModule> => {
   if (!cronstruePromise) {
     cronstruePromise = import('cronstrue').then((m) => {
       cronstrueModule = m;
+
       return m;
     });
   }
+
   return cronstruePromise;
 };
+
 export const getLoadedCronstrue = (): CronstrueModule | null => cronstrueModule;
 export const ensureCronstrueLoaded = loadCronstrue;
 
@@ -72,6 +75,7 @@ export const getActiveTimeFormat = (): '12h' | '24h' => {
   const userTimeFormat = currentUser?.name
     ? usePersistentStorage.getState().preferences[currentUser.name]?.timeFormat
     : undefined;
+
   return userTimeFormat ?? globalTimeFormat ?? '12h';
 };
 
@@ -102,6 +106,7 @@ export const formatDateTime = (date?: number) => {
     return '';
   }
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
   return dateTime.toFormat(
     getMappedTimeFormat(DATE_TIME_WITH_OFFSET_SHORT, getActiveTimeFormat())
   );
@@ -116,6 +121,7 @@ export const formatDate = (date?: number, supportUTC = false) => {
     return '';
   }
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
   return supportUTC
     ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
     : dateTime.setLocale(i18next.language).toLocaleString(DateTime.DATE_MED);
@@ -133,6 +139,7 @@ export const formatMonth = (date?: number) => {
   if (!dateTime.isValid) {
     return '';
   }
+
   return dateTime.toFormat('MMM');
 };
 
@@ -144,6 +151,7 @@ export const formatDateTimeLong = (timestamp?: number, format?: string) => {
   if (isNil(timestamp)) {
     return '';
   }
+
   return DateTime.fromMillis(toNumber(timestamp), {
     locale: i18next.language,
   }).toFormat(
@@ -165,6 +173,7 @@ export const getTimeZone = (): string => {
     })
     .slice(4);
   const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
+
   return abbreviation;
 };
 
@@ -185,6 +194,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
   const dateTime = DateTime.fromMillis(timeStamp, {
     locale: i18next.language,
   });
+
   // FIX: Merge hour12 into the format options (first arg) so Luxon applies it correctly.
   return dateTime.toLocaleString({
     ...DateTime.DATETIME_FULL,
@@ -214,6 +224,7 @@ export const customFormatDateTime = (
   if (!format) {
     return formatDateTime(milliseconds);
   }
+
   return DateTime.fromMillis(milliseconds, {
     locale: i18next.language,
   }).toFormat(getMappedTimeFormat(format, getActiveTimeFormat()));
@@ -252,6 +263,7 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
         ] || word
     )
     .join(' ');
+
   return shortForm;
 };
 
@@ -295,6 +307,7 @@ export const getDaysRemaining = (timestamp: number) =>
 export const isValidDateFormat = (format: string) => {
   try {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
+
     return dt.isValid;
   } catch {
     return false;
@@ -308,6 +321,7 @@ export const getIntervalInMilliseconds = (
   const startDateTime = DateTime.fromMillis(startTime);
   const endDateTime = DateTime.fromMillis(endTime);
   const interval = endDateTime.diff(startDateTime);
+
   return interval.milliseconds;
 };
 
@@ -323,6 +337,7 @@ export const calculateInterval = (
     const duration = Duration.fromMillis(intervalInMilliseconds);
     const days = Math.floor(duration.as('days'));
     const hours = Math.floor(duration.as('hours')) % 24;
+
     return `${days} Days, ${hours} Hours`;
   } catch {
     return 'Invalid interval';
@@ -345,6 +360,7 @@ const buildHumanReadableResult = (
   const limitedParts =
     length && parts.length > length ? parts.slice(0, length) : parts;
   const formattedResult = limitedParts.join(' ');
+
   return isNegative
     ? `${prependForNegativeValue}${formattedResult}`
     : formattedResult;
@@ -469,6 +485,7 @@ export const formatIsoDuration = (iso: string): string => {
   if (!d.isValid) {
     return iso;
   }
+
   return d.toHuman() || iso;
 };
 
@@ -476,6 +493,7 @@ export const formatDurationToHHMMSS = (ms: number) => {
   if (ms > 0 && ms < 1000) {
     return `${Math.floor(ms)} ms`;
   }
+
   return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 
@@ -494,12 +512,14 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   for (let i = 6; i >= 0; i--) {
     sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
   }
+
   return sevenDaysStartGMTArrayInMillis;
 };
 
 export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
   if (!cronstrueModule) {
     loadCronstrue();
+
     return { descriptionFirstPart: '', descriptionSecondPart: '' };
   }
   try {
@@ -518,6 +538,7 @@ export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
     const descriptionSecondPart = capitalize(
       scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
     );
+
     return { descriptionFirstPart, descriptionSecondPart };
   } catch {
     return { descriptionFirstPart: '', descriptionSecondPart: '' };

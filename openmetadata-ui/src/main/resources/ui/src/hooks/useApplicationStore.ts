@@ -27,9 +27,9 @@ import {
 } from '../utils/AuthProvider.util';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import {
-  clearPersonaSession,
-  readPersonaSession,
-  writePersonaSession,
+    clearPersonaSession,
+    readPersonaSession,
+    writePersonaSession
 } from '../utils/PersonaSessionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
