@@ -340,14 +340,10 @@ export const getOwnerVersionLabel = (
 
     return (
       <Owner
+        isCompactView={false}
         ownerDisplayName={ownerDisplayName}
         owners={toOwnerRefs(defaultItems)}
-        {...(ownerField === TabSpecificField.OWNERS
-          ? {
-              isCompactView: false,
-              showLabel: false,
-            }
-          : {})}
+        showLabel={false}
       />
     );
   }
