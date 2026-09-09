@@ -568,6 +568,23 @@ export default [
       'om-playwright/no-blanket-test-slow': 'error',
       'om-playwright/no-positional-locator': 'error',
       'om-playwright/justified-rule-disable': 'error',
+
+      // Setup hooks (beforeAll/beforeEach/afterAll/afterEach) must drive the
+      // SUT via apiContext, not through UI clicks. Existing sites are
+      // grandfathered via eslint-suppressions.json; new UI-in-setup fails
+      // lint. Motivation: PR #32594 measured 21% wasted API calls, most of
+      // which came from UI-driven setup — the SUT stress that surfaces as
+      // "test flakiness" is usually the tests' own load.
+      'om-playwright/no-ui-in-test-setup': 'error',
+
+      // page.reload() boots the SPA again; that boot is what
+      // appBootsPerUIScenario measures. Convergence target is ≤1, measured
+      // 2.3 — most of the gap is reloads used as "refresh to see the
+      // update" instead of trusting the app's mutation-driven refetch.
+      // Justified reloads (persistence, service-worker upgrade, SSO
+      // callback) get through with a `// TEST_KEEP_RELOAD: <reason>`
+      // comment; bare reloads accrue in eslint-suppressions.json.
+      'om-playwright/no-page-reload-without-justification': 'error',
     },
   },
 

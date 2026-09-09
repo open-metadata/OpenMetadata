@@ -34,6 +34,19 @@ Highest-value constraints, all machine-enforced:
   under-reports by design — any call it cannot see inside (a helper, a page object) exempts the
   test — so it is a backstop, not a guarantee that every test asserts.
 - `test.slow()` only inside the one test that needs it, never at file or describe scope.
+- **No UI input actions in setup hooks.** `page.click`, `page.fill`, `page.press`, `page.selectOption`,
+  etc. inside `test.beforeAll`/`beforeEach`/`afterAll`/`afterEach` fail lint
+  (`om-playwright/no-ui-in-test-setup`). Push setup state via `apiContext.<Entity>.create()` or a REST
+  helper — the canonical pattern in this codebase already. `page.goto` in setup is *not* banned; only
+  the input-action subset is. Rationale: every UI click in setup adds ~30 API calls to the SUT (PR
+  #32594); the SUT-stress this compounds into is what surfaces as "flakiness".
+- **`page.reload()` requires a justification comment.** A bare `await page.reload();` fails lint
+  (`om-playwright/no-page-reload-without-justification`). If the reload is intentional (persistence
+  test, service-worker upgrade, SSO return flow), add `// TEST_KEEP_RELOAD: <reason>` on the line
+  above or on the same line. Rationale: every reload boots the SPA again — measured
+  `appBootsPerUIScenario` is 2.3, convergence target is ≤1, and unjustified reloads are the dominant
+  contributor. Prefer trusting the app to refetch on mutation (a stale UI after mutation is a product
+  bug, not a test workaround).
 - No `waitForTimeout`, `networkidle`, `force: true`, `waitForSelector`, or element handles.
 - Disabling a rule requires a justification: `-- <why>` appended to the directive. A directive with
   **no rule list** is never allowed, justified or not — it silences all 18 rules and CI rejects it.
