@@ -55,6 +55,8 @@ const toVersionLabel = (version: unknown) =>
  * version page into the error boundary.
  */
 const openMetricVersion = async (page: Page, versionLabel: string) => {
+  await page.getByTestId('manage-button').click();
+
   const versionButton = page.getByTestId('version-button');
 
   await expect(versionButton).toBeVisible();

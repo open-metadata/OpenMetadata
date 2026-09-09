@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import type { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -42,6 +43,7 @@ import {
   patchMetric,
   removeMetricFollower,
   restoreMetric,
+  updateMetricVote,
 } from '../../../rest/metricsAPI';
 import {
   metricQueryFn,
@@ -316,6 +318,18 @@ const MetricDetailsPage = () => {
     setMetricDetails(restoredMetric);
   }, [metricId, setMetricDetails]);
 
+  const updateVoteHandler = useCallback(
+    async (data: QueryVote, id: string) => {
+      try {
+        await updateMetricVote(id, data);
+        await queryClient.invalidateQueries({ queryKey: metricCacheKey });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [metricCacheKey, queryClient]
+  );
+
   const deleteMetricHandler = useCallback(
     (isSoftDelete: boolean) => {
       if (isSoftDelete) {
@@ -433,6 +447,7 @@ const MetricDetailsPage = () => {
         onMetricUpdate={handleMetricUpdate}
         onRestoreMetric={restoreMetricHandler}
         onUnFollowMetric={unFollowMetric}
+        onUpdateVote={updateVoteHandler}
         onVersionChange={versionHandler}
       />
     </>

@@ -13,6 +13,7 @@
 import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Metric } from '../../../generated/entity/data/metric';
 import type { User } from '../../../generated/entity/teams/user';
+import type { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface MetricDetailsProps {
   metricDetails: Metric;
@@ -24,5 +25,6 @@ export interface MetricDetailsProps {
   onMetricUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   onRestoreMetric: () => Promise<void>;
   onUnFollowMetric: () => Promise<void>;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onVersionChange: () => void;
 }

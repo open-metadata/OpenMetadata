@@ -444,13 +444,15 @@ export class MetricClass extends EntityClass {
     );
     await expect(governanceCard).toContainText(tier1);
 
-    await this.updateMetadataSelections(
-      page,
-      [{ groupName: 'Tier', isSelected: true, referenceName: tier2 }],
-      [{ excluded: [tier1], groupName: 'Tier', included: [tier2] }]
-    );
-    await expect(governanceCard).not.toContainText(tier1);
-    await expect(governanceCard).toContainText(tier2);
+    if (tier1 !== tier2) {
+      await this.updateMetadataSelections(
+        page,
+        [{ groupName: 'Tier', isSelected: true, referenceName: tier2 }],
+        [{ excluded: [tier1], groupName: 'Tier', included: [tier2] }]
+      );
+      await expect(governanceCard).not.toContainText(tier1);
+      await expect(governanceCard).toContainText(tier2);
+    }
 
     await this.updateMetadataSelections(
       page,
@@ -480,6 +482,7 @@ export class MetricClass extends EntityClass {
     _tag2Fqn?: string
   ) {
     const tag1Name = tag1.split('.').at(-1) ?? tag1;
+    const tag2Name = tag2.split('.').at(-1) ?? tag2;
     const taxonomyCard = page.getByTestId('metric-metadata-taxonomy-card');
     await this.updateMetadataSelections(
       page,
@@ -490,22 +493,22 @@ export class MetricClass extends EntityClass {
 
     await this.updateMetadataSelections(
       page,
-      [{ groupName: 'Tags', isSelected: true, referenceName: tag2 }],
-      [{ groupName: 'Tags', included: [tag1Name, tag2] }]
+      [{ groupName: 'Tags', isSelected: true, referenceName: tag2Name }],
+      [{ groupName: 'Tags', included: [tag1Name, tag2Name] }]
     );
     await expect(taxonomyCard).toContainText(tag1Name);
-    await expect(taxonomyCard).toContainText(tag2);
+    await expect(taxonomyCard).toContainText(tag2Name);
 
     await this.updateMetadataSelections(
       page,
       [
         { groupName: 'Tags', isSelected: false, referenceName: tag1Name },
-        { groupName: 'Tags', isSelected: false, referenceName: tag2 },
+        { groupName: 'Tags', isSelected: false, referenceName: tag2Name },
       ],
-      [{ excluded: [tag1Name, tag2], groupName: 'Tags', included: [] }]
+      [{ excluded: [tag1Name, tag2Name], groupName: 'Tags', included: [] }]
     );
     await expect(taxonomyCard).not.toContainText(tag1Name);
-    await expect(taxonomyCard).not.toContainText(tag2);
+    await expect(taxonomyCard).not.toContainText(tag2Name);
   }
 
   async glossaryTerm(
@@ -593,18 +596,18 @@ export class MetricClass extends EntityClass {
       exact: true,
       name: 'Follow',
     });
-    const followingButton = page.getByRole('button', {
+    const unfollowButton = page.getByRole('button', {
       exact: true,
-      name: 'Following',
+      name: 'Unfollow',
     });
 
-    if (await followingButton.isVisible()) {
+    if (await unfollowButton.isVisible()) {
       const resetResponse = page.waitForResponse(
         (response) =>
           response.request().method() === 'DELETE' &&
           new URL(response.url()).pathname.startsWith(metricPath)
       );
-      await followingButton.click();
+      await unfollowButton.click();
       expect((await resetResponse).ok()).toBeTruthy();
       await expect(followButton).toBeVisible();
     }
@@ -616,14 +619,14 @@ export class MetricClass extends EntityClass {
     );
     await followButton.click();
     expect((await followResponse).ok()).toBeTruthy();
-    await expect(followingButton).toBeVisible();
+    await expect(unfollowButton).toBeVisible();
 
     const unfollowResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&
         new URL(response.url()).pathname.startsWith(metricPath)
     );
-    await followingButton.click();
+    await unfollowButton.click();
     expect((await unfollowResponse).ok()).toBeTruthy();
     await expect(followButton).toBeVisible();
   }

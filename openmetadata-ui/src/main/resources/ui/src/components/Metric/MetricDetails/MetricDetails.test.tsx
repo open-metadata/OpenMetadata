@@ -32,6 +32,7 @@ import {
 } from '../../../generated/entity/data/metric';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import MetricDetails from './MetricDetails';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
@@ -105,6 +106,12 @@ const metric = {
   extension: {
     thresholds: { warning: 75, critical: 50 },
   },
+  votes: {
+    upVotes: 2,
+    downVotes: 1,
+    upVoters: [],
+    downVoters: [],
+  },
 } as Metric;
 
 const props: MetricDetailsProps = {
@@ -121,6 +128,7 @@ const props: MetricDetailsProps = {
   onMetricUpdate: jest.fn().mockResolvedValue(undefined),
   onRestoreMetric: jest.fn().mockResolvedValue(undefined),
   onUnFollowMetric: jest.fn().mockResolvedValue(undefined),
+  onUpdateVote: jest.fn().mockResolvedValue(undefined),
   onVersionChange: jest.fn(),
 };
 
@@ -148,6 +156,10 @@ jest.mock('../../../hooks/useEntityRules', () => ({
     isLoading: false,
     rules: [],
   }),
+}));
+
+jest.mock('../../../hooks/useChangeSummary', () => ({
+  useChangeSummary: () => ({ changeSummary: undefined }),
 }));
 
 jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
@@ -211,6 +223,16 @@ jest.mock('../MetricHierarchyCard/MetricHierarchyCard', () => ({
 jest.mock('../MetricDefinitionCard/MetricDefinitionCard', () => ({
   __esModule: true,
   default: () => <div data-testid="metric-definition-card" />,
+}));
+
+jest.mock('../MetricDimensions/MetricDimensions', () => ({
+  __esModule: true,
+  default: () => <div data-testid="metric-dimensions-widget" />,
+}));
+
+jest.mock('../MetricMeasures/MetricMeasures', () => ({
+  __esModule: true,
+  default: () => <div data-testid="metric-measures-widget" />,
 }));
 
 jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
@@ -295,6 +317,15 @@ describe('MetricDetails', () => {
     );
     expect(screen.getByTestId('metric-hierarchy-card')).toBeInTheDocument();
     expect(screen.getByTestId('metric-definition-card')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-dimensions-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-measures-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-header-name')).toHaveTextContent(
+      'finance.gross_margin_rate'
+    );
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'Gross Margin Rate'
+    );
     expect(screen.getByTestId('metric-metadata-rail')).toHaveTextContent(
       'data-team'
     );
@@ -657,6 +688,23 @@ describe('MetricDetails', () => {
     expect(writeText).toHaveBeenCalledWith(window.location.href);
   });
 
+  it('updates Metric votes and exposes their counts through shared header hooks', async () => {
+    const onUpdateVote = jest.fn().mockResolvedValue(undefined);
+    renderDetails({ onUpdateVote });
+
+    expect(screen.getByTestId('up-vote-count')).toHaveTextContent('2');
+    expect(screen.getByTestId('down-vote-count')).toHaveTextContent('1');
+
+    fireEvent.click(screen.getByTestId('up-vote-btn'));
+
+    await waitFor(() =>
+      expect(onUpdateVote).toHaveBeenCalledWith(
+        { updatedVoteType: QueryVoteType.votedUp },
+        metric.id
+      )
+    );
+  });
+
   it('uses the branded selected treatment when the current user follows it', () => {
     renderDetails({
       metricDetails: {
@@ -665,8 +713,11 @@ describe('MetricDetails', () => {
       },
     });
 
-    expect(screen.getByRole('button', { name: 'label.following' })).toHaveClass(
+    expect(screen.getByRole('button', { name: 'label.un-follow' })).toHaveClass(
       'tw:text-brand-secondary'
+    );
+    expect(screen.getByTestId('entity-follow-button')).toHaveTextContent(
+      'label.un-follow'
     );
   });
 

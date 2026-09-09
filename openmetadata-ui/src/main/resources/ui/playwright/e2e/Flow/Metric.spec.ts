@@ -20,7 +20,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   redirectToHomePage,
-  waitForMetricsSearchResponse,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import {
   addMetric,
@@ -50,6 +50,8 @@ const test = base.extend<{ page: Page }>({
     await adminPage.close();
   },
 });
+
+test.describe.configure({ mode: 'serial' });
 
 test.describe(
   'Metric Entity Special Test Cases',
@@ -86,7 +88,7 @@ test.describe(
     });
 
     test('Metric creation flow should work', async ({ page }) => {
-      const listAPIPromise = waitForMetricsSearchResponse(page);
+      const listAPIPromise = waitForMetricsListingResponse(page);
 
       await sidebarClick(page, SidebarItem.METRICS);
 
@@ -126,8 +128,8 @@ test.describe(
     });
 
     test('Verify Related Metrics Update', async ({ page }) => {
-      await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
-      await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
+      await updateRelatedMetric(page, metric2, 'add');
+      await updateRelatedMetric(page, metric3, 'update');
     });
 
     test('Dimensions and measures render and description is editable', async ({

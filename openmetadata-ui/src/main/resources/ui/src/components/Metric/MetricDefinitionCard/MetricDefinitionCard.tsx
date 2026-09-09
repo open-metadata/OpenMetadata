@@ -62,6 +62,8 @@ interface DefinitionFieldProps {
   testId: string;
 }
 
+const EMPTY_DEFINITION_VALUE = '__none__';
+
 const DefinitionField = ({ children, label, testId }: DefinitionFieldProps) => (
   <Box className="tw:min-w-0" data-testid={testId} direction="col" gap={1}>
     <Typography
@@ -207,12 +209,22 @@ const MetricDefinitionEditDialog = ({
               )}
               <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2">
                 <Select
+                  data-testid="metric-definition-type-select"
                   isDisabled={isSaving}
                   label={t('label.metric-type')}
-                  selectedKey={metricType ?? null}
+                  selectedKey={metricType ?? EMPTY_DEFINITION_VALUE}
                   onSelectionChange={(key) =>
-                    key !== null && setMetricType(key as MetricType)
+                    key !== null &&
+                    setMetricType(
+                      key === EMPTY_DEFINITION_VALUE
+                        ? undefined
+                        : (key as MetricType)
+                    )
                   }>
+                  <Select.Item
+                    id={EMPTY_DEFINITION_VALUE}
+                    label={t('label.none')}
+                  />
                   {Object.values(MetricType).map((value) => (
                     <Select.Item
                       id={value}
@@ -222,12 +234,22 @@ const MetricDefinitionEditDialog = ({
                   ))}
                 </Select>
                 <Select
+                  data-testid="metric-definition-granularity-select"
                   isDisabled={isSaving}
                   label={t('label.granularity')}
-                  selectedKey={granularity ?? null}
+                  selectedKey={granularity ?? EMPTY_DEFINITION_VALUE}
                   onSelectionChange={(key) =>
-                    key !== null && setGranularity(key as MetricGranularity)
+                    key !== null &&
+                    setGranularity(
+                      key === EMPTY_DEFINITION_VALUE
+                        ? undefined
+                        : (key as MetricGranularity)
+                    )
                   }>
+                  <Select.Item
+                    id={EMPTY_DEFINITION_VALUE}
+                    label={t('label.none')}
+                  />
                   {Object.values(MetricGranularity).map((value) => (
                     <Select.Item
                       id={value}
@@ -237,16 +259,25 @@ const MetricDefinitionEditDialog = ({
                   ))}
                 </Select>
                 <Select
+                  data-testid="metric-definition-unit-select"
                   isDisabled={isSaving}
                   label={t('label.unit-of-measurement')}
-                  selectedKey={unit ?? null}
+                  selectedKey={unit ?? EMPTY_DEFINITION_VALUE}
                   onSelectionChange={(key) => {
                     if (key === null) {
                       return;
                     }
-                    setUnit(key as UnitOfMeasurement);
+                    setUnit(
+                      key === EMPTY_DEFINITION_VALUE
+                        ? undefined
+                        : (key as UnitOfMeasurement)
+                    );
                     setCustomUnitError(undefined);
                   }}>
+                  <Select.Item
+                    id={EMPTY_DEFINITION_VALUE}
+                    label={t('label.none')}
+                  />
                   {Object.values(UnitOfMeasurement).map((value) => (
                     <Select.Item
                       id={value}
@@ -272,6 +303,7 @@ const MetricDefinitionEditDialog = ({
                 )}
               </Box>
               <Select
+                data-testid="metric-definition-language-select"
                 isDisabled={isSaving}
                 label={t('label.language')}
                 selectedKey={language}
@@ -288,6 +320,7 @@ const MetricDefinitionEditDialog = ({
               </Select>
               <TextArea
                 isRequired
+                data-testid="metric-definition-code"
                 hint={codeError}
                 isDisabled={isSaving}
                 isInvalid={Boolean(codeError)}

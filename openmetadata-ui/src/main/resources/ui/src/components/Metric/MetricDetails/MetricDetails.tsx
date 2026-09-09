@@ -42,6 +42,8 @@ import {
   Speedometer04,
   Star01,
   Tag01,
+  ThumbsDown,
+  ThumbsUp,
   Trash01,
   User01,
 } from '@untitledui/icons';
@@ -68,6 +70,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
   getMetricEnumLabel,
   getMetricTierTag,
@@ -78,6 +81,9 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DeleteType } from '../../common/DeleteWidget/DeleteWidget.interface';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
+import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { getMetricFeedCounts } from '../MetricActivity/MetricFeedCountUtils';
 import { useMetricAssetsCount } from '../MetricAssetsTab/useMetricAssetsTab';
 import MetricCustomPropertyValue from '../MetricCustomPropertyValue/MetricCustomPropertyValue.component';
@@ -85,9 +91,11 @@ import MetricDefinitionCard from '../MetricDefinitionCard/MetricDefinitionCard';
 import MetricDeleteDialog, {
   type MetricDeleteMode,
 } from '../MetricDeleteDialog/MetricDeleteDialog';
+import MetricDimensions from '../MetricDimensions/MetricDimensions';
 import MetricHeaderInfo from '../MetricHeaderInfo/MetricHeaderInfo';
 import MetricHierarchyCard from '../MetricHierarchyCard/MetricHierarchyCard';
 import { useMetricHierarchyCard } from '../MetricHierarchyCard/useMetricHierarchyCard';
+import MetricMeasures from '../MetricMeasures/MetricMeasures';
 import MetricMetadataEditor from '../MetricMetadataEditor/MetricMetadataEditor';
 import MetricStatusPill from '../MetricStatusPill/MetricStatusPill.component';
 import type { MetricDetailsProps } from './MetricDetails.interface';
@@ -638,38 +646,41 @@ const MetricBreadcrumbs = ({
     : [];
 
   return (
-    <Breadcrumbs
-      autoCollapse
-      className="tw:[&>li:not(:first-child):not(:last-child)]:hidden tw:sm:[&>li:not(:first-child):not(:last-child)]:flex"
-      data-testid="metric-breadcrumbs"
-      items={[
-        {
-          id: 'governance',
-          label: t('label.governance'),
-          href: ROUTES.METRICS,
-        },
-        {
-          id: 'metrics',
-          label: t('label.metric-plural'),
-          href: ROUTES.METRICS,
-        },
-        ...groupItems,
-        ...hierarchy.ancestors.map((ancestor) => ({
-          id: ancestor.id,
-          label: getEntityName(ancestor),
-          href: getEntityDetailsPath(
-            EntityType.METRIC,
-            ancestor.fullyQualifiedName ?? ''
-          ),
-        })),
-        { id: metric.id, label: getEntityName(metric) },
-      ]}
-      size="sm"
-    />
+    <Box data-testid="breadcrumb">
+      <Breadcrumbs
+        autoCollapse
+        className="tw:[&>li:not(:first-child):not(:last-child)]:hidden tw:sm:[&>li:not(:first-child):not(:last-child)]:flex"
+        data-testid="metric-breadcrumbs"
+        items={[
+          {
+            id: 'governance',
+            label: t('label.governance'),
+            href: ROUTES.METRICS,
+          },
+          {
+            id: 'metrics',
+            label: t('label.metric-plural'),
+            href: ROUTES.METRICS,
+          },
+          ...groupItems,
+          ...hierarchy.ancestors.map((ancestor) => ({
+            id: ancestor.id,
+            label: getEntityName(ancestor),
+            href: getEntityDetailsPath(
+              EntityType.METRIC,
+              ancestor.fullyQualifiedName ?? ''
+            ),
+          })),
+          { id: metric.id, label: getEntityName(metric) },
+        ]}
+        size="sm"
+      />
+    </Box>
   );
 };
 
 interface MetricTitleHeaderProps {
+  currentUserId?: string;
   isFollowing?: boolean;
   metric: Metric;
   permissions: MetricDetailsProps['metricPermissions'];
@@ -677,10 +688,12 @@ interface MetricTitleHeaderProps {
   onFollow: () => void;
   onRestore: () => void;
   onShare: () => void;
+  onUpdateVote: MetricDetailsProps['onUpdateVote'];
   onVersion: () => void;
 }
 
 const MetricTitleHeader = ({
+  currentUserId,
   isFollowing,
   metric,
   permissions,
@@ -688,10 +701,48 @@ const MetricTitleHeader = ({
   onFollow,
   onRestore,
   onShare,
+  onUpdateVote,
   onVersion,
 }: MetricTitleHeaderProps) => {
   const { t } = useTranslation();
-  const followLabel = isFollowing ? t('label.following') : t('label.follow');
+  const [upVoteLoading, setUpVoteLoading] = useState(false);
+  const [downVoteLoading, setDownVoteLoading] = useState(false);
+  const followLabel = isFollowing ? t('label.un-follow') : t('label.follow');
+  const voteStatus = getEntityVoteStatus(currentUserId ?? '', metric.votes);
+
+  const handleUpVote = async () => {
+    setUpVoteLoading(true);
+    try {
+      await onUpdateVote(
+        {
+          updatedVoteType:
+            voteStatus === QueryVoteType.votedUp
+              ? QueryVoteType.unVoted
+              : QueryVoteType.votedUp,
+        },
+        metric.id
+      );
+    } finally {
+      setUpVoteLoading(false);
+    }
+  };
+
+  const handleDownVote = async () => {
+    setDownVoteLoading(true);
+    try {
+      await onUpdateVote(
+        {
+          updatedVoteType:
+            voteStatus === QueryVoteType.votedDown
+              ? QueryVoteType.unVoted
+              : QueryVoteType.votedDown,
+        },
+        metric.id
+      );
+    } finally {
+      setDownVoteLoading(false);
+    }
+  };
 
   return (
     <Box
@@ -724,6 +775,7 @@ const MetricTitleHeader = ({
             <Typography
               as="span"
               className="tw:min-w-0 tw:break-words tw:font-mono tw:text-tertiary"
+              data-testid="entity-header-name"
               size="text-xs">
               {metric.fullyQualifiedName}
             </Typography>
@@ -736,6 +788,7 @@ const MetricTitleHeader = ({
             <Typography
               as="h1"
               className="tw:min-w-0 tw:break-words tw:text-balance tw:text-primary"
+              data-testid="entity-header-display-name"
               size="display-xs"
               weight="bold">
               {getEntityName(metric)}
@@ -768,10 +821,33 @@ const MetricTitleHeader = ({
         className="tw:w-full tw:flex-nowrap tw:sm:w-auto tw:sm:flex-wrap"
         data-testid="metric-header-actions"
         gap={2}>
+        <StatItem
+          count={metric.votes?.upVotes ?? 0}
+          countTestId="up-vote-count"
+          disabled={Boolean(metric.deleted)}
+          icon={ThumbsUp}
+          isActive={voteStatus === QueryVoteType.votedUp}
+          loading={upVoteLoading}
+          testId="up-vote-btn"
+          tooltip={t('label.up-vote')}
+          onClick={handleUpVote}
+        />
+        <StatItem
+          count={metric.votes?.downVotes ?? 0}
+          countTestId="down-vote-count"
+          disabled={Boolean(metric.deleted)}
+          icon={ThumbsDown}
+          isActive={voteStatus === QueryVoteType.votedDown}
+          loading={downVoteLoading}
+          testId="down-vote-btn"
+          tooltip={t('label.down-vote')}
+          onClick={handleDownVote}
+        />
         {!metric.deleted && (
           <Button
             aria-label={followLabel}
             color={isFollowing ? 'secondary-brand' : 'secondary'}
+            data-testid="entity-follow-button"
             iconLeading={Star01}
             size="sm"
             onPress={onFollow}>
@@ -942,6 +1018,7 @@ const MetricDetailTabs = ({
 
 const MetricDetailsHeader = ({
   activeTab,
+  currentUserId,
   hierarchy,
   isFollowing,
   metric,
@@ -952,6 +1029,7 @@ const MetricDetailsHeader = ({
   onRestore,
   onShare,
   onTabChange,
+  onUpdateVote,
   onVersion,
 }: MetricTitleHeaderProps & {
   activeTab: EntityTabs;
@@ -966,6 +1044,7 @@ const MetricDetailsHeader = ({
     gap={3}>
     <MetricBreadcrumbs hierarchy={hierarchy} metric={metric} />
     <MetricTitleHeader
+      currentUserId={currentUserId}
       isFollowing={isFollowing}
       metric={metric}
       permissions={permissions}
@@ -973,6 +1052,7 @@ const MetricDetailsHeader = ({
       onFollow={onFollow}
       onRestore={onRestore}
       onShare={onShare}
+      onUpdateVote={onUpdateVote}
       onVersion={onVersion}
     />
     <MetricSecondaryMetadata metric={metric} />
@@ -1058,6 +1138,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({
   onMetricUpdate,
   onRestoreMetric,
   onUnFollowMetric,
+  onUpdateVote,
   onVersionChange,
 }) => {
   const { t } = useTranslation();
@@ -1286,15 +1367,24 @@ const MetricDetails: FC<MetricDetailsProps> = ({
               data-testid="metric-overview-main"
               direction="col"
               gap={5}>
-              <MetricHierarchyCard
-                canAddChild={Boolean(metricPermissions.Create)}
-                metric={metricDetails}
-              />
-              <MetricDefinitionCard
-                canEdit={canEdit}
-                metric={metricDetails}
-                onUpdate={onMetricUpdate}
-              />
+              <GenericProvider<Metric>
+                activeTab={EntityTabs.OVERVIEW}
+                data={metricDetails}
+                permissions={metricPermissions}
+                type={EntityType.METRIC}
+                onUpdate={onMetricUpdate}>
+                <MetricHierarchyCard
+                  canAddChild={Boolean(metricPermissions.Create)}
+                  metric={metricDetails}
+                />
+                <MetricDefinitionCard
+                  canEdit={canEdit}
+                  metric={metricDetails}
+                  onUpdate={onMetricUpdate}
+                />
+                <MetricDimensions />
+                <MetricMeasures />
+              </GenericProvider>
             </Box>
             <MetricMetadataRail
               metric={metricDetails}
@@ -1312,6 +1402,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({
       data-testid="metric-details-page">
       <MetricDetailsHeader
         activeTab={activeTab}
+        currentUserId={currentUser?.id}
         hierarchy={breadcrumbHierarchy}
         isFollowing={isFollowing}
         metric={metricDetails}
@@ -1322,6 +1413,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({
         onRestore={() => setIsRestoreOpen(true)}
         onShare={handleShare}
         onTabChange={handleTabChange}
+        onUpdateVote={onUpdateVote}
         onVersion={onVersionChange}
       />
       <Box

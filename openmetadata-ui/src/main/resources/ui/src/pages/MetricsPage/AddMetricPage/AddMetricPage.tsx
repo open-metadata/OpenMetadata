@@ -325,6 +325,7 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
                   />
                   <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
                     <Select
+                      data-testid="metric-type-select"
                       label={t('label.metric-type')}
                       placeholder={t('label.select-field', {
                         field: t('label.metric-type'),
@@ -342,6 +343,7 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
                       ))}
                     </Select>
                     <Select
+                      data-testid="granularity-select"
                       label={t('label.granularity')}
                       placeholder={t('label.select-field', {
                         field: t('label.granularity'),
@@ -359,6 +361,7 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
                       ))}
                     </Select>
                     <Select
+                      data-testid="unit-of-measurement-select"
                       label={t('label.unit-of-measurement')}
                       placeholder={t('label.select-field', {
                         field: t('label.unit-of-measurement'),
@@ -464,6 +467,7 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
                     <Card.Content>
                       <Box direction="col" gap={4}>
                         <Select
+                          data-testid="language-select"
                           label={t('label.language')}
                           selectedKey={values.language}
                           onSelectionChange={(key) =>

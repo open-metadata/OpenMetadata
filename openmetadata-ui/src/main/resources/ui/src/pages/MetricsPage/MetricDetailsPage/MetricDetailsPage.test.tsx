@@ -13,6 +13,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import type { MetricDetailsProps } from '../../../components/Metric/MetricDetails/MetricDetails.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -23,6 +24,7 @@ import {
   patchMetric,
   removeMetricFollower,
   restoreMetric,
+  updateMetricVote,
 } from '../../../rest/metricsAPI';
 import { METRIC_DEFAULT_FIELDS } from '../../../rest/queries/metricQuery';
 import { addToRecentViewed } from '../../../utils/RecentActivityUtils';
@@ -85,6 +87,7 @@ jest.mock('../../../rest/metricsAPI', () => ({
   patchMetric: jest.fn(),
   removeMetricFollower: jest.fn(),
   restoreMetric: jest.fn(),
+  updateMetricVote: jest.fn(),
 }));
 
 jest.mock('../../../utils/RecentActivityUtils', () => ({
@@ -134,6 +137,17 @@ jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
           onClick={() => void props.onRestoreMetric().catch(() => undefined)}>
           restore
         </button>
+        <button
+          onClick={() =>
+            void props
+              .onUpdateVote(
+                { updatedVoteType: QueryVoteType.votedUp },
+                props.metricDetails.id
+              )
+              .catch(() => undefined)
+          }>
+          vote
+        </button>
         <button onClick={() => props.onDeleteMetric(true)}>soft delete</button>
         <button onClick={() => props.onDeleteMetric(false)}>hard delete</button>
         <button onClick={props.onVersionChange}>version</button>
@@ -172,6 +186,7 @@ describe('MetricDetailsPage', () => {
     (removeMetricFollower as jest.Mock).mockResolvedValue(undefined);
     (patchMetric as jest.Mock).mockResolvedValue(metric);
     (restoreMetric as jest.Mock).mockResolvedValue(metric);
+    (updateMetricVote as jest.Mock).mockResolvedValue(metric);
   });
 
   it('announces loading until permissions and the Metric are available', () => {
@@ -347,6 +362,20 @@ describe('MetricDetailsPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       getVersionPath(EntityType.METRIC, 'finance.gross_margin', '1.2')
     );
+  });
+
+  it('updates a Metric vote and refreshes the cached details', async () => {
+    renderPage();
+    await screen.findByTestId('metric-details');
+
+    fireEvent.click(screen.getByRole('button', { name: 'vote' }));
+
+    await waitFor(() =>
+      expect(updateMetricVote).toHaveBeenCalledWith('metric-id', {
+        updatedVoteType: QueryVoteType.votedUp,
+      })
+    );
+    await waitFor(() => expect(getMetricByFqn).toHaveBeenCalledTimes(2));
   });
 
   it('restores a deleted Metric and synchronizes the detail cache', async () => {

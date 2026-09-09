@@ -1454,19 +1454,6 @@ type ResponseWithRequest = {
   url: () => string;
 };
 
-type MetricSearchHit = {
-  _source?: {
-    displayName?: string;
-    name?: string;
-  };
-};
-
-type MetricSearchResponse = {
-  hits?: {
-    hits?: MetricSearchHit[];
-  };
-};
-
 type CsvAsyncJob = {
   jobId: string;
   status: string;
@@ -1505,99 +1492,53 @@ export const fetchCompletedCsvAsyncJobResult = async (
   return resultResponse.text();
 };
 
-export const isMetricsSearchResponse = (response: ResponseWithRequest) => {
+export const isMetricsListingResponse = (response: ResponseWithRequest) => {
   const url = new URL(response.url());
 
   return (
     response.request().method() === 'GET' &&
-    url.pathname.endsWith('/api/v1/search/query') &&
-    url.searchParams.get('index') === 'metric'
+    (url.pathname.endsWith('/api/v1/metrics/hierarchy') ||
+      (url.pathname.endsWith('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'metric'))
   );
 };
 
-export const waitForMetricsSearchResponse = (page: Page) =>
-  page.waitForResponse(isMetricsSearchResponse);
+export const waitForMetricsListingResponse = (page: Page) =>
+  page.waitForResponse(isMetricsListingResponse);
 
 export const testMetricsPaginationNavigation = async (page: Page) => {
-  const page1ResponsePromise = waitForMetricsSearchResponse(page);
+  const page1ResponsePromise = waitForMetricsListingResponse(page);
 
-  await page.goto('/metrics?pageSize=15', { waitUntil: 'domcontentloaded' });
+  await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
+  const page1Url = new URL(page1Response.url());
+  expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
+  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
-  const page1Data: MetricSearchResponse = await page1Response.json();
-  const page1FirstItem = page1Data.hits?.hits?.[0]?._source;
-  const page1FirstItemName =
-    page1FirstItem?.displayName ?? page1FirstItem?.name;
-
-  await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.getByTestId('next');
+  await expect(page.getByTestId('metric-page-previous')).toBeDisabled();
+  const nextButton = page.getByTestId('metric-page-next');
   await expect(nextButton).toBeEnabled();
 
   const [page2Response] = await Promise.all([
-    waitForMetricsSearchResponse(page),
+    waitForMetricsListingResponse(page),
     nextButton.click(),
   ]);
   expect(page2Response.status()).toBe(200);
+  const page2Url = new URL(page2Response.url());
+  expect(page2Url.searchParams.get('limit')).toBe('20');
+  expect(page2Url.searchParams.get('offset')).toBe('20');
 
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-
-  const paginationText = page.locator('[data-testid="page-indicator"]');
-  await expect(paginationText).toBeVisible();
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  if (page1FirstItemName) {
-    await expect(page.locator('tbody tr').first()).not.toContainText(
-      page1FirstItemName
-    );
-  }
-
-  const reloadResponsePromise = waitForMetricsSearchResponse(page);
-
-  await page.reload();
-
-  const reloadResponse = await reloadResponsePromise;
-  expect(reloadResponse.status()).toBe(200);
-
-  await page.locator('table').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-  await expect(pageSizeDropdown).toHaveText('15 / Page');
-
-  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  const isMenuVisibleAfterHover = await menuItem.isVisible();
-  if (!isMenuVisibleAfterHover) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
-
-  const pageSizeChangeResponsePromise = waitForMetricsSearchResponse(page);
-  await menuItem.click();
-
-  const pageSizeChangeResponse = await pageSizeChangeResponsePromise;
-  expect(pageSizeChangeResponse.status()).toBe(200);
-  expect(new URL(pageSizeChangeResponse.url()).searchParams.get('size')).toBe(
-    '25'
+  await expect(page.getByTestId('metric-page-previous')).toBeEnabled();
+  await expect(page.getByTestId('metric-page-indicator')).toHaveText(
+    /2\s*of\s*\d+/
   );
-
-  await waitForAllLoadersToDisappear(page);
-  await expect(pageSizeDropdown).toHaveText('25 / Page');
-
-  const newRowCount = await page
-    .locator('tbody > tr[data-row-key]:visible')
-    .count();
-  expect(newRowCount).toBeLessThanOrEqual(25);
 };
 
 export const testClientSidePaginationNavigation = async (

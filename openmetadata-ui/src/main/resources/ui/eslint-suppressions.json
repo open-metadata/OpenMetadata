@@ -345,11 +345,6 @@
       "count": 21
     }
   },
-  "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/MultipleRename.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
@@ -963,7 +958,7 @@
   },
   "playwright/utils/common.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 11
+      "count": 10
     }
   },
   "playwright/utils/customMetric.ts": {
@@ -1055,11 +1050,6 @@
     }
   },
   "playwright/utils/logsViewer.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
-    }
-  },
-  "playwright/utils/metric.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
     }

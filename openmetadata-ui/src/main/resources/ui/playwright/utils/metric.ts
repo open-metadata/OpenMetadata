@@ -13,206 +13,184 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
-import { clickOutside, descriptionBox, uuid } from './common';
-import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
+import { uuid } from './common';
+import { hardDeleteEntity } from './entity';
 
-export const updateMetricType = async (page: Page, metric: string) => {
-  await page.click(`[data-testid="edit-metric-type-button"]`);
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
-  );
-  await page.getByRole('listitem', { name: metric, exact: true }).click();
+const openMetricDefinitionEditor = async (page: Page) => {
+  await page.getByTestId('metric-definition-edit').click();
 
-  await patchPromise;
+  const dialog = page.getByTestId('metric-definition-edit-dialog');
+  await expect(dialog).toBeVisible();
 
-  // verify the metric type is updated
-  await expect(
-    page.getByText(`Metric Type${metric.toUpperCase()}`)
-  ).toBeVisible();
+  return dialog;
 };
 
-export const removeMetricType = async (page: Page) => {
-  await page.click(`[data-testid="edit-metric-type-button"]`);
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
-  );
-  await page.getByTestId('remove-metric-type-button').click();
-
-  await patchPromise;
-
-  // verify the metric type is updated
-  await expect(page.getByText('Metric Type--')).toBeVisible();
+const selectDefinitionOption = async (
+  page: Page,
+  fieldTestId: string,
+  option: string
+) => {
+  const field = page.getByTestId(fieldTestId);
+  await field.getByRole('button').click();
+  await page.getByRole('option', { exact: true, name: option }).click();
+  await expect(field).toContainText(option);
 };
 
-export const updateUnitOfMeasurement = async (
+const saveMetricDefinition = async (page: Page) => {
+  const patchPromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === 'PATCH' &&
+      url.pathname.startsWith('/api/v1/metrics/')
+    );
+  });
+
+  await page.getByTestId('metric-definition-save').click();
+
+  expect((await patchPromise).ok()).toBeTruthy();
+  await expect(page.getByTestId('metric-definition-edit-dialog')).toBeHidden();
+};
+
+const updateDefinitionField = async (
+  page: Page,
+  fieldTestId: string,
+  value: string,
+  resultTestId: string
+) => {
+  await openMetricDefinitionEditor(page);
+  await selectDefinitionOption(page, fieldTestId, value);
+  await saveMetricDefinition(page);
+  await expect(page.getByTestId(resultTestId)).toContainText(value);
+};
+
+const clearDefinitionField = async (
+  page: Page,
+  fieldTestId: string,
+  resultTestId: string
+) => {
+  await openMetricDefinitionEditor(page);
+  await selectDefinitionOption(page, fieldTestId, 'None');
+  await saveMetricDefinition(page);
+  await expect(page.getByTestId(resultTestId)).toContainText('- -');
+};
+
+export const updateMetricType = (page: Page, metric: string) =>
+  updateDefinitionField(
+    page,
+    'metric-definition-type-select',
+    metric,
+    'metric-definition-type'
+  );
+
+export const removeMetricType = (page: Page) =>
+  clearDefinitionField(
+    page,
+    'metric-definition-type-select',
+    'metric-definition-type'
+  );
+
+export const updateUnitOfMeasurement = (
   page: Page,
   unitOfMeasurement: string
-) => {
-  await page.click(`[data-testid="edit-measurement-unit-button"]`);
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+) =>
+  updateDefinitionField(
+    page,
+    'metric-definition-unit-select',
+    unitOfMeasurement,
+    'metric-definition-unit'
   );
-  await page
-    .getByRole('listitem', { name: unitOfMeasurement, exact: true })
-    .click();
 
-  await patchPromise;
-
-  // verify the unit of measurement is updated
-  await expect(
-    page.getByText(`Measurement Unit${unitOfMeasurement.toUpperCase()}`)
-  ).toBeVisible();
-};
-
-export const removeUnitOfMeasurement = async (page: Page) => {
-  await page.click(`[data-testid="edit-measurement-unit-button"]`);
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+export const removeUnitOfMeasurement = (page: Page) =>
+  clearDefinitionField(
+    page,
+    'metric-definition-unit-select',
+    'metric-definition-unit'
   );
-  await page.getByTestId('remove-measurement-unit-button').click();
 
-  await patchPromise;
-
-  // verify the unit of measurement is updated
-  await expect(page.getByText('Measurement Unit--')).toBeVisible();
-};
-
-export const updateGranularity = async (page: Page, granularity: string) => {
-  await page.click(`[data-testid="edit-granularity-button"]`);
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+export const updateGranularity = (page: Page, granularity: string) =>
+  updateDefinitionField(
+    page,
+    'metric-definition-granularity-select',
+    granularity,
+    'metric-definition-granularity'
   );
-  await page.getByRole('listitem', { name: granularity, exact: true }).click();
 
-  await patchPromise;
-
-  // verify the granularity is updated
-  await expect(
-    page.getByText(`Granularity${granularity.toUpperCase()}`)
-  ).toBeVisible();
-};
-
-export const removeGranularity = async (page: Page) => {
-  await page.click(`[data-testid="edit-granularity-button"]`);
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+export const removeGranularity = (page: Page) =>
+  clearDefinitionField(
+    page,
+    'metric-definition-granularity-select',
+    'metric-definition-granularity'
   );
-  await page.getByTestId('remove-granularity-button').click();
-
-  await patchPromise;
-
-  // verify the granularity is updated
-  await expect(page.getByText('Granularity--')).toBeVisible();
-};
 
 export const updateExpression = async (
   page: Page,
   language: string,
   code: string
 ) => {
-  await page.getByRole('tab', { name: 'Expression', exact: true }).click();
-  await page.click(`[data-testid="edit-expression-button"]`);
-
-  // Select the language
-  await page.locator('[id="root\\/language"]').fill(language);
-  await page.getByTitle(`${language}`, { exact: true }).click();
-
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(code);
-
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const dialog = await openMetricDefinitionEditor(page);
+  await selectDefinitionOption(
+    page,
+    'metric-definition-language-select',
+    language
   );
+  await dialog.getByRole('textbox', { name: 'Code' }).fill(code);
+  await saveMetricDefinition(page);
 
-  await page.getByTestId('update-button').click();
-
-  await patchPromise;
-
-  await expect(
-    page.getByLabel('Expression').locator('.CodeMirror-scroll')
-  ).toContainText(code);
-
-  await page.getByRole('tab', { name: 'Overview', exact: true }).click();
+  await expect(page.getByTestId('metric-expression-panel')).toContainText(
+    language
+  );
+  await expect(page.getByTestId('metric-expression-code')).toContainText(code);
 };
 
 export const updateRelatedMetric = async (
   page: Page,
   dataAsset: MetricClass,
-  title: string,
   type: 'add' | 'update'
 ) => {
-  const patchPromise = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
-  );
-  if (type === 'add') {
-    await page.getByTestId('add-related-metrics-container').first().click();
-  } else {
-    await page.getByTestId('edit-related-metrics').click();
-  }
+  const dialog = await openMetricDefinitionEditor(page);
+  const relatedMetricForm = dialog.getByTestId('related-metric-form');
+  const searchPromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
 
-  await page
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .waitFor({ state: 'visible' });
-
-  const apiPromise = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=metric&*'
-  );
-
-  await page.fill(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    dataAsset.entity.name
-  );
-
-  await apiPromise;
-
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
-
-  // perform click outside to close the select options and make click to button
-  await clickOutside(page);
-  await page.locator('[data-testid="saveRelatedMetrics"]').click();
-
-  await patchPromise;
-
-  await page.getByTestId(dataAsset.entity.name).waitFor({
-    state: 'visible',
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname.endsWith('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'metric' &&
+      url.searchParams.get('q') === dataAsset.entity.name
+    );
   });
 
-  // Wait for the metrics API call to complete
-  const metricsResponsePromise1 = page.waitForResponse(
-    `/api/v1/metrics/name/${dataAsset.entity.name}?fields=*`
-  );
+  await relatedMetricForm
+    .getByPlaceholder('Search Related Metrics')
+    .fill(dataAsset.entity.name);
+  expect((await searchPromise).ok()).toBeTruthy();
 
-  await page
-    .getByRole('button', { name: dataAsset.entity.name, exact: true })
-    .click();
+  const target = relatedMetricForm.getByRole('checkbox', {
+    exact: true,
+    name: dataAsset.entity.name,
+  });
+  await expect(target).toBeVisible();
 
-  await metricsResponsePromise1;
+  if (type === 'update') {
+    const checkboxes = await relatedMetricForm.getByRole('checkbox').all();
+    for (const checkbox of checkboxes) {
+      if (await checkbox.isChecked()) {
+        await checkbox.press('Space');
+      }
+    }
+  }
+  if (!(await target.isChecked())) {
+    await target.press('Space');
+  }
 
-  await waitForAllLoadersToDisappear(page);
+  await saveMetricDefinition(page);
 
-  await expect(page.getByTestId('entity-header-display-name')).toContainText(
-    dataAsset.entity.name
-  );
-
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- right panel rendering delay
-  await page.waitForTimeout(1000);
-
-  // Wait for the metrics API call to complete
-  const metricsResponsePromise2 = page.waitForResponse(
-    `/api/v1/metrics/name/${title}?fields=*`
-  );
-  await page.getByRole('button', { name: title, exact: true }).click();
-  await metricsResponsePromise2;
-
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('entity-header-display-name')).toContainText(
-    title
-  );
+  await expect(
+    page
+      .getByTestId('metric-definition-related-metrics')
+      .getByRole('link', { exact: true, name: dataAsset.entity.name })
+  ).toBeVisible();
 };
 
 export const addMetric = async (page: Page) => {
@@ -231,67 +209,47 @@ export const addMetric = async (page: Page) => {
     unitOfMeasurement: 'Dollars',
   };
 
-  const selectFormOption = async (
-    field: ReturnType<Page['getByTestId']>,
-    input: ReturnType<Page['locator']>,
-    title: string
-  ) => {
-    await input.click();
-    await input.fill(title);
-
-    const option = page
-      .locator('.ant-select-dropdown:visible')
-      .getByTitle(title, { exact: true });
-    await expect(option).toBeVisible();
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await option.click({ force: true });
+  const selectFormOption = async (fieldTestId: string, title: string) => {
+    const field = page.getByTestId(fieldTestId);
+    await field.getByRole('button').click();
+    await page.getByRole('option', { exact: true, name: title }).click();
     await expect(field).toContainText(title);
   };
 
   await page.getByTestId('create-button').click();
 
-  await expect(page.locator('#name_help')).toHaveText('Name is required');
+  await expect(page.getByText('Name is required')).toBeVisible();
 
-  await page.locator('#root\\/name').fill(metricData.name);
-  await page.locator('#root\\/displayName').fill(metricData.name);
+  await page.getByTestId('name').fill(metricData.name);
+  await page.getByTestId('display-name').fill(metricData.name);
 
-  await page.click(descriptionBox);
-  await page.fill(descriptionBox, metricData.description);
+  await page
+    .getByRole('textbox', { exact: true, name: 'Description' })
+    .fill(metricData.description);
 
-  // Select the granularity
+  await selectFormOption('granularity-select', metricData.granularity);
+
+  await selectFormOption('metric-type-select', metricData.metricType);
+
   await selectFormOption(
-    page.getByTestId('granularity'),
-    page.locator('[id="root\\/granularity"]'),
-    metricData.granularity
-  );
-
-  // Select the metric type
-  await selectFormOption(
-    page.getByTestId('metricType'),
-    page.locator('[id="root\\/metricType"]'),
-    metricData.metricType
-  );
-
-  // Select the unit of measurement
-  await selectFormOption(
-    page.getByTestId('unitOfMeasurement'),
-    page.getByTestId('unitOfMeasurement').locator('input'),
+    'unit-of-measurement-select',
     metricData.unitOfMeasurement
   );
 
-  // Select the language
   await selectFormOption(
-    page.getByTestId('language'),
-    page.locator('[id="root\\/language"]'),
+    'language-select',
     metricData.metricExpression.language
   );
 
-  // Enter the code
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(metricData.metricExpression.code);
+  await page
+    .getByTestId('metric-code')
+    .getByRole('textbox')
+    .fill(metricData.metricExpression.code);
 
   const postPromise = page.waitForResponse(
-    (response) => response.request().method() === 'POST'
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith('/api/v1/metrics')
   );
 
   const getPromise = page.waitForResponse(
@@ -304,25 +262,15 @@ export const addMetric = async (page: Page) => {
 
   await getPromise;
 
-  // verify the metric type is updated
-  await expect(
-    page.getByText(`Metric Type${metricData.metricType.toUpperCase()}`)
-  ).toBeVisible();
-
-  // verify the unit of measurement is updated
-
-  await expect(
-    page.getByText(
-      `Measurement Unit${metricData.unitOfMeasurement.toUpperCase()}`
-    )
-  ).toBeVisible();
-
-  // verify the granularity is updated
-  await expect(
-    page.getByText(`Granularity${metricData.granularity.toUpperCase()}`)
-  ).toBeVisible();
-
-  // clean the created metric
+  await expect(page.getByTestId('metric-definition-type')).toContainText(
+    metricData.metricType
+  );
+  await expect(page.getByTestId('metric-definition-unit')).toContainText(
+    metricData.unitOfMeasurement
+  );
+  await expect(page.getByTestId('metric-definition-granularity')).toContainText(
+    metricData.granularity
+  );
 
   await hardDeleteEntity(
     page,

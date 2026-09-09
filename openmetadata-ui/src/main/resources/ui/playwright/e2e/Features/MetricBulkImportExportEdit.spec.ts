@@ -28,7 +28,7 @@ import { createAdminApiContext } from '../../utils/admin';
 import {
   redirectToHomePage,
   uuid,
-  waitForMetricsSearchResponse,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
@@ -543,10 +543,10 @@ const cleanupFixtures = async () => {
 };
 
 const waitForMetricsPage = async (page: Page) => {
-  const metricsResponse = waitForMetricsSearchResponse(page);
+  const metricsResponse = waitForMetricsListingResponse(page);
   // domcontentloaded, not the default 'load': /metrics pulls enough subresources
   // that waiting for all of them exceeded the 60s navigation timeout under merge
-  // queue load. The real readiness signal is the search response awaited next.
+  // queue load. The real readiness signal is the listing response awaited next.
   await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);
@@ -1761,7 +1761,7 @@ test.describe(
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
 
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1781,7 +1781,7 @@ test.describe(
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
 
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1801,7 +1801,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1821,7 +1821,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 

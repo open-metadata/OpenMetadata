@@ -1049,7 +1049,9 @@ const MetricListPage = () => {
           onPress={() => setCurrentPage(page - 1)}>
           {t('label.previous')}
         </Button>
-        <span className="tw:text-sm tw:text-tertiary tw:tabular-nums">
+        <span
+          className="tw:text-sm tw:text-tertiary tw:tabular-nums"
+          data-testid="metric-page-indicator">
           {t('label.page')} {page} {t('label.of-lowercase')} {totalPages}
         </span>
         <Button

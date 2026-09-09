@@ -236,11 +236,6 @@ public class MetricRepository extends EntityRepository<Metric> {
           String.format(
               "Invalid hierarchy: Metric '%s' cannot be its own parent", metric.getName()));
     }
-    if (metric.getName() != null && metric.getName().equals(parent.getName())) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Invalid hierarchy: Metric '%s' cannot be its own parent", metric.getName()));
-    }
     if (metric.getId() == null || parent.getId() == null) {
       return;
     }
