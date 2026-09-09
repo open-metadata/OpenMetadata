@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { PasswordInput } from '@openmetadata/ui-core-components';
+import {
+  CredentialFileInput,
+  PasswordInput,
+} from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { useTranslation } from 'react-i18next';
+import { ALL_ASTERISKS_REGEX } from '../../../../constants/regex.constants';
+import {
+  CredentialFileFieldType,
+  getCredentialFileLabels,
+  getCredentialFileValidationMessages,
+  isCredentialFileFieldType,
+} from '../../../../utils/CredentialFileField.utils';
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
 const CorePasswordWidget = (props: WidgetProps) => {
@@ -35,34 +45,52 @@ const CorePasswordWidget = (props: WidgetProps) => {
     onFocus,
   } = props;
   const { t } = useTranslation();
-  const isInputTypeFile = schema.uiFieldType === 'file';
-  const isInputTypeFileOrInput = schema.uiFieldType === 'fileOrInput';
+
+  const isCredentialFile = isCredentialFileFieldType(schema.uiFieldType);
+  const isFileOrInput =
+    schema.uiFieldType === CredentialFileFieldType.FILE_OR_INPUT;
 
   const displayLabel = getWidgetLabel({ hideLabel, label });
   const hint = getWidgetHint({ rawErrors, schema, options });
   const isInvalid = !!rawErrors?.length;
 
-  const handleChange = (nextValue: string) =>
-    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
+  const handleChange = (nextValue?: string) =>
+    onChange(
+      nextValue === '' || nextValue === undefined
+        ? options.emptyValue ?? undefined
+        : nextValue
+    );
 
-  if (isInputTypeFile || isInputTypeFileOrInput) {
+  if (isCredentialFile) {
+    const acceptedFileTypes = schema.accept as string[] | undefined;
+
+    // The API returns the mask in place of the stored secret. Handing it to the
+    // field would render it as if it were the credential — a short value the
+    // user could plausibly edit and submit as the real one. Blanking it leaves
+    // `formData` untouched, so an unmodified field round-trips the mask back
+    // and the backend keeps the existing secret.
+    const isMasked =
+      typeof value === 'string' && ALL_ASTERISKS_REGEX.test(value);
+
     return (
-      <PasswordInput
-        allowUpload
-        multiline
-        acceptedFileTypes={schema.accept as string[] | undefined}
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- RJSF-driven field autofocus
-        autoFocus={autofocus}
-        hint={hint}
+      <CredentialFileInput
+        acceptedFileTypes={acceptedFileTypes}
+        allowManualInput={isFileOrInput}
+        data-testid={`credential-file-widget-${id}`}
+        hint={isMasked ? t('message.credential-already-saved') : hint}
         id={id}
-        isDisabled={disabled || readonly}
+        isDisabled={disabled}
         isInvalid={isInvalid}
+        isReadOnly={readonly}
         isRequired={required}
         label={displayLabel}
+        labels={getCredentialFileLabels(t)}
         placeholder={placeholder}
-        rows={6}
-        uploadLabel={t('label.upload-key-file')}
-        value={value ?? ''}
+        validationMessages={getCredentialFileValidationMessages(
+          t,
+          acceptedFileTypes
+        )}
+        value={isMasked ? undefined : value}
         onBlur={() => onBlur(id, value)}
         onChange={handleChange}
         onFocus={() => onFocus(id, value)}
@@ -72,12 +100,6 @@ const CorePasswordWidget = (props: WidgetProps) => {
 
   return (
     <PasswordInput
-      acceptedFileTypes={
-        isInputTypeFileOrInput
-          ? (schema.accept as string[] | undefined)
-          : undefined
-      }
-      allowUpload={isInputTypeFileOrInput}
       // eslint-disable-next-line jsx-a11y/no-autofocus -- RJSF-driven field autofocus
       autoFocus={autofocus}
       hint={hint}
@@ -87,7 +109,6 @@ const CorePasswordWidget = (props: WidgetProps) => {
       isRequired={required}
       label={displayLabel}
       placeholder={placeholder}
-      uploadLabel={t('label.upload-key-file')}
       value={value}
       onBlur={() => onBlur(id, value)}
       onChange={handleChange}

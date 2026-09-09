@@ -19,13 +19,38 @@ import {
 } from '../../../../../mocks/Widgets.mock';
 import PasswordWidget from './PasswordWidget';
 
-jest.mock('./FileUploadWidget', () =>
-  jest
-    .fn()
-    .mockImplementation(({ disabled }) => (
-      <button disabled={disabled}>FileUploadWidget</button>
-    ))
-);
+// Behaviour lives in the component's own suite; this stand-in exposes the props
+// the widget maps so the schema → props contract can be asserted here.
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  CredentialFileInput: jest.fn(
+    ({
+      acceptedFileTypes,
+      allowManualInput,
+      hint,
+      isDisabled,
+      value,
+      onChange,
+    }: Record<string, unknown>) => (
+      <div data-testid="credential-file-input">
+        <span data-testid="cfi-manual-input">
+          {String(Boolean(allowManualInput))}
+        </span>
+        <span data-testid="cfi-accepted">
+          {(acceptedFileTypes as string[] | undefined)?.join(',') ?? ''}
+        </span>
+        <span data-testid="cfi-disabled">{String(Boolean(isDisabled))}</span>
+        <span data-testid="cfi-hint">{(hint as string) ?? ''}</span>
+        <span data-testid="cfi-value">{(value as string) ?? ''}</span>
+        <button
+          type="button"
+          onClick={() => (onChange as (v?: string) => void)('CERT-CONTENT')}>
+          emit-content
+        </button>
+      </div>
+    )
+  ),
+}));
 
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
@@ -48,36 +73,33 @@ const mockProps2: WidgetProps = {
 };
 
 describe('Test PasswordWidget Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Should render select component', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-    const FileUploadWidget = screen.queryByText('FileUploadWidget');
-
-    expect(passwordInput).toBeInTheDocument();
-    expect(FileUploadWidget).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-input-widget-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('credential-file-input')
+    ).not.toBeInTheDocument();
   });
 
   it('Should be disabled', async () => {
     render(<PasswordWidget {...mockProps} disabled />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    expect(passwordInput).toBeDisabled();
+    expect(
+      screen.getByTestId('password-input-widget-root/password')
+    ).toBeDisabled();
   });
 
   it('Should call onFocus', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    fireEvent.focus(passwordInput);
+    fireEvent.focus(screen.getByTestId('password-input-widget-root/password'));
 
     expect(mockOnFocus).toHaveBeenCalled();
   });
@@ -85,11 +107,7 @@ describe('Test PasswordWidget Component', () => {
   it('Should call onBlur', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    fireEvent.blur(passwordInput);
+    fireEvent.blur(screen.getByTestId('password-input-widget-root/password'));
 
     expect(mockOnBlur).toHaveBeenCalled();
   });
@@ -97,11 +115,12 @@ describe('Test PasswordWidget Component', () => {
   it('Should call onChange', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+    fireEvent.change(
+      screen.getByTestId('password-input-widget-root/password'),
+      {
+        target: { value: 'password' },
+      }
     );
-
-    fireEvent.change(passwordInput, { target: { value: 'password' } });
 
     expect(mockOnChange).toHaveBeenCalledWith('password');
   });
@@ -109,11 +128,12 @@ describe('Test PasswordWidget Component', () => {
   it('Should call onChange with asterisk', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+    fireEvent.change(
+      screen.getByTestId('password-input-widget-root/password'),
+      {
+        target: { value: '*******' },
+      }
     );
-
-    fireEvent.change(passwordInput, { target: { value: '*******' } });
 
     expect(mockOnChange).toHaveBeenCalledWith('*******');
   });
@@ -121,39 +141,23 @@ describe('Test PasswordWidget Component', () => {
   it('Should not show password if the value is masked', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    expect(passwordInput).toHaveValue('');
+    expect(
+      screen.getByTestId('password-input-widget-root/password')
+    ).toHaveValue('');
   });
 
-  it('Should render FileWidget and password input if uiFieldType is fileOrInput', async () => {
+  it('Should render the credential file input with manual input for fileOrInput', async () => {
     render(<PasswordWidget {...mockProps2} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/sslConfig/caCertificate'
-    );
-    const fileUploadWidget = screen.getByText('FileUploadWidget');
-
-    expect(fileUploadWidget).toBeInTheDocument();
-    expect(passwordInput).toBeInTheDocument();
-
-    // Check if the password input is disabled
-    expect(passwordInput).toBeDisabled();
-
-    // Click on the Enter file content radio button
-    const enterFileContentRadioButton = screen.getByTestId('radio-file-path');
-    fireEvent.click(enterFileContentRadioButton);
-
-    // Check if the password input is enabled
-    expect(passwordInput).toBeEnabled();
-
-    // Check if the file upload widget is disabled
-    expect(fileUploadWidget).toBeDisabled();
+    expect(screen.getByTestId('credential-file-input')).toBeInTheDocument();
+    expect(screen.getByTestId('cfi-manual-input')).toHaveTextContent('true');
+    expect(screen.getByTestId('cfi-accepted')).toHaveTextContent('.pem');
+    expect(
+      screen.queryByTestId('password-input-widget-root/sslConfig/caCertificate')
+    ).not.toBeInTheDocument();
   });
 
-  it('Should render only FileWidget uiFieldType is file', async () => {
+  it('Should make the credential file input upload-only when uiFieldType is file', async () => {
     render(
       <PasswordWidget
         {...mockProps2}
@@ -161,12 +165,30 @@ describe('Test PasswordWidget Component', () => {
       />
     );
 
-    const passwordInput = screen.queryByTestId(
-      'password-input-widget-root/sslConfig/caCertificate'
-    );
-    const fileUploadWidget = screen.getByText('FileUploadWidget');
+    expect(screen.getByTestId('credential-file-input')).toBeInTheDocument();
+    expect(screen.getByTestId('cfi-manual-input')).toHaveTextContent('false');
+  });
 
-    expect(fileUploadWidget).toBeInTheDocument();
-    expect(passwordInput).toBeNull();
+  it('Should forward the disabled state to the credential file input', async () => {
+    render(<PasswordWidget {...mockProps2} disabled />);
+
+    expect(screen.getByTestId('cfi-disabled')).toHaveTextContent('true');
+  });
+
+  it('Should blank the readback mask and explain a credential is stored', async () => {
+    render(<PasswordWidget {...mockProps2} value="*********" />);
+
+    expect(screen.getByTestId('cfi-value')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('cfi-hint')).toHaveTextContent(
+      'message.credential-already-saved'
+    );
+  });
+
+  it('Should submit uploaded file content as the field value', async () => {
+    render(<PasswordWidget {...mockProps2} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'emit-content' }));
+
+    expect(mockOnChange).toHaveBeenCalledWith('CERT-CONTENT');
   });
 });

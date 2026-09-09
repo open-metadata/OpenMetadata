@@ -10,101 +10,80 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CredentialFileInput } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { Input } from 'antd';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
-import { CertificationInputType } from '../../../../../enums/PasswordWidget.enum';
-import FileUploadWidget from './FileUploadWidget';
-import './password-widget.less';
+import {
+  CredentialFileFieldType,
+  getCredentialFileLabels,
+  getCredentialFileValidationMessages,
+  isCredentialFileFieldType,
+} from '../../../../../utils/CredentialFileField.utils';
 
 const PasswordWidget: FC<WidgetProps> = (props) => {
   const { t } = useTranslation();
-  const [inputType, setInputType] = useState<CertificationInputType>(
-    props.schema.uiFieldType === 'fileOrInput'
-      ? CertificationInputType.FILE_UPLOAD
-      : CertificationInputType.FILE_PATH
+
+  const isCredentialFile = isCredentialFileFieldType(props.schema.uiFieldType);
+  const isFileOrInput =
+    props.schema.uiFieldType === CredentialFileFieldType.FILE_OR_INPUT;
+
+  // The API returns the mask in place of the stored secret, so it must never
+  // reach an editable control: leaving `formData` untouched lets an unmodified
+  // field round-trip the mask back and the backend keeps the existing secret.
+  const isMasked = ALL_ASTERISKS_REGEX.test(props.value);
+  const passwordWidgetValue = useMemo(
+    () => (isMasked ? undefined : props.value),
+    [isMasked, props.value]
   );
 
-  const isInputTypeFile = props.schema.uiFieldType === 'file';
-  const isInputTypeFileOrInput = props.schema.uiFieldType === 'fileOrInput';
+  if (isCredentialFile) {
+    const acceptedFileTypes = props.schema.accept as string[] | undefined;
 
-  const passwordWidgetValue = useMemo(() => {
-    if (ALL_ASTERISKS_REGEX.test(props.value)) {
-      return undefined; // Do not show the password if it is masked
-    } else {
-      return props.value;
-    }
-  }, [props.value]);
-
-  const getPasswordInput = useCallback(
-    (disabled?: boolean) => (
-      <Input.Password
-        autoComplete="off"
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus is driven by the RJSF widget schema
-        autoFocus={props.autofocus}
-        data-testid={`password-input-widget-${props.id}`}
-        disabled={disabled || props.disabled}
+    return (
+      <CredentialFileInput
+        acceptedFileTypes={acceptedFileTypes}
+        allowManualInput={isFileOrInput}
+        data-testid={`credential-file-widget-${props.id}`}
+        hint={isMasked ? t('message.credential-already-saved') : undefined}
         id={props.id}
-        name={props.name}
+        isDisabled={props.disabled}
+        isReadOnly={props.readonly}
+        isRequired={props.required}
+        labels={getCredentialFileLabels(t)}
         placeholder={props.placeholder}
-        readOnly={props.readonly}
-        required={props.required}
+        validationMessages={getCredentialFileValidationMessages(
+          t,
+          acceptedFileTypes
+        )}
         value={passwordWidgetValue}
         onBlur={() => props.onBlur(props.id, props.value)}
-        onChange={(e) => props.onChange(e.target.value)}
+        onChange={(nextValue) => props.onChange(nextValue)}
         onFocus={() => props.onFocus(props.id, props.value)}
       />
-    ),
-    [props]
-  );
-
-  const onRadioChange = (e: RadioChangeEvent) => {
-    setInputType(e.target.value);
-  };
-
-  if (isInputTypeFile) {
-    return <FileUploadWidget {...props} />;
-  }
-
-  if (isInputTypeFileOrInput) {
-    return (
-      <Radio.Group
-        className="password-widget m-t-sm"
-        data-testid={`password-input-radio-group-${props.id}`}
-        value={inputType}
-        onChange={onRadioChange}>
-        <Row>
-          <Col span={8}>
-            <Radio
-              className="widget-radio-option"
-              data-testid={`radio-${CertificationInputType.FILE_UPLOAD}`}
-              value={CertificationInputType.FILE_UPLOAD}>
-              <Typography.Text>{t('message.upload-file')}</Typography.Text>
-              <FileUploadWidget
-                {...props}
-                disabled={inputType === CertificationInputType.FILE_PATH}
-              />
-            </Radio>
-          </Col>
-          <Col span={16}>
-            <Radio
-              className="widget-radio-option"
-              data-testid={`radio-${CertificationInputType.FILE_PATH}`}
-              value={CertificationInputType.FILE_PATH}>
-              <Typography.Text>{t('label.enter-file-content')}</Typography.Text>
-              {getPasswordInput(
-                inputType === CertificationInputType.FILE_UPLOAD
-              )}
-            </Radio>
-          </Col>
-        </Row>
-      </Radio.Group>
     );
   }
 
-  return getPasswordInput();
+  return (
+    <Input.Password
+      autoComplete="off"
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus is driven by the RJSF widget schema
+      autoFocus={props.autofocus}
+      data-testid={`password-input-widget-${props.id}`}
+      disabled={props.disabled}
+      id={props.id}
+      name={props.name}
+      placeholder={props.placeholder}
+      readOnly={props.readonly}
+      required={props.required}
+      value={passwordWidgetValue}
+      onBlur={() => props.onBlur(props.id, props.value)}
+      onChange={(e) => props.onChange(e.target.value)}
+      onFocus={() => props.onFocus(props.id, props.value)}
+    />
+  );
 };
 
 export default PasswordWidget;

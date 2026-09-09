@@ -375,6 +375,57 @@ jest.mock('@openmetadata/ui-core-components', () => {
       )
     ),
     PasswordInput: jest.fn(MockPasswordInput),
+    DEFAULT_CREDENTIAL_FILE_MAX_SIZE: 1024 * 1024,
+    getReadableFileSize: (bytes: number) => `${bytes} B`,
+    // Behaviour lives in the real component's own suite; this stand-in exposes
+    // the props the widget maps so the schema → props contract can be asserted.
+    CredentialFileInput: jest.fn(
+      ({
+        acceptedFileTypes,
+        allowManualInput,
+        hint,
+        isDisabled,
+        isInvalid,
+        isReadOnly,
+        isRequired,
+        label,
+        validationMessages,
+        value,
+        onChange,
+      }: Record<string, unknown>) => (
+        <div data-testid="credential-file-input">
+          <span data-testid="cfi-label">{label as string}</span>
+          <span data-testid="cfi-hint">{hint as string}</span>
+          <span data-testid="cfi-accepted">
+            {(acceptedFileTypes as string[] | undefined)?.join(',') ?? ''}
+          </span>
+          <span data-testid="cfi-manual-input">
+            {String(Boolean(allowManualInput))}
+          </span>
+          <span data-testid="cfi-disabled">{String(Boolean(isDisabled))}</span>
+          <span data-testid="cfi-readonly">{String(Boolean(isReadOnly))}</span>
+          <span data-testid="cfi-required">{String(Boolean(isRequired))}</span>
+          <span data-testid="cfi-invalid">{String(Boolean(isInvalid))}</span>
+          <span data-testid="cfi-value">{(value as string) ?? ''}</span>
+          <span data-testid="cfi-size-message">
+            {(validationMessages as Record<string, string> | undefined)
+              ?.sizeLimit ?? ''}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              (onChange as (v?: string) => void)('-----BEGIN KEY-----')
+            }>
+            emit-content
+          </button>
+          <button
+            type="button"
+            onClick={() => (onChange as (v?: string) => void)(undefined)}>
+            emit-clear
+          </button>
+        </div>
+      )
+    ),
   };
 });
 
@@ -609,41 +660,112 @@ describe('FormBuilderV1 widgets', () => {
     expect(screen.getByText('eye-off-icon')).toBeInTheDocument();
   });
 
-  it('renders password widget file-only mode', () => {
-    render(
-      <CorePasswordWidget
-        {...widgetBaseProps}
-        schema={{
-          type: 'string' as const,
-          uiFieldType: 'file',
-        }}
-        value={undefined}
-        onChange={jest.fn()}
-      />
-    );
+  describe('credential-file fields', () => {
+    const renderCredentialWidget = (
+      uiFieldType: string,
+      overrides: Partial<WidgetProps> = {},
+      schemaExtras: Record<string, unknown> = {}
+    ) =>
+      render(
+        <CorePasswordWidget
+          {...widgetBaseProps}
+          schema={{ type: 'string' as const, uiFieldType, ...schemaExtras }}
+          value={undefined}
+          onChange={jest.fn()}
+          {...overrides}
+        />
+      );
 
-    expect(screen.getByText('select-radio')).toBeInTheDocument();
-    expect(screen.getByTestId('file-input')).toBeInTheDocument();
-  });
+    it('makes a "file" field upload-only', () => {
+      renderCredentialWidget('file');
 
-  it('renders password widget fileOrInput mode and switches between upload and text input', () => {
-    render(
-      <CorePasswordWidget
-        {...widgetBaseProps}
-        schema={{
-          type: 'string' as const,
-          uiFieldType: 'fileOrInput',
-        }}
-        value={undefined}
-        onChange={jest.fn()}
-      />
-    );
+      expect(screen.getByTestId('credential-file-input')).toBeInTheDocument();
+      expect(screen.getByTestId('cfi-manual-input')).toHaveTextContent('false');
+    });
 
-    expect(screen.getByTestId('file-input')).toBeInTheDocument();
+    it('lets a "fileOrInput" field also accept pasted content', () => {
+      renderCredentialWidget('fileOrInput');
 
-    fireEvent.click(screen.getByRole('button', { name: 'select-radio' }));
+      expect(screen.getByTestId('cfi-manual-input')).toHaveTextContent('true');
+    });
 
-    expect(screen.queryByTestId('file-input')).not.toBeInTheDocument();
-    expect(screen.getByText('eye-icon')).toBeInTheDocument();
+    it('forwards the schema accept list to the picker', () => {
+      renderCredentialWidget('fileOrInput', {}, { accept: ['.pem', '.key'] });
+
+      expect(screen.getByTestId('cfi-accepted')).toHaveTextContent('.pem,.key');
+    });
+
+    it('forwards label, required, disabled, read-only and invalid state', () => {
+      renderCredentialWidget('file', {
+        disabled: true,
+        rawErrors: ['Too short'],
+        readonly: true,
+        required: true,
+      });
+
+      expect(screen.getByTestId('cfi-label')).toHaveTextContent('Widget label');
+      expect(screen.getByTestId('cfi-required')).toHaveTextContent('true');
+      expect(screen.getByTestId('cfi-disabled')).toHaveTextContent('true');
+      expect(screen.getByTestId('cfi-readonly')).toHaveTextContent('true');
+      expect(screen.getByTestId('cfi-invalid')).toHaveTextContent('true');
+    });
+
+    it('passes a real stored value straight through', () => {
+      renderCredentialWidget('file', { value: '-----BEGIN KEY-----' });
+
+      expect(screen.getByTestId('cfi-value')).toHaveTextContent(
+        '-----BEGIN KEY-----'
+      );
+    });
+
+    it('blanks the readback mask so it is not mistaken for the secret', () => {
+      renderCredentialWidget('fileOrInput', { value: '*********' });
+
+      expect(screen.getByTestId('cfi-value')).toBeEmptyDOMElement();
+      expect(screen.getByTestId('cfi-hint')).toHaveTextContent(
+        'message.credential-already-saved'
+      );
+    });
+
+    it('reports the size limit in the rejection message', () => {
+      renderCredentialWidget('file');
+
+      expect(screen.getByTestId('cfi-size-message')).toHaveTextContent(
+        'message.file-size-exceeded'
+      );
+    });
+
+    it('submits file content as the field value', () => {
+      const onChange = jest.fn();
+      renderCredentialWidget('file', { onChange });
+
+      fireEvent.click(screen.getByRole('button', { name: 'emit-content' }));
+
+      expect(onChange).toHaveBeenCalledWith('-----BEGIN KEY-----');
+    });
+
+    it('clears the field value when the credential is removed', () => {
+      const onChange = jest.fn();
+      renderCredentialWidget('file', { onChange });
+
+      fireEvent.click(screen.getByRole('button', { name: 'emit-clear' }));
+
+      expect(onChange).toHaveBeenCalledWith(undefined);
+    });
+
+    it('leaves a plain password field as a password input', () => {
+      render(
+        <CorePasswordWidget
+          {...widgetBaseProps}
+          value="secret"
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('credential-file-input')
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('eye-icon')).toBeInTheDocument();
+    });
   });
 });

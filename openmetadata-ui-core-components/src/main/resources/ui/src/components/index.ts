@@ -122,6 +122,7 @@ export type {
   NavItemDividerType,
   NavItemType,
 } from './application/app-navigation/config';
+export * from './application/credential-file-input/credential-file-input';
 export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
 export * from './application/date-picker/calendar';
