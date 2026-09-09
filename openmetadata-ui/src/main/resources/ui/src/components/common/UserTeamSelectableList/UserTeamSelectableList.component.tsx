@@ -10,14 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Popover,
-  PopoverTrigger,
-  Tabs,
-} from '@openmetadata/ui-core-components';
+import { Popover, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -296,6 +292,11 @@ export const UserTeamSelectableList = ({
         t('label.edit-entity', { entity: t('label.owner-plural') })
       : undefined;
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPopupVisible(true);
+  };
+
   const defaultTrigger = hasPermission ? (
     <span ref={triggerRef}>
       <EditIconButton
@@ -304,15 +305,32 @@ export const UserTeamSelectableList = ({
         icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
         size="small"
         title={getEditTriggerTitle()}
-        onClick={(e) => {
-          e.stopPropagation();
-          setPopupVisible(true);
-        }}
+        onClick={handleTriggerClick}
       />
     </span>
   ) : null;
 
-  const triggerElement = children ?? defaultTrigger;
+  const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setPopupVisible(true);
+    }
+  };
+
+  // When children are provided as trigger, wrap them so any click opens the popover.
+  // AriaDialogTrigger's PressResponder only fires for react-aria-aware components;
+  // a plain wrapper span ensures the click always reaches setPopupVisible.
+  const triggerElement = children ? (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <span
+      ref={triggerRef}
+      onClick={handleTriggerClick}
+      onKeyDown={handleTriggerKeyDown}>
+      {children}
+    </span>
+  ) : (
+    defaultTrigger
+  );
 
   if (!triggerElement) {
     return null;
@@ -408,17 +426,19 @@ export const UserTeamSelectableList = ({
   );
 
   return (
-    <PopoverTrigger isOpen={isOpen} onOpenChange={handleOpenChange}>
+    <>
       {triggerElement}
       <Popover
         containerClassName={classNames(
           'tw:overflow-hidden tw:p-0',
           overlayClassName
         )}
+        isOpen={isOpen}
         placement="bottom end"
-        triggerRef={children ? undefined : triggerRef}>
+        triggerRef={triggerRef}
+        onOpenChange={handleOpenChange}>
         {popoverContent}
       </Popover>
-    </PopoverTrigger>
+    </>
   );
 };
