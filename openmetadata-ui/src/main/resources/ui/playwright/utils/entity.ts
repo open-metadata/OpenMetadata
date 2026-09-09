@@ -327,16 +327,18 @@ export const addOwnerWithoutValidation = async ({
     .fill(owner);
   await searchUser;
 
+  // Scope the option to the open picker panel — some pages (e.g. the Data
+  // Contract form) render more than one owner list, so a page-wide match is
+  // ambiguous.
+  const ownerOption = page
+    .getByTestId(`owner-select-${lowerCase(type)}-panel`)
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: owner });
+
   if (type === 'Teams') {
-    await page
-      .locator('[data-testid="owner-option"]')
-      .filter({ hasText: owner })
-      .click();
+    await ownerOption.click();
   } else {
-    await page
-      .locator('[data-testid="owner-option"]')
-      .filter({ hasText: owner })
-      .click();
+    await ownerOption.click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
