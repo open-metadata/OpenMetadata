@@ -931,10 +931,20 @@ const TableV2 = <T extends object>(
   // the draft here rather than waiting for the state update to flush.
   const filterDraftRef = useRef<Record<string, React.Key[]>>({});
 
+  // A controlled column (filteredValue set) normally shows the parent value,
+  // but while its dropdown is open the user's in-progress draft must win so the
+  // checkboxes reflect each click; confirm still applies the draft either way.
   const effectiveFilterOf = useCallback(
-    (colKey: string): React.Key[] =>
-      controlledFilterState[colKey] ?? filterState[colKey] ?? [],
-    [controlledFilterState, filterState]
+    (colKey: string): React.Key[] => {
+      const draft = filterState[colKey];
+      const controlled = controlledFilterState[colKey];
+      if (openFilterKey === colKey) {
+        return draft ?? controlled ?? [];
+      }
+
+      return controlled ?? draft ?? [];
+    },
+    [openFilterKey, controlledFilterState, filterState]
   );
 
   // AntD's fixed-column scroll shadows. The core table owns the horizontal
@@ -965,6 +975,15 @@ const TableV2 = <T extends object>(
     }
     syncPing();
   });
+
+  // Unmount-only cleanup. The attach effect above deliberately runs every
+  // render (to catch the scroller when the grid re-mounts), so its own return
+  // cannot own removal without stripping the listener between renders.
+  useEffect(
+    () => () =>
+      pingScrollerRef.current?.removeEventListener('scroll', syncPing),
+    [syncPing]
+  );
 
   const {
     preferences: { selectedEntityTableColumns },
