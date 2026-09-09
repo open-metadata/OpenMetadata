@@ -37,39 +37,9 @@ export interface QuarantineEntry {
 
 export const QUARANTINE_LIST: QuarantineEntry[] = [
   {
-    spec: 'Pages/TasksUIFlow.spec.ts',
-    test: 'Tasks UI Flow - Multi Entity Tests › Create and resolve description task for Pipeline via UI',
-    runs: 33,
-  },
-  {
-    spec: 'Pages/TasksUIFlow.spec.ts',
-    test: 'Tasks UI Flow - Multi Entity Tests › Create and reject tag task for Dashboard via UI',
-    runs: 19,
-  },
-  {
-    spec: 'Features/PersonaAIContext.spec.ts',
-    test: 'Persona AI Context › View in Explore link href reflects the selected entity type',
-    runs: 9,
-  },
-  {
     spec: 'Features/DataQuality/TableLevelTests.spec.ts',
     test: 'Table Level Data Quality Test Cases › Custom SQL Query',
     runs: 7,
-  },
-  {
-    spec: 'Features/GlobalPageSize.spec.ts',
-    test: 'Table & Data Model columns table pagination › Page size should persist across different pages',
-    runs: 7,
-  },
-  {
-    spec: 'Pages/ExplorePageRightPanel.spec.ts',
-    test: 'Right Panel Test Suite › Explore page right panel tests › Overview panel - Deleted entity verification › Should verify deleted tag not visible in tag selection for container',
-    runs: 7,
-  },
-  {
-    spec: 'Flow/CustomizeWidgets.spec.ts',
-    test: 'KPI Widget',
-    runs: 6,
   },
   {
     spec: 'Features/DomainTierCertificationVoting.spec.ts',
@@ -212,11 +182,6 @@ export const QUARANTINE_LIST: QuarantineEntry[] = [
     runs: 2,
   },
   {
-    spec: 'Features/PersonaAIContextRules.spec.ts',
-    test: 'Persona AI Context — Rule Builder › Persona AI Context — Filter validation › changing entity type clears an incomplete filter and unblocks save',
-    runs: 2,
-  },
-  {
     spec: 'Features/RestoreEntityInheritedFields.spec.ts',
     test: 'Table › Validate restore with Inherited domain and data products assigned',
     runs: 2,
@@ -289,26 +254,6 @@ export const QUARANTINE_LIST: QuarantineEntry[] = [
   {
     spec: 'Pages/EntityDataConsumer.spec.ts',
     test: 'Topic › Tier Add, Update and Remove',
-    runs: 2,
-  },
-  {
-    spec: 'Pages/ExplorePageRightPanel.spec.ts',
-    test: 'Right Panel Test Suite › Explore page right panel tests › Overview panel - Deleted entity verification › Should verify deleted tag not visible in tag selection for dashboardDataModel',
-    runs: 2,
-  },
-  {
-    spec: 'Pages/ExplorePageRightPanel.spec.ts',
-    test: 'Right Panel Test Suite › Explore page right panel tests › Overview panel - Deleted entity verification › Should verify deleted glossary term not visible in selection for dashboardDataModel',
-    runs: 2,
-  },
-  {
-    spec: 'Pages/ExplorePageRightPanel.spec.ts',
-    test: 'Right Panel Test Suite › Explore page right panel tests › Overview panel - Deleted entity verification › Should verify deleted tag not visible in tag selection for mlmodel',
-    runs: 2,
-  },
-  {
-    spec: 'Pages/ExplorePageRightPanel.spec.ts',
-    test: 'Right Panel Test Suite › Explore page right panel tests › Overview panel - Deleted entity verification › Should verify deleted glossary term not visible in selection for searchIndex',
     runs: 2,
   },
   {

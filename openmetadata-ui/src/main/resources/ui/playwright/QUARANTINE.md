@@ -64,7 +64,7 @@ coverage, a retried one looks green.
 
 ## Entries
 
-85 tests, in three batches. The threshold for quarantining is **2 or more**
+62 tests, in three batches. The threshold for quarantining is **2 or more**
 observed failures, counted per generated variant rather than per source line.
 
 ### Batch 1 — 11 merge_group runs sampled 2026-09-04
@@ -94,10 +94,7 @@ PRs from the queue. `Seen` is ejections attributed to the test, not flake count.
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should handle supported services field correctly | 5 | |
 | `e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts` | should create term with custom style color | 5 | |
 | `e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts` | should update term style to set color | 5 | |
-| `e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts` | Domain asset count should update when assets are removed | 3 | Reported as "asset count on remove"; both removal tests tagged, the report does not separate them. |
-| `e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts` | Data Product asset count should update when assets are removed | 3 | As above. |
 | `e2e/Pages/Tag.spec.ts` | Add and Remove Assets for Data Steward | 3 | |
-| `e2e/Pages/ExplorePageRightPanel.spec.ts` | Should verify deleted user not visible in owner selection for `${entityType}` | 3 | All **10** generated variants (table, dashboard, pipeline, topic, database, databaseSchema, dashboardDataModel, mlmodel, container, searchIndex) — see below. |
 
 The three `SampleDataDomainDataProduct` tests fail **together** and account for
 ~41% of all queue ejections, but they are not flaky — they assert that the
@@ -107,15 +104,6 @@ buys merge-queue time and nothing else; it does **not** make the underlying
 ingestion problem go away, and these three should come out as soon as that is
 fixed rather than being treated as flakes to re-time.
 
-The deleted-user entry is the one place the per-variant threshold was
-deliberately overridden. The report attributes 3 ejections to the loop without
-saying which entity types produced them, so tagging the source line quarantines
-all 10 variants for what could be 3 different types at 1 each. That trade was
-accepted because quarantine now only skips the **merge queue** — every one of
-the 10 still runs on PRs, so the coverage is not lost, just moved off the path
-that ejects batches. Narrow it to specific `entityType`s inside the loop if the
-per-variant data later shows only some of them flake.
-
 ### Batch 3 — the same 56 merge_group runs, flake (not ejection) data
 
 Batches 1 and 2 are tests that **ejected PRs**. Batch 3 is the other list from
@@ -123,25 +111,20 @@ that analysis: 352 flaky occurrences over 202 distinct tests, **all of which
 passed on retry** — no run in the sample concluded anything but `success`. They
 cost the queue retry time, not merged PRs.
 
-The 58 entries that flaked in **2 or more** of the 56 runs are in
-[`quarantine-list.ts`](./quarantine-list.ts) with their run counts. The
-remaining 144 flaked exactly once and are deliberately left in, for the reason
-this file has always given: one observation is not evidence.
+58 entries flaked in **2 or more** of the 56 runs; **11 were fixed by #33060
+before this landed** and never needed quarantining, leaving **47** in
+[`quarantine-list.ts`](./quarantine-list.ts) with their run counts. The other
+144 flaked exactly once and are deliberately left in, for the reason this file
+has always given: one observation is not evidence.
 
-Two entries are **not flakes** and should not be treated as ones:
-
-| Spec | Test | Runs |
-|---|---|---|
-| `Pages/TasksUIFlow.spec.ts` | Create and resolve description task for Pipeline via UI | **33/56** |
-| `Pages/TasksUIFlow.spec.ts` | Create and reject tag task for Dashboard via UI | **19/56** |
-
-A test that fails its first attempt in 59% of runs is broken, not flaky, and
-between them they are ~15% of every flake occurrence in the window. Quarantine
-buys queue time; it does not diagnose them, and they should leave quarantine by
-being fixed.
+The two heaviest entries in the batch — `TasksUIFlow` at 33/56 and 19/56 runs,
+together ~15% of every flake occurrence in the window — were **not flakes**, and
+#33060 confirmed it: a click that landed during the feed re-render was dropped,
+so the task detail panel never mounted. That is the outcome this file wants.
+Quarantine buys queue time; it never diagnoses anything.
 
 `PLAYWRIGHT_RUN_QUARANTINED=true` selects these 85 plus the 7 setup/teardown
-fixture projects (92 in total), which the soak lane deliberately leaves
+fixture projects (69 in total), which the soak lane deliberately leaves
 unfiltered so login and entity seeding still happen — a project-level `grep`
 *is* applied to dependency projects, so filtering them would make every
 quarantined test fail for want of `admin.json` instead of for its flake.
@@ -152,8 +135,8 @@ here. With the discover step's own environment —
 PLAYWRIGHT_IS_OSS=true` (that last one gates the whole
 `WorkflowOssRestrictions` describe, so without it two entries look dead) and no
 `--project` filter — `npx playwright test --list` reports **4601** tests and
-`GITHUB_EVENT_NAME=merge_group npx playwright test --list` reports **4516** —
-the 85 above. The difference is the check that the tag is wired up; the absolute
+`GITHUB_EVENT_NAME=merge_group npx playwright test --list` reports **4539** —
+the 62 above. The difference is the check that the tag is wired up; the absolute
 numbers drift with every new spec.
 
 ## Not quarantined — fixed instead
@@ -168,6 +151,23 @@ they were repaired rather than parked:
 | `e2e/Features/ClassificationImportExport.spec.ts:64` | `beforeAll` POSTed fixtures whose names were generated at module scope, so a second pass in the same worker 409'd on every create. Fixtures are now rebuilt inside `beforeAll`, and an `afterAll` was added — the spec previously leaked two classifications, a tag and a user into the shard on every run. |
 
 ### Released from quarantine
+
+**#33060 — root-caused and fixed before this branch merged (12 tagged tests + 11
+list entries).** Karan's fixes landed on `main` while this was in review, so the
+entries came straight back out rather than being carried in. Each is a real race,
+not a timeout bump:
+
+| Spec | Test(s) | Root cause fixed in #33060 |
+|---|---|---|
+| `Pages/TasksUIFlow.spec.ts` | resolve description (Pipeline), reject tag (Dashboard) | `openFirstTaskCard` clicked the task card but never confirmed the detail panel mounted; a click dropped during the feed re-render left `selectedTask` unset. Now retries under `toPass` until `task-tab` is visible. |
+| `Pages/ExplorePageRightPanel.spec.ts` | deleted **user** (all 10 entity variants), deleted **tag** (container, dashboardDataModel, mlmodel), deleted **glossary term** (dashboardDataModel, searchIndex) | The deleted-entity verify helpers asserted absence with a page-wide `getByTitle`, which also matched the entity's still-assigned chip on the panel. Scoped to `selectOwnerTabs` / `selectableList`. |
+| `e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts` | both "assets are removed" tests | The asset count is fetched once per page load with no refetch, so the assertion polled a frozen stale DOM. Gated on the counts aggregation via `waitForDomainAssetCount`, and `test.slow()` restored. |
+| `Features/GlobalPageSize.spec.ts` | Page size should persist across different pages | `waitForAllLoadersToDisappear` passed in the frame before the Explore search loader mounted. Hoisted `search/query` waiters keyed on the exact size param. |
+| `Features/PersonaAIContext.spec.ts` | View in Explore link href reflects the selected entity type | react-aria closed the entity-type listbox mid-click and detached the option. Now `selectOptionWithRetry`. |
+| `Features/PersonaAIContextRules.spec.ts` | changing entity type clears an incomplete filter and unblocks save | Same react-aria listbox race. |
+| `Flow/CustomizeWidgets.spec.ts` | KPI Widget | Two point-in-time `isVisible()` reads before the debounced `ResponsiveContainer` painted. Replaced with a web-first `expect(chart.or(empty))`. |
+
+Deliberately **not** released, because #33060 did not touch them: `Flow/CustomizeWidgets.spec.ts › Data Assets Widget` (a different test in the same spec), `ExplorePageRightPanel › Overview panel CRUD and Removal operations › … for dashboard` (a different describe from the deleted-entity helpers), and `ExplorePageRightPanel_KnowledgeCenter › Should remove user owner` (a different spec and a different symptom).
 
 Diagnosed and fixed, so the tag came off. If any of these flakes again the fix
 was wrong — re-quarantine it with the new evidence rather than restoring the old

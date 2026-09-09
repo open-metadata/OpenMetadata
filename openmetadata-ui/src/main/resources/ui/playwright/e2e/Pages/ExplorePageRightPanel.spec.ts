@@ -1053,62 +1053,61 @@ test.describe('Right Panel Test Suite', () => {
 
       Object.entries(deletedEntityVerificationEntityMap).forEach(
         ([entityType, entityInstance]) => {
-          test(
-            `Should verify deleted user not visible in owner selection for ${entityType}`,
-            { tag: '@quarantine' },
-            async ({ adminPage, rightPanel, overview, browser }) => {
-              const deletedUser = new UserClass();
-              const { apiContext, afterAction } = await performAdminLogin(
-                browser
+          test(`Should verify deleted user not visible in owner selection for ${entityType}`, async ({
+            adminPage,
+            rightPanel,
+            overview,
+            browser,
+          }) => {
+            const deletedUser = new UserClass();
+            const { apiContext, afterAction } = await performAdminLogin(
+              browser
+            );
+
+            try {
+              await deletedUser.create(apiContext);
+
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelVisible();
+              rightPanel.setEntityConfig(entityInstance);
+
+              await overview.addOwnerWithoutValidation(
+                deletedUser.getUserDisplayName()
               );
+              await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
-              try {
-                await deletedUser.create(apiContext);
-
-                const fqn = getEntityFqn(entityInstance);
-                await navigateToExploreAndSelectEntity({
-                  page: adminPage,
-                  entityName: getEntityDisplayName(entityInstance.entity),
-                  endpoint: entityInstance.endpoint,
-                  fullyQualifiedName: fqn,
-                });
-                await rightPanel.waitForPanelVisible();
-                rightPanel.setEntityConfig(entityInstance);
-
-                await overview.addOwnerWithoutValidation(
-                  deletedUser.getUserDisplayName()
-                );
-                await overview.shouldShowOwner(
-                  deletedUser.getUserDisplayName()
-                );
-
-                await deletedUser.delete(apiContext);
-                // The owner dropdown is search-backed and index deletion is
-                // eventually consistent — gate on the index before asserting
-                // absence, or the dropdown can still return the deleted user.
-                await waitForDeletionFromSearchIndex(
-                  apiContext,
+              await deletedUser.delete(apiContext);
+              // The owner dropdown is search-backed and index deletion is
+              // eventually consistent — gate on the index before asserting
+              // absence, or the dropdown can still return the deleted user.
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedUser.getUserDisplayName(),
+                'user',
+                [
                   deletedUser.getUserDisplayName(),
-                  'user',
-                  [
-                    deletedUser.getUserDisplayName(),
-                    deletedUser.responseData.name,
-                  ]
-                );
-                await adminPage.reload();
-                await rightPanel.waitForPanelVisible();
+                  deletedUser.responseData.name,
+                ]
+              );
+              await adminPage.reload();
+              await rightPanel.waitForPanelVisible();
 
-                const deletedOwnerLocator =
-                  await overview.verifyDeletedOwnerNotVisible(
-                    deletedUser.getUserDisplayName(),
-                    'Users'
-                  );
-                await expect(deletedOwnerLocator).not.toBeVisible();
-              } finally {
-                await afterAction();
-              }
+              const deletedOwnerLocator =
+                await overview.verifyDeletedOwnerNotVisible(
+                  deletedUser.getUserDisplayName(),
+                  'Users'
+                );
+              await expect(deletedOwnerLocator).not.toBeVisible();
+            } finally {
+              await afterAction();
             }
-          );
+          });
 
           test(`Should verify deleted tag not visible in tag selection for ${entityType}`, async ({
             adminPage,

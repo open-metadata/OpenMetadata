@@ -37,7 +37,10 @@ import {
   selectDomain,
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForEntitySearchable } from '../../../utils/search';
+import {
+  waitForDomainAssetCount,
+  waitForEntitySearchable,
+} from '../../../utils/search';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -200,100 +203,107 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     );
   });
 
-  test(
-    'Domain asset count should update when assets are removed',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      await redirectToHomePage(page);
-      await waitForAllLoadersToDisappear(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
+  test('Domain asset count should update when assets are removed', async ({
+    page,
+  }) => {
+    test.slow();
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
 
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 2);
+    await page.getByTestId('assets').click();
+    await checkAssetsCount(page, 2);
 
-      const topicFqn = topic.entityResponseData.fullyQualifiedName;
-      await page
-        .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
-        .check();
+    const topicFqn = topic.entityResponseData.fullyQualifiedName;
+    await page
+      .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
+      .check();
 
-      const dryRunRes = page.waitForResponse(
-        (r) =>
-          r.url().includes('/assets/remove') &&
-          r.request().postDataJSON()?.dryRun === true
-      );
-      await page.getByTestId('delete-all-button').click();
-      await dryRunRes;
+    const dryRunRes = page.waitForResponse(
+      (r) =>
+        r.url().includes('/assets/remove') &&
+        r.request().postDataJSON()?.dryRun === true
+    );
+    await page.getByTestId('delete-all-button').click();
+    await dryRunRes;
 
-      const removeRes = page.waitForResponse(
-        (r) =>
-          r.url().includes('/assets/remove') &&
-          !r.request().postDataJSON()?.dryRun
-      );
-      await page
-        .getByTestId('domain-dry-run-modal')
-        .getByTestId('save-button')
-        .click();
-      await removeRes;
+    const removeRes = page.waitForResponse(
+      (r) =>
+        r.url().includes('/assets/remove') &&
+        !r.request().postDataJSON()?.dryRun
+    );
+    await page
+      .getByTestId('domain-dry-run-modal')
+      .getByTestId('save-button')
+      .click();
+    await removeRes;
 
-      await page.reload();
-      await checkAssetsCount(page, 1);
+    // The remove mutation returns before Elasticsearch is refreshed, and both
+    // the assets-tab badge and the landing-page widget read the count exactly
+    // once per page load. Wait for the search index to reflect the removal
+    // before reloading so those single-shot reads snapshot the updated count.
+    await waitForDomainAssetCount(
+      page,
+      domain.responseData.fullyQualifiedName ?? domain.data.name,
+      1
+    );
 
-      await redirectToHomePage(page);
-      await verifyDomainCountInDomainWidget(
-        page,
-        domain.responseData.id ?? '',
-        1
-      );
+    await page.reload();
+    await checkAssetsCount(page, 1);
+
+    await redirectToHomePage(page);
+    await verifyDomainCountInDomainWidget(
+      page,
+      domain.responseData.id ?? '',
+      1
+    );
+  });
+
+  test('Data Product asset count should update when assets are removed', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.data);
+    await waitForAllLoadersToDisappear(page);
+
+    const dataProductAssetsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataProducts/name/') &&
+        response.url().includes('fields=domains%2Cassets') &&
+        response.request().method() === 'GET'
+    );
+    await page.getByTestId('assets').click();
+    await dataProductAssetsResponse;
+
+    // Remove every asset currently attached to the data product. The card
+    // list paints asynchronously after the assets response resolves, and
+    // count() does not auto-wait — so wait for the first card to render
+    // before counting, otherwise the loop reads 0 and removes nothing.
+    await waitForAllLoadersToDisappear(page);
+    const assetCard = page.locator('[data-testid^="table-data-card_"]');
+    await assetCard.first().waitFor({ state: 'visible' });
+
+    const attachedCount = await assetCard.count();
+    for (let i = 0; i < attachedCount; i++) {
+      await assetCard.nth(i).locator('input[type="checkbox"]').check();
     }
-  );
 
-  test(
-    'Data Product asset count should update when assets are removed',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      await redirectToHomePage(page);
-      await waitForAllLoadersToDisappear(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct.data);
-      await waitForAllLoadersToDisappear(page);
+    const removeRes = page.waitForResponse('**/assets/remove');
+    await page.getByTestId('delete-all-button').click();
+    await removeRes;
 
-      const dataProductAssetsResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/dataProducts/name/') &&
-          response.url().includes('fields=domains%2Cassets') &&
-          response.request().method() === 'GET'
-      );
-      await page.getByTestId('assets').click();
-      await dataProductAssetsResponse;
+    await page.reload();
+    await waitForAllLoadersToDisappear(page);
+    await checkAssetsCount(page, 0);
 
-      // Remove every asset currently attached to the data product. The card
-      // list paints asynchronously after the assets response resolves, and
-      // count() does not auto-wait — so wait for the first card to render
-      // before counting, otherwise the loop reads 0 and removes nothing.
-      await waitForAllLoadersToDisappear(page);
-      const assetCard = page.locator('[data-testid^="table-data-card_"]');
-      await assetCard.first().waitFor({ state: 'visible' });
-
-      const attachedCount = await assetCard.count();
-      for (let i = 0; i < attachedCount; i++) {
-        await assetCard.nth(i).locator('input[type="checkbox"]').check();
-      }
-
-      const removeRes = page.waitForResponse('**/assets/remove');
-      await page.getByTestId('delete-all-button').click();
-      await removeRes;
-
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
-      await checkAssetsCount(page, 0);
-
-      await redirectToHomePage(page);
-      await verifyDataProductCountInDataProductWidget(
-        page,
-        dataProduct.responseData.id ?? '',
-        0
-      );
-    }
-  );
+    await redirectToHomePage(page);
+    await verifyDataProductCountInDataProductWidget(
+      page,
+      dataProduct.responseData.id ?? '',
+      0
+    );
+  });
 });
