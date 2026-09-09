@@ -322,8 +322,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (teamParam != null) {
-      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the members
-      // inherited from their sub-group descendants (empty for Group/Organization teams).
+      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members, so expand the
+      // filter to their whole subtree and list the members inherited from their sub-groups. Group
+      // teams already hold members directly and Organization is the root, so getSubtreeTeamHashes
+      // returns an empty list for them and the query keeps its plain (direct-membership) team
+      // filter.
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
       List<String> subtreeTeamHashes = teamRepository.getSubtreeTeamHashes(teamParam);
       if (!subtreeTeamHashes.isEmpty()) {
