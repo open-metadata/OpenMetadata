@@ -221,7 +221,8 @@ jobs:
   # workflow_dispatch-only against release branches and so never writes main's
   # scope, but the keys should grow a flavour segment before that changes.
   warm-fixture:
-    # Let the active warmer finish; retain the newest pending run after a burst of merges.
+    # GitHub replaces the single pending run by default; let the active warmer finish.
+    # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
     concurrency:
       group: populate-playwright-caches-fixture
       cancel-in-progress: false

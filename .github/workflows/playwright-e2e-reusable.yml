@@ -746,9 +746,20 @@ jobs:
                 --dir "$run_dir" || true
             done
 
-      - name: Verify contract polling against HTTP failure scenarios
-        working-directory: openmetadata-ui/src/main/resources/ui
-        run: ./node_modules/.bin/playwright test --config=playwright/helper-tests.config.ts
+      - name: Verify Playwright HTTP helpers
+        # PR code must not inherit the runner's cache credentials or write to
+        # its workspace. These tests only need loopback HTTP inside the container.
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/playwright test \
+            --config=playwright/helper-tests.config.ts --output=/tmp/helper-test-results
 
       - name: Discover tests
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -800,14 +811,18 @@ jobs:
             "$RUNNER_TEMP/playwright-plans/matrix.json"
 
       - name: Inventory existing quarantined coverage
-        working-directory: openmetadata-ui/src/main/resources/ui
-        env:
-          PLAYWRIGHT_IS_OSS: "true"
-          PLAYWRIGHT_RUN_QUARANTINED: "true"
-          PW_DEDICATED_INGESTION: "true"
-          PW_DEDICATED_IMPORT_EXPORT: "true"
         run: |
-          ./node_modules/.bin/playwright test --list --reporter=json --pass-with-no-tests \
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true --env PLAYWRIGHT_IS_OSS=true \
+            --env PLAYWRIGHT_RUN_QUARANTINED=true \
+            --env PW_DEDICATED_INGESTION=true --env PW_DEDICATED_IMPORT_EXPORT=true \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/playwright test --list --reporter=json --pass-with-no-tests \
             --project=chromium --project=Basic --project="Data Insight" \
             --project=Ingestion --project=ImportExport \
             --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled \

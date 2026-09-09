@@ -28,10 +28,10 @@ inputs:
 outputs:
   download-path:
     description: Download destination
-    value: ${{ steps.attempt-3.outputs.download-path || steps.attempt-2.outputs.download-path || steps.attempt-1.outputs.download-path }}
+    value: ${{ steps.fallback.outputs.download-path || steps.attempt-3.outputs.download-path || steps.attempt-2.outputs.download-path || steps.attempt-1.outputs.download-path }}
   attempts:
     description: Number of transport attempts
-    value: ${{ steps.attempt-3.outcome != 'skipped' && 3 || steps.attempt-2.outcome != 'skipped' && 2 || 1 }}
+    value: ${{ steps.fallback.outcome != 'skipped' && 4 || steps.attempt-3.outcome != 'skipped' && 3 || steps.attempt-2.outcome != 'skipped' && 2 || 1 }}
 runs:
   using: composite
   steps:
@@ -69,6 +69,19 @@ runs:
     uses: actions/download-artifact@v7
     continue-on-error: true
     with:
+      name: ${{ inputs.name }}
+      pattern: ${{ inputs.pattern }}
+      path: ${{ inputs.path }}
+      merge-multiple: ${{ inputs.merge-multiple }}
+      github-token: ${{ inputs.github-token }}
+      run-id: ${{ inputs.run-id }}
+  # Keep all three attempts for the primary artifact. The upload fallback has
+  # an exact name so similarly prefixed artifacts cannot change the result/layout.
+  - id: fallback
+    if: ${{ !cancelled() && inputs.name != '' && steps.attempt-3.outcome == 'failure' }}
+    uses: actions/download-artifact@v7
+    continue-on-error: true
+    with:
       name: ${{ inputs.name && format('{0}-retry', inputs.name) || '' }}
       pattern: ${{ inputs.pattern }}
       path: ${{ inputs.path }}
@@ -76,8 +89,8 @@ runs:
       github-token: ${{ inputs.github-token }}
       run-id: ${{ inputs.run-id }}
   - name: Require a completed download
-    if: ${{ !cancelled() && steps.attempt-1.outcome != 'success' && steps.attempt-2.outcome != 'success' && steps.attempt-3.outcome != 'success' }}
+    if: ${{ !cancelled() && steps.attempt-1.outcome != 'success' && steps.attempt-2.outcome != 'success' && steps.attempt-3.outcome != 'success' && steps.fallback.outcome != 'success' }}
     shell: bash
     run: |
-      echo '::error::Artifact transport failed after three attempts'
+      echo '::error::Artifact transport exhausted retries and any named upload fallback'
       exit 1
