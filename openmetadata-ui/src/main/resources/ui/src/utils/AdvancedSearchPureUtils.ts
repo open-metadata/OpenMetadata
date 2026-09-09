@@ -13,9 +13,6 @@
 import type { OldJsonTree } from '@react-awesome-query-builder/ui';
 import { isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
-import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import type { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
@@ -30,8 +27,13 @@ import {
   EntityFields,
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import type {
+  ExploreQuickFilterField,
+  SearchDropdownOption,
+} from '../interface/quickFilter.interface';
 import type {
   ContainerSearchSource,
   DashboardSearchSource,
@@ -220,11 +222,13 @@ export const getQuickFilterSourceFields = (
   field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
 
 // The filter value stays the raw tier FQN (tier.tier1); only the visible
-// label becomes the tier name (Tier1).
+// label becomes the tier name. Default tiers render as Tier1…Tier5 even when
+// the bucket key is lowercased; custom tiers keep their name untouched.
 const formatTierLabel = (value: string): string => {
   const tierName = getNameFromFQN(value);
+  const defaultTier = tierName.match(/^tier(\d+)$/i);
 
-  return tierName.charAt(0).toUpperCase() + tierName.slice(1);
+  return defaultTier ? `Tier${defaultTier[1]}` : tierName;
 };
 
 /**

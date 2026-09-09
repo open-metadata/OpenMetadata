@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   CloseCircleOutlined,
   SortAscendingOutlined,
@@ -73,7 +74,6 @@ import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';
 import PaginationComponent from '../../PaginationComponent/PaginationComponent';
-import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
 import {
@@ -579,7 +579,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                 <Col span={24}>
                   <Space className="justify-between w-full">
                     <Space size={16}>
-                      <SearchDropdown
+                      <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isOwnerLoading}
                         label={t('label.owner')}
@@ -591,7 +591,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onSearch={handleOwnerSearch}
                       />
 
-                      <SearchDropdown
+                      <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isTagsLoading}
                         label={t('label.tag')}

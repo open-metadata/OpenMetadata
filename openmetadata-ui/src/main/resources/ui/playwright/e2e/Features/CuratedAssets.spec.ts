@@ -586,7 +586,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--value'),
-      'tier.tier5',
+      'Tier.Tier5',
       true
     );
 
@@ -597,7 +597,7 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('tier.tier5')
+        response.url().toLowerCase().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();

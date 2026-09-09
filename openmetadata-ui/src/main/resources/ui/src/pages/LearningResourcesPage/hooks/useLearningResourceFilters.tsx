@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   Badge,
   Box,
@@ -22,7 +23,6 @@ import { XClose } from '@untitledui/icons';
 import { Space } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import {
   CATEGORIES,
@@ -166,7 +166,7 @@ export const useLearningResourceFilters = (
     () => (
       <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
         {FILTER_FIELDS.map((field) => (
-          <SearchDropdown
+          <FilterSelectDropdown
             hideCounts
             showSelectedCounts
             isSuggestionsLoading={false}
@@ -175,7 +175,6 @@ export const useLearningResourceFilters = (
             options={optionsByKey[field.key] ?? field.options}
             searchKey={field.key}
             selectedKeys={getSelectedKeys(field.key)}
-            triggerButtonSize="middle"
             onChange={handleDropdownChange}
             onGetInitialOptions={handleGetInitialOptions}
             onSearch={handleSearch}

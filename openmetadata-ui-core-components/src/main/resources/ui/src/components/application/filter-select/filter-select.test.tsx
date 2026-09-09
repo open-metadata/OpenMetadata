@@ -215,6 +215,39 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('renders an already-rendered node icon and a helper text', () => {
+    renderFilter({
+      helperText: 'Pick values to refine',
+      options: [
+        {
+          value: 'snowflake',
+          label: 'Snowflake',
+          icon: <img alt="" data-testid="node-icon" src="snowflake.svg" />,
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('node-icon')).toBeInTheDocument();
+    expect(screen.getByText('Pick values to refine')).toBeInTheDocument();
+  });
+
+  it('renders an array icon node without throwing', () => {
+    renderFilter({
+      options: [
+        {
+          value: 'snowflake',
+          label: 'Snowflake',
+          icon: [
+            <img alt="" key="a" src="a.svg" />,
+            <img alt="" key="b" src="b.svg" />,
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByText('Snowflake')).toBeInTheDocument();
+  });
+
   it('shows the empty state when nothing is displayed', () => {
     renderFilter({ options: [] });
 

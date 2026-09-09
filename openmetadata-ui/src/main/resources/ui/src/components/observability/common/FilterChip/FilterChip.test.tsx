@@ -16,128 +16,81 @@ import { ReactNode } from 'react';
 import FilterChip from './FilterChip';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock('@openmetadata/ui-core-components', () => {
-  const Dropdown: any = {
-    Root: ({
-      children,
-      isOpen,
-      onOpenChange,
-    }: {
-      children?: ReactNode;
-      isOpen?: boolean;
-      onOpenChange: (...args: unknown[]) => void;
-    }) => (
-      <div data-open={isOpen} data-testid="dropdown-root">
-        <button
-          data-testid="dropdown-toggle"
-          onClick={() => onOpenChange(!isOpen)}>
-          toggle
-        </button>
-        {children}
-      </div>
-    ),
-    Popover: ({
-      children,
-      className,
-    }: {
-      children?: ReactNode;
-      className?: string;
-    }) => (
-      <div className={className} data-testid="dropdown-popover">
-        {children}
-      </div>
-    ),
-    Menu: ({ children, onSelectionChange, selectionMode }: any) => (
-      <div data-selection-mode={selectionMode} data-testid="dropdown-menu">
-        <button
-          data-testid="select-a"
-          onClick={() => onSelectionChange(new Set(['a']))}>
-          select-a
-        </button>
-        <button
-          data-testid="select-all"
-          onClick={() => onSelectionChange('all')}>
-          select-all
-        </button>
-        {children}
-      </div>
-    ),
-    // `isSelected` is derived from the option id so the single-select item's
-    // selected branch (className fn + Check icon) is exercised.
-    Item: ({
-      children,
-      label,
-      id,
-      className,
-    }: {
-      // react-aria passes render props for both slots.
-      children?: ReactNode | ((state: { isSelected: boolean }) => ReactNode);
-      label?: ReactNode;
-      id: string;
-      className?:
-        | string
-        | ((state: { isSelected: boolean }) => string | undefined);
-    }) => {
-      const isSelected = id === 'success';
-      const cls =
-        typeof className === 'function' ? className({ isSelected }) : className;
 
-      return (
-        <div className={cls} data-id={id} data-testid="dropdown-item">
-          {label}
-          {typeof children === 'function' ? children({ isSelected }) : children}
-        </div>
-      );
-    },
-  };
+// Selection UX (staged commits, search box, checkbox rows, all-sentinel) lives
+// in the FilterSelect core component and is covered by its own suite; these
+// tests assert the descriptor → FilterSelect mapping and the date/user chips.
+jest.mock('@openmetadata/ui-core-components', () => ({
+  borderAfter: 'border-after',
+  FilterSelect: ({
+    'data-testid': testId,
+    label,
+    options,
+    selectedValues,
+    selectionMode,
+    commitMode,
+    searchable,
+    triggerVariant,
+    resolveMissingLabel,
+    onChange,
+    onOpenChange,
+    onSearch,
+  }: any) => {
+    const single = selectionMode === 'single';
+    const selectedLabel =
+      single && selectedValues[0]
+        ? options.find((option: any) => option.value === selectedValues[0])
+            ?.label ??
+          resolveMissingLabel?.(selectedValues[0]) ??
+          selectedValues[0]
+        : undefined;
 
-  return {
-    Box: ({
-      children,
-      className,
-    }: {
-      children?: ReactNode;
-      className?: string;
-    }) => (
-      <div className={className} data-testid="box">
-        {children}
+    return (
+      <div
+        data-commit={commitMode}
+        data-searchable={String(Boolean(searchable))}
+        data-selection={selectionMode}
+        data-testid={testId}
+        data-variant={triggerVariant}>
+        <span data-testid="trigger-text">
+          {single
+            ? selectedLabel ?? label
+            : selectedValues.length > 0
+            ? `${label} · ${selectedValues.length}`
+            : label}
+        </span>
+        {options.map((option: any) => (
+          <div data-testid="filter-option" key={option.value}>
+            {option.label}
+            {option.icon ? <option.icon /> : null}
+          </div>
+        ))}
+        <button data-testid="open-filter" onClick={() => onOpenChange?.(true)}>
+          open
+        </button>
+        <button data-testid="commit-success" onClick={() => onChange(['success'])}>
+          commit success
+        </button>
+        <button
+          data-testid="commit-multi"
+          onClick={() => onChange(['success', 'failed'])}>
+          commit multi
+        </button>
+        <button data-testid="commit-empty" onClick={() => onChange([])}>
+          commit empty
+        </button>
+        <button data-testid="filter-search" onClick={() => onSearch?.('abc')}>
+          search
+        </button>
       </div>
-    ),
-    Button: ({ children, onPress, isDisabled, ...rest }: any) => (
-      <button
-        data-testid={rest['data-testid']}
-        disabled={isDisabled}
-        onClick={onPress}>
-        {children}
-      </button>
-    ),
-    Input: ({
-      value,
-      onChange,
-      placeholder,
-    }: {
-      value?: string;
-      onChange: (...args: unknown[]) => void;
-      placeholder?: string;
-    }) => (
-      <input
-        aria-label="search-input"
-        data-testid="search-input"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    ),
-    Dropdown,
-  };
-});
+    );
+  },
+}));
 
 jest.mock('@untitledui/icons', () => ({
-  Check: () => <span data-testid="check-icon" />,
   ChevronDown: () => <span data-testid="chevron-icon" />,
   Columns01: () => <span data-testid="columns-icon" />,
   LayoutAlt04: () => <span data-testid="layout-icon" />,
-  SearchLg: () => <span data-testid="search-icon" />,
   Table: () => <span data-testid="table-icon" />,
 }));
 
@@ -204,280 +157,24 @@ describe('FilterChip', () => {
   it('should render the date range filter for date control type', () => {
     const descriptor = baseDescriptor({
       controlType: 'date',
-      value: { startTs: 100, endTs: 200 },
+      value: { startTs: 10, endTs: 20 },
     });
     render(<FilterChip descriptor={descriptor as any} />);
 
-    expect(screen.getByTestId('date-range-filter')).toBeInTheDocument();
+    const dateFilter = screen.getByTestId('date-range-filter');
+
+    expect(dateFilter).toBeInTheDocument();
+    expect(dateFilter).toHaveAttribute('data-start', '10');
+    expect(dateFilter).toHaveAttribute('data-end', '20');
   });
 
   it('should forward onApply to descriptor.onChange for date control', () => {
-    const onChange = jest.fn();
-    const descriptor = baseDescriptor({
-      controlType: 'date',
-      value: {},
-      onChange,
-    });
+    const descriptor = baseDescriptor({ controlType: 'date', value: {} });
     render(<FilterChip descriptor={descriptor as any} />);
 
     fireEvent.click(screen.getByTestId('date-range-filter'));
 
-    expect(onChange).toHaveBeenCalledWith({ startTs: 1, endTs: 2 });
-  });
-
-  it('should render the select chip trigger with label when nothing selected', () => {
-    render(<FilterChip descriptor={baseDescriptor() as any} />);
-
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Status'
-    );
-  });
-
-  it('should show count in trigger for multiselect with committed values', () => {
-    render(
-      <FilterChip
-        descriptor={baseDescriptor({ value: ['success', 'failed'] }) as any}
-      />
-    );
-
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Status · 2'
-    );
-  });
-
-  it('should show selected option label for single select', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'select',
-            value: 'success',
-          }) as any
-        }
-      />
-    );
-
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Success'
-    );
-  });
-
-  it('should render a persisted single-select value missing from the fetched options', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            key: 'tableFqn',
-            label: 'Table',
-            controlType: 'select',
-            searchable: true,
-            value: 'svc.db.schema.selected_table',
-            options: [{ label: 'Other Table', value: 'svc.db.schema.other' }],
-          }) as any
-        }
-      />
-    );
-
-    // Trigger resolves the selected FQN to its name instead of the bare label.
-    expect(screen.getByTestId('search-dropdown-tableFqn')).toHaveTextContent(
-      'selected_table'
-    );
-
-    // The selected item is rendered in the menu so it can show as checked.
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-
-    expect(
-      screen
-        .getAllByTestId('dropdown-item')
-        .some((el) => el.textContent?.includes('selected_table'))
-    ).toBe(true);
-  });
-
-  it('should render a persisted multiselect value missing from the fetched options', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            key: 'tags',
-            label: 'Tags',
-            controlType: 'multiselect',
-            searchable: true,
-            value: ['classification.Tier1'],
-            options: [],
-          }) as any
-        }
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-
-    expect(
-      screen
-        .getAllByTestId('dropdown-item')
-        .some((el) => el.textContent?.includes('Tier1'))
-    ).toBe(true);
-  });
-
-  it('should call onGetInitialOptions when dropdown opens', () => {
-    const onGetInitialOptions = jest.fn();
-    render(
-      <FilterChip descriptor={baseDescriptor({ onGetInitialOptions }) as any} />
-    );
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-
-    expect(onGetInitialOptions).toHaveBeenCalled();
-  });
-
-  it('should render search input only when searchable', () => {
-    const { rerender } = render(
-      <FilterChip descriptor={baseDescriptor() as any} />
-    );
-
-    expect(screen.queryByTestId('search-input')).not.toBeInTheDocument();
-
-    rerender(
-      <FilterChip descriptor={baseDescriptor({ searchable: true }) as any} />
-    );
-
-    expect(screen.getByTestId('search-input')).toBeInTheDocument();
-  });
-
-  it('should call onSearch when typing in the search box', () => {
-    const onSearch = jest.fn();
-    render(
-      <FilterChip
-        descriptor={baseDescriptor({ searchable: true, onSearch }) as any}
-      />
-    );
-
-    fireEvent.change(screen.getByTestId('search-input'), {
-      target: { value: 'foo' },
-    });
-
-    expect(onSearch).toHaveBeenCalledWith('foo');
-  });
-
-  it('should render apply/clear/cancel buttons for multiselect', () => {
-    render(<FilterChip descriptor={baseDescriptor() as any} />);
-
-    expect(screen.getByTestId('apply-filter-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('clear-filter-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('cancel-filter-btn')).toBeInTheDocument();
-  });
-
-  it('should disable clear button when nothing staged', () => {
-    render(<FilterChip descriptor={baseDescriptor() as any} />);
-
-    expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
-  });
-
-  it('should commit staged value to onChange on Apply for multiselect', () => {
-    const onChange = jest.fn();
-    render(<FilterChip descriptor={baseDescriptor({ onChange }) as any} />);
-
-    fireEvent.click(screen.getByTestId('select-a'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
-
-    expect(onChange).toHaveBeenCalledWith(['a']);
-  });
-
-  it('should call onChange immediately on selection for single select', () => {
-    const onChange = jest.fn();
-    render(
-      <FilterChip
-        descriptor={baseDescriptor({ controlType: 'select', onChange }) as any}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('select-a'));
-
-    expect(onChange).toHaveBeenCalledWith('a');
-  });
-
-  it('should not render apply/clear/cancel buttons for single select', () => {
-    render(
-      <FilterChip
-        descriptor={baseDescriptor({ controlType: 'select' }) as any}
-      />
-    );
-
-    expect(screen.queryByTestId('apply-filter-btn')).not.toBeInTheDocument();
-  });
-
-  it('should reset the search query when the dropdown closes', () => {
-    render(
-      <FilterChip descriptor={baseDescriptor({ searchable: true }) as any} />
-    );
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    const input = screen.getByTestId('search-input');
-    fireEvent.change(input, { target: { value: 'abc' } });
-
-    expect((input as HTMLInputElement).value).toBe('abc');
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-
-    expect((screen.getByTestId('search-input') as HTMLInputElement).value).toBe(
-      ''
-    );
-  });
-
-  it('should reset staged selections when Clear is pressed', () => {
-    const onChange = jest.fn();
-    render(<FilterChip descriptor={baseDescriptor({ onChange }) as any} />);
-
-    fireEvent.click(screen.getByTestId('select-a'));
-    fireEvent.click(screen.getByTestId('clear-filter-btn'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
-
-    expect(onChange).toHaveBeenCalledWith([]);
-  });
-
-  it('should not commit changes when Cancel is pressed', () => {
-    const onChange = jest.fn();
-    render(<FilterChip descriptor={baseDescriptor({ onChange }) as any} />);
-
-    fireEvent.click(screen.getByTestId('select-a'));
-    fireEvent.click(screen.getByTestId('cancel-filter-btn'));
-
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it('should ignore an all-selection change', () => {
-    const onChange = jest.fn();
-    render(<FilterChip descriptor={baseDescriptor({ onChange }) as any} />);
-
-    fireEvent.click(screen.getByTestId('select-all'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
-
-    expect(onChange).toHaveBeenCalledWith([]);
-  });
-
-  it('should mark the selected option with a check icon for single select', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({ controlType: 'select', value: 'success' }) as any
-        }
-      />
-    );
-
-    expect(screen.getByTestId('check-icon')).toBeInTheDocument();
-  });
-
-  it('should fall back to the label for single select with no value', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({ controlType: 'select', value: undefined }) as any
-        }
-      />
-    );
-
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Status'
-    );
+    expect(descriptor.onChange).toHaveBeenCalledWith({ startTs: 1, endTs: 2 });
   });
 
   it('should render the date filter when the descriptor has no value', () => {
@@ -493,6 +190,137 @@ describe('FilterChip', () => {
     expect(dateFilter).not.toHaveAttribute('data-start');
   });
 
+  it('should render the select chip trigger with label when nothing selected', () => {
+    render(<FilterChip descriptor={baseDescriptor() as any} />);
+
+    expect(screen.getByTestId('trigger-text')).toHaveTextContent('Status');
+  });
+
+  it('should show count in trigger for multiselect with committed values', () => {
+    render(
+      <FilterChip
+        descriptor={baseDescriptor({ value: ['success', 'failed'] }) as any}
+      />
+    );
+
+    expect(screen.getByTestId('trigger-text')).toHaveTextContent('Status · 2');
+  });
+
+  it('should show selected option label for single select', () => {
+    render(
+      <FilterChip
+        descriptor={
+          baseDescriptor({ controlType: 'select', value: 'success' }) as any
+        }
+      />
+    );
+
+    expect(screen.getByTestId('trigger-text')).toHaveTextContent('Success');
+  });
+
+  it('should resolve a persisted value missing from the fetched options to its FQN leaf', () => {
+    render(
+      <FilterChip
+        descriptor={
+          baseDescriptor({
+            controlType: 'select',
+            value: 'db.schema.table1',
+            options: [],
+          }) as any
+        }
+      />
+    );
+
+    expect(screen.getByTestId('trigger-text')).toHaveTextContent('table1');
+  });
+
+  it('should stage commits for multiselect and apply immediately for single select', () => {
+    const { rerender } = render(
+      <FilterChip descriptor={baseDescriptor() as any} />
+    );
+
+    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
+      'data-commit',
+      'staged'
+    );
+
+    rerender(
+      <FilterChip
+        descriptor={baseDescriptor({ controlType: 'select' }) as any}
+      />
+    );
+
+    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
+      'data-commit',
+      'immediate'
+    );
+  });
+
+  it('should call onGetInitialOptions when dropdown opens', () => {
+    const descriptor = baseDescriptor();
+    render(<FilterChip descriptor={descriptor as any} />);
+
+    fireEvent.click(screen.getByTestId('open-filter'));
+
+    expect(descriptor.onGetInitialOptions).toHaveBeenCalled();
+  });
+
+  it('should pass the searchable flag through', () => {
+    const { rerender } = render(
+      <FilterChip descriptor={baseDescriptor({ searchable: true }) as any} />
+    );
+
+    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
+      'data-searchable',
+      'true'
+    );
+
+    rerender(
+      <FilterChip descriptor={baseDescriptor({ searchable: false }) as any} />
+    );
+
+    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
+      'data-searchable',
+      'false'
+    );
+  });
+
+  it('should forward the typed query to onSearch', () => {
+    const descriptor = baseDescriptor({ searchable: true });
+    render(<FilterChip descriptor={descriptor as any} />);
+
+    fireEvent.click(screen.getByTestId('filter-search'));
+
+    expect(descriptor.onSearch).toHaveBeenCalledWith('abc');
+  });
+
+  it('should commit multiselect values as an array', () => {
+    const descriptor = baseDescriptor();
+    render(<FilterChip descriptor={descriptor as any} />);
+
+    fireEvent.click(screen.getByTestId('commit-multi'));
+
+    expect(descriptor.onChange).toHaveBeenCalledWith(['success', 'failed']);
+  });
+
+  it('should commit a single select value as a string', () => {
+    const descriptor = baseDescriptor({ controlType: 'select' });
+    render(<FilterChip descriptor={descriptor as any} />);
+
+    fireEvent.click(screen.getByTestId('commit-success'));
+
+    expect(descriptor.onChange).toHaveBeenCalledWith('success');
+  });
+
+  it('should commit an empty single select as an empty string', () => {
+    const descriptor = baseDescriptor({ controlType: 'select' });
+    render(<FilterChip descriptor={descriptor as any} />);
+
+    fireEvent.click(screen.getByTestId('commit-empty'));
+
+    expect(descriptor.onChange).toHaveBeenCalledWith('');
+  });
+
   it('should render the label above the input trigger for the input variant', () => {
     render(
       <FilterChip
@@ -503,40 +331,20 @@ describe('FilterChip', () => {
       />
     );
 
-    // Label sits above; the trigger shows the selected option's label.
     expect(screen.getByText('Status')).toBeInTheDocument();
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Success'
+    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
+      'data-variant',
+      'input'
     );
+    expect(screen.getByTestId('trigger-text')).toHaveTextContent('Success');
   });
 
-  it('should show the label as placeholder for the input variant when nothing is selected', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({ controlType: 'select', value: undefined }) as any
-        }
-        variant="input"
-      />
-    );
+  it('should use the button trigger for the chip variant', () => {
+    render(<FilterChip descriptor={baseDescriptor() as any} />);
 
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Status'
-    );
-  });
-
-  it('should show the selected option label for the input variant when selected', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({ controlType: 'select', value: 'success' }) as any
-        }
-        variant="input"
-      />
-    );
-
-    expect(screen.getByTestId('search-dropdown-status')).toHaveTextContent(
-      'Success'
+    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
+      'data-variant',
+      'button'
     );
   });
 

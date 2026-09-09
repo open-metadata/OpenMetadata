@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   Card,
   Grid,
@@ -22,7 +23,6 @@ import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.sv
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import './data-quality-dashboard.style.less';
@@ -140,12 +140,11 @@ const DataQualityDashboard = ({
             }
 
             return (
-              <SearchDropdown
+              <FilterSelectDropdown
                 hideCounts
                 key={filter.key}
                 label={filter.label}
                 searchKey={filter.searchKey}
-                triggerButtonSize="middle"
                 {...filter.searchProps}
               />
             );

@@ -16,9 +16,17 @@ import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
 import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
-import { useEffect, useMemo, useState, type HTMLAttributes } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FC,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { Button as AriaButton, type Selection } from 'react-aria-components';
 import type {
   FilterSelectOption,
@@ -106,30 +114,42 @@ const OptionRow = ({
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
-}) => (
-  <Dropdown.Item
-    addon={
-      !hideCounts && option.count !== undefined
-        ? String(option.count)
-        : undefined
-    }
-    icon={option.icon}
-    id={option.value}
-    showCheckbox={showCheckbox}
-    textValue={optionText(option)}>
-    {(state) => (
-      <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2">
-        <span className="tw:truncate">{option.label}</span>
-        {!showCheckbox && state.isSelected && (
-          <Check
-            aria-hidden="true"
-            className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
-          />
-        )}
-      </span>
-    )}
-  </Dropdown.Item>
-);
+}) => {
+  const iconComponent = isReactComponent(option.icon)
+    ? (option.icon as FC<{ className?: string }>)
+    : undefined;
+  const iconNode = iconComponent ? undefined : (option.icon as ReactNode);
+
+  return (
+    <Dropdown.Item
+      addon={
+        !hideCounts && option.count !== undefined
+          ? String(option.count)
+          : undefined
+      }
+      icon={iconComponent}
+      id={option.value}
+      showCheckbox={showCheckbox}
+      textValue={optionText(option)}>
+      {(state) => (
+        <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2">
+          {iconNode !== undefined && (
+            <span aria-hidden="true" className="tw:flex tw:shrink-0">
+              {iconNode}
+            </span>
+          )}
+          <span className="tw:grow tw:truncate">{option.label}</span>
+          {!showCheckbox && state.isSelected && (
+            <Check
+              aria-hidden="true"
+              className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+            />
+          )}
+        </span>
+      )}
+    </Dropdown.Item>
+  );
+};
 
 /**
  * A filter dropdown: trigger + optional search + checkbox/check rows with
@@ -149,6 +169,7 @@ export const FilterSelect = ({
   commitMode = 'immediate',
   'data-testid': testId,
   emptyState,
+  helperText,
   hideCounts,
   isLoading,
   isOpen: controlledIsOpen,
@@ -323,6 +344,12 @@ export const FilterSelect = ({
               value={query}
               onChange={handleSearch}
             />
+          </div>
+        )}
+
+        {helperText !== undefined && (
+          <div className="tw:px-4 tw:pb-2 tw:text-xs tw:text-tertiary">
+            {helperText}
           </div>
         )}
 

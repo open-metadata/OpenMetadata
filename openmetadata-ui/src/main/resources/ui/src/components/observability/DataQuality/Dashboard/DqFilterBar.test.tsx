@@ -30,72 +30,63 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {iconTrailing}
     </button>
   ),
-  Input: ({
-    value,
+  // Stateful FilterSelect stub: staged selection + Apply/Clear/Cancel and the
+  // open/close wiring the bar coordinates. Real behavior is covered by the
+  // FilterSelect suite in ui-core-components.
+  FilterSelect: ({
+    'data-testid': testId,
+    label,
+    selectedValues,
+    isOpen,
     onChange,
-    placeholder,
-  }: {
-    value?: string;
-    onChange: (...args: unknown[]) => void;
-    placeholder?: string;
-  }) => (
-    <input
-      aria-label="search-input"
-      data-testid="search-input"
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
-  Dropdown: {
-    // Root keeps the trigger always visible (as react-aria does); the toggle
-    // drives `onOpenChange`, and `isOpen` is threaded to the Popover via a
-    // data attribute the Popover mock reads through context-free props.
-    Root: ({
-      children,
-      isOpen,
-      onOpenChange,
-    }: {
-      children?: ReactNode;
-      isOpen?: boolean;
-      onOpenChange?: (...args: unknown[]) => void;
-    }) => (
+    onOpenChange,
+    onSearch,
+  }: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ReactLib = require('react');
+    const [staged, setStaged] = ReactLib.useState(selectedValues);
+    ReactLib.useEffect(() => {
+      if (isOpen) {
+        setStaged(selectedValues);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
+
+    return (
       <div data-isopen={isOpen ? 'true' : 'false'} data-testid="dropdown-root">
         <button
           data-testid="dropdown-toggle"
           onClick={() => onOpenChange?.(!isOpen)}>
           toggle
         </button>
-        {children}
-      </div>
-    ),
-    Popover: ({ children }: { children?: ReactNode }) => (
-      <div data-testid="dropdown-popover">{children}</div>
-    ),
-    Menu: ({
-      children,
-      onSelectionChange,
-    }: {
-      children?: ReactNode;
-      onSelectionChange?: (...args: unknown[]) => void;
-    }) => (
-      <div data-testid="dropdown-menu">
+        <div data-testid={testId}>
+          {selectedValues.length > 0
+            ? `${label} · ${selectedValues.length}`
+            : label}
+        </div>
+        <input
+          aria-label="search-input"
+          data-testid="search-input"
+          onChange={(e) => onSearch?.(e.target.value)}
+        />
         <button
           data-testid="select-opt-1"
-          onClick={() => onSelectionChange?.(new Set(['opt-1']))}>
+          onClick={() => setStaged(['opt-1'])}>
           select opt-1
         </button>
-        <button
-          data-testid="select-all"
-          onClick={() => onSelectionChange?.('all')}>
-          select all
+        <button data-testid="clear-filter-btn" onClick={() => setStaged([])}>
+          clear
         </button>
-        {children}
+        <button
+          data-testid="cancel-filter-btn"
+          onClick={() => onOpenChange?.(false)}>
+          cancel
+        </button>
+        <button data-testid="apply-filter-btn" onClick={() => onChange(staged)}>
+          apply
+        </button>
       </div>
-    ),
-    Item: ({ label }: { label?: ReactNode }) => (
-      <div data-testid="dropdown-item">{label}</div>
-    ),
+    );
   },
 }));
 
@@ -321,24 +312,17 @@ describe('DqFilterBar', () => {
     );
   });
 
-  it('should call onSearch when typing and reset the query on close', () => {
+  it('should forward the typed query to onSearch', () => {
     const filter = buildSearchFilter();
     const props = { ...getDefaultProps(), filters: [filter] };
     render(<DqFilterBar {...(props as any)} />);
 
     fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    const input = screen.getByTestId('search-input');
-    fireEvent.change(input, { target: { value: 'abc' } });
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'abc' },
+    });
 
     expect(filter.searchProps.onSearch).toHaveBeenCalledWith('abc');
-    expect((input as HTMLInputElement).value).toBe('abc');
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-
-    expect((screen.getByTestId('search-input') as HTMLInputElement).value).toBe(
-      ''
-    );
   });
 
   it('should reset staged selections when Clear is pressed', () => {
@@ -364,18 +348,6 @@ describe('DqFilterBar', () => {
     fireEvent.click(screen.getByTestId('cancel-filter-btn'));
 
     expect(filter.searchProps.onChange).not.toHaveBeenCalled();
-  });
-
-  it('should ignore an all-selection change', () => {
-    const filter = buildSearchFilter();
-    const props = { ...getDefaultProps(), filters: [filter] };
-    render(<DqFilterBar {...(props as any)} />);
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    fireEvent.click(screen.getByTestId('select-all'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
-
-    expect(filter.searchProps.onChange).toHaveBeenCalledWith([]);
   });
 
   it('should close the open search chip when another search chip opens', () => {
