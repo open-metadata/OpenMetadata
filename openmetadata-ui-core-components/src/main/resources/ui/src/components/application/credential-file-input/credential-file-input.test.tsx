@@ -112,6 +112,48 @@ describe('CredentialFileInput', () => {
     });
   });
 
+  describe('a credential already stored server-side', () => {
+    // The API returns a mask, so the widget withholds the value and flags it
+    // instead. Without the chip the field would claim nothing is set.
+    it('stands for it with a chip rather than an empty drop zone', () => {
+      render(<CredentialFileInput hasStoredValue />);
+
+      expect(screen.getByTestId('credential-file-chip')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('credential-file-dropzone')
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides the manual input too, so the choice reappears only after removal', () => {
+      render(<CredentialFileInput allowManualInput hasStoredValue />);
+
+      expect(screen.getByTestId('credential-file-chip')).toBeInTheDocument();
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    });
+
+    it('can be cleared', async () => {
+      const onChange = vi.fn();
+      render(<CredentialFileInput hasStoredValue onChange={onChange} />);
+
+      await userEvent.click(screen.getByTestId('credential-file-remove'));
+
+      expect(onChange).toHaveBeenCalledWith(undefined);
+    });
+
+    it('gives the choice back once the host clears the flag', () => {
+      const { rerender } = render(
+        <CredentialFileInput allowManualInput hasStoredValue />
+      );
+
+      rerender(<CredentialFileInput allowManualInput hasStoredValue={false} />);
+
+      expect(
+        screen.getByTestId('credential-file-dropzone')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
+    });
+  });
+
   describe('rejections leave the value untouched', () => {
     it('rejects a file whose extension is not accepted', async () => {
       const onChange = vi.fn();

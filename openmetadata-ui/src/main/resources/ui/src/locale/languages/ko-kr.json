@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "계정 이메일을 변경하면 새 봇 사용자를 업데이트하거나 생성합니다.",
     "created-this-task-lowercase": "이 작업을 생성했습니다",
     "created-time-ago-by": "{{by}}에 의해 {{time}} 전에 생성됨",
-    "credential-already-saved": "자격 증명이 이미 저장되어 있습니다. 교체하려면 새 파일을 업로드하세요.",
     "credential-file-not-text": "이 파일은 UTF-8 텍스트가 아닙니다. 자격 증명을 PEM 또는 JSON 텍스트 형식으로 업로드하세요.",
     "credential-file-unreadable": "이 파일을 읽을 수 없습니다. 다시 선택해 보세요.",
     "cron-dow-validation-failure": "요일(DOW) 부분은 0 이상 6 이하여야 합니다",

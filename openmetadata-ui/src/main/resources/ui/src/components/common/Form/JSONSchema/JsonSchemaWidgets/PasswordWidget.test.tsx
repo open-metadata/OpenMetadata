@@ -27,7 +27,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ({
       acceptedFileTypes,
       allowManualInput,
-      hint,
+      hasStoredValue,
       isDisabled,
       value,
       onChange,
@@ -40,7 +40,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           {(acceptedFileTypes as string[] | undefined)?.join(',') ?? ''}
         </span>
         <span data-testid="cfi-disabled">{String(Boolean(isDisabled))}</span>
-        <span data-testid="cfi-hint">{(hint as string) ?? ''}</span>
+        <span data-testid="cfi-stored">{String(Boolean(hasStoredValue))}</span>
         <span data-testid="cfi-value">{(value as string) ?? ''}</span>
         <button
           type="button"
@@ -175,13 +175,11 @@ describe('Test PasswordWidget Component', () => {
     expect(screen.getByTestId('cfi-disabled')).toHaveTextContent('true');
   });
 
-  it('Should blank the readback mask and explain a credential is stored', async () => {
+  it('Should withhold the readback mask but flag that a credential is stored', async () => {
     render(<PasswordWidget {...mockProps2} value="*********" />);
 
     expect(screen.getByTestId('cfi-value')).toBeEmptyDOMElement();
-    expect(screen.getByTestId('cfi-hint')).toHaveTextContent(
-      'message.credential-already-saved'
-    );
+    expect(screen.getByTestId('cfi-stored')).toHaveTextContent('true');
   });
 
   it('Should submit uploaded file content as the field value', async () => {

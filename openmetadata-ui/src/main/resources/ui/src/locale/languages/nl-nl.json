@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "Het wijzigen van het account-e-mailadres zal een nieuwe botgebruiker updaten of maken.",
     "created-this-task-lowercase": "heeft deze taak aangemaakt",
     "created-time-ago-by": "{{time}} geleden gemaakt door {{by}}",
-    "credential-already-saved": "Er zijn al inloggegevens opgeslagen. Upload een nieuw bestand om ze te vervangen.",
     "credential-file-not-text": "Dit bestand is geen UTF-8-tekst. Upload de inloggegevens in PEM- of JSON-tekstformaat.",
     "credential-file-unreadable": "Dit bestand kon niet worden gelezen. Probeer het opnieuw te selecteren.",
     "cron-dow-validation-failure": "DOW-deel moet >= 0 en <= 6 zijn",

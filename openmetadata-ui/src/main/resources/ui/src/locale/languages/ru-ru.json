@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "Изменение адреса электронной почты учетной записи приведет к обновлению или созданию нового бота.",
     "created-this-task-lowercase": "Задача создана",
     "created-time-ago-by": "Создано {{time}} назад пользователем {{by}}",
-    "credential-already-saved": "Учётные данные уже сохранены. Загрузите новый файл, чтобы заменить их.",
     "credential-file-not-text": "Этот файл не является текстом UTF-8. Загрузите учётные данные в текстовом формате PEM или JSON.",
     "credential-file-unreadable": "Не удалось прочитать этот файл. Попробуйте выбрать его снова.",
     "cron-dow-validation-failure": "Часть DOW должна быть >= 0 и <= 6",

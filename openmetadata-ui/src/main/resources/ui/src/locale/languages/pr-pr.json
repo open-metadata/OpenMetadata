@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "تغییر ایمیل حساب باعث به‌روزرسانی یا ایجاد یک کاربر ربات جدید خواهد شد.",
     "created-this-task-lowercase": "این وظیفه را ایجاد کرد",
     "created-time-ago-by": "{{time}} پیش توسط {{by}} ایجاد شد",
-    "credential-already-saved": "یک اعتبارنامه از قبل ذخیره شده است. برای جایگزینی، فایل جدیدی بارگذاری کنید.",
     "credential-file-not-text": "این فایل متن UTF-8 نیست. اعتبارنامه را در قالب متنی PEM یا JSON بارگذاری کنید.",
     "credential-file-unreadable": "خواندن این فایل ممکن نشد. دوباره آن را انتخاب کنید.",
     "cron-dow-validation-failure": "بخش DOW باید >= 0 و <= 6 باشد",

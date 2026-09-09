@@ -383,6 +383,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ({
         acceptedFileTypes,
         allowManualInput,
+        hasStoredValue,
         hint,
         isDisabled,
         isInvalid,
@@ -401,6 +402,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
           </span>
           <span data-testid="cfi-manual-input">
             {String(Boolean(allowManualInput))}
+          </span>
+          <span data-testid="cfi-stored">
+            {String(Boolean(hasStoredValue))}
           </span>
           <span data-testid="cfi-disabled">{String(Boolean(isDisabled))}</span>
           <span data-testid="cfi-readonly">{String(Boolean(isReadOnly))}</span>
@@ -718,13 +722,19 @@ describe('FormBuilderV1 widgets', () => {
       );
     });
 
-    it('blanks the readback mask so it is not mistaken for the secret', () => {
+    it('withholds the readback mask but flags that a credential is stored', () => {
       renderCredentialWidget('fileOrInput', { value: '*********' });
 
+      // The mask must not reach the field as if it were the secret, but the
+      // field still has to show that one is set — and let it be cleared.
       expect(screen.getByTestId('cfi-value')).toBeEmptyDOMElement();
-      expect(screen.getByTestId('cfi-hint')).toHaveTextContent(
-        'message.credential-already-saved'
-      );
+      expect(screen.getByTestId('cfi-stored')).toHaveTextContent('true');
+    });
+
+    it('does not flag a stored credential for a real value', () => {
+      renderCredentialWidget('file', { value: '-----BEGIN KEY-----' });
+
+      expect(screen.getByTestId('cfi-stored')).toHaveTextContent('false');
     });
 
     it('reports the size limit in the rejection message', () => {

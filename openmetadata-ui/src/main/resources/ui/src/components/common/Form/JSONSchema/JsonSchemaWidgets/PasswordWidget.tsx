@@ -47,7 +47,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
         acceptedFileTypes={acceptedFileTypes}
         allowManualInput={isFileOrInput}
         data-testid={`credential-file-widget-${props.id}`}
-        hint={isMasked ? t('message.credential-already-saved') : undefined}
+        hasStoredValue={isMasked}
         id={props.id}
         isDisabled={props.disabled}
         isReadOnly={props.readonly}

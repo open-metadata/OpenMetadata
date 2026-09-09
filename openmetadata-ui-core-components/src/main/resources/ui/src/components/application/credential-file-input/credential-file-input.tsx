@@ -95,6 +95,15 @@ export interface CredentialFileInputProps {
    * `uiFieldType: 'file'` passes `false` and the value becomes upload-only.
    */
   allowManualInput?: boolean;
+  /**
+   * A credential is already stored for this field, but its value is not
+   * readable — the API returns a mask rather than the secret.
+   *
+   * The field then stands for it with a chip instead of showing an empty drop
+   * zone, so the state is visible and removable. Without this the control would
+   * claim nothing is set, and there would be no way to clear what is.
+   */
+  hasStoredValue?: boolean;
   /** Accepted file extensions, e.g. `['.pem', '.key']`. */
   acceptedFileTypes?: string[];
   /** Maximum accepted file size in bytes. @default DEFAULT_CREDENTIAL_FILE_MAX_SIZE */
@@ -252,6 +261,7 @@ export const CredentialFileInput = ({
   value,
   onChange,
   allowManualInput = false,
+  hasStoredValue = false,
   acceptedFileTypes,
   maxSize = DEFAULT_CREDENTIAL_FILE_MAX_SIZE,
   label,
@@ -288,9 +298,13 @@ export const CredentialFileInput = ({
     }
   }, [hasValue]);
 
+  // A stored credential is shown by its chip in both modes: `hasValue` covers a
+  // value this form already holds, `hasStoredValue` the masked one it cannot read.
+  const standsForStoredCredential =
+    hasStoredValue || (hasValue && !allowManualInput);
   const selectedFile: SelectedFile | null =
     fileMeta ??
-    (hasValue && !allowManualInput ? { name: mergedLabels.savedValue } : null);
+    (standsForStoredCredential ? { name: mergedLabels.savedValue } : null);
 
   const reject = (kind: CredentialFileErrorKind) => {
     setErrorKind(kind);

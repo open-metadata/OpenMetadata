@@ -66,9 +66,10 @@ const CorePasswordWidget = (props: WidgetProps) => {
 
     // The API returns the mask in place of the stored secret. Handing it to the
     // field would render it as if it were the credential — a short value the
-    // user could plausibly edit and submit as the real one. Blanking it leaves
-    // `formData` untouched, so an unmodified field round-trips the mask back
-    // and the backend keeps the existing secret.
+    // user could plausibly edit and submit as the real one. It is withheld and
+    // flagged instead, so the field shows a chip standing for the stored
+    // credential: `formData` is left untouched while the field is unmodified,
+    // and removing the chip clears it exactly as emptying the old input did.
     const isMasked =
       typeof value === 'string' && ALL_ASTERISKS_REGEX.test(value);
 
@@ -77,7 +78,8 @@ const CorePasswordWidget = (props: WidgetProps) => {
         acceptedFileTypes={acceptedFileTypes}
         allowManualInput={isFileOrInput}
         data-testid={`credential-file-widget-${id}`}
-        hint={isMasked ? t('message.credential-already-saved') : hint}
+        hasStoredValue={isMasked}
+        hint={hint}
         id={id}
         isDisabled={disabled}
         isInvalid={isInvalid}

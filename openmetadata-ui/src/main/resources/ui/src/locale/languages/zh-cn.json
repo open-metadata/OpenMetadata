@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "更改帐号电子邮箱将更新或创建一个新的机器人用户",
     "created-this-task-lowercase": "创建了此任务",
     "created-time-ago-by": "由 {{by}} 在 {{time}} 前创建",
-    "credential-already-saved": "已保存凭据。上传新文件即可替换。",
     "credential-file-not-text": "此文件不是 UTF-8 文本。请上传 PEM 或 JSON 文本格式的凭据。",
     "credential-file-unreadable": "无法读取此文件。请重新选择。",
     "cron-dow-validation-failure": "DOW 部分必须 >= 0 且 <= 6",

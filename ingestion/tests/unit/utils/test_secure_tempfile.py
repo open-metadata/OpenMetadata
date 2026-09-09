@@ -34,9 +34,9 @@ def file_mode(path: Path) -> int:
     return stat.S_IMODE(path.stat().st_mode)
 
 
-def spy_mkstemp(created: list[Path]):
+def spy_mkstemp(created: list[Path], descriptors: list[int] | None = None):
     """
-    Real mkstemp, recording the paths it hands out so a test can assert cleanup.
+    Real mkstemp, recording what it hands out so a test can assert cleanup.
 
     The real callable is bound here, before patching: patching
     ``secure_tempfile.tempfile.mkstemp`` replaces the attribute on the shared
@@ -47,10 +47,17 @@ def spy_mkstemp(created: list[Path]):
     def _mkstemp(**kwargs):
         file_descriptor, path = real_mkstemp(**kwargs)
         created.append(Path(path))
+        if descriptors is not None:
+            descriptors.append(file_descriptor)
 
         return file_descriptor, path
 
     return _mkstemp
+
+
+def assert_descriptor_closed(file_descriptor: int) -> None:
+    with pytest.raises(OSError):
+        os.fstat(file_descriptor)
 
 
 class TestWriteSecretTempFile:
@@ -115,6 +122,47 @@ class TestWriteSecretTempFile:
 
         assert created, "expected mkstemp to have been called"
         assert not created[0].exists()
+
+    def test_closes_the_descriptor_when_chmod_fails(self):
+        created: list[Path] = []
+        descriptors: list[int] = []
+
+        with (
+            patch(
+                "metadata.utils.secure_tempfile.tempfile.mkstemp",
+                side_effect=spy_mkstemp(created, descriptors),
+            ),
+            patch(
+                "metadata.utils.secure_tempfile.os.fchmod",
+                side_effect=OSError("not permitted"),
+            ),
+            pytest.raises(OSError),
+        ):
+            write_secret_temp_file(PEM)
+
+        assert not created[0].exists()
+        assert_descriptor_closed(descriptors[0])
+
+    def test_closes_the_descriptor_when_it_cannot_be_wrapped(self):
+        """`fdopen` is the one call that can leave the raw descriptor unowned."""
+        created: list[Path] = []
+        descriptors: list[int] = []
+
+        with (
+            patch(
+                "metadata.utils.secure_tempfile.tempfile.mkstemp",
+                side_effect=spy_mkstemp(created, descriptors),
+            ),
+            patch(
+                "metadata.utils.secure_tempfile.os.fdopen",
+                side_effect=OSError("out of memory"),
+            ),
+            pytest.raises(OSError),
+        ):
+            write_secret_temp_file(PEM)
+
+        assert not created[0].exists()
+        assert_descriptor_closed(descriptors[0])
 
 
 class TestRemoveSecretTempFile:

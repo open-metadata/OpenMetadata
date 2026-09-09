@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "Att ändra kontots e-postadress uppdaterar eller skapar en ny botanvändare.",
     "created-this-task-lowercase": "skapade den här uppgiften",
     "created-time-ago-by": "Skapad för {{time}} sedan av {{by}}",
-    "credential-already-saved": "En autentiseringsuppgift är redan sparad. Ladda upp en ny fil för att ersätta den.",
     "credential-file-not-text": "Den här filen är inte UTF-8-text. Ladda upp autentiseringsuppgiften i PEM- eller JSON-textformat.",
     "credential-file-unreadable": "Den här filen kunde inte läsas. Försök att välja den igen.",
     "cron-dow-validation-failure": "DOW-delen måste vara >= 0 och <= 6",

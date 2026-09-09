@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "การเปลี่ยนแปลงอีเมลบัญชีจะอัปเดตหรือสร้างผู้ใช้บอทใหม่",
     "created-this-task-lowercase": "สร้างงานนี้",
     "created-time-ago-by": "สร้างเมื่อ {{time}} ที่แล้วโดย {{by}}",
-    "credential-already-saved": "มีข้อมูลรับรองที่บันทึกไว้แล้ว อัปโหลดไฟล์ใหม่เพื่อแทนที่",
     "credential-file-not-text": "ไฟล์นี้ไม่ใช่ข้อความ UTF-8 กรุณาอัปโหลดข้อมูลรับรองในรูปแบบข้อความ PEM หรือ JSON",
     "credential-file-unreadable": "ไม่สามารถอ่านไฟล์นี้ได้ กรุณาเลือกไฟล์อีกครั้ง",
     "cron-dow-validation-failure": "ส่วน DOW ต้องเป็น >= 0 และ <= 6",

@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "アカウントのメールアドレスを変更すると、新しいボットユーザーが作成または更新されます。",
     "created-this-task-lowercase": "このタスクを作成しました",
     "created-time-ago-by": "{{time}} 前に {{by}} によって作成されました",
-    "credential-already-saved": "認証情報はすでに保存されています。置き換えるには新しいファイルをアップロードしてください。",
     "credential-file-not-text": "このファイルは UTF-8 テキストではありません。認証情報を PEM または JSON のテキスト形式でアップロードしてください。",
     "credential-file-unreadable": "このファイルを読み取れませんでした。もう一度選択してください。",
     "cron-dow-validation-failure": "曜日（DOW）の指定は 0～6 の範囲である必要があります",

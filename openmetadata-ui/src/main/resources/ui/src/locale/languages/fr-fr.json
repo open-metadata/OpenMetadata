@@ -3442,7 +3442,6 @@
     "create-or-update-email-account-for-bot": "Changer l'email créera un nouveau ou mettra à jour l'agent numérique",
     "created-this-task-lowercase": "a créé cette tâche",
     "created-time-ago-by": "Créé il y a {{time}} par {{by}}",
-    "credential-already-saved": "Un identifiant est déjà enregistré. Téléversez un nouveau fichier pour le remplacer.",
     "credential-file-not-text": "Ce fichier n'est pas du texte UTF-8. Téléversez l'identifiant au format texte PEM ou JSON.",
     "credential-file-unreadable": "Ce fichier n'a pas pu être lu. Essayez de le sélectionner à nouveau.",
     "cron-dow-validation-failure": "La partie DOW doit être >= 0 et <= 6",

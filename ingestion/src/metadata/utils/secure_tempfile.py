@@ -25,6 +25,7 @@ environment variable), and pair it with :func:`remove_secret_temp_file`.
 Nothing here ever logs the content — only paths.
 """
 
+import contextlib
 import os
 import tempfile
 from collections.abc import Iterator
@@ -61,11 +62,26 @@ def write_secret_temp_file(
     file_descriptor, raw_path = tempfile.mkstemp(suffix=suffix, prefix=prefix)
     path = Path(raw_path)
 
+    # Hand the descriptor to a file object before anything else can fail, so the
+    # `with` below owns closing it. Only `fdopen` itself can leave the raw
+    # descriptor unowned, and that branch closes it explicitly — closing it
+    # anywhere else risks a double close, which would shut an unrelated file
+    # that had since been given the same number.
     try:
-        # fchmod on the open descriptor rather than chmod on the path: no window
-        # in which the name exists with different permissions.
-        os.fchmod(file_descriptor, _SECRET_FILE_MODE)
-        with os.fdopen(file_descriptor, "wb") as handle:
+        handle = os.fdopen(file_descriptor, "wb")
+    except Exception:
+        # Suppressed: if `fdopen` closed the descriptor before failing, the
+        # close below is a no-op and cleanup must still run.
+        with contextlib.suppress(OSError):
+            os.close(file_descriptor)
+        remove_secret_temp_file(path)
+        raise
+
+    try:
+        with handle:
+            # fchmod on the descriptor rather than chmod on the path: no window
+            # in which the name exists with different permissions.
+            os.fchmod(handle.fileno(), _SECRET_FILE_MODE)
             handle.write(payload)
     except Exception:
         remove_secret_temp_file(path)
