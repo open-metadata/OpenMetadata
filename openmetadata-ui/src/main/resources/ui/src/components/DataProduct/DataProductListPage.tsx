@@ -248,10 +248,10 @@ const DataProductListPage = ({
         case 'owners':
           return (
             <OwnerLabel
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
               owners={entity.owners}
-              showDashPlaceholder
               showLabel={false}
             />
           );
@@ -276,10 +276,10 @@ const DataProductListPage = ({
         case 'experts':
           return (
             <OwnerLabel
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
               owners={entity.experts}
-              showDashPlaceholder
               showLabel={false}
             />
           );
