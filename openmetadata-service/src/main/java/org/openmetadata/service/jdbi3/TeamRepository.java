@@ -28,6 +28,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.FIELD_CHILDREN;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
@@ -234,6 +235,7 @@ public class TeamRepository extends EntityRepository<Team> {
     for (Team team : teams) {
       List<EntityReference> roleRefs = teamToRoles.get(team.getId());
       team.setDefaultRoles(roleRefs != null ? roleRefs : new ArrayList<>());
+      team.setInheritedRoles(getInheritedRoles(team));
     }
   }
 
@@ -399,6 +401,12 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<Team> teams) {
+    super.setFieldsInBulk(fields, teams);
+    fetchAndSetTeamChildren(teams, fields);
+  }
+
+  @Override
   public void setFieldsInBulk(Fields fields, List<Team> teams, ListFilter filter) {
     if (fields.contains("owns")
         && filter != null
@@ -409,9 +417,80 @@ public class TeamRepository extends EntityRepository<Team> {
       for (Team team : teams) {
         clearFieldsInternal(team, fields);
       }
+      fetchAndSetTeamChildren(teams, fields);
       return;
     }
-    super.setFieldsInBulk(fields, teams);
+    setFieldsInBulk(fields, teams);
+  }
+
+  private void fetchAndSetTeamChildren(List<Team> teams, Fields fields) {
+    if (!fields.contains(FIELD_CHILDREN) || nullOrEmpty(teams)) {
+      return;
+    }
+    // Common child hydration follows CONTAINS; teams use PARENT_OF and implicit Organization
+    // membership.
+    Map<UUID, List<UUID>> children = fetchChildTeams(entityListToUUID(teams));
+    Map<UUID, EntityReference> references =
+        batchResolveRefs(TEAM, children.values().stream().flatMap(List::stream).toList());
+    for (Team team : teams) {
+      team.setChildren(
+          children.getOrDefault(team.getId(), List.of()).stream().map(references::get).toList());
+    }
+  }
+
+  private Map<UUID, List<UUID>> fetchChildTeams(List<UUID> teamIds) {
+    Map<UUID, List<UUID>> result = new HashMap<>();
+    List<String> nonOrgIds = new ArrayList<>();
+    for (UUID teamId : teamIds) {
+      if (organization != null && teamId.equals(organization.getId())) {
+        result.put(teamId, getLiveOrganizationChildIds(teamId));
+      } else {
+        nonOrgIds.add(teamId.toString());
+      }
+    }
+    result.putAll(batchChildTeamsByParent(nonOrgIds));
+    return result;
+  }
+
+  private Map<UUID, List<UUID>> batchChildTeamsByParent(List<String> parentIds) {
+    Map<UUID, List<UUID>> result = new HashMap<>();
+    if (nullOrEmpty(parentIds)) {
+      return result;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(parentIds, TEAM, TEAM, Relationship.PARENT_OF.ordinal(), ALL);
+    Set<UUID> liveChildren = nonDeletedToIds(records, TEAM);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID childId = UUID.fromString(record.getToId());
+      if (liveChildren.contains(childId)) {
+        result
+            .computeIfAbsent(UUID.fromString(record.getFromId()), ignored -> new ArrayList<>())
+            .add(childId);
+      }
+    }
+    return result;
+  }
+
+  private Set<UUID> nonDeletedToIds(
+      List<CollectionDAO.EntityRelationshipObject> records, String entityType) {
+    List<UUID> toIds =
+        records.stream()
+            .map(record -> UUID.fromString(record.getToId()))
+            .distinct()
+            .collect(Collectors.toList());
+    Set<UUID> live = new HashSet<>();
+    if (!toIds.isEmpty()) {
+      Entity.getEntityReferencesByIds(entityType, toIds, NON_DELETED)
+          .forEach(reference -> live.add(reference.getId()));
+    }
+    return live;
+  }
+
+  private List<UUID> getLiveOrganizationChildIds(UUID organizationId) {
+    return EntityUtil.strToIds(
+        daoCollection.teamDAO().listLiveTeamsUnderOrganization(organizationId));
   }
 
   private List<EntityReference> getDomains(UUID teamId) {
