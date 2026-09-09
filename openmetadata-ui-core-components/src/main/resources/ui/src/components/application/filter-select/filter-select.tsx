@@ -67,7 +67,13 @@ const TriggerButton = ({
   if (variant === 'button') {
     return (
       <Button
-        className={cx('tw:whitespace-nowrap', className)}
+        className={cx(
+          'tw:whitespace-nowrap',
+          hasSelection &&
+            !bordered &&
+            'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
+          className
+        )}
         color={bordered ? 'secondary' : 'tertiary'}
         data-testid={testId}
         iconLeading={icon}
@@ -247,7 +253,7 @@ export const FilterSelect = ({
   const triggerText = useMemo(() => {
     if (isMulti) {
       return selectedValues.length > 0
-        ? `${label} · ${selectedValues.length}`
+        ? `${label}: (${selectedValues.length})`
         : label;
     }
     const selected = [
