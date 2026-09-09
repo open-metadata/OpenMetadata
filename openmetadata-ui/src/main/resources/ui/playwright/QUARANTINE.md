@@ -39,7 +39,7 @@ generated variant rather than per source line.
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 9 plus the 7 setup/teardown
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 6 plus the 7 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
 entity seeding still happen — a project-level `grep` *is* applied to dependency
 projects, so filtering them would make every quarantined test fail for want of
@@ -54,10 +54,10 @@ These were failing their first attempt in ~every run and are root-caused, so
 they were repaired rather than parked:
 
 | Spec | Root cause |
+|---|---|
 | `e2e/Features/ActivityStream.spec.ts` — activity stream API is called when visiting entity page | Released without a code change: 3/3 green locally, and no load-dependent symptom was ever recorded for it. |
 | `e2e/Features/Table.spec.ts` — should persist page size | Released without a code change: 3/3 green locally. Its recorded symptom (timeout after `waitForAllLoadersToDisappear`) is load-dependent, so local runs are weak evidence — re-tag it if it ejects a PR. No mechanism was identified for why it now passes. |
 | `e2e/Pages/Lineage/LineageInteraction.spec.ts` — Verify node panel opens on click | Two causes, and the symptom recorded here was only the second. (1) `fitToScreen` returned before its menu popover finished its exit animation, leaving a second `[role="dialog"]` in the DOM, so the test's unscoped `[role="dialog"]` assertion tripped strict mode. (2) `Verify edge delete button in drawer` deletes the shared `table1 → topic` edge and never restores it, so every later test in the file saw a graph without the topic — that is the "node is not in the graph" symptom. Fixed by having `fitToScreen` wait for the menu to detach, scoping the assertion to `lineage-entity-panel`, and restoring the edge in a `finally`. |
-|---|---|
 | `e2e/Pages/Glossary.spec.ts` 128 / 198 / 421 | `utils/glossary.ts` used `page.textContent()` — waits for the element, not its text — so a cold first attempt read `""`. #32333 (a revert of #30896) had reintroduced this after it was already fixed. Restored to `toContainText`. |
 | `e2e/Features/ContextCenterArticles.spec.ts:670` | #32283 removed a `waitForTimeout(500)` that was covering the zustand → localStorage flush of `recentlyViewed`. Navigating away before the flush meant the Recently Viewed panel had no entry to render, so the trailing assertion had nothing to auto-wait for. Replaced with `waitForRecentlyViewed`, which polls the persisted store. |
 | `e2e/Features/ClassificationImportExport.spec.ts:64` | `beforeAll` POSTed fixtures whose names were generated at module scope, so a second pass in the same worker 409'd on every create. Fixtures are now rebuilt inside `beforeAll`, and an `afterAll` was added — the spec previously leaked two classifications, a tag and a user into the shard on every run. |
