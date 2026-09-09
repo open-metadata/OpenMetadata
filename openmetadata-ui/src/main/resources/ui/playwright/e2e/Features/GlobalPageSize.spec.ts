@@ -49,8 +49,17 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    // Go to Explore Page
+    // Go to Explore Page — its first search runs at the persisted page size,
+    // so wait for that size=25 response to settle before reading the value
+    // back off the dropdown, otherwise the assertion can race the search and
+    // read the pre-hydration default.
+    const exploreSearchAt25 = page.waitForResponse(
+      (res) =>
+        res.url().includes('/search/query') &&
+        new URL(res.url()).searchParams.get('size') === '25'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await exploreSearchAt25;
 
     await waitForAllLoadersToDisappear(page);
     await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
