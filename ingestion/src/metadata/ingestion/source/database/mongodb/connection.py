@@ -13,25 +13,164 @@
 Source connection handler
 """
 
-from functools import partial
+from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import TYPE_CHECKING
+
 from pymongo import MongoClient
+from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
+from metadata.core.connections.test_connection import ErrorPack, Evidence, Matchers, check, when
+from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.checks.database import DatabaseStep, targets_in_scope
+from metadata.core.connections.test_connection.checks.probe import probe_targets
+from metadata.core.connections.test_connection.checks.summary import count, enumerated
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.records import Diagnosis
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection as MongoDBConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.builders import get_connection_url_common
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.type.filterPattern import FilterPattern
+
+
+MONGODB_ERRORS = ErrorPack(
+    when(Matchers.contains("authentication failed")).diagnose(
+        "Authentication failed",
+        fix="Check the username and password, and that `authSource` in connectionOptions names the "
+        "database the user was created in (`admin` for most deployments). Note that setting "
+        "`Database Schema` puts that database in the connection URI, which is where the driver "
+        "authenticates unless `authSource` says otherwise.",
+    ),
+    when(Matchers.contains("not authorized")).diagnose(
+        "Not authorized",
+        fix="Grant the user `listCollections` on the databases it should read (the `read` role on "
+        "each of them is enough), or narrow `Database Schema` / `Schema Filter Pattern` to the "
+        "databases it can read.",
+    ),
+    when(Matchers.exception(ServerSelectionTimeoutError)).diagnose(
+        "No server could be reached",
+        fix="Check hostPort, that the deployment is running, and that it is reachable from where "
+        "ingestion runs. A replica set also has to advertise hostnames the client can resolve.",
+    ),
+    when(Matchers.exception(ConfigurationError)).diagnose(
+        "Connection settings rejected",
+        fix="The driver could not use these settings: check the scheme (`mongodb+srv` requires a "
+        "host with no port and a resolvable SRV record) and the keys in connectionOptions.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+class MongoDBChecks:
+    """Test-connection checks for MongoDB.
+
+    Databases are ingested as OpenMetadata schemas, so `databaseSchema` and
+    `schemaFilterPattern` are what say which of them a run would read - and
+    therefore which are worth probing.
+    """
+
+    errors = MONGODB_ERRORS
+
+    def __init__(self, client: Borrowed[MongoClient], schema: str | None, schema_filter: FilterPattern | None) -> None:
+        self._client = client
+        self._schema = schema
+        self._schema_filter = schema_filter
+        self._targeted: list[str] | None = None
+
+    def _targeted_databases(self) -> list[str]:
+        """The databases the configured scope would read.
+
+        Memoized, and resolved lazily so no listing runs ahead of the gate step.
+        A pinned `databaseSchema` needs no listing at all - which also keeps the
+        step working for a user that cannot run `listDatabases`.
+        """
+        if self._targeted is None:
+            if self._schema:
+                self._targeted = targets_in_scope([], pinned=self._schema)
+            else:
+                self._targeted = targets_in_scope(
+                    self._client.client.list_database_names(), excluded=self._schema_filter
+                )
+        return self._targeted
+
+    @check(DatabaseStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        info = self._client.client.server_info()
+        return Evidence(
+            summary=f"connected to MongoDB {info.get('version', 'unknown')}",
+            command="buildInfo",
+        )
+
+    @check(DatabaseStep.GetDatabases)
+    def get_databases(self) -> Evidence:
+        command = f"database({self._schema!r})" if self._schema else "listDatabases"
+        try:
+            targeted = self._targeted_databases()
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
+        return Evidence(
+            summary=enumerated(len(targeted), "database"),
+            command=command,
+            caveat=None if targeted else _nothing_in_scope(),
+        )
+
+    @check(DatabaseStep.GetCollections)
+    def get_collections(self) -> Evidence:
+        """Read the collections of the databases in scope, passing on the first that answers.
+
+        A user restricted to the databases it ingests is unauthorized on every
+        other one, so a single database refusing `listCollections` must not fail
+        the step - only every database in scope refusing it does.
+        """
+        command = "listCollections"
+        try:
+            targeted = self._targeted_databases()
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
+        if not targeted:
+            return Evidence(
+                summary="no database in scope to read collections from",
+                command=command,
+                caveat=_nothing_in_scope(),
+            )
+
+        def probe(database: str) -> int:
+            # An empty database still answers - the user can list it - so the count
+            # is accepted either way and reported as a caveat when it is 0.
+            return len(self._client.client.get_database(database).list_collection_names())
+
+        try:
+            answered = probe_targets(targeted, probe)
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
+
+        database, number = answered if answered else (None, 0)
+        return Evidence(
+            summary=f"{count(number, 'collection')} in database '{database}'",
+            command=command,
+            caveat=None if number else _nothing_visible(str(database)),
+        )
+
+
+def _nothing_in_scope() -> Diagnosis:
+    return Diagnosis(
+        title="No database in scope",
+        remediation="No database survived `Database Schema` / `Schema Filter Pattern`, or none is "
+        "visible to this user. Ingestion would collect nothing as configured.",
+    )
+
+
+def _nothing_visible(database: str) -> Diagnosis:
+    return Diagnosis(
+        title="No collections visible",
+        remediation=f"The read succeeded but database '{database}' exposes no collection. Confirm it "
+        "is not empty, and that the user can list the collections it should ingest.",
+    )
 
 
 class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
@@ -49,47 +188,12 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         self._on_close(client.close)
         return client
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: AutomationWorkflow | None = None,
-        timeout_seconds: int | None = THREE_MIN,
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        client = self.client
-        service_connection = self.service_connection
-
-        class SchemaHolder(BaseModel):
-            database: str | None = None
-
-        holder = SchemaHolder()
-
-        def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: str | None = None):
-            # If database name is provided, use it directly instead of listing all databases
-            if database_name:
-                holder_.database = database_name
-            else:
-                for database in client_.list_database_names():
-                    holder_.database = database
-                    break
-
-        def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
-            database = client_.get_database(holder_.database)
-            database.list_collection_names()
-
-        test_fn = {
-            "CheckAccess": client.server_info,
-            "GetDatabases": partial(test_get_databases, client, holder, service_connection.databaseSchema),
-            "GetCollections": partial(test_get_collections, client, holder),
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+    def checks(self) -> ChecksProvider:
+        # Borrowed, not built: reading the client is what dials the deployment, so
+        # a connection failure lands inside the gate step.
+        connection = self.service_connection
+        return MongoDBChecks(
+            client=self.borrow(),
+            schema=connection.databaseSchema,
+            schema_filter=connection.schemaFilterPattern,
         )
