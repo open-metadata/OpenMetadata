@@ -14,7 +14,6 @@ Dagster source to extract metadata from OM UI
 
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
 from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -129,16 +128,7 @@ class DagsterSource(PipelineServiceSource):
 
         return task_list or None
 
-    def yield_pipeline(self, pipeline_details: DagsterPipeline) -> 
-    
-    
-    
-    
-    
-    
-    
-    
-    [Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: DagsterPipeline) -> Iterable[Either[CreatePipelineRequest]]:
         """Convert a DAG into a Pipeline Entity"""
 
         try:
