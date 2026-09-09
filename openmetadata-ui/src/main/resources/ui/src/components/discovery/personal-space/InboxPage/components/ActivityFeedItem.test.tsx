@@ -110,18 +110,33 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Box: ({
     children,
+    className,
+    'data-testid': dataTestId,
     onClick,
     onKeyDown,
   }: {
     children?: ReactNode;
+    className?: string;
+    'data-testid'?: string;
     onClick?: (...args: unknown[]) => void;
     onKeyDown?: (...args: unknown[]) => void;
   }) => (
-    <div role="presentation" onClick={onClick} onKeyDown={onKeyDown}>
+    <div
+      className={className}
+      data-testid={dataTestId}
+      role="presentation"
+      onClick={onClick}
+      onKeyDown={onKeyDown}>
       {children}
     </div>
   ),
-  Card: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Card: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>,
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
@@ -156,6 +171,41 @@ const baseFeed = {
 
 describe('ActivityFeedItem', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('uses neutral semantic surfaces for the default and hover states', () => {
+    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+
+    const item = screen.getByTestId('activity-feed-item');
+    const messageCard = screen.getByText('Updated style').parentElement;
+
+    expect(item).toHaveClass('hover:tw:bg-primary_hover');
+    expect(item).not.toHaveClass('tw:hover:bg-utility-gray-blue-50');
+    expect(messageCard).toHaveClass(
+      'tw:bg-secondary',
+      'group-hover:tw:bg-secondary_hover'
+    );
+    expect(messageCard).not.toHaveClass(
+      'tw:bg-utility-gray-blue-50',
+      'tw:group-hover:bg-white'
+    );
+  });
+
+  it('keeps the active surfaces stable while hovering', () => {
+    render(
+      <ActivityFeedItem isActive activity={baseActivity} onClick={jest.fn()} />
+    );
+
+    const item = screen.getByTestId('activity-feed-item');
+    const messageCard = screen.getByText('Updated style').parentElement;
+
+    expect(item).toHaveClass('tw:bg-utility-brand-50');
+    expect(item).not.toHaveClass('hover:tw:bg-primary_hover');
+    expect(messageCard).toHaveClass('tw:bg-active');
+    expect(messageCard).not.toHaveClass(
+      'tw:bg-secondary',
+      'group-hover:tw:bg-secondary_hover'
+    );
+  });
 
   it('renders actor, action, entity chip and message without a comment affordance', () => {
     render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);

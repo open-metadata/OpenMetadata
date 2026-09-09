@@ -83,18 +83,23 @@ jest.mock('../components/ActivitySkeleton', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  Box: ({ children, className }: PropsWithChildren<{ className?: string }>) => (
+    <div className={className}>{children}</div>
+  ),
   Typography: ({ children }: PropsWithChildren) => <span>{children}</span>,
   EmptyPlaceholder: ({
     title,
     description,
+    icon,
     ...props
   }: {
     title?: ReactNode;
     description?: ReactNode;
+    icon?: ReactNode;
     'data-testid'?: string;
   }) => (
     <div data-testid={props['data-testid']}>
+      {icon}
       <span>{title}</span>
       <span>{description}</span>
     </div>
@@ -126,9 +131,10 @@ describe('ActivityTab', () => {
   });
 
   it('shows the no-results empty state when filtered', () => {
-    render(<ActivityTab isFiltered />);
+    const { container } = render(<ActivityTab isFiltered />);
 
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toHaveClass('tw:text-fg-tertiary');
   });
 
   it('shows the skeleton while loading', () => {
@@ -168,6 +174,21 @@ describe('ActivityTab', () => {
     expect(
       screen.getAllByTestId('feed-item').map((el) => el.textContent)
     ).toEqual(['a1', 't1', 'a2']);
+  });
+
+  it('uses the semantic secondary border for the activity timeline', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1' } }],
+      total: 1,
+      isLoading: false,
+    };
+
+    const { container } = render(<ActivityTab />);
+    const timeline = container.querySelector('.inbox-activity-timeline');
+
+    expect(timeline?.querySelector('span')).toHaveClass(
+      'tw:bg-(--color-border-secondary)'
+    );
   });
 
   it('renders conversations alone when there are no activity events', () => {

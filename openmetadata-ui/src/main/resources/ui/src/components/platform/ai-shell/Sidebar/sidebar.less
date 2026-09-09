@@ -70,11 +70,12 @@
 // Colors reference Tailwind v4 theme tokens emitted at `:root` by
 // `@openmetadata/ui-core-components/globals.css`. The `--tw-` prefix
 // comes from this app's `tailwind.css` (`prefix(tw)`).
-// `@ask-bg-hover` stays literal — overlay convention, no semantic token.
-@ask-bg-page: var(--tw-color-utility-gray-blue-50);
+// Semantic surface tokens keep the sidebar neutral and preserve state contrast
+// as the palette switches between light and dark mode.
+@ask-bg-page: var(--tw-color-bg-secondary);
 @ask-bg-card: var(--tw-color-bg-primary);
-@ask-bg-active: var(--tw-color-gray-blue-100);
-@ask-bg-hover: rgba(0, 0, 0, 0.04);
+@ask-bg-active: var(--tw-color-bg-secondary_hover);
+@ask-bg-hover: var(--tw-color-bg-secondary_hover);
 @ask-text-primary: var(--tw-color-text-primary);
 @ask-text-secondary: var(--tw-color-text-secondary);
 @ask-text-tertiary: var(--tw-color-text-tertiary);
@@ -122,7 +123,7 @@
     background-color @ask-transition-duration @ask-transition-ease,
     border-radius @ask-transition-duration @ask-transition-ease;
 
-  // Main only collapsed (no sub mode) — rail inside white card.
+  // Main only collapsed (no sub mode) — rail inside the primary surface.
   // Width = rail (65px) + left padding (4px) + right padding (4px).
   &--collapsed:not(&--sub) {
     flex: 0 0 (@ask-rail-width + @ask-sub-outer-padding * 2);
@@ -131,7 +132,7 @@
     max-width: (@ask-rail-width + @ask-sub-outer-padding * 2);
   }
 
-  // Sub mode: white card wrapping Rail + SubPanel/SubRail.
+  // Sub mode: primary surface wrapping Rail + SubPanel/SubRail.
   // Base state already supplies background, border-radius, margin, padding, height.
   // These variants only need to set width and gap.
 
@@ -184,7 +185,7 @@
     gap: @ask-sub-gap;
   }
 
-  // Rail always gets gray background inside the white card wrapper.
+  // Rail keeps the secondary surface inside the primary wrapper.
   .ask-rail {
     background: @ask-bg-page;
     border-radius: 12px;
