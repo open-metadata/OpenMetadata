@@ -44,15 +44,25 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    // Go to Explore Page
+    // Go to Explore Page — its first search runs at the persisted page size,
+    // so wait for that size=25 response to settle before reading the value
+    // back off the dropdown, otherwise the assertion can race the search and
+    // read the pre-hydration default.
+    const exploreSearchAt25 = page.waitForResponse(
+      (res) =>
+        res.url().includes('/search/query') &&
+        new URL(res.url()).searchParams.get('size') === '25'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await exploreSearchAt25;
 
     await waitForAllLoadersToDisappear(page);
 
     const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
     await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
 
-    // Change page size to 50
+    // Change page size to 50, then wait for the size=50 search to settle so the
+    // persisted globalPageSize is committed before navigating to the next page.
     const option50 = page.getByTestId('rows-per-page-option-50');
     await expect(async () => {
       if (
@@ -62,7 +72,13 @@ test.describe('Table & Data Model columns table pagination', () => {
       }
       await expect(option50).toBeVisible();
     }).toPass({ timeout: 15000 });
+    const exploreSearchAt50 = page.waitForResponse(
+      (res) =>
+        res.url().includes('/search/query') &&
+        new URL(res.url()).searchParams.get('size') === '50'
+    );
     await option50.click();
+    await exploreSearchAt50;
     await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page

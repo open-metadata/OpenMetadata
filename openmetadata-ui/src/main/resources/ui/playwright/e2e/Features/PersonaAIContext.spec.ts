@@ -13,22 +13,23 @@
 import { Locator, Page, Request, Route } from '@playwright/test';
 import { EntityType } from '../../../src/enums/entity.enum';
 import {
-  CacheState,
-  ContextRule,
-  ContextSection,
-  PersonaContextDefinition,
+    CacheState,
+    ContextRule,
+    ContextSection,
+    PersonaContextDefinition
 } from '../../../src/generated/type/personaContextDefinition';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
-  getDefaultAdminAPIContext,
-  toastNotification,
+    getDefaultAdminAPIContext,
+    selectOptionWithRetry,
+    toastNotification
 } from '../../utils/common';
 import {
-  enablePersonaRulePreloading,
-  openPersonaAIContext,
+    enablePersonaRulePreloading,
+    openPersonaAIContext
 } from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
@@ -1503,11 +1504,15 @@ test.describe.serial('Persona AI Context', () => {
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
 
     // Switch to Glossary Term — href must change to the glossaries tab.
-    await adminPage.getByTestId('context-rule-entity-type').click();
-    await adminPage
-      .getByRole('listbox')
-      .getByText('Glossary Term', { exact: true })
-      .click();
+    // react-aria can close the listbox mid-click and detach the option, dropping
+    // the selection so the entity type never changes and the href stays on
+    // /explore/tables — the source of this test's flakiness. selectOptionWithRetry
+    // re-resolves the trigger's expanded state and reopens the popover before
+    // retrying the option click.
+    await selectOptionWithRetry(
+      adminPage.getByTestId('context-rule-entity-type'),
+      adminPage.getByRole('listbox').getByText('Glossary Term', { exact: true })
+    );
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/glossaries/);
 
     await adminPage.keyboard.press('Escape');
