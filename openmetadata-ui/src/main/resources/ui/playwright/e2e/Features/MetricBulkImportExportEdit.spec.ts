@@ -1427,9 +1427,7 @@ test.describe(
 
       // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
       await row.getByRole('checkbox').check({ force: true });
-      await expect(page.locator('.metric-list-selection-count')).toHaveText(
-        '1'
-      );
+      await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
 
       await page.getByTestId('bulk-edit-metric').click();
       await waitForMetricBulkEditGrid(page, selectedMetric.name);
@@ -1791,10 +1789,8 @@ test.describe(
 
       await page.locator('thead label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
-      await expect(page.locator('.metric-list-selection-count')).not.toHaveText(
-        '0'
-      );
+      await expect(page.getByTestId('clear-metric-selection')).toBeVisible();
+      await expect(page.getByText(/^[1-9]\d* selected$/)).toBeVisible();
     });
 
     test('MetricListPage unchecking header checkbox clears the selection bar', async ({
@@ -1810,12 +1806,11 @@ test.describe(
       await expect(page.getByTestId('metric-name').first()).toBeVisible();
 
       await page.locator('thead label[slot="selection"]').click();
-      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
+      const clearSelection = page.getByTestId('clear-metric-selection');
+      await expect(clearSelection).toBeVisible();
 
       await page.locator('thead label[slot="selection"]').click();
-      await expect(
-        page.locator('.metric-list-selection-bar')
-      ).not.toBeVisible();
+      await expect(clearSelection).not.toBeVisible();
     });
 
     test('MetricListPage clicking anywhere in a row navigates to metric details', async ({
@@ -1855,9 +1850,7 @@ test.describe(
 
       await row.locator('label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-count')).toHaveText(
-        '1'
-      );
+      await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
       await expect(page).toHaveURL(/\/metrics/);
     });
   }
