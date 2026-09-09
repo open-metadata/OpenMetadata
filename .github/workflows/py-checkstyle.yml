@@ -26,12 +26,12 @@ permissions:
 
 concurrency:
   group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name != 'pull_request_target' || github.base_ref != '1.13') && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     permissions:
       pull-requests: write
 
@@ -88,7 +88,7 @@ jobs:
         if: ${{ steps.scope.outputs.python == 'true' }}
         run: |
           uv venv env --python 3.10
-          uv pip install --python env/bin/python "ruff~=0.15.12"
+          uv pip install --python env/bin/python --group "${{ github.workspace }}/ingestion/pyproject.toml:style"
 
       # Add back linting once we have 10/10 on main
       - name: Code style check

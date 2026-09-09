@@ -106,6 +106,7 @@ openmetadata-ui/src/main/resources/ui/downloads/*
 # Python generated sources
 ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
+ingestion/src/metadata/generated/.generation-manifest.json
 ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**

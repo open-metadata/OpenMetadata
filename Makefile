@@ -20,7 +20,7 @@ dev_check:  ## Diagnose the dev environment without changing anything
 
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
-	python -m pip install "ingestion[e2e_test]/"
+	uv pip install "ingestion[e2e_test]"
 	playwright install chromium --with-deps
 
 .PHONY: run_e2e_tests
@@ -57,16 +57,13 @@ js_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 ## Ingestion models generation
+.PHONY: check-generated
+check-generated:  ## Check whether ingestion generated files are current
+	@python scripts/check_generated_models.py --check
+
 .PHONY: generate
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	rm -rf ingestion/src/metadata/generated
-	mkdir -p ingestion/src/metadata/generated
-	python scripts/datamodel_generation.py
-	$(MAKE) py_antlr js_antlr
-	ruff check --isolated --no-respect-gitignore --fix --select F401,UP006,UP007,UP035,UP045 --target-version py310 ingestion/src/metadata/generated
-	$(MAKE) install
+	python scripts/generate_ingestion_models.py
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)
 .PHONY: generate-entity-index
@@ -269,8 +266,7 @@ export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
-	pip install pdfkit
-	pip install PyPDF2
+	uv pip install pdfkit PyPDF2
 	python scripts/html_to_pdf.py
 
 # Ingestion Operators

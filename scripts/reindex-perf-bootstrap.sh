@@ -15,7 +15,7 @@
 #   SKIP_DOCKER=true ./scripts/reindex-perf-bootstrap.sh   # data only, against running stack
 #
 # Requirements: docker, docker compose, python 3.10+, the `metadata` package
-# installed (cd ingestion && make install_dev_env from the repo's venv).
+# installed (cd ingestion && make install_dev from the repo's venv).
 
 set -euo pipefail
 
@@ -41,7 +41,7 @@ die() { printf "\033[1;31m++ %s\033[0m\n" "$*" >&2; exit 1; }
 
 ensure_python_sdk() {
   python -c "import metadata" >/dev/null 2>&1 \
-    || die "Python 'metadata' package not importable. Activate the repo's venv and run 'cd ingestion && make install_dev_env'."
+    || die "Python 'metadata' package not importable. Activate the repo's venv and run 'cd ingestion && make install_dev'."
 }
 
 stop_stack() {
