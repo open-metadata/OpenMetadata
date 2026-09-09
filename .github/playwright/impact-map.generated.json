@@ -1232,7 +1232,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts"
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts"
       ]
     },
     {
@@ -2038,6 +2039,7 @@
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
+        "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
@@ -3081,7 +3083,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts"
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts"
       ]
     },
     {
@@ -4462,6 +4465,14 @@
       ],
       "specs": [
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/Table/TableV2.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/TeamsDragAndDrop.spec.ts"
       ]
     },
     {
