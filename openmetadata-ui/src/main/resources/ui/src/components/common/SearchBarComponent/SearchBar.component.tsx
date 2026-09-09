@@ -87,13 +87,15 @@ const Searchbar = ({
 
   const trailingSlot =
     showClearSearch && userSearch ? (
-      <button
-        aria-label="Clear search"
-        className="tw:flex tw:items-center tw:justify-center tw:text-tertiary hover:tw:text-primary"
-        type="button"
-        onClick={handleClear}>
-        <CloseOutlined aria-hidden className="tw:size-3" />
-      </button>
+      <span className="tw:absolute tw:right-3 tw:inset-y-0 tw:flex tw:items-center">
+        <button
+          aria-label="Clear search"
+          className="tw:flex tw:items-center tw:justify-center tw:text-tertiary hover:tw:text-primary"
+          type="button"
+          onClick={handleClear}>
+          <CloseOutlined aria-hidden className="tw:size-3" />
+        </button>
+      </span>
     ) : (
       loadingSlot
     );

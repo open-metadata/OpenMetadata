@@ -230,10 +230,15 @@ export const addOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    const ownerItem = page.getByRole('listitem', { name: owner });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner });
 
     await expect
       .poll(
@@ -323,9 +328,15 @@ export const addOwnerWithoutValidation = async ({
   await searchUser;
 
   if (type === 'Teams') {
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
@@ -357,10 +368,16 @@ export const updateOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
 
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -387,10 +404,9 @@ export const removeOwnersFromList = async ({
   await waitForAllLoadersToDisappear(page);
 
   for (const ownerName of ownerNames) {
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     await ownerItem.click();
   }
@@ -531,10 +547,9 @@ export const addMultiOwner = async (data: {
       .first()
       .waitFor({ state: 'detached' });
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
 
     // Wait for the item to exist and be visible before clicking

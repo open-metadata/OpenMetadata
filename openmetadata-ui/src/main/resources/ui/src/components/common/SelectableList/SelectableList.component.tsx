@@ -294,7 +294,6 @@ export const SelectableList = ({
                     data-testid="owner-option"
                     type="button"
                     {...getItemProps(index)}
-                    title={getEntityName(item)}
                     onClick={(e) => {
                       e.stopPropagation();
                       selectionHandler(item);
