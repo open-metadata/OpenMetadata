@@ -12,7 +12,7 @@
  */
 import { Box, Button, TextArea } from '@openmetadata/ui-core-components';
 import { CheckCircle, XCircle } from '@untitledui/icons';
-import { FC } from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export interface MetricStatusActionProps {

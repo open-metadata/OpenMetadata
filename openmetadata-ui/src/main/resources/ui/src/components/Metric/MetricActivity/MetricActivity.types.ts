@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Conversation } from '../../../generated/entity/feed/conversation';
-import { Task } from '../../../generated/entity/tasks/task';
+import type { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import type { Conversation } from '../../../generated/entity/feed/conversation';
+import type { Task } from '../../../generated/entity/tasks/task';
 
 export interface MetricMentionOption {
   displayName: string;

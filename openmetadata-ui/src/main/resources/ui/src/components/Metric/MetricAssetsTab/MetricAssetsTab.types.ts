@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Direction } from '../../../generated/api/data/metricObservability';
-import { EntityReference } from '../../../generated/entity/type';
+import type { Direction } from '../../../generated/api/data/metricObservability';
+import type { EntityReference } from '../../../generated/entity/type';
 
 export const METRIC_ASSETS_PAGE_SIZE = 10;
 
