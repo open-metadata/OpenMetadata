@@ -72,7 +72,7 @@ export const AvatarGroup = ({
 
   const renderSingleAvatar = (owner: OwnerRef) => {
     const rawDisplayName =
-      ownerDisplayName?.get(owner.id) ??
+      ownerDisplayName?.get(owner.name ?? '') ??
       owner.displayName ??
       owner.name ??
       owner.id;

@@ -48,7 +48,7 @@ export const OwnerChip = ({
 }: OwnerChipProps) => {
   const resolvedSize = avatarSizeMap[avatarSize] ?? 'xs';
   const displayName =
-    ownerDisplayName?.get(owner.id) ??
+    ownerDisplayName?.get(owner.name ?? '') ??
     owner.displayName ??
     owner.name ??
     owner.id;
@@ -84,23 +84,36 @@ export const OwnerChip = ({
   );
 
   if (!isCompactView) {
+    // The owner name carries its own data-testid nested inside the `owner-link`
+    // wrapper so tests can target either the link (`owner-link`) or the owner by
+    // name, and `owner-link` → name chains both resolve.
+    const nameNode = (
+      <span
+        data-testid={nameStr}
+        title={typeof displayName === 'string' ? displayName : owner.name}>
+        {displayName}
+      </span>
+    );
+
     return (
       <span
         className={cx(
           'tw:flex tw:items-center tw:gap-1.5 tw:min-w-0',
           className
-        )}
-        data-testid={nameStr}>
+        )}>
         {avatar}
         {owner.href ? (
           <a
             className="tw:truncate tw:text-sm tw:text-primary hover:tw:underline"
+            data-testid="owner-link"
             href={owner.href}>
-            {displayName}
+            {nameNode}
           </a>
         ) : (
-          <span className="tw:truncate tw:text-sm tw:text-primary">
-            {displayName}
+          <span
+            className="tw:truncate tw:text-sm tw:text-primary"
+            data-testid="owner-link">
+            {nameNode}
           </span>
         )}
       </span>

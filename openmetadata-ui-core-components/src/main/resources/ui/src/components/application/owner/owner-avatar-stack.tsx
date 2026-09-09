@@ -24,6 +24,27 @@ export const OwnerAvatarStack = ({
   placement = 'horizontal',
   className,
 }: OwnerAvatarStackProps) => {
+  // A single owner renders as avatar + name (+ link when a href is present),
+  // regardless of placement, so the owner name stays visible in headers and
+  // side panels. Multiple owners collapse into the overlapping avatar stack.
+  if (owners.length === 1) {
+    const owner = owners[0];
+    const chip = (
+      <OwnerChip
+        avatarSize={avatarSize}
+        isCompactView={false}
+        owner={owner}
+        ownerDisplayName={ownerDisplayName}
+      />
+    );
+
+    return (
+      <div className={cx('tw:flex tw:items-center', className)}>
+        {renderOwnerContent ? renderOwnerContent(owner, chip) : chip}
+      </div>
+    );
+  }
+
   if (placement === 'vertical') {
     return (
       <div
