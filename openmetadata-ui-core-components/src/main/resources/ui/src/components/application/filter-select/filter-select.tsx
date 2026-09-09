@@ -23,6 +23,7 @@ import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FC,
   type HTMLAttributes,
@@ -196,6 +197,7 @@ export const FilterSelect = ({
   const isOpen = controlledIsOpen ?? internalOpen;
   const [query, setQuery] = useState('');
   const [staged, setStaged] = useState<string[]>(selectedValues);
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
   const isStaged = isMulti && commitMode === 'staged';
@@ -282,6 +284,15 @@ export const FilterSelect = ({
   };
 
   const handleSelectionChange = (keys: Selection) => {
+    // ⌘A pressed inside the search box selects its text; react-aria still
+    // reports the menu's select-all sentinel, so ignore it there.
+    if (
+      keys === 'all' &&
+      searchWrapperRef.current?.contains(document.activeElement)
+    ) {
+      return;
+    }
+
     // 'all' is react-aria's select-all sentinel (e.g. ⌘A) — resolve it to the
     // displayed rows merged with values selected but currently filtered out.
     const next =
@@ -346,7 +357,7 @@ export const FilterSelect = ({
         className={cx('tw:w-64', popoverClassName)}
         placement="bottom left">
         {searchable && (
-          <div className="tw:p-2">
+          <div className="tw:p-2" ref={searchWrapperRef}>
             <Input
               icon={SearchInputIcon}
               placeholder={t('label.search')}
