@@ -378,12 +378,6 @@ export const FilterSelect = ({
           </div>
         )}
 
-        {helperText !== undefined && (
-          <div className="tw:px-4 tw:pb-2 tw:text-xs tw:text-tertiary">
-            {helperText}
-          </div>
-        )}
-
         {showSelectAllRow && (
           <div className="tw:px-4 tw:py-2">
             <Checkbox
@@ -439,6 +433,12 @@ export const FilterSelect = ({
               />
             ))}
           </Dropdown.Menu>
+        )}
+
+        {helperText !== undefined && (
+          <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2 tw:text-xs tw:text-tertiary">
+            {helperText}
+          </div>
         )}
 
         {showFooter && (
