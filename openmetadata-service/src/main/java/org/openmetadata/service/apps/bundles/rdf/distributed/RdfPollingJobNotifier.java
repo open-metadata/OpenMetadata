@@ -16,13 +16,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 
 /**
  * Database-polling job notifier for the RDF distributed indexing job. Lets other
@@ -47,9 +47,8 @@ public class RdfPollingJobNotifier {
   private final AtomicBoolean participating = new AtomicBoolean(false);
   private final Set<UUID> knownJobs = ConcurrentHashMap.newKeySet();
 
-  private ScheduledExecutorService scheduler;
   private Consumer<UUID> jobStartedCallback;
-  private volatile java.util.concurrent.ScheduledFuture<?> pollTask;
+  private volatile ScheduledFuture<?> pollTask;
 
   public RdfPollingJobNotifier(CollectionDAO collectionDAO, String serverId) {
     this.collectionDAO = collectionDAO;
@@ -61,11 +60,6 @@ public class RdfPollingJobNotifier {
       LOG.warn("RdfPollingJobNotifier already running");
       return;
     }
-    scheduler =
-        Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform()
-                .name("rdf-job-notifier-" + serverId.substring(0, Math.min(8, serverId.length())))
-                .factory());
     schedulePoll(IDLE_POLL_INTERVAL_MS);
     LOG.info(
         "RdfPollingJobNotifier started on server {} (idle: {}s, active: {}s)",
@@ -78,15 +72,10 @@ public class RdfPollingJobNotifier {
     if (!running.compareAndSet(true, false)) {
       return;
     }
-    if (scheduler != null) {
-      scheduler.shutdown();
-      try {
-        if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-          scheduler.shutdownNow();
-        }
-      } catch (InterruptedException e) {
-        scheduler.shutdownNow();
-        Thread.currentThread().interrupt();
+    synchronized (this) {
+      if (pollTask != null) {
+        pollTask.cancel(false);
+        pollTask = null;
       }
     }
     knownJobs.clear();
@@ -121,14 +110,15 @@ public class RdfPollingJobNotifier {
   }
 
   private synchronized void schedulePoll(long intervalMs) {
-    if (scheduler == null || scheduler.isShutdown()) {
+    if (!running.get()) {
       return;
     }
     if (pollTask != null) {
       pollTask.cancel(false);
     }
     pollTask =
-        scheduler.scheduleWithFixedDelay(this::pollForJobs, 0, intervalMs, TimeUnit.MILLISECONDS);
+        RdfBackgroundScheduler.getInstance()
+            .scheduleWithFixedDelay(this::pollForJobs, 0, intervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void pollForJobs() {
