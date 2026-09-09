@@ -2979,12 +2979,16 @@ const core = {{
     assert "author action needed" in rendered["failure"]
 
 
-def test_playwright_summary_merge_group_fails_when_no_tests_reported(tmp_path):
-    # Refuse synthetic green: if not a single test result reached the summary
-    # (e.g., every shard's upload flake'd, or the matrix job silently produced
-    # no results), fail the merge_group check even though there are no
-    # explicit test failures. Prevents an all-flake run from being counted
-    # as a green tentative merge.
+def _run_playwright_summary_bare(
+    tmp_path, *, event_name, playwright_result, expected_shards
+):
+    """Run renderPlaywrightSummary with an empty results directory — no per-
+    shard result files at all. Simulates the summary job's own download step
+    flaking (run 34312746335: 37/37 shards succeeded upstream but
+    REPORT_DOWNLOAD_RESULTS_OUTCOME=failure lost every per-shard results.json,
+    producing 75 infrastructure issues and totals.passed=0 / totals.failed=0).
+    Callers vary PLAYWRIGHT_RESULT to model matrix outcomes.
+    """
     helper = SCRIPTS / "render_playwright_summary.cjs"
     payload_path = tmp_path / "playwright-pr-comment/summary.json"
     harness = f"""
@@ -3000,7 +3004,7 @@ const core = {{
   await renderPlaywrightSummary({{
     github: {{}},
     context: {{
-      eventName: 'merge_group',
+      eventName: {json.dumps(event_name)},
       payload: {{}},
       repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
     }},
@@ -3019,8 +3023,10 @@ const core = {{
             "PLAN_RESULT": "success",
             "FIXTURE_RESTORE_RESULT": "success",
             "FIXTURE_RESULT": "success",
-            "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "PLAYWRIGHT_RESULT": playwright_result,
+            "EXPECTED_MATRIX": json.dumps(
+                {"include": [{"shardId": s} for s in expected_shards]}
+            ),
             "RUNNER_TEMP": str(tmp_path),
             "COMMENT_PAYLOAD_PATH": str(payload_path),
             "GITHUB_RUN_ID": "12345",
@@ -3035,9 +3041,46 @@ const core = {{
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
-    rendered = json.loads(completed.stdout)
-    assert rendered["failure"] is not None
-    assert "no tests reported" in rendered["failure"]
+    return json.loads(completed.stdout)
+
+
+def test_playwright_summary_merge_group_passes_when_summary_download_flakes(tmp_path):
+    # Reproduces run 34312746335: all shard jobs succeeded (PLAYWRIGHT_RESULT=
+    # success) but the summary job's Download-all-results-JSON step flaked and
+    # returned nothing, so the render script sees zero per-shard results. On
+    # merge_group we trust the matrix's own result — passing shards mean
+    # passing tests, even when we can't fetch the per-shard artifacts.
+    rendered = _run_playwright_summary_bare(
+        tmp_path,
+        event_name="merge_group",
+        playwright_result="success",
+        expected_shards=["chromium-01", "chromium-02"],
+    )
+    assert rendered["failure"] is None, (
+        "merge_group must trust PLAYWRIGHT_RESULT=success when the summary "
+        f"can't see per-shard artifacts, got: {rendered['failure']}"
+    )
+
+
+def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
+    # Refuse synthetic green when the matrix itself didn't succeed. Covers
+    # failure/skipped/cancelled — any state that isn't an authoritative
+    # "tests passed" signal from GitHub's own matrix aggregation.
+    for state in ("failure", "cancelled", "skipped", ""):
+        rendered = _run_playwright_summary_bare(
+            tmp_path,
+            event_name="merge_group",
+            playwright_result=state,
+            expected_shards=["chromium-01"],
+        )
+        assert rendered["failure"] is not None, (
+            f"merge_group must fail when PLAYWRIGHT_RESULT={state!r}, "
+            f"got: {rendered['failure']}"
+        )
+        assert "shard matrix not green" in rendered["failure"], (
+            f"expected 'shard matrix not green' verdict for state {state!r}, "
+            f"got: {rendered['failure']}"
+        )
 
 
 def test_normal_vite_build_keeps_hashed_entry_assets():
