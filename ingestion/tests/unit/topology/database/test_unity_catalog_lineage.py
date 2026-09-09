@@ -180,10 +180,11 @@ class TestProcessTableLineage:
         results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
 
         assert len(results) == 1
-        assert isinstance(results[0], Either)
-        assert isinstance(results[0].right, AddLineageRequest)
-        assert results[0].right.edge.fromEntity.id == source_table.id
-        assert results[0].right.edge.toEntity.id == target_table.id
+        source_name, request = results[0]
+        assert source_name == "cat.schema.source"
+        assert isinstance(request, AddLineageRequest)
+        assert request.edge.fromEntity.id == source_table.id
+        assert request.edge.toEntity.id == target_table.id
 
     def test_process_table_lineage_with_column_lineage(self, lineage_source):
         lineage_source.table_lineage_map = {"cat.schema.target": {"cat.schema.source"}}
@@ -220,7 +221,11 @@ class TestProcessTableLineage:
         results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
 
         assert len(results) == 1
-        lineage_details = results[0].right.edge.lineageDetails
+        source_name, request = results[0]
+        assert source_name == "cat.schema.source"
+        assert request.edge.fromEntity.id == source_table.id
+        assert request.edge.toEntity.id == target_table.id
+        lineage_details = request.edge.lineageDetails
         assert lineage_details is not None
         assert len(lineage_details.columnsLineage) == 1
         assert lineage_details.columnsLineage[0].fromColumns[0].root == "local_unitycatalog.cat.schema.source.col_a"
