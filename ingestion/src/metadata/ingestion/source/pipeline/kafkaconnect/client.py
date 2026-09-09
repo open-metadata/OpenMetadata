@@ -289,6 +289,10 @@ class KafkaConnectClient:
         # lives for a single ingestion run. None means not yet fetched.
         self._connector_ids: dict[str, str] | None = None
         self._telemetry_topics_by_connector_id: dict[str, set[str]] | None = None
+        # Whether the Connect API accepted this credential, which an empty connector list
+        # cannot tell us: a cluster with no connectors and a cluster we cannot authenticate
+        # to both yield nothing. None until the call has been made.
+        self._connect_authenticated: bool | None = None
         # The telemetry API takes the same Confluent Cloud key as the Connect API, so no
         # separate credential is needed. Held as a tuple because that call is made with
         # requests directly rather than through the Connect client. Both halves have to be
@@ -323,11 +327,13 @@ class KafkaConnectClient:
         result: dict[str, str] = {}
         try:
             response = self.get_connectors_list(expand="id")
+            self._connect_authenticated = True
             for name, block in (response or {}).items():
                 connector_id = ((block or {}).get("id") or {}).get("id")
                 if connector_id:
                     result[name] = connector_id
         except Exception as exc:
+            self._connect_authenticated = False
             logger.debug(traceback.format_exc())
             logger.debug("Unable to list Confluent connector ids: %s", exc)
 
@@ -448,7 +454,7 @@ class KafkaConnectClient:
                 cluster_id,
                 self._telemetry_auth[0] if self._telemetry_auth else "none",
                 exc,
-                telemetry.failure_hint(exc, connect_authenticated=bool(live_connector_ids)),
+                telemetry.failure_hint(exc, connect_authenticated=self._connect_authenticated),
             )
             logger.debug(traceback.format_exc())
 
