@@ -2807,6 +2807,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final String HISTORY_NEWER_THAN_CURSOR =
       "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
 
+  private static final String HISTORY_SNAPSHOT_SOURCE = "snapshot";
+  private static final String HISTORY_CURRENT_SOURCE = "current";
+  private static final int HISTORY_MAX_REFILL_ATTEMPTS = 10;
+
   /**
    * One keyset window of {@link #listEntityHistoryByTimestamp}, expressed as the SQL fragments and
    * bind values that the paginated history query needs.
@@ -2815,7 +2819,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * ascending: only then is the page the LIMIT keeps the one adjacent to the cursor. Those rows are
    * reversed afterwards so that every page reaches the caller newest-first.
    */
-  private record HistoryPage(
+  record HistoryPage(
       String cursorCondition, String sortOrder, Long cursorUpdatedAt, String cursorId) {
 
     static HistoryPage of(String afterCursor, String beforeCursor) {
@@ -2842,52 +2846,160 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Cursor/hasMore state for one page of {@link #listEntityHistoryByTimestamp}, decided purely from
+   * the rows the SQL page returned, before any hydration can drop rows.
+   *
+   * <p>Computing this before hydration makes pagination independent of concurrent hard-deletes:
+   * skipped rows neither advance the cursor (the boundary timestamp stays fetchable) nor shrink the
+   * "planes" that future pages are compared against.
+   */
+  record HistoryPageState(
+      String afterCursor, String beforeCursor, boolean hasMoreInCurrentDirection) {}
+
+  /**
+   * Computes cursor/hasMore state purely from the SQL page rows, before any hydration can drop
+   * rows. Pagination therefore stays stable under concurrent hard-deletes: dropped rows neither
+   * advance the cursor past the timestamp boundary nor shrink the page's own range.
+   */
+  static HistoryPageState computeHistoryPageState(
+      List<CoreRelationshipDAOs.HistoryPageRow> rows, HistoryPage page, int limit) {
+    if (rows.isEmpty()) {
+      // Keep the incoming cursor so callers can continue from the timestamp boundary, and emit no
+      // further cursors so an empty page does not fabricate another page.
+      String cursor =
+          page.cursorUpdatedAt() == null
+              ? null
+              : page.cursorUpdatedAt() + ":" + page.cursorId();
+      return new HistoryPageState(
+          page.isBackward() ? cursor : (page.isFirstPage() ? null : cursor),
+          page.isBackward() ? (page.isFirstPage() ? null : cursor) : cursor,
+          false);
+    }
+    List<CoreRelationshipDAOs.HistoryPageRow> pageRows =
+        rows.size() > limit ? rows.subList(0, limit) : rows;
+    CoreRelationshipDAOs.HistoryPageRow first = pageRows.getFirst();
+    CoreRelationshipDAOs.HistoryPageRow last = pageRows.getLast();
+    String firstKey = first.updatedAt() + ":" + first.id();
+    String lastKey = last.updatedAt() + ":" + last.id();
+    boolean hasMore = rows.size() > limit;
+    String after =
+        page.isBackward() ? (hasMore ? lastKey : null) : (!page.isFirstPage() ? firstKey : null);
+    String before =
+        page.isBackward() ? (!page.isFirstPage() ? firstKey : null) : (hasMore ? lastKey : null);
+    return new HistoryPageState(after, before, hasMore);
+  }
+
   public final ResultList<T> listEntityHistoryByTimestamp(
       long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
     String tableName = dao.getTableName();
-    int fetchLimit = limit + 1;
     HistoryPage page = HistoryPage.of(afterCursor, beforeCursor);
 
-    List<String> jsons =
-        daoCollection
-            .entityExtensionDAO()
-            .getEntityHistoryByTimestampRange(
-                tableName,
-                startTs,
-                endTs,
-                page.cursorCondition(),
-                page.sortOrder(),
-                entityType,
-                page.cursorUpdatedAt(),
-                page.cursorId(),
-                fetchLimit);
-
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
-    boolean hasMoreInCurrentDirection = entities.size() > limit;
-    if (hasMoreInCurrentDirection) {
-      entities = new ArrayList<>(entities.subList(0, limit));
+    HistoryPageState state = null;
+    List<T> entities = new ArrayList<>();
+    for (int attempt = 0; attempt < HISTORY_MAX_REFILL_ATTEMPTS; attempt++) {
+      int fetchLimit = state == null ? limit + 1 : limit - entities.size() + 1;
+      List<CoreRelationshipDAOs.HistoryPageRow> rows =
+          daoCollection
+              .entityExtensionDAO()
+              .getEntityHistoryByTimestampRange(
+                  tableName,
+                  startTs,
+                  endTs,
+                  page.cursorCondition(),
+                  page.sortOrder(),
+                  entityType,
+                  page.cursorUpdatedAt(),
+                  page.cursorId(),
+                  fetchLimit);
+      if (state == null) {
+        state = computeHistoryPageState(rows, page, limit);
+      }
+      List<CoreRelationshipDAOs.HistoryPageRow> pageRows =
+          rows.size() > limit ? rows.subList(0, limit) : rows;
+      List<T> hydrated = hydrateHistoryPageRows(pageRows);
+      entities.addAll(hydrated);
+      if (state.hasMoreInCurrentDirection()
+          && !page.isBackward()
+          && hydrated.size() < pageRows.size()
+          && entities.size() < limit) {
+        // Hard-deleted current rows were dropped; re-read starting just past the last returned row
+        // so the remaining planes fill the page within the fetch limit. The cursor state computed
+        // from the original page is kept untouched so the timestamp boundary is not lost.
+        page = nextFillPage(hydrated);
+        if (page == null) {
+          break;
+        }
+        continue;
+      }
+      break;
     }
+
     if (page.isBackward()) {
       Collections.reverse(entities);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
-    return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+    return historyPageResult(entities, state, total);
+  }
+
+  static <T extends EntityInterface> HistoryPage nextFillPage(List<T> hydrated) {
+    if (hydrated.isEmpty()) {
+      return null;
+    }
+    T lastHydrated = hydrated.getLast();
+    String lastCursor = lastHydrated.getUpdatedAt() + ":" + lastHydrated.getId().toString();
+    String[] parts = lastCursor.split(":");
+    return new HistoryPage(
+        HISTORY_OLDER_THAN_CURSOR,
+        HISTORY_SORT_NEWEST_FIRST,
+        Long.parseLong(parts[0]),
+        parts[1]);
+  }
+
+  private List<T> hydrateHistoryPageRows(List<CoreRelationshipDAOs.HistoryPageRow> pageRows) {
+    // Snapshots are immutable historical rows: return them as-is. Current rows are hydrated in
+    // bulk; a concurrent hard-delete surfaces as EntityNotFoundException and the row is dropped.
+    List<T> hydrated = new ArrayList<>();
+    for (CoreRelationshipDAOs.HistoryPageRow row : pageRows) {
+      if (HISTORY_SNAPSHOT_SOURCE.equals(row.source())) {
+        hydrated.add(JsonUtils.readValue(row.json(), getEntityClass()));
+        continue;
+      }
+      List<T> batch = new ArrayList<>();
+      batch.add(JsonUtils.readValue(row.json(), getEntityClass()));
+      try {
+        setFieldsInBulk(putFields, batch);
+        hydrateHistoryEntities(batch);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "[HistoryByTimestamp] Skipping hard-deleted {} row {}: {}",
+            entityType,
+            row.id(),
+            e.getMessage());
+        continue;
+      }
+      hydrated.addAll(batch);
+    }
+    return hydrated;
   }
 
   private ResultList<T> historyPageResult(
-      List<T> entities, HistoryPage page, boolean hasMoreInCurrentDirection, int total) {
-    if (entities.isEmpty()) {
+      List<T> entities, HistoryPageState state, int total) {
+    if (state == null) {
       return getResultList(entities, null, null, total);
+    }
+    // Cursors come from the page state computed before hydration; entities may be shorter when
+    // hard-deleted rows were skipped, and empty after skipping every row.
+    if (entities.isEmpty()) {
+      return getResultList(entities, state.afterCursor(), state.beforeCursor(), total);
     }
     T first = entities.getFirst();
     T last = entities.getLast();
+    boolean hasNewerVersions = state.afterCursor() != null;
+    boolean hasOlderVersions = state.beforeCursor() != null;
     String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
     String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
-    boolean hasNewerVersions = page.isBackward() ? hasMoreInCurrentDirection : !page.isFirstPage();
-    boolean hasOlderVersions = page.isBackward() || hasMoreInCurrentDirection;
     return getResultList(
         entities,
         hasNewerVersions ? firstCursor : null,
