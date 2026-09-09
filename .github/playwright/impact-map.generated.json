@@ -2430,6 +2430,7 @@
         "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
+        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
@@ -7762,6 +7763,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Users/UsersProfile/UserProfileTeams/UserProfileTeams.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
