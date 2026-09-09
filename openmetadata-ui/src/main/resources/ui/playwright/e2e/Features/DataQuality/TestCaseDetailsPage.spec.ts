@@ -43,6 +43,8 @@ test.describe(
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
+        table = new TableClass();
+
         await table.create(apiContext);
         const testCase = await table.createTestCase(apiContext);
         await table.addTestCaseResult(
