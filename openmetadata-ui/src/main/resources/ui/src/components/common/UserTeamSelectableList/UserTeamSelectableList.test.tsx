@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverTrigger } from '@openmetadata/ui-core-components';
+import { Popover } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
@@ -78,7 +78,7 @@ describe('UserTeamSelectableList Component Test', () => {
     expect(children).toBeInTheDocument();
   });
 
-  it('should pass popover props to PopoverTrigger as isOpen when open is true', () => {
+  it('should pass popoverProps.open to Popover as isOpen when open is true', () => {
     render(
       <UserTeamSelectableList
         hasPermission
@@ -88,7 +88,7 @@ describe('UserTeamSelectableList Component Test', () => {
       </UserTeamSelectableList>
     );
 
-    expect(PopoverTrigger).toHaveBeenLastCalledWith(
+    expect(Popover).toHaveBeenLastCalledWith(
       expect.objectContaining({
         isOpen: true,
       }),
