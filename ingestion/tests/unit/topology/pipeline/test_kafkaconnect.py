@@ -3329,3 +3329,32 @@ class TestTelemetryFailureHint:
             "an empty connector list still means Connect authenticated"
         )
         assert "cannot authenticate here" not in rendered
+
+    def test_large_body_is_capped_before_normalizing(self):
+        """
+        A proxy error page can be megabytes. Collapsing whitespace across the whole body
+        would build a token list the size of the response before all but a few hundred
+        characters are discarded, so the input is capped first.
+
+        Asserted by putting a marker past the cap: it cannot appear in the output, which is
+        only true if the body was truncated before being split.
+        """
+        cap = telemetry.MAX_ERROR_CHARS * telemetry.INPUT_CAP_FACTOR
+        body = ("x " * cap) + "MARKER_PAST_THE_CAP"
+
+        out = telemetry.single_log_line(body)
+
+        assert "MARKER_PAST_THE_CAP" not in out, "input must be capped before normalizing"
+        assert len(out) <= telemetry.MAX_ERROR_CHARS
+
+    def test_whitespace_heavy_body_still_yields_full_line(self):
+        """
+        The cap is a multiple of the output so an indented page still gives a usable line.
+        Capping at exactly the output length would leave almost nothing after collapsing.
+        """
+        body = "\n".join("    " + w for w in ["Forbidden"] * 200)
+
+        out = telemetry.single_log_line(body)
+
+        assert len(out) == telemetry.MAX_ERROR_CHARS, "a real line of content must survive"
+        assert "\n" not in out

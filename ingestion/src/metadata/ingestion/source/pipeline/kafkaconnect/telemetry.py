@@ -62,6 +62,11 @@ CLUSTER_ID_PATTERN = re.compile(r"/clusters/(?P<cluster_id>lkc-[a-z0-9]+)")
 # a log line, so it is capped rather than trusted.
 MAX_ERROR_CHARS = 300
 
+# How much of the raw body is read before whitespace is collapsed. Ten times the output
+# leaves room for a page that is mostly indentation to still yield a full line of content,
+# while keeping the work bounded no matter how large the response is.
+INPUT_CAP_FACTOR = 10
+
 
 def cluster_id_from_connect_url(url: str) -> str | None:
     """The Kafka cluster id a Confluent Connect URL points at, which scopes the query."""
@@ -106,8 +111,15 @@ def single_log_line(text: str) -> str:
     returning HTML rather than Confluent returning JSON. Newlines in it would split one
     warning into several lines that each look like their own log record, so a crafted body
     could forge entries and any body at all could break line-oriented parsing.
+
+    The input is capped before it is normalized, not after. Splitting first would build a
+    token list the size of the whole body, and a large HTML error page would be tokenized
+    and rejoined only for all but a few hundred characters to be discarded. The cap is a
+    multiple of the output so that collapsing long runs of whitespace, which such pages are
+    mostly made of, still leaves a full line of real content.
     """
-    return " ".join((text or "").split())[:MAX_ERROR_CHARS]
+    head = (text or "")[: MAX_ERROR_CHARS * INPUT_CAP_FACTOR]
+    return " ".join(head.split())[:MAX_ERROR_CHARS]
 
 
 def error_detail(response) -> str:
