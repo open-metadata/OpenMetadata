@@ -237,7 +237,7 @@ describe('TreeAsyncSelectList', () => {
 
     await act(async () => {
       render(
-        <Form initialValues={{ tags: 'Glossary.term1' }}>
+        <Form initialValues={{ tags: ['Glossary.term1'] }}>
           <Form.Item name="tags">
             <TreeAsyncSelectList
               initialOptions={initialOptions}
