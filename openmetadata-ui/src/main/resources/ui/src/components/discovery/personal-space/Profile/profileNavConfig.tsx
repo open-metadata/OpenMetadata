@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Key01, ShieldTick, User01 } from '@untitledui/icons';
+import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
 import React, { FC } from 'react';
 import { User } from '../../../../generated/entity/teams/user';
+import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import PermissionsTab from './tabs/PermissionsTab';
@@ -22,20 +23,23 @@ export type ProfileNavId =
   | 'profile'
   | 'permissions'
   | 'access-token'
-  | 'my-connections';
+  | 'my-connections'
+  | 'custom-properties';
 
-/** The two sidebar groups. Each maps to an uppercase header + breadcrumb root. */
-export type ProfileNavGroup = 'account' | 'credentials';
+/** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
+export type ProfileNavGroup = 'account' | 'workspace' | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
 export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
+  workspace: 'label.workspace',
   credentials: 'label.credential-plural',
 };
 
 /** Group render order in the sidebar. */
 export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
+  'workspace',
   'credentials',
 ];
 
@@ -60,6 +64,12 @@ export interface ProfileNavItem {
   description: string;
   icon: FC<{ className?: string }>;
   render: (ctx: ProfileNavRenderContext) => React.ReactNode;
+  /**
+   * When true the parent ProfilePage skips rendering ProfileContentHeader and
+   * lets the panel's render() return its own managed header. Use for panels
+   * that need dynamic breadcrumbs (e.g. multi-level navigation).
+   */
+  renderWithManagedHeader?: boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -103,6 +113,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode
   // profile works standalone in OSS when the plugin is absent.
+];
+
+export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'custom-properties',
+    group: 'workspace',
+    label: 'label.custom-property-plural',
+    description: 'message.custom-properties-settings-description',
+    icon: Settings02 as FC<{ className?: string }>,
+    renderWithManagedHeader: true,
+    render: () => <CustomPropertiesPanel />,
+  },
 ];
 
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>

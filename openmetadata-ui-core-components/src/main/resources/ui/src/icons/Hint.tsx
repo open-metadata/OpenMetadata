@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const NoSearch: FC<Props> = ({
+export const Hint: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
@@ -32,11 +32,18 @@ export const NoSearch: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
+    <circle
+      cx={9.998}
+      cy={9.908}
+      r={4.998}
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
     <path
-      d="m14.445 14.445 3.556 3.556M10 2.051a7.112 7.112 0 1 0 6.168 6.168m.054-6.223L12.81 5.41m3.413 0L12.81 1.996"
+      d="M8.27 14.906v1.364a1.73 1.73 0 0 0 3.46 0v-1.364M2.923 9.91H2.09m2.9-5.014-.624-.621m10.646.621.625-.621m2.274 5.637h-.833M10 2v.833"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-NoSearch.displayName = 'NoSearch';
+Hint.displayName = 'Hint';
