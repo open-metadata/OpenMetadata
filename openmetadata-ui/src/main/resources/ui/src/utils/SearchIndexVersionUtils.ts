@@ -86,6 +86,21 @@ const handleFieldTagChangeDiff = (
   return fieldList;
 };
 
+const formatAddedFieldData = (
+  arr: SearchIndex['fields'],
+  field: NonNullable<SearchIndex['fields']>[number]
+) => {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, field.name)) {
+      i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', field.description ?? '');
+      i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
+      i.name = getTextDiff('', field.name);
+      i.displayName = getTextDiff('', field.displayName ?? '');
+    }
+  });
+};
+
 const handleFieldDiffAdded = (
   fieldsDiff: EntityDiffProps,
   fieldList: SearchIndex['fields'] = []
@@ -94,18 +109,7 @@ const handleFieldDiffAdded = (
     fieldsDiff.added?.newValue ?? '[]'
   );
   newField?.forEach((field) => {
-    const formatFieldData = (arr: SearchIndex['fields']) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, field.name)) {
-          i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', field.description ?? '');
-          i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
-          i.name = getTextDiff('', field.name);
-          i.displayName = getTextDiff('', field.displayName ?? '');
-        }
-      });
-    };
-    formatFieldData(fieldList);
+    formatAddedFieldData(fieldList, field);
   });
 
   return fieldList;

@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-# Gates the ingestion-base image on (a) absence of the five Debian 12 OS CVEs
+# Gates the ingestion-base image on (a) absence of the tracked Debian OS CVEs
 # that failed the Collate Snyk gate, and (b) the native driver stack still
 # working after the OS rebase. A clean CVE result with a broken ODBC or Oracle
 # driver is not a pass.
@@ -31,7 +31,7 @@ UNFILTERED_SCAN_OUT=""
 # CVE-2026-66032 / CVE-2026-66034 and reports zero hits for them even on the
 # bookworm image that demonstrably carries the vulnerable libssh2-1 1.10.0-3+b1.
 # Those two are covered by the package-version assertion further down instead.
-TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186"
+TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186 CVE-2026-14457 CVE-2026-68082"
 
 fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 pass() { echo "PASS: $1"; }
@@ -114,7 +114,7 @@ if [ "$os" = "13" ]; then pass "debian 13 (trixie)"; else fail "expected debian 
 echo "== driver stack =="
 # A successful build does not prove these load; each is a native extension or
 # needs a registered ODBC driver.
-for mod in MySQLdb psycopg2 cx_Oracle confluent_kafka; do
+for mod in MySQLdb psycopg2 oracledb confluent_kafka; do
   r="$(in_image "python -c 'import ${mod}' >/dev/null 2>&1 && echo ok || echo broken")"
   [ "$r" = "ok" ] && pass "import ${mod}" || fail "import ${mod} (${r:-no output})"
 done
@@ -125,11 +125,11 @@ r="$(in_image 'odbcinst -j >/dev/null 2>&1 && echo ok || echo broken')"
 r="$(in_image 'odbcinst -q -d 2>/dev/null | grep -c "ODBC Driver 18 for SQL Server"')"
 [ "${r:-0}" -ge 1 ] && pass "msodbcsql18 registered" || fail "msodbcsql18 not registered"
 
-# `import cx_Oracle` succeeds without the Instant Client present -- only actually
-# using it loads the .so. clientversion() forces that load and raises DPI-1047 if
+# `import oracledb` succeeds without the Instant Client present -- only thick-mode
+# initialization loads the .so. clientversion() then raises DPI-1047 if
 # the library cannot be loaded against this OS's glibc, so it tests the thing the
 # OS rebase could plausibly break, with no nested quoting to get wrong.
-r="$(in_image 'python -c "import cx_Oracle; print(cx_Oracle.clientversion())" >/dev/null 2>&1 && echo ok || echo broken')"
+r="$(in_image 'python -c "import oracledb; oracledb.init_oracle_client(); print(oracledb.clientversion())" >/dev/null 2>&1 && echo ok || echo broken')"
 [ "$r" = "ok" ] && pass "oracle instantclient loads" || fail "oracle instantclient did not load (${r:-no output})"
 
 # Required at runtime by the Looker connector (GitPython shells out to git).

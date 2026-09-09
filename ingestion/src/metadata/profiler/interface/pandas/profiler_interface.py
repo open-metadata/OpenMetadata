@@ -17,8 +17,9 @@ supporting sqlalchemy abstraction layer
 
 import traceback
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from sqlalchemy import Column
 
@@ -38,6 +39,7 @@ from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
+from metadata.profiler.constants import CREATE_DATETIME, SIZE_IN_BYTES
 from metadata.profiler.interface.profiler_interface import (
     ProfilerInterface,
     ProfilerProcessorStatus,
@@ -48,6 +50,7 @@ from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import PandasRunner
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
+from metadata.utils.datalake.object_stats import get_object_stats
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -64,7 +67,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
+        service_connection_config: DatabaseConnection | DatalakeConnection,
         ometa_client: OpenMetadata,
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
@@ -93,7 +96,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.status = ProfilerProcessorStatus()
         self.column_names_cache = {}
 
-    def _get_column_type_mapping(self) -> List[str]:  # noqa: UP006
+    def _get_column_type_mapping(self) -> list[str]:
         """Compute column type mapping
 
         Returns:
@@ -157,7 +160,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _compute_table_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: "PandasRunner",
         *args,
         **kwargs,
@@ -175,15 +178,54 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             row_dict = {}
             for metric in metrics:
                 row_dict[metric.name()] = metric().df_fn(runner)
+            row_dict.update(self._get_object_stats())
             return row_dict  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to compute profile for {exc}")
             raise RuntimeError(exc)  # noqa: B904
 
+    def _get_object_stats(self) -> dict[str, Any]:
+        """Size and creation time of the object backing the table.
+
+        Best effort: a missing `HeadObject` permission must degrade to "no size", never to
+        "no profile", so we swallow the error instead of letting it bubble up to the
+        `RuntimeError` that aborts the whole table.
+
+        Subclasses of this interface are not always backed by an object store (BurstIQ has no
+        `configSource` at all), in which case `get_object_stats` falls back to empty stats.
+        """
+        # The schema an object-store table hangs off of is its bucket; without one there is
+        # nothing to look the object up in.
+        database_schema = self.table_entity.databaseSchema
+        if database_schema is None:
+            return {}
+
+        try:
+            stats = get_object_stats(
+                getattr(self.service_connection_config, "configSource", None),
+                self.client.client,
+                database_schema.name,
+                self.table_entity.name.root,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch object stats for {self.table_entity.name.root}: {exc}")
+            return {}
+
+        # A size of 0 is a real size, hence `is not None` rather than a truthiness check.
+        return {
+            key: value
+            for key, value in (
+                (SIZE_IN_BYTES, stats.size_in_bytes),
+                (CREATE_DATETIME, stats.create_date_time),
+            )
+            if value is not None
+        }
+
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: "PandasRunner",
         column,
         *args,
@@ -235,7 +277,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: "PandasRunner",
         column,
         *args,
@@ -269,7 +311,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         return None  # to be implemented  # noqa: RET501
 
-    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner: "PandasRunner", *args, **kwargs):  # noqa: UP006
+    def _compute_custom_metrics(self, metrics: list[CustomMetric], runner: "PandasRunner", *args, **kwargs):
         """Compute custom metrics. For pandas source we expect expression
         to be a boolean value. We'll return the length of the dataframe
 
@@ -328,7 +370,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.failed_profiler(error, traceback.format_exc())
             return None, None, None
 
-    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: dict):
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -346,7 +388,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
-    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: dict):
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -366,7 +408,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def get_all_metrics(
         self,
-        metric_funcs: List[ThreadPoolMetrics],  # noqa: UP006
+        metric_funcs: list[ThreadPoolMetrics],
     ):
         """get all profiler metrics"""
 
@@ -399,7 +441,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """OM Table entity"""
         return self.table_entity
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
+    def get_columns(self) -> list[SQALikeColumn | None]:
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.dataset is not None:

@@ -173,9 +173,21 @@ export const deleteEdge = async (
   fromNode: EntityClass,
   toNode: EntityClass
 ) => {
-  await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+  const addPipeline = page.getByTestId('add-pipeline');
 
-  await page.getByTestId('add-pipeline').dispatchEvent('click');
+  // `clickEdgeBetweenNodes` dispatches a synthetic click on a react-flow edge
+  // label. `dispatchEvent` takes no actionability wait, so if the graph re-lays
+  // out between resolving the label and firing the event — which it does while
+  // nodes are still settling — the click lands on a node that is no longer wired
+  // up, the toolbar never opens, and the wait for `add-pipeline` below burns the
+  // whole test timeout on an action that silently did nothing. Retry the pair
+  // until the toolbar is actually there.
+  await expect(async () => {
+    await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+    await expect(addPipeline).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
+
+  await addPipeline.dispatchEvent('click');
 
   await expect(page.getByRole('dialog').first()).toBeVisible();
 
@@ -1015,10 +1027,16 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
-  await page
+  // React Flow mounts nodes after its own layout pass, which runs well after the
+  // getLineage response the caller waited on. Clicking straight away leaves the
+  // action auto-waiting with no timeout of its own, so a graph that is slow to
+  // lay out surfaces as a bare test timeout with nothing naming the node.
+  const nodeTitle = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .locator(`[data-testid="entity-header-display-name"]`)
-    .click();
+    .locator(`[data-testid="entity-header-display-name"]`);
+
+  await expect(nodeTitle).toBeVisible();
+  await nodeTitle.click();
 };
 
 export const updateLineageConfigFromModal = async (

@@ -142,7 +142,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?: () => void;
       onPress?: () => void;
     } & Record<string, unknown>) => (
-      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onPress ?? onClick}
+        onKeyDown={onPress ?? onClick}
+        {...props}>
         {label ?? children}
       </div>
     ),
@@ -586,7 +591,7 @@ describe('ExploreV1', () => {
     ).toHaveAttribute('data-title-strong', 'false');
     expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
       'data-size',
-      'xs'
+      'sm'
     );
     expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
       'data-hide-focus-outline',
@@ -597,7 +602,7 @@ describe('ExploreV1', () => {
     );
     expect(
       screen.getByText('label.tool-plural').closest('button')
-    ).toHaveAttribute('data-size', 'xs');
+    ).toHaveAttribute('data-size', 'sm');
     expect(
       screen.getByText('label.tool-plural').closest('button')
     ).toHaveAttribute('data-hide-focus-outline', 'true');

@@ -2,8 +2,6 @@
 DatabaseSchemas entity SDK with fluent API
 """
 
-from typing import Type  # noqa: UP035
-
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
@@ -15,6 +13,6 @@ class DatabaseSchemas(BaseEntity[DatabaseSchema, CreateDatabaseSchemaRequest]):
     """DatabaseSchemas SDK class - plural to avoid conflict with generated DatabaseSchema entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[DatabaseSchema]:  # noqa: UP006
+    def entity_type(cls) -> type[DatabaseSchema]:
         """Return the DatabaseSchema entity type"""
         return DatabaseSchema

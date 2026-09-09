@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Fields } from '@react-awesome-query-builder/antd';
+import { Fields } from '@react-awesome-query-builder/ui';
 import { EntityType } from '../enums/entity.enum';
 import {
   QueryFieldInterface,
@@ -557,8 +557,8 @@ describe('buildExploreUrlParams', () => {
   it('should return valid JSON strings', () => {
     const result = buildExploreUrlParams(mockTree, mockQFilter);
 
-    expect(() => JSON.parse(result.queryFilter!)).not.toThrow();
-    expect(() => JSON.parse(result.quickFilter!)).not.toThrow();
+    expect(() => JSON.parse(result.queryFilter as string)).not.toThrow();
+    expect(() => JSON.parse(result.quickFilter as string)).not.toThrow();
   });
 
   it('should produce params that can be URL encoded with proper separators', () => {
@@ -575,8 +575,10 @@ describe('buildExploreUrlParams', () => {
     const decoded = new URLSearchParams(queryString);
 
     expect(decoded.get('mode')).toBe('edit');
-    expect(JSON.parse(decoded.get('queryFilter')!)).toEqual(mockTree);
-    expect(JSON.parse(decoded.get('quickFilter')!)).toEqual(mockQFilter);
+    expect(JSON.parse(decoded.get('queryFilter') as string)).toEqual(mockTree);
+    expect(JSON.parse(decoded.get('quickFilter') as string)).toEqual(
+      mockQFilter
+    );
   });
 
   it('should work correctly when only queryFilter is present with other params', () => {

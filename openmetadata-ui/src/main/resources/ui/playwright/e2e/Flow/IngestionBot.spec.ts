@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { expect, test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
@@ -50,8 +51,15 @@ const test = base.extend<{
 
     const page = await browser.newPage();
     await page.goto('/signin');
-    await page.waitForFunction(() =>
-      Boolean(navigator.serviceWorker?.controller)
+    // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
+    // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
+    // registers a SW -- there is no clients.claim() race to wait out there.
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker.controller),
+      undefined,
+      { timeout: 30_000 }
     );
 
     await setToken(page, tokenData.config.JWTToken);
@@ -86,12 +94,11 @@ test.describe('Ingestion Bot ', () => {
     await redirectToHomePage(page);
   });
 
-  test.slow();
-
   test('Ingestion bot should be able to access domain specific domain', async ({
     ingestionBotPage,
     page,
   }) => {
+    test.slow();
     const { assets: domainAsset1, assetCleanup: assetCleanup1 } =
       await setupAssetsForDomain(page);
     const { assets: domainAsset2, assetCleanup: assetCleanup2 } =

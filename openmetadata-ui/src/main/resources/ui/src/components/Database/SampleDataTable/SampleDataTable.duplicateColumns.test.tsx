@@ -83,7 +83,7 @@ describe('SampleDataTable with duplicate column names', () => {
     );
 
     const cellTexts = Array.from(
-      container.querySelectorAll('tbody tr.ant-table-row td')
+      container.querySelectorAll('tbody tr[data-row-key] td')
     ).map((cell) => cell.textContent);
 
     expect(cellTexts).toEqual(SAMPLE_ROWS[0]);
@@ -98,7 +98,7 @@ describe('SampleDataTable with duplicate column names', () => {
     fireEvent.click(screen.getByTestId('export-button-details-container'));
 
     const cellTexts = Array.from(
-      container.querySelectorAll('tbody tr.ant-table-row td')
+      container.querySelectorAll('tbody tr[data-row-key] td')
     ).map((cell) => cell.textContent);
     const csvContent = (downloadFile as jest.Mock).mock.calls[0][0] as string;
     const [header, firstDataLine] = csvContent.split('\n');

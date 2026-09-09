@@ -27,6 +27,7 @@ interface MentionModule {
     item: Record<string, unknown>,
     insertItem: (item: unknown) => void
   ) => void;
+  renderItem: (item: Record<string, unknown>) => HTMLElement;
 }
 
 interface CapturedQuillProps {
@@ -81,7 +82,11 @@ jest.mock('react-quill-new', () => ({
     mockCaptureQuillProps(props);
 
     return (
-      <div data-testid="react-quill" onKeyDown={props.onKeyDown}>
+      <div
+        data-testid="react-quill"
+        role="textbox"
+        tabIndex={0}
+        onKeyDown={props.onKeyDown}>
         editor
       </div>
     );
@@ -213,5 +218,23 @@ describe('Test FeedEditor Component', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('escapes HTML in entity names rendered in the mention suggestion list', async () => {
+    const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    await findByTestId(container, 'react-quill');
+
+    const payload = '<img src=x onerror=alert(1)>';
+    const wrapper = mentionModule().renderItem({
+      type: 'table',
+      name: payload,
+      breadcrumbs: [{ name: payload }],
+    });
+
+    // The payload must appear as literal text, never as parsed markup.
+    expect(wrapper.querySelector('img')).toBeNull();
+    expect(wrapper.textContent).toContain(payload);
   });
 });

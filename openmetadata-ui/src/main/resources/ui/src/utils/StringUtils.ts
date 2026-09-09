@@ -261,13 +261,14 @@ export const customServiceComparator = (a: string, b: string): number => {
  */
 export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
 
+// Looked up one character at a time by the character class in escapeESReservedCharacters,
+// so every key here must be a single character — a multi-character key would be unreachable.
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '+': String.raw`\+`,
   '-': String.raw`\-`,
   '=': String.raw`\=`,
   '&': String.raw`\&`,
-  '&&': String.raw`\&&`,
-  '||': String.raw`\||`,
+  '|': String.raw`\|`,
   '>': String.raw`\>`,
   '<': String.raw`\<`,
   '!': String.raw`\!`,

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,195 +10,187 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+
+import { render, screen, waitFor } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import ActivityFeedListV1New from './ActivityFeedListV1New.component';
 
-jest.mock('../ActivityFeedPanel/FeedPanelBodyV1New', () => ({
-  __esModule: true,
-  default: ({ feed, activity }: { feed?: Thread; activity?: ActivityEvent }) =>
-    activity ? (
-      <div data-testid={`activity-${activity.id}`}>activity</div>
-    ) : (
-      <div data-testid={`feed-${feed?.id}`}>feed</div>
-    ),
-}));
+jest.mock('../ActivityFeedPanel/FeedPanelBodyV1New', () =>
+  jest.fn(
+    ({
+      activity,
+      feed,
+      isActive,
+    }: {
+      activity?: ActivityEvent;
+      feed?: Conversation;
+      isActive?: boolean;
+    }) => {
+      const item = activity ?? feed;
 
-jest.mock('../../common/Loader/Loader', () => () => <div>Loader</div>);
+      return (
+        <div
+          data-active={String(isActive)}
+          data-kind={activity ? 'activity' : 'conversation'}
+          data-testid={`feed-item-${item?.id}`}
+        />
+      );
+    }
+  )
+);
 
-const feedList = [
-  { id: 'feed-old', updatedAt: 100 },
-  { id: 'feed-new', updatedAt: 400 },
-] as Thread[];
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () =>
+  jest.fn(() => <div data-testid="empty-feed" />)
+);
 
-const activityList = [{ id: 'activity-mid', timestamp: 200 } as ActivityEvent];
+jest.mock('../../common/Loader/Loader', () =>
+  jest.fn(() => <div data-testid="feed-loader" />)
+);
 
-const baseProps = {
-  isLoading: false,
-  hidePopover: false,
-  emptyPlaceholderText: 'No data',
-};
+const createActivity = (id: string, timestamp: number) =>
+  ({
+    id,
+    timestamp,
+    about: `<#E::table::${id}>`,
+  } as ActivityEvent);
 
-describe('ActivityFeedListV1New — merged activity + conversations', () => {
-  it('renders BOTH activity events and conversation threads in one list', () => {
+const createConversation = (id: string, updatedAt: number) =>
+  ({
+    id,
+    updatedAt,
+    about: `<#E::table::${id}>`,
+  } as Conversation);
+
+describe('ActivityFeedListV1New', () => {
+  it('renders activities and conversations together in timestamp order', () => {
     render(
       <ActivityFeedListV1New
-        {...baseProps}
-        activityList={activityList}
-        feedList={feedList}
+        activityList={[
+          createActivity('old-activity', 100),
+          createActivity('new-activity', 300),
+        ]}
+        emptyPlaceholderText="No activity"
+        feedList={[createConversation('middle-conversation', 200)]}
+        hidePopover={false}
+        isLoading={false}
       />
-    );
-
-    expect(screen.getByTestId('feed-feed-new')).toBeInTheDocument();
-    expect(screen.getByTestId('feed-feed-old')).toBeInTheDocument();
-    expect(screen.getByTestId('activity-activity-mid')).toBeInTheDocument();
-  });
-
-  it('orders the merged list by timestamp, newest first', () => {
-    render(
-      <ActivityFeedListV1New
-        {...baseProps}
-        activityList={activityList}
-        feedList={feedList}
-      />
-    );
-
-    const rendered = screen
-      .getAllByTestId(/^(feed|activity)-/)
-      .map((el) => el.getAttribute('data-testid'));
-
-    // feed-new (400) > activity-mid (200) > feed-old (100)
-    expect(rendered).toEqual([
-      'feed-feed-new',
-      'activity-activity-mid',
-      'feed-feed-old',
-    ]);
-  });
-
-  it('renders conversations even when there are no activity events', () => {
-    render(<ActivityFeedListV1New {...baseProps} feedList={feedList} />);
-
-    expect(screen.getByTestId('feed-feed-new')).toBeInTheDocument();
-    expect(screen.getByTestId('feed-feed-old')).toBeInTheDocument();
-  });
-
-  it('renders activity events even when there are no conversations', () => {
-    render(
-      <ActivityFeedListV1New {...baseProps} activityList={activityList} />
-    );
-
-    expect(screen.getByTestId('activity-activity-mid')).toBeInTheDocument();
-  });
-
-  it('shows the empty placeholder when both lists are empty', () => {
-    render(
-      <ActivityFeedListV1New {...baseProps} activityList={[]} feedList={[]} />
     );
 
     expect(
-      screen.getByTestId('no-data-placeholder-container')
-    ).toBeInTheDocument();
+      screen
+        .getAllByTestId(/^feed-item-/)
+        .map((item) => item.getAttribute('data-testid'))
+    ).toEqual([
+      'feed-item-new-activity',
+      'feed-item-middle-conversation',
+      'feed-item-old-activity',
+    ]);
   });
 
-  describe('auto-select first item', () => {
-    it('auto-selects the first item (newest) when nothing is selected', () => {
-      const onFeedClick = jest.fn();
-      const onActivityClick = jest.fn();
+  it('selects the newest item using the matching source callback', async () => {
+    const onActivityClick = jest.fn();
+    const onFeedClick = jest.fn();
+    const newestConversation = createConversation('new-conversation', 400);
 
-      render(
-        <ActivityFeedListV1New
-          {...baseProps}
-          activityList={activityList}
-          feedList={feedList}
-          onActivityClick={onActivityClick}
-          onFeedClick={onFeedClick}
-        />
-      );
+    render(
+      <ActivityFeedListV1New
+        activityList={[createActivity('activity', 300)]}
+        emptyPlaceholderText="No activity"
+        feedList={[newestConversation]}
+        hidePopover={false}
+        isLoading={false}
+        onActivityClick={onActivityClick}
+        onFeedClick={onFeedClick}
+      />
+    );
 
-      // feed-new (400) is newest → auto-selected as a feed.
-      expect(onFeedClick).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'feed-new' })
-      );
-      expect(onActivityClick).not.toHaveBeenCalled();
-    });
+    await waitFor(() =>
+      expect(onFeedClick).toHaveBeenCalledWith(newestConversation)
+    );
 
-    it('does NOT snap back to the first item when an activity is selected', () => {
-      const onFeedClick = jest.fn();
-      const onActivityClick = jest.fn();
+    expect(onActivityClick).not.toHaveBeenCalled();
+  });
 
-      render(
-        <ActivityFeedListV1New
-          {...baseProps}
-          activityList={activityList}
-          feedList={feedList}
-          selectedActivity={{ id: 'activity-mid' } as ActivityEvent}
-          onActivityClick={onActivityClick}
-          onFeedClick={onFeedClick}
-        />
-      );
+  it('does not auto-select an activity in the landing-page widget', async () => {
+    const onActivityClick = jest.fn();
 
-      // A valid activity selection must be respected — no forced re-select.
-      expect(onFeedClick).not.toHaveBeenCalled();
-      expect(onActivityClick).not.toHaveBeenCalled();
-    });
+    render(
+      <ActivityFeedListV1New
+        isFeedWidget
+        activityList={[createActivity('activity', 300)]}
+        emptyPlaceholderText="No activity"
+        hidePopover={false}
+        isLoading={false}
+        onActivityClick={onActivityClick}
+      />
+    );
 
-    it('moves the auto-selection to the newest item when a later source resolves', () => {
-      const onFeedClick = jest.fn();
-      const onActivityClick = jest.fn();
+    await waitFor(() =>
+      expect(screen.getByTestId('feed-item-activity')).toBeInTheDocument()
+    );
 
-      // First render: only the older conversation has resolved.
-      const { rerender } = render(
-        <ActivityFeedListV1New
-          {...baseProps}
-          feedList={[{ id: 'feed-old', updatedAt: 100 } as Thread]}
-          onActivityClick={onActivityClick}
-          onFeedClick={onFeedClick}
-        />
-      );
+    expect(onActivityClick).not.toHaveBeenCalled();
+  });
 
-      expect(onFeedClick).toHaveBeenLastCalledWith(
-        expect.objectContaining({ id: 'feed-old' })
-      );
+  it('does not replace a selected item that remains in the mixed feed', async () => {
+    const onActivityClick = jest.fn();
+    const onFeedClick = jest.fn();
+    const selectedConversation = createConversation('conversation', 200);
 
-      // A newer activity resolves afterwards; the parent still has feed-old
-      // selected from the auto-pick above. The selection must move to the
-      // newest item (deterministic regardless of resolution order).
-      rerender(
-        <ActivityFeedListV1New
-          {...baseProps}
-          activityList={[
-            { id: 'activity-new', timestamp: 999 } as ActivityEvent,
-          ]}
-          feedList={[{ id: 'feed-old', updatedAt: 100 } as Thread]}
-          selectedThread={{ id: 'feed-old' } as Thread}
-          onActivityClick={onActivityClick}
-          onFeedClick={onFeedClick}
-        />
-      );
+    render(
+      <ActivityFeedListV1New
+        activityList={[createActivity('activity', 300)]}
+        emptyPlaceholderText="No activity"
+        feedList={[selectedConversation]}
+        hidePopover={false}
+        isLoading={false}
+        selectedThread={selectedConversation}
+        onActivityClick={onActivityClick}
+        onFeedClick={onFeedClick}
+      />
+    );
 
-      expect(onActivityClick).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'activity-new' })
-      );
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('feed-item-conversation')).toBeInTheDocument()
+    );
 
-    it('does NOT override an existing thread selection', () => {
-      const onFeedClick = jest.fn();
-      const onActivityClick = jest.fn();
+    expect(onActivityClick).not.toHaveBeenCalled();
+    expect(onFeedClick).not.toHaveBeenCalled();
+  });
 
-      render(
-        <ActivityFeedListV1New
-          {...baseProps}
-          activityList={activityList}
-          feedList={feedList}
-          selectedThread={{ id: 'feed-old' } as Thread}
-          onActivityClick={onActivityClick}
-          onFeedClick={onFeedClick}
-        />
-      );
+  it('selects a newer activity after the conversations load first', async () => {
+    const onActivityClick = jest.fn();
+    const onFeedClick = jest.fn();
+    const conversation = createConversation('conversation', 200);
+    const { rerender } = render(
+      <ActivityFeedListV1New
+        activityList={[]}
+        emptyPlaceholderText="No activity"
+        feedList={[conversation]}
+        hidePopover={false}
+        isLoading={false}
+        onActivityClick={onActivityClick}
+        onFeedClick={onFeedClick}
+      />
+    );
 
-      expect(onFeedClick).not.toHaveBeenCalled();
-      expect(onActivityClick).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(onFeedClick).toHaveBeenCalledWith(conversation));
+
+    const activity = createActivity('activity', 300);
+    rerender(
+      <ActivityFeedListV1New
+        activityList={[activity]}
+        emptyPlaceholderText="No activity"
+        feedList={[conversation]}
+        hidePopover={false}
+        isLoading={false}
+        selectedThread={conversation}
+        onActivityClick={onActivityClick}
+        onFeedClick={onFeedClick}
+      />
+    );
+
+    await waitFor(() => expect(onActivityClick).toHaveBeenCalledWith(activity));
   });
 });

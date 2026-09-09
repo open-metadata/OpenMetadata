@@ -13,6 +13,23 @@
 
 'use strict';
 
+// Playwright appends the failing request's full call log — headers included —
+// to `error.message`, so a timed-out API call carries the ephemeral admin JWT
+// the E2E fixtures mint. Publishing that verbatim trips GitHub secret scanning
+// on every red run. `publish_playwright_pr_comment.cjs` keeps its own copy on
+// purpose: it is the trusted helper loaded from the default branch and must not
+// depend on files this workflow could supply.
+const SENSITIVE_HEADER_PATTERN =
+  /((?:proxy-authorization|authorization|set-cookie|cookie|x-auth-token|x-api-key|api-key)[ \t]*[:=][ \t]*)[^\r\n]*/gi;
+const JSON_WEB_TOKEN_PATTERN =
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
+
+function redactSecrets(value) {
+  return String(value ?? '')
+    .replace(SENSITIVE_HEADER_PATTERN, '$1<redacted>')
+    .replace(JSON_WEB_TOKEN_PATTERN, '<redacted>');
+}
+
 async function renderPlaywrightSummary({ github, context, core }) {
   const fs = require('fs');
   const path = require('path');
@@ -29,7 +46,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const labelName = context.payload.label?.name ?? '';
   const isDraft = context.payload.pull_request?.draft === true;
   const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
+  // `pull_request_target` must be listed here. Fork PRs enter the pipeline
+  // under this event (same-repo PRs use `pull_request`), and their shard
+  // matrix runs the same reusable — so the summary has to gate on shard
+  // results the same way. Omitting it dropped the summary into the
+  // `!testsRequired` early-return below, printing "not required for this
+  // PR" and reporting green regardless of PLAYWRIGHT_RESULT (real failures
+  // observed on PR #32857, run 34121906853: chromium-01 shard hard-failed,
+  // playwright-summary reported success).
   const testsRequired = context.eventName === 'pull_request' ||
+    context.eventName === 'pull_request_target' ||
     context.eventName === 'merge_group' ||
     context.eventName === 'schedule' ||
     context.eventName === 'workflow_dispatch';
@@ -92,6 +118,8 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const convergenceTargets = performance?.convergenceTargets ?? {};
   const failedBlockingTargetDetails =
     performance?.failedBlockingTargetDetails ?? {};
+  const failedBudgetTargetDetails =
+    performance?.failedBudgetTargetDetails ?? {};
   if (performance) {
     try {
       const workflowRun = await github.rest.actions.getWorkflowRun({
@@ -136,13 +164,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
     );
   }
 
-  // Surface each failed BLOCKING performance target as its own infrastructure
-  // issue — the perf script wrote per-target detail (label, threshold, and
-  // the shards that exceeded) into failedBlockingTargetDetails on the
-  // performance JSON. Without this, the summary previously said only
-  // "1 CI/reporting failure(s)" with no signal on which target or which
-  // shard tripped the gate.
-  for (const [name, detail] of Object.entries(failedBlockingTargetDetails)) {
+  // Surface each failed target with per-target detail (label, threshold,
+  // and the shards that exceeded) from the performance JSON. BLOCKING
+  // targets (empty set today — reserved for corrupt-results style states)
+  // become infrastructure issues and fail the check; BUDGET targets become
+  // non-fatal warnings — a slow-but-green run must stay green (run
+  // 32500973433: all 142 tests passed, one wedged retry teardown pushed the
+  // shard past the old blocking ceiling, PR ejected). Budget breaches are
+  // escalated separately by the `Signal Playwright budget breaches` workflow
+  // step (annotations + tracked issue).
+  const describeTargetDetail = (name, detail) => {
     const label = detail?.label ?? name;
     const threshold = detail?.threshold;
     // Older/malformed payloads may omit `unit`. Guard the space so the
@@ -161,6 +192,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
         }${offending.length > 5 ? ` (+${offending.length - 5} more)` : ''}`
       : '';
     const targetText = Number.isFinite(threshold) ? ` (target ≤ ${threshold}${unitSuffix})` : '';
+    return { label, targetText, shardText };
+  };
+  for (const [name, detail] of Object.entries(failedBudgetTargetDetails)) {
+    const { label, targetText, shardText } = describeTargetDetail(name, detail);
+    convergenceWarnings.push(
+      `Budget target \`${label}\` breached${targetText}${shardText}.`
+    );
+  }
+  for (const [name, detail] of Object.entries(failedBlockingTargetDetails)) {
+    const { label, targetText, shardText } = describeTargetDetail(name, detail);
     addInfrastructureIssue(
       `Playwright performance gate \`${label}\` failed${targetText}${shardText}.`
     );
@@ -297,7 +338,9 @@ async function renderPlaywrightSummary({ github, context, core }) {
               file: specFile,
               status: test.status,
               retries: results.length - 1,
-              error: lastResult.error?.message || firstResult.error?.message || '',
+              error: redactSecrets(
+                lastResult.error?.message || firstResult.error?.message || ''
+              ),
             };
             if (specFile.endsWith('.setup.ts') || specFile.endsWith('.teardown.ts')) {
               lifecycleTests.push(testResult);
@@ -471,7 +514,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
   if (performance) {
     const performanceRows = [
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Environment setup',
         observed: `${displayMetric(performanceMetrics.maxEnvironmentSeconds)} s`,
         // Transitional 480 s ceiling while the chromium apt cache is
@@ -481,42 +524,42 @@ async function renderPlaywrightSummary({ github, context, core }) {
         passed: performanceTargets.environmentAtMostFiveMinutes,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Maximum shard execution',
         observed: `${displayMetric(performanceMetrics.maxExecutionSeconds)} s`,
         target: '≤ 1,500 s',
         passed: performanceTargets.executionAtMostTwentyFiveMinutes,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Maximum shard-job elapsed before upload',
         observed: `${displayMetric(performanceMetrics.maxElapsedBeforeUploadSeconds)} s`,
         target: '≤ 1,800 s',
         passed: performanceTargets.shardsAtMostThirtyMinutesBeforeUpload,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Reporting and upload',
         observed: `${displayMetric(performanceMetrics.reportingSeconds)} s`,
         target: '≤ 120 s',
         passed: performanceTargets.reportingAtMostTwoMinutes,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Flaky test rate',
         observed: `${displayMetric(performanceMetrics.flakyRatePercent)}%`,
         target: '≤ 0.5%',
         passed: performanceTargets.flakyRateAtMostPointFivePercent,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Retry worker time',
         observed: `${displayMetric(performanceMetrics.retryWorkerPercent)}%`,
         target: '≤ 2%',
         passed: performanceTargets.retryWorkerTimeAtMostTwoPercent,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'Static requests per app boot',
         observed: String(
           displayMetric(performanceMetrics.staticRequestsPerAppBoot)
@@ -525,7 +568,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
         passed: performanceTargets.staticRequestsPerAppBootBelowOneHundred,
       },
       {
-        classification: 'Blocking',
+        classification: 'Budget',
         metric: 'App-boot measurement integrity',
         observed:
           `${displayMetric(performanceMetrics.appBoots)} boots / ` +
@@ -569,7 +612,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
     lines.push('### Performance targets');
     lines.push('');
     lines.push(
-      'Blocking targets enforce CI. Convergence targets remain measured and visible while the suite is optimized.'
+      'Budget targets signal capacity problems without failing the check (see the tracked budget issue). Convergence targets remain measured and visible while the suite is optimized.'
     );
     lines.push('');
     lines.push('| Class | Metric | Observed | Target | Status |');
@@ -588,7 +631,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 
   if (convergenceWarnings.length > 0) {
-    lines.push('### Performance convergence warnings');
+    lines.push('### Performance budget and convergence warnings');
     lines.push('');
     for (const warning of convergenceWarnings) {
       lines.push(`- ${warning}`);
@@ -761,7 +804,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
     infrastructureIssueCount: infrastructureIssues.length,
     infrastructureIssues: infrastructureIssues
       .slice(0, 100)
-      .map(issue => boundedString(issue, 500)),
+      .map(issue => boundedString(redactSecrets(issue), 500)),
     failures: allGenuine.slice(0, 30).map(test => ({
       shard: boundedString(test.shard, 64),
       file: boundedString(test.file, 300),
@@ -798,10 +841,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 
   if (totalFailed > 0 || infrastructureIssues.length > 0) {
+    // Tell the author which kind of red this is: test failures need their
+    // action; infrastructure-only failures explicitly do not.
+    const verdict =
+      totalFailed > 0
+        ? 'test failures — author action needed'
+        : 'no test failures — CI infrastructure/reporting problem, not this change';
     core.setFailed(
-      `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s).`
+      `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s) (${verdict}).`
     );
   }
 }
 
-module.exports = { renderPlaywrightSummary };
+module.exports = { renderPlaywrightSummary, redactSecrets };

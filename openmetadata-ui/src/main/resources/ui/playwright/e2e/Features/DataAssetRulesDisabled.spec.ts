@@ -55,7 +55,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct, assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -820,6 +820,105 @@ test.describe(
         await testDomain2.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  `Data Product Domain Validation Rule Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    const assetDomain = new Domain();
+    const productDomain = new Domain();
+    const crossDomainDataProduct = new DataProduct([productDomain]);
+    const crossTable = new TableClass();
+    // Dedicated fixtures for the "Add Assets" picker test so its precondition
+    // (the Data Product starts with zero assets) is not affected by the
+    // asset-level assignment performed by the first test.
+    const pickerDataProduct = new DataProduct([productDomain]);
+    const pickerTable = new TableClass();
+
+    test.beforeAll('Setup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await assetDomain.create(apiContext);
+      await productDomain.create(apiContext);
+      await crossDomainDataProduct.create(apiContext);
+      await crossTable.create(apiContext);
+      await pickerDataProduct.create(apiContext);
+      await pickerTable.create(apiContext);
+      // The picker table lives in a different domain than the Data Product.
+      await pickerTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await pickerTable.delete(apiContext);
+      await pickerDataProduct.delete(apiContext);
+      await crossTable.delete(apiContext);
+      await crossDomainDataProduct.delete(apiContext);
+      await productDomain.delete(apiContext);
+      await assetDomain.delete(apiContext);
+      await afterAction();
+    });
+
+    // With the "Data Product Domain Validation" rule disabled, the Data Product
+    // dropdown is no longer scoped to the asset's domain, so an asset can be
+    // assigned a Data Product that belongs to a different domain.
+    test('should allow assigning a Data Product from a different domain', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await crossTable.visitEntityPage(page);
+
+      // Asset belongs to assetDomain only.
+      await assignDomain(page, assetDomain.responseData);
+
+      // The Data Product from productDomain can be assigned even though the
+      // asset is in assetDomain, because the domain validation rule is disabled
+      // and the dropdown lists Data Products across all domains.
+      await assignDataProduct(page, assetDomain.responseData, [
+        crossDomainDataProduct.responseData,
+      ]);
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-list')
+          .getByTestId(
+            `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
+          )
+      ).toBeVisible();
+    });
+
+    // With the rule disabled, the "Add Assets" picker on a Data Product must
+    // surface assets from every domain, not only the Data Product's own domain,
+    // so a cross-domain asset can be added. This mirrors the asset-side fix from
+    // the reverse direction (#32297).
+    test('should list cross-domain assets in the Add Assets picker', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await pickerDataProduct.visitEntityPage(page);
+
+      // pickerTable belongs to assetDomain while pickerDataProduct belongs to
+      // productDomain; the helper fails if the card never appears in the picker.
+      await addAssetsToDataProduct(
+        page,
+        pickerDataProduct.responseData.fullyQualifiedName,
+        [pickerTable]
+      );
     });
   }
 );

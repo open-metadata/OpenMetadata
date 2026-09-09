@@ -148,6 +148,14 @@ const StoredProcedurePage = () => {
     [decodedStoredProcedureFQN]
   );
 
+  const isStoredProcedureQueryEnabled = useMemo(
+    () =>
+      Boolean(
+        decodedStoredProcedureFQN && viewBasicPermission && !permissionsLoading
+      ),
+    [decodedStoredProcedureFQN, viewBasicPermission, permissionsLoading]
+  );
+
   const {
     data: storedProcedure,
     isLoading: storedProcedureLoading,
@@ -158,9 +166,7 @@ const StoredProcedurePage = () => {
       decodedStoredProcedureFQN,
       STORED_PROCEDURE_DEFAULT_FIELDS
     ),
-    enabled: Boolean(
-      decodedStoredProcedureFQN && viewBasicPermission && !permissionsLoading
-    ),
+    enabled: isStoredProcedureQueryEnabled,
   });
 
   useEffect(() => {
@@ -452,6 +458,8 @@ const StoredProcedurePage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -459,6 +467,8 @@ const StoredProcedurePage = () => {
           entity: t('label.stored-procedure-plural'),
         })
       );
+
+      return false;
     }
   };
 
@@ -630,7 +640,12 @@ const StoredProcedurePage = () => {
     }
   }, [decodedStoredProcedureFQN, viewBasicPermission]);
 
-  if (permissionsLoading || loading || storedProcedureLoading) {
+  const isPageLoading = useMemo(
+    () => permissionsLoading || loading || storedProcedureLoading,
+    [permissionsLoading, loading, storedProcedureLoading]
+  );
+
+  if (isPageLoading) {
     return <PageLoader />;
   }
 

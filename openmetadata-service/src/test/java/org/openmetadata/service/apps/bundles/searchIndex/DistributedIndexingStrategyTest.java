@@ -227,9 +227,11 @@ class DistributedIndexingStrategyTest {
     assertEquals(18, stats.getReaderStats().getSuccessRecords());
     assertEquals(1, stats.getReaderStats().getFailedRecords());
     assertEquals(1, stats.getReaderStats().getWarningRecords());
-    assertEquals(17, stats.getProcessStats().getTotalRecords());
+    // 18 rows reached the doc build: 14 indexed, 3 failed, and the remaining one warned
+    assertEquals(18, stats.getProcessStats().getTotalRecords());
     assertEquals(14, stats.getProcessStats().getSuccessRecords());
     assertEquals(3, stats.getProcessStats().getFailedRecords());
+    assertEquals(1, stats.getProcessStats().getWarningRecords());
     assertEquals(17, stats.getSinkStats().getTotalRecords());
     assertEquals(15, stats.getSinkStats().getSuccessRecords());
     assertEquals(2, stats.getSinkStats().getFailedRecords());

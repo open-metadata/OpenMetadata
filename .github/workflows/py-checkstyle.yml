@@ -31,7 +31,7 @@ concurrency:
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ (github.event_name != 'pull_request_target' || github.base_ref != '1.13') && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     permissions:
       pull-requests: write
 

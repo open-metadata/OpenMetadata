@@ -486,6 +486,46 @@ class AIContextMarkdownTest {
     assertTrue(markdown.contains("currently failing"), "missing failing-test warning");
   }
 
+  private static String qualityMarkdown(DataQuality dataQuality) {
+    return AIContextMarkdown.render(
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withObservability(new Observability().withDataQuality(dataQuality)));
+  }
+
+  @Test
+  void render_saysQualityIsUnmeasuredWhenNoTestIsDefined() {
+    // An attached suite with no test cases in it is a normal state - the suite is created before
+    // its tests - and gating only on passed+failed+aborted told the reader every one of those
+    // assets had tests that never ran, which is a state that does not exist.
+    String markdown =
+        qualityMarkdown(new DataQuality().withTotal(0).withPassed(0).withFailed(0).withAborted(0));
+
+    assertTrue(markdown.contains("No data-quality test is defined"), "missing unmeasured verdict");
+    assertFalse(
+        markdown.contains("has ever executed"),
+        "an asset with no tests must not be described as having tests that never ran");
+  }
+
+  @Test
+  void render_saysTestsAreUnverifiedWhenDefinedButNeverRun() {
+    String markdown =
+        qualityMarkdown(new DataQuality().withTotal(13).withPassed(0).withFailed(0).withAborted(0));
+
+    assertTrue(markdown.contains("None of the 13"), "the count of defined tests is load-bearing");
+    assertTrue(markdown.contains("NOT the same as"), "zero failures must not read as healthy");
+  }
+
+  @Test
+  void render_addsNoCoverageVerdictWhenTestsHaveRun() {
+    String markdown =
+        qualityMarkdown(new DataQuality().withTotal(4).withPassed(4).withFailed(0).withAborted(0));
+
+    assertFalse(markdown.contains("No data-quality test is defined"), "tests exist");
+    assertFalse(markdown.contains("None of the"), "and they ran");
+  }
+
   @Test
   void appendEntitySections_honorsSelectionAndHeadingDepth() {
     StringBuilder markdown = new StringBuilder();

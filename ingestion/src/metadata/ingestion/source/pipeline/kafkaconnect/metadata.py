@@ -14,8 +14,8 @@ KafkaConnect source to extract metadata from OM UI
 
 import re
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable, List, Optional, Pattern  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -113,7 +113,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self._topics_cache = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: KafkaConnectConnection = config.serviceConnection.root.config
         if not isinstance(connection, KafkaConnectConnection):
@@ -121,7 +121,7 @@ class KafkaconnectSource(PipelineServiceSource):
         return cls(config, metadata)
 
     @property
-    def database_services(self) -> List[DatabaseService]:  # noqa: UP006
+    def database_services(self) -> list[DatabaseService]:
         """Lazily load and cache database services for hostname matching"""
         if self._database_services_cache is None:
             self._database_services_cache = list(self.metadata.list_all_entities(entity=DatabaseService, limit=100))
@@ -129,7 +129,7 @@ class KafkaconnectSource(PipelineServiceSource):
         return self._database_services_cache
 
     @property
-    def messaging_services(self) -> List[MessagingService]:  # noqa: UP006
+    def messaging_services(self) -> list[MessagingService]:
         """Lazily load and cache messaging services for broker matching"""
         if self._messaging_services_cache is None:
             self._messaging_services_cache = list(self.metadata.list_all_entities(entity=MessagingService, limit=100))
@@ -159,7 +159,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return host_string.strip()
 
-    def find_database_service_by_hostname(self, service_type: str, hostname: str) -> Optional[str]:  # noqa: UP045
+    def find_database_service_by_hostname(self, service_type: str, hostname: str) -> str | None:
         """
         Find database service by matching serviceType and hostname.
 
@@ -221,7 +221,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.error(f"Unable to find database service by hostname: {exc}")
             return None
 
-    def find_messaging_service_by_brokers(self, brokers: str) -> Optional[str]:  # noqa: UP045
+    def find_messaging_service_by_brokers(self, brokers: str) -> str | None:
         """
         Find messaging service by matching broker endpoints.
 
@@ -247,13 +247,13 @@ class KafkaconnectSource(PipelineServiceSource):
                     continue
 
                 service_config = service.connection.config
+                bootstrap_servers = getattr(service_config, "bootstrapServers", None)
 
                 # Extract bootstrapServers from Kafka connection
-                if hasattr(service_config, "bootstrapServers") and service_config.bootstrapServers:
+                if bootstrap_servers:
                     # Parse service brokers into hostnames (no protocol, no port)
                     service_brokers = set(  # noqa: C401
-                        self._extract_hostname(broker.strip()).lower()
-                        for broker in service_config.bootstrapServers.split(",")
+                        self._extract_hostname(broker.strip()).lower() for broker in bootstrap_servers.split(",")
                     )
 
                     # Check if any broker hostname matches
@@ -338,7 +338,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Unable to extract service names from connector config: {exc}")
             return ServiceResolutionResult(database_service_name=None, messaging_service_name=None)
 
-    def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> Optional[str]:  # noqa: UP045
+    def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> str | None:
         """
         Resolve messaging service name from connector config or service connection.
         """
@@ -363,8 +363,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _parse_and_resolve_topics(
         self,
         pipeline_details: KafkaConnectPipelineDetails,
-        database_server_name: Optional[str],  # noqa: UP045
-        effective_messaging_service: Optional[str],  # noqa: UP045
+        database_server_name: str | None,
+        effective_messaging_service: str | None,
         is_storage_sink: bool,
     ) -> TopicResolutionResult:
         """
@@ -476,7 +476,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 )
             )
 
-    def _service_supports_database(self, service_name: str) -> Optional[bool]:  # noqa: UP045
+    def _service_supports_database(self, service_name: str) -> bool | None:
         """
         Return whether the service models a real database level in its table FQN:
         True for multi-database, False for single-database, None when the service is
@@ -509,8 +509,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _table_fqn_candidates(
         self,
         dataset_details: KafkaConnectDatasetDetails,
-        supports_database: Optional[bool],  # noqa: UP045
-    ) -> List[tuple]:  # noqa: UP006
+        supports_database: bool | None,
+    ) -> list[tuple]:
         """
         Build the ``(database_name, schema_name)`` pairs to try when resolving a table,
         most specific first.
@@ -537,8 +537,8 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         dataset_details: KafkaConnectDatasetDetails,
         service_name: str,
-        supports_database: Optional[bool],  # noqa: UP045
-    ) -> Optional[Table]:  # noqa: UP045
+        supports_database: bool | None,
+    ) -> Table | None:
         """Resolve a table in one service, trying each FQN shape the service class allows."""
         for database_name, schema_name in self._table_fqn_candidates(dataset_details, supports_database):
             table_fqn = fqn.build(
@@ -560,7 +560,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         Resolve the table a connector reads from or writes to, in order of confidence:
         the service matched from the connector config, then any configured
@@ -623,7 +623,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[T]:  # noqa: UP045
+    ) -> T | None:
         """
         Get lineage dataset entity for a specific dataset configuration.
         """
@@ -682,7 +682,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return None
 
-    def _get_entity_column_fqn(self, entity: T, column_name: str) -> Optional[str]:  # noqa: UP045
+    def _get_entity_column_fqn(self, entity: T, column_name: str) -> str | None:
         """
         Get column FQN for any supported entity type.
         Dispatch based on entity type.
@@ -702,7 +702,7 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Unsupported entity type for column FQN: {type(entity).__name__}")
             return None
 
-    def _parse_cdc_schema_columns(self, schema_text: str) -> List[str]:  # noqa: UP006
+    def _parse_cdc_schema_columns(self, schema_text: str) -> list[str]:
         """
         Parse Debezium CDC schema JSON to extract table column names.
 
@@ -742,7 +742,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return []
 
-    def _extract_columns_from_entity(self, entity: T) -> List[str]:  # noqa: C901, UP006
+    def _extract_columns_from_entity(self, entity: T) -> list[str]:  # noqa: C901
         """
         Extract column/field names from Table or Topic entity.
 
@@ -832,7 +832,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return []
 
-    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: UP045
+    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> str | None:
         return get_topic_field_fqn(topic_entity, field_name)
 
     def build_column_lineage(
@@ -842,7 +842,7 @@ class KafkaconnectSource(PipelineServiceSource):
         topic_entity: Topic,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
+    ) -> list[ColumnLineage] | None:
         """
         Build column-level lineage between source table, topic, and target table.
         For source connectors: Table columns -> Topic schema fields
@@ -934,8 +934,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _search_topics_by_prefix(
         self,
         database_server_name: str,
-        messaging_service_name: Optional[str] = None,  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        messaging_service_name: str | None = None,
+    ) -> list[KafkaConnectTopics]:
         """
         Search for topics in the messaging service that match the database.server.name prefix.
 
@@ -1009,13 +1009,12 @@ class KafkaconnectSource(PipelineServiceSource):
     def _search_topics_by_regex(
         self,
         topics_regex: str,
-        messaging_service_name: Optional[str] = None,  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        messaging_service_name: str | None = None,
+    ) -> list[KafkaConnectTopics]:
         """
         Search for topics matching a regex pattern.
         Used for S3 sink connectors with topics.regex config.
         """
-        import re  # pylint: disable=import-outside-toplevel
 
         topics_found = []
 
@@ -1059,7 +1058,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_found
 
-    def _parse_datasets_from_config(self, connector_config: dict) -> List[KafkaConnectDatasetDetails]:  # noqa: C901, UP006
+    def _parse_datasets_from_config(self, connector_config: dict) -> list[KafkaConnectDatasetDetails]:  # noqa: C901
         """
         Parse dataset information from connector config.
         Handles single values, comma-separated lists, and mapping configs.
@@ -1131,8 +1130,8 @@ class KafkaconnectSource(PipelineServiceSource):
         dataset_details: KafkaConnectDatasetDetails,
         topic_entities_map: dict,
         pipeline_details: KafkaConnectPipelineDetails,
-        database_server_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Topic]:  # noqa: UP045
+        database_server_name: str | None = None,
+    ) -> Topic | None:
         """
         Match a dataset to its corresponding topic entity.
 
@@ -1199,7 +1198,7 @@ class KafkaconnectSource(PipelineServiceSource):
         dataset_details: KafkaConnectDatasetDetails,
         database_server_name: str,
         pipeline_details: KafkaConnectPipelineDetails,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Build the post-transform topic name a CDC source table is expected to
         produce, so a RegexRouter-renamed topic can be matched by going forward
@@ -1217,7 +1216,7 @@ class KafkaconnectSource(PipelineServiceSource):
     def _source_topic_matches(
         self,
         topic_name: str,
-        expected_topic: Optional[str],  # noqa: UP045
+        expected_topic: str | None,
         dataset_details: KafkaConnectDatasetDetails,
         database_server_name: str,
     ) -> bool:
@@ -1232,7 +1231,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
     def _parse_cdc_topics_from_config(
         self, pipeline_details: KafkaConnectPipelineDetails, database_server_name: str
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+    ) -> list[KafkaConnectTopics]:
         """
         Parse CDC topic names from connector config using table.include.list.
 
@@ -1297,37 +1296,49 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         database_server_name: str,
-        effective_messaging_service: Optional[str],  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        effective_messaging_service: str | None,
+    ) -> list[KafkaConnectTopics]:
         """
-        Resolve topics for a source connector, trying in order: Debezium outbox
-        EventRouter pattern matching, CDC topic names from config, then a prefix
-        search in the messaging service.
-        """
-        topics_to_process = []
-        has_event_router = self._has_outbox_event_router(pipeline_details.config)
-        if has_event_router:
-            logger.info("Detected Debezium outbox EventRouter - resolving topics by routing pattern")
-            topics_to_process = self._resolve_outbox_topics(
-                connector_config=pipeline_details.config or {},
-                messaging_service_name=effective_messaging_service,
-            )
+        Resolve topics for a source connector from configuration alone.
 
-        if not topics_to_process and has_event_router:
-            # The EventRouter rewrites the topic before publish, so the pre-transform
-            # "{prefix}.{schema}.{table}" name provably names no real topic. Falling back
-            # to it only produced misleading "topic not found" warnings.
+        Only names that configuration determines are produced here. An outbox EventRouter
+        whose ``route.topic.replacement`` still carries a ``${...}`` token picks its
+        destination from a row value, so no name is derivable and the connector resolves
+        nothing rather than guessing.
+
+        Two guesses were removed because neither can attribute a topic to a table:
+
+        - A wildcard built from ``route.topic.replacement`` describes a superset. Two
+          connectors routing into one namespace reduce to the same pattern while owning
+          disjoint topics, so generating from it gave each of them the other's edges.
+        - The ``topic.prefix`` namespace scan assumes a topic name still encodes its
+          source table, which holds only while no router rewrites it. Reached by an
+          EventRouter connector it linked the outbox table to whichever internal topics
+          shared the prefix.
+
+        The runtime's own active-topic list (KIP-558) is the only source that knows a
+        row-derived routed name, and it is consulted before this method is ever called.
+        """
+        if self._has_outbox_event_router(pipeline_details.config):
+            static_topic = self._static_outbox_topic(pipeline_details.config or {})
+            if static_topic:
+                logger.info("Outbox EventRouter routes every event to '%s'", static_topic)
+                return [KafkaConnectTopics(name=static_topic)]
+
             logger.warning(
-                f"Outbox EventRouter topics could not be resolved for '{pipeline_details.name}'. "
-                "The routed topic name is derived from row data and is not derivable from the "
-                "connector config; set an explicit static prefix in route.topic.replacement, or "
-                "ensure the routed topics are ingested in the messaging service."
+                "Outbox EventRouter topics could not be resolved for '%s'. "
+                "Its route.topic.replacement resolves per row, so the destination is not derivable "
+                "from the connector config and no lineage is emitted. Enable topic.tracking.enable "
+                "on the Connect workers so the runtime can report the connector's real topics. "
+                "Confluent Cloud does not expose that endpoint for managed connectors.",
+                pipeline_details.name,
             )
-        elif not topics_to_process:
-            topics_to_process = self._parse_cdc_topics_from_config(
-                pipeline_details=pipeline_details,
-                database_server_name=database_server_name,
-            )
+            return []
+
+        topics_to_process = self._parse_cdc_topics_from_config(
+            pipeline_details=pipeline_details,
+            database_server_name=database_server_name,
+        )
 
         if not topics_to_process and effective_messaging_service:
             logger.info(
@@ -1340,7 +1351,26 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_to_process
 
-    def _has_outbox_event_router(self, connector_config: Optional[dict]) -> bool:  # noqa: UP045
+    def _static_outbox_topic(self, connector_config: dict) -> str | None:
+        """
+        The destination of an outbox EventRouter whose ``route.topic.replacement`` holds
+        no ``${...}`` token.
+
+        Such a replacement names one fixed topic for every routed event, which makes it
+        as deterministic as any other config-declared name. Only a replacement that still
+        interpolates a row value is unresolvable. Any RegexRouter later in the chain is
+        applied so the name matches the topic that is actually published.
+
+        Returns None when the key is absent: an absent replacement means the routed name
+        is unknown, and synthesising Debezium's default would invent a claim.
+        """
+        transform = self._event_router_transform(connector_config)
+        replacement = connector_config.get(f"transforms.{transform}.route.topic.replacement") if transform else None
+        if not replacement or "${" in replacement:
+            return None
+        return apply_topic_routing_transforms(replacement, connector_config)
+
+    def _has_outbox_event_router(self, connector_config: dict | None) -> bool:
         """Return True if the connector uses a Debezium outbox EventRouter SMT."""
         has_event_router = False
         if connector_config:
@@ -1352,42 +1382,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     break
         return has_event_router
 
-    def _build_outbox_topic_pattern(self, connector_config: dict) -> Optional[Pattern]:  # noqa: UP045
-        """
-        Build a regex matching topics produced by a Debezium outbox EventRouter.
-
-        The routed topic comes from ``route.topic.replacement``, whose ``${...}``
-        tokens (e.g. ``${routedByValue}``) are row-level values unknown at
-        ingestion time, so they become wildcards. Any RegexRouter in the chain is
-        applied to the template so the two transforms compose.
-        """
-        pattern = None
-        transform = self._event_router_transform(connector_config)
-        template = (
-            connector_config.get(f"transforms.{transform}.route.topic.replacement", "outbox.event.${routedByValue}")
-            if transform
-            else None
-        )
-        if template:
-            routed_value_token = "routedByValuePlaceholderToken"
-            templated = re.sub(r"\$\{[^}]*\}", routed_value_token, template)
-            templated = apply_topic_routing_transforms(templated, connector_config)
-            static_text = re.sub(r"[^A-Za-z0-9]", "", templated.replace(routed_value_token, ""))
-            if not static_text:
-                logger.warning(
-                    f"Outbox route.topic.replacement '{template}' has no static text; refusing to build a "
-                    "near-catch-all pattern that would link the outbox table to unrelated topics."
-                )
-            else:
-                escaped = re.escape(templated).replace(routed_value_token, ".*")
-                try:
-                    pattern = re.compile(f"^{escaped}$")
-                except re.error as exc:
-                    logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")
-
-        return pattern
-
-    def _event_router_transform(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+    def _event_router_transform(self, connector_config: dict) -> str | None:
         """Return the name of the connector's Debezium outbox EventRouter transform, if any."""
         transform_name = None
         transforms = [name.strip() for name in connector_config.get("transforms", "").split(",") if name.strip()]
@@ -1397,36 +1392,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 break
         return transform_name
 
-    def _resolve_outbox_topics(
-        self,
-        connector_config: dict,
-        messaging_service_name: Optional[str],  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
-        """
-        Resolve Debezium outbox topics by matching the EventRouter routing pattern
-        against topics already ingested in the messaging service.
-        """
-        topics_found = []
-        pattern = self._build_outbox_topic_pattern(connector_config)
-
-        if not pattern:
-            logger.debug("No outbox EventRouter pattern could be derived from connector config")
-        elif not messaging_service_name:
-            logger.warning(
-                "Cannot resolve outbox topics without a messaging service. "
-                "Ensure the messaging service is configured and topics are ingested."
-            )
-        else:
-            for topic in self._get_service_topics(messaging_service_name):
-                topic_name = model_str(topic.name)
-                if pattern.match(topic_name):
-                    topics_found.append(KafkaConnectTopics(name=topic_name, fqn=model_str(topic.fullyQualifiedName)))
-                    logger.debug(f"Matched outbox topic: {topic_name}")
-            logger.info(f"Resolved {len(topics_found)} outbox topic(s) via EventRouter pattern '{pattern.pattern}'")
-
-        return topics_found
-
-    def _get_service_topics(self, messaging_service_name: str) -> List[Topic]:  # noqa: UP006
+    def _get_service_topics(self, messaging_service_name: str) -> list[Topic]:
         """Return all topics for a messaging service, caching per service name."""
         if messaging_service_name not in self._topics_cache:
             self._topics_cache[messaging_service_name] = list(

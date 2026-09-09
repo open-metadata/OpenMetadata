@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
-import ScheduleIntervalV1 from '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
+import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseListChangePayload } from '../../AddTestCaseList/AddTestCaseList.interface';
 import { TestCaseSchedulerSectionProps } from './TestCaseFormV1.interface';
@@ -134,6 +134,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
       <div
         className="form-card-section scheduler-card"
         id="root/cron"
+        role="presentation"
         onClick={() => onActiveFieldChange?.('root/cron')}>
         <div className="card-title-container">
           <p className="card-title-text">
@@ -193,7 +194,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
 
         <FormField control={form.control} name="cron">
           {({ field }) => (
-            <ScheduleIntervalV1
+            <ScheduleInterval
               defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
               entity={t('label.test-case')}
               includePeriodOptions={schedulerOptions}

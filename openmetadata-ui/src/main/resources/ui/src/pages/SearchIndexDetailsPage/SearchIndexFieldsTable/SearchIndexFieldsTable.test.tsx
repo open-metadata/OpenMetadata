@@ -72,11 +72,11 @@ jest.mock('../../../components/Database/TableTags/TableTags.component', () =>
 jest.mock(
   '../../../components/common/ToggleExpandButton/ToggleExpandButton',
   () =>
-    jest
-      .fn()
-      .mockImplementation(({ toggleExpandAll }) => (
-        <div onClick={toggleExpandAll}>testToggleExpandButton</div>
-      ))
+    jest.fn().mockImplementation(({ toggleExpandAll }) => (
+      <button type="button" onClick={toggleExpandAll}>
+        testToggleExpandButton
+      </button>
+    ))
 );
 
 jest.mock(
