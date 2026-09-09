@@ -45,6 +45,11 @@ export interface FilterSelectProps {
   options: FilterSelectOption[];
   selectedValues: string[];
   onChange: (values: string[]) => void;
+  /**
+   * Draw the button-variant trigger as a bordered secondary button. Defaults
+   * to a borderless text button — the quick-filter look.
+   */
+  bordered?: boolean;
   className?: string;
   commitMode?: FilterSelectCommitMode;
   'data-testid'?: string;
