@@ -222,11 +222,13 @@ export const getQuickFilterSourceFields = (
   field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
 
 // The filter value stays the raw tier FQN (tier.tier1); only the visible
-// label becomes the tier name (Tier1).
+// label becomes the tier name. Default tiers render as Tier1…Tier5 even when
+// the bucket key is lowercased; custom tiers keep their name untouched.
 const formatTierLabel = (value: string): string => {
   const tierName = getNameFromFQN(value);
+  const defaultTier = tierName.match(/^tier(\d+)$/i);
 
-  return tierName.charAt(0).toUpperCase() + tierName.slice(1);
+  return defaultTier ? `Tier${defaultTier[1]}` : tierName;
 };
 
 /**
