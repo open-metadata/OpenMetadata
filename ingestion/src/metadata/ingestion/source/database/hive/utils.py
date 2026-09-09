@@ -32,11 +32,31 @@ _type_map.update(
 )
 
 
-def _parse_hive_column(col_name, col_type, comment, *, is_partition: bool = False):
+def _parse_hive_column(
+    col_name: str,
+    col_type: str,
+    comment: str | None,
+    *,
+    is_partition: bool = False,
+) -> dict:
     """Build a SQLAlchemy-style column dict from a Hive DESCRIBE row."""
     col_raw_type = col_type
     attype = re.sub(r"\(.*\)", "", col_type)
-    col_type = re.search(r"^\w+", col_type).group(0)
+    type_match = re.search(r"^\w+", col_type)
+    if type_match is None:
+        # Match KeyError path: keep the column, warn, and use NullType.
+        util.warn(f"Did not recognize type '{col_raw_type}' of column '{col_name}'")
+        return {
+            "name": col_name,
+            "type": types.NullType,
+            "comment": comment,
+            "nullable": True,
+            "default": None,
+            "system_data_type": col_raw_type,
+            "is_complex": False,
+            "is_partition": is_partition,
+        }
+    col_type = type_match.group(0)
     try:
         coltype = _type_map[col_type]
     except KeyError:
@@ -87,6 +107,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     seen_columns: dict[str, dict] = {}
     in_partition_section = False
     for col_name, col_type, comment in rows:
+        if not isinstance(col_name, str):
+            continue
+
         if col_name == "# Partition Information":
             in_partition_section = True
             continue
@@ -108,9 +131,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
         if not col_type:
             continue
 
-        column = _parse_hive_column(
-            col_name, col_type, comment, is_partition=in_partition_section
-        )
+        column = _parse_hive_column(col_name, col_type, comment, is_partition=in_partition_section)
         seen_columns[col_name] = column
         result.append(column)
 
