@@ -40,10 +40,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--branch", default="main")
     parser.add_argument("--slack-file", type=Path, required=True)
     parser.add_argument("--channel", required=True)
-    parser.add_argument("--healthy-since", default="",
-                        help="ISO date starting a known-good reference window.")
-    parser.add_argument("--healthy-until", default="",
-                        help="ISO date ending the known-good reference window.")
+    parser.add_argument(
+        "--healthy-since",
+        default="",
+        help="ISO date starting a known-good reference window.",
+    )
+    parser.add_argument(
+        "--healthy-until",
+        default="",
+        help="ISO date ending the known-good reference window.",
+    )
     parser.add_argument("--top-checks", type=int, default=5)
     return parser.parse_args()
 
@@ -83,14 +89,17 @@ def main() -> int:
     if truncated:
         # The digest still posts — it is documented to always post — but a partial
         # window must never be presented as a complete one.
-        print(f"::warning::PR search hit the {mq.MAX_SEARCH_PAGES}-page cap; "
-              "the reported windows are partial")
+        print(
+            f"::warning::PR search hit the {mq.MAX_SEARCH_PAGES}-page cap; "
+            "the reported windows are partial"
+        )
 
     day = mq.realized_metrics(history, now - timedelta(hours=24), now)
     week = mq.realized_metrics(history, week_start, now)
     healthy = (
         mq.realized_metrics(history, healthy_start, healthy_end)
-        if healthy_start and healthy_end else None
+        if healthy_start and healthy_end
+        else None
     )
 
     depth = None
@@ -114,8 +123,19 @@ def main() -> int:
         checks_error = str(exc)
         print(f"::error::{exc}")
 
-    report = _render(args, now, day, week, healthy, depth, drain_h, checks,
-                     checks_error, truncated)
+    try:
+        day["failure_details"] = mq.queue_failure_details(
+            day["failed_commits"], args.owner, args.repo, token
+        )
+        day["test_runs"], day["test_report_warnings"] = mq.playwright_window_reports(
+            args.owner, args.repo, token, now - timedelta(hours=24), now
+        )
+    except mq.ApiError as exc:
+        day["test_report_warnings"] = [str(exc)]
+
+    report = _render(
+        args, now, day, week, healthy, depth, drain_h, checks, checks_error, truncated
+    )
     _write_summary(report["markdown"])
     args.slack_file.write_text(
         json.dumps({"channel": args.channel, "text": report["slack"]}), encoding="utf-8"
@@ -124,11 +144,18 @@ def main() -> int:
     return 0
 
 
-def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
-            week: dict[str, Any], healthy: dict[str, Any] | None, depth: int | None,
-            drain_h: float | None, checks: list[tuple[str, int]],
-            checks_error: str | None = None,
-            truncated: bool = False) -> dict[str, str]:
+def _render(
+    args: argparse.Namespace,
+    now: datetime,
+    day: dict[str, Any],
+    week: dict[str, Any],
+    healthy: dict[str, Any] | None,
+    depth: int | None,
+    drain_h: float | None,
+    checks: list[tuple[str, int]],
+    checks_error: str | None = None,
+    truncated: bool = False,
+) -> dict[str, str]:
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
     queue_url = f"{server}/{args.owner}/{args.repo}/queue/{args.branch}"
     ref = healthy or week
@@ -137,28 +164,62 @@ def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
     # p90 is deliberately absent from the 24h column. At ~15 merges/day it is the
     # second-worst sample and swings hard enough to read as a regression on noise.
     rows = [
-        ("merged via queue", str(day["merged_via_queue"]), str(week["merged_via_queue"]), ""),
-        ("bypassed queue", str(day["merged_bypassing"]), str(week["merged_bypassing"]), ""),
-        ("total wait p50", mq.fmt_h(day["total_p50_h"]), mq.fmt_h(week["total_p50_h"]),
-         mq.delta_marker(day["total_p50_h"], ref["total_p50_h"])),
-        ("first-pass p50", mq.fmt_h(day["first_pass_p50_h"]),
-         mq.fmt_h(week["first_pass_p50_h"]),
-         mq.delta_marker(day["first_pass_p50_h"], ref["first_pass_p50_h"])),
+        (
+            "merged via queue",
+            str(day["merged_via_queue"]),
+            str(week["merged_via_queue"]),
+            "",
+        ),
+        (
+            "bypassed queue",
+            str(day["merged_bypassing"]),
+            str(week["merged_bypassing"]),
+            "",
+        ),
+        (
+            "total wait p50",
+            mq.fmt_h(day["total_p50_h"]),
+            mq.fmt_h(week["total_p50_h"]),
+            mq.delta_marker(day["total_p50_h"], ref["total_p50_h"]),
+        ),
+        (
+            "first-pass p50",
+            mq.fmt_h(day["first_pass_p50_h"]),
+            mq.fmt_h(week["first_pass_p50_h"]),
+            mq.delta_marker(day["first_pass_p50_h"], ref["first_pass_p50_h"]),
+        ),
         ("first-pass p90", "—", mq.fmt_h(week["first_pass_p90_h"]), ""),
-        ("re-queue penalty", mq.fmt_h(day["requeue_penalty_h"]),
-         mq.fmt_h(week["requeue_penalty_h"]), ""),
-        ("first-pass rate", mq.fmt_pct(day["first_pass_rate"]),
-         mq.fmt_pct(week["first_pass_rate"]),
-         mq.delta_marker(day["first_pass_rate"], ref["first_pass_rate"],
-                         lower_is_better=False)),
-        ("enqueues / merge", f"{day['enqueues_per_merge']:.2f}"
-         if day["enqueues_per_merge"] else "n/a",
-         f"{week['enqueues_per_merge']:.2f}" if week["enqueues_per_merge"] else "n/a", ""),
+        (
+            "re-queue penalty",
+            mq.fmt_h(day["requeue_penalty_h"]),
+            mq.fmt_h(week["requeue_penalty_h"]),
+            "",
+        ),
+        (
+            "first-pass rate",
+            mq.fmt_pct(day["first_pass_rate"]),
+            mq.fmt_pct(week["first_pass_rate"]),
+            mq.delta_marker(
+                day["first_pass_rate"], ref["first_pass_rate"], lower_is_better=False
+            ),
+        ),
+        (
+            "enqueues / merge",
+            f"{day['enqueues_per_merge']:.2f}" if day["enqueues_per_merge"] else "n/a",
+            f"{week['enqueues_per_merge']:.2f}"
+            if week["enqueues_per_merge"]
+            else "n/a",
+            "",
+        ),
         ("wasted passes", str(day["wasted_passes"]), str(week["wasted_passes"]), ""),
-        ("throughput", mq.fmt_rate(day["throughput_per_h"]),
-         mq.fmt_rate(week["throughput_per_h"]),
-         mq.delta_marker(day["throughput_per_h"], ref["throughput_per_h"],
-                         lower_is_better=False)),
+        (
+            "throughput",
+            mq.fmt_rate(day["throughput_per_h"]),
+            mq.fmt_rate(week["throughput_per_h"]),
+            mq.delta_marker(
+                day["throughput_per_h"], ref["throughput_per_h"], lower_is_better=False
+            ),
+        ),
     ]
 
     md = [
@@ -172,15 +233,23 @@ def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
         "|---|---|---|---|",
     ]
     if truncated:
-        md.insert(3, "> ⚠️ **Partial data** — the PR search hit its page cap, so "
-                     "every window below undercounts.\n")
-    md += [f"| {name} | {d} | {w} | {marker.strip() or '—'} |"
-           for name, d, w, marker in rows]
+        md.insert(
+            3,
+            "> ⚠️ **Partial data** — the PR search hit its page cap, so "
+            "every window below undercounts.\n",
+        )
+    md += [
+        f"| {name} | {d} | {w} | {marker.strip() or '—'} |"
+        for name, d, w, marker in rows
+    ]
 
     dequeues = day["dequeue_reasons"]
     non_merge = {r: n for r, n in dequeues.items() if r != mq.MERGE_REASON}
-    md += ["", f"**Dequeues (24h)** — {day['non_merge_dequeues']} non-merge: " +
-           (", ".join(f"`{r}` {n}" for r, n in sorted(non_merge.items())) or "none")]
+    md += [
+        "",
+        f"**Dequeues (24h)** — {day['non_merge_dequeues']} non-merge: "
+        + (", ".join(f"`{r}` {n}" for r, n in sorted(non_merge.items())) or "none"),
+    ]
 
     if checks_error:
         md += ["", f"> ⚠️ **Failing-check breakdown unavailable** — {checks_error}"]
@@ -190,10 +259,95 @@ def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
     else:
         md += ["", "_No failing check runs resolved for the 24h dequeues._"]
 
+    test_runs = day.get("test_runs", [])
+    reports_by_sha = {}
+    for run in test_runs:
+        if run.get("report"):
+            reports_by_sha.setdefault(run["sha"], run["report"])
+    raw = mq.aggregate_test_reports([run.get("report") for run in test_runs])
+    md += [
+        "",
+        "**First workflow attempts — Playwright merge groups**",
+        "",
+        (
+            f"{raw['firstAttemptPassed']} test executions passed immediately; "
+            f"{raw['firstAttemptFailed']} failed their first attempt; "
+            f"{raw['retriedTests']} used test retries; {raw['skippedTests']} skipped. "
+            f"{sum(run.get('attempts', 1) > 1 for run in test_runs)} workflows were rerun."
+        ),
+        (
+            f"Missing reports: {raw['missingReports']}; reports predating raw measurement: "
+            f"{raw['legacyReports']}. These are unknown coverage, not zero failures. "
+            f"Excluded quarantined test slots across measured runs: {raw['quarantinedTests']}; "
+            f"quarantine inventory unavailable in {raw['quarantineUnknownReports']} measured reports."
+        ),
+        (
+            f"Measured reports without verified coverage: {raw['unverifiedCoverageReports']}; "
+            f"without verified artifact/commit integrity: {raw['unverifiedIntegrityReports']}."
+        ),
+    ]
+    details = day.get("failure_details", [])
+    cancelled_only = sum(
+        not item["directFailures"] and item["cancelled"] > 0 for item in details
+    )
+    md += [
+        "",
+        (
+            f"Direct check failures resolved on {sum(bool(item['directFailures']) for item in details)} "
+            f"removed commits. {cancelled_only} had cancellation-only evidence; cancellation alone "
+            "does not establish a test failure or prove downstream invalidation."
+        ),
+        "",
+        "| Removal cause | Failed scenario / check | Signature | Job |",
+        "|---|---|---|---|",
+    ]
+    for item in details[:100]:
+        report = reports_by_sha.get(item["sha"], {})
+        for failure in item["directFailures"]:
+            tests = (
+                report.get("failures", [])
+                if failure["check"] == "Playwright E2E"
+                else []
+            )
+            rows = tests[:10] or [
+                {
+                    "title": failure["check"],
+                    "error": "; ".join(report.get("infrastructureIssues", [])[:2]),
+                }
+            ]
+            for row in rows:
+                title = mq.sanitize_external(
+                    str(row.get("file", "")) + " " + str(row["title"])
+                )
+                signature = mq.failure_signature(str(row.get("error", "")))
+                cause = "test failure" if tests else "failed check / incomplete report"
+                if not tests and any(
+                    word in signature.lower()
+                    for word in ["download", "upload", "artifact transport"]
+                ):
+                    cause = "artifact transport"
+                url = failure["jobUrl"]
+                safe_url = (
+                    url
+                    if url.startswith(f"https://github.com/{args.owner}/{args.repo}/")
+                    else ""
+                )
+                md.append(
+                    f"| failed_checks: {cause} | {title.replace('|', '/')} | "
+                    f"{signature.replace('|', '/')} | "
+                    + (f"[job]({safe_url})" if safe_url else "unavailable")
+                    + " |"
+                )
+    for warning in day.get("test_report_warnings", [])[:5]:
+        md.append(f"> Measurement incomplete: {mq.sanitize_external(warning)}")
+
     if healthy:
-        md += ["", f"_Comparing against pinned healthy window "
-                   f"{args.healthy_since}..{args.healthy_until}; a trailing baseline "
-                   f"would absorb a sustained regression instead of flagging it._"]
+        md += [
+            "",
+            f"_Comparing against pinned healthy window "
+            f"{args.healthy_since}..{args.healthy_until}; a trailing baseline "
+            f"would absorb a sustained regression instead of flagging it._",
+        ]
 
     slack = [
         f":bar_chart: *<{queue_url}|{args.branch} merge queue>* daily digest — "
@@ -210,16 +364,24 @@ def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
         f"{mq.delta_marker(day['first_pass_rate'], ref['first_pass_rate'], False)} "
         f"· {day['merged_via_queue']} merged, {day['merged_bypassing']} bypassed, "
         f"{day['wasted_passes']} wasted passes",
-        f"• {day['non_merge_dequeues']} non-merge dequeues: " +
-        (", ".join(f"`{r}` {n}" for r, n in sorted(non_merge.items())) or "none"),
+        f"• {day['non_merge_dequeues']} non-merge dequeues: "
+        + (", ".join(f"`{r}` {n}" for r, n in sorted(non_merge.items())) or "none"),
     ]
     if checks_error:
-        slack.append(":warning: failing-check breakdown unavailable — "
-                     "the workflow may be missing `checks: read`")
+        slack.append(
+            ":warning: failing-check breakdown unavailable — "
+            "the workflow may be missing `checks: read`"
+        )
     elif checks:
         # Slack gets the top 3 only; the full list stays in the job summary.
-        slack.append("• top failing checks: " +
-                     ", ".join(f"`{n}` ({c})" for n, c in checks[:3]))
+        slack.append(
+            "• top failing checks: " + ", ".join(f"`{n}` ({c})" for n, c in checks[:3])
+        )
+    slack.append(
+        f"• raw Playwright: {raw['firstAttemptFailed']} first-attempt test failures, "
+        f"{raw['retriedTests']} retried tests; {raw['missingReports']} missing and "
+        f"{raw['legacyReports']} legacy reports. Scenario signatures and job links are in the job summary."
+    )
     return {"markdown": "\n".join(md), "slack": "\n".join(slack)}
 
 

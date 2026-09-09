@@ -237,11 +237,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Features/GlobalPageSize.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -521,11 +516,6 @@
   "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    }
-  },
-  "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Features/Topic.spec.ts": {
@@ -989,11 +979,6 @@
   "playwright/utils/customizeNavigation.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
-    }
-  },
-  "playwright/utils/dataContracts.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/utils/dataQuality.ts": {

@@ -106,12 +106,6 @@ class ServiceBaseClass {
   }
 
   async createService(page: Page) {
-    // Handle create service here
-    // intercept the service requirement md file fetch request
-    await page.route('**/en-US/*/' + this.serviceType + '.md', (route) => {
-      route.continue();
-    });
-
     await page.click('[data-testid="add-service-button"]');
 
     // Select Service in step 1
@@ -138,8 +132,9 @@ class ServiceBaseClass {
         .locator('.core-select-widget-popover')
         .getByRole('option', { name: runnerLabel, exact: true });
 
+      await trigger.focus();
       await selectOptionWithRetry(trigger, option);
-      await expect(runnerSelector).toContainText(runnerLabel);
+      await expect(trigger).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {

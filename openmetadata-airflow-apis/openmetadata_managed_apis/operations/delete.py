@@ -16,7 +16,8 @@ import os
 from pathlib import Path
 
 from airflow import settings
-from airflow.models import DagModel, DagRun
+from airflow.api.common.delete_dag import delete_dag as airflow_delete_dag
+from airflow.exceptions import DagNotFound
 from flask import Response
 
 from openmetadata_managed_apis.api.config import (
@@ -35,13 +36,22 @@ def delete_dag_id(dag_id: str) -> Response:
     We clean:
     - py file in AIRFLOW_DAGS_FOLDER
     - config file in DAG_GENERATED_CONFIGS
-    - DagModel and DagRun entries in airflow db
+    - DAG metadata, versions, runs and task history in airflow db
     :param dag_id: DAG to delete
     :return: API Response
     """
 
     dag_py_file = Path(AIRFLOW_DAGS_FOLDER) / f"{dag_id}.py"
     config_file = Path(DAG_GENERATED_CONFIGS) / f"{dag_id}.json"
+
+    # Airflow owns the FK order (task instances precede DAG versions in 3.x).
+    # Do not remove files when Airflow rejects deletion of a running task.
+    with settings.Session() as session:
+        try:
+            deleted_dags = airflow_delete_dag(dag_id, session=session)
+        except DagNotFound:
+            deleted_dags = 0
+        session.commit()
 
     deleted_file = False
     if dag_py_file.is_file():
@@ -52,11 +62,6 @@ def delete_dag_id(dag_id: str) -> Response:
     if config_file.is_file():
         deleted_config = True
         os.remove(config_file.absolute())  # noqa: PTH107
-
-    with settings.Session() as session:
-        deleted_dags = session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
-        session.query(DagRun).filter(DagRun.dag_id == dag_id).delete()
-        session.commit()
 
     if deleted_dags > 0 and deleted_file and deleted_config:
         return ApiResponse.success({"message": f"DAG [{dag_id}] has been deleted"})

@@ -56,14 +56,12 @@ const selectEntityType = async (page: Page, entityType: string) => {
 
   await entityTypeTrigger.focus();
   await expect(entityTypeTrigger).toBeFocused();
-  await entityTypeTrigger.click();
-
-  await selectOptionWithMouse(
-    page,
+  await selectOptionWithRetry(
+    entityTypeTrigger,
     page.getByRole('option', { name: entityType, exact: true })
   );
 
-  await expect(entityTypeSelect).toContainText(entityType);
+  await expect(entityTypeTrigger).toHaveText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -763,26 +761,21 @@ test.describe(
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        const dimensionField = page.getByTestId('data-quality-dimension');
+        const dimensionTrigger = page
+          .getByTestId('data-quality-dimension')
+          .getByRole('button');
         const accuracyOption = page.getByRole('option', {
           name: 'Accuracy',
           exact: true,
         });
 
-        // The listbox is a non-modal React Aria popover, so it is dismissed by any
-        // scroll of the pane holding the trigger — including the one Playwright
-        // emits to bring this field into view, delivered a frame after the popup
-        // opened. Reopen on each attempt; nothing else reopens it.
-        await expect(async () => {
-          if (!(await accuracyOption.isVisible())) {
-            await dimensionField.getByRole('button').click();
-            await expect(accuracyOption).toBeVisible({ timeout: 2_000 });
-          }
-          await selectOptionWithMouse(page, accuracyOption);
-          await expect(dimensionField).toContainText('Accuracy', {
-            timeout: 2_000,
-          });
-        }).toPass({ timeout: 20_000, intervals: [500, 1_000, 2_000] });
+        await dimensionTrigger.scrollIntoViewIfNeeded();
+        await dimensionTrigger.focus();
+        await expect(dimensionTrigger).toBeFocused();
+        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
+        // The field's hidden native select contains every option's text even
+        // when empty, so only the visible trigger proves selection succeeded.
+        await expect(dimensionTrigger).toHaveText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(

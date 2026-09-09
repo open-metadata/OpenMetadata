@@ -39,6 +39,7 @@ export const selectOneOfOption = async (
 
     if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
 
       return;
     }
@@ -52,7 +53,9 @@ export const selectOneOfOption = async (
       .locator('.core-one-of-field-select-popover')
       .getByRole('option', { name: optionName, exact: true });
 
+    await trigger.focus();
     await selectOptionWithRetry(trigger, option);
+    await expect(trigger).toContainText(optionName);
 
     return;
   }
@@ -77,8 +80,9 @@ export const selectIngestionRunnerFromDropdown = async (
       .locator('.core-select-widget-popover')
       .getByRole('option', { name: runnerDisplayName, exact: true });
 
+    await trigger.focus();
     await selectOptionWithRetry(trigger, option);
-    await expect(runnerSelector).toContainText(runnerDisplayName);
+    await expect(trigger).toContainText(runnerDisplayName);
   }
 };
 

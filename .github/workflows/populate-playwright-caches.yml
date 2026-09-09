@@ -221,11 +221,10 @@ jobs:
   # workflow_dispatch-only against release branches and so never writes main's
   # scope, but the keys should grow a flavour segment before that changes.
   warm-fixture:
-    # Newest wins: a burst of merges to main should leave one run warming the
-    # newest tree, not a queue of runs each warming a tree already stale.
+    # Let the active warmer finish; retain the newest pending run after a burst of merges.
     concurrency:
       group: populate-playwright-caches-fixture
-      cancel-in-progress: true
+      cancel-in-progress: false
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     secrets: inherit
     permissions:

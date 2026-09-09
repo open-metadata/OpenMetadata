@@ -59,6 +59,7 @@ FIXTURE_PREFIXES = (
     "ingestion/examples/airflow/dags/airflow_extended_sample_data.py",
     "docker/development/docker-compose-postgres.yml",
     "docker/development/docker-compose-playwright-fast.yml",
+    "docker/development/playwright-autopilot-mysql.sql",
     "docker/development/Dockerfile",
     "docker/postgresql/",
     "docker/run_local_docker.sh",
@@ -78,6 +79,7 @@ FIXTURE_PREFIXES = (
     ".github/actions/setup-openmetadata-test-environment/",
     ".github/scripts/create_playwright_fixture.sh",
     ".github/scripts/start_playwright_fast_environment.sh",
+    ".github/scripts/start_playwright_autopilot_mysql.sh",
     ".github/scripts/rotate_playwright_auth_state.py",
     ".github/scripts/playwright_cache_fingerprint.py",
 )

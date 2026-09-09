@@ -234,8 +234,11 @@ async function renderPlaywrightSummary({ github, context, core }) {
     addInfrastructureIssue('The Playwright shard matrix was unexpectedly skipped.');
   }
 
+  const reportingWarnings = [];
+  const optionalReports = new Set(['Blob report download', 'Summary Node.js setup', 'Summary dependency installation', 'Summary timer initialization', 'HTML report merge', 'Merged report upload', 'Reporting-duration evaluation', 'Timing-history upload']);
   const reportChecks = [
     [process.env.SUMMARY_CHECKOUT_OUTCOME, 'Summary checkout'],
+    [process.env.REPORT_NORMALIZE_OUTCOME, 'Execution artifact integrity'],
     [process.env.REPORT_DOWNLOAD_BLOBS_OUTCOME, 'Blob report download'],
     [process.env.REPORT_DOWNLOAD_TIMINGS_OUTCOME, 'Timing metrics download'],
     [process.env.REPORT_DOWNLOAD_PLANS_OUTCOME, 'Shard-plan download'],
@@ -252,7 +255,13 @@ async function renderPlaywrightSummary({ github, context, core }) {
   ];
   for (const [outcome, label] of reportChecks) {
     if (failedOutcome(outcome)) {
-      addInfrastructureIssue(`${label} finished with status \`${outcome}\`.`);
+      const issue = `${label} finished with status \`${outcome}\`.`;
+      if (optionalReports.has(label)) {
+        reportingWarnings.push(issue);
+        core.warning(issue);
+      } else {
+        addInfrastructureIssue(issue);
+      }
     }
   }
   if (failedOutcome(process.env.REPORT_COVERAGE_OUTCOME)) {
@@ -309,32 +318,23 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
-  // The shard-side upload step has a fallback that re-uploads under
-  // `<baseName>-retry` so a first-attempt FinalizeArtifact 403 (leaving a
-  // ghost reservation that would 409 a same-name retry) can still land the
-  // results. Collapse each shardId's primary + retry back to a single
-  // shardId here, preferring the `-retry` copy when both are present (a
-  // successful retry means the primary was incomplete or its finalize
-  // failed).
+  try {
+    require('./normalize_playwright_artifacts.cjs').normalizeArtifacts(
+      resultsDir, process.env.EXPECTED_HEAD_SHA
+    );
+  } catch (error) {
+    addInfrastructureIssue(`Execution artifact integrity: ${error.message}`);
+  }
+  if (process.env.EXPECTED_HEAD_SHA && process.env.REPORT_COVERAGE_OUTCOME !== 'success') {
+    addInfrastructureIssue('Complete coverage of the tested commit was not verified.');
+  }
+
   if (fs.existsSync(resultsDir)) {
-    const dirsByShard = new Map();
     for (const dir of fs.readdirSync(resultsDir).sort()) {
-      if (!dir.startsWith('playwright-results-json-')) continue;
       const jsonPath = path.join(resultsDir, dir, 'results.json');
       if (!fs.existsSync(jsonPath)) continue;
-      const suffix = dir.replace('playwright-results-json-', '');
-      const isRetry = suffix.endsWith('-retry');
-      const shardNum = isRetry ? suffix.slice(0, -'-retry'.length) : suffix;
-      const existing = dirsByShard.get(shardNum);
-      // Retry beats primary; otherwise first-writer wins for stable ordering.
-      if (!existing || (isRetry && !existing.isRetry)) {
-        dirsByShard.set(shardNum, { dir, isRetry });
-      }
-    }
-    for (const [shardNum, { dir }] of Array.from(dirsByShard.entries()).sort(
-      ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
-    )) {
-      const jsonPath = path.join(resultsDir, dir, 'results.json');
+
+      const shardNum = dir.replace('playwright-results-json-', '');
       let report;
       try {
         report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
@@ -357,7 +357,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
               title: spec.title,
               file: specFile,
               status: test.status,
-              retries: results.length - 1,
+              retries: Math.max(0, results.length - 1),
               error: redactSecrets(
                 lastResult.error?.message || firstResult.error?.message || ''
               ),
@@ -404,6 +404,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
       }
       shardResults.push({
         shard: shardNum,
+        allTests,
         genuine: allTests.filter(t => t.status === 'unexpected'),
         flaky: allTests.filter(t => t.status === 'flaky'),
         passed: allTests.filter(t => t.status === 'expected'),
@@ -426,26 +427,15 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
-  // ci-status.json is bundled into the same artifact as results.json, so the
-  // primary + retry collapse rule above applies here too — pick the retry
-  // when both are present.
   const statusByShard = new Map();
-  const statusIsRetryByShard = new Map();
   if (fs.existsSync(resultsDir)) {
     for (const dir of fs.readdirSync(resultsDir).sort()) {
-      if (!dir.startsWith('playwright-results-json-')) continue;
       const statusPath = path.join(resultsDir, dir, 'ci-status.json');
       if (!fs.existsSync(statusPath)) continue;
-      const suffix = dir.replace('playwright-results-json-', '');
-      const isRetry = suffix.endsWith('-retry');
-      const shardNum = isRetry ? suffix.slice(0, -'-retry'.length) : suffix;
-      if (statusByShard.has(shardNum) && !isRetry && statusIsRetryByShard.get(shardNum)) {
-        continue;
-      }
+      const shardNum = dir.replace('playwright-results-json-', '');
       try {
         const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
         statusByShard.set(shardNum, status);
-        statusIsRetryByShard.set(shardNum, isRetry);
       } catch (error) {
         addInfrastructureIssue(`Shard ${shardNum} uploaded invalid execution status JSON: ${error.message}`);
       }
@@ -486,6 +476,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
     (sum, result) => sum + result.lifecycleFlaky.length,
     0
   );
+  convergenceWarnings.push(...reportingWarnings);
   const zeroAttemptSkippedTests = coverage?.zeroAttemptSkippedTests ?? [];
   if (upstreamResult === 'failure' && totalFailed === 0 && infrastructureIssues.length === 0) {
     addInfrastructureIssue('The Playwright shard matrix failed outside a reported test failure.');
@@ -658,6 +649,29 @@ async function renderPlaywrightSummary({ github, context, core }) {
         `| ${row.classification} | ${row.metric} | ${row.observed} | ${row.target} | ${status} |`
       );
     }
+    lines.push('');
+    const latency = performanceMetrics.apiLatency;
+    lines.push(
+      `Server traffic: ${displayMetric(performanceMetrics.apiRequests)} API requests, ` +
+      `${displayMetric(performanceMetrics.staticRequests)} static requests; ` +
+      `${displayMetric(performanceMetrics.apiRequestsPerAttempt)} API requests per attempt. ` +
+      `Mean API server time: ${displayMetric(performanceMetrics.meanApiServerMs)} ms.`
+    );
+    if (latency?.samples > 0) {
+      lines.push(
+        `API latency upper bounds: p95 ≤ ${displayMetric(latency.p95UpperBoundMs)} ms, ` +
+        `p99 ≤ ${displayMetric(latency.p99UpperBoundMs)} ms; max ${displayMetric(latency.maxMs)} ms ` +
+        `(${displayMetric(latency.samples)} requests across ` +
+        `${displayMetric(performanceMetrics.latencyMetricShards)}/${displayMetric(performanceMetrics.requestMetricShards)} reporting shards).`
+      );
+    } else {
+      lines.push('API tail latency was not measured by these shards.');
+    }
+    lines.push(
+      `API HTTP failures: ${displayMetric(performanceMetrics.apiServerErrors)} server errors (5xx), ` +
+      `${displayMetric(performanceMetrics.apiRateLimitedRequests)} rate-limited requests (429). ` +
+      'Access-log duration measures server handling time; browser waits and search-index propagation require trace correlation.'
+    );
     lines.push('');
   }
 
@@ -871,49 +885,23 @@ async function renderPlaywrightSummary({ github, context, core }) {
     core.warning(`Could not write the Playwright job summary: ${error.message}`);
   }
 
-  // Gate policy:
-  //   * PR / dispatch / schedule (STRICT): any test failure OR any
-  //     infrastructure issue fails the check. Authors have to fix drift,
-  //     invalid results JSON, missing artifacts, etc. before a PR can
-  //     enter the merge queue.
-  //   * merge_group (RELAXED): trust the shard matrix's own result. Fail
-  //     only on a real test failure, or when PLAYWRIGHT_RESULT itself is
-  //     not 'success' (matrix failure / skipped / cancelled). Every
-  //     strict validation already ran on the PR before it entered the
-  //     queue; infra flakes on the tentative merge (artifact-upload
-  //     403/409 races, summary-side download failures that lose ALL
-  //     per-shard results, coverage misses cascading from those, missing
-  //     ci-status.json, etc.) should not dequeue an otherwise-green PR
-  //     (with the repo's ALLGREEN grouping strategy, any failing check
-  //     dissolves the whole batch).
-  //
-  //   PLAYWRIGHT_RESULT === 'success' is authoritative: it means every
-  //   shard job succeeded, which means every shard's Playwright test
-  //   step passed. That signal is safe even when the summary job's
-  //   download-artifact step later flakes and leaves us with zero
-  //   per-shard results (see run 34312746335: 37/37 shards succeeded,
-  //   summary's Download-all-results-JSON returned failure, 75 infra
-  //   issues cascaded — the merge_group check must trust the matrix).
-  //
-  //   All infrastructure issues are still enumerated in the rendered
-  //   job summary above for debuggability — they just don't fail the
-  //   check on merge_group.
+  // PR results cannot attest coverage of a different, tentative merge commit.
+  // Transport is retried separately; exhausted recovery never waives integrity.
   const isMergeGroup = context.eventName === 'merge_group';
   const upstreamGreen = upstreamResult === 'success';
-  const shouldFail = isMergeGroup
-    ? (totalFailed > 0 || !upstreamGreen)
-    : (totalFailed > 0 || infrastructureIssues.length > 0);
+  const shouldFail = totalFailed > 0 || infrastructureIssues.length > 0 ||
+    (isMergeGroup && !upstreamGreen);
 
   if (shouldFail) {
     // Tell the author which kind of red this is: test failures need their
     // action; infrastructure-only failures explicitly do not.
     let verdict;
     if (totalFailed > 0) {
-      verdict = 'test failures — author action needed';
+      verdict = 'test failures — investigate assertion, product, or test race';
     } else if (isMergeGroup && !upstreamGreen) {
       verdict = `shard matrix not green on merge_group (PLAYWRIGHT_RESULT=${upstreamResult || 'unset'}) — refusing synthetic green`;
     } else {
-      verdict = 'no test failures — CI infrastructure/reporting problem, not this change';
+      verdict = 'no reported test failures — CI infrastructure or incomplete execution evidence';
     }
     core.setFailed(
       `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s) (${verdict}).`

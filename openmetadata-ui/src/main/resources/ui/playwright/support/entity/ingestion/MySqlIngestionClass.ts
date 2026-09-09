@@ -39,23 +39,32 @@ import {
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
+interface MysqlConnection {
+  username: string;
+  password: string;
+  hostPort: string;
+}
+
 class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
   defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
   excludeSchemas: string[];
   profilerTable = 'alert_entity';
+  private readonly connection?: MysqlConnection;
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
     shouldAddDefaultFilters?: boolean;
     tableFilter?: string[];
+    connection?: MysqlConnection;
   }) {
     const {
       shouldTestConnection = true,
       shouldAddIngestion = true,
       shouldAddDefaultFilters = false,
       tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+      connection,
     } = extraParams ?? {};
 
     const serviceName = `pw-mysql-with-%-${uuid()}`;
@@ -71,6 +80,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     this.name = serviceName;
     this.tableFilter = tableFilter;
     this.excludeSchemas = ['openmetadata'];
+    this.connection = connection;
   }
 
   async createService(page: Page) {
@@ -82,9 +92,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const username = env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
-    const password = env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
-    const hostPort = env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
+    const username =
+      this.connection?.username ?? env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
+    const password =
+      this.connection?.password ?? env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
+    const hostPort =
+      this.connection?.hostPort ?? env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
 
     await page.fill('#root\\/username', username);
     await checkServiceFieldSectionHighlighting(page, 'username');

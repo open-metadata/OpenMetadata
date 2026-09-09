@@ -1382,14 +1382,20 @@ test.describe(
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
-        await searchResPromise;
+        expect((await searchResPromise).ok()).toBe(true);
         await waitForAllLoadersToDisappear(page);
 
-        const option = page.getByRole('option', {
+        const option = page.getByTestId('picker-popover').getByRole('option', {
           name: table.displayName ?? table.name,
         });
         await expect(option).toBeVisible();
@@ -1710,9 +1716,15 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
         await searchResPromise;
 
@@ -1745,9 +1757,15 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
         await searchResPromise;
 
@@ -1857,9 +1875,15 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
         await searchResPromise;
 

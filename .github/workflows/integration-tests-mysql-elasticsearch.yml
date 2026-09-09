@@ -195,15 +195,13 @@ jobs:
           retention-days: 1
           compression-level: 0
 
-      # upload-artifact has no built-in retry, and a FinalizeArtifact 403 from the
-      # blob-storage intermediary is transient — without a second attempt it fails the
-      # build job and every lane that depends on it. overwrite: true keeps the re-upload
-      # safe even when the first attempt already staged blobs.
+      # A failed finalize can reserve the first name without publishing it.
+      # The download helper also resolves this uniquely named retry.
       - name: Upload Integration Test Runtime (retry)
         if: ${{ steps.upload-runtime.outcome == 'failure' }}
         uses: actions/upload-artifact@v7
         with:
-          name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
+          name: java-it-build-mysql-elasticsearch-${{ github.run_id }}-retry
           overwrite: true
           path: ${{ runner.temp }}/java-it-build
           if-no-files-found: error
@@ -303,7 +301,7 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Download Integration Test Runtime
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifact-with-retry
         with:
           name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
           path: ${{ runner.temp }}/java-it-build

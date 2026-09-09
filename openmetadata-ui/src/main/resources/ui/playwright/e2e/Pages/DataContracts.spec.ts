@@ -75,7 +75,6 @@ import {
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
-  waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
 import {
   addOwner,
@@ -486,31 +485,10 @@ test.describe('Data Contracts', () => {
           // save and trigger contract validation
           const response = await saveAndTriggerDataContractValidation(page);
 
-          // The test suite results may be available before the contract's latestResult is
-          // updated. If waitForDataContractExecution times out, fall back to the DataQuality
-          // page to verify the test suite ran successfully.
-          if (
-            typeof response === 'object' &&
-            response !== null &&
-            'id' in response
-          ) {
-            const { id: contractId } = response as { id: string };
-
-            if (contractId) {
-              const contractResultVisible =
-                await waitForContractExecutionWithFallback(
-                  page,
-                  contractId,
-                  DATA_CONTRACT_DETAILS.name
-                );
-
-              if (contractResultVisible) {
-                await expect(
-                  page.getByTestId('data-contract-latest-result-btn')
-                ).toBeVisible();
-              }
-            }
-          }
+          expect(response).toHaveProperty('id');
+          await expect(
+            page.getByTestId('data-contract-latest-result-btn')
+          ).toBeVisible();
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {

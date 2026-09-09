@@ -670,8 +670,12 @@ export class OverviewPageObject extends RightPanelBase {
       Teams: 'team',
     };
 
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editOwnersIcon.click({ force: true });
+    await expect(async () => {
+      if (!(await this.selectOwnerTabs.isVisible())) {
+        await this.editOwnersIcon.click();
+      }
+      await expect(this.selectOwnerTabs).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
     await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
 

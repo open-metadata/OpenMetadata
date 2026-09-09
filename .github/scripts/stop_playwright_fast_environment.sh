@@ -18,6 +18,10 @@ if [[ -n "${PW_AIRFLOW_CONTAINER:-}" ]]; then
   docker rm --force "${PW_AIRFLOW_CONTAINER}_seed" 2>/dev/null || true
 fi
 
+if [[ -n "${PW_AUTOPILOT_MYSQL_CONTAINER:-}" ]]; then
+  docker rm --force --volumes "$PW_AUTOPILOT_MYSQL_CONTAINER" 2>/dev/null || true
+fi
+
 if [[ -n "${PW_SERVER_PID_FILE:-}" && -f "$PW_SERVER_PID_FILE" ]]; then
   server_pid=$(cat "$PW_SERVER_PID_FILE")
   kill "$server_pid" 2>/dev/null || true

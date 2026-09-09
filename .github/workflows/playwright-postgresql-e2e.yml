@@ -150,7 +150,7 @@ jobs:
       - name: Download blob reports
         id: download-blobs
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifact-with-retry
         continue-on-error: true
         with:
           pattern: playwright-blob-*
@@ -160,7 +160,7 @@ jobs:
       - name: Download timing metrics
         id: download-timings
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifact-with-retry
         continue-on-error: true
         with:
           pattern: playwright-timings-*
@@ -170,7 +170,7 @@ jobs:
         id: download-plans
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifact-with-retry
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -178,7 +178,7 @@ jobs:
       - name: Download all results JSON
         id: download-results
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifact-with-retry
         continue-on-error: true
         with:
           pattern: playwright-results-json-*
@@ -194,6 +194,14 @@ jobs:
           # the layout consistent across single-shard and multi-shard runs.
           # See run 30088248354 for the failure this addresses.
           merge-multiple: false
+
+      - name: Validate and normalize execution artifacts
+        id: normalize-results
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+        run: node .github/scripts/normalize_playwright_artifacts.cjs results "$EXPECTED_HEAD_SHA"
 
       # Diagnostic: log the actual on-disk layout the renderer sees. The
       # explicit merge-multiple pin above matches the documented default,
@@ -277,6 +285,7 @@ jobs:
         run: |
           timeout --foreground --signal=TERM --kill-after=30s 1m \
             python3 .github/scripts/verify_playwright_coverage.py \
+              --require-native-evidence \
               --plan-glob "$RUNNER_TEMP/playwright-plans/*.json" \
               --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
               --result-glob "$GITHUB_WORKSPACE/results/playwright-results-json-*/results.json" \
@@ -450,6 +459,8 @@ jobs:
             --matrix-outcome "$MATRIX_OUTCOME" \
             --expected-matrix-json "$EXPECTED_MATRIX" \
             --profile postgresql-pr \
+            --coverage "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json" \
+            --artifact-integrity-outcome "${{ steps.normalize-results.outcome }}" \
             --source-sha "$SOURCE_SHA" \
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
@@ -512,6 +523,8 @@ jobs:
           REPORT_START_OUTCOME: ${{ steps.mark-report-start.outcome }}
           REPORT_MERGE_OUTCOME: ${{ steps.merge-report.outcome }}
           REPORT_TIMING_MERGE_OUTCOME: ${{ steps.merge-timings.outcome }}
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          REPORT_NORMALIZE_OUTCOME: ${{ steps.normalize-results.outcome }}
           REPORT_COVERAGE_OUTCOME: ${{ steps.verify-coverage.outcome }}
           REPORT_PERFORMANCE_OUTCOME: ${{ steps.evaluate-performance.outcome }}
           REPORT_UPLOAD_OUTCOME: ${{ steps.upload-report.outcome }}
@@ -592,7 +605,7 @@ jobs:
           token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Download timing history artifact
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifact-with-retry
         with:
           name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/timing-history

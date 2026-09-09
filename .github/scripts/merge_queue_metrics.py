@@ -23,16 +23,20 @@ Two API traps this module exists to contain:
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
 import statistics
+import subprocess
 import time
 import urllib.error
 import urllib.request
+import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Sequence
-
+from urllib.parse import urlencode
 
 GITHUB_GRAPHQL = "https://api.github.com/graphql"
 GITHUB_REST = "https://api.github.com"
@@ -69,8 +73,9 @@ class CheckAccessError(ApiError):
 # --------------------------------------------------------------------------- api
 
 
-def _request(url: str, token: str, data: bytes | None = None,
-             accept: str = "application/json") -> Any:
+def _request(
+    url: str, token: str, data: bytes | None = None, accept: str = "application/json"
+) -> Any:
     req = urllib.request.Request(
         url,
         data=data,
@@ -87,7 +92,9 @@ def _request(url: str, token: str, data: bytes | None = None,
     except urllib.error.HTTPError as exc:
         # HTTPError subclasses URLError, so without this it would be swallowed by the
         # network-retry path and a 403 would cost three backoffs before failing.
-        raise ApiError(f"HTTP {exc.code} {exc.reason} for {url}", status=exc.code) from exc
+        raise ApiError(
+            f"HTTP {exc.code} {exc.reason} for {url}", status=exc.code
+        ) from exc
 
 
 def _retryable(exc: Exception) -> bool:
@@ -103,8 +110,12 @@ def _retrying(fn, attempts: int = 3, backoff: float = 3.0):
     for attempt in range(attempts):
         try:
             return fn()
-        except (ApiError, urllib.error.URLError, TimeoutError,
-                json.JSONDecodeError) as exc:
+        except (
+            ApiError,
+            urllib.error.URLError,
+            TimeoutError,
+            json.JSONDecodeError,
+        ) as exc:
             if not _retryable(exc):
                 raise
             last = exc
@@ -196,7 +207,8 @@ def queue_metrics(queue: dict[str, Any], now: datetime) -> dict[str, Any]:
     head_age = hours_between(parse_ts(head["enqueuedAt"]), now) if head else None
     oldest_age = (
         max(hours_between(parse_ts(e["enqueuedAt"]), now) for e in entries)
-        if entries else None
+        if entries
+        else None
     )
 
     # GitHub's per-position ladder is linear, so successive deltas recover the service
@@ -222,7 +234,8 @@ def queue_metrics(queue: dict[str, Any], now: datetime) -> dict[str, Any]:
         "github_rate_per_h": 3600.0 / service_step if service_step else None,
         "next_entry_eta_h": (
             queue["nextEntryEstimatedTimeToMerge"] / 3600.0
-            if queue.get("nextEntryEstimatedTimeToMerge") is not None else None
+            if queue.get("nextEntryEstimatedTimeToMerge") is not None
+            else None
         ),
         "states": states,
         "stuck_states": {
@@ -265,8 +278,9 @@ query($q: String!, $cursor: String, $pageSize: Int!, $events: Int!) {
 """
 
 
-def fetch_history(owner: str, repo: str, branch: str, since: datetime,
-                  token: str) -> tuple[list[dict[str, Any]], bool]:
+def fetch_history(
+    owner: str, repo: str, branch: str, since: datetime, token: str
+) -> tuple[list[dict[str, Any]], bool]:
     query = (
         f"repo:{owner}/{repo} is:pr base:{branch} "
         f"updated:>={since.strftime('%Y-%m-%d')}"
@@ -304,8 +318,9 @@ def _removals(pr: dict[str, Any]) -> list[dict[str, Any]]:
     return (pr.get("removals") or {}).get("nodes") or []
 
 
-def realized_metrics(prs: Iterable[dict[str, Any]], window_start: datetime,
-                     window_end: datetime) -> dict[str, Any]:
+def realized_metrics(
+    prs: Iterable[dict[str, Any]], window_start: datetime, window_end: datetime
+) -> dict[str, Any]:
     """Recompute a window's queue behaviour from timeline history alone.
 
     ``first_pass_*`` measures a single clean trip through the queue — the thing
@@ -329,7 +344,9 @@ def realized_metrics(prs: Iterable[dict[str, Any]], window_start: datetime,
                 continue
             reason = removal.get("reason") or "unknown"
             reasons[reason] = reasons.get(reason, 0) + 1
-            if reason != MERGE_REASON and (removal.get("beforeCommit") or {}).get("oid"):
+            if reason == "failed_checks" and (removal.get("beforeCommit") or {}).get(
+                "oid"
+            ):
                 failed_commits.append(removal["beforeCommit"]["oid"])
 
         if not pr.get("merged") or not pr.get("mergedAt"):
@@ -364,7 +381,8 @@ def realized_metrics(prs: Iterable[dict[str, Any]], window_start: datetime,
         "first_pass_p90_h": percentile(first_pass_latency, 0.90),
         "requeue_penalty_h": (
             percentile(total_latency, 0.50) - percentile(first_pass_latency, 0.50)
-            if total_latency and first_pass_latency else None
+            if total_latency and first_pass_latency
+            else None
         ),
         "first_pass_rate": (
             first_pass_wins / merged_via_queue if merged_via_queue else None
@@ -381,7 +399,9 @@ def realized_metrics(prs: Iterable[dict[str, Any]], window_start: datetime,
     }
 
 
-def projected_drain_h(depth: int | None, throughput_per_h: float | None) -> float | None:
+def projected_drain_h(
+    depth: int | None, throughput_per_h: float | None
+) -> float | None:
     """Honest drain estimate: queue depth over the rate actually observed. Replaces
     GitHub's projection, which assumes a first-pass merge for every entry."""
     if not depth or not throughput_per_h:
@@ -416,40 +436,258 @@ def sanitize_external(text: str) -> str:
     )
 
 
-def top_failing_checks(commits: Sequence[str], owner: str, repo: str, token: str,
-                       limit: int = 5) -> list[tuple[str, int]]:
-    """Which checks actually failed on the commits that got dequeued.
+def paginated_items(path: str, key: str, token: str, max_pages: int = 10) -> list[dict]:
+    items = []
+    separator = "&" if "?" in path else "?"
+    for page in range(1, max_pages + 1):
+        payload = rest(f"{path}{separator}per_page=100&page={page}", token)
+        batch = payload.get(key, [])
+        items.extend(batch)
+        if len(batch) < 100 or len(items) >= payload.get("total_count", float("inf")):
+            return items
+    raise ApiError(f"Partial data: {path} exceeded {max_pages} pages")
 
-    Every other metric says the queue is slow; this one names what to fix. Mirrors the
-    per-PR join in merge-queue-dequeue-report.yml, aggregated over a window.
-    """
+
+def commit_checks(oid: str, owner: str, repo: str, token: str) -> list[dict]:
+    try:
+        return paginated_items(
+            f"/repos/{owner}/{repo}/commits/{oid}/check-runs", "check_runs", token
+        )
+    except ApiError as exc:
+        if exc.status in (401, 403):
+            raise CheckAccessError(
+                f"Cannot read check runs: {exc}", exc.status
+            ) from exc
+        if exc.status == 404:
+            return []
+        raise
+
+
+def classify_check_evidence(checks: Sequence[dict]) -> dict:
+    direct = {}
+    cancelled = 0
+    for check in checks:
+        conclusion = check.get("conclusion")
+        if conclusion == "cancelled":
+            cancelled += 1
+        if conclusion not in {
+            "failure",
+            "timed_out",
+            "startup_failure",
+            "action_required",
+        }:
+            continue
+        url = check.get("details_url") or check.get("html_url") or ""
+        run_match = re.search(r"/actions/runs/(\d+)", url)
+        run_id = int(run_match.group(1)) if run_match else None
+        name = check["name"]
+        family = (
+            "Playwright E2E"
+            if "playwright" in name.lower()
+            else shorten_check_name(name)
+        )
+        # A workflow's job, test reporter and required summary describe one failure incident.
+        identity = run_id or check.get("check_suite", {}).get("id") or family
+        evidence = {
+            "check": sanitize_external(family),
+            "jobUrl": url,
+            "runId": run_id,
+            "conclusion": conclusion,
+        }
+        if identity not in direct or "summary" not in name.lower():
+            direct[identity] = evidence
+    return {"directFailures": list(direct.values()), "cancelled": cancelled}
+
+
+def top_failing_checks(
+    commits: Sequence[str], owner: str, repo: str, token: str, limit: int = 5
+) -> list[tuple[str, int]]:
     tally: dict[str, int] = {}
     for oid in dict.fromkeys(commits):
-        try:
-            payload = rest(
-                f"/repos/{owner}/{repo}/commits/{oid}/check-runs?per_page=100", token
-            )
-        except ApiError as exc:
-            # A queue commit is GC'd once its ref dies — expected, and one missing
-            # commit must not sink the report. An auth failure is the opposite: it
-            # means the workflow lacks `checks: read`, and swallowing it would render
-            # as "no failing checks", i.e. a clean bill of health for a blind read.
-            if exc.status in (401, 403):
-                raise CheckAccessError(
-                    f"cannot read check runs ({exc}) — does the workflow grant "
-                    "`checks: read`?",
-                    status=exc.status,
-                ) from exc
-            if exc.status == 404:
-                continue
-            print(f"::warning::check runs unreadable for {oid[:7]}: {exc}")
-            continue
-        for run in payload.get("check_runs", []):
-            if run.get("conclusion") in (None, "success", "neutral", "skipped"):
-                continue
-            name = sanitize_external(shorten_check_name(run["name"]))
+        evidence = classify_check_evidence(commit_checks(oid, owner, repo, token))
+        for failure in evidence["directFailures"]:
+            name = failure["check"]
             tally[name] = tally.get(name, 0) + 1
     return sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[:limit]
+
+
+def read_summary_artifact(
+    run_id: int, owner: str, repo: str, token: str, attempt: int = 1
+) -> dict | None:
+    artifacts = paginated_items(
+        f"/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts", "artifacts", token
+    )
+    name = f"playwright-shadow-gate-postgresql-pr-{run_id}-{attempt}"
+    candidates = [
+        artifact
+        for artifact in artifacts
+        if artifact["name"] == name and not artifact.get("expired")
+    ]
+    if not candidates:
+        return None
+    artifact = max(candidates, key=lambda value: value["id"])
+    if artifact.get("size_in_bytes", 0) > 2 * 1024 * 1024:
+        raise ApiError(f"Oversized summary artifact in run {run_id}")
+
+    # gh handles the authenticated API -> signed blob redirect without exposing tokens.
+    def download():
+        try:
+            completed = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"repos/{owner}/{repo}/actions/artifacts/{artifact['id']}/zip",
+                ],
+                env={**os.environ, "GH_TOKEN": token},
+                capture_output=True,
+                timeout=30,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise ApiError(f"Summary download timed out for run {run_id}") from exc
+        if completed.returncode:
+            raise ApiError(f"Summary download failed for run {run_id}")
+        return completed.stdout
+
+    archive_bytes = _retrying(download)
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+        member = archive.getinfo("outcome.json")
+        if member.file_size > 8 * 1024 * 1024:
+            raise ApiError(f"Oversized summary JSON in run {run_id}")
+        report = json.loads(archive.read(member))
+    if (
+        not isinstance(report, dict)
+        or report.get("schemaVersion") != 1
+        or not isinstance(report.get("counts"), dict)
+    ):
+        raise ApiError(f"Invalid summary in run {run_id}")
+    if not isinstance(report.get("failures", []), list) or not all(
+        isinstance(failure, dict) and isinstance(failure.get("title"), str)
+        for failure in report.get("failures", [])
+    ):
+        raise ApiError(f"Invalid failure records in run {run_id}")
+    for failure in report.get("failures", []):
+        failure["error"] = failure.get("firstError", "")
+    return report
+
+
+def aggregate_test_reports(reports: Sequence[dict | None]) -> dict:
+    totals = {
+        key: 0
+        for key in [
+            "firstAttemptPassed",
+            "firstAttemptFailed",
+            "retriedTests",
+            "quarantinedTests",
+            "skippedTests",
+            "missingReports",
+            "legacyReports",
+            "quarantineUnknownReports",
+            "unverifiedCoverageReports",
+            "unverifiedIntegrityReports",
+        ]
+    }
+    for report in reports:
+        if report is None:
+            totals["missingReports"] += 1
+            continue
+        measurement = report.get("measurement")
+        if not measurement:
+            totals["legacyReports"] += 1
+            continue
+        if measurement.get("quarantinedTests") is None:
+            totals["quarantineUnknownReports"] += 1
+        if measurement.get("coverageVerified") is not True:
+            totals["unverifiedCoverageReports"] += 1
+        if measurement.get("artifactIntegrityVerified") is not True:
+            totals["unverifiedIntegrityReports"] += 1
+        for key in totals.keys() - {
+            "missingReports",
+            "legacyReports",
+            "quarantineUnknownReports",
+            "unverifiedCoverageReports",
+            "unverifiedIntegrityReports",
+        }:
+            value = measurement.get(key)
+            if isinstance(value, int) and value >= 0:
+                totals[key] += value
+    return totals
+
+
+def failure_signature(error: str) -> str:
+    value = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", error)
+    value = re.sub(
+        r"(?im)(authorization|cookie|set-cookie|x-api-key)\s*[:=][^\r\n]*",
+        r"\1: <redacted>",
+        value,
+    )
+    value = re.sub(
+        r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "<redacted>", value
+    )
+    value = re.sub(
+        r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", "<uuid>", value
+    )
+    return sanitize_external(value.split("\n")[0][:180])
+
+
+def queue_failure_details(
+    commits: Sequence[str], owner: str, repo: str, token: str
+) -> list[dict]:
+    details = []
+    for oid in dict.fromkeys(commits):
+        evidence = classify_check_evidence(commit_checks(oid, owner, repo, token))
+        details.append({"sha": oid, **evidence})
+    return details
+
+
+def playwright_window_reports(
+    owner: str, repo: str, token: str, start: datetime, end: datetime
+) -> tuple[list[dict], list[str]]:
+    query = urlencode(
+        {"event": "merge_group", "created": f"{start.isoformat()}..{end.isoformat()}"}
+    )
+    runs = paginated_items(
+        f"/repos/{owner}/{repo}/actions/workflows/playwright-postgresql-e2e.yml/runs?{query}",
+        "workflow_runs",
+        token,
+    )
+    warnings = []
+
+    def collect(run):
+        try:
+            report = read_summary_artifact(run["id"], owner, repo, token)
+            if report and report.get("context", {}).get("sourceSha") != run["head_sha"]:
+                raise ApiError(f"Summary commit mismatch in run {run['id']}")
+            return {
+                "runId": run["id"],
+                "sha": run["head_sha"],
+                "conclusion": run["conclusion"],
+                "attempts": run.get("run_attempt", 1),
+                "createdAt": run["created_at"],
+                "report": report,
+            }, None
+        except (
+            ApiError,
+            OSError,
+            ValueError,
+            KeyError,
+            zipfile.BadZipFile,
+            subprocess.TimeoutExpired,
+        ) as exc:
+            return {
+                "runId": run["id"],
+                "sha": run["head_sha"],
+                "conclusion": run["conclusion"],
+                "attempts": run.get("run_attempt", 1),
+                "report": None,
+            }, str(exc)
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        collected = list(pool.map(collect, runs))
+    for _, warning in collected:
+        if warning:
+            warnings.append(warning)
+    return [record for record, _ in collected], warnings
 
 
 # -------------------------------------------------------------------- formatting
@@ -467,8 +705,9 @@ def fmt_rate(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.2f}/h"
 
 
-def delta_marker(current: float | None, baseline: float | None,
-                 lower_is_better: bool = True) -> str:
+def delta_marker(
+    current: float | None, baseline: float | None, lower_is_better: bool = True
+) -> str:
     """Direction against a reference window. Deliberately has no threshold — the daily
     report always posts and lets the reader judge, so there is no fire/don't-fire call
     to get wrong."""

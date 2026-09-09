@@ -19,41 +19,21 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
+import { waitForContractResult } from './contractExecution';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-
-const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
-
-const pollContractStatus = async (
-  page: Page,
-  contractId: string,
-  timeoutMs = 180_000
-): Promise<void> => {
-  const { apiContext } = await getApiContext(page);
-  await expect
-    .poll(
-      async () => {
-        const contract = await apiContext
-          .get(`/api/v1/dataContracts/${contractId}`)
-          .then((r) => (r.ok() ? r.json() : null))
-          .catch(() => null);
-
-        return contract?.latestResult?.status ?? 'Running';
-      },
-      {
-        message: 'Wait for contract validation to reach terminal state',
-        timeout: timeoutMs,
-        intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
-      }
-    )
-    .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
-};
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
 ): Promise<object | undefined> => {
-  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
+  const saveContractResponse = page.waitForResponse(
+    (response) =>
+      ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
+      /^\/api\/v1\/dataContracts(?:\/[^/]+)?$/.test(
+        new URL(response.url()).pathname
+      )
+  );
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
   expect(
@@ -70,28 +50,7 @@ export const saveAndTriggerDataContractValidation = async (
     ).not.toBeVisible();
   }
 
-  const runNowResponse = page.waitForResponse(
-    '/api/v1/dataContracts/*/validate'
-  );
-  await page.getByTestId('manage-contract-actions').click();
-
-  await page
-    .getByTestId('contract-run-now-button')
-    .waitFor({ state: 'visible' });
-
-  await page.getByTestId('contract-run-now-button').click();
-  await runNowResponse;
-
-  // Poll the API until the validation result reaches a terminal state before
-  // reloading the page. Without this, the UI status check immediately after
-  // the reload is racy: the backend may still be processing the result.
-  if (responseData?.id) {
-    await waitForContractExecutionWithFallback(
-      page,
-      responseData.id,
-      responseData.name
-    );
-  }
+  await triggerContractValidation(page, responseData.id);
 
   await page.reload();
 
@@ -149,117 +108,24 @@ export const validateDataContractInsideBundleTestSuites = async (
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
-  maxConsecutiveErrors = 3
-) => {
-  const { apiContext } = await getApiContext(page);
-  let consecutiveErrors = 0;
-  const terminalStatusPattern =
-    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-  await expect
-    .poll(
-      async () => {
-        try {
-          // Poll the contract entity — latestResult.status is what the backend updates
-          // and what the UI reads. Avoids coupling to a resultId that may be stale.
-          const contractResponse = await apiContext
-            .get(`/api/v1/dataContracts/${contractId}`)
-            .then((res) => (res.ok() ? res.json() : null))
-            .catch(() => null);
-
-          consecutiveErrors = 0;
-
-          const status = contractResponse?.latestResult?.status;
-
-          return status ?? 'Running';
-        } catch (error) {
-          consecutiveErrors++;
-          if (consecutiveErrors >= maxConsecutiveErrors) {
-            throw new Error(
-              `Failed to get contract execution status after ${maxConsecutiveErrors} consecutive attempts: ${error}`
-            );
-          }
-
-          throw error;
-        }
-      },
-      {
-        message: 'Wait for data contract execution to complete',
-        timeout: 600_000,
-        intervals: [30_000, 20_000, 10_000],
-      }
-    )
-    .toEqual(expect.stringMatching(terminalStatusPattern));
-};
-
-/**
- * Waits for the data contract execution to complete. If the contract's latestResult
- * is not updated in time (the test suite takes significant time and the contract result
- * propagation lags), falls back to the DataQuality page to verify the test suite results
- * directly from the Bundle Suites list.
- *
- * Returns true if the contract's own result was available, false if the DQ fallback was used.
- */
-export const waitForContractExecutionWithFallback = async (
-  page: Page,
-  contractId: string,
-  contractName: string
-): Promise<boolean> => {
+  resultId?: string
+): Promise<void> => {
+  const { apiContext, afterAction } = await getApiContext(page);
   try {
-    await waitForDataContractExecution(page, contractId);
-
-    return true;
-  } catch {
-    // The test suite has results but the contract's latestResult was not updated in time.
-    // Verify execution status directly from the DataQuality Bundle Suites page.
-    await validateDataContractInsideBundleTestSuites(page, contractName);
-
-    const suiteNameCell = page
-      .getByTestId('test-suite-table')
-      .getByRole('rowheader', {
-        name: `Data Contract - ${contractName}`,
-      });
-
-    await expect(suiteNameCell).toBeVisible();
-
-    const testCaseListResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list*'
-    );
-    await suiteNameCell.locator('a').first().click();
-    const testCasesJson = await (await testCaseListResponse).json();
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('manage-button')).toBeVisible();
-
-    type TestCaseEntry = { testCaseResult?: { testCaseStatus?: string } };
-
-    const testCases = testCasesJson?.data ?? [];
-    const hasFailure = testCases.some(
-      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Failed'
-    );
-    const hasAborted = testCases.some(
-      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Aborted'
-    );
-    const hasSuccess = testCases.some(
-      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Success'
-    );
-
-    let suiteStatus = 'Running';
-
-    if (hasFailure) {
-      suiteStatus = 'Failed';
-    } else if (hasAborted) {
-      suiteStatus = 'Aborted';
-    } else if (hasSuccess) {
-      suiteStatus = 'Success';
+    let executionId = resultId;
+    if (!executionId) {
+      const response = await apiContext.get(
+        `/api/v1/dataContracts/${contractId}`
+      );
+      expect(
+        response.ok(),
+        `Contract ${contractId}: HTTP ${response.status()}`
+      ).toBe(true);
+      executionId = (await response.json()).latestResult?.resultId;
     }
-
-    const terminalStatusPattern =
-      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
-
-    return false;
+    await waitForContractResult(apiContext, contractId, executionId ?? '');
+  } finally {
+    await afterAction();
   }
 };
 
@@ -428,7 +294,13 @@ export const saveSecurityAndSLADetails = async (
 
   await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
 
-  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
+  const saveContractResponse = page.waitForResponse(
+    (response) =>
+      ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
+      /^\/api\/v1\/dataContracts(?:\/[^/]+)?$/.test(
+        new URL(response.url()).pathname
+      )
+  );
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
@@ -572,7 +444,13 @@ export const deleteContract = async (
 };
 
 export const saveContractAndWait = async (page: Page): Promise<void> => {
-  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
+  const saveContractResponse = page.waitForResponse(
+    (response) =>
+      ['POST', 'PUT', 'PATCH'].includes(response.request().method()) &&
+      /^\/api\/v1\/dataContracts(?:\/[^/]+)?$/.test(
+        new URL(response.url()).pathname
+      )
+  );
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
@@ -584,18 +462,28 @@ export const triggerContractValidation = async (
   contractId?: string
 ): Promise<void> => {
   const runNowResponse = page.waitForResponse(
-    '/api/v1/dataContracts/*/validate'
+    (response) =>
+      response.request().method() === 'POST' &&
+      /^\/api\/v1\/dataContracts\/[^/]+\/validate$/.test(
+        new URL(response.url()).pathname
+      )
   );
 
   await openContractActionsDropdown(page);
   await page.getByTestId('contract-run-now-button').click();
-  await runNowResponse;
-
-  // If a contractId is supplied, poll until the validation reaches a terminal
-  // state so callers can safely assert on the UI status after a reload.
+  const response = await runNowResponse;
+  expect(response.ok(), `Contract validation: HTTP ${response.status()}`).toBe(
+    true
+  );
+  const execution = await response.json();
+  expect(execution.id, 'Validation must identify its execution').toEqual(
+    expect.any(String)
+  );
+  const validatedContractId = new URL(response.url()).pathname.split('/')[4];
   if (contractId) {
-    await pollContractStatus(page, contractId);
+    expect(validatedContractId).toBe(contractId);
   }
+  await waitForDataContractExecution(page, validatedContractId, execution.id);
 };
 
 export const exportContractYaml = async (

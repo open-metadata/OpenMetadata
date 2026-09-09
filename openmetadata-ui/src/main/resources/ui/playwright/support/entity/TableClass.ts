@@ -442,7 +442,8 @@ export class TableClass extends EntityClass {
 
   async createTestSuiteAndPipelines(
     apiContext: APIRequestContext,
-    testSuite?: TestSuiteData
+    testSuite?: TestSuiteData,
+    scheduleInterval?: string | null
   ) {
     if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
@@ -461,7 +462,11 @@ export class TableClass extends EntityClass {
 
     this.testSuiteResponseData = testSuiteData;
 
-    const pipeline = await this.createTestSuitePipeline(apiContext);
+    const pipeline = await this.createTestSuitePipeline(
+      apiContext,
+      undefined,
+      scheduleInterval
+    );
 
     return {
       testSuiteData,
@@ -471,13 +476,14 @@ export class TableClass extends EntityClass {
 
   async createTestSuitePipeline(
     apiContext: APIRequestContext,
-    testCases?: string[]
+    testCases?: string[],
+    scheduleInterval: string | null = '0 * * * *'
   ) {
     const pipelineData = await apiContext
       .post(`/api/v1/services/ingestionPipelines`, {
         data: {
           airflowConfig: {
-            scheduleInterval: '0 * * * *',
+            scheduleInterval,
           },
           name: `pw-test-suite-pipeline-${uuid()}`,
           loggerLevel: 'INFO',

@@ -150,7 +150,12 @@ class DagDeployer:
                 dag_bag = get_dagbag()
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))  # noqa: UP032
-                dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
+                # Serialized metadata can lag behind the definition being deployed.
+                dag: DAG | None = next((parsed for parsed in found_dags if parsed.dag_id == self.dag_id), None)
+
+                if dag is None:
+                    logger.error("Workflow [%s] was not loaded from %s", self.dag_id, dag_py_file)
+                    return ApiResponse.server_error()
 
                 if hasattr(dag, "sync_to_db"):
                     dag.sync_to_db(session=session)
@@ -161,10 +166,8 @@ class DagDeployer:
                     )
                 dag_model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
                 logger.info("dag_model:" + str(dag_model))
-            except Exception as exc:
-                msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
-                logger.debug(traceback.format_exc())
-                logger.error(msg)
+            except Exception:
+                logger.exception("Workflow [%s] failed to refresh", self.dag_id)
                 return ApiResponse.server_error()
 
         scan_dags_job_background()

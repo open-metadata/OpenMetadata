@@ -193,10 +193,11 @@ const escapeRegExp = (value: string) =>
  * One predicate handler sets `all`, and the whole context then intercepts
  * every request. Measured on merge_group runs of #32594, that cost the suite
  * ~7% wall-clock and +15.6 GB of asset traffic: ~29k requests a shard
- * round-tripped through the Node driver instead of ~8.5k, and intercepted
- * requests miss the browser's HTTP cache (`static:304` 4,151 -> 2,239 while
- * `static:200` rose 22.3k). A RegExp is forwarded as `regexSource`, so the
- * browser pauses only these paths.
+ * round-tripped through the Node driver instead of ~8.5k. A RegExp is forwarded
+ * as `regexSource`, so the browser pauses only these paths. Routing still
+ * disables the context's native HTTP cache, including for unmatched assets:
+ * https://playwright.dev/docs/api/class-browsercontext#browser-context-route
+ * Measure API savings and static traffic separately when changing this cache.
  *
  * Matched against the full URL, since that is what `urlMatches` tests a RegExp
  * against. `[^?#]*` cannot cross a `?`, so a path that appears inside a query

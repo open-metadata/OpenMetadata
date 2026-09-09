@@ -142,16 +142,13 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
       await searchInput.fill('');
 
       const clearHttpResponse = await clearResponse;
+      expect(clearHttpResponse.ok()).toBe(true);
       const clearData: { hits?: { hits?: unknown[] } } =
         await clearHttpResponse.json();
+      expect(Array.isArray(clearData.hits?.hits)).toBe(true);
       await waitForAllLoadersToDisappear(page);
 
-      // Derive the restored row count from the clear response that repopulates
-      // the table, never from a snapshot taken before the search. Parallel
-      // specs mutate the shared metric index, so a pre-search count drifts by
-      // the time the full list is restored — the source of this step's flake.
-      // The table renders exactly the hits this response returns for the
-      // current (first) page.
+      // Parallel specs can change the index after the pre-search snapshot.
       await expect(page.getByTestId('metric-name')).toHaveCount(
         clearData.hits?.hits?.length ?? 0
       );

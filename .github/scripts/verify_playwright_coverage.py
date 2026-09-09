@@ -9,7 +9,6 @@ import json
 from collections import Counter
 from pathlib import Path
 
-
 # Playwright "setup" projects declared in playwright.config.ts as
 # `dependencies: [...]` values on other projects. Their tests run once per
 # shard-invocation that includes a dependent project (Playwright behaviour —
@@ -26,14 +25,16 @@ from pathlib import Path
 # landed on separate shards, but appeared in neither plan's `testIds`.
 #
 # Keep this list aligned with playwright.config.ts's setup-project section.
-LIFECYCLE_PROJECTS: frozenset[str] = frozenset({
-    "setup",
-    "entity-data-setup",
-    "entity-data-teardown",
-    "data-insight-application",
-    "search-rbac-setup",
-    "search-rbac-teardown",
-})
+LIFECYCLE_PROJECTS: frozenset[str] = frozenset(
+    {
+        "setup",
+        "entity-data-setup",
+        "entity-data-teardown",
+        "data-insight-application",
+        "search-rbac-setup",
+        "search-rbac-teardown",
+    }
+)
 
 
 def is_lifecycle_test(test: dict) -> bool:
@@ -51,6 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plan-glob", required=True)
     parser.add_argument("--timing-glob", required=True)
     parser.add_argument("--result-glob")
+    parser.add_argument("--require-native-evidence", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
@@ -90,6 +92,9 @@ def main() -> None:
     args = parse_args()
     planned = Counter()
     executed = Counter()
+    native = Counter()
+    native_evidence_issues = []
+    quarantined_tests = None
 
     plan_files = sorted(glob.glob(args.plan_glob, recursive=True))
     timing_files = sorted(glob.glob(args.timing_glob, recursive=True))
@@ -98,6 +103,13 @@ def main() -> None:
     )
     for filename in plan_files:
         payload = json.loads(Path(filename).read_text(encoding="utf-8"))
+        if Path(filename).name == "quarantine-inventory.json":
+            quarantined_tests = sum(
+                len(spec.get("tests", []))
+                for suite in payload.get("suites", [])
+                for spec in iter_specs(suite)
+                if any(tag.lstrip("@") == "quarantine" for tag in spec.get("tags", []))
+            )
         if "shardId" not in payload:
             continue
         planned.update(payload.get("testIds", []))
@@ -114,6 +126,23 @@ def main() -> None:
     for filename in result_files:
         payload = json.loads(Path(filename).read_text(encoding="utf-8"))
         zero_attempt_skipped.update(zero_attempt_skipped_tests(payload, executed))
+        if args.require_native_evidence:
+            for suite in payload.get("suites", []):
+                for spec in iter_specs(suite):
+                    for test in spec.get("tests", []):
+                        if test.get("projectName") in LIFECYCLE_PROJECTS:
+                            continue
+                        test_id = spec.get("id")
+                        if not test_id:
+                            native_evidence_issues.append(
+                                f"Missing native test identity in {filename}"
+                            )
+                            continue
+                        native[test_id] += 1
+                        if test.get("status") != "skipped" and not test.get("results"):
+                            native_evidence_issues.append(
+                                f"No execution attempts for {test_id}"
+                            )
     zero_attempt_skipped = {
         test_id: details
         for test_id, details in zero_attempt_skipped.items()
@@ -127,8 +156,26 @@ def main() -> None:
     missing = sorted(planned.keys() - executed.keys() - zero_attempt_skipped.keys())
     unexpected = sorted(executed.keys() - planned.keys())
 
+    if args.require_native_evidence:
+        native_evidence_issues.extend(
+            f"Missing native result: {test_id}"
+            for test_id in sorted(planned.keys() - native.keys())
+        )
+        native_evidence_issues.extend(
+            f"Unexpected native result: {test_id}"
+            for test_id in sorted(native.keys() - planned.keys())
+        )
+        native_evidence_issues.extend(
+            f"Duplicate native result: {test_id}"
+            for test_id, count in native.items()
+            if count > 1
+        )
+        if not planned:
+            native_evidence_issues.append("No tests were planned")
     result = {
         "version": 1,
+        "nativeEvidenceIssues": native_evidence_issues,
+        "quarantinedTests": quarantined_tests,
         "planFiles": len(plan_files),
         "timingFiles": len(timing_files),
         "resultFiles": len(result_files),
@@ -147,13 +194,20 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
-    failures = duplicate_plans + duplicate_executions + missing + unexpected
+    failures = (
+        duplicate_plans
+        + duplicate_executions
+        + missing
+        + unexpected
+        + native_evidence_issues
+    )
     if failures:
         raise SystemExit(
             "Playwright coverage mismatch: "
             f"{len(missing)} missing, {len(unexpected)} unexpected, "
             f"{len(duplicate_plans)} duplicate plans, and "
-            f"{len(duplicate_executions)} duplicate executions"
+            f"{len(duplicate_executions)} duplicate executions; "
+            f"{len(native_evidence_issues)} native evidence issues"
         )
 
 

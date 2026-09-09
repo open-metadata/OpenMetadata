@@ -1,0 +1,83 @@
+name: Download artifact with bounded recovery
+description: Retry downloads, including a uniquely named upload fallback, without rerunning tests
+inputs:
+  name:
+    description: Exact artifact name
+    required: false
+    default: ""
+  pattern:
+    description: Artifact name pattern
+    required: false
+    default: ""
+  path:
+    description: Destination directory
+    required: false
+    default: ""
+  merge-multiple:
+    description: Merge matching artifacts
+    required: false
+    default: "false"
+  github-token:
+    description: Token for cross-run downloads
+    required: false
+    default: ""
+  run-id:
+    description: Source workflow run
+    required: false
+    default: "${{ github.run_id }}"
+outputs:
+  download-path:
+    description: Download destination
+    value: ${{ steps.attempt-3.outputs.download-path || steps.attempt-2.outputs.download-path || steps.attempt-1.outputs.download-path }}
+  attempts:
+    description: Number of transport attempts
+    value: ${{ steps.attempt-3.outcome != 'skipped' && 3 || steps.attempt-2.outcome != 'skipped' && 2 || 1 }}
+runs:
+  using: composite
+  steps:
+  - id: attempt-1
+    uses: actions/download-artifact@v7
+    continue-on-error: true
+    with:
+      name: ${{ inputs.name }}
+      pattern: ${{ inputs.pattern }}
+      path: ${{ inputs.path }}
+      merge-multiple: ${{ inputs.merge-multiple }}
+      github-token: ${{ inputs.github-token }}
+      run-id: ${{ inputs.run-id }}
+  - name: Back off before transport attempt 2
+    if: ${{ !cancelled() && steps.attempt-1.outcome == 'failure' }}
+    shell: bash
+    run: sleep 5
+  - id: attempt-2
+    if: ${{ !cancelled() && steps.attempt-1.outcome == 'failure' }}
+    uses: actions/download-artifact@v7
+    continue-on-error: true
+    with:
+      name: ${{ inputs.name }}
+      pattern: ${{ inputs.pattern }}
+      path: ${{ inputs.path }}
+      merge-multiple: ${{ inputs.merge-multiple }}
+      github-token: ${{ inputs.github-token }}
+      run-id: ${{ inputs.run-id }}
+  - name: Back off before transport attempt 3
+    if: ${{ !cancelled() && steps.attempt-2.outcome == 'failure' }}
+    shell: bash
+    run: sleep 15
+  - id: attempt-3
+    if: ${{ !cancelled() && steps.attempt-2.outcome == 'failure' }}
+    uses: actions/download-artifact@v7
+    continue-on-error: true
+    with:
+      name: ${{ inputs.name && format('{0}-retry', inputs.name) || '' }}
+      pattern: ${{ inputs.pattern }}
+      path: ${{ inputs.path }}
+      merge-multiple: ${{ inputs.merge-multiple }}
+      github-token: ${{ inputs.github-token }}
+      run-id: ${{ inputs.run-id }}
+  - name: Require a completed download
+    if: ${{ !cancelled() && steps.attempt-1.outcome != 'success' && steps.attempt-2.outcome != 'success' && steps.attempt-3.outcome != 'success' }}
+    shell: bash
+    run: |
+      echo '::error::Artifact transport failed after three attempts'
+      exit 1

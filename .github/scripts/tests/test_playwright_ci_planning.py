@@ -2875,23 +2875,15 @@ def test_playwright_summary_pr_fails_when_expected_shard_is_missing(tmp_path):
     assert payload["infrastructureIssueCount"] >= 1
 
 
-def test_playwright_summary_merge_group_passes_when_only_infra_issues(tmp_path):
-    # Merge-queue tentative merges must NOT fail on infra-only issues. The
-    # repo's merge-queue grouping strategy is ALLGREEN — a failing non-required
-    # check still dissolves the whole batch — so an artifact-upload race on
-    # one shard (run 34244326002) is enough to eject a green batch. The strict
-    # checks already ran on the PR before it entered the queue.
+def test_playwright_summary_merge_group_fails_when_coverage_is_incomplete(tmp_path):
+    # A green matrix cannot prove that the complete merge-group plan ran.
     rendered, payload = _run_playwright_summary_harness(
         tmp_path,
         event_name="merge_group",
         extra_env={},
         expected_shards=["chromium-01", "chromium-99"],
     )
-    assert rendered["failure"] is None, (
-        f"merge_group check should ignore infra-only issues, got: {rendered['failure']}"
-    )
-    # The issues are still rendered in the summary body / payload — the check
-    # just doesn't fail on them.
+    assert rendered["failure"] is not None
     assert payload["infrastructureIssueCount"] >= 1
     assert "did not upload" in rendered["summaryBody"]
 
@@ -2976,7 +2968,7 @@ const core = {{
     rendered = json.loads(completed.stdout)
     assert rendered["failure"] is not None
     assert "1 Playwright test failure(s)" in rendered["failure"]
-    assert "author action needed" in rendered["failure"]
+    assert "investigate assertion" in rendered["failure"]
 
 
 def _run_playwright_summary_bare(
@@ -3044,22 +3036,15 @@ const core = {{
     return json.loads(completed.stdout)
 
 
-def test_playwright_summary_merge_group_passes_when_summary_download_flakes(tmp_path):
-    # Reproduces run 34312746335: all shard jobs succeeded (PLAYWRIGHT_RESULT=
-    # success) but the summary job's Download-all-results-JSON step flaked and
-    # returned nothing, so the render script sees zero per-shard results. On
-    # merge_group we trust the matrix's own result — passing shards mean
-    # passing tests, even when we can't fetch the per-shard artifacts.
+def test_playwright_summary_merge_group_fails_without_execution_evidence(tmp_path):
+    # Exhausted download recovery must not turn absent coverage into green.
     rendered = _run_playwright_summary_bare(
         tmp_path,
         event_name="merge_group",
         playwright_result="success",
         expected_shards=["chromium-01", "chromium-02"],
     )
-    assert rendered["failure"] is None, (
-        "merge_group must trust PLAYWRIGHT_RESULT=success when the summary "
-        f"can't see per-shard artifacts, got: {rendered['failure']}"
-    )
+    assert rendered["failure"] is not None
 
 
 def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
@@ -3083,15 +3068,10 @@ def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
         )
 
 
-def test_playwright_summary_prefers_retry_artifact_over_primary(tmp_path):
-    # The shard-side upload has a `-retry` fallback (added after run
-    # 34244326002 to sidestep the FinalizeArtifact 403 / CreateArtifact 409
-    # ghost-reservation cycle). When both `playwright-results-json-<shardId>`
-    # and `playwright-results-json-<shardId>-retry` land in the summary's
-    # download directory, the render script must:
-    #   * collapse them to a single canonical <shardId> (no
-    #     "Unexpected shard <shardId>-retry uploaded results" issue),
-    #   * prefer the retry copy (the primary is the reason we retried).
+@pytest.mark.parametrize("conflicting", [False, True])
+def test_playwright_summary_checks_retry_artifact_integrity(tmp_path, conflicting):
+    # Transport retries upload immutable files. Different results must not
+    # silently replace evidence from the same execution (issue #33087).
     helper = SCRIPTS / "render_playwright_summary.cjs"
 
     def write_shard(name, statuses):
@@ -3119,9 +3099,10 @@ def test_playwright_summary_prefers_retry_artifact_over_primary(tmp_path):
             json.dumps({"steps": {"tests": "success"}})
         )
 
-    # Primary reports 3 tests, one flaky; retry reports the full 5 passing
-    # (canonical "primary was incomplete, retry salvaged it" shape).
-    write_shard("chromium-01", ["expected", "flaky", "expected"])
+    write_shard(
+        "chromium-01",
+        ["expected", "flaky", "expected"] if conflicting else ["expected"] * 5,
+    )
     write_shard("chromium-01-retry", ["expected"] * 5)
 
     payload_path = tmp_path / "playwright-pr-comment/summary.json"
@@ -3180,7 +3161,11 @@ const core = {{
     rendered = json.loads(completed.stdout)
     payload = json.loads(payload_path.read_text())
 
-    # Retry wins: totals reflect the 5-passing retry, not the 3-with-flaky primary.
+    if conflicting:
+        assert rendered["failure"] is not None
+        assert "Conflicting execution evidence" in rendered["summaryBody"]
+        return
+
     assert payload["totals"]["passed"] == 5, payload["totals"]
     assert payload["totals"]["flaky"] == 0, payload["totals"]
 

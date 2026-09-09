@@ -23,6 +23,7 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
+import io.dropwizard.lifecycle.JettyManaged;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
@@ -72,6 +73,7 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.slf4j.Logger;
@@ -1097,6 +1099,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                   httpClientBuilder.disableContentCompression();
                 });
     return builder.build();
+  }
+
+  public static JettyManaged getSearchIndexRetryWorker() {
+    return APP.getEnvironment().lifecycle().getManagedObjects().stream()
+        .filter(JettyManaged.class::isInstance)
+        .map(JettyManaged.class::cast)
+        .filter(managed -> managed.getManaged() instanceof SearchIndexRetryWorker)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("Search retry worker is not registered"));
   }
 
   /**

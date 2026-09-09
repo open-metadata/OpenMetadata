@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Response } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { getRowByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -31,14 +32,62 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
 
-    await table1.create(apiContext);
-    await table2.create(apiContext);
-
-    await table1.createTestSuiteAndPipelines(apiContext);
-    await table2.createTestSuiteAndPipelines(apiContext);
-
-    await afterAction();
+    try {
+      for (const table of [table1, table2]) {
+        await table.create(apiContext);
+        // A cron run at the hour boundary can race this deployment-only scenario.
+        const { pipeline } = await table.createTestSuiteAndPipelines(
+          apiContext,
+          undefined,
+          null
+        );
+        expect(pipeline.id, 'fixture pipeline must be created').toBeTruthy();
+        expect(pipeline.name).toBeTruthy();
+        expect(pipeline.airflowConfig.scheduleInterval ?? null).toBeNull();
+      }
+    } finally {
+      await afterAction();
+    }
   });
+
+  test.afterAll(
+    'Clean up fixture pipelines and tables',
+    async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      try {
+        const results = await Promise.allSettled(
+          [table1, table2].map(async (table) => {
+            try {
+              if (table.testSuiteResponseData?.id) {
+                const response = await apiContext.delete(
+                  `/api/v1/dataQuality/testSuites/${table.testSuiteResponseData.id}?recursive=true&hardDelete=true`
+                );
+                expect([200, 404], 'fixture test suite cleanup').toContain(
+                  response.status()
+                );
+              }
+            } finally {
+              if (table.serviceResponseData?.id) {
+                const response = await apiContext.delete(
+                  `/api/v1/services/databaseServices/${table.serviceResponseData.id}?recursive=true&hardDelete=true`
+                );
+                expect([200, 404], 'fixture table service cleanup').toContain(
+                  response.status()
+                );
+              }
+            }
+          })
+        );
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            throw result.reason;
+          }
+        }
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
@@ -57,68 +106,46 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeEnabled();
     await expect(page.getByTestId('ingestion-list-table')).toBeVisible();
 
-    // beforeAll creates one test-suite pipeline per table, and there are two
-    // tables -- so this is the fixture's count, not an arbitrary number. One
-    // source for it, so the deploy assertion below cannot drift from the
-    // selection here.
-    const selectedPipelineCount = 2;
-    // TableV2 selection: the sr-only checkbox input is pointer-intercepted, so
-    // target the pressable label slot rather than the raw input.
-    const rowCheckboxes = page.locator('td label[slot="selection"]');
-
-    // The listing is global and can lag behind the pipelines this spec just
-    // created. Wait for enough rows first: nth() on a shorter list auto-waits
-    // and would spend the whole budget instead of saying what was missing.
-    await expect
-      .poll(() => rowCheckboxes.count(), {
-        message: `Wait for at least ${selectedPipelineCount} test-suite pipelines to be listed`,
-        timeout: 30_000,
-      })
-      .toBeGreaterThanOrEqual(selectedPipelineCount);
-
-    for (let index = 0; index < selectedPipelineCount; index++) {
-      await rowCheckboxes.nth(index).click();
+    const pipelines = [table1, table2].flatMap(
+      (table) => table.testSuitePipelineResponseData
+    );
+    expect(pipelines).toHaveLength(2);
+    for (const pipeline of pipelines) {
+      const row = getRowByName(page, pipeline.name);
+      await expect(row).toBeVisible();
+      await row.locator('label[slot="selection"]').click();
+      await expect(row.getByRole('checkbox')).toBeChecked();
     }
 
-    await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
-
-    // The component awaits Promise.all over every selected pipeline, so the
-    // success toast needs all of them to deploy. Waiting on a single 200 only
-    // proves the first did: when a later deploy fails the UI shows the error
-    // toast instead, and the test then waits out its whole budget for a success
-    // toast that can never arrive. Collect every deploy and report the real
-    // status, so a genuine deploy failure fails fast and says why.
-    const deployStatuses: number[] = [];
-    const collectDeploy = (response: Response) => {
-      if (
-        response.request().method() === 'POST' &&
-        response.url().includes('/api/v1/services/ingestionPipelines/deploy')
-      ) {
-        deployStatuses.push(response.status());
-      }
-    };
-    page.on('response', collectDeploy);
-
-    try {
-      await page.getByRole('button', { name: 'Re Deploy' }).click();
-
-      await expect
-        .poll(() => deployStatuses.length, {
-          message: 'Wait for every selected pipeline to report a deploy result',
-          timeout: 30_000,
-        })
-        .toBe(selectedPipelineCount);
-
-      expect(
-        deployStatuses,
-        'every selected pipeline must deploy for the success toast to appear'
-      ).toEqual(Array(selectedPipelineCount).fill(200));
-    } finally {
-      // Scope the listener to the action it observes: left attached it would
-      // keep collecting for the page's lifetime, and a second test in this
-      // describe would then assert against another test's deploys too.
-      page.off('response', collectDeploy);
-    }
+    const redeployButton = page.getByRole('button', { name: 'Re Deploy' });
+    await expect(redeployButton).toBeEnabled();
+    const responses = pipelines.map((pipeline) =>
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+      )
+    );
+    const [deployResponses] = await Promise.all([
+      Promise.all(responses),
+      redeployButton.click(),
+    ]);
+    const results = await Promise.all(
+      deployResponses.map(async (response, index) => ({
+        pipelineId: pipelines[index].id,
+        status: response.status(),
+        ...(!response.ok()
+          ? { error: (await response.text()).slice(0, 2000) }
+          : {}),
+      }))
+    );
+    expect(
+      results,
+      'each fixture pipeline must deploy; HTTP failures include the backend response'
+    ).toEqual(
+      pipelines.map((pipeline) => ({ pipelineId: pipeline.id, status: 200 }))
+    );
 
     await toastNotification(page, /Pipelines Re Deploy Successfully/i);
   });
