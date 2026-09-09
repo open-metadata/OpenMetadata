@@ -397,7 +397,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('entity-header-title')
       ).toHaveText(topic.entityResponseData.displayName ?? '');
 
-      await page.getByLabel('Close').first().click();
+      await nodePanel.getByTestId('drawer-close-icon').click();
 
       await expect(nodePanel).not.toBeVisible();
     });

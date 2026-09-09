@@ -27,7 +27,7 @@ coverage, a retried one looks green.
 
 ## Entries
 
-4 tests. Evidence is failures observed across 11 merge_group runs sampled on
+3 tests. Evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
@@ -70,8 +70,8 @@ projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
 Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4567 of 4571** with these 4 entries; the
-quarantined lane lists 11, which is the 4 plus the 7 fixture projects above.
+default-lane count here. It is **4577 of 4580** with these 3 entries; the
+quarantined lane lists 10, which is the 3 plus the 7 fixture projects above.
 (It was 4543 of 4555 when the list held 13.)
 
 ## Not quarantined — fixed instead

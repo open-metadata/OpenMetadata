@@ -257,7 +257,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
 
@@ -265,16 +264,13 @@ test.describe('Table pagination sorting search scenarios ', () => {
     // trigger, so a bare click only fires preventDefault. Hover + click-fallback
     // + retry — a re-render that nudges the footer out from under the pointer
     // otherwise leaves the menu closed for good.
-    const pageSizeMenu = page.getByRole('menu').filter({ hasText: '/ Page' });
-    const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
-      name: '15 / Page',
-    });
+    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
     await expect(async () => {
       await pageSizeDropdown.hover();
-      if (!(await pageSizeMenu.isVisible())) {
+      if (!(await pageSizeOption.isVisible())) {
         await pageSizeDropdown.click();
       }
-      await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
+      await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
     await pageSizeOption.click();

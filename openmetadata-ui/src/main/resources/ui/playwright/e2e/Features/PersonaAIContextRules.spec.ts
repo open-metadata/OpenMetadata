@@ -453,18 +453,19 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
 
       await test.step('switch to a knowledge entity type', async () => {
         await page.getByTestId('context-rule-entity-type').click();
+        // Each option carries its EntityType as data-key. Matching the
+        // "Knowledge" supporting text instead would match all three knowledge
+        // types and leave DOM order to decide which one the test exercises.
         await page
           .getByRole('listbox')
-          .getByText(/knowledge/i)
-          .first()
+          .locator('[data-key="glossaryTerm"]')
           .click();
       });
 
       await test.step('Fully rendered switch must be checked and disabled', async () => {
         const fullyRenderedSwitch = page
           .getByTestId('context-rule-fully-rendered')
-          .getByRole('switch')
-          .first();
+          .getByRole('switch');
         // toBeChecked() reads the checkbox `checked` property — react-aria Switch
         // does not always set the aria-checked attribute, so attribute checks fail
         await expect(fullyRenderedSwitch).toBeChecked();
