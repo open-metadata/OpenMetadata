@@ -913,11 +913,8 @@ public interface AccessControlDAOs {
         @Bind("afterId") String afterId,
         @Bind("relation") int relation);
 
-    // MySQL email/name generated columns use the case-insensitive table collation, so plain
-    // equality is case-insensitive AND uses the existing indexes. Postgres columns are
-    // case-sensitive; LOWER() comparisons there are backed by functional indexes
-    // (idx_user_entity_email_lower / idx_user_entity_name_lower) — these lookups are on the
-    // authentication hot path and must not scan.
+    // Bare equality on MySQL: its collation is already case-insensitive and indexed. Postgres is
+    // case-sensitive, so LOWER(), backed by idx_user_entity_{email,name}_lower.
     @ConnectionAwareSqlQuery(
         value = "SELECT COUNT(*) FROM user_entity WHERE email = :email",
         connectionType = MYSQL)
@@ -943,10 +940,8 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
-    // Returns every row matching the address. Postgres compares case-insensitively via LOWER()
-    // while its unique constraint is case-sensitive, so an installation can legitimately hold two
-    // rows differing only by case; a single-value return would surface that as an opaque JDBI
-    // TooManyResultsException on the login path instead of an actionable error.
+    // Postgres compares with LOWER() but its unique constraint is case-sensitive, so two rows can
+    // differ only by case; a List surfaces that instead of an opaque JDBI TooManyResultsException.
     @ConnectionAwareSqlQuery(
         value = "SELECT json FROM user_entity WHERE email = :email",
         connectionType = MYSQL)
