@@ -40,46 +40,33 @@ const LIST = path.join(UI_ROOT, 'playwright/quarantine-list.ts');
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const TAGS = '(?: @\\S+)*';
 
+const LIST_SOURCE = fs.readFileSync(LIST, 'utf8');
+
 const entries = [
-  ...fs
-    .readFileSync(LIST, 'utf8')
-    .matchAll(
-      /spec: '([^']+)',\s*\n\s*test:\s*'((?:[^'\\]|\\.)*)',\s*\n\s*runs: (\d+)/g
-    ),
+  ...LIST_SOURCE.matchAll(
+    /spec: '([^']+)',\s*\n\s*test:\s*'((?:[^'\\]|\\.)*)',\s*\n\s*runs: (\d+)/g
+  ),
 ].map(([, spec, testTitle, runs]) => ({
   spec,
   test: testTitle.replace(/\\'/g, "'"),
   runs: Number(runs),
 }));
 
-test('every quarantine-list entry selects exactly one test', () => {
-  assert.ok(
-    entries.length > 0,
-    'Parsed 0 entries — the quarantine-list.ts shape changed, so this guard ' +
-      'is asserting nothing. Fix the parser above before trusting a green run.'
-  );
-
-  // Mirror the discover step in playwright-e2e-reusable.yml. The dedicated
-  // lanes and the PLAYWRIGHT_IS_OSS-gated specs must be visible, or their
-  // entries look dead when they are not.
-  const listed = execFileSync(
-    'npx',
-    ['playwright', 'test', '--list', '--reporter=line'],
-    {
-      cwd: UI_ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      maxBuffer: 64 * 1024 * 1024,
-      env: {
-        ...process.env,
-        GITHUB_EVENT_NAME: '',
-        PLAYWRIGHT_RUN_QUARANTINED: '',
-        PW_DEDICATED_INGESTION: 'true',
-        PW_DEDICATED_IMPORT_EXPORT: 'true',
-        PLAYWRIGHT_IS_OSS: 'true',
-      },
-    }
-  )
+const list = (eventName) =>
+  execFileSync('npx', ['playwright', 'test', '--list', '--reporter=line'], {
+    cwd: UI_ROOT,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    maxBuffer: 64 * 1024 * 1024,
+    env: {
+      ...process.env,
+      GITHUB_EVENT_NAME: eventName,
+      PLAYWRIGHT_RUN_QUARANTINED: '',
+      PW_DEDICATED_INGESTION: 'true',
+      PW_DEDICATED_IMPORT_EXPORT: 'true',
+      PLAYWRIGHT_IS_OSS: 'true',
+    },
+  })
     .split('\n')
     .filter((line) => line.includes('›'))
     .map((line) =>
@@ -89,6 +76,40 @@ test('every quarantine-list entry selects exactly one test', () => {
         .replace(/\.ts:\d+:\d+/, '.ts')
         .replaceAll(' › ', ' ')
     );
+
+test('every quarantine-list entry selects exactly one test', () => {
+  // The parser above is a regex over source text and needs the fields in
+  // `spec` → `test` → `runs` order on consecutive lines. Anything it cannot
+  // read it skips silently, so `entries.length > 0` would still pass while
+  // covering a subset — a quarantine entry nobody is checking. Count the
+  // `runs:` lines independently and require the two to agree, so a reordered
+  // or reformatted entry fails the guard instead of disappearing from it.
+  const declared = (LIST_SOURCE.match(/^\s*runs: \d+,$/gm) ?? []).length;
+
+  assert.equal(
+    entries.length,
+    declared,
+    `Parsed ${entries.length} entries but quarantine-list.ts declares ` +
+      `${declared}. The parser in this file could not read every entry, so it ` +
+      'is checking a subset. Fix the entry shape, or the parser.'
+  );
+  assert.ok(
+    entries.length > 0,
+    'Parsed 0 entries — the quarantine-list.ts shape changed, so this guard ' +
+      'is asserting nothing. Fix the parser above before trusting a green run.'
+  );
+
+  // Mirror the discover step in playwright-e2e-reusable.yml. The dedicated
+  // lanes and the PLAYWRIGHT_IS_OSS-gated specs must be visible, or their
+  // entries look dead when they are not.
+  const listed = list('');
+  // The pattern below is a second implementation of playwright.config.ts's
+  // `quarantinePattern`, and a copy that drifts would happily assert against
+  // itself while the config selected something else. So the real config is the
+  // tiebreaker: whatever this guard claims an entry selects must actually be
+  // absent from the merge-queue listing, which the config produced. If the two
+  // implementations diverge, these two sets disagree and the guard fails.
+  const underMergeQueue = new Set(list('merge_group'));
 
   const failures = entries.flatMap((entry) => {
     const pattern = new RegExp(
@@ -100,24 +121,27 @@ test('every quarantine-list entry selects exactly one test', () => {
         `${TAGS}$`
     );
     const hits = listed.filter((title) => pattern.test(title));
+    const label = `[${entry.runs}x] ${entry.spec} :: ${entry.test}`;
 
-    return hits.length === 1
-      ? []
-      : [
-          `${
-            hits.length === 0
-              ? 'MATCHES NOTHING'
-              : `MATCHES ${hits.length} TESTS`
-          }` + `  [${entry.runs}x] ${entry.spec} :: ${entry.test}`,
-        ];
+    if (hits.length !== 1) {
+      const what =
+        hits.length === 0 ? 'MATCHES NOTHING' : `MATCHES ${hits.length} TESTS`;
+
+      return [`${what}  ${label}`];
+    }
+
+    return underMergeQueue.has(hits[0])
+      ? [`STILL RUNS IN THE MERGE QUEUE  ${label}`]
+      : [];
   });
 
   assert.deepStrictEqual(
     failures,
     [],
-    'A quarantine entry no longer selects exactly one test. Update the title ' +
-      'in playwright/quarantine-list.ts to match the spec, or delete the ' +
-      'entry if the test it named is gone. An entry matching nothing is not ' +
+    'A quarantine entry no longer selects exactly one test, or the test it ' +
+      'names still runs in the merge queue. Update the title in ' +
+      'playwright/quarantine-list.ts to match the spec, or delete the entry ' +
+      'if the test it named is gone. An entry matching nothing is not ' +
       'quarantining anything.'
   );
 });

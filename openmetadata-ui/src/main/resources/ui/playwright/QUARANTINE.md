@@ -131,7 +131,7 @@ together ~15% of every flake occurrence in the window — were **not flakes**, a
 so the task detail panel never mounted. That is the outcome this file wants.
 Quarantine buys queue time; it never diagnoses anything.
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 85 plus the 7 setup/teardown
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 62 plus the 7 setup/teardown
 fixture projects (69 in total), which the soak lane deliberately leaves
 unfiltered so login and entity seeding still happen — a project-level `grep`
 *is* applied to dependency projects, so filtering them would make every
