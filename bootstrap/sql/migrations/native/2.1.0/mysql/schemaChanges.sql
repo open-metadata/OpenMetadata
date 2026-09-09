@@ -267,40 +267,25 @@ WHERE serviceType = 'Oracle'
 -- json/data/dataQualityDimension on startup.
 -- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
 -- EntityDAO.insert only writes fqnHash and json, MySQL rejected every insert with "Field 'id'
--- doesn't have a default value", so such a table is necessarily empty and can be dropped and
--- recreated with the correct shape below.
-SET @ddl = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'data_quality_dimension'
-        AND column_name = 'id'
-        AND extra NOT LIKE '%GENERATED%'
-    ),
-    'DROP TABLE data_quality_dimension',
-    'SELECT 1'
-  )
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-CREATE TABLE IF NOT EXISTS data_quality_dimension (
+-- doesn't have a default value". The table is dropped unconditionally rather than patched: it is
+-- new in this unreleased version, so any existing copy is either empty (the broken shape could not
+-- be inserted into) or holds nothing but the system dimensions, which are re-seeded from
+-- json/data/dataQualityDimension on the next startup.
+DROP TABLE IF EXISTS data_quality_dimension;
+CREATE TABLE data_quality_dimension (
     -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
     -- from the json document, id included.
-    id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
+    id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
     json json NOT NULL,
-    fqnHash varchar(768) NOT NULL,
-    name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.name'))) STORED NOT NULL,
-    provider varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.provider'))) STORED,
-    updatedAt bigint GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedAt'))) STORED,
-    deleted tinyint(1) GENERATED ALWAYS AS (json_extract(`json`,_utf8mb4'$.deleted')) STORED,
+    fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+    provider varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.provider'))) STORED,
+    updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+    deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
     PRIMARY KEY (id),
     UNIQUE KEY uk_data_quality_dimension_fqn_hash (fqnHash),
     KEY idx_data_quality_dimension_name (name)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   name varchar(64) NOT NULL,

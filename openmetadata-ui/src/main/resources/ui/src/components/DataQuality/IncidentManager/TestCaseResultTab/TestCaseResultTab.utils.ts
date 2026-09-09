@@ -21,13 +21,17 @@ import {
 export const shouldShowEditParameterButton = (
   hasEditPermission: boolean | undefined,
   testCaseData: TestCase | undefined,
-  showComputeRowCount: boolean
+  showComputeRowCount: boolean,
+  // The data quality dimension is edited through this button too, so a test case without
+  // parameters of its own still needs it as long as the box shows the dimension.
+  hasDataQualityDimension = false
 ): boolean =>
   Boolean(
     hasEditPermission &&
       (testCaseData?.parameterValues?.length ||
         testCaseData?.useDynamicAssertion ||
-        showComputeRowCount)
+        showComputeRowCount ||
+        hasDataQualityDimension)
   );
 
 export const shouldShowAILearningBanner = (

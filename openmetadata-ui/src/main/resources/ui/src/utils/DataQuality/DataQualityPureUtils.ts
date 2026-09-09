@@ -221,13 +221,13 @@ export const createUpdatedTestCasePatch = ({
     tags: resolvePatchedTags(showOnlyParameter, rebuiltTags, testCase),
     dimensionColumns: resolvePatchedDimensionColumns(testCase, value),
     topDimensions: resolvePatchedTopDimensions(testCase, value),
-    // The dimension field is rendered (and prefilled) whenever the full form is
-    // shown, so a submitted empty value means the user cleared the override and
-    // the patch must drop it. Only a missing key counts as untouched.
-    dataQualityDimension:
-      showOnlyParameter || !has(value, 'dataQualityDimension')
-        ? testCase.dataQualityDimension
-        : toDimensionReference(value.dataQualityDimension, testCase),
+    // The dimension field is rendered (and prefilled) in both the full form and the
+    // parameter-only drawer — it is part of the parameter box on the test case result
+    // page — so a submitted empty value means the user cleared the override and the
+    // patch must drop it. Only a missing key counts as untouched.
+    dataQualityDimension: !has(value, 'dataQualityDimension')
+      ? testCase.dataQualityDimension
+      : toDimensionReference(value.dataQualityDimension, testCase),
   };
 
   return compare(testCase, updatedTestCase);

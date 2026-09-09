@@ -1062,6 +1062,27 @@ CREATE TABLE public.test_connection_definition (
 ALTER TABLE public.test_connection_definition OWNER TO openmetadata_user;
 
 --
+-- Name: data_quality_dimension; Type: TABLE; Schema: public; Owner: openmetadata_user
+--
+
+CREATE TABLE public.data_quality_dimension (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    json jsonb NOT NULL,
+    fqnhash character varying(768) NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    provider character varying(32) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    CONSTRAINT data_quality_dimension_pkey PRIMARY KEY (id),
+    CONSTRAINT uk_data_quality_dimension_fqn_hash UNIQUE (fqnhash)
+);
+
+
+ALTER TABLE public.data_quality_dimension OWNER TO openmetadata_user;
+
+CREATE INDEX idx_data_quality_dimension_name ON public.data_quality_dimension (name);
+
+--
 -- Name: test_definition; Type: TABLE; Schema: public; Owner: openmetadata_user
 --
 

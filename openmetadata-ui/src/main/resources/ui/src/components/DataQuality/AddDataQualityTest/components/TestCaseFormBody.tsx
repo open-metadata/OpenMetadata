@@ -259,7 +259,6 @@ const TestTypeCard: FC<{
   handleActiveField: (id: string) => void;
   isComputeRowCountFieldVisible: boolean;
   computeRowCountField: FieldProp;
-  showOnlyParameter?: boolean;
   dataQualityDimensionField: FieldProp;
 }> = ({
   isEditMode,
@@ -278,7 +277,6 @@ const TestTypeCard: FC<{
   handleActiveField,
   isComputeRowCountFieldVisible,
   computeRowCountField,
-  showOnlyParameter,
   dataQualityDimensionField,
 }) => (
   <div
@@ -320,7 +318,9 @@ const TestTypeCard: FC<{
 
     {isComputeRowCountFieldVisible && getField(computeRowCountField)}
 
-    {!showOnlyParameter && getField(dataQualityDimensionField)}
+    {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
+        the test case result page. */}
+    {getField(dataQualityDimensionField)}
   </div>
 );
 
@@ -1451,7 +1451,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         selectedTestDefinition={selectedTestDefinition}
         selectedTestLevel={selectedTestLevel}
         selectedTestType={selectedTestType}
-        showOnlyParameter={showOnlyParameter}
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}

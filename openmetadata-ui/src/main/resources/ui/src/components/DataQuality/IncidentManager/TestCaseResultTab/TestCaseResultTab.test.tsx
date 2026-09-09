@@ -183,6 +183,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
+    mockUseTestCaseStore.testCase.dataQualityDimension = undefined;
   });
 
   it('Should render component', async () => {
@@ -337,6 +338,41 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
     expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
     expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+  });
+
+  it('should show the data quality dimension of the test case in the parameter box', async () => {
+    mockUseTestCaseStore.testCase.dataQualityDimension = {
+      id: 'dim-1',
+      type: 'dataQualityDimension',
+      name: 'Timeliness',
+      displayName: 'Timeliness of data',
+    };
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(
+      screen.getByText('label.data-quality-dimension:')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Timeliness of data')).toBeInTheDocument();
+  });
+
+  it("should fall back to the test definition's dimension when the test case has none", async () => {
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      dataQualityDimension: 'Accuracy',
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(
+      await screen.findByText('label.data-quality-dimension:')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Accuracy')).toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {

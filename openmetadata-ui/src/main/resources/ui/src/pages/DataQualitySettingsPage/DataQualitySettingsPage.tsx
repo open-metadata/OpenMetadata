@@ -14,28 +14,33 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
-  Collapse,
   Form,
   Input,
   Modal,
   Row,
   Space,
-  Table,
   Tag,
   Typography,
 } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import {
+  DeleteIconButton,
+  EditIconButton,
+} from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
+import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   DataQualityDimension,
   ProviderType,
@@ -48,6 +53,7 @@ import {
   patchDataQualityDimension,
 } from '../../rest/dataQualityDimensionAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './data-quality-settings-page.less';
 
@@ -220,16 +226,12 @@ const DataQualitySettingsPage = () => {
           </Space>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description?: string) => description ?? '--',
-      },
+      ...descriptionTableObject<DataQualityDimension>(),
       {
         title: t('label.type'),
         dataIndex: 'provider',
         key: 'provider',
+        width: '120px',
         render: (provider?: ProviderType) => (
           <Tag color={provider === ProviderType.System ? 'default' : 'blue'}>
             {provider === ProviderType.System
@@ -241,34 +243,47 @@ const DataQualitySettingsPage = () => {
       {
         title: t('label.test-case-plural'),
         key: 'testCases',
+        width: '120px',
         render: (_, record) => testCaseCounts[record.id ?? ''] ?? '--',
       },
       {
         title: t('label.action-plural'),
         key: 'actions',
-        align: 'right',
-        render: (_, record) =>
-          record.provider === ProviderType.System ? (
-            <Typography.Text type="secondary">
-              {t('label.not-editable')}
-            </Typography.Text>
-          ) : (
-            <Space size={12}>
-              <Button
+        width: '100px',
+        align: 'center',
+        // System dimensions are seeded from the server and cannot be changed, so they get the
+        // same disabled actions every provider-owned entity shows instead of a bespoke label.
+        render: (_, record) => {
+          const isSystem = record.provider === ProviderType.System;
+          const disabledTitle = isSystem
+            ? t('message.system-dimensions-are-read-only')
+            : undefined;
+
+          return (
+            <Space size={4}>
+              <EditIconButton
                 data-testid={`edit-${record.name}`}
-                type="link"
-                onClick={() => setEditing(record)}>
-                {t('label.edit')}
-              </Button>
-              <Button
-                danger
+                disabled={isSystem}
+                size="small"
+                title={
+                  disabledTitle ??
+                  t('label.edit-entity', { entity: t('label.dimension') })
+                }
+                onClick={() => setEditing(record)}
+              />
+              <DeleteIconButton
                 data-testid={`delete-${record.name}`}
-                type="link"
-                onClick={() => setDeleting(record)}>
-                {t('label.delete')}
-              </Button>
+                disabled={isSystem}
+                size="small"
+                title={
+                  disabledTitle ??
+                  t('label.delete-entity', { entity: t('label.dimension') })
+                }
+                onClick={() => setDeleting(record)}
+              />
             </Space>
-          ),
+          );
+        },
       },
     ],
     [t, testCaseCounts]
@@ -415,10 +430,8 @@ const DataQualitySettingsPage = () => {
       <div className="m-b-mlg">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </div>
-      <Row
-        className="settings-page-container data-quality-settings-page"
-        gutter={[0, 24]}>
-        <Col span={24}>
+      <Row className="data-quality-settings-page" gutter={[0, 16]}>
+        <Col span={12}>
           <PageHeader
             data={{
               header: t('label.data-quality'),
@@ -427,71 +440,57 @@ const DataQualitySettingsPage = () => {
             title={t('label.data-quality')}
           />
         </Col>
+        <Col span={12}>
+          <Space align="center" className="w-full justify-end" size={16}>
+            <Button
+              data-testid="add-dimension"
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setEditing(null)}>
+              {t('label.add-entity', {
+                entity: t('label.dimension'),
+              })}
+            </Button>
+          </Space>
+        </Col>
         <Col span={24}>
-          <Collapse
-            className="settings-page-collapse"
-            defaultActiveKey={['dimensions']}
-            expandIconPosition="right">
-            <Collapse.Panel
-              header={
-                <PageHeader
-                  data={{
-                    header: `${t('label.dimension-plural')} (${
-                      dimensions.length
-                    })`,
-                    subHeader: t('message.data-quality-dimensions-description'),
-                  }}
+          {/* The shared table renders the search box in its own toolbar, so the dimension list
+              looks like every other settings list instead of carrying its own chrome. */}
+          <Table
+            columns={columns}
+            data-testid="dimensions-table"
+            dataSource={filteredDimensions}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  permission
+                  className="border-none"
+                  heading={t('label.dimension')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.dimension'),
+                  })}
+                  type={
+                    searchTerm
+                      ? ERROR_PLACEHOLDER_TYPE.FILTER
+                      : ERROR_PLACEHOLDER_TYPE.CREATE
+                  }
+                  onClick={() => setEditing(null)}
                 />
-              }
-              key="dimensions">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
-                  <Row align="middle" gutter={[16, 16]} justify="end">
-                    <Col>
-                      <Space size={12}>
-                        <Input.Search
-                          allowClear
-                          data-testid="search-dimensions"
-                          placeholder={t('label.search-entity', {
-                            entity: t('label.dimension-plural'),
-                          })}
-                          value={searchTerm}
-                          onChange={(event) =>
-                            setSearchTerm(event.target.value)
-                          }
-                        />
-                        <Button
-                          data-testid="add-dimension"
-                          icon={<PlusOutlined />}
-                          type="primary"
-                          onClick={() => setEditing(null)}>
-                          {t('label.add-entity', {
-                            entity: t('label.dimension'),
-                          })}
-                        </Button>
-                      </Space>
-                    </Col>
-                  </Row>
-                </Col>
-                <Col span={24}>
-                  <Table
-                    bordered
-                    columns={columns}
-                    data-testid="dimensions-table"
-                    dataSource={filteredDimensions}
-                    pagination={false}
-                    rowKey="id"
-                    size="small"
-                  />
-                </Col>
-                <Col span={24}>
-                  <Typography.Text type="secondary">
-                    {t('message.system-dimensions-are-read-only')}
-                  </Typography.Text>
-                </Col>
-              </Row>
-            </Collapse.Panel>
-          </Collapse>
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            searchProps={{
+              placeholder: t('label.search-entity', {
+                entity: t('label.dimension-plural'),
+              }),
+              searchValue: searchTerm,
+              searchBarDataTestId: 'search-dimensions',
+              typingInterval: 350,
+              onSearch: setSearchTerm,
+            }}
+            size="small"
+          />
         </Col>
       </Row>
 

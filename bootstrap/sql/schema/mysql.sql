@@ -1103,6 +1103,27 @@ CREATE TABLE `test_connection_definition` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `data_quality_dimension`
+--
+
+DROP TABLE IF EXISTS `data_quality_dimension`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `data_quality_dimension` (
+  `id` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
+  `json` json NOT NULL,
+  `fqnHash` varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `name` varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.name'))) STORED NOT NULL,
+  `provider` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.provider'))) STORED,
+  `updatedAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedAt'))) STORED NOT NULL,
+  `deleted` tinyint(1) GENERATED ALWAYS AS (json_extract(`json`,_utf8mb4'$.deleted')) STORED,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_data_quality_dimension_fqn_hash` (`fqnHash`),
+  KEY `idx_data_quality_dimension_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `test_definition`
 --
 

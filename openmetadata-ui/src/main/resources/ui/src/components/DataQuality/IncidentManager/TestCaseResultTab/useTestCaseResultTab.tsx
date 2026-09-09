@@ -74,6 +74,7 @@ export interface UseTestCaseResultTabResult {
   withSqlParams: TestCaseParameterValue[];
   withoutSqlParams: TestCaseParameterValue[];
   parameterItems: ParameterDisplayItem[] | null;
+  dataQualityDimension: string | undefined;
   description: string | undefined;
   descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined;
   updatedTags: TagLabel[];
@@ -337,6 +338,16 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     isVersionPage,
   ]);
 
+  // The test case keeps its own dimension only when it overrides the test definition's, so fall
+  // back to the definition's to show the dimension the results are actually categorised under.
+  const dataQualityDimension = useMemo(
+    () =>
+      testCaseData?.dataQualityDimension?.displayName ??
+      testCaseData?.dataQualityDimension?.name ??
+      testDefinition?.dataQualityDimension,
+    [testCaseData?.dataQualityDimension, testDefinition?.dataQualityDimension]
+  );
+
   const parameterItems = useMemo(() => {
     const items: ParameterDisplayItem[] = [];
 
@@ -371,12 +382,20 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
       });
     }
 
+    if (dataQualityDimension) {
+      items.push({
+        label: t('label.data-quality-dimension'),
+        value: dataQualityDimension,
+      });
+    }
+
     return items.length > 0 ? items : null;
   }, [
     withoutSqlParams,
     testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
+    dataQualityDimension,
     isVersionPage,
     t,
   ]);
@@ -395,6 +414,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     withSqlParams,
     withoutSqlParams,
     parameterItems,
+    dataQualityDimension,
     description,
     descriptionChangeSummaryEntry: changeSummary?.['description'],
     updatedTags,

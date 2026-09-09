@@ -1439,7 +1439,9 @@ describe('DataQualityUtils', () => {
       );
     });
 
-    it('should keep the existing dataQualityDimension when only parameters are edited', () => {
+    it('should apply the dataQualityDimension picked in the parameter-only drawer', () => {
+      // The parameter box on the test case result page edits the dimension through the same
+      // parameter-only drawer, so its value has to reach the patch there as well.
       const patch = createUpdatedTestCasePatch({
         testCase: {
           ...baseTestCase,
@@ -1455,9 +1457,15 @@ describe('DataQualityUtils', () => {
         isComputeRowCountFieldVisible: false,
       });
 
-      expect(patch.some((op) => op.path === '/dataQualityDimension')).toBe(
-        false
-      );
+      expect(patch).toContainEqual({
+        op: 'replace',
+        path: '/dataQualityDimension',
+        value: {
+          type: 'dataQualityDimension',
+          name: 'Timeliness',
+          fullyQualifiedName: 'Timeliness',
+        },
+      });
     });
 
     it('should include fields returned by createTestCaseObject (e.g. Collate useDynamicAssertion)', () => {

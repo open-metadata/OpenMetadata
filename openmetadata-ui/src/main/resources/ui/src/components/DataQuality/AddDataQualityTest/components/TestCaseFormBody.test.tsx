@@ -926,5 +926,15 @@ describe('TestCaseFormBody', () => {
       expect(screen.queryByTestId('test-details-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
     });
+
+    it('keeps the dimension field, it is edited from the parameter box', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, showOnlyParameter: true });
+      });
+
+      expect(
+        await screen.findByTestId('data-quality-dimension')
+      ).toBeInTheDocument();
+    });
   });
 });
