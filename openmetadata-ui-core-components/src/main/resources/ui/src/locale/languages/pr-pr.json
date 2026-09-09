@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "اعمال",
+    "cancel": "لغو",
+    "clear-all": "پاک کردن همه",
     "close": "بستن",
     "close-navigation-menu": "بستن منوی ناوبری",
     "copy-link": "کپی پیوند",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "مسیرهای پنهان",
     "loading": "در حال بارگذاری…",
     "next-page": "رفتن به صفحه بعد",
+    "no-data-found": "داده‌ای یافت نشد",
     "open-menu": "باز کردن منو",
     "page": "صفحه",
     "pagination": "صفحه‌بندی",
@@ -19,6 +23,8 @@
     "previous-page": "رفتن به صفحه قبل",
     "records": "رکوردها",
     "remove-filter": "حذف فیلتر",
+    "search": "جستجو",
+    "select-all": "انتخاب همه",
     "select-dates": "انتخاب تاریخ‌ها",
     "select-only-one-row": "یک ردیف را انتخاب کنید",
     "show-hidden-breadcrumbs": "نمایش مسیرهای پنهان",

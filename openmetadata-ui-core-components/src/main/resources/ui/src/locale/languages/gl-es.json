@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "clear-all": "Borrar todo",
     "close": "Pechar",
     "close-navigation-menu": "Pechar menú de navegación",
     "copy-link": "Copiar ligazón",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Migas de pan ocultas",
     "loading": "Cargando…",
     "next-page": "Ir á páxina seguinte",
+    "no-data-found": "Non se atoparon datos",
     "open-menu": "Abrir menú",
     "page": "Páxina",
     "pagination": "Paxinación",
@@ -19,6 +23,8 @@
     "previous-page": "Ir á páxina anterior",
     "records": "Rexistros",
     "remove-filter": "Eliminar filtro",
+    "search": "Buscar",
+    "select-all": "Seleccionar todo",
     "select-dates": "Seleccionar datas",
     "select-only-one-row": "Seleccionar unha fila",
     "show-hidden-breadcrumbs": "Amosar migas de pan ocultas",

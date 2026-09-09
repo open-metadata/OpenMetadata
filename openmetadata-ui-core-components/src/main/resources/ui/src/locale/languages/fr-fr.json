@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Appliquer",
+    "cancel": "Annuler",
+    "clear-all": "Tout effacer",
     "close": "Fermer",
     "close-navigation-menu": "Fermer le menu de navigation",
     "copy-link": "Copier le lien",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Fil d'Ariane masqué",
     "loading": "Chargement…",
     "next-page": "Aller à la page suivante",
+    "no-data-found": "Aucune donnée trouvée",
     "open-menu": "Ouvrir le menu",
     "page": "Page",
     "pagination": "Pagination",
@@ -19,6 +23,8 @@
     "previous-page": "Aller à la page précédente",
     "records": "Enregistrements",
     "remove-filter": "Supprimer le filtre",
+    "search": "Rechercher",
+    "select-all": "Tout sélectionner",
     "select-dates": "Sélectionner les dates",
     "select-only-one-row": "Sélectionner une ligne",
     "show-hidden-breadcrumbs": "Afficher le fil d'Ariane masqué",

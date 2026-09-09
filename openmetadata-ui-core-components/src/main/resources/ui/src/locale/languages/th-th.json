@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "นำไปใช้",
+    "cancel": "ยกเลิก",
+    "clear-all": "ล้างทั้งหมด",
     "close": "ปิด",
     "close-navigation-menu": "ปิดเมนูนำทาง",
     "copy-link": "คัดลอกลิงก์",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "เบรดครัมบ์ที่ซ่อนอยู่",
     "loading": "กำลังโหลด…",
     "next-page": "ไปที่หน้าถัดไป",
+    "no-data-found": "ไม่พบข้อมูล",
     "open-menu": "เปิดเมนู",
     "page": "หน้า",
     "pagination": "การแบ่งหน้า",
@@ -19,6 +23,8 @@
     "previous-page": "ไปที่หน้าก่อนหน้า",
     "records": "บันทึก",
     "remove-filter": "ลบตัวกรอง",
+    "search": "ค้นหา",
+    "select-all": "เลือกทั้งหมด",
     "select-dates": "เลือกวันที่",
     "select-only-one-row": "เลือกหนึ่งแถว",
     "show-hidden-breadcrumbs": "แสดงเบรดครัมบ์ที่ซ่อนอยู่",

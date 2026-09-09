@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Toepassen",
+    "cancel": "Annuleren",
+    "clear-all": "Alles wissen",
     "close": "Sluiten",
     "close-navigation-menu": "Navigatiemenu sluiten",
     "copy-link": "Link kopiëren",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Verborgen kruimelpad",
     "loading": "Laden…",
     "next-page": "Naar volgende pagina",
+    "no-data-found": "Geen gegevens gevonden",
     "open-menu": "Menu openen",
     "page": "Pagina",
     "pagination": "Paginering",
@@ -19,6 +23,8 @@
     "previous-page": "Naar vorige pagina",
     "records": "Records",
     "remove-filter": "Filter verwijderen",
+    "search": "Zoeken",
+    "select-all": "Alles selecteren",
     "select-dates": "Datums selecteren",
     "select-only-one-row": "Eén rij selecteren",
     "show-hidden-breadcrumbs": "Verborgen kruimelpad weergeven",

@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "적용",
+    "cancel": "취소",
+    "clear-all": "모두 지우기",
     "close": "닫기",
     "close-navigation-menu": "탐색 메뉴 닫기",
     "copy-link": "링크 복사",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "숨겨진 이동 경로",
     "loading": "로드 중…",
     "next-page": "다음 페이지로 이동",
+    "no-data-found": "데이터를 찾을 수 없습니다",
     "open-menu": "메뉴 열기",
     "page": "페이지",
     "pagination": "페이지 매김",
@@ -19,6 +23,8 @@
     "previous-page": "이전 페이지로 이동",
     "records": "레코드",
     "remove-filter": "필터 제거",
+    "search": "검색",
+    "select-all": "모두 선택",
     "select-dates": "날짜 선택",
     "select-only-one-row": "한 행 선택",
     "show-hidden-breadcrumbs": "숨겨진 이동 경로 표시",
