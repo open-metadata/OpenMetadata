@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, uniqWith } from 'lodash';
+import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -42,12 +44,9 @@ import {
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
-import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
-import QuickFilterDropdown from './QuickFilterDropdown';
 
 const ENTITY_TYPE_FILTER_KEYS: ReadonlySet<string> = new Set([
   EntityFields.ENTITY_TYPE,
@@ -115,7 +114,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
-  showSelectedCounts = false,
   optionPageSize,
   additionalActions,
   immediateApply = false,
@@ -125,6 +123,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+  const { t } = useTranslation();
 
   // Every dropdown writes into this one `options` state, so only the newest
   // fetch may write — otherwise a late response repaints the dropdown that
@@ -139,12 +138,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
   );
-  const getExploreDropdownPopupContainer = useCallback(
-    // Keep legacy Explore filter overlays tied to the trigger subtree so they
-    // are removed with the page during route changes.
-    (triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body,
-    []
-  );
 
   const { showDeleted, searchText } = useMemo(() => {
     const parsed = Qs.parse(
@@ -158,12 +151,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       searchText: (parsed.search as string) ?? '',
     };
   }, [location.search]);
-
-  // Get first index for display in SearchDropdown (which expects single index)
-  const displayIndex = useMemo(
-    () => (Array.isArray(index) ? index[0] : index),
-    [index]
-  );
 
   const hasSelectedFieldValues = useMemo(
     () => fields.some((field) => !isEmpty(field.value)),
@@ -384,84 +371,113 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
   };
 
+  // The legacy dropdowns debounced their own search input; FilterSelect
+  // reports every keystroke, so debounce here before hitting aggregations.
+  const getFilterOptionsRef = useRef(getFilterOptions);
+  getFilterOptionsRef.current = getFilterOptions;
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(
+        (
+          value: string,
+          key: string,
+          fieldSearchIndex?: SearchIndex,
+          fieldSearchKey?: string,
+          sourceFields?: string
+        ) =>
+          getFilterOptionsRef.current(
+            value,
+            key,
+            fieldSearchIndex,
+            fieldSearchKey,
+            sourceFields
+          ),
+        500
+      ),
+    []
+  );
+
   return (
-    <Space wrap className="explore-quick-filters-container" size={[8, 8]}>
+    <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center tw:gap-2">
       {fields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
         const dropdownOptions = field.options ?? options ?? [];
+        const label = translateWithNestedKeys(
+          field.label,
+          field.labelKeyOptions
+        );
+        const selectedOptions = field.value ?? [];
+        const nullOption = hasNullOption
+          ? {
+              value: NULL_OPTION_KEY,
+              label: t('label.no-entity', { entity: label }),
+            }
+          : undefined;
 
-        return untitledDropdown ? (
-          <QuickFilterDropdown
-            hasNullOption={hasNullOption}
-            hideCounts={field.hideCounts ?? false}
-            hideSearchBar={field.hideSearchBar ?? false}
-            independent={independent}
-            isSuggestionsLoading={isOptionsLoading}
-            key={field.key}
-            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
-            options={dropdownOptions}
-            searchKey={field.key}
-            selectedKeys={field.value ?? []}
-            showSelectedCounts={showSelectedCounts}
-            singleSelect={field.singleSelect}
-            onChange={(updatedValues) =>
-              onFieldValueSelect({ ...field, value: updatedValues })
-            }
-            onGetInitialOptions={(key) =>
-              getInitialOptions(
-                key,
-                field.searchIndex,
-                field.searchKey,
-                getQuickFilterSourceFields(field)
-              )
-            }
-            onSearch={(value, key) =>
-              getFilterOptions(
-                value,
-                key,
-                field.searchIndex,
-                field.searchKey,
-                getQuickFilterSourceFields(field)
-              )
-            }
-          />
-        ) : (
-          <SearchDropdown
-            highlight
-            dropdownClassName={field.dropdownClassName}
-            getPopupContainer={getExploreDropdownPopupContainer}
-            hasNullOption={hasNullOption}
+        const handleChange = (values: string[]) => {
+          // Keep the option objects (labels, counts) for the values that stay
+          // selected; a value with no known option keeps its key as label.
+          const knownOptions = new Map(
+            [...selectedOptions, ...dropdownOptions].map((option) => [
+              option.key,
+              option,
+            ])
+          );
+          onFieldValueSelect({
+            ...field,
+            value: values.map((value) => {
+              if (value === NULL_OPTION_KEY && nullOption) {
+                return { key: NULL_OPTION_KEY, label: nullOption.label };
+              }
+
+              return knownOptions.get(value) ?? { key: value, label: value };
+            }),
+          });
+        };
+
+        return (
+          <FilterSelect
+            commitMode={immediateApply ? 'immediate' : 'staged'}
+            data-testid={`search-dropdown-${field.key}`}
             helperText={helperText}
             hideCounts={field.hideCounts ?? false}
-            hideSearchBar={field.hideSearchBar ?? false}
-            immediateApply={immediateApply}
-            independent={independent}
-            index={displayIndex as ExploreSearchIndex}
-            isSuggestionsLoading={isOptionsLoading}
+            isLoading={isOptionsLoading}
             key={field.key}
-            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
-            options={dropdownOptions}
-            searchKey={field.key}
-            selectedKeys={field.value ?? []}
-            showSelectedCounts={showSelectedCounts}
-            singleSelect={field.singleSelect}
-            onChange={(updatedValues) => {
-              onFieldValueSelect({ ...field, value: updatedValues });
-            }}
-            onGetInitialOptions={(key) =>
-              getInitialOptions(
-                key,
-                field.searchIndex,
-                field.searchKey,
-                getQuickFilterSourceFields(field)
-              )
+            label={label}
+            nullOption={nullOption}
+            options={dropdownOptions.map((option) => ({
+              value: option.key,
+              label: option.label,
+              textValue: option.label,
+              count: option.count,
+              icon: option.icon,
+            }))}
+            resolveMissingLabel={(value) =>
+              selectedOptions.find((option) => option.key === value)?.label ??
+              value
             }
-            onSearch={(value, key) =>
-              getFilterOptions(
+            searchable={!(field.hideSearchBar ?? false)}
+            selectedValues={selectedOptions.map((option) => option.key)}
+            selectionMode={field.singleSelect ? 'single' : 'multiple'}
+            showSelectAll={!field.singleSelect}
+            triggerVariant="button"
+            onChange={handleChange}
+            onOpenChange={(open) => {
+              if (open) {
+                getInitialOptions(
+                  field.key,
+                  field.searchIndex,
+                  field.searchKey,
+                  getQuickFilterSourceFields(field)
+                );
+              }
+            }}
+            onSearch={(value) =>
+              debouncedSearch(
                 value,
-                key,
+                field.key,
                 field.searchIndex,
                 field.searchKey,
                 getQuickFilterSourceFields(field)
@@ -471,7 +487,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         );
       })}
       {additionalActions}
-    </Space>
+    </div>
   );
 };
 
