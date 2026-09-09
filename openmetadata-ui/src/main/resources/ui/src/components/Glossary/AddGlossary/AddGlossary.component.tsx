@@ -320,7 +320,10 @@ const AddGlossary = ({
                   {getField(ownerField)}
                   {Boolean(ownersList.length) && (
                     <Space wrap data-testid="owner-container" size={[8, 8]}>
-                      <Owner owners={toOwnerRefs(ownersList)} />
+                      <Owner
+                        isCompactView={false}
+                        owners={toOwnerRefs(ownersList)}
+                      />
                     </Space>
                   )}
                 </div>
@@ -328,7 +331,10 @@ const AddGlossary = ({
                   {getField(reviewersField)}
                   {Boolean(reviewersList.length) && (
                     <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-                      <Owner owners={toOwnerRefs(reviewersList)} />
+                      <Owner
+                        isCompactView={false}
+                        owners={toOwnerRefs(reviewersList)}
+                      />
                     </Space>
                   )}
                 </div>
