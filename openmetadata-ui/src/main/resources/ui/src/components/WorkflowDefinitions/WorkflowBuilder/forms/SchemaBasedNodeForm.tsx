@@ -170,7 +170,6 @@ export const SchemaBasedNodeForm: React.FC<SchemaBasedNodeFormProps> = ({
     <>
       <div className="tw:flex-1 tw:flex tw:flex-col">
         <MetadataFormSection
-          lockFields
           description={node.data?.description ?? ''}
           isStartNode={false}
           name={node.data?.displayName ?? node.data?.label ?? ''}
