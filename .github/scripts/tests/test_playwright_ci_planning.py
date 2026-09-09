@@ -3582,6 +3582,68 @@ def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_p
     )
 
 
+def test_generator_records_playwright_helpers_a_spec_imports(tmp_path):
+    """
+    A change to a shared Playwright helper must route to the specs that import
+    it. Reproduces the #32909 shape: `playwright/utils/domain.ts` is imported
+    by a spec both directly and via a support class (as the real
+    SampleDataDomainDataProduct.spec.ts does). Recording is DIRECT ONLY —
+    depth 1 from the spec — because the helper graph is hub-shaped and
+    transitive reach collapses to the whole suite (see crawl() docstring).
+    Specs are never recorded as sources of other specs.
+    """
+    generator = load_script("generate_playwright_impact_map")
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "playwright/utils").mkdir(parents=True)
+    (ui / "playwright/support/domain").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+    (ui / "src/pages").mkdir(parents=True)
+
+    (ui / "playwright/utils/domain.ts").write_text(
+        "export const selectDomain = async (page, name) => {};\n"
+    )
+    (ui / "playwright/support/domain/Domain.ts").write_text(
+        "import { selectDomain } from '../../utils/domain';\n"
+        "export class Domain { select = selectDomain; }\n"
+    )
+    # Mirrors the real SDD spec: imports the support class AND the util.
+    (ui / "playwright/e2e/Features/Sdd.spec.ts").write_text(
+        "import { Domain } from '../../support/domain/Domain';\n"
+        "import { selectDomain } from '../../utils/domain';\n"
+        "test('domain exists', async ({ page }) => {});\n"
+    )
+    # Imports only the support class — reaches the util transitively.
+    (ui / "playwright/e2e/Features/TransitiveOnly.spec.ts").write_text(
+        "import { Domain } from '../../support/domain/Domain';\n"
+        "import { x } from './Sdd.spec';\n"
+        "test('transitive', async ({ page }) => {});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    # Entries are source→specs; accumulate per spec.
+    by_spec: dict[str, set[str]] = {}
+    for entry in result["mappings"]:
+        for spec in entry["specs"]:
+            by_spec.setdefault(spec, set()).update(entry["sources"])
+
+    P = "openmetadata-ui/src/main/resources/ui/"
+    helper = P + "playwright/utils/domain.ts"
+    support = P + "playwright/support/domain/Domain.ts"
+    sdd_spec = P + "playwright/e2e/Features/Sdd.spec.ts"
+    sdd = by_spec["playwright/e2e/Features/Sdd.spec.ts"]
+    transitive = by_spec["playwright/e2e/Features/TransitiveOnly.spec.ts"]
+
+    # Direct imports are recorded — both the util and the support class.
+    assert helper in sdd
+    assert support in sdd
+    # Depth-1 only: the transitive-only spec gets the support class it
+    # imports, but NOT the util behind it.
+    assert support in transitive
+    assert helper not in transitive
+    # A spec importing another spec never records that spec as a source.
+    assert sdd_spec not in transitive
+
+
 def test_generator_ignores_unit_tests_and_mocks_that_colocate_with_components(
     tmp_path,
 ):
