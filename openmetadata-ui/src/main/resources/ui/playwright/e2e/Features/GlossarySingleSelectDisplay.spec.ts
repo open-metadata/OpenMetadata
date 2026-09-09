@@ -30,56 +30,55 @@ test.describe(
   'Glossary single-select display regression',
   { tag: ['@Features', '@Governance'] },
   () => {
-    test.beforeAll('Setup entities and enable single-select rule', async ({
-      browser,
-    }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll(
+      'Setup entities and enable single-select rule',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      await tableWithTerm.create(apiContext);
-      await tableWithoutTerm.create(apiContext);
+        await glossary.create(apiContext);
+        await glossaryTerm.create(apiContext);
+        await tableWithTerm.create(apiContext);
+        await tableWithoutTerm.create(apiContext);
 
-      // Assign glossary term to the first table via JSON-Patch
-      await apiContext.patch(
-        `/api/v1/tables/${tableWithTerm.entityResponseData?.id}`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: '/tags',
-              value: [
-                {
-                  tagFQN: glossaryTerm.responseData.fullyQualifiedName,
-                  source: 'Glossary',
-                  labelType: 'Manual',
-                  state: 'Confirmed',
-                },
-              ],
-            },
-          ],
-          headers: { 'Content-Type': 'application/json-patch+json' },
-        }
-      );
+        // Assign glossary term to the first table via JSON-Patch
+        await apiContext.patch(
+          `/api/v1/tables/${tableWithTerm.entityResponseData?.id}`,
+          {
+            data: [
+              {
+                op: 'add',
+                path: '/tags',
+                value: [
+                  {
+                    tagFQN: glossaryTerm.responseData.fullyQualifiedName,
+                    source: 'Glossary',
+                    labelType: 'Manual',
+                    state: 'Confirmed',
+                  },
+                ],
+              },
+            ],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
+        );
 
-      // Enable the single-glossary-term rule
-      const rules = DATA_ASSET_RULES.map((r) => ({
-        ...r,
-        enabled:
-          r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE
-            ? true
-            : r.enabled,
-      }));
-      await apiContext.put('/api/v1/system/settings', {
-        data: {
-          config_type: 'entityRulesSettings',
-          config_value: { entitySemantics: rules },
-        },
-        headers: { 'Content-Type': 'application/json' },
-      });
+        // Enable the single-glossary-term rule
+        const rules = DATA_ASSET_RULES.map((r) => ({
+          ...r,
+          enabled:
+            r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE ? true : r.enabled,
+        }));
+        await apiContext.put('/api/v1/system/settings', {
+          data: {
+            config_type: 'entityRulesSettings',
+            config_value: { entitySemantics: rules },
+          },
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-      await afterAction();
-    });
+        await afterAction();
+      }
+    );
 
     test.afterAll('Cleanup entities and reset rule', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -93,9 +92,7 @@ test.describe(
       const rules = DATA_ASSET_RULES.map((r) => ({
         ...r,
         enabled:
-          r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE
-            ? true
-            : r.enabled,
+          r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE ? true : r.enabled,
       }));
       await apiContext.put('/api/v1/system/settings', {
         data: {
@@ -199,9 +196,7 @@ test.describe(
 
       await test.step('Verify no selection is present', async () => {
         await expect(
-          page
-            .getByTestId('tag-selector')
-            .locator('.ant-select-selection-item')
+          page.getByTestId('tag-selector').locator('.ant-select-selection-item')
         ).toHaveCount(0);
       });
 
