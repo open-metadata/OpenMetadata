@@ -386,6 +386,7 @@ export const UserTeamSelectableList = ({
         </Tabs.List>
         <Tabs.Panel
           shouldForceMount
+          className={({ isInert }) => (isInert ? 'tw:hidden' : '')}
           data-testid="owner-select-teams-panel"
           id="teams">
           <SelectableList
@@ -405,6 +406,7 @@ export const UserTeamSelectableList = ({
         </Tabs.Panel>
         <Tabs.Panel
           shouldForceMount
+          className={({ isInert }) => (isInert ? 'tw:hidden' : '')}
           data-testid="owner-select-users-panel"
           id="users">
           <SelectableList
