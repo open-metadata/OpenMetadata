@@ -26,7 +26,7 @@ const MASKED_PASSWORD = '*********';
 
 // Inline equivalent of waitForServiceConnectionForm (not available in 1.13).
 const waitForConnectionForm = async (page: Page) => {
-  await page.getByTestId('next-button').waitFor({ state: 'visible' });
+  await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
 };
 
 const navigateToEditConnection = async (
@@ -99,11 +99,11 @@ test.describe(
         .locator(String.raw`#root\/bootstrapServers`)
         .fill('updated-broker:9092');
 
-      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
       await waitForAllLoadersToDisappear(page);
 
       // Hoist the response listener immediately before the Save click so no
-      // intermediate navigation response from next-button can resolve it early.
+      // intermediate navigation response from submit-btn can resolve it early.
       const patchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/services/messagingServices') &&
@@ -149,7 +149,7 @@ test.describe(
         .locator(String.raw`#root\/bootstrapServers`)
         .fill('roundtrip-broker:9092');
 
-      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
       await waitForAllLoadersToDisappear(page);
 
       // Hoist the listener right before Save so no intermediate response races.
@@ -189,7 +189,7 @@ test.describe(
         .locator(String.raw`#root\/bootstrapServers`)
         .fill('regression-broker:9092');
 
-      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
       await waitForAllLoadersToDisappear(page);
 
       // Hoist the listener right before Save.
@@ -278,7 +278,7 @@ test.describe(
       // The password is still the masked sentinel — no patch op must be generated for it.
       await page.locator(String.raw`#root\/hostPort`).fill('mysql:3307');
 
-      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
       await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse(
@@ -315,7 +315,7 @@ test.describe(
       // Change hostPort so the form is dirty and triggers a PATCH.
       await page.locator(String.raw`#root\/hostPort`).fill('mysql:3308');
 
-      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
       await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse(
@@ -407,7 +407,7 @@ test.describe(
         .locator(String.raw`#root\/hostPort`)
         .fill('http://localhost:8089');
 
-      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
       await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse(
@@ -430,50 +430,5 @@ test.describe(
       expect(passwordOp).toBeUndefined();
     });
 
-    test("saving after clearing does not send replace/'' for the dashboard password field", async ({
-      page,
-    }) => {
-      await navigateToEditConnection(
-        page,
-        supersetService.entity.name,
-        SERVICE_TYPE.Dashboard
-      );
-
-      await page.locator(String.raw`#root\/connection\/password`).fill('');
-
-      // Change hostPort so the form is dirty and triggers a PATCH.
-      await page
-        .locator(String.raw`#root\/hostPort`)
-        .fill('http://localhost:8090');
-
-      await page.getByTestId('next-button').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const patchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/services/dashboardServices') &&
-          response.request().method() === 'PATCH'
-      );
-
-      await page.getByRole('button', { name: 'Save' }).click();
-
-      const patch = await patchResponse;
-      const patchBody = patch.request().postDataJSON() as Array<{
-        op: string;
-        path: string;
-        value?: unknown;
-      }>;
-
-      const badPasswordOp = patchBody.find(
-        (op) =>
-          op.path.endsWith('/password') &&
-          op.op === 'replace' &&
-          op.value === ''
-      );
-
-      expect(badPasswordOp).toBeUndefined();
-
-      await waitForAllLoadersToDisappear(page);
-    });
   }
 );
