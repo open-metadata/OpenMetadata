@@ -12,11 +12,14 @@
 Test Airflow processing
 """
 
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
+from sqlalchemy import Column, DateTime, MetaData, String, Table
+from sqlalchemy.orm import Session
 
 # pylint: disable=unused-import
 try:
@@ -24,6 +27,9 @@ try:
 except ImportError:
     pytest.skip("Airflow dependencies not installed", allow_module_level=True)
 
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -165,6 +171,66 @@ SERIALIZED_DAG = {
         "params": {},
     },
 }
+
+
+@pytest.mark.parametrize("date_column", ["logical_date", "execution_date"])
+@pytest.mark.parametrize(
+    "dates",
+    [
+        [(None, 1), (None, 4), (None, 2), (None, 3)],
+        [(1, 6), (None, 4), (2, 2), (None, 3)],
+        [(1, 6), (4, 4), (2, 2), (3, 3)],
+    ],
+    ids=["asset-triggered", "mixed", "scheduled"],
+)
+def test_get_pipeline_status_selects_latest_runs(date_column, dates):
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
+    config.source.serviceConnection.root.config.connection = SQLiteConnection(databaseMode=":memory:")
+    config.source.serviceConnection.root.config.numberOfStatus = 2
+    with patch.object(AirflowSource, "test_connection"):
+        source = AirflowSource(config.source, OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+
+    dag_run = Table(
+        "dag_run",
+        MetaData(),
+        Column("dag_id", String),
+        Column("run_id", String),
+        Column("queued_at", DateTime),
+        Column(date_column, DateTime),
+        Column("start_date", DateTime),
+        Column("state", String),
+    )
+    try:
+        dag_run.create(source.connection)
+        with Session(source.connection) as session:
+            rows = [
+                {
+                    "dag_id": "my_dag",
+                    "run_id": run_id,
+                    date_column: datetime(2026, 1, date_day) if date_day else None,
+                    "start_date": datetime(2026, 1, start_day),
+                    "state": "success",
+                }
+                for run_id, (date_day, start_day) in zip(["run_1", "run_4", "run_2", "run_3"], dates, strict=True)
+            ]
+            rows.append(
+                {
+                    "dag_id": "other_dag",
+                    "run_id": "other_run",
+                    date_column: datetime(2026, 1, 7),
+                    "start_date": datetime(2026, 1, 7),
+                    "state": "success",
+                }
+            )
+            session.execute(dag_run.insert(), rows)
+            session.commit()
+            source._session = session
+
+            runs = source.get_pipeline_status("my_dag")
+
+            assert [run.run_id for run in runs] == ["run_4", "run_3"]
+    finally:
+        source.connection.dispose()
 
 
 class TestAirflow(TestCase):
@@ -1611,84 +1677,6 @@ class TestAirflow(TestCase):
         self.assertEqual(len(failed_statuses), 10)
         for status in failed_statuses:
             self.assertEqual(status.taskStatus, [])
-
-    def test_get_pipeline_status_coalesce_ordering_with_asset_triggered_runs(self):
-        """
-        get_pipeline_status must order rows using COALESCE(date_column, start_date) DESC
-        so that asset-triggered runs (logical_date=NULL) sort by start_date rather than
-        being unconditionally last (plain DESC on a nullable column) or unconditionally
-        first (NULLS FIRST). Plain NULLS LAST syntax is also rejected by MySQL/MariaDB.
-
-        This test verifies both the DagRun construction from mixed row types and that
-        the ORDER BY expression passed to SQLAlchemy contains COALESCE — so a regression
-        back to bare column ordering is caught immediately.
-        """
-        from collections import namedtuple
-        from datetime import datetime, timezone
-        from unittest.mock import MagicMock
-
-        from airflow.models import DagRun
-
-        Row = namedtuple("Row", ["dag_id", "run_id", "queued_at", "date_value", "start_date", "state"])
-
-        scheduled_dt = datetime(2026, 9, 1, 12, 0, 0, tzinfo=timezone.utc)
-        asset_start = datetime(2026, 9, 2, 8, 0, 0, tzinfo=timezone.utc)
-
-        # Rows as the DB would return under COALESCE(date_value, start_date) DESC:
-        # asset run (date_value=NULL, COALESCE→asset_start=Sep 2) sorts before
-        # scheduled run (date_value=Sep 1).
-        rows = [
-            Row(dag_id="dag1", run_id="asset_run", queued_at=None, date_value=None, start_date=asset_start, state="success"),
-            Row(dag_id="dag1", run_id="sched_run", queued_at=None, date_value=scheduled_dt, start_date=scheduled_dt, state="success"),
-        ]
-
-        mock_session = MagicMock()
-        mock_query = MagicMock()
-        mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
-        mock_session.query.return_value = mock_query
-
-        # _session is a plain instance attribute (not a read-only property) — set it
-        # directly so self.session returns our mock without touching the real DB.
-        self.airflow._session = mock_session
-        self.airflow._status_cache_dag_id = None
-        try:
-            result = self.airflow.get_pipeline_status("dag1")
-        finally:
-            self.airflow._session = None
-            self.airflow._status_cache_dag_id = None
-
-        # ── Behavioral assertion 1: DagRun objects are built from both row types ──
-        self.assertEqual(len(result), 2)
-        asset_run, sched_run = result
-
-        self.assertIsInstance(asset_run, DagRun)
-        self.assertEqual(asset_run.run_id, "asset_run")
-        self.assertIsNone(asset_run.logical_date)
-        self.assertEqual(asset_run.start_date, asset_start)
-
-        self.assertIsInstance(sched_run, DagRun)
-        self.assertEqual(sched_run.run_id, "sched_run")
-        self.assertEqual(sched_run.logical_date, scheduled_dt)
-
-        # ── Behavioral assertion 2: ORDER BY must use COALESCE ──
-        # func.coalesce(...) creates a real SQLAlchemy expression even inside a mock
-        # chain. Inspecting the argument to order_by() proves the cross-dialect contract
-        # is in place: COALESCE(date_col, start_date) DESC works on PostgreSQL, MySQL,
-        # MariaDB, and SQLite alike; bare NULLS LAST is MySQL-incompatible.
-        order_by_call = mock_query.filter.return_value.order_by.call_args
-        self.assertIsNotNone(order_by_call, "order_by() must be called on the query chain")
-        order_by_sql = str(order_by_call.args[0]).lower()
-        self.assertIn(
-            "coalesce",
-            order_by_sql,
-            "ORDER BY must use COALESCE so NULL logical_date falls back to start_date "
-            "(plain NULLS LAST is rejected by MySQL/MariaDB)",
-        )
-        self.assertIn(
-            "start_date",
-            order_by_sql,
-            "COALESCE must reference start_date as the fallback for asset-triggered runs",
-        )
 
     def test_get_pipeline_status_cache_returns_same_result(self):
         """
