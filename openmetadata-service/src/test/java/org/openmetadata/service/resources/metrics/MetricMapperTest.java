@@ -86,13 +86,6 @@ class MetricMapperTest {
                       org.mockito.ArgumentMatchers.eq(
                           org.openmetadata.schema.type.Include.NON_DELETED)))
           .thenReturn(resolved);
-      entity
-          .when(
-              () ->
-                  Entity.getEntityReference(
-                      org.mockito.ArgumentMatchers.any(EntityReference.class),
-                      org.mockito.ArgumentMatchers.eq(org.openmetadata.schema.type.Include.ALL)))
-          .thenReturn(resolved);
 
       Metric metric =
           new MetricMapper()
