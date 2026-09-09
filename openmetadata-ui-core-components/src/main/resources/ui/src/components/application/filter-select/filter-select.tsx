@@ -51,12 +51,14 @@ const TriggerButton = ({
   testId,
   variant,
   className,
+  icon,
 }: {
   hasSelection: boolean;
   text: string;
   testId?: string;
   variant: FilterSelectTriggerVariant;
   className?: string;
+  icon?: FC<{ className?: string }>;
 }) => {
   if (variant === 'button') {
     return (
@@ -64,6 +66,7 @@ const TriggerButton = ({
         className={cx('tw:whitespace-nowrap', className)}
         color="secondary"
         data-testid={testId}
+        iconLeading={icon}
         iconTrailing={ChevronDown}
         size="md">
         {text}
@@ -179,6 +182,7 @@ export const FilterSelect = ({
   searchable,
   selectionMode = 'multiple',
   showSelectAll,
+  triggerIcon,
   triggerVariant = 'chip',
   onOpenChange,
   onSearch,
@@ -328,6 +332,7 @@ export const FilterSelect = ({
       <TriggerButton
         className={className}
         hasSelection={selectedValues.length > 0}
+        icon={triggerIcon}
         testId={testId}
         text={triggerText}
         variant={triggerVariant}

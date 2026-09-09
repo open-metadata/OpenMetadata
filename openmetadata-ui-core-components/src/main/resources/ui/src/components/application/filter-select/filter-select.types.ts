@@ -73,6 +73,8 @@ export interface FilterSelectProps {
    * included.
    */
   showSelectAll?: boolean;
+  /** Leading icon on the button-variant trigger. */
+  triggerIcon?: FC<{ className?: string }>;
   triggerVariant?: FilterSelectTriggerVariant;
   onOpenChange?: (open: boolean) => void;
   /** Async search — when set the parent filters `options`; otherwise local. */
