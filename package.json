@@ -15,8 +15,17 @@
   },
   "resolutions": {
     "brace-expansion": "1.1.18",
-    "lodash": "4.18.1"
+    "lodash": "4.18.1",
+    "stream-json": "3.5.0"
   },
+  "//": [
+    "resolutions.stream-json: forces 3.5.0 (GHSA-528h-pc64-c93x DoS fix) over quicktype's exact 1.7.5 pin,",
+    "two majors ahead. Safe because this repo only runs `quicktype -s schema` (json2ts.sh,",
+    "json2ts-generate-all.sh), which does not exercise the changed stream-json API; quicktype's",
+    "JSON-sample input mode DOES break under 3.5.0 (`Parser is not a constructor`) — do not use it.",
+    "Re-verify schema codegen (and drop this override if quicktype ships stream-json >= 3.5.0,",
+    "as quicktype 26+ does) whenever quicktype is upgraded."
+  ],
   "scripts": {
     "preinstall": "yarn global add node-gyp@10.0.1",
     "test": "echo \"Error: no test specified\" && exit 1"
