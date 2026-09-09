@@ -1987,7 +1987,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryDetails/GlossaryDetails.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts"
+        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
     {
