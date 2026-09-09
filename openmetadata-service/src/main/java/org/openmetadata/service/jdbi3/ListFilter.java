@@ -755,11 +755,12 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    // The global (navbar) domain filter only narrows domain-scoped catalog assets; skip it for
-    // non-filterable types (e.g. user/team/policy/tag) so their lists are never emptied by the
-    // strict membership condition below. Absent entityType (legacy ?domain= callers) still applies.
+    // The global (navbar) domain filter must not narrow domain-supporting types whose lists double
+    // as reference/settings surfaces (e.g. user/team/tag/classification) — the strict membership
+    // condition below would empty them. Absent entityType (legacy ?domain= callers) still applies.
+    // Whether a type is domain-scoped at all is enforced via supportsDomains at the injection point.
     String entityType = getQueryParam("entityType");
-    if (entityType != null && !DomainFilterableEntities.isFilterable(entityType)) {
+    if (DomainFilterExclusions.isExcluded(entityType)) {
       return "";
     }
 
