@@ -1369,8 +1369,8 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const initialSearchRes = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes;
@@ -1379,8 +1379,8 @@ test.describe(
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1670,8 +1670,8 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes0 = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const initialSearchRes0 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes0;
@@ -1694,8 +1694,8 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes1 = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const initialSearchRes1 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes1;
@@ -1705,8 +1705,8 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1729,8 +1729,8 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        const initialSearchRes2 = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const initialSearchRes2 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
         await initialSearchRes2;
@@ -1740,8 +1740,8 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') 
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1852,8 +1852,8 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query')
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
