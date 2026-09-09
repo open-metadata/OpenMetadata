@@ -10,8 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Config,
+  ImmutableTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/ui';
 import { SearchIndex } from '../enums/search.enum';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
+import {
+  fromLegacyTableColumnJsonLogic,
+  toLegacyTableColumnJsonLogic,
+} from './QueryBuilderPureUtils';
+
+const TABLE_CP_COLUMN = 'extension.testTableCp.rows.name';
 
 // Define extended widget interface for testing widget properties
 interface ExtendedWidget {
@@ -113,33 +124,212 @@ describe('JSONLogicSearchClassBase', () => {
     });
 
     it('should have table_field_* operators for table-cp columns', () => {
-      const {
-        table_field_equal,
-        table_field_not_equal,
-        table_field_like,
-        table_field_not_like,
-      } = jsonLogicSearchClassBase.configOperators;
+      const valueOps = [
+        'table_field_equal',
+        'table_field_not_equal',
+        'table_field_like',
+        'table_field_not_like',
+      ];
 
-      expect(table_field_equal).toBeDefined();
-      expect(table_field_equal.cardinality).toBe(1);
-      expect(table_field_equal.valueSources).toEqual(['value']);
-      expect(typeof table_field_equal.jsonLogic).toBe('function');
+      valueOps.forEach((key) => {
+        const operator = jsonLogicSearchClassBase.configOperators[key];
 
-      expect(table_field_not_equal).toBeDefined();
-      expect(table_field_not_equal.cardinality).toBe(1);
-      expect(table_field_not_equal.valueSources).toEqual(['value']);
-      expect(typeof table_field_not_equal.jsonLogic).toBe('function');
-
-      expect(table_field_like).toBeDefined();
-      expect(table_field_like.cardinality).toBe(1);
-      expect(table_field_like.valueSources).toEqual(['value']);
-      expect(typeof table_field_like.jsonLogic).toBe('function');
-
-      expect(table_field_not_like).toBeDefined();
-      expect(table_field_not_like.cardinality).toBe(1);
-      expect(table_field_not_like.valueSources).toEqual(['value']);
-      expect(typeof table_field_not_like.jsonLogic).toBe('function');
+        expect(operator).toBeDefined();
+        expect(operator.cardinality).toBe(1);
+        expect(operator.valueSources).toEqual(['value']);
+        expect(typeof operator.jsonLogic).toBe('function');
+        expect(valueOps).toContain(operator.reversedOp);
+      });
     });
+
+    it('should emit the field as a var node in argument zero', () => {
+      // RAQB's jsonLogic importer reads the field from argument zero and skips any operator whose
+      // argument zero is not itself a jsonLogic node, so the field must stay a `var` there.
+      const field = { var: TABLE_CP_COLUMN };
+      const emit = (key: string, val: unknown) =>
+        (
+          jsonLogicSearchClassBase.configOperators[key].jsonLogic as (
+            ...args: unknown[]
+          ) => Record<string, unknown>
+        )(field, key, val);
+
+      expect(emit('table_field_equal', ['john'])).toEqual({
+        __tcvContains: [field, 'john'],
+      });
+      expect(emit('table_field_not_equal', ['john'])).toEqual({
+        __tcvNotContains: [field, 'john'],
+      });
+      expect(emit('table_field_like', ['oh'])).toEqual({
+        __tcvLike: [field, 'oh'],
+      });
+      expect(emit('table_field_not_like', ['oh'])).toEqual({
+        __tcvNotLike: [field, 'oh'],
+      });
+    });
+  });
+
+  // A saved rule is loaded back into the builder with QbUtils.loadFromJsonLogic. When that import
+  // fails the widget renders an empty "Rules To Check" panel, which is what the earlier
+  // value-first shape did. These cases pin the import so the operators stay round-trippable.
+  describe('table_field_* jsonLogic round-trip', () => {
+    const buildConfig = (): Config =>
+      ({
+        ...jsonLogicSearchClassBase.baseConfig,
+        types: jsonLogicSearchClassBase.configTypes,
+        widgets: jsonLogicSearchClassBase.configWidgets,
+        operators: jsonLogicSearchClassBase.configOperators,
+        fields: {
+          [TABLE_CP_COLUMN]: {
+            type: 'text',
+            label: 'testTableCp - name',
+            operators: [
+              'table_field_equal',
+              'table_field_not_equal',
+              'table_field_like',
+              'table_field_not_like',
+            ],
+            valueSources: ['value'],
+          },
+        },
+      } as unknown as Config);
+
+    it.each([
+      [
+        'table_field_equal',
+        { __tcvContains: [{ var: TABLE_CP_COLUMN }, 'john'] },
+      ],
+      [
+        'table_field_not_equal',
+        { __tcvNotContains: [{ var: TABLE_CP_COLUMN }, 'john'] },
+      ],
+      ['table_field_like', { __tcvLike: [{ var: TABLE_CP_COLUMN }, 'oh'] }],
+      [
+        'table_field_not_like',
+        { __tcvNotLike: [{ var: TABLE_CP_COLUMN }, 'oh'] },
+      ],
+    ])('should import %s back into a single rule', (expectedOp, rule) => {
+      const config = buildConfig();
+      const logic = { and: [rule] };
+
+      const tree = QbUtils.loadFromJsonLogic(logic, config);
+
+      expect(tree).toBeDefined();
+
+      const children = Object.values(
+        QbUtils.getTree(tree as ImmutableTree).children1 ?? {}
+      );
+
+      const imported = children[0] as {
+        properties?: { operator?: string; field?: string };
+      };
+
+      expect(children).toHaveLength(1);
+      expect(imported.properties?.operator).toBe(expectedOp);
+      expect(imported.properties?.field).toBe(TABLE_CP_COLUMN);
+
+      // and exporting the imported tree reproduces the stored rule verbatim
+      expect(
+        QbUtils.jsonLogicFormat(tree as ImmutableTree, config).logic
+      ).toEqual(logic);
+    });
+
+    it('should import the stored shape as zero rules without the transform', () => {
+      // Why the transforms exist: in the stored shape argument zero is the compared value, not the
+      // field, so RAQB matches no operator and drops the rule. The tree still comes back as a
+      // truthy empty group, which is why the widget silently showed no rules at all.
+      const stored = {
+        and: [{ contains: ['john', { tableColumnValues: TABLE_CP_COLUMN }] }],
+      };
+
+      const tree = QbUtils.loadFromJsonLogic(stored, buildConfig());
+
+      expect(
+        Object.values(QbUtils.getTree(tree as ImmutableTree).children1 ?? {})
+      ).toHaveLength(0);
+    });
+
+    // The whole point: a rule stored in the shape the rule engine evaluates renders as a real rule,
+    // and saving it again reproduces that stored shape byte-for-byte.
+    it.each([
+      [
+        'Is',
+        'table_field_equal',
+        {
+          and: [{ contains: ['john', { tableColumnValues: TABLE_CP_COLUMN }] }],
+        },
+      ],
+      [
+        'Is not',
+        'table_field_not_equal',
+        {
+          and: [
+            {
+              '!': {
+                contains: ['john', { tableColumnValues: TABLE_CP_COLUMN }],
+              },
+            },
+          ],
+        },
+      ],
+      [
+        'Contains',
+        'table_field_like',
+        {
+          and: [
+            {
+              some: [
+                { tableColumnValues: TABLE_CP_COLUMN },
+                { contains: ['oh', { var: '' }] },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        'Not contains',
+        'table_field_not_like',
+        {
+          and: [
+            {
+              '!': {
+                some: [
+                  { tableColumnValues: TABLE_CP_COLUMN },
+                  { contains: ['oh', { var: '' }] },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    ])(
+      'should round-trip the stored %s rule through the builder unchanged',
+      (_label, expectedOp, stored) => {
+        const config = buildConfig();
+
+        const tree = QbUtils.loadFromJsonLogic(
+          fromLegacyTableColumnJsonLogic(stored),
+          config
+        );
+
+        expect(tree).toBeDefined();
+
+        const children = Object.values(
+          QbUtils.getTree(tree as ImmutableTree).children1 ?? {}
+        );
+        const imported = children[0] as {
+          properties?: { operator?: string; field?: string };
+        };
+
+        expect(children).toHaveLength(1);
+        expect(imported.properties?.operator).toBe(expectedOp);
+        expect(imported.properties?.field).toBe(TABLE_CP_COLUMN);
+
+        const exported = QbUtils.jsonLogicFormat(tree as ImmutableTree, config)
+          .logic as Record<string, unknown>;
+
+        expect(toLegacyTableColumnJsonLogic(exported)).toEqual(stored);
+      }
+    );
   });
 
   describe('configWidgets', () => {

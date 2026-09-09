@@ -973,6 +973,175 @@ export const getEntityTypeAggregationFilter = (
   return qFilter;
 };
 
+// Table-type custom property conditions are STORED in this shape, and must stay in it — it is
+// what the workflow rule engine evaluates:
+//
+//   Is           {"contains":[<val>,{"tableColumnValues":"<path>"}]}
+//   Is not       {"!":{"contains":[...]}}
+//   Contains     {"some":[{"tableColumnValues":"<path>"},{"contains":[<val>,{"var":""}]}]}
+//   Not contains {"!":{"some":[...]}}
+//
+// RAQB cannot read that shape back, though: its jsonLogic importer takes the field from argument
+// zero and derives its parser by calling each operator's emitter with sentinel markers. Argument
+// zero here is the compared value, and the path is a bare string — producing which means
+// transforming the marker, destroying it. So a rule saved in this shape rendered as an empty query
+// builder.
+//
+// The two are decoupled instead of changing the stored shape: the operators emit an INTERNAL
+// field-first form that RAQB can import and export, and these transforms convert at the boundary —
+// `fromLegacyTableColumnJsonLogic` on load, `toLegacyTableColumnJsonLogic` on save. Both directions
+// are driven off TABLE_COLUMN_SHAPES so they cannot drift; the internal op names never reach the
+// backend, and the `__` prefix makes it obvious if one ever leaks into a stored rule.
+const TABLE_COLUMN_SHAPES = [
+  {
+    internalOp: '__tcvContains',
+    legacyOp: 'contains',
+    negated: false,
+    toLegacy: (path: string, value: unknown) => ({
+      contains: [value, { tableColumnValues: path }],
+    }),
+  },
+  {
+    internalOp: '__tcvNotContains',
+    legacyOp: 'contains',
+    negated: true,
+    toLegacy: (path: string, value: unknown) => ({
+      '!': { contains: [value, { tableColumnValues: path }] },
+    }),
+  },
+  {
+    internalOp: '__tcvLike',
+    legacyOp: 'some',
+    negated: false,
+    toLegacy: (path: string, value: unknown) => ({
+      some: [{ tableColumnValues: path }, { contains: [value, { var: '' }] }],
+    }),
+  },
+  {
+    internalOp: '__tcvNotLike',
+    legacyOp: 'some',
+    negated: true,
+    toLegacy: (path: string, value: unknown) => ({
+      '!': {
+        some: [{ tableColumnValues: path }, { contains: [value, { var: '' }] }],
+      },
+    }),
+  },
+] as const;
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+// Rewrites every node for which `rewrite` returns a replacement, recursing elsewhere.
+const rewriteJsonLogicNodes = (
+  node: JsonLogic,
+  rewrite: (node: Record<string, unknown>) => JsonLogic | undefined
+): JsonLogic => {
+  if (node === null || typeof node !== 'object') {
+    return node;
+  }
+  if (Array.isArray(node)) {
+    return node.map((item) =>
+      rewriteJsonLogicNodes(item as JsonLogic, rewrite)
+    ) as unknown as JsonLogic;
+  }
+  const replacement = rewrite(node);
+  if (replacement) {
+    return replacement;
+  }
+  const result: Record<string, JsonLogic> = {};
+  for (const key in node) {
+    result[key] = rewriteJsonLogicNodes(node[key] as JsonLogic, rewrite);
+  }
+
+  return result;
+};
+
+const legacyColumnPath = (value: unknown): string | undefined => {
+  const path = asRecord(value)?.['tableColumnValues'];
+
+  return typeof path === 'string' && path !== '' ? path : undefined;
+};
+
+// Returns [path, comparedValue] when `node` is the legacy shape for `legacyOp`.
+const legacyTableColumnArgs = (
+  node: Record<string, unknown>,
+  legacyOp: string
+): [string, unknown] | undefined => {
+  const args = node[legacyOp];
+  if (!Array.isArray(args) || args.length !== 2) {
+    return undefined;
+  }
+  if (legacyOp === 'contains') {
+    const path = legacyColumnPath(args[1]);
+
+    return path ? [path, args[0]] : undefined;
+  }
+  const path = legacyColumnPath(args[0]);
+  const inner = asRecord(args[1])?.['contains'];
+
+  return path && Array.isArray(inner) ? [path, inner[0]] : undefined;
+};
+
+const toInternalTableColumnNode = (
+  node: Record<string, unknown>
+): JsonLogic | undefined => {
+  const inner = asRecord(node['!']);
+  const target = inner ?? node;
+  const negated = Boolean(inner);
+  for (const shape of TABLE_COLUMN_SHAPES) {
+    if (shape.negated !== negated) {
+      continue;
+    }
+    const args = legacyTableColumnArgs(target, shape.legacyOp);
+    if (args) {
+      return { [shape.internalOp]: [{ var: args[0] }, args[1]] };
+    }
+  }
+
+  return undefined;
+};
+
+const toLegacyTableColumnNode = (
+  node: Record<string, unknown>
+): JsonLogic | undefined => {
+  for (const shape of TABLE_COLUMN_SHAPES) {
+    const args = node[shape.internalOp];
+    const path = asRecord(Array.isArray(args) ? args[0] : undefined)?.['var'];
+    if (Array.isArray(args) && args.length === 2 && typeof path === 'string') {
+      return shape.toLegacy(path, args[1]) as JsonLogic;
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * Converts stored table-cp rules into the internal field-first form the query builder can import.
+ * Call on the way IN, before QbUtils.loadFromJsonLogic.
+ */
+export const fromLegacyTableColumnJsonLogic = (
+  jsonLogic: Record<string, unknown>
+): Record<string, unknown> =>
+  rewriteJsonLogicNodes(jsonLogic, toInternalTableColumnNode) as Record<
+    string,
+    unknown
+  >;
+
+/**
+ * Converts the internal field-first form back to the stored shape. Call on the way OUT, on the
+ * result of QbUtils.jsonLogicFormat, so persisted rules keep the format the rule engine evaluates.
+ */
+export const toLegacyTableColumnJsonLogic = (
+  jsonLogic: Record<string, unknown>
+): Record<string, unknown> =>
+  rewriteJsonLogicNodes(jsonLogic, toLegacyTableColumnNode) as Record<
+    string,
+    unknown
+  >;
+
 export const migrateJsonLogic = (
   jsonLogic: Record<string, unknown>
 ): Record<string, unknown> => {

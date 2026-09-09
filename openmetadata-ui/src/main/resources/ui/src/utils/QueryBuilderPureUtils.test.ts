@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getSelectEqualsNotEqualsProperties } from './QueryBuilderPureUtils';
+import {
+  fromLegacyTableColumnJsonLogic,
+  getSelectEqualsNotEqualsProperties,
+  toLegacyTableColumnJsonLogic,
+} from './QueryBuilderPureUtils';
+
+const COLUMN = 'extension.testTableCp.rows.name';
 
 type RuleProperties = {
   valueType: string[];
@@ -64,5 +70,121 @@ describe('getSelectEqualsNotEqualsProperties valueType and asyncListValues branc
     expect(properties.asyncListValues).toEqual([
       { key: 'x', value: 'x', children: 'x' },
     ]);
+  });
+});
+
+describe('table-type custom property rule transforms', () => {
+  it('rewrites the legacy contains shape to the field-first equal op', () => {
+    expect(
+      fromLegacyTableColumnJsonLogic({
+        and: [{ contains: ['john', { tableColumnValues: COLUMN }] }],
+      })
+    ).toEqual({
+      and: [{ __tcvContains: [{ var: COLUMN }, 'john'] }],
+    });
+  });
+
+  it('rewrites the negated legacy contains shape to the not-equal op', () => {
+    expect(
+      fromLegacyTableColumnJsonLogic({
+        and: [{ '!': { contains: ['john', { tableColumnValues: COLUMN }] } }],
+      })
+    ).toEqual({
+      and: [{ __tcvNotContains: [{ var: COLUMN }, 'john'] }],
+    });
+  });
+
+  it('rewrites the legacy some/contains shape to the like op', () => {
+    expect(
+      fromLegacyTableColumnJsonLogic({
+        and: [
+          {
+            some: [
+              { tableColumnValues: COLUMN },
+              { contains: ['oh', { var: '' }] },
+            ],
+          },
+        ],
+      })
+    ).toEqual({
+      and: [{ __tcvLike: [{ var: COLUMN }, 'oh'] }],
+    });
+  });
+
+  it('rewrites the negated legacy some/contains shape to the not-like op', () => {
+    expect(
+      fromLegacyTableColumnJsonLogic({
+        and: [
+          {
+            '!': {
+              some: [
+                { tableColumnValues: COLUMN },
+                { contains: ['oh', { var: '' }] },
+              ],
+            },
+          },
+        ],
+      })
+    ).toEqual({
+      and: [{ __tcvNotLike: [{ var: COLUMN }, 'oh'] }],
+    });
+  });
+
+  it('leaves rules already in the new shape untouched', () => {
+    const current = {
+      and: [{ __tcvContains: [{ var: COLUMN }, 'john'] }],
+    };
+
+    expect(fromLegacyTableColumnJsonLogic(current)).toEqual(current);
+  });
+
+  it('leaves an unrelated contains rule untouched', () => {
+    const unrelated = { and: [{ contains: ['john', { var: 'name' }] }] };
+
+    expect(fromLegacyTableColumnJsonLogic(unrelated)).toEqual(unrelated);
+  });
+});
+
+describe('table-type custom property rules survive a builder round-trip', () => {
+  // The stored shape must come back byte-identical after a load/save cycle, or the rule engine
+  // stops seeing the format it evaluates.
+  it.each([
+    ['Is', { and: [{ contains: ['john', { tableColumnValues: COLUMN }] }] }],
+    [
+      'Is not',
+      { and: [{ '!': { contains: ['john', { tableColumnValues: COLUMN }] } }] },
+    ],
+    [
+      'Contains',
+      {
+        and: [
+          {
+            some: [
+              { tableColumnValues: COLUMN },
+              { contains: ['oh', { var: '' }] },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      'Not contains',
+      {
+        and: [
+          {
+            '!': {
+              some: [
+                { tableColumnValues: COLUMN },
+                { contains: ['oh', { var: '' }] },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  ])('keeps the stored %s rule unchanged', (_label, stored) => {
+    expect(
+      toLegacyTableColumnJsonLogic(fromLegacyTableColumnJsonLogic(stored))
+    ).toEqual(stored);
   });
 });

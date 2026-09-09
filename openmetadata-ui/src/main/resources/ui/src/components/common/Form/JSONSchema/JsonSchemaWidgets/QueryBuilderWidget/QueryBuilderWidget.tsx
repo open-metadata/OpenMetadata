@@ -50,7 +50,9 @@ import {
   buildExploreUrlParams,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
+  fromLegacyTableColumnJsonLogic,
   migrateJsonLogic,
+  toLegacyTableColumnJsonLogic,
   READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
@@ -249,7 +251,13 @@ const QueryBuilderWidget: FC<
     } else {
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
-        onChange(JSON.stringify(jsonLogic.logic ?? ''));
+        // Convert the internal table-cp form back to the shape the rule engine evaluates.
+        const logic = jsonLogic.logic
+          ? toLegacyTableColumnJsonLogic(
+              jsonLogic.logic as Record<string, unknown>
+            )
+          : '';
+        onChange(JSON.stringify(logic));
       } catch {
         onChange('');
       }
@@ -275,8 +283,11 @@ const QueryBuilderWidget: FC<
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        // migrate existing json logic to new format
-        const migratedValue = migrateJsonLogic(parsedValue);
+        // migrate existing json logic to new format, then swap stored table-cp rules for the
+        // internal field-first form RAQB is able to import
+        const migratedValue = fromLegacyTableColumnJsonLogic(
+          migrateJsonLogic(parsedValue)
+        );
 
         const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
         if (tree) {
