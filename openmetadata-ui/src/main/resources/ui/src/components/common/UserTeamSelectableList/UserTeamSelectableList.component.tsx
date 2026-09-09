@@ -318,14 +318,16 @@ export const UserTeamSelectableList = ({
   };
 
   // When children are provided as trigger, wrap them so any click opens the popover.
-  // AriaDialogTrigger's PressResponder only fires for react-aria-aware components;
-  // a plain wrapper span ensures the click always reaches setPopupVisible.
+  // The children are react-aria buttons (ButtonUtility) whose press handling stops
+  // the click in the bubble phase, so a bubble-phase onClick on the wrapper never
+  // fires. Listen in the capture phase instead — it runs before the button can
+  // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       ref={triggerRef}
-      onClick={handleTriggerClick}
-      onKeyDown={handleTriggerKeyDown}>
+      onClickCapture={handleTriggerClick}
+      onKeyDownCapture={handleTriggerKeyDown}>
       {children}
     </span>
   ) : (
