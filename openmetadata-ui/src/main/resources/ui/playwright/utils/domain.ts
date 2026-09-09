@@ -569,9 +569,12 @@ export const selectDataProduct = async (
     )
     .toBe(true);
 
+  // Click the data product name cell, not the row center — the row's center
+  // column can be the glossary-terms cell whose tags are their own links, so a
+  // row-center click lands on a tag instead of triggering navigation.
   await Promise.all([
     page.waitForResponse('/api/v1/dataProducts/name/*'),
-    dataProductRow.click(),
+    dataProductRow.getByTestId('entity-name').click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
