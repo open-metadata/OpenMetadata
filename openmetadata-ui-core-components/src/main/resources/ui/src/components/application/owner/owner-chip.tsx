@@ -90,7 +90,7 @@ export const OwnerChip = ({
           'tw:flex tw:items-center tw:gap-1.5 tw:min-w-0',
           className
         )}
-        data-testid={nameStr}>
+        data-testid={owner.name ?? owner.id}>
         {avatar}
         {owner.href ? (
           <a
@@ -110,7 +110,7 @@ export const OwnerChip = ({
   return (
     <span
       className={cx('tw:flex tw:items-center tw:gap-1 tw:min-w-0', className)}
-      data-testid={nameStr}
+      data-testid={owner.name ?? owner.id}
       title={typeof displayName === 'string' ? displayName : owner.name}>
       {avatar}
     </span>
