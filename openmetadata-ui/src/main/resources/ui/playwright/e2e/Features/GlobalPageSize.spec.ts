@@ -55,7 +55,11 @@ test.describe('Table & Data Model columns table pagination', () => {
     // Change page size to 50
     const option50 = page.getByTestId('rows-per-page-option-50');
     await expect(async () => {
-      await rowsPerPageDropdown.click();
+      if (
+        (await rowsPerPageDropdown.getAttribute('aria-expanded')) !== 'true'
+      ) {
+        await rowsPerPageDropdown.click();
+      }
       await expect(option50).toBeVisible();
     }).toPass({ timeout: 15000 });
     await option50.click();
