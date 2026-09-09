@@ -1144,7 +1144,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
     <div className="explore-page bg-grey" data-testid="explore-page">
       <Card className="p-xs card-padding-0 m-b-box">
         <Row className="tw:mr-2" gutter={[0, 8]}>
-          <Col>
+          {/* flex-auto + min-w-0 lets the filter toolbar shrink and wrap
+              internally instead of pushing the sort controls onto a new row */}
+          <Col className="tw:min-w-0" flex="auto">
             <ExploreQuickFilters
               immediateApply
               showSelectedCounts
