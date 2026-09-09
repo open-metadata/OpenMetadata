@@ -122,7 +122,7 @@ const DataProductsContainer = ({
         onSubmit={handleSave}
       />
     );
-  }, [handleCancel, handleSave, dataProducts, fetchAPI]);
+  }, [handleCancel, handleSave, dataProducts, fetchAPI, multiple, t]);
 
   const showAddTagButton = useMemo(
     () => hasPermission && !domainMissing && isEmpty(dataProducts),
@@ -168,7 +168,14 @@ const DataProductsContainer = ({
         </Tag>
       );
     });
-  }, [dataProducts, activeDomains, domainMissing]);
+  }, [
+    dataProducts,
+    activeDomains,
+    domainMissing,
+    hasPermission,
+    redirectLink,
+    t,
+  ]);
 
   const headerExtra = useMemo(() => {
     if (!showHeader) {
@@ -202,7 +209,7 @@ const DataProductsContainer = ({
         )}
       </Space>
     );
-  }, [showHeader, dataProducts, hasPermission, domainMissing]);
+  }, [showHeader, dataProducts, hasPermission, domainMissing, t]);
 
   const addTagButton = useMemo(
     () =>
@@ -248,7 +255,9 @@ const DataProductsContainer = ({
         dataTestId="data-products-container"
         forceExpand={isEditMode}
         headerExtra={headerExtra}
-        isExpandDisabled={isEmpty(dataProducts) && !isEditMode && !domainMissing}
+        isExpandDisabled={
+          isEmpty(dataProducts) && !isEditMode && !domainMissing
+        }
         title={t('label.data-product-plural')}>
         {renderer}
       </WidgetCard>
