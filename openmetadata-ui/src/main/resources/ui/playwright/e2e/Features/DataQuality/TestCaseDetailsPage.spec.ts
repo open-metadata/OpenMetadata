@@ -14,11 +14,11 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { enableAiAppMode } from '../../../utils/appMode';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
+import { enableAiAppMode } from '../../Utils/appMode';
 
 const table = new TableClass();
 
