@@ -12,11 +12,24 @@
  */
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import {
+  renderDomainClassificationTagsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainOwnersCell,
+} from './domainFieldRenderers';
 import { useDomainTableColumns } from './useDomainTableColumns';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('./domainFieldRenderers', () => ({
+  ...jest.requireActual('./domainFieldRenderers'),
+  renderDomainOwnersCell: jest.fn(),
+  renderDomainGlossaryTagsCell: jest.fn(),
+  renderDomainClassificationTagsCell: jest.fn(),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -76,5 +89,37 @@ describe('useDomainTableColumns', () => {
     fireEvent.click(screen.getByText('Engineering'));
 
     expect(rowClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes showDashPlaceholder through for the owners column', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    result.current.renderCell(DOMAIN, 'owners');
+
+    expect(renderDomainOwnersCell).toHaveBeenCalledWith(DOMAIN, {
+      showDashPlaceholder: true,
+    });
+  });
+
+  it('passes emptyPlaceholder through for the glossaryTerms column', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    result.current.renderCell(DOMAIN, 'glossaryTerms');
+
+    expect(renderDomainGlossaryTagsCell).toHaveBeenCalledWith(DOMAIN, {
+      size: 'sm',
+      emptyPlaceholder: NO_DATA_PLACEHOLDER,
+    });
+  });
+
+  it('passes emptyPlaceholder through for the tags column', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    result.current.renderCell(DOMAIN, 'tags');
+
+    expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(DOMAIN, {
+      size: 'sm',
+      emptyPlaceholder: NO_DATA_PLACEHOLDER,
+    });
   });
 });
