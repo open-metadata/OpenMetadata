@@ -122,8 +122,6 @@ test.describe(
       // Guard against the 1.13 regression: clearing the password must not
       // produce replace/'' in the PATCH. An empty string would cause the
       // backend to store '' instead of properly removing the secret.
-      // This assertion is unconditional — it fails whether the bad op is
-      // present or absent-but-expected, so it cannot pass vacuously.
       const badPasswordOp = patchBody.find(
         (op) =>
           op.path.endsWith('/saslPassword') &&
@@ -134,6 +132,14 @@ test.describe(
       expect(badPasswordOp).toBeUndefined();
 
       await waitForAllLoadersToDisappear(page);
+
+      // Re-open the edit connection form to confirm the password was actually removed.
+      await page.getByRole('tab', { name: 'Connection' }).click();
+      await page.getByTestId('edit-connection-button').click();
+      await waitForAllLoadersToDisappear(page);
+      await waitForConnectionForm(page);
+
+      await expect(page.locator(String.raw`#root\/saslPassword`)).toHaveValue('');
     });
 
     test('after save, re-opening the form shows the empty password field', async ({
@@ -343,6 +349,16 @@ test.describe(
       expect(badPasswordOp).toBeUndefined();
 
       await waitForAllLoadersToDisappear(page);
+
+      // Re-open the edit connection form to confirm the password was actually removed.
+      await page.getByRole('tab', { name: 'Connection' }).click();
+      await page.getByTestId('edit-connection-button').click();
+      await waitForAllLoadersToDisappear(page);
+      await waitForConnectionForm(page);
+
+      await expect(
+        page.locator(String.raw`#root\/authType\/password`)
+      ).toHaveValue('');
     });
   }
 );
@@ -430,5 +446,60 @@ test.describe(
       expect(passwordOp).toBeUndefined();
     });
 
+    test("saving after clearing does not send replace/'' for the dashboard password field", async ({
+      page,
+    }) => {
+      await navigateToEditConnection(
+        page,
+        supersetService.entity.name,
+        SERVICE_TYPE.Dashboard
+      );
+
+      await page.locator(String.raw`#root\/connection\/password`).fill('');
+
+      // Change hostPort so the form is dirty and triggers a PATCH.
+      await page
+        .locator(String.raw`#root\/hostPort`)
+        .fill('http://localhost:8090');
+
+      await page.getByTestId('submit-btn').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const patchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/dashboardServices') &&
+          response.request().method() === 'PATCH'
+      );
+
+      await page.getByRole('button', { name: 'Save' }).click();
+
+      const patch = await patchResponse;
+      const patchBody = patch.request().postDataJSON() as Array<{
+        op: string;
+        path: string;
+        value?: unknown;
+      }>;
+
+      const badPasswordOp = patchBody.find(
+        (op) =>
+          op.path.endsWith('/password') &&
+          op.op === 'replace' &&
+          op.value === ''
+      );
+
+      expect(badPasswordOp).toBeUndefined();
+
+      await waitForAllLoadersToDisappear(page);
+
+      // Re-open the edit connection form to confirm the password was actually removed.
+      await page.getByRole('tab', { name: 'Connection' }).click();
+      await page.getByTestId('edit-connection-button').click();
+      await waitForAllLoadersToDisappear(page);
+      await waitForConnectionForm(page);
+
+      await expect(
+        page.locator(String.raw`#root\/connection\/password`)
+      ).toHaveValue('');
+    });
   }
 );
