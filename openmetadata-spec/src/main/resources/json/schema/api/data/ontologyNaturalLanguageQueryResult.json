@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyNaturalLanguageQueryResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyNaturalLanguageQueryResult",
+  "description": "Generated SPARQL that is always shown before execution.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyNaturalLanguageQueryResult",
+  "properties": {
+    "modelId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100000
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    }
+  },
+  "required": ["modelId", "generatedAt", "query", "explanation"],
+  "additionalProperties": false
+}

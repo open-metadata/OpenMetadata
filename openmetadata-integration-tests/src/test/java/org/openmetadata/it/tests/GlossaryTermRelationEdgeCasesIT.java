@@ -25,6 +25,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,6 +42,7 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.slf4j.Logger;
@@ -401,21 +403,16 @@ public class GlossaryTermRelationEdgeCasesIT {
     addTermRelation(termA.getId().toString(), termB.getId().toString(), "broader");
     addTermRelation(termB.getId().toString(), termC.getId().toString(), "broader");
 
-    Map<String, Object> graph = getTermRelationGraph(termA.getId().toString(), 3, null);
+    GlossaryTermRelationGraph graph = getTermRelationGraph(termA.getId().toString(), 3, null);
 
     assertNotNull(graph, "Graph should not be null");
-    assertTrue(graph.containsKey("nodes"), "Graph should have nodes");
-    assertTrue(graph.containsKey("edges"), "Graph should have edges");
+    LOG.info(
+        "Transitive chain graph: {} nodes, {} edges",
+        graph.getNodes().size(),
+        graph.getEdges().size());
 
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> nodes = (List<Map<String, Object>>) graph.get("nodes");
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> edges = (List<Map<String, Object>>) graph.get("edges");
-
-    LOG.info("Transitive chain graph: {} nodes, {} edges", nodes.size(), edges.size());
-
-    assertTrue(nodes.size() >= 3, "Graph should include all 3 terms in the chain");
-    assertTrue(edges.size() >= 2, "Graph should include the 2 direct relations");
+    assertTrue(graph.getNodes().size() >= 3, "Graph should include all 3 terms in the chain");
+    assertTrue(graph.getEdges().size() >= 2, "Graph should include the 2 direct relations");
   }
 
   @Test
@@ -430,23 +427,18 @@ public class GlossaryTermRelationEdgeCasesIT {
     addTermRelation(term2.getId().toString(), term3.getId().toString(), "broader");
     addTermRelation(term3.getId().toString(), term4.getId().toString(), "broader");
 
-    Map<String, Object> depthOneGraph = getTermRelationGraph(term1.getId().toString(), 1, null);
-    Map<String, Object> depthThreeGraph = getTermRelationGraph(term1.getId().toString(), 3, null);
-
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> depthOneNodes =
-        (List<Map<String, Object>>) depthOneGraph.get("nodes");
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> depthThreeNodes =
-        (List<Map<String, Object>>) depthThreeGraph.get("nodes");
+    GlossaryTermRelationGraph depthOneGraph =
+        getTermRelationGraph(term1.getId().toString(), 1, null);
+    GlossaryTermRelationGraph depthThreeGraph =
+        getTermRelationGraph(term1.getId().toString(), 3, null);
 
     LOG.info(
         "Depth 1 graph: {} nodes, Depth 3 graph: {} nodes",
-        depthOneNodes.size(),
-        depthThreeNodes.size());
+        depthOneGraph.getNodes().size(),
+        depthThreeGraph.getNodes().size());
 
     assertTrue(
-        depthThreeNodes.size() >= depthOneNodes.size(),
+        depthThreeGraph.getNodes().size() >= depthOneGraph.getNodes().size(),
         "Deeper traversal should include at least as many nodes");
   }
 
@@ -470,12 +462,10 @@ public class GlossaryTermRelationEdgeCasesIT {
         circularResponse.statusCode(),
         circularResponse.body());
 
-    Map<String, Object> graph = getTermRelationGraph(termA.getId().toString(), 5, null);
+    GlossaryTermRelationGraph graph = getTermRelationGraph(termA.getId().toString(), 5, null);
     assertNotNull(graph, "Graph query should not fail even with potential cycles");
 
-    LOG.info(
-        "Graph query succeeded with potential cycle, nodes: {}",
-        ((List<?>) graph.get("nodes")).size());
+    LOG.info("Graph query succeeded with potential cycle, nodes: {}", graph.getNodes().size());
   }
 
   // ==================== PRIORITY 5: CSV EDGE CASES ====================
@@ -723,18 +713,14 @@ public class GlossaryTermRelationEdgeCasesIT {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm isolatedTerm = GlossaryTermTestFactory.createWithName(ns, glossary, "isolated");
 
-    Map<String, Object> graph = getTermRelationGraph(isolatedTerm.getId().toString(), 1, null);
+    GlossaryTermRelationGraph graph =
+        getTermRelationGraph(isolatedTerm.getId().toString(), 1, null);
 
     assertNotNull(graph, "Graph should not be null even for isolated term");
 
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> nodes = (List<Map<String, Object>>) graph.get("nodes");
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> edges = (List<Map<String, Object>>) graph.get("edges");
-
-    assertNotNull(nodes, "Nodes should not be null");
-    assertEquals(1, nodes.size(), "Should have exactly 1 node (the term itself)");
-    assertTrue(edges == null || edges.isEmpty(), "Should have no edges for isolated term");
+    assertNotNull(graph.getNodes(), "Nodes should not be null");
+    assertEquals(1, graph.getNodes().size(), "Should have exactly 1 node (the term itself)");
+    assertTrue(graph.getEdges().isEmpty(), "Should have no edges for isolated term");
   }
 
   @Test
@@ -747,28 +733,21 @@ public class GlossaryTermRelationEdgeCasesIT {
     addTermRelation(termA.getId().toString(), termB.getId().toString(), "synonym");
     addTermRelation(termA.getId().toString(), termC.getId().toString(), "broader");
 
-    Map<String, Object> allGraph = getTermRelationGraph(termA.getId().toString(), 1, null);
-    Map<String, Object> synonymOnlyGraph =
+    GlossaryTermRelationGraph allGraph = getTermRelationGraph(termA.getId().toString(), 1, null);
+    GlossaryTermRelationGraph synonymOnlyGraph =
         getTermRelationGraph(termA.getId().toString(), 1, "synonym");
-
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> allEdges = (List<Map<String, Object>>) allGraph.get("edges");
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> synonymEdges =
-        (List<Map<String, Object>>) synonymOnlyGraph.get("edges");
 
     LOG.info(
         "All edges: {}, synonym-only edges: {}",
-        allEdges != null ? allEdges.size() : 0,
-        synonymEdges != null ? synonymEdges.size() : 0);
+        allGraph.getEdges().size(),
+        synonymOnlyGraph.getEdges().size());
 
+    assertTrue(allGraph.getEdges().size() >= 2, "Unfiltered graph should have at least 2 edges");
     assertTrue(
-        allEdges != null && allEdges.size() >= 2, "Unfiltered graph should have at least 2 edges");
-    assertTrue(
-        synonymEdges != null && synonymEdges.size() >= 1,
+        !synonymOnlyGraph.getEdges().isEmpty(),
         "Synonym-filtered graph should have at least 1 edge");
     assertTrue(
-        synonymEdges.size() <= allEdges.size(),
+        synonymOnlyGraph.getEdges().size() <= allGraph.getEdges().size(),
         "Filtered graph should have fewer or equal edges than unfiltered");
   }
 
@@ -1062,36 +1041,12 @@ public class GlossaryTermRelationEdgeCasesIT {
     return OBJECT_MAPPER.readValue(response.body(), GlossaryTerm.class);
   }
 
-  private Map<String, Object> getTermRelationGraph(String termId, int depth, String relationTypes)
-      throws Exception {
-    String baseUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
-
-    String url =
-        String.format(
-            "%s/v1/glossaryTerms/%s/relationsGraph?depth=%d%s",
-            baseUrl, termId, depth, relationTypes != null ? "&relationTypes=" + relationTypes : "");
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + token)
-            .header("Accept", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Failed to get term relation graph: status={}, body={}",
-          response.statusCode(),
-          response.body());
-      return Map.of();
-    }
-
-    return OBJECT_MAPPER.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
+  private GlossaryTermRelationGraph getTermRelationGraph(
+      String termId, int depth, String relationTypes) {
+    List<String> types = relationTypes == null ? List.of() : List.of(relationTypes.split(","));
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .relationGraph(UUID.fromString(termId), depth, types);
   }
 
   private String exportGlossaryCsv(String glossaryName) throws Exception {
@@ -1230,6 +1185,14 @@ public class GlossaryTermRelationEdgeCasesIT {
       return Map.of();
     }
 
-    return OBJECT_MAPPER.readValue(response.body(), new TypeReference<Map<String, Integer>>() {});
+    List<org.openmetadata.schema.type.RelationshipTypeUsage> usages =
+        OBJECT_MAPPER.readValue(
+            response.body(),
+            new TypeReference<List<org.openmetadata.schema.type.RelationshipTypeUsage>>() {});
+    Map<String, Integer> counts = new HashMap<>();
+    for (org.openmetadata.schema.type.RelationshipTypeUsage usage : usages) {
+      counts.put(usage.getRelationshipType().getName(), usage.getCount());
+    }
+    return counts;
   }
 }

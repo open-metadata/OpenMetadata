@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/api/configuration/rdf/inferenceRule.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InferenceRule",
+  "description": "A SPARQL CONSTRUCT rule that materializes derived triples in the OpenMetadata knowledge graph (e.g. transitive lineage, PII propagation, tag inheritance).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.rdf.InferenceRule",
+  "properties": {
+    "name": {
+      "description": "Stable identifier for the rule (used as primary key). Lowercase letters, digits, hyphen.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
+    },
+    "displayName": {
+      "description": "Human-readable name.",
+      "type": "string"
+    },
+    "description": {
+      "description": "What the rule does and why it is enabled. Markdown.",
+      "type": "string"
+    },
+    "ruleType": {
+      "description": "Body language. CONSTRUCT is a SPARQL CONSTRUCT query that produces new triples. RDFS is a placeholder for future Jena-RDFS rule format.",
+      "type": "string",
+      "enum": ["CONSTRUCT", "RDFS"],
+      "default": "CONSTRUCT"
+    },
+    "ruleBody": {
+      "description": "The rule body. For ruleType=CONSTRUCT, a SPARQL CONSTRUCT query that emits the inferred triples.",
+      "type": "string",
+      "minLength": 16
+    },
+    "enabled": {
+      "description": "Whether the rule is currently active. Disabled rules are loaded but not applied.",
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "description": "Execution order hint. Lower numbers run first. Rules at the same priority run in name order.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "tags": {
+      "description": "Free-form labels (e.g. 'lineage', 'security', 'governance') for filtering in admin UI.",
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+  "required": ["name", "ruleBody"],
+  "additionalProperties": false
+}

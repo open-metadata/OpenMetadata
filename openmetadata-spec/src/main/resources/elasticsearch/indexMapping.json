@@ -322,6 +322,15 @@
     ],
     "childAliases": []
   },
+  "relationshipType": {
+    "indexName": "relationship_type_search_index",
+    "indexMappingFile": "/elasticsearch/relationship_type_index_mapping.json",
+    "alias": "relationshipType",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
   "tag": {
     "indexName": "tag_search_index",
     "indexMappingFile": "/elasticsearch/%s/tag_index_mapping.json",

@@ -9,6 +9,9 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getI
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,9 +21,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -77,24 +82,30 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private final AtomicReference<DataInsightsWorkflow> activeWorkflow = new AtomicReference<>();
 
-  public final Set<String> dataAssetTypes =
-      Set.of(
-          "table",
-          "storedProcedure",
-          "databaseSchema",
-          "database",
-          "chart",
-          "dashboard",
-          "dashboardDataModel",
-          "pipeline",
-          "topic",
-          "container",
-          "searchIndex",
-          "mlmodel",
-          "dataProduct",
-          "glossaryTerm",
-          "tag",
-          "metric");
+  /**
+   * The entity types this app ingests: every {@link DataAssetType} that no live index aliases into
+   * the Data Insights wildcard.
+   *
+   * <p>The data-quality types are deliberately excluded. They reach {@code di-data-assets-*} through
+   * a {@code dataInsightAliases} entry in indexMapping.json that points at the live entity index, so
+   * Data Insights reads them without ever writing them. Creating or deleting a datastream for one
+   * would target that alias, and therefore live data, because {@link #getDataStreamName} would
+   * produce the very name the alias already occupies.
+   */
+  public Set<String> getDataAssetTypes() {
+    return Collections.unmodifiableSet(
+        Arrays.stream(DataAssetType.values())
+            .map(DataAssetType::value)
+            .filter(dataAssetType -> !isAliasedFromLiveIndex(dataAssetType))
+            .collect(Collectors.<String, LinkedHashSet<String>>toCollection(LinkedHashSet::new)));
+  }
+
+  private boolean isAliasedFromLiveIndex(String dataAssetType) {
+    IndexMapping indexMapping = searchRepository.getIndexMapping(dataAssetType);
+    return indexMapping != null
+        && indexMapping.getDataInsightAliases() != null
+        && !indexMapping.getDataInsightAliases().isEmpty();
+  }
 
   public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -138,7 +149,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
             : "en";
 
     try {
-      for (String dataAssetType : dataAssetTypes) {
+      for (String dataAssetType : getDataAssetTypes()) {
         IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
@@ -160,7 +171,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
-      for (String dataAssetType : dataAssetTypes) {
+      for (String dataAssetType : getDataAssetTypes()) {
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
@@ -413,7 +424,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
             timestamp,
             batchSize,
             backfill,
-            dataAssetTypes,
+            getDataAssetTypes(),
             collectionDAO,
             searchRepository,
             getSearchInterface()));

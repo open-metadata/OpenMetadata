@@ -20,20 +20,26 @@ import {
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { Document } from '../generated/entity/docStore/document';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import {
   clearAppMode,
   CONFIG_MODE_TO_RUNTIME,
   getAppDefaultMode,
   isAppModeHintFresh,
+  PREFERENCE_MODE_TO_RUNTIME,
   readAppModeHint,
   readAppModeSession,
   resolveEffectiveAppMode,
   resolveInitialAppMode,
+  resolvePersonaAppMode,
+  RUNTIME_TO_PREFERENCE_WIRE,
   setAppDefaultMode,
+  translatePreferenceMode,
   translateWireMode,
   useAppMode,
   useAppModeStore,
+  useIsAiMode,
   writeAppMode,
 } from './useAppMode';
 
@@ -90,6 +96,20 @@ describe('useAppMode hook', () => {
     });
 
     expect(result.current).toBe(DEFAULT_APP_MODE);
+  });
+});
+
+describe('useIsAiMode', () => {
+  beforeEach(resetStore);
+
+  it('is true only in ai mode', () => {
+    writeAppMode(AI_APP_MODE);
+
+    expect(renderHook(() => useIsAiMode()).result.current).toBe(true);
+
+    writeAppMode(DEFAULT_APP_MODE);
+
+    expect(renderHook(() => useIsAiMode()).result.current).toBe(false);
   });
 });
 
@@ -442,12 +462,33 @@ describe('resolveInitialAppMode', () => {
     expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
   });
 
-  it('returns the stored user preference when no session and no fresh hint', () => {
+  // #31906 follow-up: `pref.appMode` holds the preference's WIRE token
+  // ("classic" / "ai" / legacy "ai"), not the runtime mode string.
+  // `resolveInitialAppMode` must translate before comparing/returning.
+  it('translates a stored "ai" preference to AI_APP_MODE', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: AI_APP_MODE });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(AI_APP_MODE);
+  });
+
+  it('translates a stored "classic" preference to DEFAULT_APP_MODE (falls through to default)', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: 'classic' });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('translates the legacy "ai" preference wire token to AI_APP_MODE', () => {
+    // Rows written before this translation existed may still hold the
+    // tenant-config wire value ("ai") instead of "ai".
     usePersistentStorage
       .getState()
       .setUserPreference(TEST_USER, { appMode: 'ai' });
 
-    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+    expect(resolveInitialAppMode(TEST_USER)).toBe(AI_APP_MODE);
   });
 
   it('ignores a DEFAULT-valued preference (falls through to default)', () => {
@@ -575,6 +616,52 @@ describe('CONFIG_MODE_TO_RUNTIME / translateWireMode', () => {
   });
 });
 
+describe('RUNTIME_TO_PREFERENCE_WIRE / PREFERENCE_MODE_TO_RUNTIME / translatePreferenceMode', () => {
+  it('maps DEFAULT_APP_MODE to the "classic" wire token', () => {
+    expect(RUNTIME_TO_PREFERENCE_WIRE[DEFAULT_APP_MODE]).toBe('classic');
+  });
+
+  it('maps AI_APP_MODE to itself (identity)', () => {
+    expect(RUNTIME_TO_PREFERENCE_WIRE[AI_APP_MODE]).toBe(AI_APP_MODE);
+  });
+
+  it('maps the "classic" wire token back to DEFAULT_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME.classic).toBe(DEFAULT_APP_MODE);
+    expect(translatePreferenceMode('classic')).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('maps the "ai" wire token back to AI_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME[AI_APP_MODE]).toBe(AI_APP_MODE);
+    expect(translatePreferenceMode(AI_APP_MODE)).toBe(AI_APP_MODE);
+  });
+
+  it('maps the legacy "ai" wire token to AI_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME.ai).toBe(AI_APP_MODE);
+    expect(translatePreferenceMode('ai')).toBe(AI_APP_MODE);
+  });
+
+  it('returns null for a null/undefined wire value', () => {
+    expect(translatePreferenceMode(null)).toBeNull();
+    expect(translatePreferenceMode(undefined)).toBeNull();
+  });
+
+  it('passes an unrecognised wire value through unchanged', () => {
+    expect(translatePreferenceMode('bogus')).toBe('bogus');
+  });
+
+  it('round-trips through the write map and back to the same runtime mode', () => {
+    // Every runtime mode the switcher can write must survive a write
+    // (RUNTIME_TO_PREFERENCE_WIRE) followed by a read
+    // (PREFERENCE_MODE_TO_RUNTIME) unchanged — this is the invariant the
+    // #31906 fix depends on.
+    for (const mode of [DEFAULT_APP_MODE, AI_APP_MODE]) {
+      const wireToken = RUNTIME_TO_PREFERENCE_WIRE[mode];
+
+      expect(PREFERENCE_MODE_TO_RUNTIME[wireToken]).toBe(mode);
+    }
+  });
+});
+
 describe('setAppDefaultMode / getAppDefaultMode', () => {
   afterEach(() => {
     setAppDefaultMode(null);
@@ -588,5 +675,98 @@ describe('setAppDefaultMode / getAppDefaultMode', () => {
     setAppDefaultMode(AI_APP_MODE);
 
     expect(getAppDefaultMode()).toBe(AI_APP_MODE);
+  });
+});
+
+describe('resolvePersonaAppMode', () => {
+  const PERSONA_ID = 'persona-1';
+
+  const buildDoc = (appMode?: string): Document =>
+    ({
+      data: {
+        personaPreferences: [
+          {
+            personaId: PERSONA_ID,
+            personaName: 'p',
+            ...(appMode ? { appMode } : {}),
+          },
+        ],
+      },
+    } as unknown as Document);
+
+  it('maps a persona "classic" appMode to DEFAULT_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('classic'), PERSONA_ID)).toBe(
+      DEFAULT_APP_MODE
+    );
+  });
+
+  it('maps a persona "ai" appMode to AI_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc(AI_APP_MODE), PERSONA_ID)).toBe(
+      AI_APP_MODE
+    );
+  });
+
+  it('maps the persona legacy uppercase "AI" appMode to AI_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID)).toBe(AI_APP_MODE);
+  });
+
+  it('maps the persona legacy lowercase "ai" appMode to AI_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('ai'), PERSONA_ID)).toBe(AI_APP_MODE);
+  });
+
+  it('returns null when the persona entry has no appMode set', () => {
+    expect(resolvePersonaAppMode(buildDoc(), PERSONA_ID)).toBeNull();
+  });
+
+  it('returns null when no persona entry matches the id', () => {
+    expect(resolvePersonaAppMode(buildDoc('AI'), 'other-persona')).toBeNull();
+  });
+
+  it('returns null when the doc or personaId is missing', () => {
+    expect(resolvePersonaAppMode(undefined, PERSONA_ID)).toBeNull();
+    expect(resolvePersonaAppMode(buildDoc('AI'), undefined)).toBeNull();
+  });
+});
+
+describe('boot resolution: persona forces the runtime mode', () => {
+  const PERSONA_ID = 'persona-1';
+
+  const buildDoc = (appMode: string): Document =>
+    ({
+      data: {
+        personaPreferences: [
+          { personaId: PERSONA_ID, personaName: 'p', appMode },
+        ],
+      },
+    } as unknown as Document);
+
+  it('lets a persona appMode beat an absent userPref and the tenant default', () => {
+    // Mirrors AuthProvider.hydrateAndResolveAppMode's final write when
+    // there is no sticky session/hint: userPref is absent, so the
+    // persona-forced mode must win over the tenant default.
+    const personaMode = resolvePersonaAppMode(
+      buildDoc(AI_APP_MODE),
+      PERSONA_ID
+    );
+
+    expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
+      AI_APP_MODE
+    );
+  });
+
+  it('resolves a persona "AI" mode to AI_APP_MODE over the default at boot', () => {
+    const personaMode = resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID);
+
+    expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
+      AI_APP_MODE
+    );
+  });
+
+  it('resolves a persona "classic" mode to DEFAULT at boot', () => {
+    const personaMode = resolvePersonaAppMode(buildDoc('classic'), PERSONA_ID);
+
+    expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
+      DEFAULT_APP_MODE
+    );
   });
 });

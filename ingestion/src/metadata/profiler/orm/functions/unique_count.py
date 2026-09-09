@@ -14,7 +14,6 @@ Unique Count Metric functions
 """
 
 from collections import defaultdict
-from typing import Tuple  # noqa: UP035
 
 from sqlalchemy import NVARCHAR, TEXT, Column, case, func, literal_column, select
 from sqlalchemy.sql import ColumnElement
@@ -34,7 +33,7 @@ from metadata.profiler.orm.types.custom_image import CustomImage
 UNIQUE_COUNT_GROUP_ALIAS = "value_occurrences"
 
 
-def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:  # noqa: UP006
+def _get_unique_count_expressions(col: Column, dialect: str) -> tuple[ColumnElement, ColumnElement]:
     """
     Get dialect-specific expressions for unique count computation.
 
@@ -113,7 +112,7 @@ _unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle
 # ============================================================================
 
 
-def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> Tuple[CTE, ColumnElement]:  # noqa: UP006
+def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dialect: str) -> tuple[CTE, ColumnElement]:
     """
     Build CTE for dimensional unique count validation.
 

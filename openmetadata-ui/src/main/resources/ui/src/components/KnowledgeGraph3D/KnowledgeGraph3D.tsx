@@ -43,7 +43,12 @@ import {
   KnowledgeGraph3DSceneProps,
 } from './KnowledgeGraph3D.interface';
 import './KnowledgeGraph3D.less';
-import { idOf, linkKey, viewGraph } from './KnowledgeGraph3D.utils';
+import {
+  idOf,
+  linkKey,
+  resolveGraphNodeId,
+  viewGraph,
+} from './KnowledgeGraph3D.utils';
 import KnowledgeGraph3DControls from './KnowledgeGraph3DControls';
 import KnowledgeGraph3DEdgePanel from './KnowledgeGraph3DEdgePanel';
 import KnowledgeGraph3DLegend from './KnowledgeGraph3DLegend';
@@ -60,6 +65,12 @@ const KnowledgeGraph3DScene = lazy(() => import('./KnowledgeGraph3DScene'));
 
 /** Asset types whose child fields are called "fields" rather than "columns". */
 const FIELD_ASSET_TYPES = new Set<string>(['topic', 'searchIndex']);
+const MIN_ONTOLOGY_DEPTH = 2;
+const LEVEL_LABEL_KEY: Record<Level, string> = {
+  asset: 'data-asset',
+  product: 'data-product',
+  domain: 'domain',
+};
 
 const downloadDataUrl = (dataUrl: string): void => {
   const link = document.createElement('a');
@@ -76,6 +87,27 @@ const renderWebglFallback = (t: ReturnType<typeof useTranslation>['t']) => (
     {t('message.knowledge-graph-3d-webgl-unavailable')}
   </ErrorPlaceHolder>
 );
+
+const formatLinkTooltip = (
+  t: ReturnType<typeof useTranslation>['t'],
+  link: GraphLink3D
+): string => {
+  if (link.derived && link.relation) {
+    return formatDerivedRelation(t, link.relation);
+  }
+
+  const labelKey = RELATION_LABEL_KEYS[link.label];
+
+  return labelKey ? t(labelKey) : link.label;
+};
+
+const getGraphStatus = (
+  loading: boolean,
+  nodeCount: number
+): { isEmpty: boolean; hasGraph: boolean } => ({
+  isEmpty: !loading && nodeCount === 0,
+  hasGraph: !loading && nodeCount > 0,
+});
 
 const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   entity,
@@ -118,6 +150,11 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         : viewGraph(adapted, level, lens),
     [adapted, level, lens]
   );
+  const focusNodeId = useMemo(
+    () =>
+      entity?.id ? resolveGraphNodeId(adapted.nodes, entity.id) : undefined,
+    [adapted.nodes, entity?.id]
+  );
   const nodesById = useMemo(
     () => new Map(adapted.nodes.map((node) => [node.id, node])),
     [adapted.nodes]
@@ -149,15 +186,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
 
   const getLinkTooltip = useCallback<
     NonNullable<KnowledgeGraph3DSceneProps['getLinkTooltip']>
-  >(
-    (link) =>
-      link.derived && link.relation
-        ? formatDerivedRelation(t, link.relation)
-        : RELATION_LABEL_KEYS[link.label]
-        ? t(RELATION_LABEL_KEYS[link.label])
-        : link.label,
-    [t]
-  );
+  >((link) => formatLinkTooltip(t, link), [t]);
 
   const isFullscreen = useMemo(() => {
     const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -178,12 +207,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         truncated,
       };
     }
-    const levelKey =
-      level === 'asset'
-        ? 'data-asset'
-        : level === 'product'
-        ? 'data-product'
-        : 'domain';
+    const levelKey = LEVEL_LABEL_KEY[level];
     const lensSuffix =
       lens === 'all' ? '' : t(`message.knowledge-graph-lens-${lens}-suffix`);
 
@@ -266,6 +290,9 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
     (next: Lens) => {
       clearSelection();
       setLens(next);
+      if (next === 'ontology') {
+        setSelectedDepth((current) => Math.max(current, MIN_ONTOLOGY_DEPTH));
+      }
     },
     [clearSelection]
   );
@@ -327,8 +354,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
     );
   }
 
-  const isEmpty = !loading && adapted.nodes.length === 0;
-  const hasGraph = !loading && adapted.nodes.length > 0;
+  const { isEmpty, hasGraph } = getGraphStatus(loading, adapted.nodes.length);
 
   return (
     <div
@@ -396,7 +422,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
             <Suspense fallback={<Loader />}>
               <KnowledgeGraph3DScene
                 data={view}
-                focusNodeId={entity.id}
+                focusNodeId={focusNodeId}
                 gaps={gaps}
                 getLinkTooltip={getLinkTooltip}
                 getNodeTooltip={getNodeTooltip}
@@ -413,7 +439,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
 
             <KnowledgeGraph3DLegend />
 
-            <div className="kg3d-hint tw:pointer-events-none tw:absolute tw:top-4 tw:right-4 tw:rounded-lg tw:border tw:border-white/10 tw:px-3 tw:py-2 tw:text-xs">
+            <div className="kg3d-hint tw:pointer-events-none tw:absolute tw:top-4 tw:right-4 tw:rounded-lg tw:border tw:border-secondary tw:px-3 tw:py-2 tw:text-xs">
               {t('message.knowledge-graph-3d-hint')}
             </div>
 

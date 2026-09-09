@@ -70,21 +70,21 @@ const TierWidget = () => {
     [permissions, isVersionView]
   );
 
-  const headerExtra = canEdit ? (
-    tier ? (
-      <WidgetEditButton
-        data-testid="edit-tier"
-        title={t('label.edit-entity', { entity: t('label.tier') })}
-        onClick={() => setIsEditing(true)}
-      />
-    ) : (
-      <WidgetPlusButton
-        data-testid="add-tier"
-        title={t('label.add-entity', { entity: t('label.tier') })}
-        onClick={() => setIsEditing(true)}
-      />
-    )
-  ) : null;
+  const tierEditControl = tier ? (
+    <WidgetEditButton
+      data-testid="edit-tier"
+      title={t('label.edit-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
+    />
+  ) : (
+    <WidgetPlusButton
+      data-testid="add-tier"
+      title={t('label.add-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
+    />
+  );
+
+  const headerExtra = canEdit ? tierEditControl : null;
 
   const tierDisplay = tier ? (
     <TagsV1

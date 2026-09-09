@@ -33,6 +33,11 @@ describe('PersonaUtils', () => {
           icon: 'svg-mock',
         }),
         expect.objectContaining({
+          key: 'askCollateSidebar',
+          label: 'label.app-mode-sidebar',
+          icon: 'svg-mock',
+        }),
+        expect.objectContaining({
           key: PageType.LandingPage,
           label: 'label.home-page',
           icon: 'svg-mock',

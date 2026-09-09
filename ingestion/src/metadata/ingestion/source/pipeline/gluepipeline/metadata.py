@@ -15,7 +15,8 @@ Glue pipeline source to extract metadata
 
 import re
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 from urllib.parse import urlparse
 
 from metadata.clients.aws_client import AWSClient
@@ -117,10 +118,10 @@ class GluepipelineSource(PipelineServiceSource):
         self.job_name_list = set()
         self.glue = self.connection
         self._s3_client = None
-        self._glue_connection_cache: Dict[str, Optional[dict]] = {}  # noqa: UP006, UP045
+        self._glue_connection_cache: dict[str, dict | None] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GluePipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, GluePipelineConnection):
@@ -153,7 +154,7 @@ class GluepipelineSource(PipelineServiceSource):
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
-    def get_tasks(self, pipeline_details: Any) -> List[Task]:  # noqa: UP006
+    def get_tasks(self, pipeline_details: Any) -> list[Task]:
         task_list = []
         for task in pipeline_details["Graph"]["Nodes"]:
             self.task_id_mapping[task["UniqueId"]] = task["Name"][:128]
@@ -183,7 +184,7 @@ class GluepipelineSource(PipelineServiceSource):
             self._s3_client = AWSClient(self.service_connection.awsConfig).get_s3_client()
         return self._s3_client
 
-    def get_lineage_details(self, job) -> Optional[dict]:  # noqa: UP045
+    def get_lineage_details(self, job) -> dict | None:
         """
         Get the Lineage Details of the pipeline.
 
@@ -267,7 +268,7 @@ class GluepipelineSource(PipelineServiceSource):
         self._resolve_jdbc_entities(result.jdbc_sources, lineage_details, "sources")
         self._resolve_jdbc_entities(result.jdbc_targets, lineage_details, "targets")
 
-    def _download_s3_script(self, s3_uri: str) -> Optional[str]:  # noqa: UP045
+    def _download_s3_script(self, s3_uri: str) -> str | None:
         try:
             parsed = urlparse(s3_uri)
             bucket = parsed.netloc
@@ -282,7 +283,7 @@ class GluepipelineSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             return None
 
-    def _resolve_s3_entities(self, paths: List[str], lineage_details: dict, direction: str):  # noqa: UP006
+    def _resolve_s3_entities(self, paths: list[str], lineage_details: dict, direction: str):
         for path in paths:
             try:
                 # Normalize: try both with and without trailing slash
@@ -369,7 +370,7 @@ class GluepipelineSource(PipelineServiceSource):
                 except Exception as exc:
                     logger.debug(f"Failed to resolve JDBC ref {table_name} in service {db_service_name}: {exc}")
 
-    def _resolve_glue_connection(self, connection_name: str) -> Optional[dict]:  # noqa: UP045
+    def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:
             return self._glue_connection_cache[connection_name]
 
@@ -386,7 +387,7 @@ class GluepipelineSource(PipelineServiceSource):
             return None
 
     @staticmethod
-    def _parse_jdbc_url(jdbc_url: str) -> Optional[dict]:  # noqa: UP045
+    def _parse_jdbc_url(jdbc_url: str) -> dict | None:
         if not jdbc_url:
             return None
         # jdbc:redshift://host:port/database

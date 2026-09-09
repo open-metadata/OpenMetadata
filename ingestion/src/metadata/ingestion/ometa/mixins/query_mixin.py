@@ -16,8 +16,9 @@ To be used by OpenMetadata class
 
 import hashlib
 import json
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Any, Callable, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createQueryCostRecord import (
@@ -53,7 +54,7 @@ class OMetaQueryMixin:
     def _qualified_query_fqn(self, service_name: str, query_hash: str) -> str:
         return f"{model_str(service_name)}.{query_hash}"
 
-    def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
+    def _get_or_create_query(self, query: CreateQueryRequest) -> Query | None:
         if query.query.root is None:
             return None
         fqn = self._qualified_query_fqn(
@@ -74,7 +75,7 @@ class OMetaQueryMixin:
                     raise
         return query_entity
 
-    def ingest_entity_queries_data(self, entity: Union[Table, Dashboard], queries: List[CreateQueryRequest]) -> None:  # noqa: UP006, UP007
+    def ingest_entity_queries_data(self, entity: Table | Dashboard, queries: list[CreateQueryRequest]) -> None:
         """
         PUT queries for an entity
 
@@ -114,8 +115,8 @@ class OMetaQueryMixin:
     def get_entity_queries(
         self,
         entity_id: Uuid | str,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-    ) -> Optional[List[Query]]:  # noqa: UP006, UP045
+        fields: list[str] | None = None,
+    ) -> list[Query] | None:
         """Get the queries attached to a table
 
         Args:
@@ -133,7 +134,7 @@ class OMetaQueryMixin:
         return None
 
     @lru_cache(maxsize=5000)  # noqa: B019
-    def __get_query_by_hash(self, query_hash: str, service_name: str) -> Optional[Query]:  # noqa: UP045
+    def __get_query_by_hash(self, query_hash: str, service_name: str) -> Query | None:
         return self.get_by_name(entity=Query, fqn=self._qualified_query_fqn(service_name, query_hash))
 
     def publish_query_cost(self, query_cost_data: QueryCostWrapper, service_name: str):
