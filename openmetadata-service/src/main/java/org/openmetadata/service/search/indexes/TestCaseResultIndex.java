@@ -99,8 +99,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
       // case does not rewrite the documents of results already indexed: historical results keep the
       // dimension they were recorded under. That is intentional for this iteration.
       if (testCase.getDataQualityDimension() != null) {
-        testDefinitionMap.put(
-            "dataQualityDimension", testCase.getDataQualityDimension().getName());
+        testDefinitionMap.put("dataQualityDimension", testCase.getDataQualityDimension().getName());
       }
       esDoc.put("testDefinition", testDefinitionMap);
     }

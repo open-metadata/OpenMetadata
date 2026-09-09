@@ -270,7 +270,8 @@ public class DataQualityDimensionResource
                     schema = @Schema(implementation = DataQualityDimension.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Data quality dimension for instance {id} and version {version} is not found")
+            description =
+                "Data quality dimension for instance {id} and version {version} is not found")
       })
   public DataQualityDimension getVersion(
       @Context UriInfo uriInfo,
