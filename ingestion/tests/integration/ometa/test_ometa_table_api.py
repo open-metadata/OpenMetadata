@@ -564,8 +564,8 @@ class TestOMetaTableAPI:
         metadata.ingest_entity_queries_data(entity=table_a, queries=[shared_query])
         metadata.ingest_entity_queries_data(entity=table_b, queries=[shared_query])
 
-        queries_a: List[Query] = metadata.get_entity_queries(table_a.id, fields=["*"])  # noqa: UP006
-        queries_b: List[Query] = metadata.get_entity_queries(table_b.id, fields=["*"])  # noqa: UP006
+        queries_a: list[Query] = metadata.get_entity_queries(table_a.id, fields=["*"])
+        queries_b: list[Query] = metadata.get_entity_queries(table_b.id, fields=["*"])
 
         assert len(queries_a) == 1
         assert len(queries_b) == 1
