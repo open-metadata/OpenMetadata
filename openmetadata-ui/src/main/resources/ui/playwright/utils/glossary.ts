@@ -616,11 +616,11 @@ export const fillGlossaryTermDetails = async (
   await page.locator('#url-0').fill('https://test.com');
 
   if (term.icon) {
-    await page.locator('[data-testid="icon-url"]').fill(term.icon);
+    await fillStyleIconUrl(page, term.icon);
   }
 
   if (term.color) {
-    await page.locator('[data-testid="color-color-input"]').fill(term.color);
+    await selectStyleColor(page, term.color);
   }
 
   if (!isUndefined(term.owners)) {
@@ -634,6 +634,35 @@ export const fillGlossaryTermDetails = async (
       type: 'Users',
     });
   }
+};
+
+/**
+ * The icon field is a picker, not a text input: the trigger opens a popover
+ * with an icon grid and a URL tab. Re-clicking the trigger closes the popover
+ * so it cannot cover the form's Save button.
+ */
+export const selectStyleIcon = async (page: Page, iconName: string) => {
+  await page.getByTestId('icon-picker-btn').click();
+  await page.getByRole('button', { name: iconName, exact: true }).click();
+};
+
+export const fillStyleIconUrl = async (page: Page, iconUrl: string) => {
+  await page.getByTestId('icon-picker-btn').click();
+  await page.getByRole('tab', { name: 'URL' }).click();
+
+  const urlInput = page.getByRole('textbox', { name: 'Icon URL' });
+  await urlInput.fill(iconUrl);
+
+  await page.getByTestId('icon-picker-btn').click();
+  await expect(urlInput).not.toBeVisible();
+};
+
+/**
+ * `color` must be one of ENTITY_PALETTE_HEX (uppercase) — the colour field is a
+ * fixed palette of swatches, so an arbitrary hex cannot be picked.
+ */
+export const selectStyleColor = async (page: Page, color: string) => {
+  await page.getByRole('button', { name: `Select color ${color}` }).click();
 };
 
 export const verifyTaskCreated = async (
