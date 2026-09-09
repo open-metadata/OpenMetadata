@@ -320,8 +320,13 @@ class TestCaseRunner(Processor):
             column_name = entity_link.get_decoded_column(tc.entityLink.root)
             column = next(c for c in table.columns if c.name.root == column_name)
 
+            # An empty supportedDataTypes declares no restriction: every column type is compatible.
             supported_data_types = test_definition.supportedDataTypes
-            if supported_data_types and column.dataType not in supported_data_types:
+            is_compatible = not supported_data_types or column.dataType in supported_data_types
+
+            if is_compatible:
+                result.append(tc)
+            else:
                 self.status.failed(
                     StackTraceError(
                         name="Incompatible Column for Test Case",
@@ -329,8 +334,6 @@ class TestCaseRunner(Processor):
                         f" is not compatible with column {column.name.root} of type {column.dataType.value}",
                     )
                 )
-            else:
-                result.append(tc)
         return result
 
     def get_test_suite_runner(self, table: Table):
