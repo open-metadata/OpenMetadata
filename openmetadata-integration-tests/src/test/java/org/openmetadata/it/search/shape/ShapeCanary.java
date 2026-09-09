@@ -40,10 +40,14 @@ public final class ShapeCanary {
   public ShapeResult index(
       final String entityType, final EntityInterface entity, final FieldProbe probe) {
     final String docId = entity.getId().toString();
+    // Built before the try: JsonUtils.pojoToJson reports a serialization bug as a
+    // JsonParsingException caused by a JsonProcessingException, which extends IOException -- so
+    // inside the transport handling below it would read as "the engine never answered" and be
+    // retried and skipped, hiding exactly the harness bug buildDoc's contract says must surface.
+    final String doc = buildDoc(entityType, entity);
     final String freshIndex = shadowIndex.create(entityType);
     ShapeResult result;
     try {
-      final String doc = buildDoc(entityType, entity);
       final String rejection = putDoc(freshIndex, docId, doc);
       result =
           rejection != null
