@@ -31,7 +31,6 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -146,7 +145,7 @@ class TestCaseRepositoryTest {
   @Test
   void testCaseInheritsTheTestDefinitionDimensionWhenNoneIsGiven() {
     TestDefinition testDefinition =
-        new TestDefinition().withDataQualityDimension(DataQualityDimensions.ACCURACY);
+        new TestDefinition().withDataQualityDimension("Accuracy");
     EntityReference accuracy =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -168,7 +167,7 @@ class TestCaseRepositoryTest {
   @Test
   void testCaseKeepsItsOwnDimension() {
     TestDefinition testDefinition =
-        new TestDefinition().withDataQualityDimension(DataQualityDimensions.ACCURACY);
+        new TestDefinition().withDataQualityDimension("Accuracy");
     EntityReference timeliness =
         new EntityReference()
             .withId(UUID.randomUUID())

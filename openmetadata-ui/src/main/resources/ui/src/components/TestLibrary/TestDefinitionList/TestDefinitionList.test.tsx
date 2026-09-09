@@ -541,7 +541,7 @@ describe('TestDefinitionList Component', () => {
     });
   });
 
-  it('should disable edit and delete buttons for System test definitions', async () => {
+  it('should keep System test definitions editable but not deletable', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
@@ -552,8 +552,9 @@ describe('TestDefinitionList Component', () => {
       expect(editButtons[0]).not.toBeDisabled();
       expect(deleteButtons[0]).not.toBeDisabled();
 
-      // Second definition is System provider - should be disabled
-      expect(editButtons[1]).toBeDisabled();
+      // Second definition is System provider - the form is open for editing because its
+      // data quality dimension can be changed, but it can still never be deleted
+      expect(editButtons[1]).not.toBeDisabled();
       expect(deleteButtons[1]).toBeDisabled();
     });
   });

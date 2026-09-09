@@ -13,12 +13,12 @@
 
 import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { DataQualityDimensions } from '../../enums/DataQuality.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import {
-  DataQualityDimensions,
   TestDataType,
   TestDefinition,
   TestPlatform,
@@ -1459,6 +1459,43 @@ describe('DataQualityUtils', () => {
 
       expect(patch).toContainEqual({
         op: 'replace',
+        path: '/dataQualityDimension',
+        value: {
+          type: 'dataQualityDimension',
+          name: 'Timeliness',
+          fullyQualifiedName: 'Timeliness',
+        },
+      });
+    });
+
+    it('should not pin the inherited dimension as an override when only parameters are edited', () => {
+      // The field is prefilled with the definition's dimension for a test case that has
+      // none of its own; submitting that prefill back must keep it inheriting.
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: { ...baseValue, dataQualityDimension: 'Accuracy' },
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+        inheritedDimension: 'Accuracy',
+      });
+
+      expect(patch.some((op) => op.path === '/dataQualityDimension')).toBe(
+        false
+      );
+    });
+
+    it('should emit an override when the picked dimension differs from the inherited one', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: { ...baseValue, dataQualityDimension: 'Timeliness' },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+        inheritedDimension: 'Accuracy',
+      });
+
+      expect(patch).toContainEqual({
+        op: 'add',
         path: '/dataQualityDimension',
         value: {
           type: 'dataQualityDimension',

@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "لا يُسمح بحذف علامات تم إنشاؤها بواسطة النظام. يمكنك محاولة تعطيل العلامة بدلاً من ذلك.",
     "system-test-definition-delete-warning": "لا يُسمح بحذف تعريف اختبار يولده النظام.",
-    "system-test-definition-edit-warning": "لا يُسمح بتحرير تعريف اختبار يولده النظام.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "هذا سير عمل للنظام ولا يمكن تعديله.",
     "tag-update-confirmation": "هل ترغب في المتابعة بتحديث العلامات؟",
     "tailor-experience-for-persona": "صمم التجربة خصيصًا لشخصية {{persona}}، فقط جربها!",

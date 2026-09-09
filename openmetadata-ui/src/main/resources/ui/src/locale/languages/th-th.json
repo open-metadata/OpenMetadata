@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "ไม่อนุญาตให้ลบแท็กที่สร้างโดยระบบ คุณสามารถลองปิดใช้งานแทน",
     "system-test-definition-delete-warning": "ไม่อนุญาตให้ลบนิยามการทดสอบที่สร้างโดยระบบ",
-    "system-test-definition-edit-warning": "ไม่อนุญาตให้แก้ไขนิยามการทดสอบที่สร้างโดยระบบ",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "นี่คือเวิร์กโฟลว์ของระบบและไม่สามารถแก้ไขได้",
     "tag-update-confirmation": "คุณต้องการดำเนินการอัปเดตแท็กหรือไม่?",
     "tailor-experience-for-persona": "ปรับแต่งประสบการณ์เฉพาะสำหรับบุคลิกภาพ {{persona}} ลองดูสิ!",

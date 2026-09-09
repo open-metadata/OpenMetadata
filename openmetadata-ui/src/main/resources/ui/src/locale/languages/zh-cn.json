@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "无法删除系统默认的标签, 您可以尝试禁用标签",
     "system-test-definition-delete-warning": "不允许删除系统生成的测试定义。",
-    "system-test-definition-edit-warning": "不允许编辑系统生成的测试定义。",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "这是一个系统工作流，无法编辑。",
     "tag-update-confirmation": "您要继续更新标签吗？",
     "tailor-experience-for-persona": "为{{persona}}角色量身定制体验，试试看！",

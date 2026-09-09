@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "सिस्टम व्युत्पन्न टॅग्स हटविण्याची परवानगी नाही. त्याऐवजी तुम्ही टॅग अक्षम करण्याचा प्रयत्न करू शकता.",
     "system-test-definition-delete-warning": "सिस्टम-निर्मित चाचणी व्याख्या हटवण्यास परवानगी नाही.",
-    "system-test-definition-edit-warning": "सिस्टम-निर्मित चाचणी व्याख्या संपादित करण्यास परवानगी नाही.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "हे एक सिस्टम वर्कफ्लो आहे आणि संपादित केले जाऊ शकत नाही.",
     "tag-update-confirmation": "नवीन टॅग जोडण्यासाठी तुम्हाला पुढे जायचे आहे का?",
     "tailor-experience-for-persona": "{{persona}} पर्सोनासाठी अनुभव अनुकूलित करा, प्रयत्न करा!",

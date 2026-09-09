@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "מחיקת תגיות שנוצרו באופן מערכתי אינה מותרת. ניתן לנסות לנטרל את התג במקום.",
     "system-test-definition-delete-warning": "מחיקת הגדרת בדיקה שנוצרה על ידי המערכת אינה מותרת.",
-    "system-test-definition-edit-warning": "עריכת הגדרת בדיקה שנוצרה על ידי המערכת אינה מותרת.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "זהו תהליך עבודה של המערכת ולא ניתן לערוך אותו.",
     "tag-update-confirmation": "האם ברצונך להמשיך בעדכון התגים?",
     "tailor-experience-for-persona": "התאם את החוויה במיוחד עבור אישיות {{persona}}, נסה את זה!",

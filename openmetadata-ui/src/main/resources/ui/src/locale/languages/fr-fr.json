@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "Supprimer un tag système n'est pas permis. Tentez plutôt de désactiver ce tag.",
     "system-test-definition-delete-warning": "La suppression d'une définition de test générée par le système n'est pas autorisée.",
-    "system-test-definition-edit-warning": "La modification d'une définition de test générée par le système n'est pas autorisée.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "Il s'agit d'un flux de travail système et ne peut pas être modifié.",
     "tag-update-confirmation": "Souhaitez-vous procéder à la mise à jour des étiquettes ?",
     "tailor-experience-for-persona": "Adaptez l'expérience spécifiquement pour le persona {{persona}}, essayez-le !",

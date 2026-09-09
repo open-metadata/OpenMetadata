@@ -14,8 +14,8 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { DIMENSIONS_DATA } from '../../../../constants/DataQuality.constants';
+import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
-import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   fetchTestCaseSummaryByDimension,

@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "Нельзя удалить системный тег. Отключите его, если он не нужен",
     "system-test-definition-delete-warning": "Удаление созданного системой определения теста не допускается.",
-    "system-test-definition-edit-warning": "Редактирование созданного системой определения теста не допускается.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "Это системный рабочий процесс, и его нельзя редактировать.",
     "tag-update-confirmation": "Продолжить добавление нового тега?",
     "tailor-experience-for-persona": "Настройте опыт специально для персонажа {{persona}}, попробуйте!",

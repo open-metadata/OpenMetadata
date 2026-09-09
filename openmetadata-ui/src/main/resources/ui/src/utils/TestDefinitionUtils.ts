@@ -11,10 +11,20 @@
  *  limitations under the License.
  */
 
+import { ProviderType } from '../generated/entity/bot';
 import {
   TestDefinition,
   TestPlatform,
 } from '../generated/tests/testDefinition';
+
+/**
+ * Test definitions OpenMetadata ships with. Everything about them is fixed except the data
+ * quality dimension, which users may reclassify — under a custom dimension of their own, say —
+ * so that their test cases are reported the way their governance framework expects.
+ */
+export const isSystemTestDefinition = (
+  testDefinition?: TestDefinition
+): boolean => testDefinition?.provider === ProviderType.System;
 
 export const isExternalTestDefinition = (
   testDefinition?: TestDefinition

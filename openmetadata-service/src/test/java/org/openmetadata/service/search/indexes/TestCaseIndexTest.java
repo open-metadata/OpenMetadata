@@ -25,7 +25,6 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -93,7 +92,7 @@ class TestCaseIndexTest {
   }
 
   private TestCase createTestCaseWithDimensions(
-      DataQualityDimensions definitionDimension, String testCaseDimension) {
+      String definitionDimension, String testCaseDimension) {
     UUID testDefId = UUID.randomUUID();
     EntityReference testDefRef =
         new EntityReference().withId(testDefId).withType(Entity.TEST_DEFINITION);
@@ -126,16 +125,16 @@ class TestCaseIndexTest {
 
   @Test
   void testDataQualityDimensionFallsBackToTestDefinition() {
-    TestCase tc = createTestCaseWithDimensions(DataQualityDimensions.ACCURACY, null);
+    TestCase tc = createTestCaseWithDimensions("Accuracy", null);
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
 
-    assertEquals(DataQualityDimensions.ACCURACY, result.get("dataQualityDimension"));
+    assertEquals("Accuracy", result.get("dataQualityDimension"));
   }
 
   @Test
   void testTestCaseDataQualityDimensionOverridesTestDefinition() {
-    TestCase tc = createTestCaseWithDimensions(DataQualityDimensions.ACCURACY, "Timeliness");
+    TestCase tc = createTestCaseWithDimensions("Accuracy", "Timeliness");
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
 

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -62,7 +61,7 @@ public class SearchListFilterTest {
   @Test
   void testDataQualityDimensionCondition() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam("dataQualityDimension", DataQualityDimensions.ACCURACY.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "Accuracy");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"dataQualityDimension\": \"Accuracy\"}}]}}}";
@@ -86,7 +85,7 @@ public class SearchListFilterTest {
   void testDataQualityDimensionNoDimensionCondition() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.NO_DIMENSION.value());
+        "dataQualityDimension", "NoDimension");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"dataQualityDimension\"}}]}}]}}}";
@@ -97,7 +96,7 @@ public class SearchListFilterTest {
   void testDataQualityDimensionConditionForTestCaseResult() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.COMPLETENESS.value());
+        "dataQualityDimension", "Completeness");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testDefinition.dataQualityDimension\": \"Completeness\"}}]}}}";
@@ -108,7 +107,7 @@ public class SearchListFilterTest {
   void testDataQualityDimensionNoDimensionConditionForTestCaseResult() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.NO_DIMENSION.value());
+        "dataQualityDimension", "NoDimension");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"testDefinition.dataQualityDimension\"}}]}}]}}}";
@@ -218,7 +217,7 @@ public class SearchListFilterTest {
     searchListFilter.addQueryParam("tags", "PII,Sensitive");
     searchListFilter.addQueryParam("tier", "Tier.Tier1");
     searchListFilter.addQueryParam("serviceName", "sample-service");
-    searchListFilter.addQueryParam("dataQualityDimension", DataQualityDimensions.ACCURACY.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "Accuracy");
     searchListFilter.addQueryParam("followedBy", "follower-id");
 
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
@@ -253,7 +252,7 @@ public class SearchListFilterTest {
     searchListFilter.addQueryParam("testCaseType", Entity.TABLE);
     searchListFilter.addQueryParam("testSuiteId", "suite-id");
     searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.COMPLETENESS.value());
+        "dataQualityDimension", "Completeness");
 
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
 

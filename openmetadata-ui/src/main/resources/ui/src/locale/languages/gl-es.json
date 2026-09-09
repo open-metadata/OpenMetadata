@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "Non está permitido eliminar etiquetas xeradas polo sistema. Podes intentar desactivar a etiqueta no seu lugar.",
     "system-test-definition-delete-warning": "Non se permite eliminar unha definición de proba xerada polo sistema.",
-    "system-test-definition-edit-warning": "Non se permite editar unha definición de proba xerada polo sistema.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "Este é un fluxo de traballo do sistema e non se pode editar.",
     "tag-update-confirmation": "Desexas proceder coa actualización das etiquetas?",
     "tailor-experience-for-persona": "¡Adapta a experiencia especificamente para o persona {{persona}}, proba!",

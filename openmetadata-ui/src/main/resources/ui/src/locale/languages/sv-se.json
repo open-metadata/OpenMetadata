@@ -4628,7 +4628,7 @@
     "system-dimensions-are-read-only": "System dimensions ship with the platform. They can be used everywhere but not edited or deleted.",
     "system-tag-delete-disable-message": "Det är inte tillåtet att ta bort systemgenererade taggar. Du kan istället försöka inaktivera taggen.",
     "system-test-definition-delete-warning": "Det är inte tillåtet att ta bort en systemgenererad testdefinition.",
-    "system-test-definition-edit-warning": "Det är inte tillåtet att redigera en systemgenererad testdefinition.",
+    "system-test-definition-dimension-edit-only": "Only the data quality dimension can be edited on a system generated test definition.",
     "system-workflow-edit-restriction": "Det här är ett systemarbetsflöde och kan inte redigeras.",
     "tag-update-confirmation": "Vill du fortsätta med att uppdatera taggarna?",
     "tailor-experience-for-persona": "Skräddarsy upplevelsen specifikt för personan {{persona}}, prova bara!",

@@ -21,6 +21,7 @@ import {
 import { FC } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { TestPlatform } from '../../../generated/tests/testDefinition';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { TestDefinitionFormValues } from './TestDefinitionForm.interface';
 import TestDefinitionFormBody from './TestDefinitionFormBody';
 
@@ -31,6 +32,16 @@ jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
 
 jest.mock('../../../utils/DataQuality/FormFieldDocs', () => ({
   loadFormFieldDocs: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({
+    data: [
+      { id: 'dim-1', name: 'Accuracy' },
+      { id: 'dim-2', name: 'Timeliness', displayName: 'Timeliness' },
+    ],
+    paging: { total: 2 },
+  }),
 }));
 
 let formRef: UseFormReturn<TestDefinitionFormValues> | undefined;
@@ -155,6 +166,17 @@ describe('TestDefinitionFormBody', () => {
 
     expect(screen.getByTestId('parameter-name-0')).toBeInTheDocument();
     expect(screen.getByTestId('remove-parameter-0')).toBeInTheDocument();
+  });
+
+  it('sources the data quality dimension options from the dimension entities', async () => {
+    await act(async () => {
+      render(<Harness />);
+    });
+
+    // Custom dimensions live in Settings > Preferences > Data Quality, so the picker has to
+    // list what exists there rather than the dimensions OpenMetadata ships with.
+    expect(getDataQualityDimensions).toHaveBeenCalledWith({ limit: 1000 });
+    expect(screen.getByTestId('data-quality-dimension')).toBeInTheDocument();
   });
 
   it('renders the inline error alert when an error message is provided', () => {

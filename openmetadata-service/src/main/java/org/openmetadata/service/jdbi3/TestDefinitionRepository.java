@@ -58,7 +58,10 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       entity.setEnabled(true);
     }
 
-    // For updates to system test definitions, only allow changes to the enabled field
+    validateDataQualityDimension(entity);
+
+    // For updates to system test definitions, only allow changes to the enabled field and to the
+    // data quality dimension
     if (update && entity.getProvider() == ProviderType.SYSTEM) {
       TestDefinition existing = find(entity.getId(), Include.ALL);
       if (existing != null) {
@@ -67,8 +70,23 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     }
   }
 
+  /**
+   * A test definition classifies its test cases under a dimension entity — a system one or a custom
+   * one created in Settings &gt; Preferences &gt; Data Quality — so a name that matches none of them
+   * is rejected rather than silently stored. NoDimension is the "unset" marker the shipped test
+   * definitions were seeded with and has no entity of its own.
+   */
+  private void validateDataQualityDimension(TestDefinition entity) {
+    String dimension = entity.getDataQualityDimension();
+    if (CommonUtil.nullOrEmpty(dimension)
+        || DataQualityDimensionRepository.NO_DIMENSION.equals(dimension)) {
+      return;
+    }
+    Entity.getEntityReferenceByName(Entity.DATA_QUALITY_DIMENSION, dimension, Include.NON_DELETED);
+  }
+
   private void validateSystemTestDefinitionUpdate(TestDefinition existing, TestDefinition updated) {
-    // Check if any field other than 'enabled' is being changed
+    // Check if any field other than 'enabled' and 'dataQualityDimension' is being changed
     if (!existing.getEntityType().equals(updated.getEntityType())) {
       throw new BadRequestException(
           "System test definitions cannot have their entity type modified");
@@ -87,11 +105,9 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       throw new BadRequestException(
           "System test definitions cannot have their parameter definitions modified");
     }
-    if (existing.getDataQualityDimension() != null
-        && !existing.getDataQualityDimension().equals(updated.getDataQualityDimension())) {
-      throw new BadRequestException(
-          "System test definitions cannot have their data quality dimension modified");
-    }
+    // The data quality dimension is deliberately absent from these checks: reclassifying a shipped
+    // test definition under a dimension of their own — such as a BCBS 239 one — is the one edit
+    // users are allowed to make to a system test definition.
     if (!CommonUtil.nullOrEmpty(existing.getSupportedServices())
         && !existing.getSupportedServices().equals(updated.getSupportedServices())) {
       throw new BadRequestException(
@@ -199,11 +215,17 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      // For system test definitions, only allow enabled field changes
+      // For system test definitions, only allow enabled and data quality dimension changes
       if (original.getProvider() == ProviderType.SYSTEM) {
-        // Only record enabled field changes for system test definitions
         compareAndUpdate(
             "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
+        compareAndUpdate(
+            "dataQualityDimension",
+            () ->
+                recordChange(
+                    "dataQualityDimension",
+                    original.getDataQualityDimension(),
+                    updated.getDataQualityDimension()));
       } else {
         // For user/automation test definitions, allow all changes
         compareAndUpdate(

@@ -19,6 +19,12 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 @Slf4j
 @Repository
 public class DataQualityDimensionRepository extends EntityRepository<DataQualityDimension> {
+  /**
+   * Name test definitions carry when they classify their test cases under no dimension at all. It
+   * has no dimension entity of its own — it is the "unset" marker the shipped test definitions were
+   * seeded with, kept so that they keep deserializing.
+   */
+  public static final String NO_DIMENSION = "NoDimension";
 
   public DataQualityDimensionRepository() {
     super(

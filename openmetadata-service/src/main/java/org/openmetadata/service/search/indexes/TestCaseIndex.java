@@ -13,11 +13,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -97,13 +97,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         if (testCase.getDataQualityDimension() != null) {
           dimensionName = testCase.getDataQualityDimension().getName();
         } else if (testDefinition.getDataQualityDimension() != null) {
-          dimensionName = testDefinition.getDataQualityDimension().value();
+          dimensionName = testDefinition.getDataQualityDimension();
         }
         // The "No Dimension" filter is a must_not-exists on this field, so an effective
         // NoDimension has to stay unset in the document instead of being indexed by name.
         doc.put(
             "dataQualityDimension",
-            DataQualityDimensions.NO_DIMENSION.value().equals(dimensionName)
+            DataQualityDimensionRepository.NO_DIMENSION.equals(dimensionName)
                 ? null
                 : dimensionName);
         doc.put("testCaseType", testDefinition.getEntityType());
