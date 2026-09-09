@@ -101,7 +101,6 @@ const FilterSelectDropdown: FC<SearchDropdownProps> = ({
       searchable={!(hideSearchBar ?? false)}
       selectedValues={selectedKeys.map((option) => option.key)}
       selectionMode={singleSelect ? 'single' : 'multiple'}
-      showSelectAll={!singleSelect}
       triggerVariant="button"
       onChange={handleChange}
       onOpenChange={(open) => {

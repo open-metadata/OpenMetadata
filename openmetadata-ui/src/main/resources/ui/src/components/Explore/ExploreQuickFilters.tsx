@@ -466,7 +466,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             searchable={!(field.hideSearchBar ?? false)}
             selectedValues={selectedOptions.map((option) => option.key)}
             selectionMode={field.singleSelect ? 'single' : 'multiple'}
-            showSelectAll={!field.singleSelect}
             triggerVariant="button"
             onChange={handleChange}
             onOpenChange={(open) => {
