@@ -1166,7 +1166,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               onFieldValueSelect={handleQuickFiltersValueSelect}
             />
           </Col>
-          <Col className="d-flex items-center justify-end gap-3" flex={410}>
+          {/* Content-sized: a grow factor here would swallow the free space the
+              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide). */}
+          <Col className="d-flex items-center justify-end gap-3" flex="none">
             <Button
               aria-label={t('label.sort-order')}
               className="tw:p-0"
