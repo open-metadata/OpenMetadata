@@ -12,6 +12,7 @@
  */
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -377,8 +378,13 @@ export const FilterSelect = ({
         )}
 
         {isLoading && (
-          <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-            {t('label.loading')}
+          <div
+            aria-label={t('label.loading')}
+            className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-2"
+            role="status">
+            <Skeleton variant="text" width="80%" />
+            <Skeleton variant="text" width="60%" />
+            <Skeleton variant="text" width="70%" />
           </div>
         )}
 
