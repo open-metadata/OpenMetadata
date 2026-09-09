@@ -43,6 +43,28 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
   );
 };
 
+// React Aria's listbox is a non-modal popover, and a press on a trigger that
+// does not already hold focus both opens it and — via the focus transition that
+// same press produces — dismisses it a frame later. That leaves roughly 160ms to
+// pick an option, and nothing reopens the listbox afterwards, so a loaded runner
+// that misses the window retries the option click until the test times out.
+// Focusing the trigger first removes the transition, and with it the window.
+const selectEntityType = async (page: Page, entityType: string) => {
+  const entityTypeSelect = page.getByTestId('entity-type');
+  const entityTypeTrigger = entityTypeSelect.getByRole('button');
+
+  await entityTypeTrigger.focus();
+  await expect(entityTypeTrigger).toBeFocused();
+  await entityTypeTrigger.click();
+
+  await selectOptionWithMouse(
+    page,
+    page.getByRole('option', { name: entityType, exact: true })
+  );
+
+  await expect(entityTypeSelect).toContainText(entityType);
+};
+
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe(
@@ -147,13 +169,7 @@ test.describe(
           .locator('textarea')
           .fill(TEST_DEFINITION_DESCRIPTION);
 
-        // Select entity type (react-aria Select: click the field, pick option)
-        await page.locator('[id="root/entityType"]').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await entityTypeOption.click();
+        await selectEntityType(page, 'TABLE');
 
         // Supported data types (core MultiSelect: type into its combobox input to
         // populate the options, then pick — required while the OpenMetadata
@@ -369,12 +385,7 @@ test.describe(
             .getByTestId('test-definition-name')
             .locator('input')
             .fill(`validation-test-${uuid()}`);
-          await page.getByTestId('entity-type').click();
-          const entityTypeOption = page.getByRole('option', {
-            name: 'TABLE',
-            exact: true,
-          });
-          await entityTypeOption.click();
+          await selectEntityType(page, 'TABLE');
 
           const testDefinitionResponse = page.waitForResponse(
             (response) =>
@@ -603,22 +614,7 @@ test.describe(
           .locator('textarea')
           .fill('External test for read-only validation');
 
-        const entityTypeSelect = page.getByTestId('entity-type');
-        const entityTypeTrigger = entityTypeSelect.getByRole('button');
-
-        // The documentation panel reacts to focus and rerenders the form. Let
-        // that update settle before the mouse press so React Aria does not
-        // cancel the press when CI is under load.
-        await entityTypeTrigger.focus();
-        await expect(entityTypeTrigger).toBeFocused();
-        await entityTypeTrigger.click();
-        const tableOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await selectOptionWithMouse(page, tableOption);
-
-        await expect(entityTypeSelect).toContainText('TABLE');
+        await selectEntityType(page, 'TABLE');
 
         // OpenMetadata is selected by default. Remove its chip (the chip is a
         // span with the label and an unlabeled remove button) and add dbt so the
@@ -838,13 +834,7 @@ test.describe(
           .locator('textarea')
           .fill('Test definition to validate supported services filtering');
 
-        await page.getByTestId('entity-type').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await expect(entityTypeOption).toBeVisible();
-        await entityTypeOption.click();
+        await selectEntityType(page, 'TABLE');
 
         // Select supported data types (required when OpenMetadata platform is selected)
         await page.getByTestId('supported-data-types').click();
@@ -1182,12 +1172,7 @@ test.describe(
           .locator('textarea')
           .fill('Test definition for pagination behavior testing');
 
-        await page.getByTestId('entity-type').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await entityTypeOption.click();
+        await selectEntityType(page, 'TABLE');
 
         // Select supported data types (required when OpenMetadata platform is selected)
         await page.getByTestId('supported-data-types').click();
