@@ -18,14 +18,14 @@ import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OntologyStudioAsset } from '../../generated/api/data/ontologyStudioAsset';
 import {
   ConceptMapping,
   ConceptMappingType,
 } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { EntityReference } from '../../generated/entity/type';
 import {
-  getOntologyStudioAssets,
+  getGlossaryTermAssets,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -145,7 +145,7 @@ const OntologyAuthoringInspector = ({
   const { t } = useTranslation();
   const termId = node.termId ?? node.id;
   const { setTermDetails, termDetails } = useOntologyTermDetails(termId);
-  const [assets, setAssets] = useState<OntologyStudioAsset[]>([]);
+  const [assets, setAssets] = useState<EntityReference[]>([]);
   const [assetTotal, setAssetTotal] = useState(node.assetCount ?? 0);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [selectedRelationType, setSelectedRelationType] = useState('');
@@ -167,7 +167,7 @@ const OntologyAuthoringInspector = ({
       return () => controller.abort();
     }
 
-    getOntologyStudioAssets(termId, ASSET_PREVIEW_LIMIT, 0, controller.signal)
+    getGlossaryTermAssets(termId, ASSET_PREVIEW_LIMIT, 0, controller.signal)
       .then((response) => {
         setAssets(response.data);
         setAssetTotal(response.paging.total);
@@ -368,6 +368,36 @@ const OntologyAuthoringInspector = ({
     );
   };
 
+  const renderRelationTypeGroup = (group: {
+    label: string;
+    types: RelationshipType[];
+  }) =>
+    group.types.length ? (
+      <div className="tw:flex tw:flex-col tw:gap-1.5" key={group.label}>
+        <span className="tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
+          {group.label}
+        </span>
+        <div className="tw:flex tw:flex-wrap tw:gap-1.5">
+          {group.types.map((type) => (
+            <Button
+              color="secondary"
+              data-testid={`authoring-relation-type-${type.name}`}
+              key={type.name}
+              size="sm"
+              onPress={() => setSelectedRelationType(type.name)}>
+              <span
+                className="tw:size-1.5 tw:rounded-full"
+                style={{
+                  backgroundColor: getEffectiveRelationColor(type.name, type),
+                }}
+              />
+              {type.displayName || type.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   const renderRelationshipDraft = () => (
     <div
       className="tw:mt-2 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-secondary tw:p-3"
@@ -425,36 +455,7 @@ const OntologyAuthoringInspector = ({
               label: t('label.custom'),
               types: relationTypes.filter((type) => !type.systemDefined),
             },
-          ].map((group) =>
-            group.types.length ? (
-              <div className="tw:flex tw:flex-col tw:gap-1.5" key={group.label}>
-                <span className="tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
-                  {group.label}
-                </span>
-                <div className="tw:flex tw:flex-wrap tw:gap-1.5">
-                  {group.types.map((type) => (
-                    <Button
-                      color="secondary"
-                      data-testid={`authoring-relation-type-${type.name}`}
-                      key={type.name}
-                      size="sm"
-                      onPress={() => setSelectedRelationType(type.name)}>
-                      <span
-                        className="tw:size-1.5 tw:rounded-full"
-                        style={{
-                          backgroundColor: getEffectiveRelationColor(
-                            type.name,
-                            type
-                          ),
-                        }}
-                      />
-                      {type.displayName || type.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null
-          )}
+          ].map(renderRelationTypeGroup)}
         </div>
       )}
       <Button
@@ -551,49 +552,42 @@ const OntologyAuthoringInspector = ({
     );
   };
 
-  return (
-    <aside
-      className="tw:z-4 tw:h-full tw:w-[300px] tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-primary tw:p-[18px]"
-      data-testid="ontology-authoring-inspector">
-      <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-2">
-        <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
-          {t('label.concept')}
-        </span>
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
-          {onShowFullDetails ? (
-            <Button
-              noTextPadding
-              className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-secondary"
-              color="tertiary"
-              data-testid="ontology-concept-full-details"
-              onClick={onShowFullDetails}>
-              {t('label.view-detail-plural')}
-            </Button>
-          ) : null}
-          {!isEditable && onRequestEdit ? (
-            <Button
-              noTextPadding
-              className={classNames(
-                'tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
-                'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
-              )}
-              color="tertiary"
-              data-testid="ontology-concept-edit"
-              iconLeading={Edit03}
-              onClick={onRequestEdit}>
-              {t('label.edit')}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-      <h2 className="tw:m-0 tw:font-body tw:text-[17px] tw:leading-[1.25] tw:font-bold tw:text-primary">
-        {node.originalLabel ?? node.label}
-      </h2>
-      <p className="tw:mb-3 tw:mt-[3px] tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
-        {node.fullyQualifiedName}
-      </p>
+  const renderHeaderActions = () => (
+    <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
+      {onShowFullDetails ? (
+        <Button
+          noTextPadding
+          className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-secondary"
+          color="tertiary"
+          data-testid="ontology-concept-full-details"
+          onClick={onShowFullDetails}>
+          {t('label.view-detail-plural')}
+        </Button>
+      ) : null}
+      {!isEditable && onRequestEdit ? (
+        <Button
+          noTextPadding
+          className={classNames(
+            'tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
+            'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
+          )}
+          color="tertiary"
+          data-testid="ontology-concept-edit"
+          iconLeading={Edit03}
+          onClick={onRequestEdit}>
+          {t('label.edit')}
+        </Button>
+      ) : null}
+    </div>
+  );
 
-      {isValidUUID(termId) ? (
+  const renderTermSections = () => {
+    if (!isValidUUID(termId)) {
+      return null;
+    }
+
+    return (
+      <>
         <OntologyConceptAttributes
           showEditControls
           attributes={termDetails?.attributes ?? []}
@@ -603,9 +597,6 @@ const OntologyAuthoringInspector = ({
           variant="inspector"
           onTermUpdate={setTermDetails}
         />
-      ) : null}
-
-      {isValidUUID(termId) ? (
         <OntologyConceptRealization
           isEditMode={isEditable}
           realizations={termDetails?.realizedIn ?? []}
@@ -613,7 +604,28 @@ const OntologyAuthoringInspector = ({
           variant="inspector"
           onTermUpdate={setTermDetails}
         />
-      ) : null}
+      </>
+    );
+  };
+
+  return (
+    <aside
+      className="tw:z-4 tw:h-full tw:w-[300px] tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-primary tw:p-[18px]"
+      data-testid="ontology-authoring-inspector">
+      <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-2">
+        <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
+          {t('label.concept')}
+        </span>
+        {renderHeaderActions()}
+      </div>
+      <h2 className="tw:m-0 tw:font-body tw:text-[17px] tw:leading-[1.25] tw:font-bold tw:text-primary">
+        {node.originalLabel ?? node.label}
+      </h2>
+      <p className="tw:mb-3 tw:mt-[3px] tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
+        {node.fullyQualifiedName}
+      </p>
+
+      {renderTermSections()}
 
       <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
       <section data-testid="authoring-relationships">
@@ -683,27 +695,22 @@ const OntologyAuthoringInspector = ({
         <div className="tw:flex tw:flex-col tw:gap-[7px]">
           {assets.map((asset) => {
             const assetName =
-              asset.entity.displayName ??
-              asset.entity.name ??
-              asset.entity.fullyQualifiedName ??
-              asset.entity.id;
-            const serviceName =
-              asset.service?.displayName ??
-              asset.service?.name ??
-              asset.serviceType;
+              asset.displayName ??
+              asset.name ??
+              asset.fullyQualifiedName ??
+              asset.id;
 
             return (
               <div
                 className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-                data-testid={`authoring-asset-${asset.entity.id}`}
-                key={asset.entity.id}>
+                data-testid={`authoring-asset-${asset.id}`}
+                key={asset.id}>
                 <img
-                  alt={serviceName ?? t('label.service')}
+                  alt={asset.type}
                   className="tw:size-3.5 tw:shrink-0 tw:object-contain"
                   height={14}
                   src={serviceUtilClassBase.getServiceTypeLogo({
-                    entityType: asset.entity.type,
-                    serviceType: asset.serviceType,
+                    entityType: asset.type,
                   })}
                   width={14}
                 />
@@ -712,13 +719,7 @@ const OntologyAuthoringInspector = ({
                     {assetName}
                   </div>
                   <div className="tw:truncate tw:font-body tw:text-[10px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                    {serviceName}
-                    {asset.columnCount !== undefined ? (
-                      <>
-                        {' · '}
-                        {asset.columnCount} {t('label.column-lowercase-plural')}
-                      </>
-                    ) : null}
+                    {asset.type}
                   </div>
                 </div>
               </div>

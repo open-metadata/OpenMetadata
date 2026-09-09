@@ -17,6 +17,7 @@ import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError
 from sqlalchemy import create_engine
 
+from metadata.clients.aws_client import AWSClient
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
@@ -34,8 +35,10 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.athena import connection as athena_connection
 from metadata.ingestion.source.database.athena.connection import (
     ATHENA_ERRORS,
+    AthenaAssumeRoleStrategy,
     AthenaChecks,
     AthenaConnection,
+    AthenaStandardStrategy,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.athena.connection"
@@ -73,10 +76,75 @@ def test_athena_connection_is_base_connection():
     assert issubclass(AthenaConnection, BaseConnection)
 
 
-def test_get_client_uses_the_class_url_builder():
-    with patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection:
+def test_standard_strategy_does_not_resolve_connection_arguments_before_the_builder():
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection,
+        patch(f"{CONNECTION_MODULE}.get_connection_args_common") as mock_connection_args,
+    ):
         _ = AthenaConnection(_config()).client
+    assert mock_connection_args.call_count == 0
     assert mock_connection.call_args.kwargs["get_connection_url_fn"].__name__ == "get_connection_url"
+    assert mock_connection.call_args.kwargs["get_connection_args_fn"] is mock_connection_args
+
+
+def test_get_client_selects_the_standard_strategy_without_an_assume_role():
+    with patch.object(AthenaStandardStrategy, "build", return_value=MagicMock()) as mock_build:
+        _ = AthenaConnection(_config()).client
+
+    mock_build.assert_called_once_with()
+
+
+def test_get_client_selects_the_assume_role_strategy_with_an_assume_role():
+    config = _config(
+        awsConfig=AWSCredentials(
+            awsRegion="us-east-2",
+            assumeRoleArn="arn:aws:iam::123456789012:role/metadata-reader",
+        )
+    )
+
+    with patch.object(AthenaAssumeRoleStrategy, "build", return_value=MagicMock()) as mock_build:
+        _ = AthenaConnection(config).client
+
+    mock_build.assert_called_once_with()
+
+
+def test_assume_role_uses_refreshable_session_without_url_credentials():
+    refreshable_session = MagicMock()
+    config = _config(
+        awsConfig=AWSCredentials(
+            awsRegion="us-east-2",
+            assumeRoleArn="arn:aws:iam::123456789012:role/metadata-reader",
+        ),
+        catalogId="my_catalog",
+    )
+
+    with (
+        patch.object(AWSClient, "create_session", return_value=refreshable_session),
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection,
+    ):
+        _ = AthenaConnection(config).client
+
+    url_builder = mock_connection.call_args.kwargs["get_connection_url_fn"]
+    args_builder = mock_connection.call_args.kwargs["get_connection_args_fn"]
+    assert url_builder(config) == (
+        "awsathena+rest://:@athena.us-east-2.amazonaws.com:443"
+        "?s3_staging_dir=s3%3A%2F%2Fpostgres%2Finput%2F&work_group=primary"
+        "&catalog_name=my_catalog"
+    )
+    assert args_builder(config) == {"session": refreshable_session}
+
+
+def test_assume_role_rejects_connection_argument_session():
+    config = _config(
+        awsConfig=AWSCredentials(
+            awsRegion="us-east-2",
+            assumeRoleArn="arn:aws:iam::123456789012:role/metadata-reader",
+        ),
+        connectionArguments={"session": "not-a-boto3-session"},
+    )
+
+    with pytest.raises(ValueError, match="must not define 'session'"):
+        _ = AthenaConnection(config).client
 
 
 def test_get_client_registers_engine_disposal():

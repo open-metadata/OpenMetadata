@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from ast import literal_eval
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -47,7 +47,7 @@ class CliBase(ABC):
     openmetadata: OpenMetadata
     test_file_path: str
     config_file_path: str
-    ingestion_bot_jwt_token: Optional[str] = None  # noqa: UP045
+    ingestion_bot_jwt_token: str | None = None
 
     def run_command(self, command: str = "ingest", test_file_path=None) -> str:
         file_path = test_file_path if test_file_path is not None else self.test_file_path

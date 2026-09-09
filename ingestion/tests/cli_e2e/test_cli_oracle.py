@@ -13,8 +13,6 @@
 Oracle E2E tests
 """
 
-from typing import List  # noqa: UP035
-
 import pytest
 
 from metadata.ingestion.api.status import Status
@@ -46,7 +44,7 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         CREATE OR REPLACE VIEW admin.admin_emp_view AS SELECT * FROM admin.admin_emp
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         """
         INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo) WITH names AS (
 SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active', EMPTY_BLOB() FROM dual UNION ALL
@@ -117,7 +115,7 @@ SELECT * from names
         return "e2e_oracle.default.admin.ADMIN_EMP"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         # Oracle stores unquoted identifiers in uppercase in the DB, but
         # OpenMetadata normalises them to lowercase when ingested. Use a
         # case-insensitive regex so the pattern works for both the
@@ -126,11 +124,11 @@ SELECT * from names
         return ["(?i)^admin$"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["ADMIN_EMP"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["customers"]
 
     @staticmethod

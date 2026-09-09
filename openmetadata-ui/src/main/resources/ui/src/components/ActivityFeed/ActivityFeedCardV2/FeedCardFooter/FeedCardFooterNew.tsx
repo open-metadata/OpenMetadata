@@ -79,7 +79,10 @@ function FeedCardFooterNew({
 
   return (
     <Row align="top" className={classNames({ 'm-y-md': isReply })}>
-      <Col className="footer-container" span={24}>
+      <Col
+        className="footer-container"
+        data-testid="feed-card-footer"
+        span={24}>
         <div>
           <div className="flex items-center gap-2 w-full rounded-8">
             {postLength > 0 && !isReply && (

@@ -25,15 +25,15 @@ import {
 import { DataType } from '../../generated/type/ontologyAttribute';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import {
+  getGlossaryTermAssets,
   getGlossaryTermsById,
-  getOntologyStudioAssets,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import OntologyAuthoringInspector from './OntologyAuthoringInspector';
 
 jest.mock('../../rest/glossaryAPI', () => ({
   getGlossaryTermsById: jest.fn(),
-  getOntologyStudioAssets: jest.fn(),
+  getGlossaryTermAssets: jest.fn(),
   patchGlossaryTerm: jest.fn(),
 }));
 
@@ -80,8 +80,8 @@ const RELATIONSHIP_TYPE = createRelationshipTypeMock({
 const mockGetTerm = getGlossaryTermsById as jest.MockedFunction<
   typeof getGlossaryTermsById
 >;
-const mockGetAssets = getOntologyStudioAssets as jest.MockedFunction<
-  typeof getOntologyStudioAssets
+const mockGetAssets = getGlossaryTermAssets as jest.MockedFunction<
+  typeof getGlossaryTermAssets
 >;
 
 describe('OntologyAuthoringInspector', () => {
@@ -91,14 +91,9 @@ describe('OntologyAuthoringInspector', () => {
     mockGetAssets.mockResolvedValue({
       data: [
         {
-          columnCount: 42,
-          entity: {
-            id: 'asset-id',
-            name: 'transaction_monitoring',
-            type: 'table',
-          },
-          service: { id: 'service-id', name: 'Snowflake', type: 'service' },
-          serviceType: 'Snowflake',
+          id: 'asset-id',
+          name: 'transaction_monitoring',
+          type: 'table',
         },
       ],
       paging: { limit: 3, offset: 0, total: 47 },

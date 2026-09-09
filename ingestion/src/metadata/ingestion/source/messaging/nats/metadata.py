@@ -15,7 +15,8 @@ NATS source ingestion
 import base64
 import json
 import traceback
-from typing import TYPE_CHECKING, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
@@ -111,7 +112,7 @@ class NatsSource(MessagingServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
@@ -121,7 +122,7 @@ class NatsSource(MessagingServiceSource):
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
         offset = 0
-        total: Optional[int] = None  # noqa: UP045
+        total: int | None = None
 
         while total is None or offset < total:
             response = self.nats_client.request(
@@ -168,7 +169,7 @@ class NatsSource(MessagingServiceSource):
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
 
-    def _fetch_schema_from_kv(self, stream_name: str) -> Optional[tuple]:  # noqa: UP045
+    def _fetch_schema_from_kv(self, stream_name: str) -> tuple | None:
         bucket = getattr(self.service_connection, "schemaKvBucket", None)
         if not bucket:
             return None
@@ -192,7 +193,7 @@ class NatsSource(MessagingServiceSource):
         schema_text = base64.b64decode(raw, validate=True).decode("utf-8")
         return schema_text, _detect_schema_type(schema_text)
 
-    def _build_topic_config_params(self, config: Optional[NatsStreamConfig]) -> dict:  # noqa: UP045
+    def _build_topic_config_params(self, config: NatsStreamConfig | None) -> dict:
         if not config:
             return {
                 "replication_factor": None,
@@ -220,10 +221,10 @@ class NatsSource(MessagingServiceSource):
 
     def _build_message_schema(
         self,
-        kv_schema: Optional[tuple],  # noqa: UP045
+        kv_schema: tuple | None,
         topic_name: str,
         schema_type_map: dict,
-    ) -> Optional[TopicSchema]:  # noqa: UP045
+    ) -> TopicSchema | None:
         if kv_schema is None:
             return None
         schema_text, schema_type = kv_schema

@@ -128,6 +128,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         })
       );
       onToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -135,6 +137,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           entity: t('label.api-endpoint'),
         })
       );
+
+      return false;
     }
   };
 

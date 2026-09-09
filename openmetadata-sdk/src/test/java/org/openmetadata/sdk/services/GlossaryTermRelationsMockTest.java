@@ -24,14 +24,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
-import org.openmetadata.schema.api.data.OntologyStudioAsset;
-import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
-import org.openmetadata.schema.api.data.OntologyStudioSummary;
+import org.openmetadata.schema.api.data.OntologyDataGraph;
+import org.openmetadata.schema.api.data.OntologySummary;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.ResultList;
@@ -169,31 +169,31 @@ class GlossaryTermRelationsMockTest {
   }
 
   @Test
-  void studioEndpointsUseBoundedPagingParameters() {
+  void ontologyEndpointsUseBoundedPagingParameters() {
     UUID termId = UUID.randomUUID();
     when(httpClient.execute(
             eq(HttpMethod.GET),
-            eq("/v1/glossaryTerms/studio/summary"),
+            eq("/v1/glossaryTerms/ontology/summary"),
             isNull(),
-            eq(OntologyStudioSummary.class),
+            eq(OntologySummary.class),
             any(RequestOptions.class)))
-        .thenReturn(new OntologyStudioSummary());
+        .thenReturn(new OntologySummary());
     when(httpClient.execute(
             eq(HttpMethod.GET),
-            eq("/v1/glossaryTerms/studio/data"),
+            eq("/v1/glossaryTerms/ontology/data"),
             isNull(),
-            eq(OntologyStudioDataGraph.class),
+            eq(OntologyDataGraph.class),
             any(RequestOptions.class)))
-        .thenReturn(new OntologyStudioDataGraph());
+        .thenReturn(new OntologyDataGraph());
     when(httpClient.executeForString(
             eq(HttpMethod.GET),
-            eq("/v1/glossaryTerms/" + termId + "/studioAssets"),
+            eq("/v1/glossaryTerms/" + termId + "/assets"),
             any(RequestOptions.class)))
         .thenReturn("{\"data\":[],\"paging\":{\"total\":0}}");
 
-    glossaryTerms.studioSummary("Commerce", 5, 10);
-    glossaryTerms.studioData("Commerce", 12, 24, 4);
-    ResultList<OntologyStudioAsset> assets = glossaryTerms.studioAssets(termId, 6, 12);
+    glossaryTerms.ontologySummary("Commerce", 5, 10);
+    glossaryTerms.ontologyData("Commerce", 12, 24, 4);
+    ResultList<EntityReference> assets = glossaryTerms.assets(termId, 6, 12);
 
     ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
     verify(httpClient, times(2))

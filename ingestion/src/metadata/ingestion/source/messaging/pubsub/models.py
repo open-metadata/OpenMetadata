@@ -12,8 +12,6 @@
 Pub/Sub Models
 """
 
-from typing import Dict, List, Optional  # noqa: UP035
-
 from pydantic import BaseModel
 
 
@@ -22,10 +20,10 @@ class PubSubBigQueryConfig(BaseModel):
     Model for BigQuery subscription configuration
     """
 
-    table: Optional[str] = None  # noqa: UP045
-    use_topic_schema: Optional[bool] = None  # noqa: UP045
-    write_metadata: Optional[bool] = None  # noqa: UP045
-    drop_unknown_fields: Optional[bool] = None  # noqa: UP045
+    table: str | None = None
+    use_topic_schema: bool | None = None
+    write_metadata: bool | None = None
+    drop_unknown_fields: bool | None = None
 
 
 class PubSubSubscription(BaseModel):
@@ -34,13 +32,13 @@ class PubSubSubscription(BaseModel):
     """
 
     name: str
-    ack_deadline_seconds: Optional[int] = None  # noqa: UP045
-    message_retention_duration: Optional[float] = None  # noqa: UP045
-    dead_letter_topic: Optional[str] = None  # noqa: UP045
-    push_endpoint: Optional[str] = None  # noqa: UP045
-    filter: Optional[str] = None  # noqa: UP045
-    bigquery_config: Optional[PubSubBigQueryConfig] = None  # noqa: UP045
-    enable_exactly_once_delivery: Optional[bool] = None  # noqa: UP045
+    ack_deadline_seconds: int | None = None
+    message_retention_duration: float | None = None
+    dead_letter_topic: str | None = None
+    push_endpoint: str | None = None
+    filter: str | None = None
+    bigquery_config: PubSubBigQueryConfig | None = None
+    enable_exactly_once_delivery: bool | None = None
 
 
 class PubSubSchemaInfo(BaseModel):
@@ -50,8 +48,8 @@ class PubSubSchemaInfo(BaseModel):
 
     name: str
     schema_type: str
-    definition: Optional[str] = None  # noqa: UP045
-    revision_id: Optional[str] = None  # noqa: UP045
+    definition: str | None = None
+    revision_id: str | None = None
 
 
 class PubSubTopicMetadata(BaseModel):
@@ -60,9 +58,9 @@ class PubSubTopicMetadata(BaseModel):
     """
 
     name: str
-    labels: Optional[Dict[str, str]] = None  # noqa: UP006, UP045
-    message_retention_duration: Optional[float] = None  # noqa: UP045
-    schema_settings: Optional[PubSubSchemaInfo] = None  # noqa: UP045
-    subscriptions: Optional[List[PubSubSubscription]] = None  # noqa: UP006, UP045
+    labels: dict[str, str] | None = None
+    message_retention_duration: float | None = None
+    schema_settings: PubSubSchemaInfo | None = None
+    subscriptions: list[PubSubSubscription] | None = None
     ordering_enabled: bool = False
-    kms_key_name: Optional[str] = None  # noqa: UP045
+    kms_key_name: str | None = None

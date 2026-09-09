@@ -13,8 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
@@ -51,7 +49,7 @@ class MssqlSampler(SQASampler):
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """Period columns are catalogued but kept out of the sample: they are row-validity
         bookkeeping, not user data, and classifying them adds noise (issue #21329).
         """

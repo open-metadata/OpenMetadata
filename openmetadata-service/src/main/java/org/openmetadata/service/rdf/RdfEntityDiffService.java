@@ -115,7 +115,7 @@ public final class RdfEntityDiffService {
 
   private static Model parseCanonical(final String canonicalNTriples) {
     final Model model = ModelFactory.createDefaultModel();
-    RDFParser.fromString(canonicalNTriples).lang(Lang.NTRIPLES).parse(model);
+    RDFParser.fromString(canonicalNTriples, Lang.NTRIPLES).parse(model);
     return model;
   }
 
