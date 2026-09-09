@@ -527,16 +527,48 @@ export const selectDataProduct = async (
   await waitForAllLoadersToDisappear(page);
   await searchBox.waitFor({ state: 'visible' });
 
-  await Promise.all([
-    page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
-    searchBox.fill(dataProduct.name),
-  ]);
+  const dataProductRow = page.getByTestId(dataProduct.name);
 
-  await waitForSearchDebounce(page);
+  // Same eventual consistency as the domain listing above: a data product
+  // created moments ago can be missing from the first query, and the listing
+  // re-queries only when the search text changes. Retry the search, reloading
+  // between attempts, so the row is clicked only once it is really there.
+  //
+  // The response wait deliberately lives outside this callback -- waits here
+  // are test-bound, so a `waitForResponse` that never matches would hang the
+  // callback and the poll could never retry it.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          await searchBox.waitFor({ state: 'visible' });
+        }
+        hasSearched = true;
+
+        await searchBox.fill('');
+        await searchBox.fill(dataProduct.name);
+
+        await waitForSearchDebounce(page);
+
+        return dataProductRow.isVisible();
+      },
+      {
+        message: `Wait for data product "${dataProduct.name}" to appear in the data product listing`,
+        // Deliberately well under the default 60s test budget: most callers of
+        // this helper do not set test.slow(), and a poll sized to the whole
+        // budget would starve the rest of the test instead of failing it.
+        timeout: 30_000,
+        intervals: [1_000, 2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
 
   await Promise.all([
     page.waitForResponse('/api/v1/dataProducts/name/*'),
-    page.getByTestId(dataProduct.name).click(),
+    dataProductRow.click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
