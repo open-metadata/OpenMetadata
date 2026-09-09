@@ -403,7 +403,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
   return (
-    <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+    <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center">
       {fields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
