@@ -95,6 +95,19 @@ class ResourceEventTypesTest {
   }
 
   @Test
+  void ontologyEventsAreDeclaredByTheirReachableResources() {
+    List<EventType> glossary = ResourceEventTypes.forResource(Entity.GLOSSARY);
+    assertTrue(glossary.contains(EventType.ONTOLOGY_IMPORTED));
+    assertFalse(glossary.contains(EventType.ONTOLOGY_RELATIONSHIP_TYPE_UPDATED));
+    assertFalse(glossary.contains(EventType.ONTOLOGY_CHANGE_SET_APPLIED));
+
+    List<EventType> all = ResourceEventTypes.forResource(ResourceEventTypes.ALL_RESOURCE);
+    assertTrue(all.contains(EventType.ONTOLOGY_IMPORTED));
+    assertTrue(all.contains(EventType.ONTOLOGY_RELATIONSHIP_TYPE_UPDATED));
+    assertTrue(all.contains(EventType.ONTOLOGY_CHANGE_SET_APPLIED));
+  }
+
+  @Test
   void noResourceDeclaresAnUnreachableEventType() throws IOException {
     for (String resource : notificationResources()) {
       for (EventType eventType : ResourceEventTypes.forResource(resource)) {

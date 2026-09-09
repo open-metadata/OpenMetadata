@@ -11,15 +11,6 @@
  *  limitations under the License.
  */
 
-/**
- * Consumers of ActivityFeedProvider used only by ActivityFeedProvider.test.tsx.
- * They live here rather than under src/components so nothing in the component
- * tree looks like an application component when it is a test fixture.
- *
- * Each effect lists the provider method it calls: the provider memoises all of
- * them with useCallback, so the dependency is stable and the effect still runs
- * once per mount.
- */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useActivityFeedProvider } from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -27,12 +18,12 @@ import { EntityType } from '../enums/entity.enum';
 import { FeedFilter } from '../enums/mydata.enum';
 import { ReactionOperation } from '../enums/reactions.enum';
 import { ActivityEvent } from '../generated/entity/activity/activityEvent';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { ReactionType } from '../generated/type/reaction';
 import { TaskStatusGroup } from '../rest/tasksAPI';
 
 const LOADING_LABEL = 'label.loading';
 const CHILDREN_LABEL = 'label.children';
+const ACTIVITY_ID = 'activity-123';
 
 export const DummyChildrenComponent = () => {
   const { t } = useTranslation();
@@ -94,14 +85,7 @@ export const DummyChildrenEntityComponent = () => {
   const { getFeedData } = useActivityFeedProvider();
 
   useEffect(() => {
-    getFeedData(
-      FeedFilter.ALL,
-      undefined,
-      ThreadType.Conversation,
-      EntityType.TABLE,
-      'admin',
-      TaskStatusGroup.Open
-    );
+    getFeedData(FeedFilter.ALL, undefined, EntityType.TABLE, 'admin');
   }, [getFeedData]);
 
   return <p>{t(CHILDREN_LABEL)}</p>;
@@ -112,16 +96,47 @@ export const DummyChildrenMentionsComponent = () => {
   const { getFeedData } = useActivityFeedProvider();
 
   useEffect(() => {
-    getFeedData(
-      FeedFilter.MENTIONS,
-      undefined,
-      ThreadType.Conversation,
-      EntityType.USER,
-      'admin'
-    );
+    getFeedData(FeedFilter.MENTIONS, undefined, EntityType.USER, 'admin');
   }, [getFeedData]);
 
   return <p>{t(CHILDREN_LABEL)}</p>;
+};
+
+/**
+ * Exposes the task list and the paging cursor so a test can observe what the
+ * provider holds *between* a filter switch and the response landing.
+ */
+export const DummyTaskListStateComponent = () => {
+  const { getTaskData, tasks, entityPaging } = useActivityFeedProvider();
+
+  const fetchTasks = (statusGroup: TaskStatusGroup) => {
+    getTaskData(
+      FeedFilter.OWNER_OR_FOLLOWS,
+      undefined,
+      EntityType.TABLE,
+      'db.schema.tbl',
+      statusGroup
+    );
+  };
+
+  return (
+    <div>
+      <button
+        aria-label="fetch open tasks"
+        data-testid="fetch-open"
+        onClick={() => fetchTasks(TaskStatusGroup.Open)}
+      />
+      <button
+        aria-label="fetch closed tasks"
+        data-testid="fetch-closed"
+        onClick={() => fetchTasks(TaskStatusGroup.Closed)}
+      />
+      <span data-testid="task-ids">
+        {tasks.map((task) => task.id).join(',')}
+      </span>
+      <span data-testid="paging-after">{entityPaging.after ?? 'none'}</span>
+    </div>
+  );
 };
 
 export const DummyChildrenDeletePostComponent = () => {
@@ -209,10 +224,6 @@ export const DummyFollowingActivityComponent = () => {
   );
 };
 
-/**
- * Drives the widget's filter switch from a test: the three activity fetchers
- * share one sequence counter, so this is how a superseded response is exercised.
- */
 export const DummyActivityFilterSwitchComponent = () => {
   const { t } = useTranslation();
   const {
@@ -252,7 +263,7 @@ export const DummyActivityReactionComponent = () => {
 
   const handleAddReaction = () => {
     updateActivityReaction(
-      'activity-123',
+      ACTIVITY_ID,
       ReactionType.ThumbsUp,
       ReactionOperation.ADD
     );
@@ -260,7 +271,7 @@ export const DummyActivityReactionComponent = () => {
 
   const handleRemoveReaction = () => {
     updateActivityReaction(
-      'activity-123',
+      ACTIVITY_ID,
       ReactionType.ThumbsUp,
       ReactionOperation.REMOVE
     );
@@ -303,7 +314,7 @@ export const DummyActivityReactionSyncComponent = () => {
         data-testid="react"
         onClick={() =>
           updateActivityReaction(
-            'activity-123',
+            ACTIVITY_ID,
             ReactionType.ThumbsUp,
             ReactionOperation.ADD
           )
@@ -317,13 +328,62 @@ export const DummyActivityReactionSyncComponent = () => {
   );
 };
 
+export const DummyActivityCommentComponent = ({
+  activity,
+}: {
+  activity: ActivityEvent;
+}) => {
+  const { t } = useTranslation();
+  const { postActivityComment, activityReplies } = useActivityFeedProvider();
+
+  const handlePostComment = () => {
+    postActivityComment('Test comment', activity);
+  };
+
+  return (
+    <div>
+      <button data-testid="post-comment" onClick={handlePostComment}>
+        {t('label.post-comment')}
+      </button>
+      <span data-testid="reply-count">{activityReplies.length}</span>
+    </div>
+  );
+};
+
+export const DummyActivityReplyEditComponent = ({
+  activity,
+}: {
+  activity: ActivityEvent;
+}) => {
+  const { t } = useTranslation();
+  const { activityReplies, updateFeed } = useActivityFeedProvider();
+
+  const handleEdit = () => {
+    updateFeed(activity.id, 'reply-1', false, [
+      { op: 'replace', path: '/message', value: 'Edited comment' },
+    ]);
+  };
+
+  return (
+    <div>
+      <button data-testid="edit-activity-reply" onClick={handleEdit}>
+        {t('label.edit')}
+      </button>
+      <span data-testid="activity-reply-messages">
+        {activityReplies.map((reply) => reply.message).join(',')}
+      </span>
+    </div>
+  );
+};
+
 export const DummySetActiveActivityComponent = ({
   activity,
 }: {
   activity?: ActivityEvent;
 }) => {
   const { t } = useTranslation();
-  const { setActiveActivity, selectedActivity } = useActivityFeedProvider();
+  const { setActiveActivity, selectedActivity, activityReplies } =
+    useActivityFeedProvider();
 
   const handleSetActive = () => {
     setActiveActivity(activity);
@@ -337,6 +397,7 @@ export const DummySetActiveActivityComponent = ({
       <span data-testid="selected-activity-id">
         {selectedActivity?.id ?? 'none'}
       </span>
+      <span data-testid="activity-reply-count">{activityReplies.length}</span>
     </div>
   );
 };

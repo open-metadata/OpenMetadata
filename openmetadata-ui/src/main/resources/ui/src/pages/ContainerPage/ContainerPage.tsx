@@ -593,6 +593,8 @@ const ContainerPage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -600,6 +602,8 @@ const ContainerPage = () => {
           entity: t('label.container'),
         })
       );
+
+      return false;
     }
   };
 
@@ -862,6 +866,15 @@ const ContainerPage = () => {
     return <ErrorPlaceHolder />;
   }
 
+  const renderTabBarExtraContent = () =>
+    isExpandViewSupported && (
+      <AlignRightIconButton
+        className={isTabExpanded ? 'rotate-180' : ''}
+        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+        onClick={toggleTabExpanded}
+      />
+    );
+
   return (
     <PageLayoutV1 pageTitle={getEntityName(containerData)}>
       <Row gutter={[0, 12]}>
@@ -900,17 +913,7 @@ const ContainerPage = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
+                tabBarExtraContent={renderTabBarExtraContent()}
                 onChange={handleTabChange}
               />
             </Col>

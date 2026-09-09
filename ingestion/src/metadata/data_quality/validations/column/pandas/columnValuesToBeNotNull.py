@@ -14,7 +14,7 @@ Validator for column values to be not null test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 import pandas as pd
 
@@ -54,7 +54,7 @@ class ColumnValuesToBeNotNullValidator(
 ):
     """Validator for column values to be not null test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | None:
         """compute result of the test case
 
         Args:
@@ -70,7 +70,7 @@ class ColumnValuesToBeNotNullValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle

@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/updateOntologyChangeSet.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpdateOntologyChangeSetRequest",
+  "description": "Replace the typed operation timeline of a draft ontology change set.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.UpdateOntologyChangeSet",
+  "properties": {
+    "lease": {
+      "$ref": "../../type/ontologyEditLeaseToken.json"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyChangeOperation.json"
+      },
+      "default": []
+    },
+    "undoCursor": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["lease", "operations", "undoCursor"],
+  "additionalProperties": false
+}

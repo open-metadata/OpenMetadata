@@ -63,6 +63,8 @@ import {
 } from './DataQualityTab.interface';
 import './DataQualityTab.less';
 
+const DATA_QUALITY_TAB_KEY = 'data-quality';
+
 const DetailItem: React.FC<DetailItemProps> = ({
   label,
   value,
@@ -239,9 +241,9 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
         {/* Details Section */}
         <div className="test-case-details">
-          {detailItems.map((item, index) => (
+          {detailItems.map((item) => (
             <DetailItem
-              key={`${item.label}-${index}`}
+              key={item.label}
               label={item.label}
               showDottedBorder={item.showDottedBorder}
               value={item.value}
@@ -251,6 +253,16 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
       </div>
     </Card>
   );
+};
+
+const INCIDENT_FILTER_STATUS_MAP: Record<
+  IncidentFilterStatus,
+  TestCaseResolutionStatusTypes
+> = {
+  new: TestCaseResolutionStatusTypes.New,
+  ack: TestCaseResolutionStatusTypes.ACK,
+  assigned: TestCaseResolutionStatusTypes.Assigned,
+  resolved: TestCaseResolutionStatusTypes.Resolved,
 };
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -269,7 +281,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     total: 0,
   });
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
-  const [activeTab, setActiveTab] = useState<string>('data-quality');
+  const [activeTab, setActiveTab] = useState<string>(DATA_QUALITY_TAB_KEY);
   const [searchText, setSearchText] = useState<string>('');
 
   // Incident-related state
@@ -514,27 +526,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         return false;
       }
 
-      let matchesStatus = false;
-      switch (activeIncidentFilter) {
-        case 'new':
-          matchesStatus = status === TestCaseResolutionStatusTypes.New;
-
-          break;
-        case 'ack':
-          matchesStatus = status === TestCaseResolutionStatusTypes.ACK;
-
-          break;
-        case 'assigned':
-          matchesStatus = status === TestCaseResolutionStatusTypes.Assigned;
-
-          break;
-        case 'resolved':
-          matchesStatus = status === TestCaseResolutionStatusTypes.Resolved;
-
-          break;
-        default:
-          return false;
-      }
+      const matchesStatus =
+        status === INCIDENT_FILTER_STATUS_MAP[activeIncidentFilter];
 
       if (!searchText) {
         return matchesStatus;
@@ -820,16 +813,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   // Tab items configuration
   const tabItems = [
     {
-      key: 'data-quality',
+      key: DATA_QUALITY_TAB_KEY,
       label: (
         <span
           className={`tab-header-container ${
-            activeTab === 'data-quality' ? 'active' : ''
+            activeTab === DATA_QUALITY_TAB_KEY ? 'active' : ''
           }`}>
           {t('label.data-quality')}
           <span
             className={`data-quality-tab-count ${
-              activeTab === 'data-quality' ? 'active' : ''
+              activeTab === DATA_QUALITY_TAB_KEY ? 'active' : ''
             }`}>
             {statusCounts.total}
           </span>

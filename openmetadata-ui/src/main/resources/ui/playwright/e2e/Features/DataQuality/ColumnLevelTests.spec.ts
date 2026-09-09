@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import {
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
 } from '../../../utils/common';
 import {
@@ -112,7 +112,7 @@ test.describe(
         // Wait for dropdown to close after test type selection
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
-        await page.locator(descriptionBox).fill(testCase.description);
+        await fillDescriptionBox(page, testCase.description);
 
         await clickCreateTestCaseButton(page, testCase.name);
       });

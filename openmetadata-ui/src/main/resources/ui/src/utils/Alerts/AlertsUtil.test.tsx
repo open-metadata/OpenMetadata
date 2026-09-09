@@ -44,8 +44,6 @@ import {
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getFieldByArgumentType,
   getFqnSearchIndexes,
   searchEntity,
@@ -769,50 +767,6 @@ describe('getFieldByArgumentType tests', () => {
     const selectDiv = screen.queryByText('AsyncSelect');
 
     expect(selectDiv).toBeNull();
-  });
-
-  it('getDestinationConfigField should return advanced configurations for webhook type', async () => {
-    const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
-      <></>
-    );
-
-    render(field);
-
-    const secretKeyInput = screen.getByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeInTheDocument();
-
-    fireEvent.click(secretKeyInput);
-
-    expect(
-      await screen.findByTestId('webhook-4-headers-list')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('webhook-4-query-params-list')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
-  });
-
-  it('getDestinationConfigField should not return advanced configurations for other type', () => {
-    const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
-
-    render(field);
-
-    const secretKeyInput = screen.queryByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeNull();
-  });
-
-  it('getConnectionTimeoutField should return the connection timeout field', () => {
-    const field = getConnectionTimeoutField();
-
-    render(field);
-
-    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
-
-    const input = screen.getByTestId('connection-timeout-input');
-
-    expect(input).toHaveValue(10);
   });
 });
 
@@ -1567,6 +1521,19 @@ describe('handleAlertSave - downstream notification fields', () => {
 });
 
 describe('normalizeDestinationConfig', () => {
+  it('should preserve form-style header and query parameter arrays', () => {
+    const config = {
+      endpoint: 'https://hooks.slack.com/services/xxx',
+      headers: [{ key: 'header1', value: 'value1' }],
+      queryParams: [{ key: 'param1', value: 'value1' }],
+      httpMethod: 'POST',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual(config);
+  });
+
   it('should normalize config with headers and queryParams as objects to arrays', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
@@ -1611,7 +1578,7 @@ describe('normalizeDestinationConfig', () => {
     });
   });
 
-  it('should handle config with empty headers and queryParams objects', () => {
+  it('should omit empty headers and queryParams from normalized config', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
       headers: {},
@@ -1623,8 +1590,6 @@ describe('normalizeDestinationConfig', () => {
 
     expect(result).toEqual({
       endpoint: 'https://example.com/webhook',
-      headers: [],
-      queryParams: [],
       timeout: 30,
     });
   });

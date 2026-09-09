@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/conversationReply.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConversationReply",
+  "description": "A reply in a conversation.",
+  "javaType": "org.openmetadata.schema.entity.feed.ConversationReply",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the reply.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "conversationId": {
+      "description": "Conversation containing this reply.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "message": {
+      "description": "Reply content in Markdown format.",
+      "$ref": "../../type/basic.json#/definitions/nonBlankMarkdown"
+    },
+    "author": {
+      "description": "User who created the reply.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "createdAt": {
+      "description": "Timestamp when the reply was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Timestamp when the reply was last updated.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who last updated the reply.",
+      "type": "string"
+    },
+    "reactions": {
+      "description": "Reactions on this reply.",
+      "$ref": "../../type/reaction.json#/definitions/reactionList"
+    },
+    "impersonatedBy": {
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    }
+  },
+  "required": ["id", "conversationId", "message", "author", "createdAt", "updatedAt"],
+  "additionalProperties": false
+}

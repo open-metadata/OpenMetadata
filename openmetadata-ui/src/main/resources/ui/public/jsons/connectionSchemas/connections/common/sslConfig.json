@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SSL Config",
+  "description": "SSL Config",
+  "javaType": "org.openmetadata.schema.services.common.SSLConfig",
+  "type": "object",
+  "properties": {
+    "certificates": {
+      "type": "object",
+      "title": "SSL Certificates",
+      "description": "SSL Certificates",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "SSL Certificates By Path",
+          "description": "SSL Certificates By Path",
+          "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
+          "type": "object",
+          "properties": {
+            "caCertPath": {
+              "title": "CA Certificate Path",
+              "description": "CA Certificate Path",
+              "type": "string"
+            },
+            "clientCertPath": {
+              "title": "Client Certificate Path",
+              "description": "Client Certificate Path",
+              "type": "string"
+            },
+            "privateKeyPath": {
+              "title": "Private Key Path",
+              "description": "Private Key Path",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "SSL Certificates By Values",
+          "description": "SSL Certificates By Values",
+          "javaType": "org.openmetadata.schema.services.common.SSLCertValues",
+          "type": "object",
+          "properties": {
+            "caCertValue": {
+              "title": "CA Certificate Value",
+              "description": "CA Certificate Value",
+              "type": "string",
+              "format": "password"
+            },
+            "clientCertValue": {
+              "title": "Client Certificate Value",
+              "description": "Client Certificate Value",
+              "type": "string",
+              "format": "password"
+            },
+            "privateKeyValue": {
+              "title": "Private Key Value",
+              "description": "Private Key Value",
+              "type": "string",
+              "format": "password"
+            },
+            "stagingDir": {
+              "title": "Staging Directory Path",
+              "description": "Staging Directory Path",
+              "type": "string",
+              "default": "/tmp/openmetadata-certs"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

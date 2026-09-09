@@ -22,10 +22,11 @@ import pprint
 import re
 import shutil
 import sys
+from collections.abc import Iterable  # noqa: TC003
 from datetime import datetime, timedelta, timezone
 from math import floor, log
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 import sqlparse
 from pydantic_core import Url  # noqa: TC002
@@ -55,9 +56,9 @@ class BackupRestoreArgs:
         password: str,
         database: str,
         port: str,
-        options: List[str],  # noqa: UP006
-        arguments: List[str],  # noqa: UP006
-        schema: Optional[str] = None,  # noqa: UP045
+        options: list[str],
+        arguments: list[str],
+        schema: str | None = None,
     ):
         self.host = host
         self.user = user
@@ -115,7 +116,7 @@ om_chart_type_dict = {
 }
 
 
-def pretty_print_time_duration(duration: Union[int, float]) -> str:  # noqa: UP007
+def pretty_print_time_duration(duration: int | float) -> str:
     """
     Method to format and display the time
     """
@@ -142,7 +143,7 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:  # noqa: UP0
     return f"{milliseconds:.3f}ms"
 
 
-def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:  # noqa: UP006
+def get_start_and_end(duration: int = 0) -> tuple[datetime, datetime]:
     """
     Method to return start and end time based on duration
     """
@@ -165,14 +166,14 @@ def snake_to_camel(snake_str):
     return "".join(split_str)
 
 
-def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:  # noqa: UP045
+def datetime_to_ts(date: datetime | None) -> int | None:
     """
     Convert a given date to a timestamp as an Int in milliseconds
     """
     return int(date.timestamp() * 1_000) if date else None
 
 
-def get_formatted_entity_name(name: str) -> Optional[str]:  # noqa: UP045
+def get_formatted_entity_name(name: str) -> str | None:
     """
     Method to get formatted entity name
     """
@@ -180,7 +181,7 @@ def get_formatted_entity_name(name: str) -> Optional[str]:  # noqa: UP045
     return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
 
 
-def has_table_name(name: Optional[str]) -> bool:  # noqa: UP045
+def has_table_name(name: str | None) -> bool:
     """
     Check that a table reference coming from a query parser actually holds a table name.
 
@@ -212,7 +213,7 @@ def get_standard_chart_type(raw_chart_type: str) -> ChartType:
     return ChartType.Other
 
 
-def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:  # noqa: UP045
+def find_in_iter(element: Any, container: Iterable[Any]) -> Any | None:
     """
     If the element is in the container, return it.
     Otherwise, return None
@@ -224,7 +225,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:  # no
     return next((elem for elem in container if elem == element), None)
 
 
-def find_column_in_table(column_name: str, table: Table, case_sensitive: bool = True) -> Optional[Column]:  # noqa: UP045
+def find_column_in_table(column_name: str, table: Table, case_sensitive: bool = True) -> Column | None:
     """
     If the column exists in the table, return it
     """
@@ -238,10 +239,10 @@ def find_column_in_table(column_name: str, table: Table, case_sensitive: bool = 
 
 
 def find_suggestion(
-    suggestions: List[Suggestion],  # noqa: UP006
+    suggestions: list[Suggestion],
     suggestion_type: SuggestionType,
     entity_link: EntityLink,
-) -> Optional[Suggestion]:  # noqa: UP045
+) -> Suggestion | None:
     """Given a list of suggestions, a suggestion type and an entity link, find
     one suggestion in the list that matches the criteria
     """
@@ -251,7 +252,7 @@ def find_suggestion(
     )
 
 
-def find_column_in_table_with_index(column_name: str, table: Table) -> Optional[Tuple[int, Column]]:  # noqa: UP006, UP045
+def find_column_in_table_with_index(column_name: str, table: Table) -> tuple[int, Column] | None:
     """Return a column and its index in a Table Entity
 
     Args:
@@ -273,7 +274,7 @@ def find_column_in_table_with_index(column_name: str, table: Table) -> Optional[
     return col_index, col
 
 
-def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str]:  # noqa: UP006, UP045
+def list_to_dict(original: list[str] | None, sep: str = "=") -> dict[str, str]:
     """
     Given a list with strings that have a separator,
     convert that to a dictionary of key-value pairs
@@ -332,7 +333,7 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
     return re.match(to_match, raw_str, flags=re.IGNORECASE | re.DOTALL) is not None
 
 
-def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:  # noqa: UP045
+def get_entity_tier_from_tags(tags: list[TagLabel]) -> str | None:
     """_summary_
 
     Args:
@@ -349,7 +350,7 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:  # noqa: U
     )
 
 
-def format_large_string_numbers(number: Union[float, int]) -> str:  # noqa: UP007
+def format_large_string_numbers(number: float | int) -> str:
     """Format large string number to a human readable format.
     (e.g. 1,000,000 -> 1M, 1,000,000,000 -> 1B, etc)
 
@@ -366,7 +367,7 @@ def format_large_string_numbers(number: Union[float, int]) -> str:  # noqa: UP00
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
-def clean_uri(uri: Union[str, Url]) -> str:  # noqa: UP007
+def clean_uri(uri: str | Url) -> str:
     """
     if uri is like http://localhost:9000/
     then remove the end / and
@@ -505,7 +506,7 @@ def is_safe_sql_query(sql_query: str) -> bool:
     if sql_query is None:
         return True
 
-    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)  # noqa: UP006
+    parsed_queries: tuple[Statement] = sqlparse.parse(sql_query)
     for parsed_query in parsed_queries:
         if _starts_with_forbidden_sql_statement(parsed_query):
             return False
@@ -530,7 +531,7 @@ def is_safe_sql_query(sql_query: str) -> bool:
     return True
 
 
-def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP045
+def is_safe_pandas_query(query_expression: str | None) -> bool:
     """Validate a pandas ``DataFrame.query()`` expression.
 
     ``DataFrame.query()`` evaluates a Python expression in-process, so a filter must
@@ -592,7 +593,7 @@ def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP04
     return all(isinstance(node, allowed_nodes) for node in ast.walk(tree))
 
 
-def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: Optional[str]) -> Optional[str]:  # noqa: UP045
+def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: str | None) -> str | None:
     # If the database service supports multiple db or
     # database service connection details are not available
     # then pick the database name available from api response
@@ -622,7 +623,7 @@ def init_staging_dir(directory: str) -> None:
     location.mkdir(parents=True, exist_ok=True)
 
 
-def retry_with_docker_host(config: Optional[WorkflowSource] = None):  # noqa: UP045
+def retry_with_docker_host(config: WorkflowSource | None = None):
     """
     Retries the function on exception, replacing "localhost" with "host.docker.internal"
     in the `hostPort` config if applicable. Raises the original exception if no `config` is found.
@@ -643,13 +644,17 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):  # noqa: UP
                     else:
                         raise error  # noqa: TRY201
 
-                host_port_str = str(getattr(config.serviceConnection.root.config, "hostPort", None) or "")
-                if "localhost" not in host_port_str:
+                service_connection = getattr(config, "serviceConnection", None)
+                connection_config = getattr(getattr(service_connection, "root", None), "config", None)
+                host_port = getattr(connection_config, "hostPort", None)
+                host_port_str = str(host_port or "")
+                if connection_config is None or host_port is None or "localhost" not in host_port_str:
                     raise error  # noqa: TRY201
 
-                host_port_type = type(config.serviceConnection.root.config.hostPort)
                 docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
-                config.serviceConnection.root.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
+                setattr(  # noqa: B010
+                    connection_config, "hostPort", type(host_port)(docker_host_port_str)
+                )
                 func(*args, **kwargs)
 
         return wrapper

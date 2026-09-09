@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -96,7 +97,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -127,6 +128,7 @@ import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
+import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
@@ -239,7 +241,8 @@ public class SystemRepository {
 
   private Settings prepareFetchedSettings(Settings fetchedSettings) {
     if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-      SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+      SmtpSettings emailConfig =
+          JsonUtils.convertValue(fetchedSettings.getConfigValue(), SmtpSettings.class);
       if (!nullOrEmpty(emailConfig.getPassword())) {
         emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
       }
@@ -344,21 +347,9 @@ public class SystemRepository {
 
   @Transaction
   public Response createOrUpdate(Settings setting) {
-    Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
-
-    if (oldValue != null && oldValue.getConfigType().equals(SettingsType.EMAIL_CONFIGURATION)) {
-      SmtpSettings configValue =
-          JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
-      if (configValue != null) {
-        SmtpSettings.Templates templates = configValue.getTemplates();
-        SmtpSettings newConfigValue =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (newConfigValue != null) {
-          newConfigValue.setTemplates(templates);
-          setting.setConfigValue(newConfigValue);
-        }
-      }
-    }
+    OpenMetadataBaseUrlValidator.validate(setting);
+    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    preserveEmailSettings(setting, oldValue);
 
     try {
       updateSetting(setting);
@@ -366,6 +357,7 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
+    prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
           .toResponse();
@@ -394,13 +386,16 @@ public class SystemRepository {
 
   public Response patchSetting(String settingName, JsonPatch patch) {
     if (SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName)) {
-      return patchGlossaryTermRelationSettings(patch);
+      return patchGlossaryTermRelationSettings(patch, UnaryOperator.identity());
     }
 
     String expectedJson = dao.getConfigJsonWithKey(settingName);
     if (expectedJson == null) {
       throw EntityNotFoundException.byName(settingName);
     }
+    Settings stored =
+        CollectionDAO.SettingsRowMapper.getSettings(
+            SettingsType.fromValue(settingName), expectedJson);
     Settings original =
         prepareFetchedSettings(
             CollectionDAO.SettingsRowMapper.getSettings(
@@ -409,11 +404,37 @@ public class SystemRepository {
     String jsonString = updated.toString();
     Object updatedConfigValue = JsonUtils.readValue(jsonString, Object.class);
     original.setConfigValue(updatedConfigValue);
+    preserveEmailSettings(original, stored);
+    OpenMetadataBaseUrlValidator.validate(original);
     updateSettingIfCurrent(original, expectedJson);
+    prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
   }
 
-  private Response patchGlossaryTermRelationSettings(JsonPatch patch) {
+  private void preserveEmailSettings(Settings updated, Settings stored) {
+    if (hasStoredEmailSettings(updated, stored)) {
+      SmtpSettings original =
+          decryptEmailSetting(JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class));
+      SmtpSettings replacement =
+          JsonUtils.convertValue(updated.getConfigValue(), SmtpSettings.class);
+      replacement.setTemplates(original.getTemplates());
+      if (replacement.getPassword() == null
+          || PasswordEntityMasker.PASSWORD_MASK.equals(replacement.getPassword())) {
+        replacement.setPassword(original.getPassword());
+      }
+      updated.setConfigValue(replacement);
+    }
+  }
+
+  private boolean hasStoredEmailSettings(Settings updated, Settings stored) {
+    return stored != null
+        && stored.getConfigValue() != null
+        && updated.getConfigType() == SettingsType.EMAIL_CONFIGURATION
+        && updated.getConfigValue() != null;
+  }
+
+  public Response patchGlossaryTermRelationSettings(
+      JsonPatch patch, UnaryOperator<GlossaryTermRelationSettings> prepareUpdate) {
     String expectedJson = dao.getGlossaryTermRelationSettingsJson();
     if (expectedJson == null) {
       throw EntityNotFoundException.byName(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
@@ -429,6 +450,7 @@ public class SystemRepository {
     }
     GlossaryTermRelationSettings updated =
         JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
+    updated = prepareUpdate.apply(updated);
     GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
     GlossaryTermRelationSettingsUtil.normalize(updated);
     GlossaryTermRelationSettingsUtil.validateUniqueNames(updated);
@@ -1136,6 +1158,10 @@ public class SystemRepository {
     boolean reindexNeeded() {
       return !stalePending.isEmpty() || !missingIndexes.isEmpty();
     }
+
+    boolean passed() {
+      return driftComputed && !reindexNeeded() && clusterHealthy;
+    }
   }
 
   static ReindexStatus classifyReindexStatus(
@@ -1264,19 +1290,25 @@ public class SystemRepository {
   }
 
   private StepValidation getReindexStatusValidation() {
-    StepValidation step =
-        new StepValidation().withDescription(ValidationStepDescription.SEARCH_REINDEX.key);
     SearchRepository searchRepository = Entity.getSearchRepository();
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
-      SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
-      boolean healthy = status.driftComputed() && !status.reindexNeeded();
-      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
+      result = buildReindexStepValidation(computeSearchReindexStatus(searchRepository));
     } else {
       result =
-          step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
+          new StepValidation()
+              .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage("Skipped: search instance is not reachable.");
     }
     return result;
+  }
+
+  static StepValidation buildReindexStepValidation(SearchReindexStatus status) {
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+        .withPassed(status.passed())
+        .withMessage(buildReindexStatusMessage(status));
   }
 
   private SearchReindexStatus computeSearchReindexStatus(SearchRepository searchRepository) {
@@ -1521,6 +1553,10 @@ public class SystemRepository {
     try {
       if (securityConfig.getAuthenticationConfiguration() != null) {
         AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+
+        // publicKeyUrls is derived from discoveryUri for confidential clients, so refresh it first
+        // or an updated discoveryUri gets rejected against the previously stored JWKS URL.
+        syncPublicKeyUrlsFromDiscovery(authConfig);
 
         // First validate all required fields from AuthenticationConfiguration schema
         FieldError baseError = validateAuthenticationConfigurationBaseFields(authConfig);
@@ -1786,10 +1822,12 @@ public class SystemRepository {
   }
 
   /**
-   * Auto-populates publicKeyUrls from OIDC discovery document for confidential clients
-   * This is called during save operation to ensure publicKeyUrls is populated before persisting
+   * Re-derives publicKeyUrls from the OIDC discovery document for confidential clients, where the
+   * field is not user-editable. Runs on every save and validate so that changing discoveryUri does
+   * not leave a stale JWKS URL behind. A discovery failure is logged and leaves the current value
+   * untouched, so a transient outage never wipes a working configuration.
    */
-  public void autoPopulatePublicKeyUrlsIfNeeded(AuthenticationConfiguration authConfig) {
+  public void syncPublicKeyUrlsFromDiscovery(AuthenticationConfiguration authConfig) {
     if (authConfig == null) {
       return;
     }
@@ -1806,30 +1844,24 @@ public class SystemRepository {
     boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
 
     if (!isOidcProvider || !isConfidentialClient) {
-      LOG.debug("Skipping publicKeyUrls auto-population - not OIDC confidential client");
-      return;
-    }
-
-    // Skip if already populated
-    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
-      LOG.debug("publicKeyUrls already populated, skipping auto-population");
+      LOG.debug("Skipping publicKeyUrls resolution - not OIDC confidential client");
       return;
     }
 
     OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
     if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-      LOG.warn("Cannot auto-populate publicKeyUrls - missing oidcConfiguration or discoveryUri");
+      LOG.warn("Cannot resolve publicKeyUrls - missing oidcConfiguration or discoveryUri");
       return;
     }
 
     try {
       OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
-      discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
+      discoveryValidator.syncPublicKeyUrlsFromDiscovery(oidcConfig.getDiscoveryUri(), authConfig);
       LOG.info(
-          "Auto-populated publicKeyUrls from discovery document for provider: {}",
+          "Resolved publicKeyUrls from discovery document for provider: {}",
           authConfig.getProvider());
     } catch (Exception e) {
-      LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
+      LOG.error("Failed to resolve publicKeyUrls from discovery: {}", e.getMessage(), e);
     }
   }
 

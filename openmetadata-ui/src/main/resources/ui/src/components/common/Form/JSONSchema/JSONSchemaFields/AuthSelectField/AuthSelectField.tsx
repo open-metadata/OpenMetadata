@@ -48,6 +48,12 @@ const getSafeOptionIndex = (option: number, optionCount: number) => {
   return option >= 0 && option < optionCount ? option : 0;
 };
 
+const getAuthFieldLabel = (
+  label: string | undefined,
+  schemaTitle: string | undefined,
+  name: string
+) => label ?? schemaTitle ?? startCase(name);
+
 /**
  * Generic RJSF field that renders a `oneOf` of credential branches (e.g. an
  * `authType` property) as a segmented control where exactly one method's fields
@@ -191,7 +197,7 @@ const AuthSelectField = (props: FieldProps) => {
     }
   };
 
-  const fieldLabel = label ?? schema.title ?? startCase(name);
+  const fieldLabel = getAuthFieldLabel(label, schema.title, name);
   const activeTitle = getOptionTitle(
     selectedSchema,
     Math.max(safeSelectedOption, 0)
@@ -235,6 +241,9 @@ const AuthSelectField = (props: FieldProps) => {
           onChange={(val) => handleOptionChange(Number(val))}>
           {resolvedOptions.map((option, index) => {
             const optTitle = getOptionTitle(option, index);
+            // Fixed, non-reordered schema list; optTitle can repeat via its
+            // startCase fallback, so include index for a unique stable key.
+            const optionKey = `${optTitle}-${index}`;
             const MethodIcon = getMethodIcon(optTitle);
             const isRecommended = recommendedTitle === optTitle;
 
@@ -249,7 +258,7 @@ const AuthSelectField = (props: FieldProps) => {
                   )
                 }
                 data-testid={`auth-method-${index}`}
-                key={index}
+                key={optionKey}
                 value={String(index)}>
                 {({ isSelected }) => (
                   <>

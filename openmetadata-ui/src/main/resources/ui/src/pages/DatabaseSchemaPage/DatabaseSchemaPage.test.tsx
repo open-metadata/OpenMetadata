@@ -24,7 +24,6 @@ import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
   mockGetDatabaseSchemaDetailsByFQNData,
   mockPatchDatabaseSchemaDetailsData,
-  mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
 const mockEntityPermissionByFqn = jest
   .fn()
@@ -173,12 +172,6 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
-}));
-
-jest.mock('../../rest/feedsAPI', () => ({
-  postThread: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockPostThreadData)),
 }));
 
 jest.mock('../../rest/databaseAPI', () => ({

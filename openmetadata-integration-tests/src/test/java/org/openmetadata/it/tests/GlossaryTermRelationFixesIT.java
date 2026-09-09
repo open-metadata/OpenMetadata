@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -26,7 +25,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -37,6 +36,8 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
+import org.openmetadata.schema.api.rdf.RdfStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TermRelation;
@@ -66,15 +67,14 @@ public class GlossaryTermRelationFixesIT {
   // ==================== FIX 1: RDF ENDPOINT ADMIN AUTHORIZATION ====================
 
   @Test
-  void testRdfStatusEndpointRequiresAdmin() throws Exception {
+  void testRdfStatusEndpointAllowsAuthenticatedUsers() throws Exception {
     String nonAdminToken = getNonAdminToken();
     HttpResponse<String> response = httpGet("/v1/rdf/status", nonAdminToken);
+    RdfStatus status = OBJECT_MAPPER.readValue(response.body(), RdfStatus.class);
 
-    // Non-admin should get 403 (auth denied) or 404 (RDF not registered when disabled)
-    // Both prevent unauthorized access
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "RDF status endpoint should deny non-admin access, got: " + response.statusCode());
+    assertEquals(200, response.statusCode());
+    assertNotNull(status.getProjectionState());
+    assertNotNull(status.getAskCollateEnabled());
   }
 
   @Test
@@ -360,17 +360,13 @@ public class GlossaryTermRelationFixesIT {
     }
 
     // Request the graph - should succeed and contain nodes
-    Map<String, Object> graph = getTermRelationGraph(hub.getId().toString(), 2, null);
+    GlossaryTermRelationGraph graph = getTermRelationGraph(hub.getId().toString(), 2, null);
 
     assertNotNull(graph);
-    assertTrue(graph.containsKey("nodes"), "Graph should contain nodes");
-    assertTrue(graph.containsKey("edges"), "Graph should contain edges");
-
-    @SuppressWarnings("unchecked")
-    List<Object> nodes = (List<Object>) graph.get("nodes");
-    assertNotNull(nodes);
-    // Hub + spokes = spokeCount + 1
-    assertTrue(nodes.size() >= spokeCount + 1, "Graph should contain hub and all spoke terms");
+    assertNotNull(graph.getNodes());
+    assertNotNull(graph.getEdges());
+    assertTrue(
+        graph.getNodes().size() >= spokeCount + 1, "Graph should contain hub and all spoke terms");
 
     GlossaryTestFactory.delete(glossary);
   }
@@ -460,36 +456,12 @@ public class GlossaryTermRelationFixesIT {
     return OBJECT_MAPPER.readValue(response.body(), GlossaryTerm.class);
   }
 
-  private Map<String, Object> getTermRelationGraph(String termId, int depth, String relationTypes)
-      throws Exception {
-    String baseUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
-
-    String url =
-        String.format(
-            "%s/v1/glossaryTerms/%s/relationsGraph?depth=%d%s",
-            baseUrl, termId, depth, relationTypes != null ? "&relationTypes=" + relationTypes : "");
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + token)
-            .header("Accept", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Failed to get term relation graph: status={}, body={}",
-          response.statusCode(),
-          response.body());
-      return Map.of();
-    }
-
-    return OBJECT_MAPPER.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
+  private GlossaryTermRelationGraph getTermRelationGraph(
+      String termId, int depth, String relationTypes) {
+    List<String> types = relationTypes == null ? List.of() : List.of(relationTypes.split(","));
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .relationGraph(UUID.fromString(termId), depth, types);
   }
 
   private HttpResponse<String> patchGlossaryTerm(String termId, String patchBody) throws Exception {

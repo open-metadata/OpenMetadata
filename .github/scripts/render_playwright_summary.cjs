@@ -13,6 +13,23 @@
 
 'use strict';
 
+// Playwright appends the failing request's full call log — headers included —
+// to `error.message`, so a timed-out API call carries the ephemeral admin JWT
+// the E2E fixtures mint. Publishing that verbatim trips GitHub secret scanning
+// on every red run. `publish_playwright_pr_comment.cjs` keeps its own copy on
+// purpose: it is the trusted helper loaded from the default branch and must not
+// depend on files this workflow could supply.
+const SENSITIVE_HEADER_PATTERN =
+  /((?:proxy-authorization|authorization|set-cookie|cookie|x-auth-token|x-api-key|api-key)[ \t]*[:=][ \t]*)[^\r\n]*/gi;
+const JSON_WEB_TOKEN_PATTERN =
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
+
+function redactSecrets(value) {
+  return String(value ?? '')
+    .replace(SENSITIVE_HEADER_PATTERN, '$1<redacted>')
+    .replace(JSON_WEB_TOKEN_PATTERN, '<redacted>');
+}
+
 async function renderPlaywrightSummary({ github, context, core }) {
   const fs = require('fs');
   const path = require('path');
@@ -29,7 +46,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const labelName = context.payload.label?.name ?? '';
   const isDraft = context.payload.pull_request?.draft === true;
   const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
+  // `pull_request_target` must be listed here. Fork PRs enter the pipeline
+  // under this event (same-repo PRs use `pull_request`), and their shard
+  // matrix runs the same reusable — so the summary has to gate on shard
+  // results the same way. Omitting it dropped the summary into the
+  // `!testsRequired` early-return below, printing "not required for this
+  // PR" and reporting green regardless of PLAYWRIGHT_RESULT (real failures
+  // observed on PR #32857, run 34121906853: chromium-01 shard hard-failed,
+  // playwright-summary reported success).
   const testsRequired = context.eventName === 'pull_request' ||
+    context.eventName === 'pull_request_target' ||
     context.eventName === 'merge_group' ||
     context.eventName === 'schedule' ||
     context.eventName === 'workflow_dispatch';
@@ -312,7 +338,9 @@ async function renderPlaywrightSummary({ github, context, core }) {
               file: specFile,
               status: test.status,
               retries: results.length - 1,
-              error: lastResult.error?.message || firstResult.error?.message || '',
+              error: redactSecrets(
+                lastResult.error?.message || firstResult.error?.message || ''
+              ),
             };
             if (specFile.endsWith('.setup.ts') || specFile.endsWith('.teardown.ts')) {
               lifecycleTests.push(testResult);
@@ -776,7 +804,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
     infrastructureIssueCount: infrastructureIssues.length,
     infrastructureIssues: infrastructureIssues
       .slice(0, 100)
-      .map(issue => boundedString(issue, 500)),
+      .map(issue => boundedString(redactSecrets(issue), 500)),
     failures: allGenuine.slice(0, 30).map(test => ({
       shard: boundedString(test.shard, 64),
       file: boundedString(test.file, 300),
@@ -825,4 +853,4 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 }
 
-module.exports = { renderPlaywrightSummary };
+module.exports = { renderPlaywrightSummary, redactSecrets };

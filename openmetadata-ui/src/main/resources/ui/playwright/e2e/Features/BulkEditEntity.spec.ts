@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
