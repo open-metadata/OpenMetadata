@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.datacontract.dataContractResult import (
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -264,6 +265,16 @@ def _(record: AddLineageRequest) -> str:
     )
 
     return f"{type_} [{name_str}id: {id_}]"
+
+
+@get_log_name.register
+def _(record: Barrier) -> None:
+    """A Barrier is a control record, not an ingested asset.
+
+    Returning None keeps it out of Status.scanned, which would otherwise report the
+    flush as a scanned record and inflate the connector's record count.
+    """
+    return
 
 
 @get_log_name.register
