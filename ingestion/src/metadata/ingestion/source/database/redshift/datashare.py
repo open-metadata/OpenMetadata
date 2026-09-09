@@ -20,6 +20,7 @@ Their metadata is only reachable through the cross-database ``SVV_ALL_*``
 catalog views, which are queried from the connection to a local database.
 """
 
+import threading
 from collections import defaultdict
 from collections.abc import Callable
 from contextlib import suppress
@@ -106,7 +107,9 @@ class RedshiftDatashareCatalog:
         self._connection_provider = connection_provider
         self._database_types: dict[str, str] | None = None
         self._fetched_database_types = False
-        self._schema_columns: tuple[tuple[str, str], dict[str, list]] | None = None
+        # Per thread: the schema node runs threaded, so one shared slot would let
+        # two schemas evict each other back into a query per table.
+        self._schema_columns: dict[int, tuple[tuple[str, str], dict[str, list]]] = {}
 
     @property
     def database_types(self) -> dict[str, str] | None:
@@ -188,12 +191,18 @@ class RedshiftDatashareCatalog:
 
         One query per schema rather than per table, matching the connected path -
         which matters more here, since every row crosses a database boundary.
-        Only the most recent schema is held, the same single-schema cache the
-        dialect keeps, so walking many schemas does not accumulate.
+
+        Only the schema each thread is currently walking is held, the same
+        single-schema cache the dialect keeps, so this does not accumulate. The
+        entry is per thread because the schema node is threaded: a single shared
+        slot would let two schemas evict each other, and the caller could be
+        handed the other schema's tables.
         """
         key = (database_name, schema_name)
-        if self._schema_columns is not None and self._schema_columns[0] == key:
-            return self._schema_columns[1]
+        thread_id = threading.get_ident()
+        cached = self._schema_columns.get(thread_id)
+        if cached is not None and cached[0] == key:
+            return cached[1]
         rows = self._connection_provider().execute(
             text(REDSHIFT_GET_DATASHARE_SCHEMA_COLUMN_INFO),
             {"database": database_name, "schema": schema_name},
@@ -201,5 +210,6 @@ class RedshiftDatashareCatalog:
         by_table: dict[str, list] = defaultdict(list)
         for row in rows:
             by_table[str(row.table_name)].append(row)
-        self._schema_columns = (key, dict(by_table))
-        return self._schema_columns[1]
+        columns_by_table = dict(by_table)
+        self._schema_columns[thread_id] = (key, columns_by_table)
+        return columns_by_table

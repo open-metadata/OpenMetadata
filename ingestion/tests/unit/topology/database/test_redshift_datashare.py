@@ -14,6 +14,7 @@ Test the ingestion of Redshift databases created from a datashare, which cannot
 be connected to and are read from the cross-database catalog views instead.
 """
 
+import threading
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -115,7 +116,13 @@ COLUMN_ROWS = [
     _column_row("customer", "character varying(64)", comment="Customer name", attnum=2),
     # Spelling a datashare of Glue-backed external tables reports
     _column_row("payload", "array<struct<a:string>>", attnum=3),
+    _column_row("blob", "binary varying(64000)", table_name="glue_events", attnum=1),
 ]
+
+COLUMNS_BY_SCHEMA = {
+    "public": COLUMN_ROWS,
+    "sales": [_column_row("refund_id", "integer", table_name="refunds", attnum=1)],
+}
 
 
 class RedshiftSourceFixture:
@@ -139,7 +146,7 @@ class RedshiftSourceFixture:
         self.show_databases_error = None
         self.svv_databases_error = None
         self.schema_rows = SCHEMA_ROWS
-        self._svv_all_columns_calls = 0
+        self._svv_all_columns_queries = []
 
     def _execute(self, statement, params=None):
         """Answer each catalog view with the rows a consumer cluster would return"""
@@ -162,9 +169,8 @@ class RedshiftSourceFixture:
             return TABLE_ROWS
         if "SVV_ALL_COLUMNS" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
-            self.assertEqual(params["schema"], "public")
-            self._svv_all_columns_calls += 1
-            return COLUMN_ROWS
+            self._svv_all_columns_queries.append(params["schema"])
+            return COLUMNS_BY_SCHEMA[params["schema"]]
         if "PG_PROC_INFO" in query:
             return MagicMock(all=lambda: STORED_PROCEDURE_ROWS)
         raise AssertionError(f"Unexpected query on the local connection: {statement}")
@@ -360,14 +366,45 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self.assertEqual(payload.dataType, DataType.ARRAY)
         self.assertEqual(payload.dataTypeDisplay, "array<struct<a:string>>")
 
+    def test_each_thread_keeps_its_own_schema_cache(self):
+        """The databaseSchema node runs threaded. With one shared cache slot the
+        two schemas evict each other, so every re-read becomes a fresh
+        cross-database query - the per-table cost this change removed."""
+        self._enter_datashare_mode()
+        catalog = self.redshift_source.datashare
+        # The source keys its connection by thread; these threads have none, and
+        # the connection is not what is under test here.
+        catalog._connection_provider = lambda: self.connection
+        both_cached = threading.Barrier(2)
+        results = {}
+
+        def worker(schema_name):
+            first = sorted(catalog.get_schema_column_info(SHARED_DATABASE, schema_name))
+            # Only proceed once the other thread has cached its schema too, which
+            # is what a single shared slot cannot survive.
+            both_cached.wait(timeout=5)
+            second = sorted(catalog.get_schema_column_info(SHARED_DATABASE, schema_name))
+            results[schema_name] = (first, second)
+
+        threads = [threading.Thread(target=worker, args=(name,)) for name in ("public", "sales")]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+
+        self.assertEqual(results["public"], (["glue_events", "orders"], ["glue_events", "orders"]))
+        self.assertEqual(results["sales"], (["refunds"], ["refunds"]))
+        # One query per schema. A shared slot would make it four.
+        self.assertEqual(len(self._svv_all_columns_queries), 2)
+
     def test_columns_are_read_once_per_schema_not_once_per_table(self):
         """The rows cross a database boundary, so the per-table query this
         replaced was an N+1."""
         self._enter_datashare_mode()
-        before = self._svv_all_columns_calls
+        before = len(self._svv_all_columns_queries)
         self._catalog_columns()
         self._catalog_columns()
-        self.assertEqual(self._svv_all_columns_calls - before, 1)
+        self.assertEqual(len(self._svv_all_columns_queries) - before, 1)
 
     def test_stored_procedures_are_not_read_from_the_local_database(self):
         """The catalog views carry none, and the local connection's would be wrong"""
