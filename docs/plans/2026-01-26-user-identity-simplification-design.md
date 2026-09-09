@@ -217,15 +217,13 @@ Changes that apply regardless of opt-in:
   local part gets a generated suffix instead of failing; and `displayName` is synced from the
   directory attribute, which overwrites a display name the user had customised in OpenMetadata.
 - **Stored emails are lowercased** by the 2.1.0 migration. Clients comparing emails
-  case-sensitively will see the change. Rows whose lowercased form would collide with another
-  account are skipped so the migration cannot fail; those accounts surface a
-  `DUPLICATE_EMAIL` conflict on lookup until an administrator merges them.
+  case-sensitively will see the change. No rows can collide: the 1.5.0 migration already removed
+  users duplicated by `LOWER(email)` and lowercased the survivors, and every write since then
+  normalizes, so the 2.1.0 pass is unconditional.
 - **MySQL email lookups** now use the table collation rather than `LOWER()`. That collation is
   accent-insensitive, so `jose@x.com` and `josé@x.com` match where previously they did not.
 - **`POST /v1/users`** (non-basic providers) renames on a username collision instead of returning
   a conflict.
-- **Duplicate case-variant emails** return `409 DUPLICATE_EMAIL` from `getByEmail`, and a `401`
-  from the authentication paths, instead of the previous unhandled database error.
 
 Deprecation warnings are logged only once the replacement setting is configured, so an untouched
 deployment is not told to remove configuration it still depends on.

@@ -940,15 +940,15 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
-    // Postgres compares with LOWER() but its unique constraint is case-sensitive, so two rows can
-    // differ only by case; a List surfaces that instead of an opaque JDBI TooManyResultsException.
+    // At most one row: emails are stored lowercased (normalized on write since 1.5.0, which also
+    // de-duplicated existing rows by LOWER(email)) and user_entity has a UNIQUE constraint on it.
     @ConnectionAwareSqlQuery(
         value = "SELECT json FROM user_entity WHERE email = :email",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value = "SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)",
         connectionType = POSTGRES)
-    List<String> findUsersByEmail(@Bind("email") String email);
+    String findUserByEmail(@Bind("email") String email);
 
     record NameEmail(String name, String email) {}
 

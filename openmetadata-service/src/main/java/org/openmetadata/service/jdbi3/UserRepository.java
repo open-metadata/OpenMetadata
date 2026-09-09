@@ -85,7 +85,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.exception.DuplicateEmailException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
@@ -223,18 +222,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
-    List<String> userStrings = daoCollection.userDAO().findUsersByEmail(email);
-    if (nullOrEmpty(userStrings)) {
+    String userString = daoCollection.userDAO().findUserByEmail(email);
+    if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
-    if (userStrings.size() > 1) {
-      // Only reachable on Postgres, whose unique constraint on email is case-sensitive. Picking
-      // one of the accounts would hand the caller a non-deterministic identity, so refuse until an
-      // administrator merges them. This is a data-integrity conflict rather than an authentication
-      // failure; the auth path translates it below.
-      throw DuplicateEmailException.byEmail(email, userStrings.size());
-    }
-    User user = JsonUtils.readValue(userStrings.get(0), User.class);
+    User user = JsonUtils.readValue(userString, User.class);
     setFieldsInternal(user, fields);
     setInheritedFields(user, fields);
     // Clone the entity
@@ -246,16 +238,10 @@ public class UserRepository extends EntityRepository<User> {
   /**
    * Email lookup for authentication flows. Unlike {@link #getByEmail}, a soft-deleted user is not a
    * valid login identity: deactivated accounts must not resolve, be updated, or be resurrected by
-   * an SSO login. Duplicate-email conflicts are reported as authentication failures here so a
-   * login returns 401 rather than the 409 that non-auth callers should see.
+   * an SSO login.
    */
   public User getActiveUserByEmailForAuth(String email, Fields fields) {
-    User user;
-    try {
-      user = getByEmail(null, email, fields);
-    } catch (DuplicateEmailException e) {
-      throw new AuthenticationException(e.getMessage());
-    }
+    User user = getByEmail(null, email, fields);
     if (Boolean.TRUE.equals(user.getDeleted())) {
       throw new AuthenticationException(
           "Your account has been deactivated. Contact your administrator.");
@@ -280,6 +266,12 @@ public class UserRepository extends EntityRepository<User> {
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user, boolean update) {
+    // Email is the identity lookup key and every read compares it lowercased, so normalize here
+    // rather than only in UserMapper -- prepare() is on every write path, including callers that
+    // build a User directly instead of going through the mapper.
+    if (user.getEmail() != null) {
+      user.setEmail(user.getEmail().trim().toLowerCase(Locale.ROOT));
+    }
     validateTeams(user);
     if (!update) {
       validateGroupTeams(user.getTeams());
