@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "आणखी 1 आवश्यक फील्ड भरा, नंतर सुरू राहण्यासाठी यशस्वी चाचणी चालवा",
     "fill-required-fields-then-test-connection": "आणखी {{count}} आवश्यक फील्ड भरा, नंतर सुरू राहण्यासाठी यशस्वी चाचणी चालवा",
+    "filter-no-matching-terms": "तुमच्या फिल्टरमध्ये जुळणाऱ्या संज्ञा नाहीत. ते समायोजित करून पहा.",
     "filter-pattern-description": "विशिष्ट मालमत्ता समाविष्ट करण्यासाठी किंवा वगळण्यासाठी रेजेक्स नमुने लागू करा.",
     "filter-pattern-include-exclude-info": "स्वल्पविराम-विभक्त regex यादी जोडून स्पष्टपणे {{activity}} {{filterPattern}}.",
     "filter-pattern-info": "मेटाडेटा अंतर्ग्रहणाचा भाग म्हणून {{filterPattern}} समाविष्ट किंवा वगळण्याचा पर्याय निवडा.",

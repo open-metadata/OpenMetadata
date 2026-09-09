@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "必須フィールドをあと1つ入力し、テストを成功させて続行してください",
     "fill-required-fields-then-test-connection": "必須フィールドをあと{{count}}つ入力し、テストを成功させて続行してください",
+    "filter-no-matching-terms": "フィルターに一致する用語がありません。フィルターを調整してみてください。",
     "filter-pattern-description": "正規表現パターンを適用して、特定のアセットを含めるか除外します。",
     "filter-pattern-include-exclude-info": "カンマ区切りの正規表現リストを追加することで、{{filterPattern}} を明示的に {{activity}} します。",
     "filter-pattern-info": "メタデータ取り込み時に {{filterPattern}} を含めるか除外するかを設定します。",

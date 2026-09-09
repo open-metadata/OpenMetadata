@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "Rellena 1 campo obligatorio más y luego ejecuta una prueba exitosa para continuar",
     "fill-required-fields-then-test-connection": "Rellena {{count}} campos obligatorios más y luego ejecuta una prueba exitosa para continuar",
+    "filter-no-matching-terms": "Tu filtro no tiene términos coincidentes. Intenta ajustarlo.",
     "filter-pattern-description": "Aplique patrones de expresiones regulares para incluir o excluir recursos específicos.",
     "filter-pattern-include-exclude-info": "Excluya o incluya explícitamente {{filterPattern}} mediante la adición de una lista de expresiones regulares separadas por comas.",
     "filter-pattern-info": "Elija incluir o excluir {{filterPattern}} como parte de la ingestión de metadatos.",

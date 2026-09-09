@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "מלא עוד שדה חובה אחד, ולאחר מכן הפעל בדיקה מוצלחת להמשך",
     "fill-required-fields-then-test-connection": "מלא עוד {{count}} שדות חובה, ולאחר מכן הפעל בדיקה מוצלחת להמשך",
+    "filter-no-matching-terms": "למסנן שלך אין מונחים תואמים. נסה להתאים אותו.",
     "filter-pattern-description": "החל דפוסי ביטוי רגולרי כדי לכלול או לאסור נכסים ספציפיים.",
     "filter-pattern-include-exclude-info": "הגדר {{activity}} באופן מפורש {{filterPattern}} על ידי הוספת רשימה של רגקס מופרדות בפסיקים.",
     "filter-pattern-info": "בחר לכלול או לא לכלול {{filterPattern}} כחלק מתהליך הקליטה של המטא-דאטה.",

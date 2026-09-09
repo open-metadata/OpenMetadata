@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "再填写 1 个必填字段，然后运行成功的测试以继续",
     "fill-required-fields-then-test-connection": "再填写 {{count}} 个必填字段，然后运行成功的测试以继续",
+    "filter-no-matching-terms": "您的筛选条件没有匹配的术语。请尝试调整筛选条件。",
     "filter-pattern-description": "应用正则表达式模式来包含或排除特定资产。",
     "filter-pattern-include-exclude-info": "通过添加逗号分隔的正则表达式列表明确{{activity}} {{filterPattern}}",
     "filter-pattern-info": "选择包含或排除{{filterPattern}}作为元数据提取的一部分",

@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Filer uppladdade för AI-sökning.",
     "fill-one-required-field-then-test-connection": "Fyll i ytterligare 1 obligatoriskt fält och kör sedan ett lyckat test för att fortsätta",
     "fill-required-fields-then-test-connection": "Fyll i ytterligare {{count}} obligatoriska fält och kör sedan ett lyckat test för att fortsätta",
+    "filter-no-matching-terms": "Ditt filter har inga matchande termer. Prova att justera det.",
     "filter-pattern-description": "Tillämpa regex-mönster för att inkludera eller utesluta specifika tillgångar.",
     "filter-pattern-include-exclude-info": "{{activity}} uttryckligen {{filterPattern}} genom att lägga till en lista med kommaseparerade regex.",
     "filter-pattern-info": "Välj att inkludera eller exkludera {{filterPattern}} som en del av metadatainmatningen.",

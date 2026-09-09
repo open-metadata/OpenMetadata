@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "กรอกช่องที่จำเป็นอีก 1 ช่อง แล้วเรียกใช้การทดสอบที่สำเร็จเพื่อดำเนินการต่อ",
     "fill-required-fields-then-test-connection": "กรอกช่องที่จำเป็นอีก {{count}} ช่อง แล้วเรียกใช้การทดสอบที่สำเร็จเพื่อดำเนินการต่อ",
+    "filter-no-matching-terms": "ตัวกรองของคุณไม่มีคำศัพท์ที่ตรงกัน ลองปรับตัวกรองดู",
     "filter-pattern-description": "ใช้รูปแบบ regex เพื่อรวมหรือยกเว้นเนื้อหาเฉพาะ",
     "filter-pattern-include-exclude-info": "เพิ่มหรือเรียงลำดับ {{activity}} {{filterPattern}} โดยการเพิ่มรายการของ regex ที่แยกด้วยเครื่องหมายจุลภาค",
     "filter-pattern-info": "เลือกที่จะรวมเข้าหรือยกเว้น {{filterPattern}} เป็นส่วนหนึ่งของการนำเข้าข้อมูลเมตา",

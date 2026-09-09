@@ -3758,6 +3758,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "再填寫 1 個必填欄位，然後執行成功的測試以繼續",
     "fill-required-fields-then-test-connection": "再填寫 {{count}} 個必填欄位，然後執行成功的測試以繼續",
+    "filter-no-matching-terms": "您的篩選條件沒有相符的術語。請嘗試調整篩選條件。",
     "filter-pattern-description": "套用正規表示式模式以包含或排除特定資產。",
     "filter-pattern-include-exclude-info": "透過新增以逗號分隔的正規表示式清單，明確地 {{activity}} {{filterPattern}}。",
     "filter-pattern-info": "選擇在元資料擷取中包含或排除 {{filterPattern}}。",
