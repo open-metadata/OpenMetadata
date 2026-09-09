@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from '@openmetadata/ui-core-components';
+import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ReviewerLabelV2 } from '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -26,6 +27,8 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
+import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
 import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 
@@ -46,6 +49,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   updatePageTag,
   handleRelatedEntitiesUpdate,
 }) => {
+  const { t } = useTranslation();
   const {
     entityRules,
     isRulesLoaded,
@@ -125,6 +129,23 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         />
 
         <AttachmentWidget entityFqn={knowledgePage?.fullyQualifiedName} />
+
+        {knowledgePage?.id && (
+          <div>
+            {knowledgePage.processingStatus && (
+              <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
+                <Typography className="tw:text-quaternary">
+                  {t('label.memory-extraction')}
+                </Typography>
+                <ArticleStatusBadge
+                  error={knowledgePage.processingError}
+                  status={knowledgePage.processingStatus}
+                />
+              </div>
+            )}
+            <ExtractedMemoriesCard collapsible sourceId={knowledgePage.id} />
+          </div>
+        )}
       </Card.Content>
     </Card>
   );
