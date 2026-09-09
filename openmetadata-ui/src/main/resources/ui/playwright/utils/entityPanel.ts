@@ -107,13 +107,17 @@ export const openEntitySummaryPanel = async ({
         return false;
       }
     }
-    // The global search box lives in the NavBar, which is not mounted the
-    // instant /explore resolves. fill() auto-waits with no timeout of its own,
-    // so calling it on an absent box hangs this callback forever -- and a poll
-    // cannot interrupt a pending callback, so the retry-and-reload this helper
-    // is built around never happened and the test died on its own timeout with
-    // nothing to show for it. Bound the wait and let the poll do its job.
-    const searchBox = page.getByTestId('searchBox');
+    // Two different components own the query depending on where the caller
+    // landed: /explore renders its own ExploreSearchInput and never mounts the
+    // NavBar's GlobalSearchBar, so waiting for the NavBar box there can only
+    // ever time out. Pick whichever this page actually renders.
+    // `explore-search-input` marks the field wrapper, not the field, so the
+    // textbox inside it is what accepts fill().
+    const exploreSearchWrapper = page.getByTestId('explore-search-input');
+    const searchBox =
+      (await exploreSearchWrapper.count()) > 0
+        ? exploreSearchWrapper.getByRole('textbox')
+        : page.getByTestId('searchBox');
 
     try {
       await searchBox.waitFor({ state: 'visible', timeout: 15_000 });
