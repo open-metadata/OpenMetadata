@@ -248,6 +248,39 @@ describe('FilterSelect', () => {
     expect(screen.getByText('Snowflake')).toBeInTheDocument();
   });
 
+  it('renders a borderless trigger by default and a bordered one on request', () => {
+    const { rerender } = render(
+      <FilterSelect
+        data-testid="trigger-test"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        triggerVariant="button"
+        onChange={() => undefined}
+      />
+    );
+
+    expect(screen.getByTestId('trigger-test').className).not.toContain(
+      'shadow-xs-skeuomorphic'
+    );
+
+    rerender(
+      <FilterSelect
+        bordered
+        data-testid="trigger-test"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        triggerVariant="button"
+        onChange={() => undefined}
+      />
+    );
+
+    expect(screen.getByTestId('trigger-test').className).toContain(
+      'shadow-xs-skeuomorphic'
+    );
+  });
+
   it('shows the empty state when nothing is displayed', () => {
     renderFilter({ options: [] });
 

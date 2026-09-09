@@ -2862,30 +2862,79 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 page.cursorId(),
                 fetchLimit);
 
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
-    boolean hasMoreInCurrentDirection = entities.size() > limit;
+    List<T> pageRows = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
+    boolean hasMoreInCurrentDirection = pageRows.size() > limit;
     if (hasMoreInCurrentDirection) {
-      entities = new ArrayList<>(entities.subList(0, limit));
+      pageRows = new ArrayList<>(pageRows.subList(0, limit));
     }
     if (page.isBackward()) {
-      Collections.reverse(entities);
+      Collections.reverse(pageRows);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
+    // Cursors describe the rows the SQL page held, not the rows that survive hydration. Hydration
+    // drops an entity that was hard-deleted mid-request, and a cursor taken from the survivors
+    // would re-read those dropped rows on the next page -- or, when none survive, end the walk
+    // before its last page.
+    String firstCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getFirst());
+    String lastCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getLast());
+    List<T> entities = hydrateHistoryPage(pageRows);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
-    return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+    return historyPageResult(
+        entities, page, hasMoreInCurrentDirection, total, firstCursor, lastCursor);
+  }
+
+  private String historyCursor(T entity) {
+    return entity.getUpdatedAt() + ":" + entity.getId().toString();
+  }
+
+  /**
+   * Hydrate a history page, tolerating an entity hard-deleted between the version query (which
+   * takes no lock) and this call. {@link #setFieldsInBulk} resolves live relationships for the
+   * whole page in one go, so one vanished entity throws and takes every other row down with it:
+   * the reader gets a 404 for a window it never asked about. Retrying row by row keeps the page
+   * and drops only what actually vanished.
+   */
+  private List<T> hydrateHistoryPage(List<T> entities) {
+    try {
+      hydrateHistoryRows(entities);
+      return entities;
+    } catch (EntityNotFoundException e) {
+      return hydrateHistoryRowByRow(entities);
+    }
+  }
+
+  private void hydrateHistoryRows(List<T> entities) {
+    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
+  }
+
+  private List<T> hydrateHistoryRowByRow(List<T> entities) {
+    List<T> hydrated = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      try {
+        hydrateHistoryRows(new ArrayList<>(List.of(entity)));
+        hydrated.add(entity);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Dropping {} {} from history page, deleted mid-request: {}",
+            entityType,
+            entity.getId(),
+            e.getMessage());
+      }
+    }
+    return hydrated;
   }
 
   private ResultList<T> historyPageResult(
-      List<T> entities, HistoryPage page, boolean hasMoreInCurrentDirection, int total) {
-    if (entities.isEmpty()) {
+      List<T> entities,
+      HistoryPage page,
+      boolean hasMoreInCurrentDirection,
+      int total,
+      String firstCursor,
+      String lastCursor) {
+    if (firstCursor == null) {
       return getResultList(entities, null, null, total);
     }
-    T first = entities.getFirst();
-    T last = entities.getLast();
-    String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
-    String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
     boolean hasNewerVersions = page.isBackward() ? hasMoreInCurrentDirection : !page.isFirstPage();
     boolean hasOlderVersions = page.isBackward() || hasMoreInCurrentDirection;
     return getResultList(

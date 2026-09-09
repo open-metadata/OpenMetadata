@@ -51,19 +51,24 @@ const TriggerButton = ({
   testId,
   variant,
   className,
+  icon,
+  bordered,
 }: {
   hasSelection: boolean;
   text: string;
   testId?: string;
   variant: FilterSelectTriggerVariant;
   className?: string;
+  icon?: FC<{ className?: string }>;
+  bordered?: boolean;
 }) => {
   if (variant === 'button') {
     return (
       <Button
         className={cx('tw:whitespace-nowrap', className)}
-        color="secondary"
+        color={bordered ? 'secondary' : 'tertiary'}
         data-testid={testId}
+        iconLeading={icon}
         iconTrailing={ChevronDown}
         size="md">
         {text}
@@ -165,6 +170,7 @@ export const FilterSelect = ({
   options,
   selectedValues,
   onChange,
+  bordered,
   className,
   commitMode = 'immediate',
   'data-testid': testId,
@@ -179,6 +185,7 @@ export const FilterSelect = ({
   searchable,
   selectionMode = 'multiple',
   showSelectAll,
+  triggerIcon,
   triggerVariant = 'chip',
   onOpenChange,
   onSearch,
@@ -326,8 +333,10 @@ export const FilterSelect = ({
   return (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
       <TriggerButton
+        bordered={bordered}
         className={className}
         hasSelection={selectedValues.length > 0}
+        icon={triggerIcon}
         testId={testId}
         text={triggerText}
         variant={triggerVariant}
