@@ -755,6 +755,14 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
+    // The global (navbar) domain filter only narrows domain-scoped catalog assets; skip it for
+    // non-filterable types (e.g. user/team/policy/tag) so their lists are never emptied by the
+    // strict membership condition below. Absent entityType (legacy ?domain= callers) still applies.
+    String entityType = getQueryParam("entityType");
+    if (entityType != null && !DomainFilterableEntities.isFilterable(entityType)) {
+      return "";
+    }
+
     String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {

@@ -154,6 +154,43 @@ class ListFilterTest {
   }
 
   @Test
+  void getDomainCondition_appliedForDataAssetEntityType() {
+    // A data-asset list is scoped to the selected domain (navbar global domain filter).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "table");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(":domainId_"),
+        "data-asset list should be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_skippedForGlobalEntityType() {
+    // The navbar domain filter must never scope global entities (e.g. user/team/policy/tag);
+    // otherwise their lists — Settings, permission data, tag pickers — come back empty because
+    // the condition is a strict domain-membership test and those entities carry no domain.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "user");
+    String condition = filter.getCondition("user_entity");
+    assertFalse(
+        condition.contains(":domainId_"),
+        "global entity list must not be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_appliedWhenEntityTypeUnset_backwardCompatible() {
+    // Existing ?domain= callers do not set entityType; that path must keep working unchanged.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(":domainId_"),
+        "explicit ?domain= without entityType must still apply (backward-compatible)");
+  }
+
+  @Test
   void getAssignee_dottedUsername_hashesNameAsSingleFqnComponent() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("assignee", "john.doe");
