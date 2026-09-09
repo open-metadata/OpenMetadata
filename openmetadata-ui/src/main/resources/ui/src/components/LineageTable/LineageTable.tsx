@@ -468,100 +468,107 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
+    const fetchColumnLevelNodes = async () => {
+      const columnLevelConfig = {
+        ...lineageConfig,
+        upstreamDepth:
+          lineageDirection === LineageDirection.Upstream ? nodeDepth : 0,
+        downstreamDepth:
+          lineageDirection === LineageDirection.Downstream ? nodeDepth : 0,
+      };
+
+      const res = await getLineageDataByFQN({
+        fqn,
+        entityType,
+        config: columnLevelConfig,
+        queryFilter,
+        columnFilter: columnFilterValue,
+        direction: lineageDirection,
+      });
+
+      const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
+      const downstreamEdges = map(res.downstreamEdges ?? [], (edge) => edge);
+      if (res.nodes) {
+        const upstreamNodes = prepareUpstreamColumnLevelNodesFromUpstreamEdges(
+          upstreamEdges,
+          res.nodes as unknown as Record<string, LineageNodeType>
+        );
+
+        const downstreamNodes =
+          prepareDownstreamColumnLevelNodesFromDownstreamEdges(
+            downstreamEdges,
+            res.nodes as unknown as Record<string, LineageNodeType>
+          );
+
+        setColumnLineageNodes(upstreamNodes, downstreamNodes);
+        handlePagingChange({
+          total:
+            lineageDirection === LineageDirection.Upstream
+              ? upstreamNodes.length
+              : downstreamNodes.length,
+        } as Paging);
+      }
+    };
+
+    const fetchTableLevelNodes = async () => {
+      const paginationInfoKey = JSON.stringify({
+        fqn,
+        entityType,
+        upstreamDepth: lineageConfig.upstreamDepth,
+        downstreamDepth: lineageConfig.downstreamDepth,
+        queryFilter,
+        lineageDirection,
+        columnFilterValue,
+      });
+      const shouldIncludePaginationInfo =
+        paginationInfoKeyRef.current !== paginationInfoKey;
+
+      const res = await getLineageByEntityCount({
+        fqn: fqn ?? '',
+        entityType: entityType ?? '',
+        direction: lineageDirection,
+        nodeDepth,
+        maxDepth: nodeDepth,
+        upstreamDepth: lineageConfig.upstreamDepth,
+        downstreamDepth: lineageConfig.downstreamDepth,
+        from: (currentPage - 1) * pageSize,
+        size: pageSize,
+        query_filter: queryFilter,
+        column_filter: columnFilterValue,
+        include_pagination_info: shouldIncludePaginationInfo,
+      });
+
+      delete res.nodes[fqn];
+      if (shouldIncludePaginationInfo) {
+        setLineagePagingInfo(res.paginationInfo ?? null);
+        paginationInfoKeyRef.current = res.paginationInfo
+          ? paginationInfoKey
+          : null;
+      }
+
+      setFilterNodes(
+        sortBy(
+          map(
+            res.nodes,
+            ({ entity, paging, nodeDepth }) =>
+              ({
+                ...entity,
+                ...paging,
+                nodeDepth,
+              } as unknown as LineageNode)
+          ),
+          'nodeDepth'
+        )
+      );
+    };
+
     try {
       setLoading(true);
 
       if (impactLevel === EImpactLevel.ColumnLevel) {
-        const columnLevelConfig = {
-          ...lineageConfig,
-          upstreamDepth:
-            lineageDirection === LineageDirection.Upstream ? nodeDepth : 0,
-          downstreamDepth:
-            lineageDirection === LineageDirection.Downstream ? nodeDepth : 0,
-        };
-
-        const res = await getLineageDataByFQN({
-          fqn,
-          entityType,
-          config: columnLevelConfig,
-          queryFilter,
-          columnFilter: columnFilterValue,
-          direction: lineageDirection,
-        });
-
-        const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
-        const downstreamEdges = map(res.downstreamEdges ?? [], (edge) => edge);
-        if (res.nodes) {
-          const upstreamNodes =
-            prepareUpstreamColumnLevelNodesFromUpstreamEdges(
-              upstreamEdges,
-              res.nodes as unknown as Record<string, LineageNodeType>
-            );
-
-          const downstreamNodes =
-            prepareDownstreamColumnLevelNodesFromDownstreamEdges(
-              downstreamEdges,
-              res.nodes as unknown as Record<string, LineageNodeType>
-            );
-
-          setColumnLineageNodes(upstreamNodes, downstreamNodes);
-          handlePagingChange({
-            total:
-              lineageDirection === LineageDirection.Upstream
-                ? upstreamNodes.length
-                : downstreamNodes.length,
-          } as Paging);
-        }
+        await fetchColumnLevelNodes();
       } else {
-        const paginationInfoKey = JSON.stringify({
-          fqn,
-          entityType,
-          upstreamDepth: lineageConfig.upstreamDepth,
-          downstreamDepth: lineageConfig.downstreamDepth,
-          queryFilter,
-          lineageDirection,
-          columnFilterValue,
-        });
-        const shouldIncludePaginationInfo =
-          paginationInfoKeyRef.current !== paginationInfoKey;
-
-        const res = await getLineageByEntityCount({
-          fqn: fqn ?? '',
-          entityType: entityType ?? '',
-          direction: lineageDirection,
-          nodeDepth,
-          maxDepth: nodeDepth,
-          upstreamDepth: lineageConfig.upstreamDepth,
-          downstreamDepth: lineageConfig.downstreamDepth,
-          from: (currentPage - 1) * pageSize,
-          size: pageSize,
-          query_filter: queryFilter,
-          column_filter: columnFilterValue,
-          include_pagination_info: shouldIncludePaginationInfo,
-        });
-
-        delete res.nodes[fqn];
-        if (shouldIncludePaginationInfo) {
-          setLineagePagingInfo(res.paginationInfo ?? null);
-          paginationInfoKeyRef.current = res.paginationInfo
-            ? paginationInfoKey
-            : null;
-        }
-
-        setFilterNodes(
-          sortBy(
-            map(
-              res.nodes,
-              ({ entity, paging, nodeDepth }) =>
-                ({
-                  ...entity,
-                  ...paging,
-                  nodeDepth,
-                } as unknown as LineageNode)
-            ),
-            'nodeDepth'
-          )
-        );
+        await fetchTableLevelNodes();
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

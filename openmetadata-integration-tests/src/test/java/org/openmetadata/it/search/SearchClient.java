@@ -40,7 +40,15 @@ public final class SearchClient {
       this.http = null;
       this.base = null;
     } else {
-      this.http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
+      // ES/OpenSearch expose HTTP/1.1-only REST over cleartext, but the JDK client defaults to
+      // HTTP_2 and attempts an h2c upgrade on every request. A slow, large exchange has been seen
+      // to leave that connection desynchronised, surfacing as an unreadable
+      // "Frame type(34) ... exceeds MAX_FRAME_SIZE" rather than the real problem.
+      this.http =
+          HttpClient.newBuilder()
+              .connectTimeout(TIMEOUT)
+              .version(HttpClient.Version.HTTP_1_1)
+              .build();
       this.base =
           URI.create(
               server.searchScheme() + "://" + server.searchHost() + ":" + server.searchPort());
@@ -93,13 +101,13 @@ public final class SearchClient {
 
   public JsonNode get(final String path) {
     requireEmbedded("GET " + path);
-    return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
+    return execute(request(path).GET().build());
   }
 
   public JsonNode post(final String path, final String jsonBody) {
     requireEmbedded("POST " + path);
     return execute(
-        HttpRequest.newBuilder(base.resolve(path))
+        request(path)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build());
@@ -108,7 +116,7 @@ public final class SearchClient {
   public JsonNode put(final String path, final String jsonBody) {
     requireEmbedded("PUT " + path);
     return execute(
-        HttpRequest.newBuilder(base.resolve(path))
+        request(path)
             .header("Content-Type", "application/json")
             .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build());
@@ -118,9 +126,7 @@ public final class SearchClient {
     requireEmbedded("DELETE " + path);
     try {
       final HttpResponse<String> response =
-          http.send(
-              HttpRequest.newBuilder(base.resolve(path)).DELETE().build(),
-              HttpResponse.BodyHandlers.ofString());
+          http.send(request(path).DELETE().build(), HttpResponse.BodyHandlers.ofString());
       final int status = response.statusCode();
       final boolean success = (status >= 200 && status < 300) || status == 404;
       if (!success) {
@@ -202,12 +208,12 @@ public final class SearchClient {
   }
 
   private JsonNode engineGet(final String path) {
-    return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
+    return execute(request(path).GET().build());
   }
 
   private JsonNode enginePost(final String path, final String jsonBody) {
     return execute(
-        HttpRequest.newBuilder(base.resolve(path))
+        request(path)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build());
@@ -217,9 +223,7 @@ public final class SearchClient {
     try {
       final HttpResponse<Void> response =
           http.send(
-              HttpRequest.newBuilder(base.resolve(path))
-                  .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                  .build(),
+              request(path).method("HEAD", HttpRequest.BodyPublishers.noBody()).build(),
               HttpResponse.BodyHandlers.discarding());
       return response.statusCode() >= 200 && response.statusCode() < 300;
     } catch (final InterruptedException e) {
@@ -243,6 +247,15 @@ public final class SearchClient {
               + " requires direct engine access, which is unavailable in external mode "
               + "(the test-support proxy exposes only read-only introspection).");
     }
+  }
+
+  /**
+   * {@link #TIMEOUT} was only ever a connect timeout, so an exchange that stalled after the
+   * handshake ran unbounded -- one shape-canary GET was observed hanging for 80s before it failed.
+   * Every request is built here so it carries a response deadline too.
+   */
+  private HttpRequest.Builder request(final String path) {
+    return HttpRequest.newBuilder(base.resolve(path)).timeout(TIMEOUT);
   }
 
   private JsonNode execute(final HttpRequest request) {

@@ -31,6 +31,7 @@ import {
   ConfigData,
   ExtraInfoType,
 } from '../../../../interface/service.interface';
+import { getOwnHandler } from '../../../../utils/RecordUtils';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import './service-connection-details.less';
@@ -42,58 +43,64 @@ type ServiceConnectionDetailsProps = {
   extraInfo?: ExtraInfoType | null;
 };
 
+const SERVICE_CONFIG_LOADER_BY_CATEGORY: Partial<
+  Record<
+    EntityType,
+    (serviceFQN: string) => Promise<{ schema: Record<string, unknown> }>
+  >
+> = {
+  [EntityType.DATABASE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getDatabaseServiceConfig(
+      serviceFQN as DatabaseServiceType
+    ),
+  [EntityType.DASHBOARD_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getDashboardServiceConfig(
+      serviceFQN as DashboardServiceType
+    ),
+  [EntityType.MESSAGING_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getMessagingServiceConfig(
+      serviceFQN as MessagingServiceType
+    ),
+  [EntityType.PIPELINE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getPipelineServiceConfig(
+      serviceFQN as PipelineServiceType
+    ),
+  [EntityType.MLMODEL_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getMlModelServiceConfig(
+      serviceFQN as MlModelServiceType
+    ),
+  [EntityType.METADATA_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getMetadataServiceConfig(
+      serviceFQN as MetadataServiceType
+    ),
+  [EntityType.STORAGE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getStorageServiceConfig(
+      serviceFQN as StorageServiceType
+    ),
+  [EntityType.SEARCH_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getSearchServiceConfig(
+      serviceFQN as SearchServiceType
+    ),
+  [EntityType.API_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType),
+  [EntityType.SECURITY_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getSecurityServiceConfig(
+      serviceFQN as SecurityServiceType
+    ),
+  [EntityType.DRIVE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getDriveServiceConfig(serviceFQN as DriveServiceType),
+};
+
 const loadSchemaForServiceCategory = (
   serviceCategory: string,
   serviceFQN: string
 ): Promise<{ schema: Record<string, unknown> }> => {
-  switch (serviceCategory.slice(0, -1)) {
-    case EntityType.DATABASE_SERVICE:
-      return serviceUtilClassBase.getDatabaseServiceConfig(
-        serviceFQN as DatabaseServiceType
-      );
-    case EntityType.DASHBOARD_SERVICE:
-      return serviceUtilClassBase.getDashboardServiceConfig(
-        serviceFQN as DashboardServiceType
-      );
-    case EntityType.MESSAGING_SERVICE:
-      return serviceUtilClassBase.getMessagingServiceConfig(
-        serviceFQN as MessagingServiceType
-      );
-    case EntityType.PIPELINE_SERVICE:
-      return serviceUtilClassBase.getPipelineServiceConfig(
-        serviceFQN as PipelineServiceType
-      );
-    case EntityType.MLMODEL_SERVICE:
-      return serviceUtilClassBase.getMlModelServiceConfig(
-        serviceFQN as MlModelServiceType
-      );
-    case EntityType.METADATA_SERVICE:
-      return serviceUtilClassBase.getMetadataServiceConfig(
-        serviceFQN as MetadataServiceType
-      );
-    case EntityType.STORAGE_SERVICE:
-      return serviceUtilClassBase.getStorageServiceConfig(
-        serviceFQN as StorageServiceType
-      );
-    case EntityType.SEARCH_SERVICE:
-      return serviceUtilClassBase.getSearchServiceConfig(
-        serviceFQN as SearchServiceType
-      );
-    case EntityType.API_SERVICE:
-      return serviceUtilClassBase.getAPIServiceConfig(
-        serviceFQN as APIServiceType
-      );
-    case EntityType.SECURITY_SERVICE:
-      return serviceUtilClassBase.getSecurityServiceConfig(
-        serviceFQN as SecurityServiceType
-      );
-    case EntityType.DRIVE_SERVICE:
-      return serviceUtilClassBase.getDriveServiceConfig(
-        serviceFQN as DriveServiceType
-      );
-    default:
-      return Promise.resolve({ schema: {} });
-  }
+  const loader = getOwnHandler(
+    SERVICE_CONFIG_LOADER_BY_CATEGORY,
+    serviceCategory.slice(0, -1)
+  );
+
+  return loader ? loader(serviceFQN) : Promise.resolve({ schema: {} });
 };
 
 const ServiceConnectionDetails = ({
