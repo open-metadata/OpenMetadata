@@ -10,29 +10,83 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 
+// The teams table keeps reflowing after its loaders clear (async detail counts
+// hydrate and shift rows). dragTo snapshots both boxes up front and presses at
+// those coordinates, so a drag begun mid-reflow presses on whatever slid into
+// the old spot and no dragstart fires. Hold both rows still before pressing.
+const waitForStableBox = async (locator: Locator) => {
+  let previous: { x: number; y: number } | undefined;
+
+  await expect(async () => {
+    const box = await locator.boundingBox();
+
+    expect(box).not.toBeNull();
+
+    const current = { x: box?.x ?? NaN, y: box?.y ?? NaN };
+    const held = previous?.x === current.x && previous?.y === current.y;
+
+    previous = current;
+
+    expect(held, 'element is still moving').toBe(true);
+  }).toPass({ timeout: 15_000, intervals: [200, 200, 400, 800] });
+};
+
+// TableV2 rows drag through react-aria's useDragAndDrop, whose mouse path is the
+// native HTML drag-and-drop API — the same one dragTo drives. Manual mouse
+// events do not reliably synthesise native drag in headless Chromium, so a real
+// dragTo is required. force skips the actionability wait that the row hover
+// overlays would otherwise block. Dropping at a row's centre lands "on" it (a
+// move under that row); for a root move the caller passes the toolbar selector
+// (isHeader) — it sits inside the DropZone but outside the grid, so a drop there
+// routes to onRootDrop and moves the team to the table root.
 export const dragAndDropElement = async (
   page: Page,
   dragElement: string,
   dropTarget: string,
   isHeader?: boolean
 ) => {
-  const dragElementLocator = page.locator(`[data-row-key="${dragElement}"]`);
+  const dragRowLocator = page.locator(`[data-row-key="${dragElement}"]`);
+  // Grab the row's own drag handle so dragstart binds this row, not a neighbour
+  // that slid under a stale pointer coordinate.
+  const dragElementLocator = dragRowLocator.locator('.drag-icon');
   const dropTargetLocator = isHeader
     ? page.locator(dropTarget)
     : page.locator(`[data-row-key="${dropTarget}"]`);
 
-  // Ensure the element is draggable
-  const draggable = await dragElementLocator.getAttribute('draggable');
-  if (draggable !== 'true') {
-    throw new Error('Element is not draggable');
+  // A rejection toast lives 60s (ERROR_TOAST_TIMEOUT) and covers the drop row,
+  // so dismiss open error toasts rather than wait them out. Only error toasts
+  // render a close button; success/info toasts self-dismiss.
+  for (const close of await page.getByTestId('alert-icon-close').all()) {
+    await close.click().catch(() => undefined);
+  }
+  await expect(page.getByTestId('alert-icon-close'))
+    .toHaveCount(0, { timeout: 10_000 })
+    .catch(() => undefined);
+
+  await dragRowLocator.scrollIntoViewIfNeeded();
+  await waitForStableBox(dragRowLocator);
+  await waitForStableBox(dropTargetLocator);
+
+  if (isHeader) {
+    // Root move: pointer dragTo can't reliably bind the dragged item over the
+    // long drag to the top toolbar for native HTML5 DnD. Dispatch the drag
+    // events on the exact elements with one shared DataTransfer so dragstart
+    // binds this row and the drop reaches the root DropZone.
+    const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+    await dragRowLocator.dispatchEvent('dragstart', { dataTransfer });
+    await dropTargetLocator.dispatchEvent('dragenter', { dataTransfer });
+    await dropTargetLocator.dispatchEvent('dragover', { dataTransfer });
+    await dropTargetLocator.dispatchEvent('drop', { dataTransfer });
+    await dragRowLocator.dispatchEvent('dragend', { dataTransfer });
+
+    return;
   }
 
-  // Perform drag and drop
-  await dragElementLocator.dispatchEvent('dragstart');
-  await dropTargetLocator.dispatchEvent('drop');
-  await dragElementLocator.dispatchEvent('dragend');
+  await dragElementLocator.dragTo(dropTargetLocator, {
+    force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
+  });
 };
 
 export const openDragDropDropdown = async (page: Page, name: string) => {
