@@ -211,7 +211,7 @@ describe('FilterSelect', () => {
     });
 
     expect(screen.getByTestId('service-filter')).toHaveTextContent(
-      'Service · 2'
+      'Service: (2)'
     );
   });
 
