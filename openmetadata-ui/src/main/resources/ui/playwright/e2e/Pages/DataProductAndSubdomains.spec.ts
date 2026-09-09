@@ -249,10 +249,9 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
       const maxRetries = 5;
 
       for (let retry = 0; retry < maxRetries; retry++) {

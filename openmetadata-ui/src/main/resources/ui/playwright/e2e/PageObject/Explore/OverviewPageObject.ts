@@ -134,7 +134,7 @@ export class OverviewPageObject extends RightPanelBase {
     this.glossaryTermListContainer =
       this.page.getByTestId('glossary-container');
     this.userSearchBar = this.page.getByTestId('owner-select-users-search-bar');
-    this.userListItem = this.page.locator('.ant-list-item-main');
+    this.userListItem = this.page.locator('.selectable-list-item');
     this.userListContainer = this.page.getByTestId('user-tag');
     this.editOwnersIcon = this.getSummaryPanel().getByTestId('edit-owners');
     this.updateOwnersButton = this.page.getByTestId(
@@ -156,7 +156,7 @@ export class OverviewPageObject extends RightPanelBase {
     this.teamsSearchBar = this.page.getByTestId(
       'owner-select-teams-search-bar'
     );
-    this.listItem = this.page.locator('.ant-list-item');
+    this.listItem = this.page.locator('.selectable-list-item');
     this.domainTreeNode = this.domainTree.locator('.ant-tree-treenode');
     this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
@@ -242,9 +242,11 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
 
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
+    // Target the .selectable-list-item button, which carries the
     // 'active' CSS class when the tag is already selected.
-    const tagItem = this.selectableList.getByTitle(tagName);
+    const tagItem = this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
     await tagItem.waitFor({ state: 'visible' });
 
     // Only click if not already active — in parallel test runs another test may have added
@@ -289,9 +291,11 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
 
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
+    // Target the .selectable-list-item button, which carries the
     // 'active' CSS class when the term is already selected.
-    const termItem = this.selectableList.getByTitle(termName);
+    const termItem = this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: termName });
     await termItem.waitFor({ state: 'visible' });
     await termItem.scrollIntoViewIfNeeded();
 
@@ -548,7 +552,9 @@ export class OverviewPageObject extends RightPanelBase {
       .waitFor({ state: 'detached' });
 
     for (const tagName of tagDisplayNames) {
-      const tagOption = this.page.getByTitle(tagName);
+      const tagOption = this.selectableList
+        .locator('.selectable-list-item')
+        .filter({ hasText: tagName });
       await tagOption.waitFor({ state: 'visible' });
       // Only click if it's currently active (selected)
       const isActive = await tagOption.evaluate((el) =>
@@ -705,7 +711,9 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
-    return this.page.getByTitle(ownerName);
+    return this.page
+      .locator('.selectable-list-item')
+      .filter({ hasText: ownerName });
   }
 
   /**
@@ -734,7 +742,9 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
-    return this.page.getByTitle(tagName);
+    return this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
   }
 
   /**
@@ -765,7 +775,9 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
-    return this.page.getByTitle(termName);
+    return this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: termName });
   }
 
   // ============ HELPER METHODS ============

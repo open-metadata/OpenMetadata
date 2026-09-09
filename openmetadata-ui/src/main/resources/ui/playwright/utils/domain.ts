@@ -334,7 +334,10 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: domain.displayName })
+    .click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
@@ -361,7 +364,10 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: domain.displayName })
+    .click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName

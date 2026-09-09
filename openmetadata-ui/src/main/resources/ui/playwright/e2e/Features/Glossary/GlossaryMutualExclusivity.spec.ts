@@ -702,7 +702,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await waitForAllLoadersToDisappear(page);
 
         // Select the glossary term from the flat list
-        const termOption = page.locator('.ant-list-item').filter({
+        const termOption = page.locator('[data-testid="owner-option"]').filter({
           hasText: child.responseData.displayName,
         });
         await expect(termOption).toBeVisible();

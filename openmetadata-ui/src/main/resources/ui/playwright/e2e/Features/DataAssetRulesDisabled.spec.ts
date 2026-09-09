@@ -221,10 +221,9 @@ test.describe(
         await teamsSearchBar.fill(teamName);
         await searchUser;
 
-        const ownerItem = page.getByRole('listitem', {
-          name: teamName,
-          exact: true,
-        });
+        const ownerItem = page
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: teamName });
 
         await ownerItem.waitFor({ state: 'visible' });
         await ownerItem.click();

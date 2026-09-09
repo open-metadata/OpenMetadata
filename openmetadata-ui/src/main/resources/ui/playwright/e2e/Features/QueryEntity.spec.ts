@@ -139,7 +139,10 @@ test('Query Entity', async ({ page }) => {
       queryData.owner
     );
     await searchOwnerResponse;
-    await page.click(`.ant-popover [title="${queryData.owner}"]`);
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: queryData.owner })
+      .click();
     const updateOwnerResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&

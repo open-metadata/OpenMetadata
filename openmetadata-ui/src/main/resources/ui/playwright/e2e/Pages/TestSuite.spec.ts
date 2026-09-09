@@ -346,7 +346,10 @@ test(
       const testSuiteByOwner = page.waitForResponse(
         '/api/v1/dataQuality/testSuites/search/list?*owner=*'
       );
-      await page.click(`.ant-popover [title="${owner}"]`);
+      await page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: owner })
+        .click();
       await testSuiteByOwner;
       await page.getByTestId(NEW_TEST_SUITE.name).waitFor({
         state: 'visible',

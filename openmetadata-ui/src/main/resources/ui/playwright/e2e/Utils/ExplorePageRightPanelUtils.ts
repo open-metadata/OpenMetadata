@@ -79,7 +79,10 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
       r.url().includes('/api/v1/contextCenter/pages/') &&
       r.request().method() === 'PATCH'
   );
-  await page.getByRole('listitem', { name: ownerName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: ownerName })
+    .click();
   await page.getByTestId('selectable-list-update-btn').click();
   await patchResponse;
 };

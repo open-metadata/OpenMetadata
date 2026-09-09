@@ -644,9 +644,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
-          const termOption = page.locator('.ant-list-item').filter({
-            hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-          });
+          const termOption = page
+            .locator('[data-testid="owner-option"]')
+            .filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            });
           await expect(termOption).toBeVisible();
           await termOption.click();
 
@@ -1522,9 +1524,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
-          const termOption = page.locator('.ant-list-item').filter({
-            hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-          });
+          const termOption = page
+            .locator('[data-testid="owner-option"]')
+            .filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            });
           await expect(termOption).toBeVisible();
           await termOption.click();
 

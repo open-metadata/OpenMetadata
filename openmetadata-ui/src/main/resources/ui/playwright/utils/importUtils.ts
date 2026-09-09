@@ -534,7 +534,10 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
       page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
     ).toHaveCount(0);
 
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
   }
 
   await page
@@ -577,7 +580,10 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
     await expect(
       page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
     ).toHaveCount(0);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
   }
 
   await page

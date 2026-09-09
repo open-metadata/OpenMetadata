@@ -116,7 +116,8 @@ test.describe.serial('Persona operations', () => {
     await searchUser;
 
     await page
-      .getByRole('listitem', { name: user.responseData.displayName })
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.responseData.displayName })
       .click();
     await page.getByTestId('selectable-list-update-btn').click();
 
@@ -355,7 +356,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
         await searchUser;
 
         await adminPage
-          .getByRole('listitem', { name: user1.responseData.displayName })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.responseData.displayName })
           .click();
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
