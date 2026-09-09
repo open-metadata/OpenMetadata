@@ -3254,3 +3254,49 @@ class TestTelemetryFailureHint:
 
         assert "\n" not in hint
         assert "Forbidden" in hint
+
+    def test_401_when_connect_works_does_not_blame_the_key_type(self):
+        """
+        A credential Connect accepts is not a cluster-scoped key, since those fail Connect
+        too. Telling the reader to swap the key type would send them after the wrong thing,
+        so the message reports what was observed and names both levers to check.
+        """
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": "Invalid credentials"}]}),
+            connect_authenticated=True,
+        )
+
+        assert "authenticates to the Connect API" in hint, "the observed split must be stated"
+        assert "MetricsViewer" in hint and "scope" in hint, "both levers are named"
+
+    def test_401_when_connect_also_failed_blames_the_key(self):
+        """Failing both is the ordinary case: the credential is not a Cloud API key."""
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": "Invalid credentials"}]}),
+            connect_authenticated=False,
+        )
+
+        assert "not accepted by the Telemetry API" in hint
+        assert "authenticates to the Connect API" not in hint
+
+    def test_warning_names_the_key_but_never_the_secret(self):
+        """
+        The key id is what identifies which credential to go and look at, and it is not a
+        secret. The secret sits beside it in the same tuple and must never reach a log.
+        """
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("KEYID123", "SUPERSECRET")
+        client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._telemetry_topics_by_connector_id = None
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "KEYID123" in rendered, "the key id identifies which credential to check"
+        assert "SUPERSECRET" not in rendered, "the secret must never be logged"
+        assert "authenticates to the Connect API" in rendered, "Connect worked, so say so"
