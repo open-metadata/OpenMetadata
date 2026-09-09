@@ -68,14 +68,23 @@ export const requiredField = (label: string, excludeSpace = false) => (
   </>
 );
 
-export const getEntityMissingError = (entityType: string, fqn: string) => {
+/**
+ * Inline "<entity> instance for <fqn> not found" message, without any block
+ * wrapper, so it can be dropped into inline containers such as the
+ * `EmptyPlaceholder` description slot.
+ */
+export const getEntityMissingMessage = (entityType: string, fqn: string) => {
   return (
-    <p>
+    <>
       {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
       {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
       {t('label.not-found-lowercase')}
-    </p>
+    </>
   );
+};
+
+export const getEntityMissingError = (entityType: string, fqn: string) => {
+  return <p>{getEntityMissingMessage(entityType, fqn)}</p>;
 };
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
