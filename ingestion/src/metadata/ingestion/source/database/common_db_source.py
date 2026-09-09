@@ -584,6 +584,19 @@ class CommonDbSourceService(
         Method to fetch the extensions of the table
         """
 
+    def get_table_aliases(
+        self,
+        table_name: str,  # pyright: ignore[reportUnusedParameter]
+        schema_name: str,  # pyright: ignore[reportUnusedParameter]
+    ) -> Optional[List[str]]:
+        """
+        Alternate fully qualified SQL names that resolve to this table.
+
+        Connectors that expose database-native alternate names for a table
+        override this. The list is source-managed: it is recomputed from the
+        source on every run and replaces whatever is stored.
+        """
+
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -637,6 +650,13 @@ class CommonDbSourceService(
                 else None
             )
 
+            # `or []` normalizes the base hook's implicit None for connectors that
+            # do not expose alternate names.
+            table_aliases = (
+                self.get_table_aliases(table_name=table_name, schema_name=schema_name)
+                or []
+            )
+
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -668,6 +688,11 @@ class CommonDbSourceService(
                 ),
                 extension=self.get_table_extensions(
                     table_name=table_name, table_type=table_type
+                ),
+                aliases=(
+                    [FullyQualifiedEntityName(alias) for alias in table_aliases]
+                    if table_aliases
+                    else None
                 ),
             )
 

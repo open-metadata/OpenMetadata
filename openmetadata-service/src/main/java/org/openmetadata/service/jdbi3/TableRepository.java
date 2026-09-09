@@ -2414,6 +2414,7 @@ public class TableRepository extends EntityRepository<Table> {
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
+      compareAndUpdate("aliases", () -> updateAliases(origTable, updatedTable));
       compareAndUpdate(
           "retentionPeriod",
           () ->
@@ -2470,6 +2471,16 @@ public class TableRepository extends EntityRepository<Table> {
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
       }
+    }
+
+    private void updateAliases(Table origTable, Table updatedTable) {
+      List<String> origAliases = listOrEmpty(origTable.getAliases());
+      List<String> updatedAliases = listOrEmpty(updatedTable.getAliases());
+
+      List<String> added = new ArrayList<>();
+      List<String> deleted = new ArrayList<>();
+      recordListChange(
+          "aliases", origAliases, updatedAliases, added, deleted, EntityUtil.stringMatch);
     }
 
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
