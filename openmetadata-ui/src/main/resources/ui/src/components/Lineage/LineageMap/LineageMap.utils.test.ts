@@ -141,6 +141,36 @@ describe('scene URL navigation', () => {
     );
   });
 
+  it('opens the platform root at the service level without an entity focus', () => {
+    expect(getSceneRequestFromSearch('', {}, true)).toEqual({
+      lens: LineageLens.Service,
+      band: LineageBand.Layer,
+    });
+  });
+
+  it.each([
+    defaultFocus,
+    {
+      focusFqn: 'service.db."orders & returns?region=us#1"',
+      entityType: EntityType.TABLE,
+    },
+    { focusFqn: 'service.dashboard', entityType: EntityType.DASHBOARD },
+  ])('opens a focused platform route at the asset level: %j', (focus) => {
+    expect(getSceneRequestFromSearch('', focus, true)).toEqual({
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      ...focus,
+    });
+  });
+
+  it('clears a platform route focus when explicitly navigating to the root', () => {
+    const request = { lens: LineageLens.Service, band: LineageBand.Layer };
+
+    expect(
+      getSceneRequestFromSearch(getSceneSearch('', request), defaultFocus, true)
+    ).toEqual(request);
+  });
+
   it.each([{}, defaultFocus])(
     'recenters the entity-page table after reloading a Layer URL with focus %j',
     (focus) => {

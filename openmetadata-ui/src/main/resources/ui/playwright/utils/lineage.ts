@@ -1254,23 +1254,16 @@ export const verifyPlatformLineageForEntity = async (
       new URL(response.url()).searchParams.get('focusFqn') === fromFqn
   );
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
+  await expect(page).toHaveURL((url) =>
+    url.pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
+  );
   expect((await focusSceneResponse).ok()).toBeTruthy();
 
   await page.getByTestId('lineage-layer-btn').click();
 
   const assetBandButton = page.getByTestId('lineage-layer-band-ASSET');
-  const isAssetBandSelected = await assetBandButton.evaluate((element) =>
-    element.hasAttribute('data-selected')
-  );
-  if (!isAssetBandSelected) {
-    await assetBandButton.click();
-    await expect
-      .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
-      .toBe('ASSET');
-    await waitForAllLoadersToDisappear(page);
-  } else {
-    await clickOutside(page);
-  }
+  await expect(assetBandButton).toHaveAttribute('data-selected');
+  await clickOutside(page);
 
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
   await expect(fromNode).toBeVisible();

@@ -224,7 +224,10 @@ export const getSceneRequestFromSearch = (
   const lens =
     Object.values(LineageLens).find((value) => value === params.lineageLens) ??
     LineageLens.Service;
-  const defaultBand = isPlatformLineage ? LineageBand.Layer : LineageBand.Asset;
+  const defaultBand =
+    isPlatformLineage && !defaultFocus.focusFqn
+      ? LineageBand.Layer
+      : LineageBand.Asset;
   const band =
     Object.values(LineageBand).find((value) => value === params.lineageBand) ??
     defaultBand;

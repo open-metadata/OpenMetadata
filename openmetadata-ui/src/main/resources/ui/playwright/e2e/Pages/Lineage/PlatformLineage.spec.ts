@@ -20,6 +20,7 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
+  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { performZoomOut, visitLineageTab } from '../../../utils/lineage';
@@ -71,24 +72,29 @@ test(
     await page.getByTestId('search-entity-select').waitFor();
     await page.getByTestId('search-entity-select').click();
 
-    await page.fill(
-      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-      table.entity.name
-    );
-
-    await page.waitForRequest(
+    const searchRequest = page.waitForRequest(
       (req) =>
         req.url().includes('/api/v1/search/query') &&
         req.url().includes('deleted=false')
     );
+    await page.fill(
+      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+      table.entity.name
+    );
+    await searchRequest;
 
     await page.locator('.ant-select-dropdown').waitFor();
+    await waitForAntdPopupToSettle(page);
 
-    const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
-    const serviceFqn = get(table, 'serviceResponseData.fullyQualifiedName', '');
+    const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
     const dbFqn = get(
       table,
       'entityResponseData.database.fullyQualifiedName',
+      ''
+    );
+    const schemaFqn = get(
+      table,
+      'entityResponseData.databaseSchema.fullyQualifiedName',
       ''
     );
     const tableSceneResponse = page.waitForResponse(
@@ -96,16 +102,14 @@ test(
         new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
         new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
     );
-    await page
-      .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
-      .dispatchEvent('click');
+    await page.getByTestId(`node-suggestion-${nodeFqn}`).click();
+    await expect(page).toHaveURL(
+      (url) => url.pathname === `/lineage/table/${encodeURIComponent(nodeFqn)}`
+    );
     expect((await tableSceneResponse).ok()).toBeTruthy();
 
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
-
-    await expect(
-      page.locator(`[data-testid="lineage-node-${serviceFqn}"]`)
-    ).toBeVisible();
+    await expect(page.getByTestId(`lineage-node-${nodeFqn}`)).toBeVisible();
 
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.LINEAGE);
@@ -117,16 +121,20 @@ test(
       db
     );
     await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
+    await waitForAntdPopupToSettle(page);
     const databaseSceneResponse = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
         new URL(response.url()).searchParams.get('focusFqn') === dbFqn
     );
-    await page.getByTestId(`node-suggestion-${dbFqn}`).dispatchEvent('click');
+    await page.getByTestId(`node-suggestion-${dbFqn}`).click();
+    await expect(page).toHaveURL(
+      (url) => url.pathname === `/lineage/database/${encodeURIComponent(dbFqn)}`
+    );
     expect((await databaseSceneResponse).ok()).toBeTruthy();
 
     await expect(page.getByTestId('lineage-details')).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${serviceFqn}`)).toBeVisible();
+    await expect(page.getByTestId(`lineage-node-${schemaFqn}`)).toBeVisible();
   }
 );
 

@@ -60,6 +60,7 @@ import {
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import {
@@ -945,6 +946,7 @@ const LineageMapCanvas = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
+  const { isTourOpen, isTourPage } = useTourProvider();
   const {
     queryFilter,
     onAddPipelineClick,
@@ -1088,9 +1090,11 @@ const LineageMapCanvas = ({
   useEffect(() => {
     setShowOnboarding(
       !deleted &&
+        !isTourOpen &&
+        !isTourPage &&
         cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) !== 'true'
     );
-  }, [deleted]);
+  }, [deleted, isTourOpen, isTourPage]);
 
   const getOriginRequestTarget = useCallback(
     (currentScene?: LineageScene): LineageSceneFocus =>
