@@ -261,6 +261,42 @@ test.describe(
       ).toHaveValue(MASKED_PASSWORD);
     });
 
+    test('saving without clearing preserves the database password — regression guard', async ({
+      page,
+    }) => {
+      await navigateToEditConnection(
+        page,
+        mysqlService.entity.name,
+        SERVICE_TYPE.Database
+      );
+
+      // Change only a non-password field so the form is dirty.
+      // The password is still the masked sentinel — no patch op must be generated for it.
+      await page.locator(String.raw`#root\/hostPort`).fill('mysql:3307');
+
+      await page.getByTestId('next-button').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const patchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/databaseServices') &&
+          response.request().method() === 'PATCH'
+      );
+
+      await page.getByRole('button', { name: 'Save' }).click();
+
+      const patch = await patchResponse;
+      const patchBody = patch.request().postDataJSON() as Array<{
+        op: string;
+        path: string;
+        value?: unknown;
+      }>;
+
+      const passwordOp = patchBody.find((op) => op.path.endsWith('/password'));
+
+      expect(passwordOp).toBeUndefined();
+    });
+
     test("saving after clearing does not send replace/'' for the database password field", async ({
       page,
     }) => {
@@ -273,7 +309,7 @@ test.describe(
       await page.locator(String.raw`#root\/authType\/password`).fill('');
 
       // Change hostPort so the form is dirty and triggers a PATCH.
-      await page.locator(String.raw`#root\/hostPort`).fill('mysql:3307');
+      await page.locator(String.raw`#root\/hostPort`).fill('mysql:3308');
 
       await page.getByTestId('next-button').click();
       await waitForAllLoadersToDisappear(page);
@@ -303,41 +339,6 @@ test.describe(
       expect(badPasswordOp).toBeUndefined();
 
       await waitForAllLoadersToDisappear(page);
-    });
-
-    test('saving without clearing preserves the database password — regression guard', async ({
-      page,
-    }) => {
-      await navigateToEditConnection(
-        page,
-        mysqlService.entity.name,
-        SERVICE_TYPE.Database
-      );
-
-      // Change only a non-password field.
-      await page.locator(String.raw`#root\/hostPort`).fill('mysql:3308');
-
-      await page.getByTestId('next-button').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const patchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/services/databaseServices') &&
-          response.request().method() === 'PATCH'
-      );
-
-      await page.getByRole('button', { name: 'Save' }).click();
-
-      const patch = await patchResponse;
-      const patchBody = patch.request().postDataJSON() as Array<{
-        op: string;
-        path: string;
-        value?: unknown;
-      }>;
-
-      const passwordOp = patchBody.find((op) => op.path.endsWith('/password'));
-
-      expect(passwordOp).toBeUndefined();
     });
   }
 );
@@ -387,6 +388,44 @@ test.describe(
       ).toHaveValue(MASKED_PASSWORD);
     });
 
+    test('saving without clearing preserves the dashboard password — regression guard', async ({
+      page,
+    }) => {
+      await navigateToEditConnection(
+        page,
+        supersetService.entity.name,
+        SERVICE_TYPE.Dashboard
+      );
+
+      // Change only a non-password field so the form is dirty.
+      // The password is still the masked sentinel — no patch op must be generated for it.
+      await page
+        .locator(String.raw`#root\/hostPort`)
+        .fill('http://localhost:8089');
+
+      await page.getByTestId('next-button').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const patchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/dashboardServices') &&
+          response.request().method() === 'PATCH'
+      );
+
+      await page.getByRole('button', { name: 'Save' }).click();
+
+      const patch = await patchResponse;
+      const patchBody = patch.request().postDataJSON() as Array<{
+        op: string;
+        path: string;
+        value?: unknown;
+      }>;
+
+      const passwordOp = patchBody.find((op) => op.path.endsWith('/password'));
+
+      expect(passwordOp).toBeUndefined();
+    });
+
     test("saving after clearing does not send replace/'' for the dashboard password field", async ({
       page,
     }) => {
@@ -401,7 +440,7 @@ test.describe(
       // Change hostPort so the form is dirty and triggers a PATCH.
       await page
         .locator(String.raw`#root\/hostPort`)
-        .fill('http://localhost:8089');
+        .fill('http://localhost:8090');
 
       await page.getByTestId('next-button').click();
       await waitForAllLoadersToDisappear(page);
@@ -431,42 +470,6 @@ test.describe(
       expect(badPasswordOp).toBeUndefined();
 
       await waitForAllLoadersToDisappear(page);
-    });
-
-    test('saving without clearing preserves the dashboard password — regression guard', async ({
-      page,
-    }) => {
-      await navigateToEditConnection(
-        page,
-        supersetService.entity.name,
-        SERVICE_TYPE.Dashboard
-      );
-
-      await page
-        .locator(String.raw`#root\/hostPort`)
-        .fill('http://localhost:8090');
-
-      await page.getByTestId('next-button').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const patchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/services/dashboardServices') &&
-          response.request().method() === 'PATCH'
-      );
-
-      await page.getByRole('button', { name: 'Save' }).click();
-
-      const patch = await patchResponse;
-      const patchBody = patch.request().postDataJSON() as Array<{
-        op: string;
-        path: string;
-        value?: unknown;
-      }>;
-
-      const passwordOp = patchBody.find((op) => op.path.endsWith('/password'));
-
-      expect(passwordOp).toBeUndefined();
     });
   }
 );
