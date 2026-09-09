@@ -65,3 +65,54 @@ export const waitForEntitySearchable = async (
     await afterAction();
   }
 };
+
+/**
+ * Wait until Elasticsearch reflects a domain's asset count via the same
+ * `/api/v1/domains/assets/counts` aggregation the Domains landing-page widget
+ * and the domain detail assets tab read.
+ *
+ * Asset add/remove mutations return before the search index is refreshed, and
+ * every UI surface that shows the count fetches it exactly once per page load
+ * with no background refetch — so a `page.reload()`/navigation issued too soon
+ * snapshots the stale count and the subsequent DOM poll can never recover.
+ * Gating on this API poll guarantees the index has propagated before any UI
+ * read, making the count assertions deterministic.
+ */
+export const waitForDomainAssetCount = async (
+  page: Page,
+  domainFqn: string,
+  expectedCount: number
+) => {
+  const browser = page.context().browser();
+  if (!browser) {
+    throw new Error('Browser instance is not available for admin API search');
+  }
+
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/domains/assets/counts'
+          );
+
+          if (!response.ok()) {
+            return null;
+          }
+
+          const payload = (await response.json()) as Record<string, number>;
+
+          return payload[domainFqn] ?? null;
+        },
+        {
+          intervals: [1_000, 2_000, 5_000],
+          timeout: 60_000,
+        }
+      )
+      .toBe(expectedCount);
+  } finally {
+    await afterAction();
+  }
+};

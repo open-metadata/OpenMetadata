@@ -51,9 +51,9 @@ public final class OpenMetadataBaseUrlValidator {
         setting != null
             && setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
     if (isBaseUrlSetting) {
-      validateUrl(
-          JsonUtils.convertValue(setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class)
-              .getOpenMetadataUrl());
+      OpenMetadataBaseUrlConfiguration config =
+          JsonUtils.convertValue(setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+      validateUrl(config == null ? null : config.getOpenMetadataUrl());
     }
   }
 
