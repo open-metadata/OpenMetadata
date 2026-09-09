@@ -293,6 +293,8 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       throws SearchIndexException {
     Semaphore concurrencyLimit = new Semaphore(budget);
     ConcurrentLinkedQueue<TaggedOperation<?>> opsQueue = new ConcurrentLinkedQueue<>();
+    int sinkFailuresBefore = searchIndexSink.getStats().getFailedRecords();
+    String terminalFailure = null;
 
     try (ExecutorService sourceExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
       this.executor = sourceExecutor;
@@ -307,9 +309,6 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
             if (!batch.getErrors().isEmpty()) {
               int readErrorCount = batch.getErrors().size();
               source.updateStats(0, readErrorCount);
-              workflowStats.addFailure(
-                  "Failed to read %d Data Insights source entities from %s"
-                      .formatted(readErrorCount, source.getName()));
             }
             if (keysetCursor == null) {
               break;
@@ -362,10 +361,6 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
 
           batchFailed += batch.getErrors().size();
           source.updateStats(batchSuccess, batchFailed);
-          if (batchFailed > 0) {
-            workflowStats.addFailure(
-                "Failed to snapshot %d entities from %s".formatted(batchFailed, source.getName()));
-          }
 
           if (keysetCursor == null) {
             break;
@@ -373,14 +368,12 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage =
-              String.format("Failed processing Data from %s: %s", source.getName(), ex);
-          workflowStats.addFailure(errorMessage);
+          terminalFailure = "search indexing error: " + ex.getMessage();
           break;
         } catch (InterruptedException ex) {
           Thread.currentThread().interrupt();
           stopped = true;
-          workflowStats.addFailure("Data Insights asset scan was interrupted");
+          terminalFailure = "asset scan was interrupted";
           break;
         }
       }
@@ -391,9 +384,24 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     try {
       drainAndFlush(opsQueue);
     } finally {
+      recordSourceFailure(source, sinkFailuresBefore, terminalFailure);
       updateWorkflowStats(source.getName(), source.getStats());
       mergeEnricherStepStats();
     }
+  }
+
+  private void recordSourceFailure(
+      PaginatedEntitiesSource source, int sinkFailuresBefore, String terminalFailure) {
+    int sourceFailures = source.getStats().getFailedRecords();
+    int searchRejections =
+        Math.max(0, searchIndexSink.getStats().getFailedRecords() - sinkFailuresBefore);
+    if (sourceFailures == 0 && searchRejections == 0 && terminalFailure == null) {
+      return;
+    }
+    String detail = terminalFailure == null ? "" : "; " + terminalFailure;
+    workflowStats.addFailure(
+        "Data Insights source %s failed (%d source/process errors, %d search rejections%s)"
+            .formatted(source.getName(), sourceFailures, searchRejections, detail));
   }
 
   /**
@@ -421,11 +429,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       batch.add(tagged);
     }
     if (!batch.isEmpty()) {
-      int failedBefore = searchIndexSink.getStats().getFailedRecords();
       searchIndexSink.write(batch);
-      if (searchIndexSink.getStats().getFailedRecords() > failedBefore) {
-        workflowStats.addFailure("Search rejected Data Insights snapshot documents");
-      }
     }
   }
 
