@@ -30,7 +30,7 @@ import { clickAndWaitFor } from '../../../utils/waitHelpers';
  */
 const SEEDED_WORKFLOW_NAME = 'RecognizerFeedbackReviewWorkflow';
 
-const WORKFLOW_LIST_API = '/api/v1/governance/workflowDefinitions';
+const WORKFLOW_LIST_API = /\/api\/v1\/governance\/workflowDefinitions/;
 
 const SCHEMA_BASED_NODE_DISPLAY_NAMES = [
   'Review Recognizer Feedback',
