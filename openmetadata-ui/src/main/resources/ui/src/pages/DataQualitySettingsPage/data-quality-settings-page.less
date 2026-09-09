@@ -12,6 +12,9 @@
  */
 
 @import (reference) '../../styles/variables.less';
+// The card and collapse chrome is shared with Settings > Preferences > Profiler Configuration,
+// applied through the `settings-page-container` / `settings-page-collapse` class names.
+@import '../../styles/settings-page-section.less';
 
 .data-quality-settings-page {
   .dimension-technical-name {
@@ -43,18 +46,26 @@
   }
 }
 
-.dimension-drawer-footer {
-  width: 100%;
-  justify-content: flex-end;
-}
+.dimension-form-drawer {
+  .dimension-side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: @padding-md;
+    border: 1px solid @border-color;
+    border-radius: @border-rad-sm;
+    background-color: @grey-50;
+  }
 
-.dimension-preview {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid @border-color;
-  border-radius: 8px;
+  .dimension-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid @border-color;
+    border-radius: 8px;
+    background-color: @white;
+  }
 }
 
 .dimension-delete-warning {

@@ -3520,7 +3520,7 @@
     "delete-action-description": "Удаление объекта типа «{{entityType}}» навсегда удалит его метаданные из {{brandName}}.",
     "delete-asset-from-entity-type": "Удалив это, вы удалите атрибут «{{entityType}}» из объекта.",
     "delete-data-asset-rule-confirmation": "Вы уверены, что хотите удалить правило объекта данных '{{name}}'?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "Вы уверены, что хотите удалить {{entity}}? Это действие нельзя отменить.",
     "delete-entity-permanently": "Как только вы удалите объект «{{entityType}}», он будет удален навсегда.",
     "delete-entity-type-action-description": "Удаление объекта «{{entityType}}» навсегда удалит его метаданные из {{brandName}}.",

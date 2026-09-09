@@ -47,8 +47,8 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
-import { DataQualityDimension } from '../../../../generated/tests/dataQualityDimension';
 import { Table } from '../../../../generated/entity/data/table';
+import { DataQualityDimension } from '../../../../generated/tests/dataQualityDimension';
 import {
   EntityType,
   TestDefinition,
@@ -1456,7 +1456,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         t={t}
         testTypeField={testTypeField}
       />
-
 
       {!showOnlyParameter && (
         <TestDetailsCard

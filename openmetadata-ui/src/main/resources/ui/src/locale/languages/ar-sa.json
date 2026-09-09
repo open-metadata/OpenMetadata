@@ -3520,7 +3520,7 @@
     "delete-action-description": "سيؤدي حذف {{entityType}} هذا إلى حذف بياناته الوصفية بشكل دائم.",
     "delete-asset-from-entity-type": "سيؤدي حذف هذا إلى إزالة {{entityType}} من الكيان.",
     "delete-data-asset-rule-confirmation": "هل أنت متأكد أنك تريد حذف قاعدة أصل البيانات '{{name}}'؟",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "هل أنت متأكد أنك تريد حذف {{entity}}؟ لا يمكن التراجع عن هذا الإجراء.",
     "delete-entity-permanently": "بمجرد حذف {{entityType}} هذا، ستتم إزالته بشكل دائم.",
     "delete-entity-type-action-description": "سيؤدي حذف {{entityType}} هذا إلى حذف بياناته الوصفية بشكل دائم.",

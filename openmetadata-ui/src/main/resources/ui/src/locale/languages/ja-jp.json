@@ -3520,7 +3520,7 @@
     "delete-action-description": "この {{entityType}} を削除すると、そのメタデータは完全に削除されます。",
     "delete-asset-from-entity-type": "これを削除すると、{{entityType}} から削除されます。",
     "delete-data-asset-rule-confirmation": "データアセットルールを削除してもよろしいですか？ '{{name}}'?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "{{entity}}を削除してもよろしいですか？この操作は元に戻すことができません。",
     "delete-entity-permanently": "この {{entityType}} は削除すると完全に取り除かれます。",
     "delete-entity-type-action-description": "この {{entityType}} を削除すると、そのメタデータは永久に削除されます。",

@@ -3520,7 +3520,7 @@
     "delete-action-description": "删除此{{entityType}}将永久删除其元数据",
     "delete-asset-from-entity-type": "删除此选项将删除实体中的{{entityType}}",
     "delete-data-asset-rule-confirmation": "您确定要删除数据资产规则'{{name}}'吗？",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "您确定要删除{{entity}}吗？此操作不可撤销。",
     "delete-entity-permanently": "一旦您删除此{{entityType}}, 它将被永久删除",
     "delete-entity-type-action-description": "删除此{{entityType}}将永久删除其元数据",

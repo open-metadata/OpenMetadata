@@ -3520,7 +3520,7 @@
     "delete-action-description": "حذف این {{entityType}} به طور دائمی متادیتای آن را از {{brandName}} حذف خواهد کرد.",
     "delete-asset-from-entity-type": "حذف این {{entityType}} از موجودیت.",
     "delete-data-asset-rule-confirmation": "آیا مطمئن هستید که می‌خواهید قانون دارایی داده '{{name}}' را حذف کنید؟",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "آیا مطمئن هستید که می‌خواهید {{entity}} را حذف کنید؟ این عمل قابل برگشت نیست.",
     "delete-entity-permanently": "با حذف این {{entityType}}، به طور دائمی حذف خواهد شد.",
     "delete-entity-type-action-description": "حذف این {{entityType}} به طور دائمی متادیتای آن را از {{brandName}} حذف خواهد کرد.",

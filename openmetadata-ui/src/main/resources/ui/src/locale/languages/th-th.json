@@ -3520,7 +3520,7 @@
     "delete-action-description": "การลบ {{entityType}} นี้จะเป็นการลบเมตาดาต้าอย่างถาวร",
     "delete-asset-from-entity-type": "การลบนี้จะทำให้ {{entityType}} ถูกลบจากเอนทิตี",
     "delete-data-asset-rule-confirmation": "คุณแน่ใจหรือไม่ว่าต้องการลบกฎทรัพย์สินข้อมูล '{{name}}'?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "คุณแน่ใจว่าต้องการลบ {{entity}} หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้",
     "delete-entity-permanently": "เมื่อคุณลบ {{entityType}} นี้ มันจะถูกลบออกอย่างถาวร",
     "delete-entity-type-action-description": "การลบ {{entityType}} นี้จะเป็นการลบเมตาดาต้าอย่างถาวร",

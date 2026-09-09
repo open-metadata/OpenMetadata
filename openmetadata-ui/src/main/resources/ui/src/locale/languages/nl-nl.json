@@ -3520,7 +3520,7 @@
     "delete-action-description": "Het verwijderen van deze {{entityType}} verwijdert de metadata permanent.",
     "delete-asset-from-entity-type": "Het verwijderen hiervan zal {{entityType}} uit de entiteit verwijderen.",
     "delete-data-asset-rule-confirmation": "Weet u zeker dat u de data-assetregel '{{name}}' wilt verwijderen?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "Weet je zeker dat je {{entity}} wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     "delete-entity-permanently": "Zodra je deze {{entityType}} verwijdert, wordt het permanent verwijderd.",
     "delete-entity-type-action-description": "Het verwijderen van deze {{entityType}} verwijdert de metadata permanent.",

@@ -175,7 +175,9 @@ const ProfilerConfigurationPage = () => {
         id="profiler-config"
         layout="vertical"
         onFinish={handleSubmit}>
-        <Row className="profiler-configuration-page-container" gutter={[0, 24]}>
+        <Row
+          className="settings-page-container profiler-configuration-page-container"
+          gutter={[0, 24]}>
           <Col span={24}>
             <PageHeader
               data={{
@@ -190,7 +192,7 @@ const ProfilerConfigurationPage = () => {
           </Col>
           <Col span={24}>
             <Collapse
-              className="profiler-configuration-collapse"
+              className="settings-page-collapse profiler-configuration-collapse"
               defaultActiveKey={['profileConfig']}
               expandIconPosition="right">
               <Collapse.Panel
@@ -317,7 +319,7 @@ const ProfilerConfigurationPage = () => {
 
           <Col span={24}>
             <Collapse
-              className="profiler-configuration-collapse"
+              className="settings-page-collapse profiler-configuration-collapse"
               defaultActiveKey={['sampleDataConfig']}
               expandIconPosition="right">
               <Collapse.Panel

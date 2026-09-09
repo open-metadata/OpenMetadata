@@ -3520,7 +3520,7 @@
     "delete-action-description": "이 {{entityType}}을(를) 삭제하면 {{brandName}}에서 해당 메타데이터가 영구적으로 제거됩니다.",
     "delete-asset-from-entity-type": "이것을 삭제하면 엔티티에서 {{entityType}}이(가) 제거됩니다.",
     "delete-data-asset-rule-confirmation": "데이터 자산 규칙 '{{name}}'을(를) 삭제하시겠습니까?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "{{entity}}를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
     "delete-entity-permanently": "이 {{entityType}}을(를) 삭제하면 영구적으로 제거됩니다.",
     "delete-entity-type-action-description": "이 {{entityType}}을(를) 삭제하면 {{brandName}}에서 해당 메타데이터가 영구적으로 제거됩니다.",

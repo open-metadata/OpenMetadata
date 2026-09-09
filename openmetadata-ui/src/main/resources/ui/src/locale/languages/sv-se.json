@@ -3520,7 +3520,7 @@
     "delete-action-description": "Om du tar bort denna {{entityType}} raderas dess metadata permanent.",
     "delete-asset-from-entity-type": "Om du tar bort detta avlägsnas {{entityType}} från entiteten.",
     "delete-data-asset-rule-confirmation": "Är du säker på att du vill ta bort datatillgångsregeln '{{name}}'?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "Är du säker på att du vill ta bort {{entity}}? Den här åtgärden kan inte ångras.",
     "delete-entity-permanently": "När du tar bort denna {{entityType}} avlägsnas den permanent.",
     "delete-entity-type-action-description": "Om du tar bort denna {{entityType}} raderas dess metadata permanent.",

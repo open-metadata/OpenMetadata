@@ -3520,7 +3520,7 @@
     "delete-action-description": "מחיקת {{entityType}} זה תמחק לצמיתות את הנתונים המטא שלו.",
     "delete-asset-from-entity-type": "מחיקה זו תסיר {{entityType}} מהישות.",
     "delete-data-asset-rule-confirmation": "האם אתה בטוח שברצונך למחוק את כלל נכס הנתונים '{{name}}'?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "האם אתה בטוח שברצונך למחוק את {{entity}}? פעולה זו לא ניתנת לביטול.",
     "delete-entity-permanently": "לאחר מחיקת {{entityType}} זו, זו תוסר לצמיתות",
     "delete-entity-type-action-description": "מחיקת {{entityType}} זה תמחק לצמיתות את הנתונים המטא שלו.",

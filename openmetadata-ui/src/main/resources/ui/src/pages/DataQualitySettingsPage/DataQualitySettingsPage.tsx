@@ -14,7 +14,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
-  Drawer,
+  Collapse,
   Form,
   Input,
   Modal,
@@ -29,14 +29,17 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { DataQualityDimension } from '../../generated/tests/dataQualityDimension';
-import { ProviderType } from '../../generated/tests/testDefinition';
+import {
+  DataQualityDimension,
+  ProviderType,
+} from '../../generated/tests/dataQualityDimension';
 import {
   createDataQualityDimension,
   deleteDataQualityDimension,
@@ -71,7 +74,12 @@ const DataQualitySettingsPage = () => {
   // `undefined` closes the drawer, `null` opens it in create mode.
   const [editing, setEditing] = useState<DataQualityDimension | null>();
   const [deleting, setDeleting] = useState<DataQualityDimension>();
-  const [selectedColor, setSelectedColor] = useState(DEFAULT_COLOR);
+
+  // The colour lives in the form rather than in component state so that the preview below
+  // re-renders on every keystroke, not only when a swatch is clicked.
+  const watchedName = Form.useWatch('name', form);
+  const watchedDisplayName = Form.useWatch('displayName', form);
+  const watchedColor = Form.useWatch('color', form) ?? DEFAULT_COLOR;
 
   const breadcrumbs = useMemo(
     () =>
@@ -116,25 +124,17 @@ const DataQualitySettingsPage = () => {
     );
   }, [dimensions, searchTerm]);
 
-  const openDrawer = useCallback(
-    (dimension: DataQualityDimension | null) => {
-      const color = dimension?.style?.color ?? DEFAULT_COLOR;
-      setEditing(dimension);
-      setSelectedColor(color);
-      form.setFieldsValue({
-        name: dimension?.name ?? '',
-        displayName: dimension?.displayName ?? '',
-        description: dimension?.description ?? '',
-        color,
-      });
-    },
-    [form]
+  // Remounting the form on every open (see the `key` below) is what makes these apply, so the
+  // drawer never shows the previously edited dimension.
+  const initialValues: DimensionFormValues = useMemo(
+    () => ({
+      name: editing?.name ?? '',
+      displayName: editing?.displayName ?? '',
+      description: editing?.description ?? '',
+      color: editing?.style?.color ?? DEFAULT_COLOR,
+    }),
+    [editing]
   );
-
-  const closeDrawer = useCallback(() => {
-    setEditing(undefined);
-    form.resetFields();
-  }, [form]);
 
   const handleSave = useCallback(
     async (values: DimensionFormValues) => {
@@ -145,7 +145,7 @@ const DataQualitySettingsPage = () => {
             ...editing,
             displayName: values.displayName || undefined,
             description: values.description || undefined,
-            style: { ...editing.style, color: selectedColor },
+            style: { ...editing.style, color: values.color },
           };
           await patchDataQualityDimension(
             editing.id ?? '',
@@ -156,7 +156,7 @@ const DataQualitySettingsPage = () => {
             name: values.name,
             displayName: values.displayName || undefined,
             description: values.description || undefined,
-            style: { color: selectedColor },
+            style: { color: values.color },
           });
         }
         showSuccessToast(
@@ -167,7 +167,7 @@ const DataQualitySettingsPage = () => {
             { entity: t('label.dimension') }
           )
         );
-        closeDrawer();
+        setEditing(undefined);
         await fetchDimensions();
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -175,7 +175,7 @@ const DataQualitySettingsPage = () => {
         setIsSaving(false);
       }
     },
-    [editing, selectedColor, closeDrawer, fetchDimensions, t]
+    [editing, fetchDimensions, t]
   );
 
   const handleDelete = useCallback(async () => {
@@ -257,7 +257,7 @@ const DataQualitySettingsPage = () => {
               <Button
                 data-testid={`edit-${record.name}`}
                 type="link"
-                onClick={() => openDrawer(record)}>
+                onClick={() => setEditing(record)}>
                 {t('label.edit')}
               </Button>
               <Button
@@ -271,108 +271,21 @@ const DataQualitySettingsPage = () => {
           ),
       },
     ],
-    [t, testCaseCounts, openDrawer]
+    [t, testCaseCounts]
   );
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  const deletingCount = testCaseCounts[deleting?.id ?? ''] ?? 0;
-
-  return (
-    <PageLayoutV1 pageTitle={t('label.data-quality')}>
-      <div className="m-b-mlg">
-        <TitleBreadcrumb titleLinks={breadcrumbs} />
-      </div>
-      <Row className="data-quality-settings-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <PageHeader
-            data={{
-              header: t('label.data-quality'),
-              subHeader: t('message.page-sub-header-for-data-quality-settings'),
-            }}
-          />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" gutter={[16, 16]} justify="space-between">
-            <Col>
-              <PageHeader
-                data={{
-                  header: `${t('label.dimension-plural')} (${
-                    dimensions.length
-                  })`,
-                  subHeader: t('message.data-quality-dimensions-description'),
-                }}
-              />
-            </Col>
-            <Col>
-              <Space size={12}>
-                <Input.Search
-                  allowClear
-                  data-testid="search-dimensions"
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.dimension-plural'),
-                  })}
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-                <Button
-                  data-testid="add-dimension"
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={() => openDrawer(null)}>
-                  {t('label.add-entity', { entity: t('label.dimension') })}
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={24}>
-          <Table
-            bordered
-            columns={columns}
-            data-testid="dimensions-table"
-            dataSource={filteredDimensions}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        </Col>
-        <Col span={24}>
-          <Typography.Text type="secondary">
-            {t('message.system-dimensions-are-read-only')}
-          </Typography.Text>
-        </Col>
-      </Row>
-
-      <Drawer
-        destroyOnClose
-        data-testid="dimension-drawer"
-        footer={
-          <Space className="dimension-drawer-footer">
-            <Button onClick={closeDrawer}>{t('label.cancel')}</Button>
-            <Button
-              data-testid="save-dimension"
-              loading={isSaving}
-              type="primary"
-              onClick={form.submit}>
-              {t('label.save')}
-            </Button>
-          </Space>
-        }
-        open={editing !== undefined}
-        title={
-          editing
-            ? t('label.edit-entity', { entity: t('label.dimension') })
-            : t('label.create-entity', { entity: t('label.dimension') })
-        }
-        width={480}
-        onClose={closeDrawer}>
-        <Form<DimensionFormValues>
-          form={form}
-          layout="vertical"
-          onFinish={handleSave}>
+  // `key` remounts the form on every open so the fields (and the preview) start from the
+  // dimension being edited instead of whatever was in the form last time.
+  const dimensionForm = (
+    <Form<DimensionFormValues>
+      className="new-form-style"
+      form={form}
+      initialValues={initialValues}
+      key={editing?.id ?? 'new-dimension'}
+      layout="vertical"
+      onFinish={handleSave}>
+      <Row className="dimension-form" gutter={[24, 0]}>
+        <Col span={15}>
           <Form.Item
             extra={
               editing
@@ -408,42 +321,181 @@ const DataQualitySettingsPage = () => {
               rows={4}
             />
           </Form.Item>
+          {/* The colour is held by the form itself — the swatches below write to it — so that
+              the preview re-renders from a watcher instead of from local state. */}
+          <Form.Item hidden name="color">
+            <Input />
+          </Form.Item>
           <Form.Item label={t('label.color')}>
             <Space size={8} wrap>
               {DIMENSION_COLOR_PALETTE.map((color) => (
                 <button
                   aria-label={color}
-                  aria-pressed={selectedColor === color}
+                  aria-pressed={watchedColor === color}
                   className={`dimension-color-swatch${
-                    selectedColor === color ? ' selected' : ''
+                    watchedColor === color ? ' selected' : ''
                   }`}
                   data-testid={`color-${color}`}
                   key={color}
                   style={{ backgroundColor: color }}
                   type="button"
-                  onClick={() => setSelectedColor(color)}
+                  onClick={() => form.setFieldValue('color', color)}
                 />
               ))}
             </Space>
           </Form.Item>
-          <div className="dimension-preview">
+        </Col>
+        <Col span={9}>
+          <div className="dimension-side-panel">
             <Typography.Text type="secondary">
               {t('label.preview')}
             </Typography.Text>
-            <Space size={8}>
+            <div className="dimension-preview">
               <span
                 className="dimension-color-dot"
-                style={{ backgroundColor: selectedColor }}
+                style={{ backgroundColor: watchedColor }}
               />
               <Typography.Text strong>
-                {form.getFieldValue('displayName') ||
-                  form.getFieldValue('name') ||
-                  t('label.dimension')}
+                {watchedDisplayName || watchedName || t('label.dimension')}
               </Typography.Text>
-            </Space>
+            </div>
+            <Typography.Paragraph className="m-b-0" type="secondary">
+              {t('message.data-quality-dimensions-description')}
+            </Typography.Paragraph>
           </div>
-        </Form>
-      </Drawer>
+        </Col>
+      </Row>
+    </Form>
+  );
+
+  // Every dismissal path — cancel, the header X, Escape and the backdrop — ends up in the base
+  // drawer's onClose, so clearing `editing` there keeps the state below in step with the drawer
+  // and stops the effect from immediately reopening it.
+  const handleDrawerClose = useCallback(() => {
+    setEditing(undefined);
+    // Reopening in create mode reuses the same form key, so clear it here rather than relying
+    // on a remount.
+    form.resetFields();
+  }, [form]);
+
+  const { formDrawer, openDrawer, closeDrawer, isOpen } =
+    useFormDrawerWithRef<DimensionFormValues>({
+      className: 'dimension-form-drawer',
+      testId: 'dimension-drawer',
+      title: editing
+        ? t('label.edit-entity', { entity: t('label.dimension') })
+        : t('label.create-entity', { entity: t('label.dimension') }),
+      // Same three-quarter panel the create test case drawer uses.
+      width: '75%',
+      form: dimensionForm,
+      formRef: form,
+      submitLabel: editing ? t('label.save') : t('label.create'),
+      submitTestId: 'save-dimension',
+      submitLoading: isSaving,
+      onClose: handleDrawerClose,
+      onSubmit: () => form.submit(),
+    });
+
+  useEffect(() => {
+    if (editing !== undefined) {
+      openDrawer();
+    } else if (isOpen) {
+      closeDrawer();
+    }
+  }, [editing, isOpen, openDrawer, closeDrawer]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  const deletingCount = testCaseCounts[deleting?.id ?? ''] ?? 0;
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.data-quality')}>
+      <div className="m-b-mlg">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+      </div>
+      <Row
+        className="settings-page-container data-quality-settings-page"
+        gutter={[0, 24]}>
+        <Col span={24}>
+          <PageHeader
+            data={{
+              header: t('label.data-quality'),
+              subHeader: t('message.page-sub-header-for-data-quality-settings'),
+            }}
+            title={t('label.data-quality')}
+          />
+        </Col>
+        <Col span={24}>
+          <Collapse
+            className="settings-page-collapse"
+            defaultActiveKey={['dimensions']}
+            expandIconPosition="right">
+            <Collapse.Panel
+              header={
+                <PageHeader
+                  data={{
+                    header: `${t('label.dimension-plural')} (${
+                      dimensions.length
+                    })`,
+                    subHeader: t('message.data-quality-dimensions-description'),
+                  }}
+                />
+              }
+              key="dimensions">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <Row align="middle" gutter={[16, 16]} justify="end">
+                    <Col>
+                      <Space size={12}>
+                        <Input.Search
+                          allowClear
+                          data-testid="search-dimensions"
+                          placeholder={t('label.search-entity', {
+                            entity: t('label.dimension-plural'),
+                          })}
+                          value={searchTerm}
+                          onChange={(event) =>
+                            setSearchTerm(event.target.value)
+                          }
+                        />
+                        <Button
+                          data-testid="add-dimension"
+                          icon={<PlusOutlined />}
+                          type="primary"
+                          onClick={() => setEditing(null)}>
+                          {t('label.add-entity', {
+                            entity: t('label.dimension'),
+                          })}
+                        </Button>
+                      </Space>
+                    </Col>
+                  </Row>
+                </Col>
+                <Col span={24}>
+                  <Table
+                    bordered
+                    columns={columns}
+                    data-testid="dimensions-table"
+                    dataSource={filteredDimensions}
+                    pagination={false}
+                    rowKey="id"
+                    size="small"
+                  />
+                </Col>
+                <Col span={24}>
+                  <Typography.Text type="secondary">
+                    {t('message.system-dimensions-are-read-only')}
+                  </Typography.Text>
+                </Col>
+              </Row>
+            </Collapse.Panel>
+          </Collapse>
+        </Col>
+      </Row>
+
+      {formDrawer}
 
       <Modal
         cancelText={t('label.cancel')}

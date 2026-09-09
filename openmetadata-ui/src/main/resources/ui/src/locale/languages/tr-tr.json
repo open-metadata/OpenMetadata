@@ -3520,7 +3520,7 @@
     "delete-action-description": "Bu {{entityType}} silinmesi, metadatasını kalıcı olarak silecektir.",
     "delete-asset-from-entity-type": "Bunun silinmesi, {{entityType}} öğesini varlıktan kaldıracaktır.",
     "delete-data-asset-rule-confirmation": "'{{name}}' veri varlık kuralını silmek istediğinizden emin misiniz?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "{{entity}} öğesini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     "delete-entity-permanently": "Bu {{entityType}} sildikten sonra kalıcı olarak kaldırılacaktır.",
     "delete-entity-type-action-description": "Bu {{entityType}} silinmesi, metadatasını kalıcı olarak silecektir.",

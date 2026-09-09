@@ -277,8 +277,27 @@ WHERE serviceType = 'Oracle'
 -- cases point at them by relationship so that a dimension can be renamed, recoloured or added
 -- without touching the tests that use it. System dimensions are seeded from
 -- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, every insert failed with "null value in column
+-- id", so such a table is necessarily empty and can be dropped and recreated with the correct
+-- shape below.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'data_quality_dimension'
+          AND column_name = 'id'
+          AND is_generated = 'NEVER'
+    ) THEN
+        DROP TABLE data_quality_dimension;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS data_quality_dimension (
-    id character varying(36) NOT NULL,
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
     json jsonb NOT NULL,
     fqnHash character varying(768) NOT NULL,
     name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,

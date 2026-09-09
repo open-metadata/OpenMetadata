@@ -265,8 +265,32 @@ WHERE serviceType = 'Oracle'
 -- cases point at them by relationship so that a dimension can be renamed, recoloured or added
 -- without touching the tests that use it. System dimensions are seeded from
 -- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, MySQL rejected every insert with "Field 'id'
+-- doesn't have a default value", so such a table is necessarily empty and can be dropped and
+-- recreated with the correct shape below.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'data_quality_dimension'
+        AND column_name = 'id'
+        AND extra NOT LIKE '%GENERATED%'
+    ),
+    'DROP TABLE data_quality_dimension',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 CREATE TABLE IF NOT EXISTS data_quality_dimension (
-    id varchar(36) NOT NULL,
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
     json json NOT NULL,
     fqnHash varchar(768) NOT NULL,
     name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.name'))) STORED NOT NULL,

@@ -3520,7 +3520,7 @@
     "delete-action-description": "हे {{entityType}} हटवल्यास त्याची मेटाडेटा कायमचे हटवले जाईल.",
     "delete-asset-from-entity-type": "हे हटविल्याने घटकातून {{entityType}} काढले जाईल.",
     "delete-data-asset-rule-confirmation": "आपण निश्चितच डेटा अॅसेट नियम '{{name}}' हटवू इच्छिता?",
-    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test definitions or test cases.",
+    "delete-dimension-confirmation": "This custom dimension will be removed from the workspace and can no longer be selected on test cases.",
     "delete-entity-message": "तुम्हाला खात्री आहे की तुम्हाला {{entity}} हटवायला आहे? ही क्रिया पूर्ववत करता येणार नाही.",
     "delete-entity-permanently": "एकदा तुम्ही हे {{entityType}} हटविल्यानंतर, ते कायमचे काढले जाईल.",
     "delete-entity-type-action-description": "हे {{entityType}} हटवल्यास त्याची मेटाडेटा कायमचे हटवले जाईल.",
