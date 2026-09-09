@@ -20,11 +20,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({
     children,
     onClick,
+    'data-testid': dataTestId,
   }: {
     children: ReactNode;
     onClick?: () => void;
+    'data-testid'?: string;
   }) => (
-    <div data-testid="name-cell" role="presentation" onClick={onClick}>
+    <div data-testid={dataTestId} role="presentation" onClick={onClick}>
       {children}
     </div>
   ),

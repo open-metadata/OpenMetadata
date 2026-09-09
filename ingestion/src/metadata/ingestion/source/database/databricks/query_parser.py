@@ -13,7 +13,6 @@ Databricks Query parser module
 """
 
 from abc import ABC
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
@@ -37,7 +36,7 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksConnection = config.serviceConnection.root.config

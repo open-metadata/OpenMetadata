@@ -289,8 +289,12 @@ logging:
       # logs/audit.log. Pin the level so audit capture does not depend on the global LOG_LEVEL.
       level: INFO
   appenders:
+    # Containers keep this on — stdout is how `docker logs` / `kubectl logs` see the server.
+    # `bin/openmetadata.sh start` exports CONSOLE_LOG_LEVEL=OFF instead, because it redirects
+    # stdout into logs/catalog.log, which has no rotation: leaving the console on there duplicates
+    # every rotated logs/openmetadata.log line into a file that grows for the life of the install.
     - type: console
-      threshold: TRACE
+      threshold: ${CONSOLE_LOG_LEVEL:-TRACE}
       timeZone: UTC
       layout:
         type: om-event-layout
@@ -608,6 +612,12 @@ elasticsearch:
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  # Context Center memory extraction (files + articles -> knowledge pills). Independent of
+  # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
+  # with extraction off. Unmetered here, so opt-in.
+  memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
+  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}

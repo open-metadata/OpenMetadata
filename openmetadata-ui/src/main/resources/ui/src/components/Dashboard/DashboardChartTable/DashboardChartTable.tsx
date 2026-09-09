@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets } from '@openmetadata/ui-core-components/icons';
 import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -26,7 +28,6 @@ import {
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import type { TagLabel } from '../../../generated/entity/data/chart';
 import { TagSource } from '../../../generated/entity/data/chart';
@@ -45,9 +46,8 @@ import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -81,6 +81,7 @@ export const DashboardChartTable = ({
   >([]);
 
   const [charts, setCharts] = useState<ChartType[]>([]);
+  const [isChartsLoading, setIsChartsLoading] = useState<boolean>(true);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -136,6 +137,7 @@ export const DashboardChartTable = ({
 
   const initializeCharts = useCallback(async () => {
     try {
+      setIsChartsLoading(true);
       const res = await fetchCharts(
         listChartIds,
         chartFilters.showDeletedCharts
@@ -148,6 +150,8 @@ export const DashboardChartTable = ({
           entity: t('label.chart-plural'),
         })
       );
+    } finally {
+      setIsChartsLoading(false);
     }
   }, [listChartIds, chartFilters.showDeletedCharts]);
 
@@ -453,12 +457,20 @@ export const DashboardChartTable = ({
             </Typography.Text>
           </span>
         }
+        loading={isChartsLoading}
         locale={{
           emptyText: (
-            <ErrorPlaceHolder
-              className="border-none mt-0-important"
-              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-            />
+            <div
+              className="tw:relative tw:min-h-70"
+              data-testid="no-data-placeholder">
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.chart-plural'),
+                })}
+                variant="blank"
+              />
+            </div>
           ),
         }}
         pagination={false}

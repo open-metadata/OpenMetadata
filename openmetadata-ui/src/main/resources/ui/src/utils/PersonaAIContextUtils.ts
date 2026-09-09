@@ -54,6 +54,7 @@ export const normalizePersonaContextDefinition = (
       ...cloneDeep(rule),
       alwaysInContext: rule.alwaysInContext ?? false,
       enabled: rule.enabled ?? true,
+      filteredInSearch: rule.filteredInSearch ?? false,
       fullyRendered: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
         rule.entityType as EntityType
       )
@@ -226,6 +227,24 @@ export const getRuleConditionParts = (
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
 
+/**
+ * The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch. The flag alone is not
+ * enough: the backend ignores it on knowledge entity types, because a knowledge rule exists to be in
+ * context and scoping it would drop its content from the document. Reading `rule.filteredInSearch`
+ * directly anywhere in the UI will claim a rule scopes search when the server preloads it — which is
+ * reachable, since the API accepts an explicit `true` on a knowledge rule and rules created before
+ * the server-side guard were stamped regardless of type.
+ */
+export const isSearchScopedRule = (rule: ContextRule): boolean =>
+  Boolean(rule.filteredInSearch) && !isKnowledgeContextRule(rule);
+
+// Adds the enabled check on top: searchScope() skips disabled rules, so counting them would
+// overstate how much of the persona's search is actually narrowed. Deliberately not part of
+// isSearchScopedRule — a disabled rule still *is* in scoping mode, which is what the card displays.
+export const getScopedRuleCount = (rules: ContextRule[]): number =>
+  rules.filter((rule) => isSearchScopedRule(rule) && rule.enabled !== false)
+    .length;
+
 export interface PersonaContextVersionChange {
   key: string;
   values?: Record<string, string | number>;
@@ -321,45 +340,70 @@ const diffContextRules = (
   return changes;
 };
 
-const diffContextSettings = (
+const diffCharacterBudgetChange = (
   previous?: PersonaContextDefinition,
   current?: PersonaContextDefinition
-): PersonaContextVersionChange[] => {
-  const changes: PersonaContextVersionChange[] = [];
+): PersonaContextVersionChange | null => {
   if (
     current?.characterBudget != null &&
     previous?.characterBudget !== current.characterBudget
   ) {
-    changes.push({
+    return {
       key: 'message.persona-context-history-budget',
       values: {
         from: (previous?.characterBudget ?? 0).toLocaleString(),
         to: current.characterBudget.toLocaleString(),
       },
-    });
+    };
   }
+
+  return null;
+};
+
+const diffCacheTtlChange = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange | null => {
   if (
     current?.cacheTtlMinutes != null &&
     previous?.cacheTtlMinutes !== current.cacheTtlMinutes
   ) {
-    changes.push({
+    return {
       key: 'message.persona-context-history-ttl',
       values: {
         from: previous?.cacheTtlMinutes ?? 0,
         to: current.cacheTtlMinutes,
       },
-    });
+    };
   }
+
+  return null;
+};
+
+const diffEnabledChange = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange | null => {
   if ((previous?.enabled ?? true) !== (current?.enabled ?? true)) {
-    changes.push({
+    return {
       key: current?.enabled
         ? 'message.persona-context-history-enabled'
         : 'message.persona-context-history-disabled',
-    });
+    };
   }
 
-  return changes;
+  return null;
 };
+
+const diffContextSettings = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange[] =>
+  [
+    diffCharacterBudgetChange(previous, current),
+    diffCacheTtlChange(previous, current),
+    diffEnabledChange(previous, current),
+  ].filter((change): change is PersonaContextVersionChange => change != null);
 
 const parseVersionSnapshot = (snapshot: unknown): Persona | undefined => {
   try {

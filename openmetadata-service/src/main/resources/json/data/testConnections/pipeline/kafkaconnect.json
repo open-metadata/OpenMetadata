@@ -23,6 +23,13 @@
             "errorMessage": "Failed to fetch plugins, please validate the credentials or validate if user has access to fetch plugins",
             "shortCircuit": true,
             "mandatory": true
+        },
+        {
+            "name": "CheckConfluentTelemetry",
+            "description":  "Only applies to Confluent Cloud. Validate access to the Confluent Cloud Telemetry API, which reports the topics each managed connector produced to. Confluent Cloud does not expose the Kafka Connect topics endpoint, so this is the only source that knows the destination of a connector that picks its topic from row data, such as a Debezium outbox EventRouter.",
+            "errorMessage": "Failed to reach the Confluent Cloud Telemetry API. Lineage will still be built from the topics named in each connector's configuration, but connectors whose destination topic is chosen from row data will produce no lineage. Validate that the API key used for Kafka Connect is a Confluent Cloud API key with access to the Metrics API, and that api.telemetry.confluent.cloud is reachable from the ingestion host.",
+            "shortCircuit": false,
+            "mandatory": false
         }
     ]
 }

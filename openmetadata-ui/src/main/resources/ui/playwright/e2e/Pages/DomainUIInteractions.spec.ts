@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
@@ -46,8 +47,6 @@ const test = base.extend<{
 });
 
 test.describe('Domain Owner Management', () => {
-  test.slow(true);
-
   test('Add owner to domain via UI', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -202,8 +201,6 @@ test.describe('Domain Owner Management', () => {
 });
 
 test.describe('Domain Expert Management', () => {
-  test.slow(true);
-
   test('Add expert to domain via UI', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -284,8 +281,6 @@ test.describe('Domain Expert Management', () => {
 });
 
 test.describe('Domain Style Editing', () => {
-  test.slow(true);
-
   test('Edit domain style - change icon URL', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -323,8 +318,6 @@ test.describe('Domain Style Editing', () => {
 });
 
 test.describe('Data Product UI Operations', () => {
-  test.slow(true);
-
   test('Rename data product via UI', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -483,8 +476,6 @@ test.describe('Data Product UI Operations', () => {
 });
 
 test.describe('Subdomain Management', () => {
-  test.slow(true);
-
   test('Delete subdomain via UI', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -587,8 +578,6 @@ test.describe('Subdomain Management', () => {
 });
 
 test.describe('Domain Form Validation', () => {
-  test.slow(true);
-
   test('Domain name validation - special characters', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
@@ -639,8 +628,6 @@ test.describe('Domain Form Validation', () => {
 });
 
 test.describe('Domain Assets Tab Operations', () => {
-  test.slow(true);
-
   test('Search assets within domain', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -702,8 +689,6 @@ test.describe('Domain Assets Tab Operations', () => {
 });
 
 test.describe('Domain Global Dropdown', () => {
-  test.slow(true);
-
   test('Select domain from global dropdown filters explore', async ({
     page,
   }) => {
@@ -767,8 +752,6 @@ test.describe('Domain Global Dropdown', () => {
 });
 
 test.describe('Domain Breadcrumb Navigation', () => {
-  test.slow(true);
-
   test('Navigate from subdomain to parent domain via breadcrumb', async ({
     page,
   }) => {
@@ -831,8 +814,6 @@ test.describe('Domain Breadcrumb Navigation', () => {
 });
 
 test.describe('Delete Domain with Dependencies', () => {
-  test.slow(true);
-
   test('Delete domain with subdomains shows warning', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -901,8 +882,6 @@ test.describe('Delete Domain with Dependencies', () => {
 });
 
 test.describe('Copy FQN Functionality', () => {
-  test.slow(true);
-
   test('Copy domain FQN to clipboard', async ({ page, context }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();

@@ -58,21 +58,21 @@ const CertificationWidget = () => {
     }
   };
 
-  const headerExtra = canEdit ? (
-    entity.certification ? (
-      <WidgetEditButton
-        data-testid="edit-certification"
-        title={t('label.edit-entity', { entity: t('label.certification') })}
-        onClick={() => setIsEditing(true)}
-      />
-    ) : (
-      <WidgetPlusButton
-        data-testid="add-certification"
-        title={t('label.add-entity', { entity: t('label.certification') })}
-        onClick={() => setIsEditing(true)}
-      />
-    )
-  ) : null;
+  const certificationButton = entity.certification ? (
+    <WidgetEditButton
+      data-testid="edit-certification"
+      title={t('label.edit-entity', { entity: t('label.certification') })}
+      onClick={() => setIsEditing(true)}
+    />
+  ) : (
+    <WidgetPlusButton
+      data-testid="add-certification"
+      title={t('label.add-entity', { entity: t('label.certification') })}
+      onClick={() => setIsEditing(true)}
+    />
+  );
+
+  const headerExtra = canEdit ? certificationButton : null;
 
   const content = (
     <Certification

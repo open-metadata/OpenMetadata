@@ -44,6 +44,7 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -514,6 +515,17 @@ const FileRow: FC<FileRowProps> = ({
             size="text-xs">
             {formattedFileSize}
           </Typography>
+          {Boolean(file.memoryCount) && (
+            <>
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography
+                className="tw:text-quaternary"
+                data-testid="document-memory-count"
+                size="text-xs">
+                {file.memoryCount} {t('label.memory-plural').toLowerCase()}
+              </Typography>
+            </>
+          )}
           {file.updatedBy && (
             <>
               <Dot className="tw:text-quaternary" size="micro" />
@@ -556,6 +568,11 @@ const FileRow: FC<FileRowProps> = ({
         gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
+        <DocumentStatusBadge
+          error={file.processingError}
+          stats={file.extractionStats}
+          status={file.processingStatus}
+        />
         <ButtonUtility
           className="tw:ml-1.5"
           color="tertiary"
@@ -637,6 +654,40 @@ const DocumentsView: FC<DocumentsViewProps> = ({
     }
   };
 
+  const emptyStateContent = selectedFolderName ? (
+    <div className="tw:relative tw:flex-1">
+      <EmptyPlaceholder
+        actions={
+          onUploadFile
+            ? [
+                {
+                  color: 'primary',
+                  key: 'upload-file',
+                  label: t('label.upload-file'),
+                  onClick: onUploadFile,
+                },
+              ]
+            : []
+        }
+        description={t('message.context-center-folder-empty-subtitle')}
+        icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+        title={t('label.folder-name-is-empty', {
+          folderName: selectedFolderName,
+        })}
+        variant="blank"
+      />
+    </div>
+  ) : (
+    <div className="tw:relative tw:flex-1">
+      <EmptyPlaceholder
+        description={t('message.check-spelling-or-try-different-term')}
+        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        title={t('label.no-matching-results')}
+        variant="blank"
+      />
+    </div>
+  );
+
   return (
     <Card
       className={classNames(
@@ -701,38 +752,8 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             )}
           </Box>
         </Box>
-      ) : selectedFolderName ? (
-        <div className="tw:relative tw:flex-1">
-          <EmptyPlaceholder
-            actions={
-              onUploadFile
-                ? [
-                    {
-                      color: 'primary',
-                      key: 'upload-file',
-                      label: t('label.upload-file'),
-                      onClick: onUploadFile,
-                    },
-                  ]
-                : []
-            }
-            description={t('message.context-center-folder-empty-subtitle')}
-            icon={<UploadIcon className="tw:text-fg-brand-primary" />}
-            title={t('label.folder-name-is-empty', {
-              folderName: selectedFolderName,
-            })}
-            variant="blank"
-          />
-        </div>
       ) : (
-        <div className="tw:relative tw:flex-1">
-          <EmptyPlaceholder
-            description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
-            title={t('label.no-matching-results')}
-            variant="blank"
-          />
-        </div>
+        emptyStateContent
       )}
     </Card>
   );
