@@ -22,9 +22,9 @@ import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import {
-  clearPersonaSession,
-  readPersonaSession,
-  writePersonaSession,
+    clearPersonaSession,
+    readPersonaSession,
+    writePersonaSession
 } from '../utils/PersonaSessionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
