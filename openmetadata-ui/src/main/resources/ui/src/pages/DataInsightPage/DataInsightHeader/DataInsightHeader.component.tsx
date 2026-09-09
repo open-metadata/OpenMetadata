@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -19,7 +20,6 @@ import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePicker
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -109,14 +109,14 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
       <Col span={24}>
         <Space className="w-full justify-between align-center">
           <Space className="w-full" size={16}>
-            <SearchDropdown
+            <FilterSelectDropdown
               hideCounts
               label={t('label.team')}
               searchKey="teams"
               {...team}
             />
 
-            <SearchDropdown
+            <FilterSelectDropdown
               hideCounts
               label={t('label.tier')}
               searchKey="tier"

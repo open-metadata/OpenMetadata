@@ -10,26 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  borderAfter,
-  Box,
-  Button,
-  Dropdown,
-  Input,
-} from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronDown,
-  Columns01,
-  LayoutAlt04,
-  SearchLg,
-  Table,
-} from '@untitledui/icons';
+import { borderAfter, FilterSelect } from '@openmetadata/ui-core-components';
+import { ChevronDown, Columns01, LayoutAlt04, Table } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useMemo, useState } from 'react';
-import { Button as AriaButton, type Selection } from 'react-aria-components';
-import { useTranslation } from 'react-i18next';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -52,54 +37,8 @@ const FILTER_OPTION_ICONS: Partial<Record<string, typeof Table>> = {
 /** `chip` = pill button (dashboard/Test Cases); `input` = labeled input box. */
 export type FilterChipVariant = 'chip' | 'input';
 
-// Narrow wrapper so the icon prop's type doesn't widen to the raw `@untitledui/icons`
-// FC (whose `Props` picks up an incompatible `children` type via react-i18next's
-// global ReactNode augmentation).
-const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchLg aria-hidden="true" className={className} />
-);
 
-const FilterChipTrigger = ({
-  text,
-  testId,
-}: {
-  text: string;
-  testId: string;
-}) => (
-  <Button
-    className="tw:whitespace-nowrap"
-    color="secondary"
-    data-testid={testId}
-    iconTrailing={ChevronDown}
-    size="md">
-    {text}
-  </Button>
-);
 
-// Labeled input-style trigger (2.0 incident mock 9027-4660): a bordered box that
-// shows the selected value or, when empty, the filter label as placeholder text.
-const InputChipTrigger = ({
-  text,
-  hasSelection,
-  testId,
-}: {
-  text: string;
-  hasSelection: boolean;
-  testId: string;
-}) => (
-  <AriaButton
-    className="tw:flex tw:w-44 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand"
-    data-testid={testId}>
-    <span
-      className={classNames(
-        'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
-        hasSelection ? TEXT_SECONDARY_CLASS : 'tw:text-placeholder'
-      )}>
-      {text}
-    </span>
-    <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
-  </AriaButton>
-);
 
 const toValueArray = (value: FilterValue): string[] => {
   if (Array.isArray(value)) {
@@ -109,10 +48,12 @@ const toValueArray = (value: FilterValue): string[] => {
   return typeof value === 'string' ? [value] : [];
 };
 
+// Select/multiselect chips render through the unified FilterSelect: staged
+// commits for multi-select, immediate apply-and-close for single select.
 const SelectChip = ({
   descriptor,
   variant,
-  isOpen: controlledIsOpen,
+  isOpen,
   onOpenChange,
 }: {
   descriptor: FilterDescriptor;
@@ -120,220 +61,42 @@ const SelectChip = ({
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) => {
-  const { t } = useTranslation();
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isOpen = controlledIsOpen ?? internalOpen;
-  const [query, setQuery] = useState('');
   const { label, key, controlType, searchable, value, options, onChange } =
     descriptor;
   const isMulti = controlType === 'multiselect';
   const committed = useMemo(() => toValueArray(value), [value]);
-  const hasSelection = committed.length > 0;
-  const [staged, setStaged] = useState<string[]>(committed);
 
-  // A persisted selection (e.g. a table FQN restored from the URL) may be absent
-  // from the fetched option page until it is searched. Surface it as its own
-  // option so the chip shows it selected instead of blank.
-  const mergedOptions = useMemo(() => {
-    const known = new Set(options.map((option) => option.value));
-    const missing = committed
-      .filter((selectedValue) => !known.has(selectedValue))
-      .map((selectedValue) => ({
-        value: selectedValue,
-        label: getNameFromFQN(selectedValue) || selectedValue,
-      }));
-
-    return missing.length > 0 ? [...missing, ...options] : options;
-  }, [options, committed]);
-
-  const triggerText = useMemo(() => {
-    if (isMulti) {
-      return committed.length > 0 ? `${label} · ${committed.length}` : label;
-    }
-    const selected = mergedOptions.find(
-      (option) => option.value === committed[0]
-    );
-
-    return selected?.label ?? label;
-  }, [isMulti, committed, label, mergedOptions]);
-
-  // Multi-select stages selections (committed on Apply); single-select reflects
-  // the committed value and applies on click.
-  const selectedKeySet = useMemo<Selection>(
-    () => new Set(isMulti ? staged : committed),
-    [isMulti, staged, committed]
-  );
-
-  const handleOpenChange = (open: boolean) => {
-    setInternalOpen(open);
-    onOpenChange?.(open);
-    setQuery('');
-    if (open) {
-      setStaged(committed);
-      descriptor.onGetInitialOptions();
-    }
+  const handleChange = (values: string[]) => {
+    onChange(isMulti ? values : values[0] ?? '');
   };
-
-  const handleSearch = (search: string) => {
-    setQuery(search);
-    descriptor.onSearch?.(search);
-  };
-
-  const handleSelectionChange = (keys: Selection) => {
-    if (keys === 'all') {
-      return;
-    }
-    const next = Array.from(keys).map((selectionKey) => String(selectionKey));
-    if (isMulti) {
-      setStaged(next);
-    } else {
-      onChange(next[0]);
-      handleOpenChange(false);
-    }
-  };
-
-  const handleClear = () => setStaged([]);
-
-  const handleApply = () => {
-    onChange(staged);
-    handleOpenChange(false);
-  };
-
-  const trigger =
-    variant === 'input' ? (
-      <InputChipTrigger
-        hasSelection={hasSelection}
-        testId={`search-dropdown-${key}`}
-        text={triggerText}
-      />
-    ) : (
-      <FilterChipTrigger testId={`search-dropdown-${key}`} text={triggerText} />
-    );
 
   const dropdown = (
-    <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
-      {trigger}
-      <Dropdown.Popover className="tw:w-64">
-        {searchable && (
-          <div className="tw:p-2">
-            <Input
-              icon={SearchInputIcon}
-              placeholder={t('label.search')}
-              size="sm"
-              value={query}
-              onChange={handleSearch}
-            />
-          </div>
-        )}
-        <Dropdown.Menu
-          aria-label={label}
-          className="tw:max-h-64 tw:overflow-y-auto"
-          disallowEmptySelection={false}
-          selectedKeys={selectedKeySet}
-          selectionMode={isMulti ? 'multiple' : 'single'}
-          onSelectionChange={handleSelectionChange}>
-          {mergedOptions.map((option) =>
-            isMulti ? (
-              <Dropdown.Item
-                showCheckbox
-                id={option.value}
-                key={option.value}
-                label={option.label}
-                textValue={option.label}
-              />
-            ) : (
-              <Dropdown.Item
-                className={(state) =>
-                  state.isSelected ? 'tw:[&>div]:bg-utility-brand-50!' : ''
-                }
-                id={option.value}
-                key={option.value}
-                textValue={option.label}>
-                {(state) => {
-                  const OptionIcon = FILTER_OPTION_ICONS[option.value];
-
-                  return (
-                    <Box
-                      align="center"
-                      className="tw:w-full"
-                      gap={2}
-                      justify="between">
-                      <Box
-                        align="center"
-                        className="tw:min-w-0 tw:grow"
-                        gap={2}>
-                        {OptionIcon && (
-                          <OptionIcon
-                            aria-hidden="true"
-                            className={classNames(
-                              'tw:size-4 tw:shrink-0',
-                              state.isSelected
-                                ? 'tw:text-utility-brand-700'
-                                : 'tw:text-fg-tertiary'
-                            )}
-                            height={16}
-                            width={16}
-                          />
-                        )}
-                        <span
-                          className={classNames(
-                            'tw:truncate tw:text-sm',
-                            state.isSelected
-                              ? 'tw:text-utility-brand-700'
-                              : TEXT_SECONDARY_CLASS
-                          )}>
-                          {option.label}
-                        </span>
-                      </Box>
-                      {state.isSelected && (
-                        <Check
-                          aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-utility-brand-700"
-                          height={16}
-                          width={16}
-                        />
-                      )}
-                    </Box>
-                  );
-                }}
-              </Dropdown.Item>
-            )
-          )}
-        </Dropdown.Menu>
-        {isMulti && (
-          <Box
-            align="center"
-            className="tw:border-t tw:border-secondary tw:p-2"
-            gap={2}
-            justify="between">
-            <Button
-              color="tertiary"
-              data-testid="clear-filter-btn"
-              isDisabled={staged.length === 0}
-              size="sm"
-              onPress={handleClear}>
-              {t('label.clear')}
-            </Button>
-            <Box align="center" gap={2}>
-              <Button
-                color="secondary"
-                data-testid="cancel-filter-btn"
-                size="sm"
-                onPress={() => handleOpenChange(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="apply-filter-btn"
-                size="sm"
-                onPress={handleApply}>
-                {t('label.apply')}
-              </Button>
-            </Box>
-          </Box>
-        )}
-      </Dropdown.Popover>
-    </Dropdown.Root>
+    <FilterSelect
+      hideCounts
+      commitMode={isMulti ? 'staged' : 'immediate'}
+      data-testid={`search-dropdown-${key}`}
+      isOpen={isOpen}
+      label={label}
+      options={options.map((option) => ({
+        value: option.value,
+        label: option.label,
+        textValue: option.label,
+        icon: FILTER_OPTION_ICONS[option.value],
+      }))}
+      resolveMissingLabel={(missing) => getNameFromFQN(missing) || missing}
+      searchable={searchable}
+      selectedValues={committed}
+      selectionMode={isMulti ? 'multiple' : 'single'}
+      triggerVariant={variant === 'input' ? 'input' : 'button'}
+      onChange={handleChange}
+      onOpenChange={(open) => {
+        if (open) {
+          descriptor.onGetInitialOptions();
+        }
+        onOpenChange?.(open);
+      }}
+      onSearch={(search) => descriptor.onSearch?.(search)}
+    />
   );
 
   if (variant === 'input') {

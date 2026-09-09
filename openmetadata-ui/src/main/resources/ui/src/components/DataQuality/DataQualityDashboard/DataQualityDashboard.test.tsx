@@ -129,7 +129,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
+jest.mock('../../../components/common/FilterSelectDropdown/FilterSelectDropdown', () =>
   jest
     .fn()
     .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (

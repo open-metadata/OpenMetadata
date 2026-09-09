@@ -12,98 +12,57 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import type { FilterSelectProps } from '@openmetadata/ui-core-components';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children, ...rest }: any) => (
-    <div data-testid="box" {...rest}>
-      {children}
+  FilterSelect: ({
+    'data-testid': testId,
+    label,
+    options,
+    selectedValues,
+    commitMode,
+    isOpen,
+    resolveMissingLabel,
+    onChange,
+    onSearch,
+    onOpenChange,
+  }: FilterSelectProps) => (
+    <div data-isopen={isOpen ? 'true' : 'false'} data-testid={testId}>
+      <span data-testid="trigger-label">
+        {selectedValues.length > 0
+          ? `${label} · ${selectedValues.length}`
+          : label}
+      </span>
+      <span data-testid="commit-mode">{commitMode}</span>
+      {options.map((option, index) => (
+        <div data-testid={`option-${index}`} key={option.value}>
+          {option.label}
+        </div>
+      ))}
+      {selectedValues.map((value) => (
+        <div data-testid={`selected-${value}`} key={value}>
+          {resolveMissingLabel?.(value) ?? value}
+        </div>
+      ))}
+      <button data-testid="open-btn" onClick={() => onOpenChange?.(true)}>
+        open
+      </button>
+      <button
+        data-testid="commit-opt-1"
+        onClick={() => onChange(['opt-1'])}>
+        commit opt-1
+      </button>
+      <button data-testid="commit-empty" onClick={() => onChange([])}>
+        commit empty
+      </button>
+      <button data-testid="search-btn" onClick={() => onSearch?.('abc')}>
+        search
+      </button>
     </div>
   ),
-  Button: ({ children, onPress, iconTrailing, ...rest }: any) => (
-    <button onClick={onPress} {...rest}>
-      {children}
-      {iconTrailing}
-    </button>
-  ),
-  Input: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value?: string;
-    onChange: (...args: unknown[]) => void;
-    placeholder?: string;
-  }) => (
-    <input
-      aria-label="search-input"
-      data-testid="search-input"
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
-  Dropdown: {
-    Root: ({
-      children,
-      isOpen,
-      onOpenChange,
-    }: {
-      children?: ReactNode;
-      isOpen?: boolean;
-      onOpenChange?: (...args: unknown[]) => void;
-    }) => (
-      <div data-isopen={isOpen ? 'true' : 'false'} data-testid="dropdown-root">
-        <button
-          data-testid="dropdown-toggle"
-          onClick={() => onOpenChange?.(!isOpen)}>
-          toggle
-        </button>
-        {children}
-      </div>
-    ),
-    Popover: ({ children }: { children?: ReactNode }) => (
-      <div data-testid="dropdown-popover">{children}</div>
-    ),
-    Menu: ({
-      children,
-      onSelectionChange,
-    }: {
-      children?: ReactNode;
-      onSelectionChange?: (...args: unknown[]) => void;
-    }) => (
-      <div data-testid="dropdown-menu">
-        <button
-          data-testid="select-opt-1"
-          onClick={() => onSelectionChange?.(new Set(['opt-1']))}>
-          select opt-1
-        </button>
-        <button
-          data-testid="select-all"
-          onClick={() => onSelectionChange?.('all')}>
-          select all
-        </button>
-        {children}
-      </div>
-    ),
-    Item: ({ label }: { label?: ReactNode }) => (
-      <div data-testid="dropdown-item">{label}</div>
-    ),
-  },
-}));
-
-jest.mock('@untitledui/icons', () => ({
-  ChevronDown: () => <span data-testid="icon-chevron" />,
-  SearchLg: () => <span data-testid="icon-search" />,
-}));
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
 }));
 
 const buildSearchProps = (overrides: Record<string, any> = {}) => ({
@@ -131,9 +90,7 @@ describe('DqSearchFilterChip', () => {
   it('should render the trigger with the plain label when nothing is selected', () => {
     render(<DqSearchFilterChip {...(getDefaultProps() as any)} />);
 
-    expect(screen.getByTestId('search-dropdown-tags')).toHaveTextContent(
-      'Tags'
-    );
+    expect(screen.getByTestId('trigger-label')).toHaveTextContent('Tags');
   });
 
   it('should render the selection count in the trigger label', () => {
@@ -142,93 +99,63 @@ describe('DqSearchFilterChip', () => {
     });
     render(<DqSearchFilterChip {...(props as any)} />);
 
-    expect(screen.getByTestId('search-dropdown-tags')).toHaveTextContent(
-      'Tags · 1'
-    );
+    expect(screen.getByTestId('trigger-label')).toHaveTextContent('Tags · 1');
   });
 
-  it('should render a staged selection that is missing from the fetched options', () => {
+  it('should stage selections instead of committing per click', () => {
+    render(<DqSearchFilterChip {...(getDefaultProps() as any)} />);
+
+    expect(screen.getByTestId('commit-mode')).toHaveTextContent('staged');
+  });
+
+  it('should resolve a persisted selection missing from the fetched options', () => {
     const props = getDefaultProps({
       selectedKeys: [{ key: 'persisted', label: 'Persisted Tag' }],
       options: [{ key: 'opt-1', label: 'Option 1' }],
     });
     render(<DqSearchFilterChip {...(props as any)} />);
 
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-
-    const items = screen.getAllByTestId('dropdown-item');
-
-    expect(items.some((el) => el.textContent?.includes('Persisted Tag'))).toBe(
-      true
+    expect(screen.getByTestId('selected-persisted')).toHaveTextContent(
+      'Persisted Tag'
     );
-    expect(items.some((el) => el.textContent?.includes('Option 1'))).toBe(true);
   });
 
   it('should fetch initial options and forward open state when opened', () => {
     const props = getDefaultProps();
     render(<DqSearchFilterChip {...(props as any)} />);
 
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
+    fireEvent.click(screen.getByTestId('open-btn'));
 
     expect(props.searchProps.onGetInitialOptions).toHaveBeenCalled();
     expect(props.onOpenChange).toHaveBeenCalledWith(true);
   });
 
-  it('should stage a selection and commit it on Apply', () => {
+  it('should map committed values back to their option objects', () => {
     const props = getDefaultProps();
     render(<DqSearchFilterChip {...(props as any)} />);
 
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    fireEvent.click(screen.getByTestId('select-opt-1'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('commit-opt-1'));
 
     expect(props.searchProps.onChange).toHaveBeenCalledWith([
       { key: 'opt-1', label: 'Option 1' },
     ]);
   });
 
-  it('should reset staged selections when Clear is pressed', () => {
+  it('should commit an empty selection as an empty list', () => {
     const props = getDefaultProps();
     render(<DqSearchFilterChip {...(props as any)} />);
 
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    fireEvent.click(screen.getByTestId('select-opt-1'));
-    fireEvent.click(screen.getByTestId('clear-filter-btn'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('commit-empty'));
 
     expect(props.searchProps.onChange).toHaveBeenCalledWith([]);
-  });
-
-  it('should not commit changes when Cancel is pressed', () => {
-    const props = getDefaultProps();
-    render(<DqSearchFilterChip {...(props as any)} />);
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    fireEvent.click(screen.getByTestId('select-opt-1'));
-    fireEvent.click(screen.getByTestId('cancel-filter-btn'));
-
-    expect(props.searchProps.onChange).not.toHaveBeenCalled();
   });
 
   it('should forward the typed query to onSearch', () => {
     const props = getDefaultProps();
     render(<DqSearchFilterChip {...(props as any)} />);
 
-    fireEvent.change(screen.getByTestId('search-input'), {
-      target: { value: 'abc' },
-    });
+    fireEvent.click(screen.getByTestId('search-btn'));
 
     expect(props.searchProps.onSearch).toHaveBeenCalledWith('abc');
-  });
-
-  it('should ignore an all-selection change', () => {
-    const props = getDefaultProps();
-    render(<DqSearchFilterChip {...(props as any)} />);
-
-    fireEvent.click(screen.getByTestId('dropdown-toggle'));
-    fireEvent.click(screen.getByTestId('select-all'));
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
-
-    expect(props.searchProps.onChange).toHaveBeenCalledWith([]);
   });
 });

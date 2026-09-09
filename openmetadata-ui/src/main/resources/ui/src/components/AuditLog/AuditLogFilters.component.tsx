@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 import { Space } from 'antd';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
@@ -40,7 +41,6 @@ import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   AuditLogFiltersProps,
@@ -352,7 +352,7 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         key={timeFilter?.value.key ?? 'no-time-filter'}
         options={auditTimeFilterRange}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
         showSelectedCounts
         singleSelect
@@ -361,12 +361,11 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         options={userOptions}
         searchKey="user"
         selectedKeys={getSelectedKeys('user')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
         showSelectedCounts
         singleSelect
@@ -375,12 +374,11 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         options={botOptions}
         searchKey="bot"
         selectedKeys={getSelectedKeys('bot')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
         showSelectedCounts
         singleSelect
@@ -389,7 +387,6 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         options={filteredEntityTypeOptions}
         searchKey="entityType"
         selectedKeys={getSelectedKeys('entityType')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}

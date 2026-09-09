@@ -27,7 +27,7 @@ type MockSearchDropdownProps = {
   onGetInitialOptions?: (searchKey: string) => void;
 };
 
-jest.mock('../SearchDropdown/SearchDropdown', () => ({
+jest.mock('../common/FilterSelectDropdown/FilterSelectDropdown', () => ({
   __esModule: true,
   default: ({
     searchKey,
