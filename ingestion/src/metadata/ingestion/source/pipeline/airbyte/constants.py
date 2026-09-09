@@ -21,12 +21,22 @@ class AirbyteSource(Enum):
     POSTGRES = "Postgres"
     MSSQL = "Microsoft SQL Server (MSSQL)"
     MONGODB = "MongoDb"
+    REDSHIFT = "Redshift"
+    CLICKHOUSE = "ClickHouse"
+    SNOWFLAKE = "Snowflake"
+    BIGQUERY = "BigQuery"
+    ORACLE = "Oracle DB"
 
 
 class AirbyteDestination(Enum):
     MYSQL = "MySQL"
     POSTGRES = "Postgres"
     MSSQL = "MS SQL Server"
+    REDSHIFT = "Redshift"
+    CLICKHOUSE = "ClickHouse"
+    SNOWFLAKE = "Snowflake"
+    BIGQUERY = "BigQuery"
+    ORACLE = "Oracle"
 
 
 # The internal API reports connector types as display names (e.g. "Postgres"),
@@ -42,6 +52,22 @@ SOURCE_TYPE_LOOKUP = {
     AirbyteSource.MONGODB.value: AirbyteSource.MONGODB,
     "mongodb": AirbyteSource.MONGODB,
     "mongodb-v2": AirbyteSource.MONGODB,
+    # Warehouses that expose a top-level `database` (schema comes from the stream
+    # namespace), so they resolve through the default table-detail path.
+    AirbyteSource.REDSHIFT.value: AirbyteSource.REDSHIFT,
+    "redshift": AirbyteSource.REDSHIFT,
+    AirbyteSource.CLICKHOUSE.value: AirbyteSource.CLICKHOUSE,
+    "clickhouse": AirbyteSource.CLICKHOUSE,
+    # Mainstream warehouses are mapped so they resolve as tables (or safely yield no
+    # lineage) instead of falling through to the API resolver. ponytail: BigQuery/Oracle
+    # use the default database+namespace parse; add per-connector field mapping (BigQuery
+    # project_id) when there is a live connection to verify against.
+    AirbyteSource.SNOWFLAKE.value: AirbyteSource.SNOWFLAKE,
+    "snowflake": AirbyteSource.SNOWFLAKE,
+    AirbyteSource.BIGQUERY.value: AirbyteSource.BIGQUERY,
+    "bigquery": AirbyteSource.BIGQUERY,
+    AirbyteSource.ORACLE.value: AirbyteSource.ORACLE,
+    "oracle": AirbyteSource.ORACLE,
 }
 
 DESTINATION_TYPE_LOOKUP = {
@@ -51,4 +77,36 @@ DESTINATION_TYPE_LOOKUP = {
     "postgres": AirbyteDestination.POSTGRES,
     AirbyteDestination.MSSQL.value: AirbyteDestination.MSSQL,
     "mssql": AirbyteDestination.MSSQL,
+    # Warehouses expose top-level `database` + `schema`, mapping straight to the
+    # OM table FQN through the default destination table-detail path.
+    AirbyteDestination.REDSHIFT.value: AirbyteDestination.REDSHIFT,
+    "redshift": AirbyteDestination.REDSHIFT,
+    AirbyteDestination.CLICKHOUSE.value: AirbyteDestination.CLICKHOUSE,
+    "clickhouse": AirbyteDestination.CLICKHOUSE,
+    # See SOURCE_TYPE_LOOKUP note — mapped so warehouses never route to the API resolver.
+    AirbyteDestination.SNOWFLAKE.value: AirbyteDestination.SNOWFLAKE,
+    "snowflake": AirbyteDestination.SNOWFLAKE,
+    AirbyteDestination.BIGQUERY.value: AirbyteDestination.BIGQUERY,
+    "bigquery": AirbyteDestination.BIGQUERY,
+    AirbyteDestination.ORACLE.value: AirbyteDestination.ORACLE,
+    "oracle": AirbyteDestination.ORACLE,
 }
+
+# Object-store connectors map to a Container, not a Table, so they are resolved by path
+# rather than through the TYPE_LOOKUP maps. Holds the connector display name ("S3", as
+# the internal API reports it) and the public-API slug ("s3").
+# ponytail: S3 only — GCS/Azure use different config keys and URI schemes, add them
+# alongside a scheme lookup when there is a real connection to test against.
+S3_CONNECTOR_TYPES = frozenset({"S3", "s3"})
+
+# The S3 source and destination connectors name their bucket/prefix fields differently.
+S3_SOURCE_BUCKET_KEY = "bucket"
+S3_DESTINATION_BUCKET_KEY = "s3_bucket_name"
+S3_DESTINATION_PATH_KEY = "s3_bucket_path"
+
+# Message-queue connectors resolve to a Topic and search connectors to a SearchIndex,
+# both keyed on the stream name. Each frozenset holds the internal-API display name and
+# the public-API slug. Kept small on purpose — add a type (e.g. "Google PubSub") once
+# there is a live connection to confirm its reported type string.
+MESSAGING_CONNECTOR_TYPES = frozenset({"Kafka", "kafka"})
+SEARCH_CONNECTOR_TYPES = frozenset({"Elasticsearch", "ElasticSearch", "elasticsearch"})

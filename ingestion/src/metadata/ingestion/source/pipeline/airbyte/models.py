@@ -42,6 +42,12 @@ class AirbyteSyncCatalog(BaseModel):
     streams: list[AirbyteSyncCatalogEntry] | None = None
 
 
+class AirbyteConnectionConfigurations(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    streams: list[AirbyteStream] | None = None
+
+
 class AirbyteConnectionModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -49,7 +55,19 @@ class AirbyteConnectionModel(BaseModel):
     name: str | None = None
     sourceId: str | None = None  # noqa: N815
     destinationId: str | None = None  # noqa: N815
+    # The internal API (`/connections/list`) nests streams under `syncCatalog.streams[].stream`,
+    # while the public API (`api/public/v1`) returns them flat under `configurations.streams`.
     syncCatalog: AirbyteSyncCatalog | None = None  # noqa: N815
+    configurations: AirbyteConnectionConfigurations | None = None
+
+    @property
+    def resolved_streams(self) -> list[AirbyteStream]:
+        """Streams from whichever API responded."""
+        if self.syncCatalog and self.syncCatalog.streams:
+            return [entry.stream for entry in self.syncCatalog.streams if entry.stream]
+        if self.configurations and self.configurations.streams:
+            return self.configurations.streams
+        return []
 
 
 class AirbyteJobAttempt(BaseModel):
