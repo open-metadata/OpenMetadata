@@ -18,13 +18,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Hint
-} from '@openmetadata/ui-core-components/icons';
+import { Hint } from '@openmetadata/ui-core-components/icons';
 import { Settings02 } from '@untitledui/icons';
-import React, { useCallback, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useMemo, useState } from 'react';
+import { TFunction, useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -35,11 +33,11 @@ import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils'
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
-import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
 import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
+import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 
 const CRUMB = {
   WORKSPACE: 'workspace',
@@ -47,6 +45,75 @@ const CRUMB = {
   DETAIL: 'detail',
   ACTION: 'action',
 } as const;
+
+function getBreadcrumbItems(
+  subView: CustomPropertiesSubView,
+  t: TFunction,
+  matchingSettingsItem: SettingMenuItem | undefined
+): { id: string; label: string }[] {
+  const base = [
+    { id: CRUMB.WORKSPACE, label: t('label.workspace') },
+    { id: CRUMB.LANDING, label: t('label.custom-property-plural') },
+  ];
+
+  if (subView.type === 'detail') {
+    const entityLabel =
+      matchingSettingsItem?.label ?? getEntityName(subView.entityType);
+
+    return [...base, { id: CRUMB.DETAIL, label: entityLabel }];
+  }
+
+  if (subView.type === 'add') {
+    const entityLabel =
+      matchingSettingsItem?.label ?? getEntityName(subView.entityType);
+
+    return [
+      ...base,
+      { id: CRUMB.DETAIL, label: entityLabel },
+      {
+        id: CRUMB.ACTION,
+        label: t('label.add-entity', { entity: t('label.custom-property') }),
+      },
+    ];
+  }
+
+  if (subView.type === 'edit') {
+    const entityLabel =
+      matchingSettingsItem?.label ?? getEntityName(subView.entityType);
+
+    return [
+      ...base,
+      { id: CRUMB.DETAIL, label: entityLabel },
+      { id: CRUMB.ACTION, label: getEntityName(subView.property) },
+    ];
+  }
+
+  return base;
+}
+
+function getPageTitle(
+  subView: CustomPropertiesSubView,
+  t: TFunction,
+  matchingSettingsItem: SettingMenuItem | undefined
+): string {
+  if (subView.type === 'detail') {
+    return matchingSettingsItem?.label ?? getEntityName(subView.entityType);
+  }
+  if (subView.type === 'add') {
+    return t('label.add-entity', { entity: t('label.custom-property') });
+  }
+  if (subView.type === 'edit') {
+    return getEntityName(subView.property);
+  }
+
+  return t('label.custom-property-plural');
+}
+
+function getContentClassName(subView: CustomPropertiesSubView): string {
+  return subView.type === 'add' || subView.type === 'edit'
+    ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
+    : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0';
+}
 
 const CustomPropertiesPanel: React.FC = () => {
   const { t } = useTranslation();
@@ -97,7 +164,8 @@ const CustomPropertiesPanel: React.FC = () => {
       isAdminUser
     );
     const customPropsCategory = menu.find(
-      (m: SettingMenuItem) => m.key === GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
+      (m: SettingMenuItem) =>
+        m.key === GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
     );
 
     return (customPropsCategory?.items ?? []).filter(
@@ -118,72 +186,23 @@ const CustomPropertiesPanel: React.FC = () => {
     });
   }, [subView, globalSettingsItems]);
 
-  const breadcrumbItems = useMemo(() => {
-    const base = [
-      { id: CRUMB.WORKSPACE, label: t('label.workspace') },
-      { id: CRUMB.LANDING, label: t('label.custom-property-plural') },
-    ];
+  const breadcrumbItems = useMemo(
+    () => getBreadcrumbItems(subView, t, matchingSettingsItem),
+    [subView, t, matchingSettingsItem]
+  );
 
-    if (subView.type === 'detail') {
-      const entityLabel =
-        matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-
-      return [
-        ...base,
-        { id: CRUMB.DETAIL, label: entityLabel },
-      ];
-    }
-
-    if (subView.type === 'add') {
-      const entityLabel =
-        matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-
-      return [
-        ...base,
-        { id: CRUMB.DETAIL, label: entityLabel },
-        {
-          id: CRUMB.ACTION,
-          label: t('label.add-entity', {
-            entity: t('label.custom-property'),
-          }),
-        },
-      ];
-    }
-
-    if (subView.type === 'edit') {
-      const entityLabel =
-        matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-
-      return [
-        ...base,
-        { id: CRUMB.DETAIL, label: entityLabel },
-        {
-          id: CRUMB.ACTION,
-          label: getEntityName(subView.property),
-        },
-      ];
-    }
-
-    return base;
-  }, [subView, t, matchingSettingsItem]);
-
-  const pageTitle = useMemo(() => {
-    if (subView.type === 'detail') {
-      return matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-    }
-    if (subView.type === 'add') {
-      return t('label.add-entity', { entity: t('label.custom-property') });
-    }
-    if (subView.type === 'edit') {
-      return getEntityName(subView.property);
-    }
-
-    return t('label.custom-property-plural');
-  }, [subView, t, matchingSettingsItem]);
+  const pageTitle = useMemo(
+    () => getPageTitle(subView, t, matchingSettingsItem),
+    [subView, t, matchingSettingsItem]
+  );
 
   const pageDescription = useMemo(() => {
     if (subView.type !== 'landing') {
-      return matchingSettingsItem?.description ?? subView.entityType.description ?? '';
+      return (
+        matchingSettingsItem?.description ??
+        subView.entityType.description ??
+        ''
+      );
     }
 
     return t('message.custom-properties-settings-description');
@@ -268,11 +287,7 @@ const CustomPropertiesPanel: React.FC = () => {
 
       {/* Content body */}
       <div
-        className={
-          subView.type === 'add' || subView.type === 'edit'
-            ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
-            : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0'
-        }
+        className={getContentClassName(subView)}
         data-testid="custom-properties-content">
         {subView.type === 'landing' && (
           <CustomPropertiesLandingPage

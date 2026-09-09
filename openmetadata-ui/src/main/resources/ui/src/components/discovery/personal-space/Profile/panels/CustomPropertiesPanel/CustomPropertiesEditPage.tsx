@@ -39,8 +39,14 @@ import {
   Config,
   CustomProperty,
 } from '../../../../../../generated/type/customProperty';
-import { getTypeByFQN, updateType } from '../../../../../../rest/metadataTypeAPI';
-import { showErrorToast, showSuccessToast } from '../../../../../../utils/ToastUtils';
+import {
+  getTypeByFQN,
+  updateType,
+} from '../../../../../../rest/metadataTypeAPI';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 
 /** FieldTypes.SELECT / MULTI_SELECT from core-components stores FormSelectItem objects, not raw strings. */
@@ -181,7 +187,10 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       description: property.description ?? '',
       enumConfig: existingEnumValues.map((v) => ({ id: v, label: v })),
       multiSelect: existingMultiSelect,
-      entityReferenceConfig: existingEntityRefs.map((v) => ({ id: v, label: v })),
+      entityReferenceConfig: existingEntityRefs.map((v) => ({
+        id: v,
+        label: v,
+      })),
     },
   });
 
@@ -192,7 +201,10 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       description: property.description ?? '',
       enumConfig: existingEnumValues.map((v) => ({ id: v, label: v })),
       multiSelect: existingMultiSelect,
-      entityReferenceConfig: existingEntityRefs.map((v) => ({ id: v, label: v })),
+      entityReferenceConfig: existingEntityRefs.map((v) => ({
+        id: v,
+        label: v,
+      })),
     });
     setDescriptionKey((k) => k + 1);
   }, [
@@ -293,7 +305,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
         customPropertyConfig = {
           config: {
             multiSelect: Boolean(data.multiSelect),
-            values: uniq([...existingEnumValues, ...newValues]),
+            values: uniq(newValues),
           },
         };
       } else if (isEntityRef && data.entityReferenceConfig) {
@@ -310,8 +322,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       };
 
       const updatedProperties = (typeDetail.customProperties ?? []).map(
-        (prop) =>
-          prop.name === property.name ? updatedProperty : prop
+        (prop) => (prop.name === property.name ? updatedProperty : prop)
       );
 
       const patch = compare(
@@ -334,15 +345,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
         setIsSaving(false);
       }
     },
-    [
-      existingEnumValues,
-      isEnum,
-      isEntityRef,
-      onSuccess,
-      property,
-      t,
-      typeDetail,
-    ]
+    [isEnum, isEntityRef, onSuccess, property, t, typeDetail]
   );
 
   return (
@@ -385,11 +388,10 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       </div>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-background-base tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-background-base tw:px-8 tw:py-4 tw:shadow-sm"
         direction="row"
         gap={3}
-        justify="end"
-        style={{ boxShadow: '0px -1px 14px 0px #0000001A' }}>
+        justify="end">
         <Button
           color="tertiary"
           data-testid="edit-custom-property-cancel"

@@ -45,7 +45,10 @@ import {
   getTypeListByCategory,
 } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { showErrorToast, showSuccessToast } from '../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 
 /** FieldTypes.SELECT / MULTI_SELECT from core-components stores FormSelectItem objects, not raw strings. */
@@ -94,10 +97,10 @@ function buildCustomPropertyConfig(
     return { config: toId(data.formatConfig) };
   }
   if (hasEntityReferenceConfig && data.entityReferenceConfig) {
-    return { config: (data.entityReferenceConfig).map(toId) };
+    return { config: data.entityReferenceConfig.map(toId) };
   }
   if (hasTableTypeConfig && data.columns) {
-    return { config: { columns: (data.columns).map(toId) } };
+    return { config: { columns: data.columns.map(toId) } };
   }
 
   return undefined;
@@ -435,7 +438,10 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
             'enumConfig',
             'columns',
           ]),
-          propertyType: { id: toId(data.propertyType ?? undefined), type: 'type' },
+          propertyType: {
+            id: toId(data.propertyType ?? undefined),
+            type: 'type',
+          },
           ...(isUndefined(customPropertyConfig)
             ? {}
             : { customPropertyConfig }),
@@ -508,20 +514,16 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
             {hasEntityReferenceConfig && getField(entityReferenceConfigField)}
             {hasTableTypeConfig && getField(columnsField)}
 
-            <DescriptionFormField
-              descriptionKey={descriptionKey}
-              form={form}
-            />
+            <DescriptionFormField descriptionKey={descriptionKey} form={form} />
           </HookForm>
         </Box>
       </div>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-background-base tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-background-base tw:px-8 tw:py-4 tw:shadow-sm"
         direction="row"
         gap={3}
-        justify="end"
-        style={{ boxShadow: '0px -1px 14px 0px #0000001A' }}>
+        justify="end">
         <Button
           color="tertiary"
           data-testid="custom-property-cancel"

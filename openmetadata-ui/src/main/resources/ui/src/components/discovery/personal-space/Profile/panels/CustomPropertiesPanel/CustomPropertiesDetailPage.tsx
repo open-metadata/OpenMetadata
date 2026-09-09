@@ -20,13 +20,12 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit, Expand, Delete } from '@openmetadata/ui-core-components/icons';
+import { Delete, Edit, Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isArray, isString, isUndefined, startCase } from 'lodash';
+import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../../../../constants/CustomProperty.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -35,27 +34,27 @@ import {
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
-import { getTypeByFQN, updateType } from '../../../../../../rest/metadataTypeAPI';
+import {
+  getTypeByFQN,
+  updateType,
+} from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
-import { showErrorToast, showSuccessToast } from '../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 
 const SchemaEditor = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../../../../Database/SchemaEditor/SchemaEditor'
-      )
-  )
+  lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
 );
 
 const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(
     () =>
-      import(
-        '../../../../../common/RichTextEditor/RichTextEditorPreviewNew'
-      )
+      import('../../../../../common/RichTextEditor/RichTextEditorPreviewNew')
   )
 );
 
@@ -180,7 +179,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
               if (isUndefined(configData)) {
                 return (
                   <Typography className="tw:text-text-secondary" size="text-sm">
-                    {'--'}
+                    --
                   </Typography>
                 );
               }
@@ -201,7 +200,9 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                     <Typography
                       className="tw:text-text-secondary"
                       size="text-sm">
-                      <span className="tw:font-medium">{`${t('label.column-plural')}:`}</span>
+                      <span className="tw:font-medium">{`${t(
+                        'label.column-plural'
+                      )}:`}</span>
                       <ul className="tw:m-0! tw:pl-4">
                         {config.columns.map((col) => (
                           <li key={col}>{col}</li>
@@ -221,7 +222,9 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                     <Typography
                       className="tw:text-text-secondary"
                       size="text-sm">
-                      {`${t('label.multi-select')}: ${config?.multiSelect ? t('label.yes') : t('label.no')}`}
+                      {`${t('label.multi-select')}: ${
+                        config?.multiSelect ? t('label.yes') : t('label.no')
+                      }`}
                     </Typography>
                   </Box>
                 );
@@ -293,9 +296,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
               />
               <Tabs.Item id="schema" label={t('label.schema')} />
             </Tabs.List>
-            <div className="tw:pb-3">
-             {addButton}
-            </div>
+            <div className="tw:pb-3">{addButton}</div>
           </div>
 
           <Tabs.Panel id="custom-properties">
@@ -317,7 +318,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                 items={isLoading ? [] : customProperties}
                 renderEmptyState={() => (
                   <div className="tw:min-h-[250px] tw:relative">
-                      <EmptyPlaceholder
+                    <EmptyPlaceholder
                       actions={
                         hasEditPermission
                           ? [

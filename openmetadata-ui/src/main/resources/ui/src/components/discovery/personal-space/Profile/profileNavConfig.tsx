@@ -14,8 +14,8 @@
 import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
 import React, { FC } from 'react';
 import { User } from '../../../../generated/entity/teams/user';
-import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import AccessTokenPanel from './components/AccessTokenPanel';
+import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 

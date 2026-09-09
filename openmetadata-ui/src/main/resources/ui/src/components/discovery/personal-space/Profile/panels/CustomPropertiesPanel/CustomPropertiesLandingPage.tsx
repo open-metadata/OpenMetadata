@@ -130,12 +130,12 @@ const CustomPropertiesLandingPage: React.FC<
 
   if (items.length === 0) {
     return (
-      <Box align='center' className='tw:h-full tw:w-full' justify='center'>
-      <EmptyPlaceholder
-        description={t('message.no-custom-properties-defined')}
-        title={t('label.custom-property-plural')}
-        variant="blank"
-      />
+      <Box align="center" className="tw:h-full tw:w-full" justify="center">
+        <EmptyPlaceholder
+          description={t('message.no-custom-properties-defined')}
+          title={t('label.custom-property-plural')}
+          variant="blank"
+        />
       </Box>
     );
   }
