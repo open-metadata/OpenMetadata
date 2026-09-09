@@ -27,26 +27,25 @@ coverage, a retried one looks green.
 
 ## Entries
 
-5 tests. Evidence is failures observed across 11 merge_group runs sampled on
+4 tests. Evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
-| `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | 7/11 | Test timeout. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal — filters and select | 3/11 | `waitForResponse` on the test-case search never resolves. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 5 plus the 7 setup/teardown
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 4 plus the 7 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
 entity seeding still happen — a project-level `grep` *is* applied to dependency
 projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
 Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4566 of 4571** with these 5 entries; the
-quarantined lane lists 12, which is the 5 plus the 7 fixture projects above.
+default-lane count here. It is **4567 of 4571** with these 4 entries; the
+quarantined lane lists 11, which is the 4 plus the 7 fixture projects above.
 (It was 4543 of 4555 when the list held 13.)
 
 ## Not quarantined — fixed instead
@@ -74,6 +73,7 @@ entry.
 | `e2e/Pages/EntityDataConsumer.spec.ts` | Update description (Table) | `updateDescription` resolved the editor with a page-global `descriptionBox` and `.first()`, so with the edit modal open it targeted the inline editor *behind* the overlay — visible, so the assertion passed, then the click failed on `ant-modal-wrap ... intercepts pointer events` until the test timed out. Now scoped to the dialog, asserting a single match. |
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should create, edit, and delete a test definition | `TestDefinitionFormBody` rebuilt `options: toOptions(Object.values(…))` on every render. Focusing a field re-renders it via `onActiveFieldChange`, and the new `items` identity made react-aria rebuild the listbox collection, detaching the option mid-click. The option lists are enum-derived and now built once at module scope. |
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should maintain page on edit and reset to first page on delete | Same select-option path as above. |
+| `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | The evidence was already stale when it was written down. Every test in the file reached its subject through `navigateToAIContextTab`, which called `navigateToPersonaWithPagination` — a walk of up to 15 pages, each costing a `waitForAllLoadersToDisappear`, a `next` click and a `/api/v1/personas*` round trip, before the test touched anything it was asserting on. That is the timeout, and it is why the rate tracked shard load (7/11) rather than being deterministic: the walk grows with the personas the shard has accumulated. #32458 then moved the editor into Context Center on 2026-09-07, replacing the whole walk with `goto('/context-center/ai-context')` plus one card click, and made the list page follow its cursor to exhaustion server-side. Green 9/9 locally at ~5s against a 60s budget. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | `openEntitySummaryPanel` always waited for `searchBox`, the NavBar `GlobalSearchBar`. `/explore` renders its own `ExploreSearchInput` and never mounts the NavBar one, so on that page the wait could only time out — `runSearch` returned false every attempt and the retry poll spun until its budget expired. The helper had never worked for callers landing on `/explore`, which is why this failed 11/11 rather than flaking. It now picks the field the page actually renders. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
 
