@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -116,6 +118,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -3799,6 +3802,83 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               () ->
                   !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
                       .contains(sourceColFqn));
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"PATCH", "PUT"})
+  void test_deletedColumnWithoutStoredFqnDoesNotAbortUpdate(HttpMethod method, TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable request =
+        createMinimalRequest(ns)
+            .withColumns(
+                List.of(
+                    ColumnBuilder.of("legacy_col", "BIGINT").build(),
+                    ColumnBuilder.of("lineage_col", "BIGINT").build(),
+                    ColumnBuilder.of("keep_col", "BIGINT").build()));
+    Table source = client.tables().create(request);
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("legacy_lineage_target"))
+                    .withDatabaseSchema(request.getDatabaseSchema())
+                    .withColumns(List.of(ColumnBuilder.of("target_col", "BIGINT").build())));
+    String deletedColumnFqn = findColumn(source, "lineage_col").getFullyQualifiedName();
+    addColumnLineage(
+        client,
+        source,
+        target,
+        deletedColumnFqn,
+        target.getColumns().getFirst().getFullyQualifiedName());
+
+    // Modern writes populate column FQNs, so seed the legacy state directly in storage.
+    findColumn(source, "legacy_col").setFullyQualifiedName(null);
+    Entity.getCollectionDAO().tableDAO().update(source);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.TABLE, source.getId(), source.getFullyQualifiedName());
+    assertNull(
+        findColumn(client.tables().get(source.getId().toString()), "legacy_col")
+            .getFullyQualifiedName());
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for the valid column's lineage to be indexed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                      .contains(deletedColumnFqn));
+
+      List<Column> remainingColumns = List.of(ColumnBuilder.of("keep_col", "BIGINT").build());
+      Table updated =
+          method == HttpMethod.PATCH
+              ? client
+                  .tables()
+                  .update(source.getId().toString(), source.withColumns(remainingColumns))
+              : client.tables().createOrUpdate(request.withColumns(remainingColumns));
+      assertEquals(
+          List.of("keep_col"), updated.getColumns().stream().map(Column::getName).toList());
+      Table stored = client.tables().get(source.getId().toString());
+      assertEquals(List.of("keep_col"), stored.getColumns().stream().map(Column::getName).toList());
+      assertFalse(
+          client
+              .lineage()
+              .getEntityLineage(Entity.TABLE, source.getId().toString(), "1", "1")
+              .contains(deletedColumnFqn));
+      Awaitility.await("Wait for the valid deleted column's lineage to be removed from search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                      .contains(deletedColumnFqn));
     }
   }
 

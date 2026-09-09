@@ -10978,7 +10978,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       private void include(
           List<Column> deletedColumns, HashMap<String, String> originalUpdatedColumnFqns) {
-        deletedColumns.stream().map(Column::getFullyQualifiedName).forEach(deletedColumnFqns::add);
+        deletedColumns.stream()
+            .map(Column::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .forEach(deletedColumnFqns::add);
         renamedColumnFqns.putAll(originalUpdatedColumnFqns);
       }
 
