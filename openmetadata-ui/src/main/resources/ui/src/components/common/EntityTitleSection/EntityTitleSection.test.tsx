@@ -221,6 +221,20 @@ describe('EntityTitleSection', () => {
       ).toBeInTheDocument();
     });
 
+    it('should use the primary surface for the title header', () => {
+      render(
+        <EntityTitleSection
+          entityDetails={{ name: 'Test Entity' }}
+          entityLink="/test-link"
+        />,
+        { wrapper: Wrapper }
+      );
+
+      expect(
+        screen.getByTestId('entity-link').closest('.tw\\:flex')
+      ).toHaveClass('tw:bg-primary');
+    });
+
     it('should use default tooltipPlacement when not provided', () => {
       render(
         <EntityTitleSection
