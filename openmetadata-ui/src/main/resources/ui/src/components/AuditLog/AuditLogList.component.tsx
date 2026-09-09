@@ -69,6 +69,15 @@ const parseValue = (value: unknown): unknown => {
   return value;
 };
 
+const formatObjectChangeValue = (parsed: object): string => {
+  const maybeEntity = parsed as { displayName?: string; name?: string };
+  if (maybeEntity.displayName || maybeEntity.name) {
+    return maybeEntity.displayName ?? maybeEntity.name ?? '';
+  }
+
+  return JSON.stringify(parsed);
+};
+
 const formatChangeValue = (value: unknown): string => {
   const parsed = parseValue(value);
   if (parsed === null || parsed === undefined) {
@@ -83,12 +92,7 @@ const formatChangeValue = (value: unknown): string => {
     return asText || parsed;
   }
   if (typeof parsed === 'object') {
-    const maybeEntity = parsed as { displayName?: string; name?: string };
-    if (maybeEntity.displayName || maybeEntity.name) {
-      return maybeEntity.displayName ?? maybeEntity.name ?? '';
-    }
-
-    return JSON.stringify(parsed);
+    return formatObjectChangeValue(parsed);
   }
 
   return String(parsed);
@@ -137,35 +141,31 @@ const extractEntityInfo = (value: unknown): EntityInfo[] => {
   );
 };
 
+const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
+  tags: getTagPath,
+  dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
+  teams: getTeamsWithFqnPath,
+  domain: getDomainPath,
+  owner: getUserPath,
+  reviewers: getUserPath,
+  experts: getUserPath,
+};
+
+const findLinkableFieldKey = (field: string): string | undefined =>
+  Object.keys(LINKABLE_FIELD_RESOLVERS).find(
+    (key) => field === key || field.endsWith(`.${key}`)
+  );
+
 const getEntityLinkForField = (
   fieldName: string,
   entityInfo: EntityInfo
 ): string | null => {
   const field = fieldName.toLowerCase();
+  const matchedKey = findLinkableFieldKey(field);
 
-  if (field === 'tags' || field.endsWith('.tags')) {
-    return getTagPath(entityInfo.fqn);
-  }
-  if (field === 'dataproducts' || field.endsWith('.dataproducts')) {
-    return getEntityLinkFromType(entityInfo.fqn, EntityType.DATA_PRODUCT);
-  }
-  if (field === 'teams' || field.endsWith('.teams')) {
-    return getTeamsWithFqnPath(entityInfo.fqn);
-  }
-  if (field === 'domain' || field.endsWith('.domain')) {
-    return getDomainPath(entityInfo.fqn);
-  }
-  if (field === 'owner' || field.endsWith('.owner')) {
-    return getUserPath(entityInfo.fqn);
-  }
-  if (field === 'reviewers' || field.endsWith('.reviewers')) {
-    return getUserPath(entityInfo.fqn);
-  }
-  if (field === 'experts' || field.endsWith('.experts')) {
-    return getUserPath(entityInfo.fqn);
-  }
-
-  return null;
+  return matchedKey
+    ? LINKABLE_FIELD_RESOLVERS[matchedKey](entityInfo.fqn)
+    : null;
 };
 
 const renderEntityLinks = (
@@ -208,27 +208,202 @@ const resolveEntityType = (value?: string): EntityType | undefined => {
   );
 };
 
-const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
-  const { t } = useTranslation();
+const resolveEntityLabel = (
+  log: AuditLogListItemProps['log'],
+  entityFQN?: string
+): string | undefined => {
+  const entityNameLabel =
+    getEntityName(log.changeEvent?.entity) ||
+    (log.changeEvent?.entity as { name?: string })?.name;
+  const splitEntityFqn = entityFQN ? Fqn.split(entityFQN).pop() : undefined;
 
-  const userName = log.userName || t('label.system');
+  return (
+    entityNameLabel ||
+    splitEntityFqn ||
+    log.changeEvent?.entityFullyQualifiedName ||
+    log.entityId
+  );
+};
+
+const getAuditLogDisplayInfo = (
+  log: AuditLogListItemProps['log'],
+  systemUserLabel: string
+) => {
+  const userName = log.userName || systemUserLabel;
   const eventType = log.eventType ? startCase(log.eventType) : '';
   const entityType = log.entityType ?? log.changeEvent?.entityType;
   const entityFQN =
     log.entityFQN ??
     log.changeEvent?.entityFullyQualifiedName ??
     log.changeEvent?.entity?.fullyQualifiedName;
-  const entityNameLabel =
-    getEntityName(log.changeEvent?.entity) ||
-    (log.changeEvent?.entity as { name?: string })?.name;
-  const splitEntityFqn = entityFQN ? Fqn.split(entityFQN).pop() : undefined;
-  const entityLabel =
-    entityNameLabel ||
-    splitEntityFqn ||
-    log.changeEvent?.entityFullyQualifiedName ||
-    log.entityId;
+  const entityLabel = resolveEntityLabel(log, entityFQN);
   const normalizedType = resolveEntityType(entityType);
-  const timestamp = log.eventTs;
+
+  return {
+    userName,
+    eventType,
+    entityType,
+    entityFQN,
+    entityLabel,
+    normalizedType,
+    timestamp: log.eventTs,
+  };
+};
+
+const getUserEntityLink = (
+  log: AuditLogListItemProps['log'],
+  entityLabel?: string
+): ReactNode | null => {
+  const userNameForLink =
+    log.changeEvent?.entity?.name ??
+    log.changeEvent?.entity?.fullyQualifiedName ??
+    log.userName ??
+    entityLabel;
+  if (!userNameForLink) {
+    return null;
+  }
+
+  return (
+    <Link className="entity-link" to={getUserPath(userNameForLink)}>
+      {entityLabel ?? userNameForLink}
+    </Link>
+  );
+};
+
+const getTypedEntityLink = (
+  entityFQN?: string,
+  normalizedType?: EntityType,
+  entityLabel?: string
+): ReactNode | null => {
+  if (!normalizedType || !entityFQN) {
+    return null;
+  }
+  const link = getEntityLinkFromType(entityFQN, normalizedType);
+  if (!link) {
+    return null;
+  }
+
+  return (
+    <Link className="entity-link" to={link}>
+      {entityLabel ?? entityFQN}
+    </Link>
+  );
+};
+
+interface AuditLogItemHeaderProps {
+  userLink: ReactNode;
+  eventType: string;
+  impersonatedBy?: string;
+}
+
+const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
+  userLink,
+  eventType,
+  impersonatedBy,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="item-header" data-testid="item-header">
+      <Space size={4}>
+        {userLink}
+        <Typography.Text className="event-separator">–</Typography.Text>
+        <Typography.Text className="event-type" data-testid="event-type">
+          {eventType}
+        </Typography.Text>
+        {impersonatedBy && (
+          <>
+            <Typography.Text className="event-separator">–</Typography.Text>
+            <Typography.Text
+              className="impersonated-by"
+              data-testid="impersonated-by">
+              {t('label.impersonated-by-with-colon')}
+            </Typography.Text>{' '}
+            <Link className="user-link" to={getUserPath(impersonatedBy)}>
+              {impersonatedBy}
+            </Link>
+          </>
+        )}
+      </Space>
+    </div>
+  );
+};
+
+interface AuditLogItemDescriptionProps {
+  descriptionNodes: ReactNode[];
+  eventType: string;
+  entityLink: ReactNode;
+}
+
+const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
+  descriptionNodes,
+  eventType,
+  entityLink,
+}) => (
+  <div className="item-description">
+    {descriptionNodes.length > 0 ? (
+      <div className="description-content">
+        {descriptionNodes.map((node, idx) => (
+          <span
+            className="description-item"
+            key={isValidElement(node) ? node.key : undefined}>
+            {node}
+            {idx < descriptionNodes.length - 1 && (
+              <span className="description-separator">; </span>
+            )}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <Space size={4}>
+        <Typography.Text className="action-text">{eventType}</Typography.Text>
+        {entityLink}
+      </Space>
+    )}
+  </div>
+);
+
+interface AuditLogItemMetaProps {
+  entityType?: string;
+  timestamp?: number;
+}
+
+const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
+  entityType,
+  timestamp,
+}) => (
+  <div className="item-meta" data-testid="item-meta">
+    <Space size={8} split={<span className="meta-separator">|</span>}>
+      {entityType && (
+        <Typography.Text
+          className="meta-item entity-type-badge"
+          data-testid="entity-type-badge">
+          {startCase(entityType)}
+        </Typography.Text>
+      )}
+      {timestamp && (
+        <Typography.Text
+          className="meta-item timestamp"
+          data-testid="timestamp">
+          {getRelativeTime(timestamp)}
+        </Typography.Text>
+      )}
+    </Space>
+  </div>
+);
+
+const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
+  const { t } = useTranslation();
+
+  const {
+    userName,
+    eventType,
+    entityType,
+    entityFQN,
+    entityLabel,
+    normalizedType,
+    timestamp,
+  } = getAuditLogDisplayInfo(log, t('label.system'));
 
   const isLinkableField = useCallback((fieldName?: string): boolean => {
     if (!fieldName) {
@@ -399,28 +574,19 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
   const entityLink = useMemo(() => {
     if (normalizedType === EntityType.USER) {
-      const userNameForLink =
-        log.changeEvent?.entity?.name ??
-        log.changeEvent?.entity?.fullyQualifiedName ??
-        log.userName ??
-        entityLabel;
-      if (userNameForLink) {
-        return (
-          <Link className="entity-link" to={getUserPath(userNameForLink)}>
-            {entityLabel ?? userNameForLink}
-          </Link>
-        );
+      const userLinkNode = getUserEntityLink(log, entityLabel);
+      if (userLinkNode) {
+        return userLinkNode;
       }
     }
-    if (normalizedType && entityFQN) {
-      const link = getEntityLinkFromType(entityFQN, normalizedType);
-      if (link) {
-        return (
-          <Link className="entity-link" to={link}>
-            {entityLabel ?? entityFQN}
-          </Link>
-        );
-      }
+
+    const typedLinkNode = getTypedEntityLink(
+      entityFQN,
+      normalizedType,
+      entityLabel
+    );
+    if (typedLinkNode) {
+      return typedLinkNode;
     }
 
     return (
@@ -453,71 +619,17 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         />
       </div>
       <div className="item-content">
-        <div className="item-header" data-testid="item-header">
-          <Space size={4}>
-            {userLink}
-            <Typography.Text className="event-separator">–</Typography.Text>
-            <Typography.Text className="event-type" data-testid="event-type">
-              {eventType}
-            </Typography.Text>
-            {log.impersonatedBy && (
-              <>
-                <Typography.Text className="event-separator">–</Typography.Text>
-                <Typography.Text
-                  className="impersonated-by"
-                  data-testid="impersonated-by">
-                  {t('label.impersonated-by-with-colon')}
-                </Typography.Text>{' '}
-                <Link
-                  className="user-link"
-                  to={getUserPath(log.impersonatedBy)}>
-                  {log.impersonatedBy}
-                </Link>
-              </>
-            )}
-          </Space>
-        </div>
-        <div className="item-description">
-          {descriptionNodes.length > 0 ? (
-            <div className="description-content">
-              {descriptionNodes.map((node, idx) => (
-                <span
-                  className="description-item"
-                  key={isValidElement(node) ? node.key : undefined}>
-                  {node}
-                  {idx < descriptionNodes.length - 1 && (
-                    <span className="description-separator">; </span>
-                  )}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <Space size={4}>
-              <Typography.Text className="action-text">
-                {eventType}
-              </Typography.Text>
-              {entityLink}
-            </Space>
-          )}
-        </div>
-        <div className="item-meta" data-testid="item-meta">
-          <Space size={8} split={<span className="meta-separator">|</span>}>
-            {entityType && (
-              <Typography.Text
-                className="meta-item entity-type-badge"
-                data-testid="entity-type-badge">
-                {startCase(entityType)}
-              </Typography.Text>
-            )}
-            {timestamp && (
-              <Typography.Text
-                className="meta-item timestamp"
-                data-testid="timestamp">
-                {getRelativeTime(timestamp)}
-              </Typography.Text>
-            )}
-          </Space>
-        </div>
+        <AuditLogItemHeader
+          eventType={eventType}
+          impersonatedBy={log.impersonatedBy}
+          userLink={userLink}
+        />
+        <AuditLogItemDescription
+          descriptionNodes={descriptionNodes}
+          entityLink={entityLink}
+          eventType={eventType}
+        />
+        <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
       </div>
     </div>
   );
