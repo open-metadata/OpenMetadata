@@ -371,6 +371,11 @@ test.describe('User with Data Consumer Roles', () => {
       // Check CRUD for Tags — navigate to Tags sidebar to verify create permission is absent
       await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
 
+      // Confirm the left panel has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('tags-left-panel')
+      ).toBeVisible();
+
       await expect(
         dataConsumerPage.locator('[data-testid="add-classification"]')
       ).not.toBeVisible();
@@ -382,6 +387,9 @@ test.describe('User with Data Consumer Roles', () => {
         'Certification'
       );
 
+      // Confirm the header has rendered before asserting button absence
+      await expect(dataConsumerPage.getByTestId('header')).toBeVisible();
+
       await expect(
         dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
       ).not.toBeVisible();
@@ -391,6 +399,11 @@ test.describe('User with Data Consumer Roles', () => {
 
       // User-created classification: manage button MUST be visible but show only Export
       await userClassification.visitPage(dataConsumerPage);
+
+      // Confirm the header has rendered before asserting button presence/absence
+      await expect(
+        dataConsumerPage.getByTestId('entity-header-name')
+      ).toContainText(userClassification.data.displayName);
 
       await expect(
         dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
