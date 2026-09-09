@@ -6,15 +6,16 @@
   "steps": [
     {
       "name": "GetDatabases",
-      "description": "List all the databases available to the user.",
+      "description": "List the buckets available to the user, or validate the configured `Bucket` when one is set.",
       "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
       "mandatory": true,
-      "shortCircuit": true
+      "shortCircuit": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetCollections",
-      "description": "List all the collection available within a randomly chosen database available to the user.",
-      "errorMessage": "Failed to fetch collection, please validate if the user has `listCollection` privilege on available databases",
+      "description": "List the scopes of the buckets in scope. Passes as soon as one of them can be read.",
+      "errorMessage": "Failed to fetch collections, please validate if the user can read the buckets in scope",
       "mandatory": true
     }
   ]
