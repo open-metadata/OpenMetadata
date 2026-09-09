@@ -52,6 +52,7 @@ import {
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import Fqn from '../../../utils/Fqn';
 import {
   filterTreeNodeOptions,
   findItemByFqn,
@@ -210,26 +211,25 @@ const injectMissingInitialOptions = (
       continue;
     }
 
-    const segments = option.value.split('.');
+    const segments = Fqn.split(option.value);
     if (segments.length < 2) {
       continue;
     }
 
-    const parentFqn = segments.slice(0, -1).join('.');
+    const leafName = segments[segments.length - 1];
+    const parentFqn = Fqn.build(...segments.slice(0, -1));
     const parentNode = findTreeNode(tree, parentFqn);
 
     if (parentNode) {
       const displayName = option.data
         ? getEntityName(option.data as { name?: string; displayName?: string })
-        : segments[segments.length - 1];
+        : leafName;
 
       const syntheticChild: TreeNode = {
         id: `initial-${option.value}`,
         value: option.value,
-        name: segments[segments.length - 1],
-        title: (
-          <Typography.Text ellipsis>{displayName}</Typography.Text>
-        ),
+        name: leafName,
+        title: <Typography.Text ellipsis>{displayName}</Typography.Text>,
         checkable: true,
         isLeaf: true,
         selectable: true,
@@ -674,7 +674,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
-      {...(normalizedValue !== undefined ? { value: normalizedValue } : {})}
+      {...(formValue !== undefined ? { value: normalizedValue } : {})}
       onKeyDown={handleKeyDown}
     />
   );

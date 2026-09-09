@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form } from 'antd';
 import { act, render, screen } from '@testing-library/react';
+import { Form } from 'antd';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from './AsyncSelectList.interface';
 import TreeAsyncSelectList from './TreeAsyncSelectList';
@@ -47,7 +47,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 const mockConvertGlossaryTermsToTreeOptions = jest.fn();
 
 jest.mock('../../../utils/GlossaryUtils', () => ({
-  convertGlossaryTermsToTreeOptions: (...args: unknown[]) =>
+  convertGlossaryTermsToTreeOptions: (...args) =>
     mockConvertGlossaryTermsToTreeOptions(...args),
 }));
 
@@ -56,17 +56,22 @@ jest.mock('../../../utils/GlossaryPureUtils', () => ({
   findItemByFqn: jest.fn().mockReturnValue(null),
 }));
 
+jest.mock('../../../utils/Fqn', () => ({
+  __esModule: true,
+  default: {
+    split: jest.fn().mockImplementation((fqn) => fqn.split('.')),
+    build: jest.fn().mockImplementation((...parts) => parts.join('.')),
+  },
+}));
+
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
-    .mockImplementation(
-      (entity: { displayName?: string; name?: string }) =>
-        entity?.displayName || entity?.name || ''
-    ),
+    .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
 }));
 
 jest.mock('../../../utils/TagsPureUtils', () => ({
-  getTagDisplay: jest.fn().mockImplementation((value: string) => value),
+  getTagDisplay: jest.fn().mockImplementation((value) => value),
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
@@ -78,10 +83,8 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/StringUtils', () => ({
-  escapeESReservedCharacters: jest
-    .fn()
-    .mockImplementation((v: string) => v),
-  getEncodedFqn: jest.fn().mockImplementation((v: string) => v),
+  escapeESReservedCharacters: jest.fn().mockImplementation((v) => v),
+  getEncodedFqn: jest.fn().mockImplementation((v) => v),
 }));
 
 jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
