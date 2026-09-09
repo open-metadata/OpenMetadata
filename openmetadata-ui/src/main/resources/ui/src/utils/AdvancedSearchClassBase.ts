@@ -240,6 +240,9 @@ class AdvancedSearchClassBase {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
     const debouncedFetch = debounce((search: string) => {
+      // An in-flight response must settle its own search, even if a newer search is queued.
+      const resolve = pendingResolve;
+      pendingResolve = null;
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -257,28 +260,19 @@ class AdvancedSearchClassBase {
             sourceFieldOptionType
           );
 
-          if (pendingResolve) {
-            pendingResolve({
-              values: bucketsData as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({
+            values: bucketsData as ListItem[],
+            hasMore: false,
+          });
         })
         .catch(() => {
-          if (pendingResolve) {
-            pendingResolve({
-              values: [] as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({ values: [] as ListItem[], hasMore: false });
         });
     }, 300);
 
     return (search) => {
       return new Promise((resolve) => {
-        // Resolve previous promise to prevent hanging
+        // Settle searches cancelled before their debounced request starts.
         if (pendingResolve) {
           pendingResolve({ values: [] as ListItem[], hasMore: false });
         }
