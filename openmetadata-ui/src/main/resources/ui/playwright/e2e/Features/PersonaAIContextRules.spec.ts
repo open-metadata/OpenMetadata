@@ -37,8 +37,8 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { selectOptionWithRetry, toastNotification } from '../../utils/common';
 import {
-    enablePersonaRulePreloading,
-    openPersonaAIContext
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
 } from '../../utils/personaAIContext';
 
 // ---------------------------------------------------------------------------
