@@ -69,7 +69,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Context Center - Documents Page', () => {
-  test.slow(true);
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ browser }) => {
@@ -961,6 +960,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(page).toHaveURL(new RegExp(`document=${doc.id}`));
     await expect(row.getByTestId('document-name')).toHaveText(fileName);
 
+    await expect(panel.getByText('Status')).toBeVisible();
     await expect(panel.getByText('Size')).toBeVisible();
     await expect(panel.getByText('Folder', { exact: true })).toBeVisible();
     await expect(panel.getByText(folderName)).toBeVisible();

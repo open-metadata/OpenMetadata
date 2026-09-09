@@ -344,6 +344,32 @@ class TestTagAnalyzer:
             nlp_engine=load_nlp_engine(),
         )
 
+    @pytest.fixture
+    def person_tag(self) -> Tag:
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.PERSON],
+                context=["name"],
+            ),
+            target=Target.content,
+        )
+        return TagFactory.create(
+            tag_name="Person",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Person name",
+        )
+
+    @pytest.fixture
+    def person_tag_analyzer(self, person_tag: Tag, column: Column) -> TagAnalyzer:
+        return TagAnalyzer(
+            tag=person_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
     def test_analyze_content_rejects_epoch_timestamp_as_date(self, date_tag_analyzer: TagAnalyzer):
         analysis = date_tag_analyzer.analyze(str_values=["1760000000123"])
 
@@ -355,6 +381,108 @@ class TestTagAnalyzer:
 
         assert analysis.score > 0.0
         assert [result.entity_type for result in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    @pytest.mark.parametrize(
+        "values",
+        [
+            pytest.param(
+                [
+                    "Safari",
+                    "Edge",
+                    "Safari",
+                    "Chrome",
+                    "Chrome",
+                    "Firefox",
+                    "Firefox",
+                    "Google Search App",
+                    "Chrome",
+                    "Edge",
+                ],
+                id="browser",
+            ),
+            pytest.param(
+                [
+                    "flickr",
+                    "google_search",
+                    "flickr",
+                    "flickr",
+                    "flickr",
+                    "flickr",
+                    "google_search",
+                    "commons.m.wikimedia.org",
+                    "google_search",
+                    "google_search",
+                ],
+                id="channel-subtype",
+            ),
+        ],
+    )
+    def test_analyze_content_rejects_repeated_spacy_named_entity_guess(
+        self,
+        person_tag_analyzer: TagAnalyzer,
+        values: list[str],
+    ):
+        analysis = person_tag_analyzer.analyze(str_values=values)
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_preserves_distinct_minority_names(self, person_tag_analyzer: TagAnalyzer):
+        names = [
+            "Geneviève",
+            "François",
+            "Mathieu",
+            "Sylvie",
+            "Nathalie",
+            "Isabelle",
+            "Céline",
+            "Jean-Marc",
+        ]
+        analysis = person_tag_analyzer.analyze(str_values=names + [str(value) for value in range(42)])
+
+        assert analysis.score >= 0.8
+
+    def test_analyze_content_preserves_single_contextual_name(self, person_tag: Tag):
+        name_column = Column(
+            name=ColumnName(root="employee_name"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="test.table.employee_name",
+        )
+        analyzer = TagAnalyzer(
+            tag=person_tag,
+            column=name_column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+        analysis = analyzer.analyze(str_values=["François"])
+
+        assert analysis.score == 1.0
+
+    def test_analyze_content_corroborates_each_spacy_entity_type_independently(self, column: Column):
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.PERSON, PIIEntity.LOCATION],
+            ),
+            target=Target.content,
+        )
+        named_entity_tag = TagFactory.create(
+            tag_name="NamedEntity",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Named entity",
+        )
+        analyzer = TagAnalyzer(
+            tag=named_entity_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+        analysis = analyzer.analyze(str_values=["François", "Paris"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
 
     def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""
@@ -379,6 +507,21 @@ class TestTagAnalyzer:
             tag=email_tag,
             explanation=None,
         )
+
+    def test_analyze_content_minority_pii_not_diluted(self, tag_analyzer, email_tag: Tag):
+        """A single PII value among many non-PII rows must not be diluted below threshold.
+
+        Regression test for #32070: the old average-based aggregation divided the recogniser
+        score by the total number of sampled values (e.g. 0.9 / 50 = 0.018), silently
+        discarding minority PII.  The max-based approach returns the highest individual
+        recogniser score regardless of batch size.
+        """
+        non_pii = ["random text"] * 49
+        values = non_pii + ["john@example.com"]  # 1 PII hit in 50 values
+        analysis = tag_analyzer.analyze(str_values=values)
+        # Old average: 0.9 / 50 = 0.018 — below minimumConfidence → column silently untagged.
+        # Max-based: 0.9 — correctly flags the column.
+        assert analysis.score >= 0.8
 
     def test_analyze_column_name(self, email_tag, nlp_engine):
         """Test column name analysis fires independently via the unified analyze() method."""

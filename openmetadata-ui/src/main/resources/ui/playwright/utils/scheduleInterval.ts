@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { selectOptionWithRetry } from './common';
 
 /**
- * Helpers for the ScheduleIntervalV1 scheduler used by the Add / Edit Ingestion
+ * Helpers for the ScheduleInterval scheduler used by the Add / Edit Ingestion
  * wizard. The scheduler is built on react-aria components, so selects are
  * opened through their trigger button and options are picked by role.
  */
@@ -40,9 +41,21 @@ export const selectScheduleFrequency = async (
   await page.getByTestId(`frequency-${frequency}`).click();
 };
 
+export const expectScheduleFrequencySelected = async (
+  page: Page,
+  frequency: ScheduleFrequency
+) => {
+  await expect(page.getByTestId(`frequency-${frequency}`)).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+};
+
 const selectOption = async (page: Page, testId: string, option: string) => {
-  await page.getByTestId(testId).getByRole('button').click();
-  await page.getByRole('option', { name: option, exact: true }).click();
+  await selectOptionWithRetry(
+    page.getByTestId(testId).getByRole('button'),
+    page.getByRole('option', { name: option, exact: true })
+  );
 };
 
 export const selectScheduleMinute = async (page: Page, minute: string) =>

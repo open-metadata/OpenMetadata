@@ -34,6 +34,7 @@ import {
   type IngestionPipeline,
   type StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import type { DataObj, ServicesType } from '../interface/service.interface';
 import connectionsRouterClassBase from './ConnectionsRouterClassBase';
@@ -146,6 +147,10 @@ export const getSupportedPipelineTypes = (
 ) => {
   const pipelineType: PipelineType[] = [];
   const config = serviceDetails?.connection?.config as Connection;
+
+  if (serviceDetails.serviceType === PipelineServiceType.Spark) {
+    return pipelineType;
+  }
 
   if (isUndefined(config)) {
     return [PipelineType.Metadata];
