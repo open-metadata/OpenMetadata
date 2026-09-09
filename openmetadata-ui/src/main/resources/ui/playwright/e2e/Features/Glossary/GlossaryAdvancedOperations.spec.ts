@@ -375,41 +375,45 @@ test.describe('Glossary Advanced Operations', () => {
   });
 
   // T-C15: Create term with custom style (color)
-  test('should create term with custom style color', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
+  test(
+    'should create term with custom style color',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary();
 
-    try {
-      await glossary.create(apiContext);
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+      try {
+        await glossary.create(apiContext);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
+        await openAddGlossaryTermModal(page);
 
-      const termName = `ColorTerm${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Term with custom color');
+        const termName = `ColorTerm${Date.now()}`;
+        await page.fill('[data-testid="name"]', termName);
+        await fillDescriptionBox(page, 'Term with custom color');
 
-      // Set custom color (must be one of the palette swatches)
-      const customColor = '#F14C75';
-      await selectStyleColor(page, customColor);
+        // Set custom color (must be one of the palette swatches)
+        const customColor = '#F14C75';
+        await selectStyleColor(page, customColor);
 
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await createResponse;
-      const responseData = await response.json();
+        const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+        await page.click('[data-testid="save-glossary-term"]');
+        const response = await createResponse;
+        const responseData = await response.json();
 
-      // Verify color was saved
-      expect(responseData.style?.color).toBe(customColor);
+        // Verify color was saved
+        expect(responseData.style?.color).toBe(customColor);
 
-      // Verify term is created
-      await expect(page.getByTestId(termName)).toBeVisible();
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
+        // Verify term is created
+        await expect(page.getByTestId(termName)).toBeVisible();
+      } finally {
+        await glossary.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   // T-C16: Create term with custom style (icon URL)
   test('should create term with custom style icon URL', async ({ page }) => {
@@ -487,44 +491,48 @@ test.describe('Glossary Advanced Operations', () => {
   });
 
   // T-U22: Update term style - set color
-  test('should update term style to set color', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
+  test(
+    'should update term style to set color',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary();
+      const glossaryTerm = new GlossaryTerm(glossary);
 
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+      try {
+        await glossary.create(apiContext);
+        await glossaryTerm.create(apiContext);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Open edit modal for the term
-      const escapedFqn = glossaryTerm.responseData.fullyQualifiedName
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"');
-      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-      await termRow.getByTestId('edit-button').click();
+        // Open edit modal for the term
+        const escapedFqn = glossaryTerm.responseData.fullyQualifiedName
+          .replace(/\\/g, '\\\\')
+          .replace(/"/g, '\\"');
+        const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
+        await termRow.getByTestId('edit-button').click();
 
-      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
+        await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
-      // Set custom color (must be one of the palette swatches)
-      const customColor = '#05A580';
-      await selectStyleColor(page, customColor);
+        // Set custom color (must be one of the palette swatches)
+        const customColor = '#05A580';
+        await selectStyleColor(page, customColor);
 
-      const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await updateResponse;
-      const responseData = await response.json();
+        const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+        await page.click('[data-testid="save-glossary-term"]');
+        const response = await updateResponse;
+        const responseData = await response.json();
 
-      // Verify color was updated
-      expect(responseData.style?.color).toBe(customColor);
-    } finally {
-      await glossaryTerm.delete(apiContext);
-      await glossary.delete(apiContext);
-      await afterAction();
+        // Verify color was updated
+        expect(responseData.style?.color).toBe(customColor);
+      } finally {
+        await glossaryTerm.delete(apiContext);
+        await glossary.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   // T-U23: Update term style - set icon URL
   test('should update term style to set icon URL', async ({ page }) => {

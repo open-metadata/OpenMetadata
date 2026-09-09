@@ -837,344 +837,348 @@ test.describe(
       });
     });
 
-    test('should handle supported services field correctly', async ({
-      page,
-    }) => {
-      const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
-      const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
-      let createdTestId: string;
+    test(
+      'should handle supported services field correctly',
+      { tag: '@quarantine' },
+      async ({ page }) => {
+        const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
+        const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
+        let createdTestId: string;
 
-      await test.step('Create test definition with specific supported services', async () => {
-        await page.goto('/test-library');
+        await test.step('Create test definition with specific supported services', async () => {
+          await page.goto('/test-library');
 
-        await page.getByTestId('add-test-definition-button').click();
+          await page.getByTestId('add-test-definition-button').click();
 
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).toBeVisible();
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).toBeVisible();
 
-        await page
-          .getByTestId('test-definition-name')
-          .locator('input')
-          .fill(SUPPORTED_SERVICES_TEST_NAME);
-        await page
-          .getByTestId('display-name')
-          .locator('input')
-          .fill(SUPPORTED_SERVICES_DISPLAY_NAME);
-        await page
-          .getByTestId('description')
-          .locator('textarea')
-          .fill('Test definition to validate supported services filtering');
+          await page
+            .getByTestId('test-definition-name')
+            .locator('input')
+            .fill(SUPPORTED_SERVICES_TEST_NAME);
+          await page
+            .getByTestId('display-name')
+            .locator('input')
+            .fill(SUPPORTED_SERVICES_DISPLAY_NAME);
+          await page
+            .getByTestId('description')
+            .locator('textarea')
+            .fill('Test definition to validate supported services filtering');
 
-        await selectEntityType(page, 'TABLE');
+          await selectEntityType(page, 'TABLE');
 
-        // Select supported data types (required when OpenMetadata platform is selected)
-        await page.getByTestId('supported-data-types').click();
-        await page
-          .getByTestId('supported-data-types')
-          .locator('input')
-          .fill('NUMBER');
-        await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
-        await page.keyboard.press('Escape');
+          // Select supported data types (required when OpenMetadata platform is selected)
+          await page.getByTestId('supported-data-types').click();
+          await page
+            .getByTestId('supported-data-types')
+            .locator('input')
+            .fill('NUMBER');
+          await page
+            .getByRole('option', { name: 'NUMBER', exact: true })
+            .click();
+          await page.keyboard.press('Escape');
 
-        await page.getByTestId('supported-services').click();
-        await page
-          .getByTestId('supported-services')
-          .locator('input')
-          .fill('Mysql');
-        const mysqlOption = page.getByRole('option', {
-          name: 'Mysql',
-          exact: true,
+          await page.getByTestId('supported-services').click();
+          await page
+            .getByTestId('supported-services')
+            .locator('input')
+            .fill('Mysql');
+          const mysqlOption = page.getByRole('option', {
+            name: 'Mysql',
+            exact: true,
+          });
+          await expect(mysqlOption).toBeVisible();
+          await mysqlOption.click();
+          await page.getByTestId('supported-services').locator('input').clear();
+          await page
+            .getByTestId('supported-services')
+            .locator('input')
+            .fill('Postgres');
+
+          const postgresOption = page.getByRole('option', {
+            name: 'Postgres',
+            exact: true,
+          });
+          await expect(postgresOption).toBeVisible();
+          await postgresOption.click();
+          await page.keyboard.press('Escape');
+
+          const createResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'POST'
+          );
+
+          await page.getByTestId('save-test-definition').click();
+
+          const responseData = await createResponse;
+          expect(responseData.status()).toBe(201);
+
+          const createdData = await responseData.json();
+          createdTestId = createdData.id;
+
+          await toastNotification(page, /created successfully/i);
+          await expect(
+            page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
+          ).toBeVisible();
         });
-        await expect(mysqlOption).toBeVisible();
-        await mysqlOption.click();
-        await page.getByTestId('supported-services').locator('input').clear();
-        await page
-          .getByTestId('supported-services')
-          .locator('input')
-          .fill('Postgres');
 
-        const postgresOption = page.getByRole('option', {
-          name: 'Postgres',
-          exact: true,
+        await test.step('Verify supported services are saved correctly', async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
+
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).toBeVisible();
+
+          const supportedServicesField = page.getByTestId('supported-services');
+          await expect(supportedServicesField).toBeVisible();
+
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('Mysql', { exact: true })
+          ).toBeVisible();
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('Postgres', { exact: true })
+          ).toBeVisible();
+
+          await page.getByRole('button', { name: /Cancel/i }).click();
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).not.toBeVisible();
         });
-        await expect(postgresOption).toBeVisible();
-        await postgresOption.click();
-        await page.keyboard.press('Escape');
 
-        const createResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-            response.request().method() === 'POST'
-        );
+        await test.step('Verify test definition appears when filtering by supported services', async () => {
+          const { apiContext } = await getApiContext(page);
+          const mysqlFilterResponse = await apiContext.get(
+            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Mysql'
+          );
+          expect(mysqlFilterResponse.status()).toBe(200);
 
-        await page.getByTestId('save-test-definition').click();
+          const mysqlData = await mysqlFilterResponse.json();
+          const foundInMySql = mysqlData.data.find(
+            (def: { id: string }) => def.id === createdTestId
+          );
+          expect(foundInMySql).toBeDefined();
+          expect(foundInMySql.supportedServices).toContain('Mysql');
 
-        const responseData = await createResponse;
-        expect(responseData.status()).toBe(201);
+          const postgresFilterResponse = await apiContext.get(
+            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Postgres'
+          );
+          expect(postgresFilterResponse.status()).toBe(200);
 
-        const createdData = await responseData.json();
-        createdTestId = createdData.id;
+          const postgresData = await postgresFilterResponse.json();
+          const foundInPostgres = postgresData.data.find(
+            (def: { id: string }) => def.id === createdTestId
+          );
+          expect(foundInPostgres).toBeDefined();
+          expect(foundInPostgres.supportedServices).toContain('Postgres');
 
-        await toastNotification(page, /created successfully/i);
-        await expect(
-          page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
-        ).toBeVisible();
-      });
+          const bigQueryFilterResponse = await apiContext.get(
+            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=BigQuery'
+          );
+          expect(bigQueryFilterResponse.status()).toBe(200);
 
-      await test.step('Verify supported services are saved correctly', async () => {
-        await expect(page.getByTestId('test-definition-table')).toBeVisible();
-
-        const editButton = page.getByTestId(
-          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-        );
-        await editButton.click();
-
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).toBeVisible();
-
-        const supportedServicesField = page.getByTestId('supported-services');
-        await expect(supportedServicesField).toBeVisible();
-
-        await expect(
-          page
-            .getByTestId('supported-services')
-            .getByText('Mysql', { exact: true })
-        ).toBeVisible();
-        await expect(
-          page
-            .getByTestId('supported-services')
-            .getByText('Postgres', { exact: true })
-        ).toBeVisible();
-
-        await page.getByRole('button', { name: /Cancel/i }).click();
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).not.toBeVisible();
-      });
-
-      await test.step('Verify test definition appears when filtering by supported services', async () => {
-        const { apiContext } = await getApiContext(page);
-        const mysqlFilterResponse = await apiContext.get(
-          '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Mysql'
-        );
-        expect(mysqlFilterResponse.status()).toBe(200);
-
-        const mysqlData = await mysqlFilterResponse.json();
-        const foundInMySql = mysqlData.data.find(
-          (def: { id: string }) => def.id === createdTestId
-        );
-        expect(foundInMySql).toBeDefined();
-        expect(foundInMySql.supportedServices).toContain('Mysql');
-
-        const postgresFilterResponse = await apiContext.get(
-          '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Postgres'
-        );
-        expect(postgresFilterResponse.status()).toBe(200);
-
-        const postgresData = await postgresFilterResponse.json();
-        const foundInPostgres = postgresData.data.find(
-          (def: { id: string }) => def.id === createdTestId
-        );
-        expect(foundInPostgres).toBeDefined();
-        expect(foundInPostgres.supportedServices).toContain('Postgres');
-
-        const bigQueryFilterResponse = await apiContext.get(
-          '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=BigQuery'
-        );
-        expect(bigQueryFilterResponse.status()).toBe(200);
-
-        const bigQueryData = await bigQueryFilterResponse.json();
-        const foundInBigQuery = bigQueryData.data.find(
-          (def: { id: string }) => def.id === createdTestId
-        );
-        expect(foundInBigQuery).toBeUndefined();
-      });
-
-      await test.step('Edit and change supported services', async () => {
-        await expect(page.getByTestId('test-definition-table')).toBeVisible();
-
-        const editButton = page.getByTestId(
-          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-        );
-        await editButton.click();
-
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).toBeVisible();
-
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'Mysql' })
-          .getByRole('button')
-          .first()
-          .click();
-
-        await expect(
-          page
-            .getByTestId('supported-services')
-            .getByText('Mysql', { exact: true })
-        ).toHaveCount(0);
-
-        await page.getByTestId('supported-services').click();
-        await page
-          .getByTestId('supported-services')
-          .locator('input')
-          .fill('BigQuery');
-        const bigQueryOption = page.getByRole('option', {
-          name: 'BigQuery',
-          exact: true,
+          const bigQueryData = await bigQueryFilterResponse.json();
+          const foundInBigQuery = bigQueryData.data.find(
+            (def: { id: string }) => def.id === createdTestId
+          );
+          expect(foundInBigQuery).toBeUndefined();
         });
-        await expect(bigQueryOption).toBeVisible();
-        await bigQueryOption.click();
-        await page.keyboard.press('Escape');
 
-        const patchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-            response.request().method() === 'PATCH'
-        );
+        await test.step('Edit and change supported services', async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
 
-        await page.getByTestId('save-test-definition').click();
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
 
-        const updateResponse = await patchResponse;
-        expect(updateResponse.status()).toBe(200);
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).toBeVisible();
 
-        const updatedData = await updateResponse.json();
-        expect(updatedData.supportedServices).toContain('Postgres');
-        expect(updatedData.supportedServices).toContain('BigQuery');
-        expect(updatedData.supportedServices).not.toContain('MySql');
-
-        await toastNotification(page, /updated successfully/i);
-      });
-
-      await test.step('Verify updated supported services are persisted', async () => {
-        await expect(page.getByTestId('test-definition-table')).toBeVisible();
-
-        const editButton = page.getByTestId(
-          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-        );
-        await editButton.click();
-
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).toBeVisible();
-
-        await expect(
-          page
+          await page
             .getByTestId('supported-services')
-            .getByText('Postgres', { exact: true })
-        ).toBeVisible();
+            .locator('div')
+            .filter({ hasText: 'Mysql' })
+            .getByRole('button')
+            .first()
+            .click();
 
-        await expect(
-          page
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('Mysql', { exact: true })
+          ).toHaveCount(0);
+
+          await page.getByTestId('supported-services').click();
+          await page
             .getByTestId('supported-services')
-            .getByText('BigQuery', { exact: true })
-        ).toBeVisible();
+            .locator('input')
+            .fill('BigQuery');
+          const bigQueryOption = page.getByRole('option', {
+            name: 'BigQuery',
+            exact: true,
+          });
+          await expect(bigQueryOption).toBeVisible();
+          await bigQueryOption.click();
+          await page.keyboard.press('Escape');
 
-        await expect(
-          page
+          const patchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'PATCH'
+          );
+
+          await page.getByTestId('save-test-definition').click();
+
+          const updateResponse = await patchResponse;
+          expect(updateResponse.status()).toBe(200);
+
+          const updatedData = await updateResponse.json();
+          expect(updatedData.supportedServices).toContain('Postgres');
+          expect(updatedData.supportedServices).toContain('BigQuery');
+          expect(updatedData.supportedServices).not.toContain('MySql');
+
+          await toastNotification(page, /updated successfully/i);
+        });
+
+        await test.step('Verify updated supported services are persisted', async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
+
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).toBeVisible();
+
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('Postgres', { exact: true })
+          ).toBeVisible();
+
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('BigQuery', { exact: true })
+          ).toBeVisible();
+
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('Mysql', { exact: true })
+          ).toHaveCount(0);
+
+          await page.getByRole('button', { name: /Cancel/i }).click();
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).not.toBeVisible();
+        });
+
+        await test.step('Clear all supported services (should apply to all services)', async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
+
+          await expect(
+            page.getByTestId('test-definition-form-body')
+          ).toBeVisible();
+
+          await page
             .getByTestId('supported-services')
-            .getByText('Mysql', { exact: true })
-        ).toHaveCount(0);
+            .locator('div')
+            .filter({ hasText: 'Postgres' })
+            .getByRole('button')
+            .first()
+            .click();
 
-        await page.getByRole('button', { name: /Cancel/i }).click();
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).not.toBeVisible();
-      });
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('Postgres', { exact: true })
+          ).toHaveCount(0);
 
-      await test.step('Clear all supported services (should apply to all services)', async () => {
-        await expect(page.getByTestId('test-definition-table')).toBeVisible();
-
-        const editButton = page.getByTestId(
-          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-        );
-        await editButton.click();
-
-        await expect(
-          page.getByTestId('test-definition-form-body')
-        ).toBeVisible();
-
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'Postgres' })
-          .getByRole('button')
-          .first()
-          .click();
-
-        await expect(
-          page
+          await page
             .getByTestId('supported-services')
-            .getByText('Postgres', { exact: true })
-        ).toHaveCount(0);
+            .locator('div')
+            .filter({ hasText: 'BigQuery' })
+            .getByRole('button')
+            .first()
+            .click();
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'BigQuery' })
-          .getByRole('button')
-          .first()
-          .click();
+          await expect(
+            page
+              .getByTestId('supported-services')
+              .getByText('BigQuery', { exact: true })
+          ).toHaveCount(0);
 
-        await expect(
-          page
-            .getByTestId('supported-services')
-            .getByText('BigQuery', { exact: true })
-        ).toHaveCount(0);
+          const patchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'PATCH'
+          );
 
-        const patchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-            response.request().method() === 'PATCH'
-        );
+          await page.getByTestId('save-test-definition').click();
 
-        await page.getByTestId('save-test-definition').click();
+          const updateResponse = await patchResponse;
+          expect(updateResponse.status()).toBe(200);
 
-        const updateResponse = await patchResponse;
-        expect(updateResponse.status()).toBe(200);
+          const updatedData = await updateResponse.json();
+          expect(
+            updatedData.supportedServices === null ||
+              updatedData.supportedServices === undefined ||
+              updatedData.supportedServices.length === 0
+          ).toBeTruthy();
 
-        const updatedData = await updateResponse.json();
-        expect(
-          updatedData.supportedServices === null ||
-            updatedData.supportedServices === undefined ||
-            updatedData.supportedServices.length === 0
-        ).toBeTruthy();
+          await toastNotification(page, /updated successfully/i);
+        });
 
-        await toastNotification(page, /updated successfully/i);
-      });
+        await test.step('Delete test definition', async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
 
-      await test.step('Delete test definition', async () => {
-        await expect(page.getByTestId('test-definition-table')).toBeVisible();
+          const deleteButton = page.getByTestId(
+            `delete-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await deleteButton.click();
 
-        const deleteButton = page.getByTestId(
-          `delete-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-        );
-        await deleteButton.click();
+          await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        await expect(page.getByTestId('delete-modal')).toBeVisible();
+          const deleteResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'DELETE'
+          );
 
-        const deleteResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-            response.request().method() === 'DELETE'
-        );
+          await fillDeleteConfirmationIfPresent(page);
+          await page.getByTestId('confirm-button').click();
 
-        await fillDeleteConfirmationIfPresent(page);
-        await page.getByTestId('confirm-button').click();
+          const response = await deleteResponse;
+          expect(response.status()).toBe(200);
 
-        const response = await deleteResponse;
-        expect(response.status()).toBe(200);
-
-        await toastNotification(page, /deleted successfully/i);
-        await expect(
-          page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
-        ).not.toBeVisible();
-      });
-    });
+          await toastNotification(page, /deleted successfully/i);
+          await expect(
+            page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
+          ).not.toBeVisible();
+        });
+      }
+    );
 
     test('should maintain page on edit and reset to first page on delete', async ({
       page,

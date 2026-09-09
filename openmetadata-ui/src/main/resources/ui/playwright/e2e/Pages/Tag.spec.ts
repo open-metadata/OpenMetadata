@@ -561,27 +561,28 @@ test.describe('Tag Page with Data Steward Roles', () => {
     await editTagPageDescription(dataStewardPage, tag);
   });
 
-  test('Add and Remove Assets for Data Steward', async ({
-    adminPage,
-    dataStewardPage,
-  }) => {
-    test.slow();
-    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
-    await redirectToHomePage(dataStewardPage);
+  test(
+    'Add and Remove Assets for Data Steward',
+    { tag: '@quarantine' },
+    async ({ adminPage, dataStewardPage }) => {
+      test.slow();
+      const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
+      await redirectToHomePage(dataStewardPage);
 
-    await test.step('Add Asset ', async () => {
-      await addAssetsToTag(dataStewardPage, assets, tag);
-    });
+      await test.step('Add Asset ', async () => {
+        await addAssetsToTag(dataStewardPage, assets, tag);
+      });
 
-    await test.step('Verify EntityType Filter', async () => {
-      await verifyEntityTypeFilterInTagAssets(dataStewardPage, assets);
-    });
+      await test.step('Verify EntityType Filter', async () => {
+        await verifyEntityTypeFilterInTagAssets(dataStewardPage, assets);
+      });
 
-    await test.step('Delete Asset', async () => {
-      await removeAssetsFromTag(dataStewardPage, assets, tag);
-      await assetCleanup();
-    });
-  });
+      await test.step('Delete Asset', async () => {
+        await removeAssetsFromTag(dataStewardPage, assets, tag);
+        await assetCleanup();
+      });
+    }
+  );
 });
 
 test.describe('Tag Page with Limited EditTag Permission', () => {

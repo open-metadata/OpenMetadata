@@ -17,6 +17,7 @@ import {
 } from '@playwright/test';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
+import { QUARANTINE_LIST, QuarantineEntry } from './playwright/quarantine-list';
 
 /**
  * Read environment variables from file.
@@ -71,14 +72,50 @@ const dedicatedStateTestIgnore = hasDedicatedIngestionLane
 // dedicated lanes — so a top-level grepInvert is silently dropped for the very
 // project that runs most of the suite.
 const QUARANTINE_TAG = /@quarantine/;
+// Second quarantine channel, for entries a source tag cannot express: a tag
+// sits on a `test()` call, so tagging a loop-generated test takes every variant
+// that loop produces with it. Matching the full title instead targets the one
+// variant the evidence is about — see playwright/quarantine-list.ts.
+//
+// Playwright greps against `<spec path> <title levels…>` joined by spaces, with
+// each level's TAGS SPLICED IN INLINE after it — 'Suite @Observability:DQ Case',
+// not 'Suite Case @Observability:DQ'. So every level is separated by exactly one
+// space plus an optional inline tag run, and the pattern is anchored at BOTH
+// ends: the spec path leads, `$` closes. Both anchors are load-bearing. A `.*`
+// join, or dropping `$`, lets a title match another whose levels merely contain
+// it — `… for table Time` would take `… for table Date Time`, `Data Assets
+// Widget` would take `Total Data Assets Widget`, `… for dashboard` would take
+// `… for dashboardDataModel`. Every entry is asserted to select exactly one
+// test, so a title that drifts fails loudly instead of quietly matching nothing.
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const TRAILING_TAGS = '(?: @\\S+)*';
+const quarantinePattern = ({ spec, test }: QuarantineEntry) =>
+  escapeRegExp(spec) +
+  test
+    .split(' › ')
+    .map((level) => `${TRAILING_TAGS} ${escapeRegExp(level)}`)
+    .join('') +
+  `${TRAILING_TAGS}$`;
+const QUARANTINE_MATCHER = new RegExp(
+  [QUARANTINE_TAG.source, ...QUARANTINE_LIST.map(quarantinePattern)].join('|')
+);
 const runQuarantinedOnly = Boolean(process.env.PLAYWRIGHT_RUN_QUARANTINED);
+// Quarantine only takes tests out of the MERGE QUEUE, where a flake ejects a
+// batch and stalls everyone. PR runs still execute them — `retries` turns a
+// flake green there, so they cost the author nothing but stay visible to
+// whoever can fix them — and so do nightlies. GITHUB_EVENT_NAME is set by
+// Actions on every step; under `workflow_call` it carries the caller's
+// triggering event, so the reusable pipeline sees `merge_group` too. Set it
+// locally to reproduce what the queue runs.
+const skipQuarantined = process.env.GITHUB_EVENT_NAME === 'merge_group';
 const asRegExpList = (value?: RegExp | RegExp[]) =>
   value === undefined ? [] : Array.isArray(value) ? value : [value];
 
 const andQuarantine = (base: RegExp) =>
   new RegExp(
-    `(?=.*(?:${base.source}))(?=.*(?:${QUARANTINE_TAG.source}))`,
-    [...new Set(`${base.flags}${QUARANTINE_TAG.flags}`)].join('')
+    `(?=.*(?:${base.source}))(?=.*(?:${QUARANTINE_MATCHER.source}))`,
+    [...new Set(`${base.flags}${QUARANTINE_MATCHER.flags}`)].join('')
   );
 
 // Fixture projects hold no @quarantine tests, so the soak lane must leave their
@@ -109,10 +146,15 @@ const applyQuarantine = <
   projects.map((project) => {
     // grepInvert is OR-matched, so appending the tag is enough to exclude it.
     if (!runQuarantinedOnly) {
-      return {
-        ...project,
-        grepInvert: [...asRegExpList(project.grepInvert), QUARANTINE_TAG],
-      };
+      return skipQuarantined
+        ? {
+            ...project,
+            grepInvert: [
+              ...asRegExpList(project.grepInvert),
+              QUARANTINE_MATCHER,
+            ],
+          }
+        : { ...project };
     }
 
     if (isFixtureProject(project)) {
@@ -127,7 +169,7 @@ const applyQuarantine = <
       ...project,
       grep:
         project.grep === undefined
-          ? QUARANTINE_TAG
+          ? QUARANTINE_MATCHER
           : asRegExpList(project.grep).map(andQuarantine),
     };
   });

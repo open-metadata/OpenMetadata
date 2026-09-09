@@ -1,14 +1,51 @@
 # Playwright quarantine
 
-Tests tagged `@quarantine` are excluded from every lane by
-`grepInvert` in `playwright.config.ts`. Quarantine is a **holding pen, not a
-resting place**: each entry below is a bug with an owner, and the fix is to
-diagnose it and delete the tag — not to leave it here.
+Quarantined tests are excluded **from the merge queue only** —
+`playwright.config.ts` adds the `grepInvert` when `GITHUB_EVENT_NAME` is
+`merge_group`. PR checks, nightlies and local runs still execute them.
+
+There are **two ways to quarantine**, and which one is right is not a matter of
+taste:
+
+| | Use when | Cost |
+|---|---|---|
+| `{ tag: '@quarantine' }` on the `test()` | the test is written once and runs once | none |
+| an entry in [`quarantine-list.ts`](./quarantine-list.ts) | the `test()` is inside a loop and generates variants | none |
+
+A tag sits on the `test()` **call**, so tagging a loop-generated test
+quarantines **every variant that loop produces**. `Entity.spec.ts › Spreadsheet
+› Tier Add, Update and Remove` is 1 of 12 entity variants;
+`CustomProperties › table › Date` is 1 of dozens. Tagging those source lines to
+chase two observations each is the mistake this file has warned about since the
+first batch — "a tag on a `describe`-loop body is not a scalpel". The list
+matches the full title instead, so it selects the single variant the evidence is
+about.
+
+After editing the list, run its check — it is the only thing standing between a
+drifted title and a quarantine entry that silently matches nothing:
+
+```bash
+node playwright/quarantine-list.check.mjs
+```
+
+That split is the whole point: a flake in the queue ejects a batch and stalls
+everyone, while the same flake on a PR costs nothing (`retries: 1` turns it
+green) and keeps the test in front of the person who can fix it. Deleting the
+coverage from PRs too would hide the bug instead of parking it.
+
+Quarantine is a **holding pen, not a resting place**: each entry below is a bug
+with an owner, and the fix is to diagnose it and delete the tag.
 
 Run only the quarantined set to check whether an entry is still failing:
 
 ```bash
 PLAYWRIGHT_RUN_QUARANTINED=true npx playwright test
+```
+
+Reproduce what the merge queue actually runs:
+
+```bash
+GITHUB_EVENT_NAME=merge_group npx playwright test --list
 ```
 
 ## Why quarantine instead of retries
@@ -27,9 +64,10 @@ coverage, a retried one looks green.
 
 ## Entries
 
-9 tests. Evidence is failures observed across 11 merge_group runs sampled on
-2026-09-04; the threshold for quarantining is **2 or more**, counted per
-generated variant rather than per source line.
+85 tests, in three batches. The threshold for quarantining is **2 or more**
+observed failures, counted per generated variant rather than per source line.
+
+### Batch 1 — 11 merge_group runs sampled 2026-09-04
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
@@ -42,14 +80,81 @@ generated variant rather than per source line.
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 | `e2e/Features/ActivityStream.spec.ts` | activity stream API is called when visiting entity page | 2/11 | |
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 9 plus the 7 setup/teardown
-fixture projects, which the soak lane deliberately leaves unfiltered so login and
-entity seeding still happen — a project-level `grep` *is* applied to dependency
-projects, so filtering them would make every quarantined test fail for want of
-`admin.json` instead of for its flake.
+### Batch 2 — 56 merge_group runs over 24 h, 2026-09-09
 
-Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here; it was 4543 of 4555 when the list held 13 entries.
+From the merge-queue ejection analysis in #ci-cleanup: 352 flaky occurrences
+across 202 distinct tests, of which these were the ones that actually ejected
+PRs from the queue. `Seen` is ejections attributed to the test, not flake count.
+
+| Spec | Test | Seen | Symptom |
+|---|---|---|---|
+| `e2e/Features/SampleDataDomainDataProduct.spec.ts` | Verify TestDomain exists from sample data ingestion | 37 | **Not a flake — see below.** |
+| `e2e/Features/SampleDataDomainDataProduct.spec.ts` | Verify TestDataProduct exists under TestDomain | 37 | **Not a flake — see below.** |
+| `e2e/Features/SampleDataDomainDataProduct.spec.ts` | Verify TestDataProduct shows correct details and domain association | 37 | **Not a flake — see below.** |
+| `e2e/Features/DataQuality/TestLibrary.spec.ts` | should handle supported services field correctly | 5 | |
+| `e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts` | should create term with custom style color | 5 | |
+| `e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts` | should update term style to set color | 5 | |
+| `e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts` | Domain asset count should update when assets are removed | 3 | Reported as "asset count on remove"; both removal tests tagged, the report does not separate them. |
+| `e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts` | Data Product asset count should update when assets are removed | 3 | As above. |
+| `e2e/Pages/Tag.spec.ts` | Add and Remove Assets for Data Steward | 3 | |
+| `e2e/Pages/ExplorePageRightPanel.spec.ts` | Should verify deleted user not visible in owner selection for `${entityType}` | 3 | All **10** generated variants (table, dashboard, pipeline, topic, database, databaseSchema, dashboardDataModel, mlmodel, container, searchIndex) — see below. |
+
+The three `SampleDataDomainDataProduct` tests fail **together** and account for
+~41% of all queue ejections, but they are not flaky — they assert that the
+`TestDomain` / `TestDataProduct` fixtures exist, so they fail whenever
+sample-data ingestion is missing or broken in the environment. Quarantine here
+buys merge-queue time and nothing else; it does **not** make the underlying
+ingestion problem go away, and these three should come out as soon as that is
+fixed rather than being treated as flakes to re-time.
+
+The deleted-user entry is the one place the per-variant threshold was
+deliberately overridden. The report attributes 3 ejections to the loop without
+saying which entity types produced them, so tagging the source line quarantines
+all 10 variants for what could be 3 different types at 1 each. That trade was
+accepted because quarantine now only skips the **merge queue** — every one of
+the 10 still runs on PRs, so the coverage is not lost, just moved off the path
+that ejects batches. Narrow it to specific `entityType`s inside the loop if the
+per-variant data later shows only some of them flake.
+
+### Batch 3 — the same 56 merge_group runs, flake (not ejection) data
+
+Batches 1 and 2 are tests that **ejected PRs**. Batch 3 is the other list from
+that analysis: 352 flaky occurrences over 202 distinct tests, **all of which
+passed on retry** — no run in the sample concluded anything but `success`. They
+cost the queue retry time, not merged PRs.
+
+The 58 entries that flaked in **2 or more** of the 56 runs are in
+[`quarantine-list.ts`](./quarantine-list.ts) with their run counts. The
+remaining 144 flaked exactly once and are deliberately left in, for the reason
+this file has always given: one observation is not evidence.
+
+Two entries are **not flakes** and should not be treated as ones:
+
+| Spec | Test | Runs |
+|---|---|---|
+| `Pages/TasksUIFlow.spec.ts` | Create and resolve description task for Pipeline via UI | **33/56** |
+| `Pages/TasksUIFlow.spec.ts` | Create and reject tag task for Dashboard via UI | **19/56** |
+
+A test that fails its first attempt in 59% of runs is broken, not flaky, and
+between them they are ~15% of every flake occurrence in the window. Quarantine
+buys queue time; it does not diagnose them, and they should leave quarantine by
+being fixed.
+
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 85 plus the 7 setup/teardown
+fixture projects (92 in total), which the soak lane deliberately leaves
+unfiltered so login and entity seeding still happen — a project-level `grep`
+*is* applied to dependency projects, so filtering them would make every
+quarantined test fail for want of `admin.json` instead of for its flake.
+
+After changing the tags or the list, re-list both lanes and update the counts
+here. With the discover step's own environment —
+`PW_DEDICATED_INGESTION=true PW_DEDICATED_IMPORT_EXPORT=true
+PLAYWRIGHT_IS_OSS=true` (that last one gates the whole
+`WorkflowOssRestrictions` describe, so without it two entries look dead) and no
+`--project` filter — `npx playwright test --list` reports **4601** tests and
+`GITHUB_EVENT_NAME=merge_group npx playwright test --list` reports **4516** —
+the 85 above. The difference is the check that the tag is wired up; the absolute
+numbers drift with every new spec.
 
 ## Not quarantined — fixed instead
 
@@ -96,5 +201,5 @@ That distinction is the reason the threshold is counted per variant: a tag on a
 test flakes that does not flake on `main` — snapshot the flaking set from
 merge_group runs into a baseline file (the same shape as
 `.github/playwright/timing-baseline.json`, refreshed by the same job) and gate
-on new entries. That closes the hole these 13 came through; quarantine only
-stops them costing merge-queue time today.
+on new entries. That closes the hole these came through; quarantine only stops
+them costing merge-queue time today.
