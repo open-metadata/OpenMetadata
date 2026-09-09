@@ -101,9 +101,15 @@ const buildI18n = async () => {
   return instance;
 };
 
-describe('OntologyBulkAuthoring language-change reset bug', () => {
+describe('OntologyBulkAuthoring language-change behavior', () => {
   beforeAll(async () => {
     i18n = await buildI18n();
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
   });
 
   beforeEach(() => {
@@ -143,10 +149,6 @@ describe('OntologyBulkAuthoring language-change reset bug', () => {
     );
 
     expect(csvAfter).toHaveValue(CSV);
-
-    await act(async () => {
-      await i18n.changeLanguage('en');
-    });
   });
 
   it('preserves the dryRun toggle (false) when the UI language changes', async () => {
@@ -183,10 +185,6 @@ describe('OntologyBulkAuthoring language-change reset bug', () => {
     expect(screen.getByTestId('ontology-bulk-submit')).not.toHaveTextContent(
       'Aperçu'
     );
-
-    await act(async () => {
-      await i18n.changeLanguage('en');
-    });
   });
 
   it('still resets the templated metadata fields when the glossary changes', async () => {
