@@ -107,6 +107,24 @@ describe('getSanitizeContent', () => {
       expect(result).toContain('<p>Formula</p>');
     });
 
+    it('should sanitize payloads nested inside a block-math-equation tag', () => {
+      const input =
+        '<block-math-equation math_equation="x^2"><img src="x" onerror="alert(1)"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).not.toContain('onerror');
+      expect(result).toContain('math_equation="x^2"');
+    });
+
+    it('should sanitize event-handler attributes on the block-math-equation tag itself', () => {
+      const input =
+        '<block-math-equation math_equation="x^2" onclick="alert(1)"></block-math-equation>';
+      const result = getSanitizeContent(input);
+
+      expect(result).not.toContain('onclick');
+      expect(result).toContain('math_equation="x^2"');
+    });
+
     it('should preserve math equations alongside entity links', () => {
       const input =
         '<block-math-equation math_equation="y=mx+b"></block-math-equation><#E::team::Accounting|@Accounting>';
