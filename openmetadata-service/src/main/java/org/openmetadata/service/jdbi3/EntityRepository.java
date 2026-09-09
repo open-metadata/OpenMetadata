@@ -2493,6 +2493,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
+    DomainNavFilter.apply(filter, entityType, supportsDomains);
     int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
@@ -2618,6 +2619,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> listBefore(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    DomainNavFilter.apply(filter, entityType, supportsDomains);
     // Compute the cached total BEFORE dao.listBefore so the cache field hash is taken from
     // pre-mutation queryParams. dao.listBefore internally calls filter.getCondition() which
     // adds derived bind params (serviceHash, ownerIdParam, etc.); hashing after would put
@@ -2735,6 +2737,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean skipErrors,
       Fields fields,
       UriInfo uriInfo) {
+    DomainNavFilter.apply(filter, entityType, supportsDomains);
     List<T> entities = new ArrayList<>();
     List<EntityError> errors = new ArrayList<>();
 

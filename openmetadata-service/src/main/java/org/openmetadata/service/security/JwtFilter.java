@@ -61,6 +61,8 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -232,12 +234,35 @@ public class JwtFilter implements ContainerRequestFilter {
         ImpersonationContext.clear();
       }
       ActivePersonaContext.setActivePersona(activePersona);
+      populateSelectedDomain(userName, isBotUser);
     } catch (Throwable t) {
       ImpersonationContext.clear();
       ActivePersonaContext.clear();
+      SelectedDomainContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
+    }
+  }
+
+  /**
+   * Reads the user's persisted default domain into the request-scoped {@link SelectedDomainContext}
+   * so the global (navbar) domain filter applies from the first list call, without the client
+   * passing anything. Best-effort and never for bots; a lookup failure must not break the request.
+   */
+  private void populateSelectedDomain(String userName, boolean isBotUser) {
+    if (isBotUser) {
+      SelectedDomainContext.clear();
+      return;
+    }
+    try {
+      User user = SubjectCache.getUserContext(userName);
+      EntityReference domain = user == null ? null : user.getDefaultDomain();
+      SelectedDomainContext.setSelectedDomainIds(
+          domain == null ? null : domain.getId().toString());
+    } catch (Exception e) {
+      LOG.debug("Could not resolve default domain for user {}", userName, e);
+      SelectedDomainContext.clear();
     }
   }
 

@@ -120,6 +120,10 @@
       "description": "Default Persona for the user from list of personas.",
       "$ref": "../../type/entityReference.json"
     },
+    "defaultDomain": {
+      "description": "The domain the user selects in the navbar to scope list views. Persisted so the global (navbar) domain filter is applied from the start of the session; it narrows lists only and never restricts access.",
+      "$ref": "../../type/entityReference.json"
+    },
     "personas": {
       "description": "Personas that the user assigned to.",
       "$ref": "../../type/entityReferenceList.json"
