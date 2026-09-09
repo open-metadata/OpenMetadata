@@ -407,7 +407,7 @@ test.describe('User with Data Consumer Roles', () => {
 
       // Confirm the header has rendered before asserting button presence/absence
       await expect(
-        dataConsumerPage.getByTestId('entity-header-name')
+        dataConsumerPage.getByTestId('entity-header-display-name')
       ).toContainText(userClassification.data.displayName);
 
       await expect(
