@@ -24,6 +24,7 @@ import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   getOptionsFromAggregationBucket,
+  getQuickFilterLabelFormatter,
   getQuickFilterSourceFields,
 } from '../../utils/AdvancedSearchPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
@@ -38,7 +39,6 @@ import {
   getCanonicalEntityType,
   getExploreQueryFilterMust,
 } from '../../utils/ExploreUtils';
-import { getNameFromFQN } from '../../utils/FqnUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -57,14 +57,6 @@ const ENTITY_TYPE_FILTER_KEYS: ReadonlySet<string> = new Set([
 const formatEntityTypeLabel = (value: string): string =>
   getEntityNameLabel(getCanonicalEntityType(value));
 
-// The filter value stays the raw tier FQN (tier.tier1); only the visible
-// label becomes the tier name (Tier1).
-const formatTierLabel = (value: string): string => {
-  const tierName = getNameFromFQN(value);
-
-  return tierName.charAt(0).toUpperCase() + tierName.slice(1);
-};
-
 // Human-readable entity-type labels are an Explore-page affordance. The
 // Untitled-UI drawer dropdown (Add Assets) keys its options off the raw label,
 // so keep raw entity-type values there to preserve its stable option ids.
@@ -76,7 +68,7 @@ const getOptionLabelFormatter = (
     return skipEntityTypeLabel ? undefined : formatEntityTypeLabel;
   }
 
-  return key === EntityFields.TIER ? formatTierLabel : undefined;
+  return getQuickFilterLabelFormatter(key);
 };
 
 const addOptionIcons = (

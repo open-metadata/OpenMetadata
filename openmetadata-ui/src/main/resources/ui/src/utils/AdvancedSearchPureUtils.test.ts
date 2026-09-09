@@ -349,6 +349,24 @@ describe('hydrateQuickFilterLabels', () => {
     });
   });
 
+  it('formats a restored tier label the same way the dropdown does', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [
+        {
+          key: EntityFields.TIER,
+          label: 'label.tier',
+          value: [{ key: 'tier.tier1', label: 'tier.tier1' }],
+        },
+      ],
+      [{ tier: { tagFQN: 'Tier.Tier1' } }]
+    );
+
+    expect(field.value?.[0]).toEqual({
+      key: 'tier.tier1',
+      label: 'Tier1',
+    });
+  });
+
   it('resolves a path that crosses an array of objects', () => {
     const [field] = hydrateQuickFilterLabels(
       [
