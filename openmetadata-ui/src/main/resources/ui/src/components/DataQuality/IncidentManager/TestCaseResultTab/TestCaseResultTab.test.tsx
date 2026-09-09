@@ -95,9 +95,18 @@ jest.mock(
   })
 );
 const mockBannerComponent = () => <div>BannerComponent</div>;
+const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
 jest.mock('./TestCaseResultTabClassBase', () => ({
-  getAdditionalComponents: jest.fn().mockReturnValue([]),
-  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+  __esModule: true,
+  default: {
+    getAdditionalComponents: jest.fn().mockReturnValue([]),
+    getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+    shouldRenderDefaultGraph: jest
+      .fn()
+      .mockImplementation((...args: unknown[]) =>
+        mockShouldRenderDefaultGraph(...args)
+      ),
+  },
 }));
 jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
@@ -184,6 +193,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
     mockUseTestCaseStore.testCase.dataQualityDimension = undefined;
+    mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
 
   it('Should render component', async () => {
@@ -200,6 +210,17 @@ describe('TestCaseResultTab', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Description')).toBeInTheDocument();
     expect(await screen.findByText('TestSummary')).toBeInTheDocument();
+  });
+
+  it('should not mount the default graph when the class base suppresses it', async () => {
+    mockShouldRenderDefaultGraph.mockReturnValue(false);
+
+    render(<TestCaseResultTab />);
+
+    expect(
+      await screen.findByTestId('test-case-result-tab-container')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
   });
 
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {

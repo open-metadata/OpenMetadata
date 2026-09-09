@@ -31,6 +31,7 @@ import {
   waitForAllLoadersToDisappear,
 } from './entity';
 import { validateFormNameFieldInput } from './form';
+import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -525,7 +526,7 @@ export const searchTeam = async (
     await expect
       .poll(
         async () => {
-          const matchingCells = page.getByRole('cell', { name: teamName });
+          const matchingCells = getCellByName(page, teamName);
           const count = await matchingCells.count();
 
           return (
@@ -781,9 +782,7 @@ export const executionOnOwnerTeam = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByRole('cell', { name: newTeamData.displayName })
-  ).toBeVisible();
+  await expect(getCellByName(page, newTeamData.displayName)).toBeVisible();
 };
 
 export const executionOnOwnerGroupTeam = async (

@@ -45,6 +45,7 @@ import {
   getSidePanelColSpanClass,
   hasAdditionalComponents,
   resolveIsSidePanelVisible,
+  shouldRenderTestSummary,
   shouldShowAILearningBanner,
   shouldShowEditParameterButton,
   shouldShowSqlParamsSection,
@@ -213,6 +214,7 @@ const TestCaseResultTab = ({
     isTabExpanded,
     AlertComponent,
     additionalComponents,
+    shouldRenderDefaultGraph,
   } = useTestCaseResultTab();
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const isSidePanelVisible = resolveIsSidePanelVisible(
@@ -398,7 +400,7 @@ const TestCaseResultTab = ({
                 <AlertComponent />
               </div>
             )}
-          {testCaseData && (
+          {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
             <div className="test-case-result-tab-graph tw:w-full">
               <TestSummary data={testCaseData} />
             </div>

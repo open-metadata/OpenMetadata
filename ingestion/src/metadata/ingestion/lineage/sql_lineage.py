@@ -102,6 +102,38 @@ def get_column_fqn(
 
 search_cache = LRUCache(LRU_CACHE_SIZE)
 database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
+alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
+
+# Connection field a connector sets to opt into alias resolution. Read by name
+# rather than by service type so any connector exposing alternate names (SQL
+# Server synonyms today, Oracle synonyms later) participates without this
+# service-agnostic module learning connector names.
+ALIAS_OPT_IN_FIELD = "includeSynonyms"
+
+
+def service_resolves_aliases(metadata: OpenMetadata, service_name: str) -> bool:
+    """
+    Whether this service's connection opts into resolving alternate table names.
+
+    Resolving an alias costs an extra exact-match search per unresolved name, so
+    connectors that cannot produce aliases must not pay for it. Absent field
+    means no.
+    """
+    if service_name in alias_resolution_cache:
+        return bool(alias_resolution_cache.get(service_name))
+
+    resolves = False
+    try:
+        service: DatabaseService | None = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+        if service:
+            resolves = bool(getattr(service.connection.config, ALIAS_OPT_IN_FIELD, False))
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning("Could not read alias opt-in for service '%s', assuming disabled: %s", service_name, exc)
+
+    alias_resolution_cache.put(service_name, resolves)
+
+    return resolves
 
 
 def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str | None:
@@ -252,6 +284,34 @@ def search_table_entities(
             search_cache.put(search_tuple, table_entities)
             if table_entities:
                 return table_entities
+
+            # An alias name resolves to the canonical table it points at.
+            # Gated per service so connectors that cannot produce aliases never
+            # pay for the extra lookup.
+            if not service_resolves_aliases(metadata, service_name):
+                continue
+
+            alias_fqn = fqn.build(
+                metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=normalized_db,
+                schema_name=normalized_schema,
+                table_name=table,
+                skip_es_search=True,
+            )
+            if alias_fqn:
+                alias_entities = metadata.es_search_from_alias(
+                    entity_type=Table,
+                    alias_fqn=alias_fqn,
+                )
+                if alias_entities:
+                    # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
+                    # same (service, db, schema, table) tuple as the `search_cache.put` call
+                    # above (line ~251, pre-existing and baselined) -- a real annotation gap,
+                    # not a bug: dict keys accept any hashable value.
+                    search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
+                    return alias_entities
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

@@ -49,6 +49,16 @@ export const hasAdditionalComponents = (
   additionalComponents: unknown[]
 ): boolean => !isEmpty(additionalComponents);
 
+/**
+ * A type predicate so the caller can pass `testCaseData` straight to
+ * `TestSummary`, which requires a defined test case.
+ */
+export const shouldRenderTestSummary = (
+  testCaseData: TestCase | undefined,
+  shouldRenderDefaultGraph: boolean
+): testCaseData is TestCase =>
+  !isUndefined(testCaseData) && shouldRenderDefaultGraph;
+
 export const canEditTestCaseParameters = (
   hasEditPermission: boolean | undefined,
   isParameterEdit: boolean
