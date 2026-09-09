@@ -9,7 +9,7 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
-*/
+ */
 
 import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
@@ -24,8 +24,8 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
-    getCustomUiThemePreference,
-    getSystemConfig
+  getCustomUiThemePreference,
+  getSystemConfig,
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
