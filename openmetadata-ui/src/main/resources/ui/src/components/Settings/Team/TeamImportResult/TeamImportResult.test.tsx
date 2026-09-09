@@ -26,7 +26,7 @@ const mockCsvImportResult = {
 describe('TeamImportResult component', () => {
   it('Component should render', async () => {
     render(<TeamImportResult csvImportResult={mockCsvImportResult} />);
-    const table = await screen.findByRole('table');
+    const table = await screen.findByRole('grid');
     const row = await findAllByRole(table, 'row');
 
     expect(
