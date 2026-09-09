@@ -140,19 +140,26 @@ def error_detail(response) -> str:
     return single_log_line(str(body))
 
 
-def failure_hint(exc: Exception) -> str:
+def failure_hint(exc: Exception, connect_authenticated: bool | None = None) -> str:
     """
     Confluent's own error text plus the operator-facing next step, for a failed lookup.
 
     The two authentication failures need opposite fixes and were indistinguishable in the
-    log. Confluent answers 401 when the credential is not a Cloud API key at all, which no
-    role grant repairs, and 403 when the credential is valid but its account holds no role
-    granting metrics on the cluster, which no key change repairs.
+    log. Confluent answers 401 when it does not accept the credential at all, and 403 when
+    it accepts the credential but the account holds no role granting metrics on the cluster.
+    A key change repairs the first and never the second, a role grant the second and never
+    the first.
 
     The status to cause mapping is measured against the live API rather than taken from
     documentation. A Kafka cluster-scoped key, a wrong secret and an unknown key all give
     401. A Cloud key lacking a metrics role, or one querying a cluster in another
     organization, gives 403.
+
+    ``connect_authenticated`` says whether the same credential just worked against the
+    Connect API. It changes what a 401 means and so what to advise. A credential that fails
+    both is simply not a Cloud API key, which is the common case. One that Connect accepts
+    while telemetry rejects is neither of the causes above, so the honest thing is to report
+    that rather than prescribe a fix that would send the reader after the wrong thing.
     """
     response = getattr(exc, "response", None)
     parts = []
@@ -162,7 +169,13 @@ def failure_hint(exc: Exception) -> str:
         parts.append(f"Confluent said: {detail}")
 
     status = getattr(response, "status_code", None)
-    if status == HTTPStatus.UNAUTHORIZED:
+    if status == HTTPStatus.UNAUTHORIZED and connect_authenticated:
+        parts.append(
+            "The same credential authenticates to the Connect API, so Confluent accepts it but the "
+            "Metrics API does not. Check the key's scope, it has to be a Cloud API key rather than a "
+            "Kafka cluster-scoped one, and that its account holds the MetricsViewer role"
+        )
+    elif status == HTTPStatus.UNAUTHORIZED:
         parts.append(
             "The Kafka Connect credential is not accepted by the Telemetry API. It has to be a "
             "Confluent Cloud API key, because a Kafka cluster-scoped key cannot authenticate here"

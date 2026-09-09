@@ -438,11 +438,17 @@ class KafkaConnectClient:
             # Recorded as empty rather than left unset, so one failure does not become one
             # failed call per connector. The API is rate limited per hour, and a large
             # estate would spend that budget retrying a call that already failed.
+            #
+            # The key id and whether Connect accepted the same credential are both stated,
+            # because neither can be recovered from the log afterwards and together they
+            # identify which credential to look at and which half of Confluent rejected it.
+            # The secret is never logged, only the key id, which is not a secret.
             logger.warning(
-                "Confluent telemetry unavailable for cluster %s, topics not enriched: %s%s",
+                "Confluent telemetry unavailable for cluster %s using key %s, topics not enriched: %s%s",
                 cluster_id,
+                self._telemetry_auth[0] if self._telemetry_auth else "none",
                 exc,
-                telemetry.failure_hint(exc),
+                telemetry.failure_hint(exc, connect_authenticated=bool(live_connector_ids)),
             )
             logger.debug(traceback.format_exc())
 
