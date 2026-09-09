@@ -13,9 +13,11 @@
 import type { OldJsonTree } from '@react-awesome-query-builder/ui';
 import { isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
-import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import type { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { AssetsOfEntity } from '../enums/Assets.enum';
+import type {
+  ExploreQuickFilterField,
+  SearchDropdownOption,
+} from '../interface/quickFilter.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,

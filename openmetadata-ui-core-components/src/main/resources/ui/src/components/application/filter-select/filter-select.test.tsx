@@ -231,6 +231,23 @@ describe('FilterSelect', () => {
     expect(screen.getByText('Pick values to refine')).toBeInTheDocument();
   });
 
+  it('renders an array icon node without throwing', () => {
+    renderFilter({
+      options: [
+        {
+          value: 'snowflake',
+          label: 'Snowflake',
+          icon: [
+            <img alt="" key="a" src="a.svg" />,
+            <img alt="" key="b" src="b.svg" />,
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByText('Snowflake')).toBeInTheDocument();
+  });
+
   it('shows the empty state when nothing is displayed', () => {
     renderFilter({ options: [] });
 
