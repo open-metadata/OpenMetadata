@@ -175,9 +175,12 @@ runs:
     # Saved here rather than at job end so a later failure (server startup,
     # tests) still leaves the venv cached. Fork PRs under pull_request_target
     # skip the save — actions/cache-poisoning; their restore above still runs.
+    # Queue refs disappear after validation; their roughly 1 GB venv copies
+    # evict the main-scoped fixtures that future queue candidates can reuse.
     - name: Save ingestion Python venv
       if: >-
         ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
+        github.event_name != 'merge_group' &&
         steps.cache-python-venv.outputs.cache-hit != 'true' &&
         !(github.event_name == 'pull_request_target' &&
           github.event.pull_request.head.repo.full_name != github.repository) }}

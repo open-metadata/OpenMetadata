@@ -102,26 +102,24 @@ jobs:
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-
-      - name: Caching NPM dependencies
-        uses: actions/cache@v6
+      # populate-playwright-caches.yml populates this shared Yarn cache. Validation
+      # must not evict main's fixtures with large copies on ephemeral queue refs.
+      - name: Restore Yarn dependencies
+        uses: actions/cache/restore@v6
         id: yarn-cache
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-node-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-node-yarn-
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Get npm cache directory
         id: npm-cache-dir
         shell: bash
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
-      - name: Caching NPM dependencies
-        uses: actions/cache@v6
+      - name: Restore NPM dependencies
+        uses: actions/cache/restore@v6
         id: npm-cache
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
