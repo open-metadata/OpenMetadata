@@ -58,10 +58,10 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import {
   exportDataProductToODPSYaml,
@@ -73,6 +73,7 @@ import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
@@ -109,7 +110,6 @@ import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { DomainTabs } from '../../Domain/DomainPage.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -150,6 +150,14 @@ const DataProductsDetailsPage = ({
     version: string;
   }>();
   const { fqn: dataProductFqn } = useFqn();
+  // The "Data Product Domain Validation" rule is a cross-cutting data-asset
+  // rule; read it against TABLE as a representative asset type since the "Add
+  // Assets" picker spans every asset type. Hold the strict domain-scoped
+  // default until the rules actually load (an empty rule set from the backend
+  // is indistinguishable from "not fetched yet").
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TABLE);
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -611,8 +619,13 @@ const DataProductsDetailsPage = ({
       style,
     };
 
-    await onUpdate(updatedDetails);
-    setIsStyleEditing(false);
+    try {
+      await onUpdate(updatedDetails);
+    } catch {
+      // Error is already handled by the parent component
+    } finally {
+      setIsStyleEditing(false);
+    }
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -695,6 +708,14 @@ const DataProductsDetailsPage = ({
     inputPortsCount,
     outputPortsCount,
   ]);
+
+  // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the
+  // URL tab is absent/not rendered so we never land on a non-existent pane.
+  const currentTab = getRenderedActiveTab(
+    tabs,
+    activeTab as EntityTabs | undefined,
+    EntityTabs.DOCUMENTATION
+  );
 
   const iconData = useMemo(() => {
     return (
@@ -914,6 +935,7 @@ const DataProductsDetailsPage = ({
 
         <GenericProvider<DataProduct>
           muiTags
+          activeTab={currentTab}
           currentVersionData={dataProduct}
           customizedPage={customizedPage}
           data={dataProduct}
@@ -926,7 +948,7 @@ const DataProductsDetailsPage = ({
             <div className="tw:p-5">
               <Tabs
                 destroyInactiveTabPane
-                activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+                activeKey={currentTab}
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
@@ -975,14 +997,13 @@ const DataProductsDetailsPage = ({
         })}
         entityFqn={dataProductFqn}
         open={isAssetDrawerOpen}
-        queryFilter={
-          getQueryFilterToIncludeDomain(
-            dataProduct.domains
-              ?.map((domain) => domain.fullyQualifiedName)
-              .join(', ') ?? '',
-            dataProduct.fullyQualifiedName ?? ''
-          ) as QueryFilterInterface
-        }
+        queryFilter={getQueryFilterToIncludeDomain(
+          dataProduct.domains
+            ?.map((domain) => domain.fullyQualifiedName ?? '')
+            .filter(Boolean) ?? [],
+          dataProduct.fullyQualifiedName ?? '',
+          requireDomainForDataProduct
+        )}
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={closeAssetDrawer}
         onSave={() => {
@@ -1028,13 +1049,18 @@ const DataProductsDetailsPage = ({
         open={isMetadataEditing}
         onCancel={() => setIsMetadataEditing(false)}
         onSubmit={async (values) => {
-          await onUpdate({
-            ...dataProduct,
-            dataProductType: values.dataProductType,
-            visibility: values.visibility,
-            portfolioPriority: values.portfolioPriority,
-          });
-          setIsMetadataEditing(false);
+          try {
+            await onUpdate({
+              ...dataProduct,
+              dataProductType: values.dataProductType,
+              visibility: values.visibility,
+              portfolioPriority: values.portfolioPriority,
+            });
+          } catch {
+            // Error is already handled by the parent component
+          } finally {
+            setIsMetadataEditing(false);
+          }
         }}
       />
     </>

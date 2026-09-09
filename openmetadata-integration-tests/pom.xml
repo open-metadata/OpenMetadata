@@ -3,7 +3,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.13.1</version>
+    <version>1.13.6</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-integration-tests</artifactId>
@@ -15,6 +15,14 @@
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
     <dockerjava.version>3.4.2</dockerjava.version>
+    <integrationTests.parallelStrategy>dynamic</integrationTests.parallelStrategy>
+    <integrationTests.parallelism>4</integrationTests.parallelism>
+    <integrationTests.maxPoolSize>16</integrationTests.maxPoolSize>
+    <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
+    <integrationTests.skipRetryQueue>false</integrationTests.skipRetryQueue>
+    <integrationTests.skipMultiNode>false</integrationTests.skipMultiNode>
+    <integrationTests.skipParallel>false</integrationTests.skipParallel>
+    <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
          -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
     <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
@@ -242,6 +250,74 @@
     </plugins>
   </build>
   <profiles>
+    <!-- CI selects one lane by setting integrationTests.lane (the lane names and property names
+         match main so main's workflow files drive this branch unchanged). Each lane runs exactly one
+         of the three failsafe executions below; class membership stays in the db profiles so local
+         and CI runs cannot drift onto different test sets. -->
+    <profile>
+      <id>integration-lane-parallel</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>parallel</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>true</integrationTests.skipIsolated>
+        <integrationTests.skipMultiNode>true</integrationTests.skipMultiNode>
+        <integrationTests.skipRetryQueue>true</integrationTests.skipRetryQueue>
+        <integrationTests.skipParallel>false</integrationTests.skipParallel>
+      </properties>
+    </profile>
+    <profile>
+      <id>integration-lane-global-state</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>global-state</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
+        <integrationTests.skipMultiNode>true</integrationTests.skipMultiNode>
+        <integrationTests.skipRetryQueue>true</integrationTests.skipRetryQueue>
+        <integrationTests.skipParallel>true</integrationTests.skipParallel>
+      </properties>
+    </profile>
+    <!-- 1.13 has no multi-node ITs (SessionMultiNodeIT and friends are 2.0+). Rather than leave
+         main's fourth lane empty, it carries part of the global-state set: every lane then runs
+         real tests, so the CI outcome classifier's "succeeded without reporting any tests" guard
+         stays meaningful on every lane, and the sequential set is split over two runners. -->
+    <profile>
+      <id>integration-lane-multi-node</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>multi-node</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>true</integrationTests.skipIsolated>
+        <integrationTests.skipMultiNode>false</integrationTests.skipMultiNode>
+        <integrationTests.skipRetryQueue>true</integrationTests.skipRetryQueue>
+        <integrationTests.skipParallel>true</integrationTests.skipParallel>
+      </properties>
+    </profile>
+    <profile>
+      <id>integration-lane-retry-queue</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>retry-queue</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>true</integrationTests.skipIsolated>
+        <integrationTests.skipMultiNode>true</integrationTests.skipMultiNode>
+        <integrationTests.skipRetryQueue>false</integrationTests.skipRetryQueue>
+        <integrationTests.skipParallel>true</integrationTests.skipParallel>
+      </properties>
+    </profile>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
       <id>mysql-elasticsearch</id>
@@ -255,22 +331,82 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Run sequential tests -->
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -293,8 +429,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -302,12 +440,14 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -319,6 +459,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                     <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
@@ -348,24 +491,84 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Run sequential tests -->
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -388,8 +591,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -397,6 +602,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
@@ -404,6 +610,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -415,6 +622,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -445,23 +655,88 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -485,8 +760,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -494,6 +771,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
@@ -501,6 +779,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -514,6 +793,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -541,23 +823,83 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Run sequential tests -->
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -580,8 +922,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -589,12 +933,14 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -606,6 +952,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -634,24 +983,84 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Run sequential tests -->
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -674,8 +1083,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -683,6 +1094,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
@@ -690,6 +1102,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -701,6 +1114,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -729,22 +1145,87 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -768,8 +1249,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -777,12 +1260,14 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -796,6 +1281,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -836,24 +1324,88 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Run sequential tests -->
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:16-alpine</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:16-alpine</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -878,8 +1430,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -887,6 +1441,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
@@ -894,6 +1449,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -907,6 +1463,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -935,23 +1494,87 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Run sequential tests -->
+              <!-- Global-state tests run sequentially in a dedicated fork (integration-lane-global-state). -->
               <execution>
-                <id>sequential-tests</id>
+                <id>isolated-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipIsolated}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
-                    <include>**/AppsResourceIT.java</include>
-                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <enableRdf>true</enableRdf>
+                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- The search retry-queue test gets its own fork (integration-lane-retry-queue). -->
+              <execution>
+                <id>retry-queue-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipRetryQueue}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/SearchIndexRetryQueueIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <enableRdf>true</enableRdf>
+                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Second sequential fork, driven by integration-lane-multi-node (see that lane profile). -->
+              <execution>
+                <id>multi-node-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <skipITs>${integrationTests.skipMultiNode}</skipITs>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -976,8 +1599,10 @@
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
+                  <skipITs>${integrationTests.skipParallel}</skipITs>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
+                  <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/*IT.java</include>
@@ -985,12 +1610,14 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
@@ -1004,6 +1631,9 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
+                    <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>

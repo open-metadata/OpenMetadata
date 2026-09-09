@@ -1,3 +1,4 @@
+import copy
 from itertools import groupby
 from typing import List, Optional, Sequence, Union, final
 
@@ -18,6 +19,10 @@ from metadata.generated.schema.type.classificationLanguages import (
 )
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms.feature_extraction import split_column_name
+from metadata.pii.algorithms.presidio_patches import (
+    PresidioRecognizerResultPatcher,
+    date_time_patcher,
+)
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
 )
@@ -125,14 +130,35 @@ class TagAnalyzer:
     def _column_name(self) -> str:
         return self._column.name.root
 
+    def _normalize_recognizer_language(
+        self, recognizer_obj: EntityRecognizer, effective_language: str
+    ) -> EntityRecognizer:
+        """Return a recognizer compatible with the effective language."""
+        if recognizer_obj.supported_language != ClassificationLanguage.any.value:
+            return recognizer_obj
+        recognizer_copy = copy.copy(recognizer_obj)
+        recognizer_copy.supported_language = effective_language
+        return recognizer_copy
+
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
         nlp_engine: Optional[NlpEngine] = None,
+        effective_language: Optional[str] = None,
     ) -> AnalyzerEngine:
-        supported_languages = [rec.supported_language for rec in recognizers]
+        effective_lang = effective_language or self._language.value
+        if effective_lang == ClassificationLanguage.any.value:
+            raise ValueError(
+                "build_analyzer_with requires a concrete language when the analyzer language is 'any'. "
+                "Pass effective_language explicitly."
+            )
+        normalized_recs = [
+            self._normalize_recognizer_language(rec, effective_lang)
+            for rec in recognizers
+        ]
+        supported_languages = [rec.supported_language for rec in normalized_recs]
         recognizer_registry = RecognizerRegistry(
-            recognizers=recognizers, supported_languages=supported_languages
+            recognizers=normalized_recs, supported_languages=supported_languages
         )
         effective_nlp = nlp_engine if nlp_engine is not None else self._nlp_engine
         return AnalyzerEngine(
@@ -141,11 +167,12 @@ class TagAnalyzer:
             supported_languages=supported_languages,
         )
 
-    def _analyze_with(
+    def _analyze_with(  # pylint: disable=too-many-locals
         self,
         text_or_values: Union[str, Sequence[str]],
         recognizers: list[EntityRecognizer],
         context: Optional[list[str]] = None,
+        result_patcher: Optional[PresidioRecognizerResultPatcher] = None,
     ) -> list[RecognizerResult]:
         values = (
             [text_or_values]
@@ -157,33 +184,49 @@ class TagAnalyzer:
         if self._language is not ClassificationLanguage.any:
             analyzer = self.build_analyzer_with(recognizers)
             for value in values:
+                value_results = analyzer.analyze(
+                    value,
+                    language=self._language.value,
+                    context=context,
+                    return_decision_process=True,
+                )
                 results.extend(
-                    analyzer.analyze(
-                        value,
-                        language=self._language.value,
-                        context=context,
-                        return_decision_process=True,
-                    )
+                    result_patcher(value_results, value)
+                    if result_patcher
+                    else value_results
                 )
             return results
 
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
         for lang, group in groupby(sorted_recs, key=lambda r: r.supported_language):
             lang_recognizers = list(group)
+            if lang == ClassificationLanguage.any.value:
+                effective_lang = ClassificationLanguage.en.value
+                effective_nlp = load_nlp_engine(
+                    classification_language=ClassificationLanguage.en
+                )
+            else:
+                effective_lang = lang
+                effective_nlp = load_nlp_engine(
+                    classification_language=ClassificationLanguage(lang)
+                )
+
             analyzer = self.build_analyzer_with(
                 lang_recognizers,
-                nlp_engine=load_nlp_engine(
-                    classification_language=ClassificationLanguage(lang)
-                ),
+                nlp_engine=effective_nlp,
+                effective_language=effective_lang,
             )
             for value in values:
+                value_results = analyzer.analyze(
+                    value,
+                    language=effective_lang,
+                    context=context,
+                    return_decision_process=True,
+                )
                 results.extend(
-                    analyzer.analyze(
-                        value,
-                        language=lang,
-                        context=context,
-                        return_decision_process=True,
-                    )
+                    result_patcher(value_results, value)
+                    if result_patcher
+                    else value_results
                 )
         return results
 
@@ -199,7 +242,10 @@ class TagAnalyzer:
             if content_recognizers:
                 context = split_column_name(self._column_name)
                 content_results = self._analyze_with(
-                    str_values, content_recognizers, context=context
+                    str_values,
+                    content_recognizers,
+                    context=context,
+                    result_patcher=date_time_patcher,
                 )
                 content_score = min(
                     sum(r.score for r in content_results) / len(str_values), 1.0
@@ -230,9 +276,9 @@ class TagAnalyzer:
         return TagAnalysis(
             tag=self.tag,
             score=score,
-            explanation=explain_recognition_results(all_results)
-            if all_results
-            else None,
+            explanation=(
+                explain_recognition_results(all_results) if all_results else None
+            ),
             recognizer_results=winning_results,
             target=target if winning_results else None,
             column_name_matched=bool(column_results),

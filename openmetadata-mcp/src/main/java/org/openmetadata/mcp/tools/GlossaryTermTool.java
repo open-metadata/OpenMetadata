@@ -43,6 +43,7 @@ public class GlossaryTermTool implements McpTool {
     if (params.containsKey("reviewers")) {
       createGlossaryTerm.setReviewers(CommonUtils.getTeamsOrUsers(params.get("reviewers")));
     }
+    createGlossaryTerm.setExtension(CommonUtils.extension(params));
 
     GlossaryTerm glossaryTerm =
         glossaryTermMapper.createToEntity(

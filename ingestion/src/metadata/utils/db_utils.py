@@ -105,6 +105,14 @@ def get_view_lineage(
             schema_name = PUBLIC_SCHEMA
             schema_fallback = True
 
+        if table_entity.serviceType == DatabaseServiceType.Dremio:
+            # Dremio folders nest arbitrarily deep and are flattened into a single dotted
+            # schema name (`folder.subfolder`), but a Dremio query spells every folder out
+            # as its own path segment. The SQL parser keeps only the first two segments as
+            # the qualifier, so for anything nested two or more folders deep the parsed
+            # schema can never match the ingested one. Fall back to a schema wildcard.
+            schema_fallback = True
+
         end_time = time.time()
         logger.debug(
             f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"

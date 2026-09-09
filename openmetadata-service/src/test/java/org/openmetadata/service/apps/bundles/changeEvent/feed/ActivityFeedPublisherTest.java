@@ -16,7 +16,10 @@ package org.openmetadata.service.apps.bundles.changeEvent.feed;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -35,6 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.util.FeedUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,6 +85,45 @@ class ActivityFeedPublisherTest {
       assertThrows(
           EventPublisherException.class,
           () -> publisher.sendMessage(event, Collections.emptySet()));
+    }
+  }
+
+  @Test
+  void testSendMessage_HardDeletePurgesActivityById() throws EventPublisherException {
+    ChangeEvent event = createChangeEvent(EventType.ENTITY_DELETED);
+
+    try (MockedConstruction<FeedRepository> feedRepoConstruction =
+            mockConstruction(FeedRepository.class);
+        MockedStatic<FeedUtils> mockedFeedUtils = mockStatic(FeedUtils.class)) {
+      ActivityFeedPublisher hardDeletePublisher =
+          new ActivityFeedPublisher(eventSubscription, subscriptionDestination);
+
+      assertDoesNotThrow(() -> hardDeletePublisher.sendMessage(event, Collections.emptySet()));
+
+      FeedRepository feedRepository = feedRepoConstruction.constructed().getFirst();
+      verify(feedRepository).deleteByAbout(event.getEntityId());
+      mockedFeedUtils.verify(() -> FeedUtils.getThreadWithMessage(any(), any()), never());
+    }
+  }
+
+  @Test
+  void testSendMessage_SoftDeleteDoesNotPurge() throws EventPublisherException {
+    ChangeEvent event = createChangeEvent(EventType.ENTITY_SOFT_DELETED);
+
+    try (MockedConstruction<FeedRepository> feedRepoConstruction =
+            mockConstruction(FeedRepository.class);
+        MockedStatic<FeedUtils> mockedFeedUtils = mockStatic(FeedUtils.class)) {
+      mockedFeedUtils
+          .when(() -> FeedUtils.getThreadWithMessage(any(), any()))
+          .thenReturn(Collections.emptyList());
+      ActivityFeedPublisher softDeletePublisher =
+          new ActivityFeedPublisher(eventSubscription, subscriptionDestination);
+
+      assertDoesNotThrow(() -> softDeletePublisher.sendMessage(event, Collections.emptySet()));
+
+      FeedRepository feedRepository = feedRepoConstruction.constructed().getFirst();
+      verify(feedRepository, never()).deleteByAbout(any(UUID.class));
+      mockedFeedUtils.verify(() -> FeedUtils.getThreadWithMessage(any(), any()));
     }
   }
 

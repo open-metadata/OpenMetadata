@@ -124,3 +124,20 @@ export const restoreDefaultSearchSettings = async (page: Page) => {
 
   expect(tableConfig).toEqual(mockEntitySearchConfig);
 };
+
+export const openMatchingFieldsPanel = async (page: Page) => {
+  const firstFieldHeader = page.getByTestId('field-container-header').first();
+
+  const isMatchingFieldsPanelOpen = await firstFieldHeader
+    .isVisible()
+    .catch(() => false);
+
+  if (!isMatchingFieldsPanelOpen) {
+    await page
+      .locator('.ant-collapse-header')
+      .filter({ hasText: 'Matching Fields' })
+      .getByText('Matching Fields')
+      .click();
+    await firstFieldHeader.waitFor({ state: 'visible' });
+  }
+};

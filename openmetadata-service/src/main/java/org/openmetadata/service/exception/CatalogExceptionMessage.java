@@ -314,9 +314,9 @@ public final class CatalogExceptionMessage {
         "Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
-  public static String invalidTeamUpdateUsers(TeamType teamType) {
+  public static String invalidTeamDirectUserAssignment(TeamType teamType) {
     return String.format(
-        "Team is of type %s. Users can be updated only in team of type Group.", teamType);
+        "Team is of type %s. Direct users can only be assigned to teams of type Group.", teamType);
   }
 
   public static String invalidOwnerType(String entityType) {
@@ -381,6 +381,31 @@ public final class CatalogExceptionMessage {
   public static String invalidGlossaryTermMove(String term, String newParent) {
     return String.format(
         "Can't move Glossary term %s to its child Glossary term %s", term, newParent);
+  }
+
+  public static String invalidContainerMove(String container, String newParent) {
+    return String.format(
+        "Can't move Container %s to itself or to its descendant Container %s",
+        container, newParent);
+  }
+
+  public static String invalidContainerParentService(
+      String container, String currentService, String parentService) {
+    return String.format(
+        "Can't re-parent Container %s under a Container from a different StorageService. "
+            + "Container belongs to service [%s] but the requested parent belongs to service [%s].",
+        container, currentService, parentService);
+  }
+
+  public static String containerSubtreeTooLarge(
+      String container, int descendantCount, int maxAllowed) {
+    return String.format(
+        "Can't re-parent Container %s: its subtree has %d descendant containers, which exceeds "
+            + "the maximum of %d. Re-parenting at this scale would lock every descendant row and "
+            + "reindex all matching search documents in a single transaction; split the move into "
+            + "smaller subtrees or raise openmetadata.container.maxReparentDescendants if you "
+            + "understand the operational impact.",
+        container, descendantCount, maxAllowed);
   }
 
   public static String eventPublisherFailedToPublish(

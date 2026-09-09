@@ -317,6 +317,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
+    EntityReference domainRef = isAdd ? getEntityReferenceById(DOMAIN, entityId, ALL) : null;
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
@@ -325,7 +326,6 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-        EntityReference domainRef = getEntityReferenceById(DOMAIN, entityId, ALL);
         LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
       }
 
@@ -339,7 +339,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      searchRepository.updateEntity(ref);
+      // Re-index the asset and fan its re-derived domains out to inherited descendants in search.
+      // Uniform for add and remove: on add descendants follow the newly assigned domain; on remove
+      // they follow whatever the asset now inherits from its own ancestry (or are cleared if none),
+      // matching the entity page. Descendants with an explicit domain are left untouched.
+      searchRepository.updateEntityAndPropagateInheritedDomainsToChildren(ref);
     }
 
     result.withSuccessRequest(success);
@@ -636,8 +640,14 @@ public class DomainRepository extends EntityRepository<Domain> {
       // Drop cache entries for every descendant before we rewrite the DB: child domains and any
       // data product under this domain. Must happen BEFORE updateFqn so the descendant lookup
       // matches the old FQN prefix. The publish() fan-out handles peer instances.
-      invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
-      invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and the DAO updateFqn below.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedDomains =
+          invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+      List<EntityDAO.EntityIdFqnPair> renamedDataProducts =
+          invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
 
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
@@ -658,6 +668,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       for (Domain child : getNestedDomains(updated)) {
         invalidateDomainReferencers(child.getId());
       }
+
+      finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
+      finishInvalidateCacheForRenameCascade(Entity.DATA_PRODUCT, renamedDataProducts);
     }
 
     private void invalidateDomainReferencers(UUID domainId) {

@@ -3,7 +3,9 @@
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
+from sqlalchemy.engine import make_url
 
+from metadata.data_quality.validations.utils import render_url_for_data_diff
 from metadata.generated.schema.entity.data.table import (
     Column,
     Table,
@@ -27,6 +29,17 @@ class TableParameter(BaseModel):
     passPhrase: Optional[CustomSecretStr]
     key_columns: Optional[list[str]] = None
     extra_columns: Optional[list[str]] = None
+
+    @property
+    def data_diff_service_url(self) -> Union[str, dict]:  # noqa: UP007
+        """`serviceUrl` rendered for data-diff's own URI parser.
+
+        `serviceUrl` is a canonical SQLAlchemy URL, which encodes more than data-diff decodes.
+        Connection dicts are passed through: data-diff reads their values verbatim.
+        """
+        if isinstance(self.serviceUrl, dict):
+            return self.serviceUrl
+        return render_url_for_data_diff(make_url(self.serviceUrl))
 
 
 class TableDiffRuntimeParameters(BaseModel):

@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -58,6 +59,15 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent changeEvent, Set<Recipient> recipients)
       throws EventPublisherException {
     try {
+      // Hard delete (soft delete emits ENTITY_SOFT_DELETED): purge the entity's feed threads by
+      // entity id instead of recording a "Permanently Deleted" thread. deleteByAbout also removes
+      // the FQN-keyed field_relationship rows, so an entity later recreated with the same fully
+      // qualified name does not inherit the dead entity's activity (#28923). This runs after the
+      // delete transaction commits, so it also supersedes this trailing delete event itself.
+      if (changeEvent.getEventType() == EventType.ENTITY_DELETED) {
+        feedRepository.deleteByAbout(changeEvent.getEntityId());
+        return;
+      }
       // Thread are created in FeedRepository Directly
       if (!changeEvent.getEntityType().equals(Entity.THREAD)) {
         for (Thread thread :

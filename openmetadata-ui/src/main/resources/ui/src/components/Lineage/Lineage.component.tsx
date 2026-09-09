@@ -162,7 +162,7 @@ const Lineage = ({
       }>
       {
         <div
-          className="h-full relative lineage-container"
+          className="h-full relative overflow-hidden lineage-container"
           data-testid="lineage-container"
           id="lineage-container" // ID is required for export PNG functionality
           ref={reactFlowWrapper}>

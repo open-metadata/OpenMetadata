@@ -13,6 +13,14 @@ name: UI Checkstyle
 
 on:
   merge_group:
+  # Same-repo PRs: uses this branch's own workflow definition.
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  # Fork PRs: need secrets and the "safe to test" gate.
   pull_request_target:
     types:
       - opened
@@ -20,19 +28,13 @@ on:
       - reopened
       - ready_for_review
       - labeled
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - ".github/workflows/ui-checkstyle.yml"
-      - openmetadata-ui/src/main/resources/ui/playwright/**
-      - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
+  # Keyed by event so the two PR events don't cancel each other.
+  group: ui-checkstyle-${{ github.event_name }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 env:
@@ -43,11 +45,39 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Job 0: Authorize
   # ──────────────────────────────────────────────────────────────────────────
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui-changed: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/ui-checkstyle.yml'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/**'
+
   authorize:
+    needs: check-changes
     if: |
+      needs.check-changes.outputs.ui-changed == 'true' && (
       github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'pull_request_target' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'safe to test')))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
@@ -849,3 +879,75 @@ jobs:
               repo: context.repo.repo,
               comment_id: process.env.COMMENT_ID
             })
+
+  # Required status checks. Branch protection matches on job name, so these
+  # summarise the jobs above. always() so they still report when those skip.
+  checkstyle:
+    needs:
+      - check-changes
+      - lint-src
+      - license-header
+      - i18n-sync
+      - app-docs
+      - lint-playwright
+      - lint-core-components
+    # Only the event that actually ran the jobs reports. The other event's run
+    # skips authorize, so every job below it is skipped too — without this it
+    # would report success having validated nothing.
+    if: |
+      always() &&
+      !(github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) &&
+      !(github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        env:
+          RESULTS: |
+            check-changes=${{ needs.check-changes.result }}
+            lint-src=${{ needs.lint-src.result }}
+            license-header=${{ needs.license-header.result }}
+            i18n-sync=${{ needs.i18n-sync.result }}
+            app-docs=${{ needs.app-docs.result }}
+            lint-playwright=${{ needs.lint-playwright.result }}
+            lint-core-components=${{ needs.lint-core-components.result }}
+        run: |
+          echo "$RESULTS"
+          FAILED=$(echo "$RESULTS" | grep -c '=failure' || true)
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED checkstyle job(s) failed — see the list above."
+            exit 1
+          fi
+          echo "All checkstyle jobs passed or were skipped."
+
+  ui-checkstyle:
+    needs:
+      - checkstyle
+      - tsc-src
+      - tsc-playwright
+    # Only the event that actually ran the jobs reports. The other event's run
+    # skips authorize, so every job below it is skipped too — without this it
+    # would report success having validated nothing.
+    if: |
+      always() &&
+      !(github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) &&
+      !(github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        env:
+          RESULTS: |
+            checkstyle=${{ needs.checkstyle.result }}
+            tsc-src=${{ needs.tsc-src.result }}
+            tsc-playwright=${{ needs.tsc-playwright.result }}
+        run: |
+          echo "$RESULTS"
+          FAILED=$(echo "$RESULTS" | grep -c '=failure' || true)
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED job(s) failed — see the list above."
+            exit 1
+          fi
+          echo "UI checkstyle passed."

@@ -20,13 +20,13 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import AppContainer from '../AppContainer/AppContainer';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const PageNotFound = withSuspenseFallback(
+const PageNotFound = withPageSuspenseFallback(
   lazy(() => import('../../pages/PageNotFound/PageNotFound'))
 );
 
-const LogoutPage = withSuspenseFallback(
+const LogoutPage = withPageSuspenseFallback(
   lazy(() =>
     import('../../pages/LogoutPage/LogoutPage').then((module) => ({
       default: module.LogoutPage,
@@ -34,15 +34,15 @@ const LogoutPage = withSuspenseFallback(
   )
 );
 
-const AccessNotAllowedPage = withSuspenseFallback(
+const AccessNotAllowedPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
 );
 
-const SignUpPage = withSuspenseFallback(
+const SignUpPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/SignUp/SignUpPage'))
 );
 
-const SamlCallback = withSuspenseFallback(
+const SamlCallback = withPageSuspenseFallback(
   lazy(() => import('../../pages/SamlCallback'))
 );
 

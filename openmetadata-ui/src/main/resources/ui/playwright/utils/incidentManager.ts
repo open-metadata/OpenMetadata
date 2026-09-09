@@ -15,9 +15,84 @@ import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
+import { getCurrentMillis } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { makeRetryRequest } from './serviceIngestion';
 import { sidebarClick } from './sidebar';
+
+/**
+ * Seeds `count` failing test cases on `table`, each of which produces an
+ * incident, WITHOUT deploying or running an ingestion pipeline. A failed test
+ * case result is posted directly via the API, which is what actually creates an
+ * incident — the pipeline is only one way to produce that result.
+ *
+ * Use this for tests that just need incidents to exist (UI, pagination,
+ * filters). It is deterministic and takes seconds, so those tests no longer
+ * depend on Airflow or queue behaviour. Tests that verify pipeline behaviour
+ * (e.g. re-running a pipeline resolves an incident) must still use a real
+ * pipeline via triggerTestSuitePipelineAndWaitForSuccess.
+ *
+ * Returns the created test cases (in creation order).
+ */
+export const seedFailedIncidents = async (data: {
+  apiContext: APIRequestContext;
+  table: TableClass;
+  count: number;
+}): Promise<ResponseDataType[]> => {
+  const { apiContext, table, count } = data;
+  const failTimestamp = getCurrentMillis();
+  const testCases: ResponseDataType[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const testCase = await table.createTestCase(apiContext);
+    await table.addTestCaseResult(apiContext, testCase['fullyQualifiedName'], {
+      result: 'Seeded failing result to create an incident.',
+      testResultValue: [{ name: 'seeded', value: '0' }],
+      testCaseStatus: 'Failed',
+      timestamp: failTimestamp,
+    });
+    testCases.push(testCase);
+  }
+
+  // Wait until ALL seeded incidents are indexed, not just the last — Elasticsearch
+  // indexing is not ordered, so an earlier incident can still be missing when the
+  // last one is searchable, which would under-fill the list and defeat the point.
+  // Polled through /search/list (not the base, DB-backed listing endpoint) since
+  // that is the search-indexed path the Incident Manager page itself reads from.
+  const seededFqns = new Set(
+    testCases.map((testCase) => testCase['fullyQualifiedName'])
+  );
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?latest=true` +
+            `&startTs=${failTimestamp - 60_000}` +
+            `&endTs=${failTimestamp + 120_000}` +
+            `&limit=${count + 50}`
+        );
+
+        if (!response.ok()) {
+          return 0;
+        }
+
+        const body = await response.json();
+        const indexedFqns = new Set(
+          (body.data ?? []).map(
+            (incident: {
+              testCaseReference?: { fullyQualifiedName?: string };
+            }) => incident.testCaseReference?.fullyQualifiedName
+          )
+        );
+
+        return [...seededFqns].filter((fqn) => indexedFqns.has(fqn)).length;
+      },
+      { timeout: 90_000, intervals: [2_000, 3_000, 5_000] }
+    )
+    .toBeGreaterThanOrEqual(count);
+
+  return testCases;
+};
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await redirectToHomePage(page);

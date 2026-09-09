@@ -323,6 +323,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldValue,
             query.getQueryUsedIn(),
             withHref(uriInfo, query));
+    dispatchQueryUsageUpdate(query, changeEvent);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
@@ -346,7 +347,14 @@ public class QueryRepository extends EntityRepository<Query> {
             oldValue,
             query.getQueryUsedIn(),
             withHref(uriInfo, query));
+    dispatchQueryUsageUpdate(query, changeEvent);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  private void dispatchQueryUsageUpdate(final Query query, final ChangeEvent changeEvent) {
+    query.setIncrementalChangeDescription(changeEvent.getChangeDescription());
+    query.setChangeDescription(changeEvent.getChangeDescription());
+    postUpdate(query, query);
   }
 
   private ChangeEvent getQueryChangeEvent(

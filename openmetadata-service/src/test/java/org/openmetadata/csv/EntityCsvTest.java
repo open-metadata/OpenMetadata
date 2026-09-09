@@ -3074,6 +3074,16 @@ public class EntityCsvTest {
               relationshipRepository.getEntityReferences(
                   Mockito.anyList(), Mockito.eq(Include.NON_DELETED)))
           .thenReturn(dataProduct.getDomains());
+      // 1.13's LogicOps.validateDataProductDomainMatch resolves data-product domains via the
+      // bulk Entity.getEntities(...) path (main reverted to a per-item relationship lookup in
+      // #28486, not backported here); stub that path so the rule sees the mocked DataProduct's
+      // domains.
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntities(
+                      Mockito.anyList(), Mockito.eq("domains"), Mockito.eq(Include.NON_DELETED)))
+          .thenReturn(List.of(dataProduct));
       settingsCache
           .when(
               () ->

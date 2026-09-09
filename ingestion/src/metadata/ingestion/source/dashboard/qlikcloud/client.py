@@ -11,6 +11,7 @@
 """
 REST Auth & Client for QlikCloud
 """
+
 import json
 import re
 import traceback
@@ -87,7 +88,7 @@ class QlikCloudClient:
             self.socket_connection.close()
         self.socket_connection = create_connection(
             f"wss://{clean_uri(self.config.hostPort.host)}/app/{dashboard_id or ''}",
-            sslopt={"cert_reqs": ssl.CERT_NONE},
+            sslopt={"cert_reqs": ssl.CERT_REQUIRED},
             header={"Authorization": f"Bearer {self.config.token.get_secret_value()}"},
         )
         self.socket_connection.recv()

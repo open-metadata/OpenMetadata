@@ -28,7 +28,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import sqlparse
 from pydantic_core import Url
-from sqlparse.sql import Statement
+from sqlparse import tokens as sql_tokens
+from sqlparse.sql import Function, Parenthesis, Statement, TokenList
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -182,6 +183,17 @@ def get_formatted_entity_name(name: str) -> Optional[str]:
         if name
         else None
     )
+
+
+def has_table_name(name: Optional[str]) -> bool:  # noqa: UP045
+    """
+    Check that a table reference coming from a query parser actually holds a table name.
+
+    Query parsers can return references whose table part is empty, e.g. `db.schema.` when
+    the query contains an empty identifier (`db.schema.""`). There is nothing to look up in
+    those, so they are dropped instead of failing later on while building the FQN.
+    """
+    return bool(name and name.rsplit(".", maxsplit=1)[-1].strip())
 
 
 def replace_special_with(raw: str, replacement: str) -> str:
@@ -415,6 +427,97 @@ def deep_size_of_dict(obj: dict) -> int:
     return sizeof(obj)
 
 
+_FORBIDDEN_SQL_STATEMENT_TYPES = {
+    "CREATE",
+    "ALTER",
+    "DROP",
+    "TRUNCATE",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "MERGE",
+}
+_FORBIDDEN_SQL_STATEMENT_STARTS = _FORBIDDEN_SQL_STATEMENT_TYPES | {
+    "COMMENT",
+    "RENAME",
+    "CALL",
+    "GRANT",
+    "REVOKE",
+    "BEGIN",
+    "COMMIT",
+    "ROLLBACK",
+    "SAVEPOINT",
+    "COPY",
+    "EXEC",
+    "EXECUTE",
+}
+_FORBIDDEN_SQL_STATEMENT_PREFIXES = {
+    ("EXPLAIN", "PLAN"),
+    ("LOCK", "TABLE"),
+    ("UNLOCK", "TABLE"),
+    ("SET", "TRANSACTION"),
+}
+_FORBIDDEN_SQL_CLAUSES = {
+    ("INTO", "OUTFILE"),
+    ("INTO", "DUMPFILE"),
+}
+_FORBIDDEN_SQL_FUNCTIONS = {
+    "LOAD_FILE",
+    "PG_READ_FILE",
+    "PG_WRITE_FILE",
+    "PG_READ_BINARY_FILE",
+    "LO_IMPORT",
+    "LO_EXPORT",
+    "LO_FROM_BYTEA",
+    "LO_GET",
+    "XP_CMDSHELL",
+    "XP_REGREAD",
+    "XP_REGWRITE",
+    "XP_SERVICECONTROL",
+    "SP_OACREATE",
+    "SP_OAMETHOD",
+}
+
+
+def _significant_sql_tokens(statement: Statement) -> list:
+    return [
+        token
+        for token in statement.flatten()
+        if not token.is_whitespace and token.ttype not in sql_tokens.Comment
+    ]
+
+
+def _normalized_sql_values(statement: Statement) -> list[str]:
+    return [token.normalized.upper() for token in _significant_sql_tokens(statement)]
+
+
+def _starts_with_forbidden_sql_statement(statement: Statement) -> bool:
+    values = _normalized_sql_values(statement)
+    if not values:
+        return False
+    if statement.get_type().upper() in _FORBIDDEN_SQL_STATEMENT_TYPES:
+        return True
+    if values[0] in _FORBIDDEN_SQL_STATEMENT_STARTS:
+        return True
+    return any(
+        values[: len(prefix)] == list(prefix)
+        for prefix in _FORBIDDEN_SQL_STATEMENT_PREFIXES
+    )
+
+
+def _contains_forbidden_nested_sql_statement(token_list: TokenList) -> bool:
+    for token in token_list.tokens:
+        if isinstance(token, Parenthesis) and not isinstance(token.parent, Function):
+            for nested_statement in sqlparse.parse(token.value[1:-1]):
+                if _starts_with_forbidden_sql_statement(nested_statement):
+                    return True
+                if _contains_forbidden_nested_sql_statement(nested_statement):
+                    return True
+        elif token.is_group and _contains_forbidden_nested_sql_statement(token):
+            return True
+    return False
+
+
 def is_safe_sql_query(sql_query: str) -> bool:
     """Validate SQL query
     Args:
@@ -423,57 +526,29 @@ def is_safe_sql_query(sql_query: str) -> bool:
         bool
     """
 
-    forbiden_token = {
-        "CREATE",
-        "ALTER",
-        "DROP",
-        "TRUNCATE",
-        "COMMENT",
-        "RENAME",
-        "INSERT",
-        "UPDATE",
-        "DELETE",
-        "MERGE",
-        "CALL",
-        "EXPLAIN PLAN",
-        "LOCK TABLE",
-        "UNLOCK TABLE",
-        "GRANT",
-        "REVOKE",
-        "COMMIT",
-        "ROLLBACK",
-        "SAVEPOINT",
-        "SET TRANSACTION",
-        "INTO OUTFILE",
-        "INTO DUMPFILE",
-        "LOAD_FILE",
-        "COPY",
-        "PG_READ_FILE",
-        "PG_WRITE_FILE",
-        "PG_READ_BINARY_FILE",
-        "LO_IMPORT",
-        "LO_EXPORT",
-        "LO_FROM_BYTEA",
-        "LO_GET",
-        "EXEC",
-        "EXECUTE",
-        "XP_CMDSHELL",
-        "XP_REGREAD",
-        "XP_REGWRITE",
-        "XP_SERVICECONTROL",
-        "SP_OACREATE",
-        "SP_OAMETHOD",
-    }
-
     if sql_query is None:
         return True
 
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
-    # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
+        if _starts_with_forbidden_sql_statement(parsed_query):
+            return False
+        if _contains_forbidden_nested_sql_statement(parsed_query):
+            return False
+
+        tokens = _significant_sql_tokens(parsed_query)
+        normalized_tokens = [token.normalized.upper() for token in tokens]
+        for index, normalized_token in enumerate(normalized_tokens):
+            if (
+                normalized_token.strip('`"[]') in _FORBIDDEN_SQL_FUNCTIONS
+                and index + 1 < len(normalized_tokens)
+                and normalized_tokens[index + 1] == "("
+            ):
+                return False
         if any(
-            token.normalized.upper().split("(")[0] in forbiden_token
-            for token in parsed_query.tokens
+            normalized_tokens[index : index + len(clause)] == list(clause)
+            for clause in _FORBIDDEN_SQL_CLAUSES
+            for index in range(len(normalized_tokens) - len(clause) + 1)
         ):
             return False
     return True

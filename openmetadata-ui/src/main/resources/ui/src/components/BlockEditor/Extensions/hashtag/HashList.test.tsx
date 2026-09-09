@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EditorView } from '@tiptap/pm/view';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import React from 'react';
@@ -247,6 +247,18 @@ describe('HashList', () => {
       const result = ref.current?.onKeyDown(keyDownProps);
 
       expect(result).toBe(false);
+    });
+
+    it('should render breadcrumb tooltip inside the suggestion menu wrapper', async () => {
+      render(<HashList {...mockProps} />);
+
+      fireEvent.mouseEnter(screen.getAllByText('Database/Schema')[0]);
+
+      const tooltip = await screen.findByRole('tooltip');
+
+      expect(document.getElementById('hashtag-viewport')).toContainElement(
+        tooltip
+      );
     });
   });
 });

@@ -158,7 +158,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
-  private final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
+  // Static so it is safely published: the base constructor registers `this` before subclass
+  // fields initialize, so an instance ThreadLocal could be observed null and NPE in
+  // clearParentCache().
+  private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
 
   @Override
   public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {
@@ -972,10 +975,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+    if (testCase.getTestSuite() != null) {
+      try {
+        var testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+        var original = TestSuiteRepository.copyTestSuite(testSuite);
+        testSuiteRepository.postUpdate(original, testSuite);
+      } catch (EntityNotFoundException ignored) {
+        // TestSuite already deleted as part of the same cascade — nothing to update.
+      }
+    }
   }
 
   private void updateLogicalTestSuite(UUID testSuiteId) {

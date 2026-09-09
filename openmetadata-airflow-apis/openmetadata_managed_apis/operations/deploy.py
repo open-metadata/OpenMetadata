@@ -153,7 +153,6 @@ class DagDeployer:
         with settings.Session() as session:
             try:
                 dag_bag = get_dagbag()
-                logger.info("dagbag size {}".format(dag_bag.size()))
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
@@ -175,7 +174,7 @@ class DagDeployer:
                 msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
                 logger.debug(traceback.format_exc())
                 logger.error(msg)
-                return ApiResponse.server_error({f"message": msg})
+                return ApiResponse.server_error()
 
         scan_dags_job_background()
 

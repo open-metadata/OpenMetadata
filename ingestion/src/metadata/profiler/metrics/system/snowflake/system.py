@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import (
@@ -38,6 +39,7 @@ from metadata.utils.profiler_utils import get_identifiers_from_string
 from metadata.utils.time_utils import datetime_to_timestamp
 
 PUBLIC_SCHEMA = "PUBLIC"
+SHOW_TABLES_MATCH_LIMIT = 100
 logger = profiler_logger()
 RESULT_SCAN = """
     SELECT *
@@ -102,9 +104,15 @@ class SnowflakeTableResovler:
         self.session = session
 
     def show_tables(self, db, schema, table):
-        return self.session.execute(
-            f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT 1;'
-        ).fetchone()
+        # SHOW ... LIKE treats _ and % as wildcards and has no ESCAPE clause, so the
+        # match is narrowed server-side and the name column is compared here instead.
+        rows = self.session.execute(
+            text(
+                f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT {SHOW_TABLES_MATCH_LIMIT}'
+            )
+        ).fetchall()
+        target = CaseInsensitiveString(table)
+        return next((row for row in rows if target == row[1]), None)
 
     def table_exists(self, db, schema, table):
         """Return True if the table exists in Snowflake. Uses cache to store the results.

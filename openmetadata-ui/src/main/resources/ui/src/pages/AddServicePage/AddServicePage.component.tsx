@@ -15,7 +15,7 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -335,11 +335,13 @@ const AddServicePage = () => {
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{
         children: (
-          <ServiceDocPanel
-            activeField={activeField}
-            serviceName={serviceConfig.serviceType}
-            serviceType={getServiceType(serviceCategory)}
-          />
+          <Suspense fallback={null}>
+            <ServiceDocPanel
+              activeField={activeField}
+              serviceName={serviceConfig.serviceType}
+              serviceType={getServiceType(serviceCategory)}
+            />
+          </Suspense>
         ),
         className: 'service-doc-panel content-resizable-panel-container',
         minWidth: 400,

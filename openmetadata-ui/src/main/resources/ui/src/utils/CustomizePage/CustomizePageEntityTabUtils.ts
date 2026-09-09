@@ -69,6 +69,17 @@ export const getDetailsTabWithNewLabel = (
   return newTabs.filter((data) => !data.isHidden);
 };
 
+// Resolve the tab actually on screen: the selected tab only when it is in the rendered
+// list, else the first rendered tab (persona order, hidden dropped), else the default.
+export const getRenderedActiveTab = (
+  tabs: TabsProps['items'],
+  selectedTab?: EntityTabs,
+  defaultTab: EntityTabs = EntityTabs.OVERVIEW
+): EntityTabs =>
+  ((selectedTab && tabs?.some((tab) => tab.key === selectedTab)
+    ? selectedTab
+    : tabs?.[0]?.key) ?? defaultTab) as EntityTabs;
+
 export const getTabLabelMapFromTabs = (
   tabs?: Tab[]
 ): Record<EntityTabs, string> => {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 .math-equation-wrapper {
+  user-select: none;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -45,13 +46,9 @@
 }
 
 .react-renderer.node-MathEquation.ProseMirror-selectednode {
-  background-color: black;
   .math-equation-wrapper {
     .edit-button {
-      color: white;
+      opacity: 1;
     }
-  }
-  &.has-focus {
-    color: white;
   }
 }

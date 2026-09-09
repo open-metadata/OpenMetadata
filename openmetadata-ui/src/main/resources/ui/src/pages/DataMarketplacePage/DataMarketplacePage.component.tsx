@@ -30,12 +30,13 @@ import MarketplaceGreetingBanner from '../../components/DataMarketplace/Marketpl
 import MarketplaceSearchBar from '../../components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
 import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
@@ -81,9 +82,7 @@ const DataMarketplacePage = () => {
       const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
       const docData = await getDocumentByFQN(pageFQN);
 
-      const pageData = docData.data?.pages?.find(
-        (p: Page) => p.pageType === PageType.DataMarketplace
-      );
+      const pageData = getPersonaPage(docData, PageType.DataMarketplace);
 
       const tabLayout = getLayoutFromCustomizedPage(
         PageType.DataMarketplace,
