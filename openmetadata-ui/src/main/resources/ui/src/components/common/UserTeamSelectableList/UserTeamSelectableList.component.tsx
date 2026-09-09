@@ -323,7 +323,6 @@ export const UserTeamSelectableList = ({
   // fires. Listen in the capture phase instead — it runs before the button can
   // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       ref={triggerRef}
       onClickCapture={handleTriggerClick}
