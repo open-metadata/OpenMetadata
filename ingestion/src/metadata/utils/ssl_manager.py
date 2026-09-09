@@ -14,8 +14,6 @@
 Module to manage SSL certificates
 """
 
-import os
-import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
 from ssl import CERT_REQUIRED, SSLContext
@@ -80,6 +78,10 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr  # noqa: TC001
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
+from metadata.utils.secure_tempfile import (
+    remove_secret_temp_file,
+    write_secret_temp_file,
+)
 
 logger = utils_logger()
 
@@ -107,20 +109,21 @@ class SSLManager:
                 if value:
                     setattr(self, f"{dict_key}", self.create_temp_file(value))
 
-    def create_temp_file(self, content: SecretStr):
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(content.get_secret_value().encode())
-            temp_file.close()
-        self.temp_files.append(temp_file.name)
-        return temp_file.name
+    def create_temp_file(self, content: SecretStr) -> str:
+        """
+        Materialise a certificate for the lifetime of this manager.
 
-    def cleanup_temp_files(self):
-        for temp_file in self.temp_files:
-            try:  # noqa: SIM105
-                os.remove(temp_file)  # noqa: PTH107
-            except FileNotFoundError:
-                pass
-        self.temp_files = []
+        Scoped to the connection rather than a ``with`` block, so this uses the
+        write/remove pair instead of ``secret_temp_file``: callers hold the path
+        until they call :meth:`cleanup_temp_files` on teardown.
+        """
+        path = write_secret_temp_file(content.get_secret_value())
+        self.temp_files.append(str(path))
+
+        return str(path)
+
+    def cleanup_temp_files(self) -> None:
+        self.temp_files = [temp_file for temp_file in self.temp_files if not remove_secret_temp_file(temp_file)]
 
     @singledispatchmethod
     def setup_ssl(self, connection):
