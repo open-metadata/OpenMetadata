@@ -163,6 +163,9 @@ const CSV_HEADERS = [
   'dataProducts',
   'entityStatus',
   'extension',
+  'parent',
+  'experts',
+  'metricGroup',
 ];
 
 const METRIC_EDITOR_RULES = [
@@ -842,6 +845,9 @@ const createMetricCsvFile = (metricName: string) => {
       fixtures.dataProduct.fullyQualifiedName,
       'Approved',
       `${metricCustomPropertyName}:imported custom value`,
+      '',
+      '',
+      '',
     ],
   ]);
   const csvPath = test.info().outputPath(`${metricName}.csv`);
@@ -872,6 +878,9 @@ const createInvalidMetricCsvFile = (fileName: string) => {
       fixtures.dataProduct.fullyQualifiedName,
       '',
       '',
+      '',
+      '',
+      '',
     ],
     [
       `${fixtures.prefix}_invalid_refs`,
@@ -893,6 +902,9 @@ const createInvalidMetricCsvFile = (fileName: string) => {
       'missing_data_product',
       '',
       `${metricCustomPropertyName}:invalid refs`,
+      '',
+      '',
+      '',
     ],
   ]);
   const csvPath = test.info().outputPath(`${fileName}.csv`);
@@ -1197,6 +1209,9 @@ test.describe(
             fixtures.dataProduct.fullyQualifiedName,
             'Approved',
             `${metricCustomPropertyName}:updated custom value`,
+            '',
+            '',
+            '',
           ],
         ]);
         const csvPath = test

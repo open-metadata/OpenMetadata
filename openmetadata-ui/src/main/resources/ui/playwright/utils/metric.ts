@@ -25,15 +25,21 @@ const openMetricDefinitionEditor = async (page: Page) => {
   return dialog;
 };
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const selectDefinitionOption = async (
   page: Page,
   fieldTestId: string,
   option: string
 ) => {
   const field = page.getByTestId(fieldTestId);
-  await field.getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: option }).click();
-  await expect(field).toContainText(option);
+  const optionName = new RegExp(`^${escapeRegExp(option)}$`, 'i');
+  const trigger = field.getByRole('button');
+
+  await trigger.click();
+  await page.getByRole('option', { name: optionName }).click();
+  await expect(trigger).toContainText(optionName);
 };
 
 const saveMetricDefinition = async (page: Page) => {
