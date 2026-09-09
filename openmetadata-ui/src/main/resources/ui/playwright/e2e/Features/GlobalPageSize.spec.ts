@@ -33,12 +33,13 @@ test.describe('Table & Data Model columns table pagination', () => {
     );
     await tablePageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(tablePageSizeDropdown).toBeVisible();
-    await tablePageSizeDropdown.hover();
-
     const tablePageSizeOption = page
       .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
       .getByRole('menuitem', { name: '25 / Page' });
-    await expect(tablePageSizeOption).toBeVisible();
+    await expect(async () => {
+      await tablePageSizeDropdown.hover();
+      await expect(tablePageSizeOption).toBeVisible();
+    }).toPass({ timeout: 15000 });
     await tablePageSizeOption.click();
 
     await waitForAllLoadersToDisappear(page);
@@ -52,8 +53,16 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
 
     // Change page size to 50
-    await rowsPerPageDropdown.click();
-    await page.getByTestId('rows-per-page-option-50').click();
+    const option50 = page.getByTestId('rows-per-page-option-50');
+    await expect(async () => {
+      if (
+        (await rowsPerPageDropdown.getAttribute('aria-expanded')) !== 'true'
+      ) {
+        await rowsPerPageDropdown.click();
+      }
+      await expect(option50).toBeVisible();
+    }).toPass({ timeout: 15000 });
+    await option50.click();
     await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page
