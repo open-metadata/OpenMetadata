@@ -25,7 +25,6 @@ import {
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
-import { WorkflowTriggerFields } from '../../../generated/type/workflowTriggerFields';
 import {
   BackendNodeConfig,
   DataAssetFilter,
@@ -105,6 +104,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowDefinition,
   workflowMetadata,
   onWorkflowMetadataUpdate,
+  triggerFieldsConfig,
 }) => {
   const {
     allowFullStartNodeConfiguration,
@@ -160,9 +160,38 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       .catch(() => setCustomPropertyFields([]));
   }, [effectiveConfig.dataAssets]);
 
+  // Offer the fields relevant to the workflow's selected entity types: the common fields plus each
+  // selected entity's own trigger fields (e.g. `columns` for a table) and its custom properties.
   const availableExcludeFields = useMemo(() => {
-    return [...Object.values(WorkflowTriggerFields), ...customPropertyFields];
-  }, [customPropertyFields]);
+    const assets = effectiveConfig.dataAssets ?? [];
+    const entitySpecificFields = assets.flatMap(
+      (asset) => triggerFieldsConfig.byEntity[asset] ?? []
+    );
+
+    return [
+      ...new Set([
+        ...triggerFieldsConfig.common,
+        ...entitySpecificFields,
+        ...customPropertyFields,
+      ]),
+    ];
+  }, [triggerFieldsConfig, effectiveConfig.dataAssets, customPropertyFields]);
+
+  // Label each entity-specific field with the entity type it comes from so the selector groups
+  // them below the common fields (e.g. `columns` shown under `table`).
+  const excludeFieldGroups = useMemo(() => {
+    const assets = effectiveConfig.dataAssets ?? [];
+    const groups: Record<string, string> = {};
+    assets.forEach((asset) => {
+      (triggerFieldsConfig.byEntity[asset] ?? []).forEach((fieldName) => {
+        if (!groups[fieldName]) {
+          groups[fieldName] = asset;
+        }
+      });
+    });
+
+    return groups;
+  }, [triggerFieldsConfig, effectiveConfig.dataAssets]);
 
   useEffect(() => {
     if (isStartNode(node)) {
@@ -433,6 +462,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         availableEventTypes={[...AVAILABLE_OPTIONS.EVENT_TYPES]}
         availableExcludeFields={availableExcludeFields}
         config={effectiveConfig}
+        fieldGroups={excludeFieldGroups}
         handleEventTypeChange={handleEventTypeChange}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}

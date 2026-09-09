@@ -24,6 +24,7 @@ import { NodeSubType } from '../../../generated/governance/workflows/elements/no
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { WorkflowMetadata } from '../../../interface/workflow-builder-components.interface';
+import { WorkflowTriggerFieldsConfig } from '../../../rest/metadataTypeAPI';
 import { TaskNodeFormRenderer } from './forms';
 import { NodeConfigSidebar } from './NodeConfigSidebar';
 
@@ -38,6 +39,7 @@ interface NodeFormSidebarProps {
   onWorkflowMetadataUpdate?: (metadata: WorkflowMetadata) => void;
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
+  triggerFieldsConfig: WorkflowTriggerFieldsConfig;
   currentWorkflowConfig?: {
     dataAssets?: string[];
     triggerType?: string;
@@ -130,6 +132,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   onWorkflowMetadataUpdate,
   setNodes,
   setEdges,
+  triggerFieldsConfig,
   currentWorkflowConfig,
 }) => {
   const { t } = useTranslation();
@@ -182,6 +185,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
         node={node}
         setEdges={setEdges}
         setNodes={setNodes}
+        triggerFieldsConfig={triggerFieldsConfig}
         workflowDefinition={workflowDefinition || null}
         workflowMetadata={workflowMetadata}
         onClose={onClose}

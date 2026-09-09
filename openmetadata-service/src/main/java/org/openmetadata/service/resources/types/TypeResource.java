@@ -62,6 +62,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
@@ -147,6 +148,18 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   public static final String PROPERTIES = "customProperties";
   public static final String PROPERTIES_FIELD = "customProperties";
+
+  @GET
+  @Path("/fields/workflowTriggerFields")
+  @Operation(
+      operationId = "getWorkflowTriggerFields",
+      summary = "Get workflow trigger fields",
+      description =
+          "Get the fields whose change can trigger a governance workflow, split into a common set "
+              + "applicable to every entity type and a per-entity map of additional fields.")
+  public WorkflowTriggerFieldsRegistry.WorkflowTriggerFieldsConfig getWorkflowTriggerFields() {
+    return WorkflowTriggerFieldsRegistry.getConfig();
+  }
 
   @GET
   @Valid

@@ -30,6 +30,7 @@ interface WorkflowConfigFormV1Props {
   config: NodeConfig;
   availableEventTypes: string[];
   availableExcludeFields: string[];
+  fieldGroups?: Record<string, string>;
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
   allowScheduledTrigger: boolean;
@@ -61,6 +62,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   config,
   availableEventTypes,
   availableExcludeFields,
+  fieldGroups,
   allowFullStartNodeConfiguration,
   allowStartNodeFilterScheduleAndBatchEdit,
   allowScheduledTrigger,
@@ -118,6 +120,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         cronExpression={config.cronExpression}
         eventType={config.eventType}
         excludeFields={config.excludeFields}
+        fieldGroups={fieldGroups}
         include={config.include}
         lockNonIncludeExcludeFields={lockCoreStartFields}
         lockPeriodicBatchFields={lockFilterSections}
