@@ -442,8 +442,11 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     )
     .toBe(true);
 
+  // Click the domain name cell, not the row center — the row's center column is
+  // the glossary-terms cell whose tags are their own links, so a row-center
+  // click lands on a tag instead of triggering the domain navigation.
   await Promise.all([
-    domainRow.click(),
+    domainRow.getByTestId('entity-name').click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
