@@ -261,7 +261,7 @@ test.describe(
       ).toHaveValue(MASKED_PASSWORD);
     });
 
-    test('saving after clearing does not send replace/\'\' for the database password field', async ({
+    test("saving after clearing does not send replace/'' for the database password field", async ({
       page,
     }) => {
       await navigateToEditConnection(
@@ -387,7 +387,7 @@ test.describe(
       ).toHaveValue(MASKED_PASSWORD);
     });
 
-    test('saving after clearing does not send replace/\'\' for the dashboard password field', async ({
+    test("saving after clearing does not send replace/'' for the dashboard password field", async ({
       page,
     }) => {
       await navigateToEditConnection(
