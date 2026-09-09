@@ -35,6 +35,7 @@ import {
   clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
+  selectOptionWithRetry,
   toastNotification,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -872,8 +873,10 @@ export const verifyExportLineagePNG = async (
     });
 
   if (!isPNGSelected) {
-    await page.getByTestId('export-type-select').click();
-    await page.getByRole('option', { name: 'PNG' }).click();
+    await selectOptionWithRetry(
+      page.getByTestId('export-type-select'),
+      page.getByRole('option', { name: 'PNG' })
+    );
   }
 
   await expect(page.getByTestId('export-type-select')).toContainText('PNG');
