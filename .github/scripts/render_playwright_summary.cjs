@@ -46,7 +46,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const labelName = context.payload.label?.name ?? '';
   const isDraft = context.payload.pull_request?.draft === true;
   const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
+  // `pull_request_target` must be listed here. Fork PRs enter the pipeline
+  // under this event (same-repo PRs use `pull_request`), and their shard
+  // matrix runs the same reusable — so the summary has to gate on shard
+  // results the same way. Omitting it dropped the summary into the
+  // `!testsRequired` early-return below, printing "not required for this
+  // PR" and reporting green regardless of PLAYWRIGHT_RESULT (real failures
+  // observed on PR #32857, run 34121906853: chromium-01 shard hard-failed,
+  // playwright-summary reported success).
   const testsRequired = context.eventName === 'pull_request' ||
+    context.eventName === 'pull_request_target' ||
     context.eventName === 'merge_group' ||
     context.eventName === 'schedule' ||
     context.eventName === 'workflow_dispatch';
