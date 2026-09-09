@@ -1354,6 +1354,10 @@ test.describe('Glossary Advanced Operations', () => {
   test('should show error when glossary name exceeds limit', async ({
     page,
   }) => {
+    // Redirect + sidebar navigate + modal open is 3 page transitions
+    // that can each drift a few seconds under merge-queue load.
+    test.slow();
+
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
 

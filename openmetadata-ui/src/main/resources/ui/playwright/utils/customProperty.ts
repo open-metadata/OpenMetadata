@@ -917,7 +917,9 @@ export const deleteCreatedProperty = async (
     (res) =>
       res.url().includes('/api/v1/metadata/types/') &&
       res.request().method() === 'PATCH',
-    { timeout: 30_000 }
+    // 60 s covers heavier entity types (mlmodel, dashboard) under load —
+    // the previous 30 s tripped mlmodel/String at 0 retries.
+    { timeout: 60_000 }
   );
 
   await page.locator('[data-testid="save-button"]').click();

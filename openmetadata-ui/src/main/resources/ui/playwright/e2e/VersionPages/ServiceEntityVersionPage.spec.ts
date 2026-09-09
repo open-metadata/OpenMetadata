@@ -168,6 +168,11 @@ test.describe('Service Version pages', () => {
      * in the UI to highlight what changed between versions
      */
     test(key, async ({ page }) => {
+      // Visits the version page and asserts diff markers across 4 version
+      // bumps (0.2 → 0.5). 6+ API round-trips + several UI transitions
+      // that can each drift under merge-queue load.
+      test.slow();
+
       await entity.visitEntityPage(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();

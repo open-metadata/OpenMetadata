@@ -841,6 +841,10 @@ test.describe(
     test('should handle supported services field correctly', async ({
       page,
     }) => {
+      // Creates a test definition, filters the library, edits, deletes —
+      // 4+ heavy modal round-trips. Under load the 60 s default is tight.
+      test.slow();
+
       const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
       const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
       let createdTestId: string;

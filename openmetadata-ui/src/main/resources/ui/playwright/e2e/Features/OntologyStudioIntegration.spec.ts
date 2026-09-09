@@ -264,12 +264,21 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
       `ontology-data-cluster-${spiralTerm.responseData.id}`
     );
     await expect(cluster).toBeVisible();
-    await expect(cluster).toContainText(/[1-9]\d*\s+assets?/i);
-    await expect(
-      cluster.getByTestId(
-        `ontology-data-asset-${spiralTable.entityResponseData.id}`
-      )
-    ).toBeVisible();
+    // Asset visibility can lag the API response by a few seconds while ES
+    // catches up — retry the check-and-refetch loop for up to 30 s so
+    // this test does not need retry #1 to pass at 0 retries on PR.
+    const asset = cluster.getByTestId(
+      `ontology-data-asset-${spiralTable.entityResponseData.id}`
+    );
+    await expect(async () => {
+      if (!(await asset.isVisible())) {
+        await page.reload();
+        await page.getByRole('tab', { name: 'Data' }).click();
+        await waitForGraphLoaded(page);
+      }
+      await expect(cluster).toContainText(/[1-9]\d*\s+assets?/i);
+      await expect(asset).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000, intervals: [2_000, 3_000, 5_000] });
   });
 });
 

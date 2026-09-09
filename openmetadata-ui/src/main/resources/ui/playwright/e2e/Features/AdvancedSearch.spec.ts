@@ -1445,6 +1445,11 @@ test.describe(
     });
 
     test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
+      // Advanced-search response + ES tag-negation propagation drifts under
+      // merge-queue load — the exclusion assertion can race the search
+      // aggregation. Triple the budget for a clean pass at 0 retries.
+      test.slow();
+
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });

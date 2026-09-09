@@ -213,6 +213,11 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
     test(`Create and resolve description task for ${config.name} via UI`, async ({
       page,
     }) => {
+      // Pipeline entity is heavier than Table/Topic; visit → create task
+      // → assign → comment → resolve is 5+ round-trips per entity. Triple
+      // the budget for a clean pass at 0 retries.
+      test.slow();
+
       const entity = entities[i];
       const userName = user.responseData?.name ?? '';
       const description = `Test description for ${config.name} task`;
