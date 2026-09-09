@@ -184,9 +184,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -198,9 +196,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -212,9 +208,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 }
@@ -6270,6 +6264,10 @@
                           "description": "PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow. Required when authType is OAuth2Credentials.",
                           "type": "string",
                           "format": "password",
+                          "accept": [
+                            ".pem",
+                            ".key"
+                          ],
                           "uiFieldType": "fileOrInput"
                         },
                         "tokenUrl": {
@@ -6524,6 +6522,11 @@
                           "description": "Connection to Snowflake instance via Private Key",
                           "type": "string",
                           "format": "password",
+                          "accept": [
+                            ".pem",
+                            ".key",
+                            ".p8"
+                          ],
                           "uiFieldType": "fileOrInput",
                           "recommended": true
                         },
@@ -14837,19 +14840,36 @@
                                       "title": "CA Certificate Value",
                                       "description": "CA Certificate Value",
                                       "type": "string",
-                                      "format": "password"
+                                      "format": "password",
+                                      "accept": [
+                                        ".pem",
+                                        ".crt",
+                                        ".cer"
+                                      ],
+                                      "uiFieldType": "fileOrInput"
                                     },
                                     "clientCertValue": {
                                       "title": "Client Certificate Value",
                                       "description": "Client Certificate Value",
                                       "type": "string",
-                                      "format": "password"
+                                      "format": "password",
+                                      "accept": [
+                                        ".pem",
+                                        ".crt",
+                                        ".cer"
+                                      ],
+                                      "uiFieldType": "fileOrInput"
                                     },
                                     "privateKeyValue": {
                                       "title": "Private Key Value",
                                       "description": "Private Key Value",
                                       "type": "string",
-                                      "format": "password"
+                                      "format": "password",
+                                      "accept": [
+                                        ".pem",
+                                        ".key"
+                                      ],
+                                      "uiFieldType": "fileOrInput"
                                     },
                                     "stagingDir": {
                                       "title": "Staging Directory Path",

@@ -35,7 +35,9 @@
       "title": "GCP Credentials",
       "description": "GCP service account credentials JSON",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "accept": [".json"],
+      "uiFieldType": "fileOrInput"
     },
     "timeout": {
       "title": "Timeout",
