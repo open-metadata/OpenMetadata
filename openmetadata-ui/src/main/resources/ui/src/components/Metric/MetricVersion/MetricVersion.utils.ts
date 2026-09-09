@@ -16,6 +16,12 @@ import type {
 } from '../../../generated/entity/data/metric';
 import type { EntityReference } from '../../../generated/type/entityReference';
 import type { TagLabel } from '../../../generated/type/tagLabel';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+} from '../../../utils/EntityDiffPureUtils';
+import { getTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isMetricTierTag } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 
@@ -29,6 +35,20 @@ export const getMetricVersionField = (
   );
 
   return changedField?.newValue ?? fallback;
+};
+
+export const getMetricVersionFieldDiff = (
+  changeDescription: ChangeDescription,
+  fieldName: string,
+  fallback?: string
+) => {
+  const fieldDiff = getDiffByFieldName(fieldName, changeDescription, true);
+
+  return getTextDiff(
+    String(getChangedEntityOldValue(fieldDiff) ?? ''),
+    String(getChangedEntityNewValue(fieldDiff) ?? ''),
+    fallback
+  );
 };
 
 export const getMetricVersionMetadata = ({

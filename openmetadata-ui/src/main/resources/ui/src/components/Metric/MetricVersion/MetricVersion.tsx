@@ -32,7 +32,6 @@ import type {
 import { UnitOfMeasurement } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
@@ -41,6 +40,7 @@ import MetricExpression from '../MetricExpression/MetricExpression';
 import type { MetricVersionProp } from './MetricVersion.interface';
 import {
   getMetricVersionField,
+  getMetricVersionFieldDiff,
   getMetricVersionMetadata,
   getMetricVersionNumbers,
   getMetricVersionTags,
@@ -83,17 +83,17 @@ const MetricVersionDefinitionDetails = ({
   >;
 }) => {
   const { t } = useTranslation();
-  const metricType = getEntityVersionByField(
+  const metricType = getMetricVersionFieldDiff(
     changeDescription,
     'metricType',
     metric.metricType
   );
-  const unitOfMeasurement = getEntityVersionByField(
+  const unitOfMeasurement = getMetricVersionFieldDiff(
     changeDescription,
     'unitOfMeasurement',
     metric.unitOfMeasurement
   );
-  const customUnitOfMeasurement = getEntityVersionByField(
+  const customUnitOfMeasurement = getMetricVersionFieldDiff(
     changeDescription,
     'customUnitOfMeasurement',
     metric.customUnitOfMeasurement
@@ -102,7 +102,7 @@ const MetricVersionDefinitionDetails = ({
     unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
       ? customUnitOfMeasurement
       : unitOfMeasurement;
-  const granularity = getEntityVersionByField(
+  const granularity = getMetricVersionFieldDiff(
     changeDescription,
     'granularity',
     metric.granularity
