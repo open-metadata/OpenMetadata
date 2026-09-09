@@ -9982,7 +9982,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (nullOrEmpty(addedColumn.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
+          // Carry the tags forward only when the re-added column has none of its own and the
+          // deleted one actually had some. A column is re-added rather than updated whenever its
+          // dataType changes (see EntityUtil.columnMatch), and the deleteTagsByTarget below would
+          // otherwise drop user-applied tags from a column that still exists under the same FQN.
+          if (nullOrEmpty(addedColumn.getTags()) && !nullOrEmpty(deleted.getTags())) {
             addedColumn.setTags(deleted.getTags());
           }
         }

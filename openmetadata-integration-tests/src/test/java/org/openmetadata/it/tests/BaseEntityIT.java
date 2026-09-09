@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -4965,6 +4966,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       throw new IllegalStateException(
           "Failed to strip DefaultBotRole: " + resp.statusCode() + " " + resp.body());
     }
+  }
+
+  /**
+   * Bulk-upsert the requests via raw HTTP using the ingestion-bot JWT. The bot identity is what
+   * activates the "preserve user-curated description/displayName" rules in EntityRepository.
+   */
+  protected BulkOperationResult executeBulkAsBot(List<K> requests, boolean overrideMetadata) {
+    try {
+      return BulkApi.upsert(getBulkCollection(), requests, overrideMetadata, BulkApi.botToken());
+    } catch (Exception e) {
+      throw new RuntimeException("Bulk upsert as bot failed: " + e.getMessage(), e);
+    }
+  }
+
+  /** Derives the v1 collection name (e.g. {@code "tables"}) from {@link #getResourcePath()}. */
+  private String getBulkCollection() {
+    String path = getResourcePath();
+    if (path.startsWith("/v1/")) {
+      path = path.substring(4);
+    }
+    if (path.endsWith("/")) {
+      path = path.substring(0, path.length() - 1);
+    }
+    return path;
   }
 
   private String getBotToken() {
