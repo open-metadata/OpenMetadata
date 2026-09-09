@@ -84,7 +84,9 @@ export const useGlossaryStore = create<{
     );
 
     if (index !== -1) {
-      glossaries[index] = updatedGlossary;
+      set({
+        glossaries: glossaries.map((g, i) => (i === index ? updatedGlossary : g)),
+      });
     }
   },
   insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => {
