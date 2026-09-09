@@ -443,13 +443,14 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .toBe(true);
 
   // Re-clicking the currently-selected domain is a no-op in the tree, so
-  // `/api/v1/domains/name/*` never fires. Wait on the detail header instead.
+  // `/api/v1/domains/name/*` never fires. Wait on the detail header
+  // `entity-header-name` — it is always rendered, unlike
+  // `entity-header-display-name` which is skipped when displayName is empty.
   await domainRow.click();
 
-  const displayName = domain.displayName ?? domain.name;
   await expect(
-    page.getByTestId('domain-details').getByTestId('entity-header-display-name')
-  ).toContainText(displayName);
+    page.getByTestId('domain-details').getByTestId('entity-header-name')
+  ).toContainText(domain.name);
 
   await waitForAllLoadersToDisappear(page);
 };
