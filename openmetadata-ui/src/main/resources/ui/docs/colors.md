@@ -6,7 +6,7 @@ A guide for developers and AI agents on how to use colors safely across OpenMeta
 
 ## 1. Mental Model
 
-OpenMetadata uses **semantic color tokens** — named abstractions that map to specific values in light mode and automatically remap to different values in dark mode. A token like `tw:bg-primary` resolves to `#ffffff` in light mode and `#0c0e12` in dark mode without any extra code.
+OpenMetadata uses **semantic color tokens** — named abstractions that map to specific values in light mode and automatically remap to different values in dark mode. A token like `tw:bg-primary` resolves to `#ffffff` in light mode and `#141414` in dark mode without any extra code.
 
 ### How Dark Mode Works
 
@@ -43,33 +43,33 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#0c0e12` | Default page, card, modal background |
-| `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#13161b` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
-| `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#fafafa` | `#22262f` | Hover state on primary surface |
-| `tw:bg-secondary` | `--color-bg-secondary` | `#fafafa` | `#13161b` | Secondary surface, sidebar, panel |
-| `tw:bg-secondary_alt` | `--color-bg-secondary_alt` | `#fafafa` | `#0c0e12` (bg-primary) | Alternate secondary surface |
-| `tw:bg-secondary_subtle` | `--color-bg-secondary_subtle` | `#fdfdfd` | `#13161b` | Subtle secondary background |
-| `tw:bg-secondary_hover` | `--color-bg-secondary_hover` | `#f5f5f5` | `#22262f` | Hover on secondary surface |
-| `tw:bg-tertiary` | `--color-bg-tertiary` | `#f5f5f5` | `#22262f` | Input backgrounds, code blocks, chips |
-| `tw:bg-quaternary` | `--color-bg-quaternary` | `#e9eaeb` | `#373a41` | Strongest neutral surface, skeleton loaders |
-| `tw:bg-active` | `--color-bg-active` | `#fafafa` | `#22262f` | Selected/active row or nav item |
-| `tw:bg-disabled` | `--color-bg-disabled` | `#f5f5f5` | `#22262f` | Disabled input or button surface |
-| `tw:bg-disabled_subtle` | `--color-bg-disabled_subtle` | `#fafafa` | `#13161b` | Subtler disabled surface |
-| `tw:bg-overlay` | `--color-bg-overlay` | `#0a0d12` | `#22262f` | Modal backdrops, drawer overlays |
-| `tw:bg-primary-solid` | `--color-bg-primary-solid` | `#0a0d12` | `#13161b` | High-contrast solid surface (rare) |
-| `tw:bg-secondary-solid` | `--color-bg-secondary-solid` | `#535862` | `#535862` | Solid secondary (e.g. dark tooltips) |
+| `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#141414` | Default page, card, modal background |
+| `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#191919` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
+| `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#f0f0f0` | `#222222` | Hover state on primary surface |
+| `tw:bg-secondary` | `--color-bg-secondary` | `#f0f0f0` | `#191919` | Secondary surface, sidebar, panel |
+| `tw:bg-secondary_alt` | `--color-bg-secondary_alt` | `#f0f0f0` | `#141414` (bg-primary) | Alternate secondary surface |
+| `tw:bg-secondary_subtle` | `--color-bg-secondary_subtle` | `#fafafa` | `#191919` | Subtle secondary background |
+| `tw:bg-secondary_hover` | `--color-bg-secondary_hover` | `#e0e0e0` | `#222222` | Hover on secondary surface |
+| `tw:bg-tertiary` | `--color-bg-tertiary` | `#e0e0e0` | `#222222` | Input backgrounds, code blocks, chips |
+| `tw:bg-quaternary` | `--color-bg-quaternary` | `#d9d9d9` | `#2e2e2e` | Strongest neutral surface, skeleton loaders |
+| `tw:bg-active` | `--color-bg-active` | `#f0f0f0` | `#222222` | Selected/active row or nav item |
+| `tw:bg-disabled` | `--color-bg-disabled` | `#e0e0e0` | `#222222` | Disabled input or button surface |
+| `tw:bg-disabled_subtle` | `--color-bg-disabled_subtle` | `#f0f0f0` | `#191919` | Subtler disabled surface |
+| `tw:bg-overlay` | `--color-bg-overlay` | `#141414` | `#222222` | Modal backdrops, drawer overlays |
+| `tw:bg-primary-solid` | `--color-bg-primary-solid` | `#141414` | `#191919` | High-contrast solid surface (rare) |
+| `tw:bg-secondary-solid` | `--color-bg-secondary-solid` | `#666666` | `#666666` | Solid secondary (e.g. dark tooltips) |
 
 **Brand backgrounds:**
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
 | `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | `#2e90fa` | Light brand tint surface |
-| `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#13161b` | Alternate brand tint |
+| `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#191919` | Alternate brand tint |
 | `tw:bg-brand-secondary` | `--color-bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand tint |
 | `tw:bg-brand-solid` | `--color-bg-brand-solid` | `#1570ef` | `#1570ef` | Primary CTA button fill |
 | `tw:bg-brand-solid_hover` | `--color-bg-brand-solid_hover` | `#175cd3` | `#2e90fa` | CTA button hover |
-| `tw:bg-brand-section` | `--color-bg-brand-section` | `#1849a9` | `#13161b` | Full-width brand banner section |
-| `tw:bg-brand-section_subtle` | `--color-bg-brand-section_subtle` | `#175cd3` | `#0c0e12` | Subtle brand banner section |
+| `tw:bg-brand-section` | `--color-bg-brand-section` | `#1849a9` | `#191919` | Full-width brand banner section |
+| `tw:bg-brand-section_subtle` | `--color-bg-brand-section_subtle` | `#175cd3` | `#141414` | Subtle brand banner section |
 
 **Status backgrounds:**
 
@@ -105,35 +105,35 @@ Use text tokens for all text content. Choose the hierarchy level that matches th
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:text-primary` | `--color-text-primary` | `#181d27` (gray-900) | `#fafafa` (gray-50) | Headings, primary body text |
-| `tw:text-secondary` | `--color-text-secondary` | `#414651` (gray-700) | `#d5d7da` (gray-300) | Secondary body, labels |
-| `tw:text-secondary_hover` | `--color-text-secondary_hover` | `#252b37` | `#e9eaeb` | Hover state on secondary text |
-| `tw:text-tertiary` | `--color-text-tertiary` | `#535862` (gray-600) | `#a4a7ae` (gray-400) | Captions, helper text, timestamps |
-| `tw:text-tertiary_hover` | `--color-text-tertiary_hover` | `#414651` | `#d5d7da` | Hover state on tertiary text |
-| `tw:text-quaternary` | `--color-text-quaternary` | `#717680` (gray-500) | `#a4a7ae` (gray-400) | Placeholder-level, very muted text |
-| `tw:text-disabled` | `--color-text-disabled` | `#717680` | `#717680` | Disabled text |
-| `tw:text-placeholder` | `--color-text-placeholder` | `#717680` | `#717680` | Input placeholder text |
-| `tw:text-placeholder_subtle` | `--color-text-placeholder_subtle` | `#d5d7da` | `#414651` | Ghosted placeholder |
+| `tw:text-primary` | `--color-text-primary` | `#191919` (gray-900) | `#f0f0f0` (gray-50) | Headings, primary body text |
+| `tw:text-secondary` | `--color-text-secondary` | `#2e2e2e` (gray-700) | `#bfbfbf` (gray-300) | Secondary body, labels |
+| `tw:text-secondary_hover` | `--color-text-secondary_hover` | `#222222` | `#d9d9d9` | Hover state on secondary text |
+| `tw:text-tertiary` | `--color-text-tertiary` | `#666666` (gray-600) | `#a0a0a0` (gray-400) | Captions, helper text, timestamps |
+| `tw:text-tertiary_hover` | `--color-text-tertiary_hover` | `#2e2e2e` | `#bfbfbf` | Hover state on tertiary text |
+| `tw:text-quaternary` | `--color-text-quaternary` | `#808080` (gray-500) | `#a0a0a0` (gray-400) | Placeholder-level, very muted text |
+| `tw:text-disabled` | `--color-text-disabled` | `#808080` | `#808080` | Disabled text |
+| `tw:text-placeholder` | `--color-text-placeholder` | `#808080` | `#808080` | Input placeholder text |
+| `tw:text-placeholder_subtle` | `--color-text-placeholder_subtle` | `#bfbfbf` | `#2e2e2e` | Ghosted placeholder |
 | `tw:text-white` | `--color-text-white` | `#ffffff` | `#ffffff` | Text on dark/solid backgrounds only |
 
 **Brand text:**
 
 | Tailwind Class | Light | Dark | When to Use |
 |---|---|---|---|
-| `tw:text-brand-primary` | `#194185` (brand-900) | `#fafafa` | Strong brand text, page titles on brand surface |
-| `tw:text-brand-secondary` | `#175cd3` (brand-700) | `#d5d7da` | Brand links, secondary brand text |
-| `tw:text-brand-secondary_hover` | `#1849a9` | `#e9eaeb` | Hover on brand links |
-| `tw:text-brand-tertiary` | `#1570ef` (brand-600) | `#a4a7ae` | Lighter brand text |
-| `tw:text-brand-tertiary_alt` | `#1570ef` | `#fafafa` | Alternate lighter brand text |
+| `tw:text-brand-primary` | `#194185` (brand-900) | `#f0f0f0` | Strong brand text, page titles on brand surface |
+| `tw:text-brand-secondary` | `#175cd3` (brand-700) | `#bfbfbf` | Brand links, secondary brand text |
+| `tw:text-brand-secondary_hover` | `#1849a9` | `#d9d9d9` | Hover on brand links |
+| `tw:text-brand-tertiary` | `#1570ef` (brand-600) | `#a0a0a0` | Lighter brand text |
+| `tw:text-brand-tertiary_alt` | `#1570ef` | `#f0f0f0` | Alternate lighter brand text |
 
 **On-brand text** (use inside brand-colored containers like CTAs or dark headers):
 
 | Tailwind Class | Light | Dark | When to Use |
 |---|---|---|---|
-| `tw:text-primary_on-brand` | `#ffffff` | `#fafafa` | Primary text on brand surface |
-| `tw:text-secondary_on-brand` | `#b2ddff` (brand-200) | `#d5d7da` | Secondary text on brand surface |
-| `tw:text-tertiary_on-brand` | `#b2ddff` | `#a4a7ae` | Tertiary text on brand surface |
-| `tw:text-quaternary_on-brand` | `#84caff` (brand-300) | `#a4a7ae` | Quaternary text on brand surface |
+| `tw:text-primary_on-brand` | `#ffffff` | `#f0f0f0` | Primary text on brand surface |
+| `tw:text-secondary_on-brand` | `#b2ddff` (brand-200) | `#bfbfbf` | Secondary text on brand surface |
+| `tw:text-tertiary_on-brand` | `#b2ddff` | `#a0a0a0` | Tertiary text on brand surface |
+| `tw:text-quaternary_on-brand` | `#84caff` (brand-300) | `#a0a0a0` | Quaternary text on brand surface |
 
 **Status text:**
 
@@ -165,16 +165,16 @@ Use border tokens for input outlines, card dividers, separators, and table borde
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:border-primary` | `--color-border-primary` | `#d5d7da` (gray-300) | `#373a41` (gray-700) | Default card, input, and divider borders |
-| `tw:border-secondary` | `--color-border-secondary` | `#e9eaeb` (gray-200) | `#22262f` (gray-800) | Subtle borders, section separators |
-| `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | `#22262f` | Alpha-transparent borders |
-| `tw:border-tertiary` | `--color-border-tertiary` | `#f5f5f5` (gray-100) | `#22262f` | Very subtle dividers |
+| `tw:border-primary` | `--color-border-primary` | `#bfbfbf` (gray-300) | `#2e2e2e` (gray-700) | Default card, input, and divider borders |
+| `tw:border-secondary` | `--color-border-secondary` | `#d9d9d9` (gray-200) | `#222222` (gray-800) | Subtle borders, section separators |
+| `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | `#222222` | Alpha-transparent borders |
+| `tw:border-tertiary` | `--color-border-tertiary` | `#e0e0e0` (gray-100) | `#222222` | Very subtle dividers |
 | `tw:border-brand` | `--color-border-brand` | `#2e90fa` (brand-500) | `#53b1fd` (brand-400) | Focused inputs, selected states |
-| `tw:border-brand_alt` | `--color-border-brand_alt` | `#1570ef` (brand-600) | `#373a41` | Alternate brand border |
+| `tw:border-brand_alt` | `--color-border-brand_alt` | `#1570ef` (brand-600) | `#2e2e2e` | Alternate brand border |
 | `tw:border-error` | `--color-border-error` | `#f04438` (error-500) | `#f97066` (error-400) | Error state input/container border |
 | `tw:border-error_subtle` | `--color-border-error_subtle` | `#fda29b` (error-300) | `#f04438` (error-500) | Subtle error border |
-| `tw:border-disabled` | `--color-border-disabled` | `#d5d7da` | `#373a41` | Disabled input border |
-| `tw:border-disabled_subtle` | `--color-border-disabled_subtle` | `#e9eaeb` | `#22262f` | Subtle disabled border |
+| `tw:border-disabled` | `--color-border-disabled` | `#bfbfbf` | `#2e2e2e` | Disabled input border |
+| `tw:border-disabled_subtle` | `--color-border-disabled_subtle` | `#d9d9d9` | `#222222` | Subtle disabled border |
 
 **Outline tokens** follow the same naming (`tw:outline-primary`, `tw:outline-brand`, …) and
 resolve to the same values. **Ring tokens exist but must not be used to draw an edge** — see
@@ -330,19 +330,19 @@ Use foreground tokens for SVG icons and decorative graphic elements. These are d
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
 | `tw:text-fg-white` | `--color-fg-white` | `#ffffff` | `#ffffff` | Icons on solid dark backgrounds |
-| `tw:text-fg-primary` | `--color-fg-primary` | `#181d27` | `#ffffff` | Primary/high-emphasis icons |
-| `tw:text-fg-secondary` | `--color-fg-secondary` | `#414651` | `#d5d7da` | Standard UI icons |
-| `tw:text-fg-secondary_hover` | `--color-fg-secondary_hover` | `#252b37` | `#e9eaeb` | Icon hover state |
-| `tw:text-fg-tertiary` | `--color-fg-tertiary` | `#535862` | `#a4a7ae` | Muted/supporting icons |
-| `tw:text-fg-tertiary_hover` | `--color-fg-tertiary_hover` | `#414651` | `#d5d7da` | Hover on muted icons |
-| `tw:text-fg-quaternary` | `--color-fg-quaternary` | `#a4a7ae` | `#535862` | Very muted icons, decorative only |
-| `tw:text-fg-quaternary_hover` | `--color-fg-quaternary_hover` | `#717680` | `#717680` | Hover on quaternary icons |
-| `tw:text-fg-disabled` | `--color-fg-disabled` | `#a4a7ae` | `#717680` | Disabled icon |
-| `tw:text-fg-disabled_subtle` | `--color-fg-disabled_subtle` | `#d5d7da` | `#535862` | Subtler disabled icon |
+| `tw:text-fg-primary` | `--color-fg-primary` | `#191919` | `#ffffff` | Primary/high-emphasis icons |
+| `tw:text-fg-secondary` | `--color-fg-secondary` | `#2e2e2e` | `#bfbfbf` | Standard UI icons |
+| `tw:text-fg-secondary_hover` | `--color-fg-secondary_hover` | `#222222` | `#d9d9d9` | Icon hover state |
+| `tw:text-fg-tertiary` | `--color-fg-tertiary` | `#666666` | `#a0a0a0` | Muted/supporting icons |
+| `tw:text-fg-tertiary_hover` | `--color-fg-tertiary_hover` | `#2e2e2e` | `#bfbfbf` | Hover on muted icons |
+| `tw:text-fg-quaternary` | `--color-fg-quaternary` | `#a0a0a0` | `#666666` | Very muted icons, decorative only |
+| `tw:text-fg-quaternary_hover` | `--color-fg-quaternary_hover` | `#808080` | `#808080` | Hover on quaternary icons |
+| `tw:text-fg-disabled` | `--color-fg-disabled` | `#a0a0a0` | `#808080` | Disabled icon |
+| `tw:text-fg-disabled_subtle` | `--color-fg-disabled_subtle` | `#bfbfbf` | `#666666` | Subtler disabled icon |
 | `tw:text-fg-brand-primary` | `--color-fg-brand-primary` | `#1570ef` | `#2e90fa` | Brand-colored icons |
-| `tw:text-fg-brand-primary_alt` | `--color-fg-brand-primary_alt` | `#1570ef` | `#d5d7da` | Alternate brand icon |
+| `tw:text-fg-brand-primary_alt` | `--color-fg-brand-primary_alt` | `#1570ef` | `#bfbfbf` | Alternate brand icon |
 | `tw:text-fg-brand-secondary` | `--color-fg-brand-secondary` | `#2e90fa` | `#2e90fa` | Secondary brand icons |
-| `tw:text-fg-brand-secondary_hover` | `--color-fg-brand-secondary_hover` | `#1570ef` | `#717680` | Hover on secondary brand icon |
+| `tw:text-fg-brand-secondary_hover` | `--color-fg-brand-secondary_hover` | `#1570ef` | `#808080` | Hover on secondary brand icon |
 | `tw:text-fg-error-primary` | `--color-fg-error-primary` | `#d92d20` | `#f04438` | Error icons |
 | `tw:text-fg-error-secondary` | `--color-fg-error-secondary` | `#f04438` | `#f97066` | Secondary error icons |
 | `tw:text-fg-warning-primary` | `--color-fg-warning-primary` | `#dc6803` | `#f79009` | Warning icons |
@@ -402,11 +402,11 @@ Brand tokens are for CTAs, highlighted navigation, brand-accented UI, and sectio
 | `tw:bg-brand-solid_hover` | `#175cd3` | `#2e90fa` | CTA button hover state |
 | `tw:bg-brand-primary` | `#eff8ff` | `#2e90fa` | Brand-tinted content area |
 | `tw:bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand-tinted area |
-| `tw:bg-brand-section` | `#1849a9` | `#13161b` | Full-width brand promo section |
-| `tw:bg-brand-section_subtle` | `#175cd3` | `#0c0e12` | Subtle brand promo section |
-| `tw:text-brand-primary` | `#194185` | `#fafafa` | Strong brand text |
-| `tw:text-brand-secondary` | `#175cd3` | `#d5d7da` | Brand links |
-| `tw:text-brand-tertiary` | `#1570ef` | `#a4a7ae` | Lighter brand text |
+| `tw:bg-brand-section` | `#1849a9` | `#191919` | Full-width brand promo section |
+| `tw:bg-brand-section_subtle` | `#175cd3` | `#141414` | Subtle brand promo section |
+| `tw:text-brand-primary` | `#194185` | `#f0f0f0` | Strong brand text |
+| `tw:text-brand-secondary` | `#175cd3` | `#bfbfbf` | Brand links |
+| `tw:text-brand-tertiary` | `#1570ef` | `#a0a0a0` | Lighter brand text |
 | `tw:border-brand` | `#2e90fa` | `#53b1fd` | Focused/selected border |
 | `tw:text-fg-brand-primary` | `#1570ef` | `#2e90fa` | Brand icons |
 
@@ -460,25 +460,25 @@ These tokens are for specific component internals. Use them when building or ext
 
 | Tailwind Class | CSS Variable | Light | Dark | Component |
 |---|---|---|---|---|
-| `tw:bg-avatar-bg` | `--color-avatar-bg` | `#f5f5f5` | `#22262f` | Avatar fallback background |
+| `tw:bg-avatar-bg` | `--color-avatar-bg` | `#e0e0e0` | `#222222` | Avatar fallback background |
 | `tw:text-button-primary-icon` | `--color-button-primary-icon` | `#84caff` | `#84caff` | Icon inside primary button |
 | `tw:text-button-primary-icon_hover` | `--color-button-primary-icon_hover` | `#b2ddff` | `#b2ddff` | Icon inside primary button (hover) |
 | `tw:text-button-destructive-primary-icon` | `--color-button-destructive-primary-icon` | `#fda29b` | `#fda29b` | Icon inside destructive button |
 | `tw:ring-focus-ring` | `--color-focus-ring` | `#2e90fa` | `#2e90fa` | Keyboard focus ring |
 | `tw:ring-focus-ring-error` | `--color-focus-ring-error` | `#f04438` | `#f04438` | Error-state focus ring |
 | `tw:bg-slider-handle-bg` | `--color-slider-handle-bg` | `#ffffff` | `#2e90fa` | Slider thumb background |
-| `tw:border-slider-handle-border` | `--color-slider-handle-border` | `#1570ef` | `#0c0e12` | Slider thumb border |
-| `tw:border-toggle-border` | `--color-toggle-border` | `#d5d7da` | `transparent` | Toggle track border |
-| `tw:text-tooltip-supporting-text` | `--color-tooltip-supporting-text` | `#d5d7da` | `#d5d7da` | Tooltip secondary/supporting text |
-| `tw:text-text-editor-icon-fg` | `--color-text-editor-icon-fg` | `#a4a7ae` | `#a4a7ae` | Rich text editor toolbar icons |
-| `tw:text-text-editor-icon-fg_active` | `--color-text-editor-icon-fg_active` | `#717680` | `#ffffff` | Active rich text editor icon |
+| `tw:border-slider-handle-border` | `--color-slider-handle-border` | `#1570ef` | `#141414` | Slider thumb border |
+| `tw:border-toggle-border` | `--color-toggle-border` | `#bfbfbf` | `transparent` | Toggle track border |
+| `tw:text-tooltip-supporting-text` | `--color-tooltip-supporting-text` | `#bfbfbf` | `#bfbfbf` | Tooltip secondary/supporting text |
+| `tw:text-text-editor-icon-fg` | `--color-text-editor-icon-fg` | `#a0a0a0` | `#a0a0a0` | Rich text editor toolbar icons |
+| `tw:text-text-editor-icon-fg_active` | `--color-text-editor-icon-fg_active` | `#808080` | `#ffffff` | Active rich text editor icon |
 | `tw:text-featured-icon-light-fg-brand` | `--color-featured-icon-light-fg-brand` | `#1570ef` | `#b2ddff` | Brand featured icon |
 | `tw:text-featured-icon-light-fg-error` | `--color-featured-icon-light-fg-error` | `#d92d20` | `#fecdca` | Error featured icon |
 | `tw:text-featured-icon-light-fg-success` | `--color-featured-icon-light-fg-success` | `#079455` | `#abefc6` | Success featured icon |
 | `tw:text-featured-icon-light-fg-warning` | `--color-featured-icon-light-fg-warning` | `#dc6803` | `#fedf89` | Warning featured icon |
-| `tw:text-featured-icon-light-fg-gray` | `--color-featured-icon-light-fg-gray` | `#717680` | `#e9eaeb` | Neutral featured icon |
-| `tw:text-icon-fg-brand` | `--color-icon-fg-brand` | `#1570ef` | `#a4a7ae` | Generic brand icon |
-| `tw:text-icon-fg-brand_on-brand` | `--color-icon-fg-brand_on-brand` | `#b2ddff` | `#a4a7ae` | Brand icon on brand background |
+| `tw:text-featured-icon-light-fg-gray` | `--color-featured-icon-light-fg-gray` | `#808080` | `#d9d9d9` | Neutral featured icon |
+| `tw:text-icon-fg-brand` | `--color-icon-fg-brand` | `#1570ef` | `#a0a0a0` | Generic brand icon |
+| `tw:text-icon-fg-brand_on-brand` | `--color-icon-fg-brand_on-brand` | `#b2ddff` | `#a0a0a0` | Brand icon on brand background |
 
 ---
 
