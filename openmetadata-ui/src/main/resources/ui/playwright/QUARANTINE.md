@@ -37,7 +37,33 @@ generated variant rather than per source line.
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 4 plus the 7 setup/teardown
+### Triage, 2026-09-09
+
+All three were run against a local stack (current UI via the Vite dev server,
+`--repeat-each=3`) and all three passed 3/3, well inside their budgets: the test
+suite modal at 12-21s under a `test.slow()` timeout, Table Difference at
+10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11, so
+this is the expected result rather than a contradiction — these are
+load-dependent and an idle laptop does not reproduce them. **More local runs
+will not settle them** — but neither will waiting for CI: nothing under
+`.github/` sets `PLAYWRIGHT_RUN_QUARANTINED`, so a quarantined test runs in no
+lane at all and has produced no evidence since it was tagged. The soak lane this
+file describes does not exist. Getting these three moving needs that lane (or a
+one-off dispatch) first.
+
+One unverified lead, for whoever picks up the test suite entry: its recorded
+symptom is a `waitForResponse` that never resolves, and every listener in
+`utils/addTestCaseList.ts` is correctly hoisted above the action that triggers
+it — so a missed-because-registered-late response is not the cause.
+`addTestCaseListFilterByFirstColumn` is the one that can genuinely never see its
+request: it picks the Column dropdown's first `menuitem` and then waits for a
+`testCases/search/list` carrying `columnName`. If the dropdown is still
+populating, the first menuitem is not yet a real column, and the update it
+submits produces a request without `columnName`. `addTestCaseListResetFilters`
+repeats the same `.first()` menuitem pick. Confirm against a CI trace before
+changing anything.
+
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 3 plus the 7 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
 entity seeding still happen — a project-level `grep` *is* applied to dependency
 projects, so filtering them would make every quarantined test fail for want of
