@@ -17,7 +17,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import ContainerDataModel
@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import SqlQuery
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -50,6 +51,7 @@ from metadata.ingestion.source.connections import (
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_COLUMN_LINEAGE,
     UNITY_CATALOG_EXTERNAL_TABLES,
+    UNITY_CATALOG_LINEAGE_SQL,
     UNITY_CATALOG_TABLE_LINEAGE,
 )
 from metadata.utils import fqn
@@ -58,12 +60,16 @@ from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
+    from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+        DatabaseServiceQueryLineagePipeline,
+    )
     from metadata.ingestion.source.database.unitycatalog.connection import (
         UnityCatalogConnection as UnityCatalogConnectionHandler,
     )
 
 
 logger = ingestion_logger()
+LINEAGE_SQL_BATCH_SIZE = 100
 
 
 class UnitycatalogLineageSource(Source):
@@ -81,7 +87,7 @@ class UnitycatalogLineageSource(Source):
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.source_config = self.config.sourceConfig.config
+        self.source_config = cast("DatabaseServiceQueryLineagePipeline", self.config.sourceConfig.config)
         self._connection = create_connection(self.service_connection)
         connection = cast("UnityCatalogConnectionHandler", self._connection)
         self.connection_obj = connection.client
@@ -89,6 +95,7 @@ class UnitycatalogLineageSource(Source):
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
         self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
         self.external_location_map: dict[str, str] = {}
+        self._query_history_available = True
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -114,7 +121,7 @@ class UnitycatalogLineageSource(Source):
         """
         Bulk-fetch all table and column lineage from system tables into memory.
         """
-        query_log_duration = self.source_config.queryLogDuration or 1  # pyright: ignore[reportAttributeAccessIssue]
+        query_log_duration = self.source_config.queryLogDuration or 1
         logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")
 
         try:
@@ -273,10 +280,42 @@ class UnitycatalogLineageSource(Source):
             logger.debug(f"Error processing external location lineage for {databricks_table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
-    def _process_table_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
-        upstream_tables = self.table_lineage_map.get(databricks_table_fqn, set())
+    def _enrich_lineage_batch(
+        self, batch: list[tuple[str, str, AddLineageRequest]]
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Attach available SQL to a batch of native edges."""
+        if not batch:
+            return
+        queries = {}
+        if self._query_history_available:
+            query_log_duration = self.source_config.queryLogDuration or 1
+            statement = text(UNITY_CATALOG_LINEAGE_SQL.format(query_log_duration=query_log_duration)).bindparams(
+                bindparam("table_pairs", expanding=True)
+            )
+            try:
+                with self.engine.connect() as conn:
+                    rows = conn.execute(statement, {"table_pairs": [(source, target) for source, target, _ in batch]})
+                    queries = {
+                        (row.source_table_full_name, row.target_table_full_name): row.statement_text for row in rows
+                    }
+            except Exception as exc:
+                self._query_history_available = False
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Could not retrieve native lineage SQL from system.query.history; "
+                    "continuing without SQL enrichment for this run. Check query history access: %s",
+                    exc,
+                )
+        for source, target, request in batch:
+            sql_query = queries.get((source, target))
+            if sql_query and request.edge.lineageDetails is not None:
+                request.edge.lineageDetails.sqlQuery = SqlQuery(sql_query)
+            yield Either(left=None, right=request)
 
-        for source_table_full_name in upstream_tables:
+    def _process_table_lineage(
+        self, table: Table, databricks_table_fqn: str
+    ) -> Iterable[tuple[str, AddLineageRequest]]:
+        for source_table_full_name in self.table_lineage_map.get(databricks_table_fqn, set()):
             try:
                 parts = source_table_full_name.split(".")
                 if len(parts) != 3:
@@ -303,10 +342,10 @@ class UnitycatalogLineageSource(Source):
                     to_table=table,
                     source_table_fqn=source_table_full_name,
                     target_table_fqn=databricks_table_fqn,
-                )
-
-                yield Either(
-                    right=AddLineageRequest(
+                ) or LineageDetails(source=LineageSource.QueryLineage)
+                yield (
+                    source_table_full_name,
+                    AddLineageRequest(
                         edge=EntitiesEdge(
                             toEntity=EntityReference(id=table.id, type="table"),
                             fromEntity=EntityReference(id=from_entity.id, type="table"),
@@ -325,6 +364,7 @@ class UnitycatalogLineageSource(Source):
         """
         self._cache_lineage()
         self._cache_external_locations()
+        batch: list[tuple[str, str, AddLineageRequest]] = []
 
         for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
             if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
@@ -356,9 +396,15 @@ class UnitycatalogLineageSource(Source):
 
                     databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
 
-                    yield from self._process_table_lineage(table, databricks_table_fqn)
+                    for source_table_fqn, request in self._process_table_lineage(table, databricks_table_fqn):
+                        batch.append((source_table_fqn, databricks_table_fqn, request))
+                        if len(batch) == LINEAGE_SQL_BATCH_SIZE:
+                            yield from self._enrich_lineage_batch(batch)
+                            batch.clear()
 
                     yield from self._process_external_location_lineage(table, databricks_table_fqn)
+
+        yield from self._enrich_lineage_batch(batch)
 
     def test_connection(self) -> None:
         if self._connection is not None:

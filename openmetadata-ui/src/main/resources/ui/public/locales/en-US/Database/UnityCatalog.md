@@ -74,9 +74,26 @@ $$
 
 ### Usage & Lineage
 
-$$note
-To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
-$$
+Query usage and SQL text for native lineage edges are read from `system.query.history`.
+To include SQL on lineage edges, grant the ingestion principal access:
+
+```sql
+GRANT USE CATALOG ON CATALOG system TO `<user_or_service_principal>`;
+GRANT USE SCHEMA ON SCHEMA system.query TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.query.history TO `<user_or_service_principal>`;
+```
+
+The SQL Query section displays the latest available statement for each source–target
+table pair within the lineage lookback window. Column mappings still include all
+native mappings from that window; a single displayed statement may not explain every mapping.
+
+Databricks populates the lineage `statement_id` used to retrieve SQL only for queries
+run on SQL warehouses. Query history can arrive later than lineage, and SQL text can
+be empty or `<REDACTED>` depending on the principal's access and encryption settings.
+See the [Databricks query history reference](https://docs.databricks.com/aws/en/admin/system-tables/query-history)
+for statement-text access requirements. Native lineage is still ingested when SQL
+is unavailable. If query history cannot be read, SQL enrichment is skipped for the
+rest of that ingestion run and a warning is logged.
 
 ### Profiler & Data Quality
 

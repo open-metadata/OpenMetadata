@@ -86,6 +86,38 @@ UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
     """
 )
 
+UNITY_CATALOG_LINEAGE_SQL = textwrap.dedent(
+    """
+    WITH lineage_events AS (
+        SELECT source_table_full_name, target_table_full_name, statement_id, workspace_id, event_time
+        FROM system.access.table_lineage
+        WHERE event_date >= current_date() - INTERVAL {query_log_duration} DAYS
+            AND event_time >= current_date() - INTERVAL {query_log_duration} DAYS
+            AND (source_table_full_name, target_table_full_name) IN :table_pairs
+            AND statement_id IS NOT NULL
+    ), ranked_queries AS (
+        SELECT
+            lineage.source_table_full_name,
+            lineage.target_table_full_name,
+            history.statement_text,
+            ROW_NUMBER() OVER (
+                PARTITION BY lineage.source_table_full_name, lineage.target_table_full_name
+                ORDER BY lineage.event_time DESC, lineage.statement_id DESC, lineage.workspace_id DESC
+            ) AS query_rank
+        FROM lineage_events lineage
+        JOIN system.query.history history
+            ON lineage.statement_id = history.statement_id
+            AND lineage.workspace_id = history.workspace_id
+        WHERE history.statement_text IS NOT NULL
+            AND TRIM(history.statement_text) <> ''
+            AND UPPER(TRIM(history.statement_text)) <> '<REDACTED>'
+    )
+    SELECT source_table_full_name, target_table_full_name, statement_text
+    FROM ranked_queries
+    WHERE query_rank = 1
+    """
+)
+
 UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
     """
     SELECT
