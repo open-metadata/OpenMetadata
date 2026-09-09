@@ -294,11 +294,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   // ===================================================================
-  // NON-GROUP TEAM USER ROLLUP (issue #31770)
+  // NON-GROUP TEAM INHERITED MEMBERS (issue #31770)
   //
   // A non-Group team (Department/Division/BusinessUnit) holds no direct members; its Users tab
-  // (GET /users?team=) and export must roll up the users inherited from its sub-group descendants,
-  // matching the userCount rollup. Group/Organization teams keep direct-membership semantics.
+  // (GET /users?team=) and export must include the members inherited from its sub-group descendants
+  // (its subtree), matching what userCount already counts. Group/Organization teams keep
+  // direct-membership semantics.
   // ===================================================================
 
   @Test
@@ -329,7 +330,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withParents(List.of(department.getId()))
                     .withUsers(List.of(member.getId())));
 
-    // Point 2: listed under its own Group (direct) AND under the parent Department (rollup)
+    // Point 2: listed under its own Group (direct) AND under the parent Department (inherited)
     assertTrue(
         findUserInPaginatedResults(member.getId(), "team", group.getName()),
         "member should be listed under its own Group team");

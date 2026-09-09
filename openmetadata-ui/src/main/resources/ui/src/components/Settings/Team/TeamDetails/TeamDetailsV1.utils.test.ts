@@ -20,8 +20,8 @@ const getUsersTabCount = (team: Team, isGroupType: boolean) =>
   )?.count;
 
 describe('TeamDetailsV1.utils getTabs', () => {
-  it('uses userCount (the subtree rollup) for the Users tab count', () => {
-    // A non-Group team has no direct users but userCount reflects the sub-group rollup.
+  it('uses userCount (the subtree total) for the Users tab count', () => {
+    // A non-Group team has no direct users but userCount reflects its inherited sub-group members.
     const team = { userCount: 5, users: [] } as unknown as Team;
 
     expect(getUsersTabCount(team, false)).toBe(5);

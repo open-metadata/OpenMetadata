@@ -928,10 +928,10 @@ public class TeamRepository extends EntityRepository<Team> {
    * Name hashes to match when listing/exporting the users under {@code teamName}'s umbrella. Group
    * and Organization teams keep direct membership (empty result &rarr; callers fall back to the
    * plain {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree
-   * (self + all descendants) so their Users tab and export show the rollup of users inherited from
+   * (self + all descendants) so their Users tab and export include the members inherited from their
    * sub-groups, matching what {@link #getUserCount} already counts.
    */
-  public List<String> getUserRollupTeamHashes(String teamName) {
+  public List<String> getSubtreeTeamHashes(String teamName) {
     Team team;
     try {
       team = getByName(null, teamName, Fields.EMPTY_FIELDS);
@@ -954,7 +954,7 @@ public class TeamRepository extends EntityRepository<Team> {
   /**
    * All teams nested under {@code team} (the subtree, excluding the team itself). Reuses the batched,
    * cycle-safe {@link #discoverSubtreeTeams} traversal that {@link #getUserCount} uses, so the count,
-   * the Users tab/export rollup, and the {@code descendantTeams} field all reflect one identical
+   * the Users tab/export member list, and the {@code descendantTeams} field all reflect one identical
    * subtree. Computed on read like {@code childrenCount}/{@code userCount} — nothing is stored, so it
    * stays correct across reparents/renames with no reindex.
    */

@@ -322,12 +322,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (teamParam != null) {
-      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the rollup
-      // of users inherited from their sub-group descendants (empty for Group/Organization teams).
+      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the members
+      // inherited from their sub-group descendants (empty for Group/Organization teams).
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
-      List<String> rollupTeamHashes = teamRepository.getUserRollupTeamHashes(teamParam);
-      if (!rollupTeamHashes.isEmpty()) {
-        filter.addQueryParam("teamHashes", String.join(",", rollupTeamHashes));
+      List<String> subtreeTeamHashes = teamRepository.getSubtreeTeamHashes(teamParam);
+      if (!subtreeTeamHashes.isEmpty()) {
+        filter.addQueryParam("teamHashes", String.join(",", subtreeTeamHashes));
       }
     }
     if (isAdmin != null) {

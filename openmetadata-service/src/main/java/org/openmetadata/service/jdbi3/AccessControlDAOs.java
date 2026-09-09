@@ -600,11 +600,11 @@ public interface AccessControlDAOs {
     /**
      * Optional subtree filter set by {@code UserResource.list}: when the requested team is a
      * non-Group team, {@code teamHashes} carries the FQN name hashes of its whole subtree so its
-     * Users tab/export roll up the users inherited from sub-group descendants. Bypasses the
+     * Users tab/export include the members inherited from its sub-group descendants. Bypasses the
      * single-team {@code te.nameHash = :team} equality. The hashes are server-computed hex, safe to
      * inline.
      */
-    private static String teamRollupCondition(String teamHashesCsv) {
+    private static String subtreeTeamsCondition(String teamHashesCsv) {
       String inList =
           Arrays.stream(teamHashesCsv.split(","))
               .map(hash -> "'" + hash + "'")
@@ -669,9 +669,9 @@ public interface AccessControlDAOs {
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
       if (teamHashesCsv != null) {
-        String rollup = teamRollupCondition(teamHashesCsv);
-        mySqlCondition = mySqlCondition + rollup;
-        postgresCondition = postgresCondition + rollup;
+        String subtreeCondition = subtreeTeamsCondition(teamHashesCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
       }
       if (team == null
           && teamHashesCsv == null
@@ -747,9 +747,9 @@ public interface AccessControlDAOs {
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
       if (teamHashesCsv != null) {
-        String rollup = teamRollupCondition(teamHashesCsv);
-        mySqlCondition = mySqlCondition + rollup;
-        postgresCondition = postgresCondition + rollup;
+        String subtreeCondition = subtreeTeamsCondition(teamHashesCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
       }
       if (team == null
           && teamHashesCsv == null
@@ -827,9 +827,9 @@ public interface AccessControlDAOs {
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
       if (teamHashesCsv != null) {
-        String rollup = teamRollupCondition(teamHashesCsv);
-        mySqlCondition = mySqlCondition + rollup;
-        postgresCondition = postgresCondition + rollup;
+        String subtreeCondition = subtreeTeamsCondition(teamHashesCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
       }
       if (team == null
           && teamHashesCsv == null

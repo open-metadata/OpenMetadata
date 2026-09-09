@@ -32,7 +32,7 @@ export const getTabs = (
     },
     users: {
       name: i18n.t('label.user-plural'),
-      // userCount is the rollup (includes sub-group members for non-Group teams); fall back to the
+      // userCount already includes sub-group members inherited by non-Group teams; fall back to the
       // direct users array so Group teams and partial fetches still render a count.
       count: currentTeam.userCount ?? currentTeam.users?.length ?? 0,
       key: TeamsPageTab.USERS,
