@@ -1308,7 +1308,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                     rel.getTerm() != null
                         && rel.getTerm().getId() != null
                         && rel.getTerm().getId().equals(termRef.getId())
-                        && relationType.equals(relationTypeOrDefault(rel)));
+                        && isEquivalentRelationType(relationType, relationTypeOrDefault(rel)));
     if (!exists) {
       List<TermRelation> updatedRelations =
           new ArrayList<>(listOrEmpty(original.getRelatedTerms()));
@@ -1345,7 +1345,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private boolean matchesRelation(TermRelation relation, UUID targetTermId, String relationType) {
     boolean hasTarget =
         relation.getTerm() != null && targetTermId.equals(relation.getTerm().getId());
-    boolean hasType = relationType == null || relationType.equals(relationTypeOrDefault(relation));
+    boolean hasType =
+        relationType == null
+            || isEquivalentRelationType(relationType, relationTypeOrDefault(relation));
     return hasTarget && hasType;
   }
 
@@ -1476,6 +1478,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private String getInverseRelationType(String relationType) {
     return relationshipTypeResolver.inverseName(relationType);
+  }
+
+  private boolean isEquivalentRelationType(String typeA, String typeB) {
+    if (typeA.equals(typeB)) {
+      return true;
+    }
+    return typeB.equals(safeInverseName(typeA)) || typeA.equals(safeInverseName(typeB));
+  }
+
+  private String safeInverseName(String relationType) {
+    try {
+      return getInverseRelationType(relationType);
+    } catch (BadRequestException ignored) {
+      return null;
+    }
   }
 
   private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
