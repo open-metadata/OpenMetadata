@@ -218,9 +218,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await expect(
       page.getByTestId(`entity-type-card-${TABLE_FQN}`)
     ).toBeVisible();
-    await expect(
-      page.getByTestId('entity-type-card-dashboard')
-    ).toBeVisible();
+    await expect(page.getByTestId('entity-type-card-dashboard')).toBeVisible();
   });
 
   // ── Add: String ──────────────────────────────────────────────────────────────
@@ -234,7 +232,10 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const form = page.getByTestId('custom-properties-add-page');
 
     // TEXT field: data-testid is on a wrapper div → chain to the inner input.
-    await form.getByTestId('custom-property-name').getByRole('textbox').fill(name);
+    await form
+      .getByTestId('custom-property-name')
+      .getByRole('textbox')
+      .fill(name);
 
     // SELECT field: wrapper button opens a react-aria listbox.
     await chooseSelectOption(page, 'custom-property-type', 'String');
@@ -242,9 +243,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, `String property ${name}`);
     await submitAddForm(page);
 
-    await expect(
-      page.locator('tr').filter({ hasText: name })
-    ).toBeVisible();
+    await expect(page.locator('tr').filter({ hasText: name })).toBeVisible();
 
     // Cleanup via API so the next test starts clean.
     await deletePropertyViaApi(page, name);
@@ -259,7 +258,10 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
-    await form.getByTestId('custom-property-name').getByRole('textbox').fill(name);
+    await form
+      .getByTestId('custom-property-name')
+      .getByRole('textbox')
+      .fill(name);
     await chooseSelectOption(page, 'custom-property-type', 'Date');
 
     // SELECT for format — same wrapper-button pattern.
@@ -272,9 +274,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, `Date property ${name}`);
     await submitAddForm(page);
 
-    await expect(
-      page.locator('tr').filter({ hasText: name })
-    ).toBeVisible();
+    await expect(page.locator('tr').filter({ hasText: name })).toBeVisible();
 
     await deletePropertyViaApi(page, name);
   });
@@ -288,7 +288,10 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
-    await form.getByTestId('custom-property-name').getByRole('textbox').fill(name);
+    await form
+      .getByTestId('custom-property-name')
+      .getByRole('textbox')
+      .fill(name);
     await chooseSelectOption(
       page,
       'custom-property-type',
@@ -308,9 +311,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, `Entity Reference List property ${name}`);
     await submitAddForm(page);
 
-    await expect(
-      page.locator('tr').filter({ hasText: name })
-    ).toBeVisible();
+    await expect(page.locator('tr').filter({ hasText: name })).toBeVisible();
 
     await deletePropertyViaApi(page, name);
   });
@@ -328,7 +329,10 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
-    await form.getByTestId('custom-property-name').getByRole('textbox').fill(name);
+    await form
+      .getByTestId('custom-property-name')
+      .getByRole('textbox')
+      .fill(name);
     await chooseSelectOption(page, 'custom-property-type', 'String');
     await fillDescriptionBox(page, 'Initial description');
     await submitAddForm(page);
@@ -382,7 +386,10 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
-    await form.getByTestId('custom-property-name').getByRole('textbox').fill(name);
+    await form
+      .getByTestId('custom-property-name')
+      .getByRole('textbox')
+      .fill(name);
     await chooseSelectOption(page, 'custom-property-type', 'String');
     await fillDescriptionBox(page, 'To be deleted');
     await submitAddForm(page);
