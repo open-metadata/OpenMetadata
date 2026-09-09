@@ -59,17 +59,19 @@ export const useDomainTableColumns = ({
         case 'domainType':
           return renderDomainTypeCell(entity);
         case 'owners':
-          return renderDomainOwnersCell(entity, { showDashPlaceholder: true });
+          return renderDomainOwnersCell(entity, true);
         case 'glossaryTerms':
-          return renderDomainGlossaryTagsCell(entity, {
-            size: tagSize,
-            emptyPlaceholder: NO_DATA_PLACEHOLDER,
-          });
+          return renderDomainGlossaryTagsCell(
+            entity,
+            tagSize,
+            NO_DATA_PLACEHOLDER
+          );
         case 'tags':
-          return renderDomainClassificationTagsCell(entity, {
-            size: tagSize,
-            emptyPlaceholder: NO_DATA_PLACEHOLDER,
-          });
+          return renderDomainClassificationTagsCell(
+            entity,
+            tagSize,
+            NO_DATA_PLACEHOLDER
+          );
         default:
           return null;
       }

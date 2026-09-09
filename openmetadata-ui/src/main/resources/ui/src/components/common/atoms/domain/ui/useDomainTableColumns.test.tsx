@@ -96,9 +96,7 @@ describe('useDomainTableColumns', () => {
 
     result.current.renderCell(DOMAIN, 'owners');
 
-    expect(renderDomainOwnersCell).toHaveBeenCalledWith(DOMAIN, {
-      showDashPlaceholder: true,
-    });
+    expect(renderDomainOwnersCell).toHaveBeenCalledWith(DOMAIN, true);
   });
 
   it('passes emptyPlaceholder through for the glossaryTerms column', () => {
@@ -106,10 +104,11 @@ describe('useDomainTableColumns', () => {
 
     result.current.renderCell(DOMAIN, 'glossaryTerms');
 
-    expect(renderDomainGlossaryTagsCell).toHaveBeenCalledWith(DOMAIN, {
-      size: 'sm',
-      emptyPlaceholder: NO_DATA_PLACEHOLDER,
-    });
+    expect(renderDomainGlossaryTagsCell).toHaveBeenCalledWith(
+      DOMAIN,
+      'sm',
+      NO_DATA_PLACEHOLDER
+    );
   });
 
   it('passes emptyPlaceholder through for the tags column', () => {
@@ -117,9 +116,10 @@ describe('useDomainTableColumns', () => {
 
     result.current.renderCell(DOMAIN, 'tags');
 
-    expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(DOMAIN, {
-      size: 'sm',
-      emptyPlaceholder: NO_DATA_PLACEHOLDER,
-    });
+    expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(
+      DOMAIN,
+      'sm',
+      NO_DATA_PLACEHOLDER
+    );
   });
 });
