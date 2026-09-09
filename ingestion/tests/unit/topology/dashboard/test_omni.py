@@ -44,6 +44,7 @@ from metadata.ingestion.source.dashboard.omni.models import (
     OmniDocument,
     OmniField,
     OmniFolder,
+    OmniLabel,
     OmniModel,
     OmniOwner,
     OmniQuery,
@@ -748,3 +749,74 @@ def test_get_users_stops_on_an_empty_page():
     client.scim_client.get.side_effect = [{"Resources": [], "totalResults": 0}]
     assert client.get_users() == []
     assert client.scim_client.get.call_count == 1
+
+
+def test_documents_response_accepts_object_shaped_labels():
+    """The documents API reports labels as objects. Typing them as plain strings
+    made one labelled document invalidate its whole page, and `get_documents`
+    turns a page failure into an empty list -- dropping every dashboard."""
+    from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
+
+    page = {
+        "records": [
+            {"identifier": "a", "name": "Unlabelled", "hasDashboard": True, "labels": []},
+            {
+                "identifier": "b",
+                "name": "Company North Star Metrics Executive Overview",
+                "hasDashboard": True,
+                "labels": [{"name": "Company North Star", "verified": True}, {"name": "Executive"}],
+            },
+        ],
+        "pageInfo": {"hasNextPage": False},
+    }
+    response = DocumentsResponse.model_validate(page)
+    assert [d.identifier for d in response.records] == ["a", "b"]
+    assert response.records[0].label_names == []
+    assert response.records[1].label_names == ["Company North Star", "Executive"]
+
+
+def test_yield_tags_emits_document_labels(omni_source):
+    labelled = MOCK_DOCUMENT.model_copy(
+        update={"labels": [OmniLabel(name="Company North Star", verified=True), OmniLabel(name="Executive")]}
+    )
+    details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
+    tags = _rights(omni_source.yield_tags(details))
+    names = {tag.tag_request.name.root for tag in tags}
+    assert names == {"Company North Star", "Executive"}
+    assert all(tag.classification_request.name.root == "OmniLabels" for tag in tags)
+
+
+def test_yield_tags_skipped_when_include_tags_disabled(omni_source):
+    labelled = MOCK_DOCUMENT.model_copy(update={"labels": [OmniLabel(name="Company North Star")]})
+    details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
+    omni_source.source_config.includeTags = False
+    assert list(omni_source.yield_tags(details)) == []
+
+
+def test_yield_dashboard_attaches_label_tags(omni_source):
+    """The dashboard request carries the document's labels, resolved against the
+    Omni classification (tag FQN resolution itself is a server call)."""
+    from metadata.generated.schema.type.tagLabel import (
+        LabelType,
+        State,
+        TagFQN,
+        TagLabel,
+        TagSource,
+    )
+
+    labelled = MOCK_DOCUMENT.model_copy(update={"labels": [OmniLabel(name="Company North Star")]})
+    details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
+    resolved = [
+        TagLabel(
+            tagFQN=TagFQN(root='OmniLabels."Company North Star"'),
+            source=TagSource.Classification,
+            labelType=LabelType.Automated,
+            state=State.Suggested,
+        )
+    ]
+    with patch("metadata.ingestion.source.dashboard.omni.metadata.get_tag_labels", return_value=resolved) as get_labels:
+        dashboard = _rights(omni_source.yield_dashboard(details))[0]
+
+    assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Company North Star"']
+    assert get_labels.call_args.kwargs["tags"] == ["Company North Star"]
+    assert get_labels.call_args.kwargs["classification_name"] == "OmniLabels"

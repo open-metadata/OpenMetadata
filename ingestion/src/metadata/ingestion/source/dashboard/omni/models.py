@@ -152,6 +152,13 @@ class OmniFolder(BaseModel):
     path: str | None = None
 
 
+class OmniLabel(BaseModel):
+    """A document label. The documents API reports these as objects, not strings."""
+
+    name: str | None = None
+    verified: bool | None = None
+
+
 class OmniDocument(BaseModel):
     """An Omni document. Documents with ``hasDashboard`` carry a dashboard."""
 
@@ -166,8 +173,12 @@ class OmniDocument(BaseModel):
     hasDashboard: bool | None = False  # noqa: N815
     url: str | None = None
     deleted: bool | None = False
-    labels: list[str] | None = Field(default_factory=list)
+    labels: list[OmniLabel] | None = Field(default_factory=list)
     updatedAt: str | None = None  # noqa: N815
+
+    @property
+    def label_names(self) -> list[str]:
+        return [label.name for label in self.labels or [] if label.name]
 
 
 class DocumentsResponse(BaseModel):

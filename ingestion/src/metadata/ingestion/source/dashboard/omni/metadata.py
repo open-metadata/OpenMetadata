@@ -51,6 +51,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.omni.client import canonical_ref
@@ -71,12 +72,16 @@ from metadata.utils.filters import (
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
 # Project name for documents that don't live in a folder. Must be non-null so the
 # base class does not filter folderless dashboards out via projectFilterPattern.
 DEFAULT_PROJECT = "default"
+
+# Classification holding the labels Omni documents carry.
+OMNI_TAG_CATEGORY = "OmniLabels"
 
 # Bound the data model entity cache so it cannot grow unbounded on large catalogs.
 DATAMODEL_CACHE_SIZE = 1000
@@ -380,6 +385,12 @@ class OmniSource(DashboardServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(document.url) if document.url else None,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=document.label_names,
+                    classification_name=OMNI_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                ),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -421,6 +432,20 @@ class OmniSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    # -- tags ---------------------------------------------------------------
+
+    def yield_tags(self, dashboard_details: OmniDashboardDetails) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Yield the classification and tags for a document's labels."""
+        if not dashboard_details or not self.source_config.includeTags:
+            return
+        yield from get_ometa_tag_and_classification(
+            tags=dashboard_details.document.label_names,
+            classification_name=OMNI_TAG_CATEGORY,
+            tag_description="Omni Label",
+            classification_description="Labels associated with Omni documents",
+            include_tags=self.source_config.includeTags,
+        )
 
     # -- lineage ------------------------------------------------------------
 
