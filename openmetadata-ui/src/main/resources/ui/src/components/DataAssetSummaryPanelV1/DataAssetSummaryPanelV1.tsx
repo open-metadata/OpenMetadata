@@ -663,6 +663,7 @@ export const DataAssetSummaryPanelV1 = ({
                   user: entityRules.canAddMultipleUserOwners,
                 }}
                 owner={dataAsset.owners as EntityReference[]}
+                triggerDataTestId="edit-owners"
                 onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
               />
             )}
@@ -772,6 +773,7 @@ export const DataAssetSummaryPanelV1 = ({
                 user: entityRules.canAddMultipleUserOwners,
               }}
               owner={dataAsset.owners as EntityReference[]}
+              triggerDataTestId="edit-owners"
               onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
             />
           )}
@@ -840,6 +842,7 @@ export const DataAssetSummaryPanelV1 = ({
                 user: entityRules.canAddMultipleUserOwners,
               }}
               owner={dataAsset.owners as EntityReference[]}
+              triggerDataTestId="edit-owners"
               onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
             />
           )}
@@ -930,6 +933,7 @@ export const DataAssetSummaryPanelV1 = ({
                   user: entityRules.canAddMultipleUserOwners,
                 }}
                 owner={dataAsset.owners as EntityReference[]}
+                triggerDataTestId="edit-owners"
                 onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
               />
             )}

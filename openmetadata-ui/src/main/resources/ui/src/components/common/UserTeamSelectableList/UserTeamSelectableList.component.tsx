@@ -61,6 +61,7 @@ export const UserTeamSelectableList = ({
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   tooltipText,
   overlayClassName,
+  triggerDataTestId = 'edit-owner',
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -301,7 +302,7 @@ export const UserTeamSelectableList = ({
     <span ref={triggerRef}>
       <EditIconButton
         newLook
-        data-testid="edit-owner"
+        data-testid={triggerDataTestId}
         icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
         size="small"
         title={getEditTriggerTitle()}

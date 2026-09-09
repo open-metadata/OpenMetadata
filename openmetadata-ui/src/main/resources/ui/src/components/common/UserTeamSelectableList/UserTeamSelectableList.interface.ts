@@ -36,4 +36,6 @@ export interface UserSelectDropdownProps {
   listHeight?: number;
   tooltipText?: string;
   overlayClassName?: string;
+  /** data-testid for the built-in edit trigger. Defaults to 'edit-owner'. */
+  triggerDataTestId?: string;
 }
