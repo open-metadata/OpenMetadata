@@ -228,13 +228,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         return;
       }
       const updated = cloneDeep(knowledgePage);
-      updated.domains = Array.isArray(selectedDomain)
-        ? selectedDomain.length
-          ? selectedDomain
-          : undefined
-        : selectedDomain
-          ? [selectedDomain]
-          : undefined;
+      if (Array.isArray(selectedDomain)) {
+        updated.domains = selectedDomain.length ? selectedDomain : undefined;
+      } else {
+        updated.domains = selectedDomain ? [selectedDomain] : undefined;
+      }
       await onUpdate(updated);
     },
     [knowledgePage, onUpdate]
