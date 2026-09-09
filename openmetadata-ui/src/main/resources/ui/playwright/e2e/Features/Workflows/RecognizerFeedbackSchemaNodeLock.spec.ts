@@ -17,6 +17,7 @@ import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { clickAndWaitFor } from '../../../utils/waitHelpers';
 
 /**
  * End-to-end reachability for the Workflow Builder "schema-based node name/
@@ -28,6 +29,8 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
  * name/description inputs disabled here.
  */
 const SEEDED_WORKFLOW_NAME = 'RecognizerFeedbackReviewWorkflow';
+
+const WORKFLOW_LIST_API = '/api/v1/governance/workflowDefinitions';
 
 const SCHEMA_BASED_NODE_DISPLAY_NAMES = [
   'Review Recognizer Feedback',
@@ -64,11 +67,26 @@ async function navigateToSeededWorkflowDetailPage(page: Page) {
   await navigateToWorkflowsListPage(page);
   await clickOutside(page);
 
+  const workflowCard = page.getByTestId(SEEDED_WORKFLOW_NAME);
+  const nextButton = page.getByTestId('next');
+
+  // The seeded workflow can land on a later page of the paginated list. Walk
+  // the pages until its card is on the current page or pagination runs out.
+  while (
+    !(await workflowCard.isVisible()) &&
+    !(await nextButton.isDisabled())
+  ) {
+    await clickAndWaitFor(page, nextButton, WORKFLOW_LIST_API);
+    await waitForAllLoadersToDisappear(page);
+  }
+
+  await expect(workflowCard).toBeVisible();
+
   const detailResponse = page.waitForResponse(
     '/api/v1/governance/workflowDefinitions/name/*'
   );
 
-  await page.getByTestId(SEEDED_WORKFLOW_NAME).click();
+  await workflowCard.click();
   await detailResponse;
   await waitForAllLoadersToDisappear(page);
 }
