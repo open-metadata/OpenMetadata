@@ -208,6 +208,7 @@ test.describe('Tag Page with Admin Roles', () => {
   });
 
   test('Add and Remove Assets', async ({ adminPage }) => {
+    test.slow();
     await redirectToHomePage(adminPage);
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
@@ -564,6 +565,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
     adminPage,
     dataStewardPage,
   }) => {
+    test.slow();
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataStewardPage);
 
@@ -630,6 +632,14 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     adminPage,
     limitedAccessPage,
   }) => {
+    // Two authenticated contexts (admin + limitedAccess) plus asset setup,
+    // add and remove flows on a separate user, and two full tag.visitPage
+    // navigations. Empirically ~90 s on a fresh CI runner — the default 60 s
+    // budget makes the second visitPage race with test teardown, leaving
+    // removeAssetsFromTag's response wait dangling with a closed context on
+    // retry. test.slow() extends the budget to what the flow actually needs.
+    test.slow();
+
     const { afterAction } = await getApiContext(adminPage);
     const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
       adminPage

@@ -389,30 +389,27 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Search for table
-      const searchRes = page.waitForResponse('/api/v1/search/query*');
-      await page
-        .getByTestId('asset-selection-modal')
-        .getByTestId('searchbar')
-        .fill(table.entityResponseData.name);
-      await searchRes;
-
-      // Select the table by clicking the checkbox in the card
-      const tableCheckbox = page
-        .getByTestId('asset-selection-modal')
-        .locator(`[data-testid*="${table.entityResponseData.name}"]`)
+      const assetModal = page.getByTestId('asset-selection-modal');
+      const assetName = table.entityResponseData.name;
+      // The card exposes the name either through a data-testid or as plain
+      // text, so match both rather than probing one and falling back.
+      const assetCard = assetModal
+        .locator(`[data-testid*="${assetName}"]`)
+        .or(assetModal.getByText(assetName))
         .first();
 
-      if (await tableCheckbox.isVisible()) {
-        await tableCheckbox.click();
-      } else {
-        // Try clicking the text directly
-        await page
-          .getByTestId('asset-selection-modal')
-          .getByText(table.entityResponseData.name)
-          .first()
-          .click();
-      }
+      // The modal re-queries only when the search text changes, and a table
+      // created moments ago may not be in the search index yet -- so a single
+      // fill can settle on an empty result set that never refreshes. Re-type
+      // to re-issue the query until the asset actually shows up.
+      await expect(async () => {
+        await assetModal.getByTestId('searchbar').fill('');
+        await assetModal.getByTestId('searchbar').fill(assetName);
+
+        await expect(assetCard).toBeVisible({ timeout: 5_000 });
+      }).toPass({ timeout: 60_000 });
+
+      await assetCard.click();
 
       // Save
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
