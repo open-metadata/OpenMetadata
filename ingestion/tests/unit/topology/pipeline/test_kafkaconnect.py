@@ -27,10 +27,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnect
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.kafkaconnect import client as client_module
-from metadata.ingestion.source.pipeline.kafkaconnect.client import (
-    KafkaConnectClient,
-    telemetry_failure_hint,
-)
+from metadata.ingestion.source.pipeline.kafkaconnect import telemetry
+from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
@@ -3139,7 +3137,7 @@ class TestTelemetryFailureHint:
     A failed telemetry lookup has to say which of the two fixes applies.
 
     Confluent answers 401 when the credential is not a Cloud API key at all and 403 when it
-    is valid but unauthorised for metrics. The fixes are opposite, a different key versus a
+    is valid but unauthorized for metrics. The fixes are opposite, a different key versus a
     role grant, and the raised HTTPError renders only the status line, so without this the
     log said the same thing for both.
     """
@@ -3159,7 +3157,7 @@ class TestTelemetryFailureHint:
 
     def test_unauthorized_names_the_key_as_the_problem(self):
         """401 is unauthenticated, so no role grant can fix it. The key itself is wrong."""
-        hint = telemetry_failure_hint(
+        hint = telemetry.failure_hint(
             self._error(401, {"errors": [{"status": "401", "detail": "Invalid credentials"}]})
         )
 
@@ -3169,7 +3167,7 @@ class TestTelemetryFailureHint:
 
     def test_forbidden_names_the_role_as_the_problem(self):
         """403 authenticated fine, so the key is right and only the role is missing."""
-        hint = telemetry_failure_hint(
+        hint = telemetry.failure_hint(
             self._error(
                 403,
                 {
@@ -3193,7 +3191,7 @@ class TestTelemetryFailureHint:
         after the wrong thing. What Confluent returned is still reported, because an
         unexpected shape is worth seeing and a body we declined to print is lost for good.
         """
-        hint = telemetry_failure_hint(self._error(500, {"errors": []}))
+        hint = telemetry.failure_hint(self._error(500, {"errors": []}))
 
         assert "MetricsViewer" not in hint and "Cloud API key" not in hint, (
             "a non-auth failure must not prescribe an auth fix"
@@ -3202,18 +3200,18 @@ class TestTelemetryFailureHint:
 
     def test_no_response_at_all_adds_nothing(self):
         """A connection error never reached Confluent, so there is no response to report."""
-        assert telemetry_failure_hint(requests.exceptions.ConnectionError("no route")) == ""
+        assert telemetry.failure_hint(requests.exceptions.ConnectionError("no route")) == ""
 
     def test_non_json_body_falls_back_to_text(self):
         """A proxy in front of the API answers HTML, which must not crash the handler."""
-        hint = telemetry_failure_hint(self._error(401, body=None, text="<html>gateway</html>"))
+        hint = telemetry.failure_hint(self._error(401, body=None, text="<html>gateway</html>"))
 
         assert "gateway" in hint
         assert "Cloud API key" in hint
 
     def test_remote_text_is_capped(self):
         """The body is remote input going into a log line, so it cannot be unbounded."""
-        hint = telemetry_failure_hint(self._error(403, {"errors": [{"detail": "x" * 5000}]}))
+        hint = telemetry.failure_hint(self._error(403, {"errors": [{"detail": "x" * 5000}]}))
 
         assert len(hint) < 1000, "an unbounded remote string must not reach the log"
 
@@ -3234,3 +3232,25 @@ class TestTelemetryFailureHint:
         rendered = warn.call_args[0][0] % warn.call_args[0][1:]
         assert "MetricsViewer" in rendered
         assert "not authorized" in rendered
+
+    def test_remote_text_cannot_forge_log_lines(self):
+        """
+        The body is whatever answered the request, which on a failure may be a proxy
+        returning HTML rather than Confluent returning JSON. Newlines in it would split one
+        warning into several that each read as their own record, so a crafted body could
+        forge log entries and any body at all could break line-oriented parsing.
+        """
+        forged = "denied\n2026-01-01 00:00:00 INFO  everything is fine\nmore"
+        hint = telemetry.failure_hint(self._error(401, {"errors": [{"detail": forged}]}))
+
+        assert "\n" not in hint and "\r" not in hint, "remote text must not span log lines"
+        assert "everything is fine" in hint, "the content is kept, only the newlines go"
+
+    def test_html_error_body_is_flattened(self):
+        """A proxy's HTML page is multi-line by nature and must collapse to one line."""
+        hint = telemetry.failure_hint(
+            self._error(403, body=None, text="<html>\n  <body>\n    Forbidden\n  </body>\n</html>")
+        )
+
+        assert "\n" not in hint
+        assert "Forbidden" in hint
