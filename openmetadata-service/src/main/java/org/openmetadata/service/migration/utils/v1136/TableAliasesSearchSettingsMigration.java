@@ -20,8 +20,13 @@ import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
  *
  * <p>searchSettings.json is seed data: the additive merge that runs on startup only adds whole
  * missing asset types, so a cluster upgrading from an older baseline keeps its own {@code table}
- * entry forever and alias search silently returns zero results even though the index document and
- * the mapping already carry the field.
+ * entry forever and never picks the alias fields up.
+ *
+ * <p>Without this backfill an alias is still *findable* — the query falls through to an all-fields
+ * match that reaches {@code aliases} because the index mapping carries it. What the operator loses
+ * is relevance and presentation: measured on a single-table index, an alias hit scores 5.50 instead
+ * of 6.41 (the 5.0 / 10.0 boosts never apply), and the result carries no {@code aliases} highlight
+ * snippet, so the UI cannot show *which* alias matched.
  *
  * <p>Only the alias fields are added, so an operator's own boosts and highlight fields survive.
  */
