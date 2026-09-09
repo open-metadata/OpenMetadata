@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { FilterSelectProps } from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -21,7 +22,6 @@ import {
 import userEvent from '@testing-library/user-event';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import type { FilterSelectProps } from '@openmetadata/ui-core-components';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
@@ -35,10 +35,16 @@ const mockQueryFilter = {};
 const mockUseAdvanceSearch = jest.fn();
 const mockUseSearchStore = jest.fn();
 
+const mockDebounceCancel = jest.fn();
+
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  // The component debounces search; tests drive it synchronously.
-  debounce: (fn: (...args: unknown[]) => unknown) => fn,
+  // The component debounces search; tests drive it synchronously and only
+  // assert that closing a dropdown cancels a pending keystroke.
+  debounce: (fn: (...args: unknown[]) => unknown) =>
+    Object.assign((...args: unknown[]) => fn(...args), {
+      cancel: mockDebounceCancel,
+    }),
 }));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => ({
@@ -110,6 +116,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           data-testid={`onSearch-${searchKey}`}
           onClick={() => onSearch?.('test')}>
           Search
+        </button>
+        <button
+          data-testid={`onClose-${searchKey}`}
+          onClick={() => onOpenChange?.(false)}>
+          Close
         </button>
         <button
           data-testid={`onChange-${searchKey}`}
@@ -638,6 +649,18 @@ describe('ExploreQuickFilters component', () => {
           undefined
         );
       });
+    });
+  });
+
+  describe('Debounce cancellation', () => {
+    it('should cancel a pending debounced search when the dropdown closes', async () => {
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      await act(async () => {
+        screen.getByTestId('onClose-database.name').click();
+      });
+
+      expect(mockDebounceCancel).toHaveBeenCalled();
     });
   });
 

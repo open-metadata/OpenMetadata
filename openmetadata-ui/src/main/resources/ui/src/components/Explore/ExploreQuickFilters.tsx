@@ -15,7 +15,7 @@ import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
@@ -397,6 +397,11 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     []
   );
 
+  // A keystroke still pending when its dropdown closes would start a *newer*
+  // request than the next dropdown's initial fetch and outrun the request-id
+  // guard, repainting the shared options with the wrong field's values.
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
   return (
     <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center tw:gap-2">
       {fields.map((field) => {
@@ -472,6 +477,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                   field.searchKey,
                   getQuickFilterSourceFields(field)
                 );
+              } else {
+                // Drop any keystroke still pending so it can't fetch into the
+                // next opened field's shared options state.
+                debouncedSearch.cancel();
               }
             }}
             onSearch={(value) =>
