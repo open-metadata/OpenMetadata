@@ -20,7 +20,9 @@ import {
   TagProps,
   TreeSelect,
   TreeSelectProps,
+  Typography,
 } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
@@ -176,8 +178,74 @@ const filterMutuallyExclusiveSiblings = (
   return filteredRawValues;
 };
 
+type TreeNode = Omit<DefaultOptionType, 'label'>;
+
+const findTreeNode = (
+  nodes: TreeNode[],
+  targetValue: string
+): TreeNode | null => {
+  for (const node of nodes) {
+    if (node.value === targetValue) {
+      return node;
+    }
+    if (node.children) {
+      const found = findTreeNode(node.children as TreeNode[], targetValue);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+};
+
+// Inject initially-selected terms into the tree so TreeSelect can resolve
+// their display label before the term's glossary children are lazy-loaded.
+const injectMissingInitialOptions = (
+  tree: TreeNode[],
+  options: SelectOption[]
+) => {
+  for (const option of options) {
+    if (findTreeNode(tree, option.value)) {
+      continue;
+    }
+
+    const segments = option.value.split('.');
+    if (segments.length < 2) {
+      continue;
+    }
+
+    const parentFqn = segments.slice(0, -1).join('.');
+    const parentNode = findTreeNode(tree, parentFqn);
+
+    if (parentNode) {
+      const displayName = option.data
+        ? getEntityName(option.data as { name?: string; displayName?: string })
+        : segments[segments.length - 1];
+
+      const syntheticChild: TreeNode = {
+        id: `initial-${option.value}`,
+        value: option.value,
+        name: segments[segments.length - 1],
+        title: (
+          <Typography.Text ellipsis>{displayName}</Typography.Text>
+        ),
+        checkable: true,
+        isLeaf: true,
+        selectable: true,
+      };
+
+      if (!parentNode.children) {
+        parentNode.children = [];
+      }
+      (parentNode.children as TreeNode[]).push(syntheticChild);
+    }
+  }
+};
+
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
+  value: formValue,
   initialOptions,
   tagType,
   isSubmitLoading,
@@ -200,6 +268,17 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
   const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
+
+  const normalizedValue = useMemo(() => {
+    if (formValue === undefined) {
+      return undefined;
+    }
+    if (!isMultiSelect && Array.isArray(formValue)) {
+      return formValue[0];
+    }
+
+    return formValue;
+  }, [formValue, isMultiSelect]);
 
   const form = Form.useFormInstance();
   const handleSubmit = () => {
@@ -247,7 +326,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, []);
 
   const treeData = useMemo(() => {
-    return convertGlossaryTermsToTreeOptions(
+    const tree = convertGlossaryTermsToTreeOptions(
       isNull(searchOptions)
         ? (glossaries as ModifiedGlossaryTerm[])
         : (searchOptions as unknown as ModifiedGlossaryTerm[]),
@@ -255,7 +334,13 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       isParentSelectable,
       false
     );
-  }, [glossaries, searchOptions, isParentSelectable]);
+
+    if (initialOptions?.length) {
+      injectMissingInitialOptions(tree, initialOptions);
+    }
+
+    return tree;
+  }, [glossaries, searchOptions, isParentSelectable, initialOptions]);
 
   const nodeParentMap = useMemo(() => {
     const map = new Map<
@@ -589,6 +674,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
+      {...(normalizedValue !== undefined ? { value: normalizedValue } : {})}
       onKeyDown={handleKeyDown}
     />
   );
