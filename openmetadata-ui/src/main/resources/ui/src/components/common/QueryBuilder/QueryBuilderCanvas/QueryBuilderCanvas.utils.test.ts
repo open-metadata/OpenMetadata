@@ -54,15 +54,26 @@ describe('toFieldNodes', () => {
 });
 
 describe('toGroupFieldNodes', () => {
-  it('should offer only the fields that own subfields', () => {
-    expect(toGroupFieldNodes(FIELDS).map((item) => item.path)).toEqual([
-      'tags',
-      'tags.nested',
+  it('should offer the top level whether or not a field owns subfields', () => {
+    // A semantic rule is as often built on a plain field (Description) as on
+    // one with subfields (Owners); RAQB switches the node type to match.
+    expect(toGroupFieldNodes(FIELDS).map((item) => item.path)).toEqual(
+      Object.keys(FIELDS)
+    );
+  });
+
+  it('should offer a plain field with no subfields', () => {
+    expect(toGroupFieldNodes({ name: { label: 'Name' } })).toEqual([
+      { key: 'name', label: 'Name', path: 'name' },
     ]);
   });
 
-  it('should return nothing when no field can be grouped on', () => {
-    expect(toGroupFieldNodes({ name: { label: 'Name' } })).toEqual([]);
+  it('should not offer subfields, which belong to the rules inside', () => {
+    expect(
+      toGroupFieldNodes({
+        tags: { label: 'Tags', subfields: { tagFQN: {} } },
+      }).map((item) => item.path)
+    ).toEqual(['tags']);
   });
 
   it('should fall back to the key when a groupable field carries no label', () => {

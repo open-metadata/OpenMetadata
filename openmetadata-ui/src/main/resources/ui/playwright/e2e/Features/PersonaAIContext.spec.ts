@@ -557,13 +557,11 @@ test.describe.serial('Persona AI Context', () => {
     }
 
     await adminPage.getByTestId('add-context-condition').click();
-    // Conjunction toggle is a react-aria ToggleButtonGroup with
-    // selectionMode="single", which renders a radiogroup whose items expose
-    // role="radio" (not button) — matching how CuratedAssets and the advanced
-    // search helper query the same toggle.
+    // The conjunction toggle is a react-aria TabList, so its items are tabs
+    // rather than radios — addressed by testid, as everywhere else.
     const orOperator = adminPage
       .getByRole('dialog')
-      .getByRole('radio', { name: 'Or', exact: true });
+      .getByTestId('advanced-search-conjunction-or');
     await expect(orOperator).toBeVisible();
     await orOperator.click();
     await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
@@ -1707,7 +1705,7 @@ test.describe.serial('Persona AI Context', () => {
       // Only now change the root conjunction to OR — this just flips the
       // conjunction on the existing two-rule group without any structural
       // change, so both alpha and beta remain in the serialized query.
-      await drawer.getByRole('radio', { name: 'Or', exact: true }).click();
+      await drawer.getByTestId('advanced-search-conjunction-or').click();
     });
 
     const createRuleRequest = adminPage.waitForRequest(

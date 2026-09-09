@@ -341,7 +341,7 @@ test.describe('Curated Assets Widget', () => {
     // Switch to OR condition (AND is selected by default, click OR button)
     await page
       .getByTestId('advanced-search-conjunction')
-      .getByRole('radio', { name: 'Or' })
+      .getByTestId('advanced-search-conjunction-or')
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
@@ -439,7 +439,7 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add Condition' }).click();
     await page
       .getByTestId('advanced-search-conjunction')
-      .getByRole('radio', { name: 'And' })
+      .getByTestId('advanced-search-conjunction-and')
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
@@ -558,7 +558,7 @@ test.describe('Curated Assets Widget', () => {
     // Switch first group to OR condition (AND is default)
     await page
       .getByTestId('advanced-search-conjunction')
-      .getByRole('radio', { name: 'Or' })
+      .getByTestId('advanced-search-conjunction-or')
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');

@@ -65,25 +65,21 @@ export const toFieldNodes = (
   });
 
 /**
- * Only the fields that own subfields — the ones a `rule_group` can group on.
- * Each keeps its own leaf so `OMFieldSelect` can offer the group itself.
+ * What a `rule_group` can group on: the top level of the config, whether or
+ * not an entry owns subfields.
+ *
+ * Not "parents only" — a semantic rule is just as often built on a plain field
+ * like Description as on one with subfields like Owners, and RAQB switches the
+ * node between `rule_group` and `rule` accordingly. Subfields are not offered
+ * here either; they belong to the rules inside the group.
  */
-export const toGroupFieldNodes = (
-  fields: unknown,
-  prefix = ''
-): QueryBuilderFieldNode[] =>
-  Object.entries((fields ?? {}) as NonNullable<RawFields>).flatMap(
-    ([key, def]) => {
-      const path = prefix ? `${prefix}.${key}` : key;
-      const subfields = def?.subfields as RawFields;
-
-      return subfields
-        ? [
-            { key, label: String(def?.label ?? key), path },
-            ...toGroupFieldNodes(subfields, path),
-          ]
-        : [];
-    }
+export const toGroupFieldNodes = (fields: unknown): QueryBuilderFieldNode[] =>
+  Object.entries((fields ?? {}) as NonNullable<RawFields>).map(
+    ([key, def]) => ({
+      key,
+      label: String(def?.label ?? key),
+      path: key,
+    })
   );
 
 /** Rules at any depth. Root children would count a seeded wrapper as one. */

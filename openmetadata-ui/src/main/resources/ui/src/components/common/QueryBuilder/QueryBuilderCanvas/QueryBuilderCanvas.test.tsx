@@ -302,21 +302,29 @@ describe('QueryBuilderCanvas – component contracts', () => {
 
   // A field renderer that reports back the moment it is asked to change, so a
   // test can drive the control without going through react-aria's combobox.
-  const renderFieldStub = (props: FieldProps) => (
-    <button
-      data-testid={
-        (props as unknown as { dataTestId?: string }).dataTestId ??
-        'advanced-search-field-select'
-      }
-      type="button"
-      onClick={() => props.setField('picked')}>
-      {String(props.selectedKey ?? '')}
-    </button>
-  );
+  const offeredItems: string[][] = [];
+  const renderFieldStub = (props: FieldProps) => {
+    offeredItems.push(
+      ((props.items ?? []) as { label?: string }[]).map((i) => String(i.label))
+    );
+
+    return (
+      <button
+        data-testid={
+          (props as unknown as { dataTestId?: string }).dataTestId ??
+          'advanced-search-field-select'
+        }
+        type="button"
+        onClick={() => props.setField('picked')}>
+        {String(props.selectedKey ?? '')}
+      </button>
+    );
+  };
 
   const config = {
     conjunctions: { AND: {}, OR: {} },
     fields: {
+      description: { label: 'Description' },
       tags: { label: 'Tags', subfields: { tagFQN: { label: 'Tag' } } },
     },
     operators: {},
@@ -386,6 +394,28 @@ describe('QueryBuilderCanvas – component contracts', () => {
     fireEvent.click(screen.getByTestId('advanced-search-delete-group'));
 
     expect(actions.removeGroup).toHaveBeenCalledWith(['root', 'g1']);
+  });
+
+  it('should offer a rule_group a plain field, not only fields with subfields', () => {
+    // The regression this guards: a semantic rule is usually built on a plain
+    // field like Description, and offering only subfield-owning fields left
+    // every such rule unbuildable.
+    offeredItems.length = 0;
+    render(
+      <QueryBuilderGroupCard
+        canRemove
+        context={context}
+        depth={0}
+        group={{
+          children1: [{ id: 'r1' }],
+          properties: { field: 'tags' },
+          type: 'rule_group',
+        }}
+        path={['root', 'g1']}
+      />
+    );
+
+    expect(offeredItems.at(-1)).toEqual(['Description', 'Tags']);
   });
 
   it("should edit a rule_group's field from the row, not beside the conjunction", () => {

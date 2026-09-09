@@ -758,7 +758,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 15
+      "count": 5
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {

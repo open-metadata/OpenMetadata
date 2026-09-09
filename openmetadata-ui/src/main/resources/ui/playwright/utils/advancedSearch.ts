@@ -676,7 +676,7 @@ export const checkAddRuleOrGroupWithOperator = async (
     // "single"), which exposes role="radio" items — not buttons.
     await page
       .getByTestId('advanced-search-modal')
-      .getByRole('radio', { name: 'Or' })
+      .getByTestId('advanced-search-conjunction-or')
       .click();
   }
 
