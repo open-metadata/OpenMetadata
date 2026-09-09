@@ -110,7 +110,7 @@ curl -X GET -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpY
 ```
 
 ## Using the API
-Once you deploy the plugin and restart the webserver, you can start to use the REST API. Below you will see the endpoints that are supported. 
+Once you deploy the plugin and restart the webserver, you can start to use the REST API. Below you will see the endpoints that are supported.
 
 **Note:** If enable RBAC, `http://{AIRFLOW_HOST}:{AIRFLOW_PORT}/rest_api/`<br>
 This web page will show the Endpoints supported and provide a form for you to test submitting to them.
