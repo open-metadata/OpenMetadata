@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,6 +70,16 @@ class DataInsightsExtensionsTest {
             () -> DataInsightsExtensions.open(CONTEXT, List.of(opened, failed)));
     assertEquals("open", error.getMessage());
     assertEquals("close", error.getSuppressed()[0].getMessage());
+  }
+
+  @Test
+  void nullSessionFailsFastWithProviderName() {
+    var error =
+        assertThrows(
+            IllegalStateException.class,
+            () -> DataInsightsExtensions.open(CONTEXT, List.of(new NullSessionExtension())));
+
+    assertTrue(error.getMessage().contains(NullSessionExtension.class.getName()));
   }
 
   @Test
@@ -144,5 +155,12 @@ class DataInsightsExtensionsTest {
         events.add(event);
       }
     };
+  }
+
+  private static final class NullSessionExtension implements DataInsightsExtension {
+    @Override
+    public Session open(RunContext context) {
+      return null;
+    }
   }
 }

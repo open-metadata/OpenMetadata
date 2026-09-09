@@ -305,8 +305,11 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
 
           if (batch.getData().isEmpty()) {
             if (!batch.getErrors().isEmpty()) {
-              source.updateStats(0, batch.getErrors().size());
-              workflowStats.addFailure("Could not read all Data Insights source entities");
+              int readErrorCount = batch.getErrors().size();
+              source.updateStats(0, readErrorCount);
+              workflowStats.addFailure(
+                  "Failed to read %d Data Insights source entities from %s"
+                      .formatted(readErrorCount, source.getName()));
             }
             if (keysetCursor == null) {
               break;
