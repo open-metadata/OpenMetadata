@@ -649,12 +649,12 @@ export const DataAssetSummaryPanelV1 = ({
           />
         )}
         <div
-          className="domains-section"
+          className="owners-section"
           key={`owners-${dataAsset.id}-${
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
-          <div className="domains-header">
-            <span className="domains-title">{t('label.owner-plural')}</span>
+          <div className="owners-header">
+            <span className="owners-title">{t('label.owner-plural')}</span>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -668,7 +668,7 @@ export const DataAssetSummaryPanelV1 = ({
               />
             )}
           </div>
-          <div className="domains-content">
+          <div className="owners-content">
             <Owner
               hasPermission={editOwnerPermission}
               isCompactView={false}
@@ -759,12 +759,12 @@ export const DataAssetSummaryPanelV1 = ({
         onDescriptionUpdate={handleDescriptionUpdate}
       />
       <div
-        className="domains-section"
+        className="owners-section"
         key={`owners-${dataAsset.id}-${
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
-        <div className="domains-header">
-          <span className="domains-title">{t('label.owner-plural')}</span>
+        <div className="owners-header">
+          <span className="owners-title">{t('label.owner-plural')}</span>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -778,7 +778,7 @@ export const DataAssetSummaryPanelV1 = ({
             />
           )}
         </div>
-        <div className="domains-content">
+        <div className="owners-content">
           <Owner
             hasPermission={editOwnerPermission}
             isCompactView={false}
@@ -828,12 +828,12 @@ export const DataAssetSummaryPanelV1 = ({
         onDescriptionUpdate={handleDescriptionUpdate}
       />
       <div
-        className="domains-section"
+        className="owners-section"
         key={`owners-${dataAsset.id}-${
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
-        <div className="domains-header">
-          <span className="domains-title">{t('label.owner-plural')}</span>
+        <div className="owners-header">
+          <span className="owners-title">{t('label.owner-plural')}</span>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -847,7 +847,7 @@ export const DataAssetSummaryPanelV1 = ({
             />
           )}
         </div>
-        <div className="domains-content">
+        <div className="owners-content">
           <Owner
             hasPermission={editOwnerPermission}
             isCompactView={false}
@@ -919,12 +919,12 @@ export const DataAssetSummaryPanelV1 = ({
       />
       {dataAsset.owners && (
         <div
-          className="domains-section"
+          className="owners-section"
           key={`owners-${dataAsset.id}-${
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
-          <div className="domains-header">
-            <span className="domains-title">{t('label.owner-plural')}</span>
+          <div className="owners-header">
+            <span className="owners-title">{t('label.owner-plural')}</span>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -938,7 +938,7 @@ export const DataAssetSummaryPanelV1 = ({
               />
             )}
           </div>
-          <div className="domains-content">
+          <div className="owners-content">
             <Owner
               hasPermission={editOwnerPermission}
               isCompactView={false}

@@ -363,12 +363,12 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     await searchBar.fill(termName);
     await waitForAllLoadersToDisappear(page);
     const termOption = page
-      .locator('.ant-list-item')
+      .locator('.selectable-list-item')
       .filter({ hasText: termName });
 
     await termOption.click();
   } else {
-    const firstTerm = page.locator('.ant-list-item').first();
+    const firstTerm = page.locator('.selectable-list-item').first();
     await firstTerm.click();
   }
 
@@ -527,7 +527,7 @@ export const removeGlossaryTermFromPanel = async (
 
     // Wait for the list to update with search results
     const termItem = page
-      .locator('.ant-list-item')
+      .locator('.selectable-list-item')
       .filter({ hasText: termName });
     await termItem.waitFor({ state: 'visible' });
 
