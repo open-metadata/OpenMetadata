@@ -33,14 +33,21 @@ test.describe('Table & Data Model columns table pagination', () => {
     );
     await tablePageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(tablePageSizeDropdown).toBeVisible();
-    const tablePageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '25 / Page' });
+    const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
     await expect(async () => {
       await tablePageSizeDropdown.hover();
-      await expect(tablePageSizeOption).toBeVisible();
-    }).toPass({ timeout: 15000 });
-    await tablePageSizeOption.click();
+      if (!(await menuItem.isVisible())) {
+        await tablePageSizeDropdown.click();
+      }
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+      await menuItem.click();
+      await expect(tablePageSizeDropdown).toHaveText('25 / Page');
+    }).toPass({
+      timeout: 15_000,
+      intervals: [500, 1_000, 2_000],
+    });
+
+
 
     await waitForAllLoadersToDisappear(page);
 
@@ -48,21 +55,21 @@ test.describe('Table & Data Model columns table pagination', () => {
     await sidebarClick(page, SidebarItem.EXPLORE);
 
     await waitForAllLoadersToDisappear(page);
-
-    const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
-    await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
+    await expect(page.getByRole('button', { name: 'Records' })).toHaveText('25');
 
     // Change page size to 50
-    const option50 = page.getByTestId('rows-per-page-option-50');
-    await expect(async () => {
-      if (
-        (await rowsPerPageDropdown.getAttribute('aria-expanded')) !== 'true'
-      ) {
-        await rowsPerPageDropdown.click();
-      }
-      await expect(option50).toBeVisible();
-    }).toPass({ timeout: 15000 });
-    await option50.click();
+   const menuItem1 = page.getByTestId('rows-per-page-option-50');
+   const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' })
+   await expect(async () => {
+      await pageSizeRecordBtn.click();
+      await expect(menuItem1).toBeVisible({ timeout: 2_000 });
+      await menuItem1.click();
+      await expect(page.getByRole('button', { name: 'Records' })).toHaveText('50');
+    }).toPass({
+      timeout: 15_000,
+      intervals: [500, 1_000, 2_000],
+    });
+
     await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page
