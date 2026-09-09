@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "套用",
+    "cancel": "取消",
+    "clear-all": "清除全部",
     "close": "關閉",
     "close-navigation-menu": "關閉導覽選單",
     "copy-link": "複製連結",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "隱藏的階層路徑",
     "loading": "載入中…",
     "next-page": "前往下一頁",
+    "no-data-found": "未找到資料",
     "open-menu": "開啟選單",
     "page": "頁面",
     "pagination": "分頁",
@@ -19,6 +23,8 @@
     "previous-page": "前往上一頁",
     "records": "記錄",
     "remove-filter": "移除篩選器",
+    "search": "搜尋",
+    "select-all": "全選",
     "select-dates": "選取日期",
     "select-only-one-row": "選取一列",
     "show-hidden-breadcrumbs": "顯示隱藏的階層路徑",

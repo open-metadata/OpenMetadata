@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "लागू करा",
+    "cancel": "रद्द करा",
+    "clear-all": "सर्व साफ करा",
     "close": "बंद करा",
     "close-navigation-menu": "नेव्हिगेशन मेनू बंद करा",
     "copy-link": "दुवा कॉपी करा",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "लपवलेले ब्रेडक्रम्स",
     "loading": "लोड होत आहे…",
     "next-page": "पुढील पृष्ठावर जा",
+    "no-data-found": "डेटा आढळला नाही",
     "open-menu": "मेनू उघडा",
     "page": "पृष्ठ",
     "pagination": "पृष्ठांकन",
@@ -19,6 +23,8 @@
     "previous-page": "मागील पृष्ठावर जा",
     "records": "रेकॉर्ड",
     "remove-filter": "फिल्टर काढा",
+    "search": "शोधा",
+    "select-all": "सर्व निवडा",
     "select-dates": "तारखा निवडा",
     "select-only-one-row": "एक पंक्ती निवडा",
     "show-hidden-breadcrumbs": "लपवलेले ब्रेडक्रम्स दाखवा",

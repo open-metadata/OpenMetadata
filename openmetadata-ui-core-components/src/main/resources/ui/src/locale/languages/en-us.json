@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "clear-all": "Clear all",
     "close": "Close",
     "close-navigation-menu": "Close navigation menu",
     "copy-link": "Copy link",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Hidden breadcrumbs",
     "loading": "Loading…",
     "next-page": "Go to next page",
+    "no-data-found": "No data found",
     "open-menu": "Open menu",
     "page": "Page",
     "pagination": "Pagination",
@@ -19,6 +23,8 @@
     "previous-page": "Go to previous page",
     "records": "Records",
     "remove-filter": "Remove filter",
+    "search": "Search",
+    "select-all": "Select all",
     "select-dates": "Select dates",
     "select-only-one-row": "Select one row",
     "show-hidden-breadcrumbs": "Show hidden breadcrumbs",

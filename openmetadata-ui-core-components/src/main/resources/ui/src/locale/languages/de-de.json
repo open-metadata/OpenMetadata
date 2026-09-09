@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Anwenden",
+    "cancel": "Abbrechen",
+    "clear-all": "Alle löschen",
     "close": "Schließen",
     "close-navigation-menu": "Navigationsmenü schließen",
     "copy-link": "Link kopieren",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Ausgeblendete Breadcrumbs",
     "loading": "Wird geladen…",
     "next-page": "Zur nächsten Seite",
+    "no-data-found": "Keine Daten gefunden",
     "open-menu": "Menü öffnen",
     "page": "Seite",
     "pagination": "Seitennummerierung",
@@ -19,6 +23,8 @@
     "previous-page": "Zur vorherigen Seite",
     "records": "Datensätze",
     "remove-filter": "Filter entfernen",
+    "search": "Suchen",
+    "select-all": "Alle auswählen",
     "select-dates": "Daten auswählen",
     "select-only-one-row": "Eine Zeile auswählen",
     "show-hidden-breadcrumbs": "Ausgeblendete Breadcrumbs anzeigen",

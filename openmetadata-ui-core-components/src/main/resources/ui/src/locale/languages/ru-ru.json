@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Применить",
+    "cancel": "Отмена",
+    "clear-all": "Очистить все",
     "close": "Закрыть",
     "close-navigation-menu": "Закрыть меню навигации",
     "copy-link": "Скопировать ссылку",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Скрытые хлебные крошки",
     "loading": "Загрузка…",
     "next-page": "Перейти на следующую страницу",
+    "no-data-found": "Данные не найдены",
     "open-menu": "Открыть меню",
     "page": "Страница",
     "pagination": "Пагинация",
@@ -19,6 +23,8 @@
     "previous-page": "Перейти на предыдущую страницу",
     "records": "Записи",
     "remove-filter": "Удалить фильтр",
+    "search": "Поиск",
+    "select-all": "Выбрать все",
     "select-dates": "Выбрать даты",
     "select-only-one-row": "Выберите одну строку",
     "show-hidden-breadcrumbs": "Показать скрытые хлебные крошки",
