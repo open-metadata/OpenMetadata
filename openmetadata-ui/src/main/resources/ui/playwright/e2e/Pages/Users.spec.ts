@@ -31,6 +31,7 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
@@ -42,6 +43,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { visitClassificationPage } from '../../utils/tag';
 import {
   addUser,
   checkDataConsumerPermissions,
@@ -323,58 +325,90 @@ test.describe('User with Data Consumer Roles', () => {
   test('User should have only view permission for glossary and tags for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await redirectToHomePage(dataConsumerPage);
+    const { apiContext, afterAction } = await createAdminApiContext();
+    const userClassification = new ClassificationClass();
 
-    // Check CRUD for Glossary
-    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    try {
+      await userClassification.create(apiContext);
+      await redirectToHomePage(dataConsumerPage);
 
-    await waitForAllLoadersToDisappear(dataConsumerPage);
+      // Check CRUD for Glossary
+      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-glossary"]')
-    ).not.toBeVisible();
+      await waitForAllLoadersToDisappear(dataConsumerPage);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-glossary"]')
+      ).not.toBeVisible();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
+      ).not.toBeVisible();
 
-    // Glossary Term Table Action column
-    await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
 
-    // right panel
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-domain"]')
-    ).not.toBeVisible();
-    await expect(
-      dataConsumerPage.locator('[data-testid="edit-review-button"]')
-    ).not.toBeVisible();
+      // Glossary Term Table Action column
+      await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
 
-    const hasAddOwnerButton = dataConsumerPage.locator(
-      '[data-testid="add-owner"]'
-    );
+      // right panel
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-domain"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="edit-review-button"]')
+      ).not.toBeVisible();
 
-    if (!hasAddOwnerButton) {
-      await checkEditOwnerButtonPermission(dataConsumerPage);
+      const hasAddOwnerButton = dataConsumerPage.locator(
+        '[data-testid="add-owner"]'
+      );
+
+      if (!hasAddOwnerButton) {
+        await checkEditOwnerButtonPermission(dataConsumerPage);
+      }
+
+      // Check CRUD for Tags — navigate to Tags sidebar to verify create permission is absent
+      await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-classification"]')
+      ).not.toBeVisible();
+
+      // System classification (e.g. Certification): manage button must NOT be visible
+      await visitClassificationPage(
+        dataConsumerPage,
+        'Certification',
+        'Certification'
+      );
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
+
+      // User-created classification: manage button MUST be visible but show only Export
+      await userClassification.visitPage(dataConsumerPage);
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+
+      const manageButton = dataConsumerPage.getByTestId('manage-button');
+
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
+
+      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('import-button')
+      ).not.toBeVisible();
+    } finally {
+      await userClassification.delete(apiContext);
+      await afterAction();
     }
-
-    // Check CRUD for Tags
-    await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-classification"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
   });
 
   test('Operations for settings page for Data Consumer', async ({
