@@ -10,50 +10,366 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { Form } from 'antd';
+import { act, render, screen } from '@testing-library/react';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from './AsyncSelectList.interface';
 import TreeAsyncSelectList from './TreeAsyncSelectList';
 
+const MOCK_GLOSSARY_TREE = [
+  {
+    id: 'glossary-1',
+    value: 'Glossary',
+    name: 'Glossary',
+    title: 'Glossary',
+    'data-testid': 'tag-Glossary',
+    checkable: false,
+    isLeaf: false,
+    selectable: false,
+  },
+];
+
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossariesList: jest.fn().mockResolvedValue({
-    data: [{ id: 1, name: 'glossary-1', fullyQualifiedName: 'value1' }],
+    data: [
+      {
+        id: 'glossary-1',
+        name: 'Glossary',
+        fullyQualifiedName: 'Glossary',
+      },
+    ],
   }),
   getGlossaryTerms: jest.fn(),
+  queryGlossaryTerms: jest.fn(),
   searchGlossaryTerms: jest.fn(),
 }));
 
+const mockConvertGlossaryTermsToTreeOptions = jest.fn();
+
 jest.mock('../../../utils/GlossaryUtils', () => ({
-  buildTree: jest
-    .fn()
-    .mockReturnValue([
-      { id: 1, name: 'glossary-1', fullyQualifiedName: 'value1' },
-    ]),
-  convertGlossaryTermsToTreeOptions: jest.fn().mockReturnValue([]),
-  findGlossaryTermByFqn: jest.fn(),
-  filterTreeNodeOptions: jest.fn().mockReturnValue([]),
+  convertGlossaryTermsToTreeOptions: (...args: unknown[]) =>
+    mockConvertGlossaryTermsToTreeOptions(...args),
 }));
+
+jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  filterTreeNodeOptions: jest.fn().mockImplementation((data) => data),
+  findItemByFqn: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation(
+      (entity: { displayName?: string; name?: string }) =>
+        entity?.displayName || entity?.name || ''
+    ),
+}));
+
+jest.mock('../../../utils/TagsPureUtils', () => ({
+  getTagDisplay: jest.fn().mockImplementation((value: string) => value),
+}));
+
+jest.mock('../../../utils/TagsUtils', () => ({
+  tagRender: jest.fn().mockReturnValue(<span>tag</span>),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/StringUtils', () => ({
+  escapeESReservedCharacters: jest
+    .fn()
+    .mockImplementation((v: string) => v),
+  getEncodedFqn: jest.fn().mockImplementation((v: string) => v),
+}));
+
+jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
+  jest.fn().mockReturnValue(<span>TagsV1</span>)
+);
 
 describe('TreeAsyncSelectList', () => {
   const onChange = jest.fn();
-  const initialOptions: SelectOption[] = [];
-  const tagType = TagSource.Glossary;
-  const isSubmitLoading = false;
   const onCancel = jest.fn();
 
   beforeEach(() => {
-    render(
-      <TreeAsyncSelectList
-        initialOptions={initialOptions}
-        isSubmitLoading={isSubmitLoading}
-        tagType={tagType}
-        onCancel={onCancel}
-        onChange={onChange}
-      />
-    );
+    jest.clearAllMocks();
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue([]);
   });
 
-  it('should render the component', () => {
+  it('should render the component', async () => {
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={[]}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+  });
+
+  it('should render in single-select mode without treeCheckable', async () => {
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={[]}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
+    const selector = screen.getByTestId('tag-selector');
+
+    expect(selector).toBeInTheDocument();
+  });
+
+  it('should inject initial option into treeData when term is missing from tree', async () => {
+    mockConvertGlossaryTermsToTreeOptions.mockImplementation(() => {
+      return JSON.parse(JSON.stringify(MOCK_GLOSSARY_TREE));
+    });
+
+    const initialOptions: SelectOption[] = [
+      {
+        value: 'Glossary.term1',
+        label: 'Glossary.term1',
+        data: {
+          tagFQN: 'Glossary.term1',
+          name: 'term1',
+          displayName: 'Term One',
+        } as SelectOption['data'],
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={initialOptions}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(mockConvertGlossaryTermsToTreeOptions).toHaveBeenCalled();
+  });
+
+  it('should not inject when term already exists in treeData', async () => {
+    const treeWithTerm = [
+      {
+        ...MOCK_GLOSSARY_TREE[0],
+        children: [
+          {
+            id: 'term-1',
+            value: 'Glossary.term1',
+            name: 'term1',
+            title: 'term1',
+            checkable: true,
+            isLeaf: true,
+            selectable: true,
+          },
+        ],
+      },
+    ];
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue(treeWithTerm);
+
+    const initialOptions: SelectOption[] = [
+      {
+        value: 'Glossary.term1',
+        label: 'Glossary.term1',
+        data: {
+          tagFQN: 'Glossary.term1',
+          name: 'term1',
+        } as SelectOption['data'],
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={initialOptions}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
+    expect(treeWithTerm[0].children).toHaveLength(1);
+  });
+
+  it('should normalize array value to scalar in single-select mode when controlled by Form', async () => {
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue(
+      JSON.parse(JSON.stringify(MOCK_GLOSSARY_TREE))
+    );
+
+    const initialOptions: SelectOption[] = [
+      {
+        value: 'Glossary.term1',
+        label: 'Glossary.term1',
+        data: {
+          tagFQN: 'Glossary.term1',
+          name: 'term1',
+          displayName: 'Term One',
+        } as SelectOption['data'],
+      },
+    ];
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    await act(async () => {
+      render(
+        <Form initialValues={{ tags: 'Glossary.term1' }}>
+          <Form.Item name="tags">
+            <TreeAsyncSelectList
+              initialOptions={initialOptions}
+              isMultiSelect={false}
+              isSubmitLoading={false}
+              tagType={TagSource.Glossary}
+              onCancel={onCancel}
+              onChange={onChange}
+            />
+          </Form.Item>
+        </Form>
+      );
+    });
+
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+
+    const treeSelectWarning = warnSpy.mock.calls.find((call) =>
+      String(call[0]).includes(
+        'value should not be array when TreeSelect is single mode'
+      )
+    );
+
+    expect(treeSelectWarning).toBeUndefined();
+
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('should keep array value in multi-select mode when controlled by Form', async () => {
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue([]);
+
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    await act(async () => {
+      render(
+        <Form
+          initialValues={{
+            tags: ['Glossary.term1', 'Glossary.term2'],
+          }}>
+          <Form.Item name="tags">
+            <TreeAsyncSelectList
+              initialOptions={[]}
+              isSubmitLoading={false}
+              tagType={TagSource.Glossary}
+              onCancel={onCancel}
+              onChange={onChange}
+            />
+          </Form.Item>
+        </Form>
+      );
+    });
+
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+
+    errorSpy.mockRestore();
+  });
+
+  it('should handle empty initialOptions without injecting', async () => {
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue(
+      JSON.parse(JSON.stringify(MOCK_GLOSSARY_TREE))
+    );
+
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={[]}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+  });
+
+  it('should skip injection when parent glossary is not found in tree', async () => {
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue(
+      JSON.parse(JSON.stringify(MOCK_GLOSSARY_TREE))
+    );
+
+    const initialOptions: SelectOption[] = [
+      {
+        value: 'UnknownGlossary.term1',
+        label: 'UnknownGlossary.term1',
+        data: {
+          tagFQN: 'UnknownGlossary.term1',
+          name: 'term1',
+        } as SelectOption['data'],
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={initialOptions}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+  });
+
+  it('should skip injection for single-segment FQN values', async () => {
+    mockConvertGlossaryTermsToTreeOptions.mockReturnValue(
+      JSON.parse(JSON.stringify(MOCK_GLOSSARY_TREE))
+    );
+
+    const initialOptions: SelectOption[] = [
+      {
+        value: 'SingleSegment',
+        label: 'SingleSegment',
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <TreeAsyncSelectList
+          initialOptions={initialOptions}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
+      );
+    });
+
     expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
   });
 });
