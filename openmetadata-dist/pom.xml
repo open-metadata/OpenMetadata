@@ -109,7 +109,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>rpm-maven-plugin</artifactId>
-            <version>2.2.0</version>
+            <version>2.3.0</version>
             <executions>
               <execution>
                 <phase>install</phase>
@@ -266,7 +266,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.0.1</version>
+            <version>3.2.8</version>
             <executions>
               <execution>
                 <id>sign-artifacts</id>
