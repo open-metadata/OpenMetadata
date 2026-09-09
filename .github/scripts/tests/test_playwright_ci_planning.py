@@ -1234,6 +1234,44 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
     assert selection["directChangedSpecs"] == ["playwright/e2e/Pages/Entity.spec.ts"]
 
 
+def test_persona_details_change_selects_ai_context_specs(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/pages/Persona/"
+        "PersonaDetailsPage/PersonaDetailsPage.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+
+    assert {
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts",
+    } <= selected_specs
+
+
 def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
@@ -2192,6 +2230,35 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "tag: '@ingestion'" in schema_search
 
 
+def test_scheduler_impact_mapping_covers_shared_consumers():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    scheduler_source = (
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/"
+        "AddIngestion/Steps/ScheduleInterval*"
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if scheduler_source in entry["sources"]
+    )
+
+    assert mapping["projects"] == [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "Data Insight",
+    ]
+    assert {
+        "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+    }.issubset(mapping["specs"])
+
+
 def test_permission_impact_mapping_includes_ingestion_project():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
@@ -2826,3 +2893,567 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     # ...while the non-delegated Ontology Studio specs from the same glob remain,
     # proving the mapping fired and only the delegated spec was dropped.
     assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
+
+
+def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatch):
+    """
+    Generated mappings are appended to the hand-authored ones. A source path
+    that is only covered by the generated map still routes to its specs, and
+    a source path covered by both routes to the union of specs.
+    """
+    selector = load_script("select_playwright_tests")
+
+    hand = tmp_path / "impact-map.json"
+    hand.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "sharedInfrastructure": [],
+                "delegatedSpecs": [],
+                "mappings": [
+                    {
+                        "sources": ["src/pages/Hand/handRoute.tsx"],
+                        "specs": ["playwright/e2e/Features/HandCovered.spec.ts"],
+                    },
+                ],
+            }
+        )
+    )
+    generated = tmp_path / "impact-map.generated.json"
+    generated.write_text(
+        json.dumps(
+            {
+                "mappings": [
+                    {
+                        "sources": ["src/pages/Gen/genOnly.tsx"],
+                        "specs": ["playwright/e2e/Features/GenOnly.spec.ts"],
+                    },
+                    {
+                        # Also collides with the hand-authored source.
+                        "sources": ["src/pages/Hand/handRoute.tsx"],
+                        "specs": ["playwright/e2e/Features/AlsoTouched.spec.ts"],
+                    },
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+
+    def run_with(changed_files: list[str]):
+        changed.write_text("\n".join(changed_files))
+        monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "select_playwright_tests.py",
+                "--event-name",
+                "pull_request_target",
+                "--changed-files",
+                str(changed),
+                "--impact-map",
+                str(hand),
+                "--generated-impact-map",
+                str(generated),
+                "--output",
+                str(output),
+            ],
+        )
+        selector.main()
+        return {
+            entry["spec"] for entry in json.loads(output.read_text())["selectors"]
+        }
+
+    # Generated-only source routes the generated spec.
+    specs = run_with(["src/pages/Gen/genOnly.tsx"])
+    assert "playwright/e2e/Features/GenOnly.spec.ts" in specs
+
+    # Collision — both hand and generated fire, so the union is selected.
+    specs = run_with(["src/pages/Hand/handRoute.tsx"])
+    assert "playwright/e2e/Features/HandCovered.spec.ts" in specs
+    assert "playwright/e2e/Features/AlsoTouched.spec.ts" in specs
+
+
+def test_generated_impact_map_auto_detected_beside_hand_authored(tmp_path, monkeypatch):
+    """
+    If the caller does not pass `--generated-impact-map`, the planner looks
+    for a sibling `impact-map.generated.json` next to the hand-authored map
+    and loads it automatically. This keeps the CI workflow untouched — just
+    committing the generated file is enough for it to take effect.
+    """
+    selector = load_script("select_playwright_tests")
+
+    hand = tmp_path / "impact-map.json"
+    hand.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "sharedInfrastructure": [],
+                "delegatedSpecs": [],
+                "mappings": [],
+            }
+        )
+    )
+    # Sibling file — the planner should find it without an explicit CLI arg.
+    (tmp_path / "impact-map.generated.json").write_text(
+        json.dumps(
+            {
+                "mappings": [
+                    {
+                        "sources": ["src/pages/AutoLoad/auto.tsx"],
+                        "specs": ["playwright/e2e/Features/AutoLoad.spec.ts"],
+                    },
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text("src/pages/AutoLoad/auto.tsx\n")
+    output = tmp_path / "selection.json"
+
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(hand),
+            # No --generated-impact-map — proves auto-detect works.
+            "--output",
+            str(output),
+        ],
+    )
+    selector.main()
+
+    specs = {entry["spec"] for entry in json.loads(output.read_text())["selectors"]}
+    assert "playwright/e2e/Features/AutoLoad.spec.ts" in specs
+
+
+def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_path):
+    """
+    End-to-end smoke test on a miniature UI tree: a spec that both imports a
+    generated type AND uses a component's testId must resolve both signals
+    into the same output entry set. The generator's output is JSON so a
+    trivial round-trip check with sort_keys makes drift diffs stable.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    # Build a mini repo: a src component with a testId, and a spec that uses
+    # both the testId and a generated import.
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget").mkdir(
+        parents=True
+    )
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/generated/entity").mkdir(
+        parents=True
+    )
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features").mkdir(
+        parents=True
+    )
+    (
+        tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
+    ).write_text('export const W = () => <div data-testid="widget-open" />;\n')
+    (
+        tmp_path
+        / "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts"
+    ).write_text("export type Table = { id: string };\n")
+    (
+        tmp_path
+        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Widget.spec.ts"
+    ).write_text(
+        "import { Table } from '../../../src/generated/entity/table';\n"
+        "test('opens', async ({ page }) => {\n"
+        "  await page.getByTestId('widget-open').click();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+
+    sources = {
+        source
+        for entry in result["mappings"]
+        for source in entry["sources"]
+    }
+    # Import-graph signal picked up the generated schema.
+    assert (
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts"
+        in sources
+    )
+    # testId cross-reference picked up the component.
+    assert (
+        "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
+        in sources
+    )
+
+
+def test_generator_ignores_unit_tests_and_mocks_that_colocate_with_components(
+    tmp_path,
+):
+    """
+    Product-source filter: Jest tests, Jest mocks, and manual mock fixtures
+    live next to their components (`Foo.tsx`, `Foo.test.tsx`, `Foo.mock.tsx`).
+    Only the production file may appear in the source→spec map — editing a
+    Jest test should never schedule a Playwright rerun.
+
+    Regression guard for the shipped v1 map, which routed 70 `.test.tsx`
+    files as sources and would have scheduled Playwright on every Jest edit.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "src/components/Widget").mkdir(parents=True)
+    (ui / "src/mocks").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+
+    # Product source, unit test, and Jest mock all define the SAME data-testid.
+    # Only the product source should surface as an owner.
+    (ui / "src/components/Widget/Widget.tsx").write_text(
+        'export const W = () => <div data-testid="widget-open" />;\n'
+    )
+    (ui / "src/components/Widget/Widget.test.tsx").write_text(
+        'test("renders", () => render(<div data-testid="widget-open" />));\n'
+    )
+    (ui / "src/mocks/Widget.mock.tsx").write_text(
+        'export const mock = () => <div data-testid="widget-open" />;\n'
+    )
+    (ui / "playwright/e2e/Features/Widget.spec.ts").write_text(
+        "test('opens', async ({ page }) => {\n"
+        "  await page.getByTestId('widget-open').click();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    sources = {s for entry in result["mappings"] for s in entry["sources"]}
+
+    assert (
+        "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.tsx"
+        in sources
+    )
+    for excluded in (
+        "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/mocks/Widget.mock.tsx",
+    ):
+        assert excluded not in sources, (
+            f"{excluded} should be excluded — editing a Jest test or a mock "
+            "must not schedule Playwright"
+        )
+
+
+def test_committed_generated_impact_map_matches_the_generator_output():
+    """
+    Drift guard: the committed `.github/playwright/impact-map.generated.json`
+    must equal what the generator produces against the current tree. If a
+    spec is added, a testId changes, or a schema import is added, the
+    generated map must be regenerated and committed in the same PR — the
+    generator is not free to drift silently, otherwise the source→spec
+    routing would go stale between regenerations.
+    """
+    repo_root = Path(__file__).parents[3]
+    generated_path = repo_root / ".github/playwright/impact-map.generated.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / ".github/scripts/generate_playwright_impact_map.py"),
+            "--check",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"{generated_path.relative_to(repo_root)} is out of date.\n"
+        "Run: python3 .github/scripts/generate_playwright_impact_map.py\n"
+        f"stderr:\n{result.stderr}"
+    )
+
+
+def test_generator_drops_testids_owned_by_too_many_files(tmp_path):
+    """
+    A testId used across many files (a wrapper's `loader`, a page's
+    `close-btn`, etc.) is not evidence that the spec depends on any one
+    owner. Include such a testId in the source→spec map and we would
+    generate a ~500-way fan-out entry every time a shared component is
+    edited. The generator drops testIds owned by more than
+    TESTID_MAX_OWNERS files (currently 3) exactly to prevent that.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "src").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+    # 4 owners for `loader`, over the threshold.
+    for name in ("A", "B", "C", "D"):
+        (ui / "src" / f"{name}.tsx").write_text(
+            f'export const X = () => <div data-testid="loader" />;\n'
+        )
+    (ui / "playwright/e2e/Features/UsesLoader.spec.ts").write_text(
+        "test('waits', async ({ page }) => {\n"
+        "  await page.getByTestId('loader').isVisible();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    sources = {s for entry in result["mappings"] for s in entry["sources"]}
+
+    # None of the 4 loader owners were emitted — the testId was too broadly used.
+    assert all("openmetadata-ui" not in s or "loader" not in s for s in sources)
+    assert not any("A.tsx" in s or "B.tsx" in s for s in sources)
+
+
+def test_generator_skips_specs_delegated_by_the_hand_authored_map(tmp_path):
+    """
+    Specs delegated to a dedicated workflow (Auth → SSO-login-nightly,
+    KnowledgeGraph + Ontology*Rdf → knowledge-graph-postgresql-e2e, …) must
+    not appear in the generated map. `select_playwright_tests` already
+    strips them via `remove_delegated_specs`, but keeping them out at
+    generation time is what makes the committed file a truthful
+    representation of the postgres PR gate's actual routing.
+
+    Regression guard for the pre-fix state where the generator hardcoded a
+    tuple of prefixes (`Auth/`, `nightly/`, `Http2/`, `VisualRegression/`)
+    but missed the two Feature-file globs from `impact-map.json.delegatedSpecs`
+    (`KnowledgeGraph.spec.ts`, `Ontology*Rdf.spec.ts`), so 13 delegated
+    specs leaked into the generated file with source→spec entries that would
+    have been stripped at plan time — noise for a reviewer and a false
+    signal that a source edit under one of those routes to the postgres
+    PR gate.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    # Miniature repo with:
+    #   - impact-map.json listing one glob and one exact-file delegated pattern
+    #   - one delegated spec matching each
+    #   - one normal spec whose import touches the SAME source as the
+    #     delegated ones (so the source's spec set has a delegated + a
+    #     non-delegated entry; only the non-delegated must survive)
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "src/components/Widget").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+    (ui / "playwright/e2e/Auth").mkdir(parents=True)
+    (tmp_path / ".github/playwright").mkdir(parents=True)
+    (tmp_path / ".github/playwright/impact-map.json").write_text(
+        json.dumps(
+            {
+                "delegatedSpecs": [
+                    "playwright/e2e/Auth/**",
+                    "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+                    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
+                ],
+            }
+        )
+    )
+    (
+        ui / "src/components/Widget/Widget.tsx"
+    ).write_text('export const W = () => <div data-testid="widget-open" />;\n')
+
+    # Delegated specs — must NOT appear in the generated map.
+    for delegated in (
+        "playwright/e2e/Auth/SSOLogin.spec.ts",
+        "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+        "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    ):
+        (ui / delegated).write_text(
+            "test('opens', async ({ page }) => {\n"
+            "  await page.getByTestId('widget-open').click();\n"
+            "});\n"
+        )
+
+    # Non-delegated spec — SHOULD appear.
+    (ui / "playwright/e2e/Features/UsesWidget.spec.ts").write_text(
+        "test('opens', async ({ page }) => {\n"
+        "  await page.getByTestId('widget-open').click();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    all_specs = {spec for entry in result["mappings"] for spec in entry["specs"]}
+
+    # Non-delegated spec routed correctly.
+    assert "playwright/e2e/Features/UsesWidget.spec.ts" in all_specs
+
+    # No delegated spec appears anywhere in the generated map.
+    for delegated in (
+        "playwright/e2e/Auth/SSOLogin.spec.ts",
+        "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+        "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    ):
+        assert delegated not in all_specs, (
+            f"{delegated} matches impact-map.json.delegatedSpecs and must not "
+            "appear in the generated map — it runs under a dedicated workflow "
+            "that the postgres PR gate does not schedule."
+        )
+
+
+def test_unmapped_code_change_escalates_a_pr_to_the_full_plan(tmp_path, monkeypatch):
+    """
+    A code path the impact-map does not know about is the exact failure mode
+    that has been ejecting PRs at merge-queue time — the planner picks a
+    narrow set of specs, none of them exercise the changed code, PR CI passes,
+    and the merge queue is the first place the coverage gap surfaces. Route
+    that scenario to the full suite so unmapped code is caught in PR CI.
+
+    A Java source is used as the canonical unmapped example because the
+    impact-map only routes on UI paths, so a Java edit is *always* unmapped
+    and this test stays truthful even as new UI mappings are added.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "full"
+    # An empty selectors list is how the downstream shard planner recognises a
+    # full plan; adding anything here would double-schedule specs.
+    assert selection["selectors"] == []
+    assert selection["unmappedCodeFiles"] == [
+        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"
+    ]
+
+
+def test_unmapped_docs_change_stays_on_the_targeted_plan(tmp_path, monkeypatch):
+    """
+    Docs, changelogs, screenshots — none of these can break a spec, so an
+    unmapped docs edit must not drag in the whole suite. Only code paths
+    escalate; docs stay on smoke + canary the way the map already handled
+    them.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text("docs/rfc/2026-09-unmapped.md\n")
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "targeted"
+    # Same behaviour as before this change: docs are unmapped, so the canary
+    # slice is added on top of smoke. Selectors is therefore non-empty and
+    # nothing about the plan format has changed for this case.
+    assert selection["selectors"], "docs-only unmapped change should still add canary"
+
+
+def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
+    tmp_path, monkeypatch
+):
+    """
+    A PR that mixes docs edits, a mapped UI file, and an unmapped code file
+    still escalates — because the unmapped code file remains a coverage risk.
+    The escalation record only names the *code* files, so a reviewer can see
+    exactly which paths triggered the widening rather than a mixed list that
+    includes harmless docs.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "\n".join(
+            [
+                # Mapped — hits the Lineage source→spec mapping.
+                "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.tsx",
+                # Unmapped, but docs — must not escalate on its own.
+                "README.md",
+                # Unmapped code (Java, never in the UI map) — triggers escalation.
+                "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java",
+            ]
+        )
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "full"
+    assert selection["unmappedCodeFiles"] == [
+        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"
+    ]
+
+
+def test_is_code_path_covers_every_root_the_e2e_filter_matches():
+    """
+    Kept in lock-step with the `e2e` paths in playwright-e2e-reusable.yml.
+    If a root gets added to that filter but not to UNMAPPED_CODE_ROOTS, a
+    change under it would reach the planner (check-changes passed) but not
+    trigger an escalation, silently reintroducing the coverage gap this
+    change closes.
+    """
+    selector = load_script("select_playwright_tests")
+
+    for path in (
+        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java",
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/MetricsPage.tsx",
+        "openmetadata-ui-core-components/src/main/resources/ui/src/index.ts",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/table.json",
+        "ingestion/src/metadata/foo.py",
+        "bootstrap/sql/migrations/native/1.10.0/mysql/schemaChanges.sql",
+        "docker/development/docker-compose-postgres.yml",
+        "conf/openmetadata.yaml",
+    ):
+        assert selector.is_code_path(path), path
+
+    for path in (
+        "README.md",
+        "CHANGELOG.md",
+        "docs/rfc/2026-09-unmapped.md",
+        ".github/CODEOWNERS",  # tooling metadata, not the workflow itself
+    ):
+        assert not selector.is_code_path(path), path

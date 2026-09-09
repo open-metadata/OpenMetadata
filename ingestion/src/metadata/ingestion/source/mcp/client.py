@@ -12,14 +12,13 @@
 MCP (Model Context Protocol) Client
 
 This module provides a client for communicating with MCP servers using
-the JSON-RPC 2.0 protocol over various transports (Stdio, SSE, HTTP).
+the JSON-RPC 2.0 protocol over HTTP transports (SSE, Streamable HTTP).
+
+The Stdio transport (spawning a local subprocess) is not supported; MCP servers
+are reached over HTTP by URL instead.
 """
 
 import json
-import os
-import shutil
-import subprocess
-import threading
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,13 +31,20 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # MCP Protocol Version
-MCP_PROTOCOL_VERSION = "2024-11-05"
+MCP_PROTOCOL_VERSION = "2025-03-26"
 
 # Client info sent during initialization
 CLIENT_INFO = {
     "name": "openmetadata-ingestion",
     "version": "1.0.0",
 }
+
+# Guidance surfaced when a server is configured with the unsupported Stdio transport.
+STDIO_TRANSPORT_REMOVED_MSG = (
+    "Stdio transport is no longer supported. "
+    "Run the MCP server over HTTP (StreamableHTTP or SSE) and set its 'url'. "
+    "To wrap a stdio server, use a stdio-to-HTTP proxy such as mcp-proxy."
+)
 
 
 @dataclass
@@ -66,194 +72,6 @@ class McpProtocolError(Exception):
 _CLIENT_NOT_INITIALIZED = "Client not initialized"
 
 
-class StdioTransport:
-    """Transport for communicating with MCP server via stdin/stdout"""
-
-    def __init__(
-        self,
-        command: str,
-        args: list[str] | None = None,
-        env: dict[str, str] | None = None,
-        timeout: int = 30,
-    ):
-        self.command = command
-        self.args = args or []
-        self.env = env
-        self.timeout = timeout
-        self.process: subprocess.Popen | None = None
-        self._message_id = 0
-        self._lock = threading.Lock()
-        self._responses: dict[int, dict] = {}
-        self._response_events: dict[int, threading.Event] = {}
-        self._reader_thread: threading.Thread | None = None
-        self._stderr_thread: threading.Thread | None = None
-        self._running = False
-
-    def _get_next_id(self) -> int:
-        with self._lock:
-            self._message_id += 1
-            return self._message_id
-
-    _SENSITIVE_ENV_VARS = {  # noqa: RUF012
-        "PATH",
-        "LD_PRELOAD",
-        "LD_LIBRARY_PATH",
-        "DYLD_INSERT_LIBRARIES",
-    }
-
-    @staticmethod
-    def _validate_command(command: str) -> str:
-        """Validate and resolve the MCP server command to an absolute path."""
-        resolved = shutil.which(command)
-        if resolved is None:
-            raise McpProtocolError(
-                f"Command not found: {command}. Ensure the MCP server command is installed and in PATH."
-            )
-        return resolved
-
-    def connect(self) -> None:
-        """Start the MCP server subprocess"""
-        resolved_command = self._validate_command(self.command)
-        full_env = os.environ.copy()
-        if self.env:
-            overridden = self._SENSITIVE_ENV_VARS & self.env.keys()
-            if overridden:
-                logger.warning(f"MCP server '{self.command}' overrides sensitive env vars: {overridden}")
-            full_env.update(self.env)
-
-        try:
-            self.process = subprocess.Popen(
-                [resolved_command] + self.args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=full_env,
-                text=True,
-                bufsize=1,
-            )
-            self._running = True
-            self._reader_thread = threading.Thread(target=self._read_responses)
-            self._reader_thread.daemon = True
-            self._reader_thread.start()
-            self._stderr_thread = threading.Thread(target=self._drain_stderr)
-            self._stderr_thread.daemon = True
-            self._stderr_thread.start()
-        except Exception as e:
-            raise McpProtocolError(f"Failed to start MCP server: {e}")  # noqa: B904
-
-    def _handle_response_line(self, line: str) -> None:
-        """Parse a single JSON-RPC response line and dispatch it."""
-        try:
-            response = json.loads(line)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse MCP response: {e}")
-            return
-        msg_id = response.get("id")
-        if msg_id is None:
-            return
-        with self._lock:
-            self._responses[msg_id] = response
-            if msg_id in self._response_events:
-                self._response_events[msg_id].set()
-
-    def _read_responses(self) -> None:
-        """Background thread to read responses from the server"""
-        while self._running and self.process and self.process.stdout:
-            try:
-                line = self.process.stdout.readline()
-                if not line:
-                    break
-                line = line.strip()
-                if line:
-                    self._handle_response_line(line)
-            except Exception as e:
-                if self._running:
-                    logger.error(f"Error reading from MCP server: {e}")
-                break
-
-    def _drain_stderr(self) -> None:
-        """Background thread to drain stderr and prevent buffer deadlock"""
-        while self._running and self.process and self.process.stderr:
-            try:
-                line = self.process.stderr.readline()
-                if not line:
-                    break
-                logger.debug(f"MCP server stderr: {line.strip()}")
-            except Exception:
-                break
-
-    def send_notification(self, method: str, params: dict | None = None) -> None:
-        """Send a JSON-RPC notification (no id, no response expected)"""
-        if not self.process or not self.process.stdin:
-            raise McpProtocolError("Transport not connected")
-        notification = {"jsonrpc": "2.0", "method": method}
-        if params:
-            notification["params"] = params
-        try:
-            self.process.stdin.write(json.dumps(notification) + "\n")
-            self.process.stdin.flush()
-        except Exception as e:
-            raise McpProtocolError(f"Failed to send notification: {e}")  # noqa: B904
-
-    def send_request(self, method: str, params: dict | None = None) -> dict[str, Any]:
-        """Send a JSON-RPC request and wait for response"""
-        if not self.process or not self.process.stdin:
-            raise McpProtocolError("Transport not connected")
-
-        msg_id = self._get_next_id()
-        event = threading.Event()
-        with self._lock:
-            self._response_events[msg_id] = event
-
-        request = {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "method": method,
-        }
-        if params:
-            request["params"] = params
-
-        try:
-            self.process.stdin.write(json.dumps(request) + "\n")
-            self.process.stdin.flush()
-        except Exception as e:
-            with self._lock:
-                self._response_events.pop(msg_id, None)
-            raise McpProtocolError(f"Failed to send request: {e}")  # noqa: B904
-
-        if event.wait(timeout=self.timeout):
-            with self._lock:
-                self._response_events.pop(msg_id, None)
-                response = self._responses.pop(msg_id, {})
-            if "error" in response:
-                raise McpProtocolError(f"MCP error: {response['error'].get('message', 'Unknown error')}")
-            return response.get("result", {})
-
-        with self._lock:
-            self._response_events.pop(msg_id, None)
-            self._responses.pop(msg_id, None)
-        raise McpProtocolError(f"Timeout waiting for response to {method}")
-
-    def close(self) -> None:
-        """Close the transport and terminate the subprocess"""
-        self._running = False
-        if self.process:
-            try:
-                if self.process.stdin:
-                    self.process.stdin.close()
-                try:
-                    self.process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                    self.process.wait()
-            except Exception:
-                pass
-        if self._reader_thread and self._reader_thread.is_alive():
-            self._reader_thread.join(timeout=2)
-        if self._stderr_thread and self._stderr_thread.is_alive():
-            self._stderr_thread.join(timeout=2)
-
-
 class HttpTransport:
     """Transport for communicating with MCP server via HTTP (SSE or Streamable HTTP)"""
 
@@ -268,12 +86,56 @@ class HttpTransport:
         self.timeout = timeout
         self.session = requests.Session()
         self._session_id: str | None = None
+        self._protocol_version: str | None = None
 
     def connect(self) -> None:
         """Initialize HTTP session"""
         if self.api_key:
             self.session.headers["Authorization"] = f"Bearer {self.api_key}"
         self.session.headers["Content-Type"] = "application/json"
+        # StreamableHTTP servers may reply with either JSON or an SSE stream.
+        self.session.headers["Accept"] = "application/json, text/event-stream"
+
+    def _post(self, payload: dict[str, Any]) -> requests.Response:
+        """POST a JSON-RPC payload, carrying the MCP session id once the server assigns one."""
+        headers = {}
+        if self._session_id:
+            headers["Mcp-Session-Id"] = self._session_id
+        if self._protocol_version:
+            headers["MCP-Protocol-Version"] = self._protocol_version
+        response = self.session.post(
+            self.url,
+            json=payload,  # pyright: ignore[reportArgumentType]
+            headers=headers,
+            timeout=self.timeout,
+        )
+        session_id = response.headers.get("Mcp-Session-Id")
+        if session_id:
+            self._session_id = session_id
+        return response
+
+    @staticmethod
+    def _parse_jsonrpc(response: requests.Response) -> dict[str, Any]:
+        """Parse a JSON-RPC response that is plain JSON or an SSE stream.
+
+        An SSE stream may carry notifications before the response, and a single
+        event's payload can span multiple ``data:`` lines, so events are
+        reassembled and the first actual JSON-RPC response (carrying ``result``
+        or ``error``) is returned.
+        """
+        content_type = response.headers.get("Content-Type", "")
+        if "text/event-stream" not in content_type:
+            return response.json()
+
+        events = response.text.replace("\r\n", "\n").replace("\r", "\n").split("\n\n")
+        for event in events:
+            data = "\n".join(line[5:].lstrip() for line in event.splitlines() if line.startswith("data:"))
+            if not data:
+                continue
+            message = json.loads(data)
+            if "result" in message or "error" in message:
+                return message
+        raise McpProtocolError("No data in MCP event-stream response")
 
     def send_notification(self, method: str, params: dict | None = None) -> None:
         """Send a JSON-RPC notification via HTTP POST (no response expected)"""
@@ -281,11 +143,7 @@ class HttpTransport:
         if params:
             notification["params"] = params
         try:
-            self.session.post(
-                f"{self.url}/mcp",
-                json=notification,  # pyright: ignore[reportArgumentType]
-                timeout=self.timeout,
-            )
+            self._post(notification)
         except Exception as e:
             logger.error(f"Failed to send notification '{method}': {e}")
 
@@ -300,19 +158,15 @@ class HttpTransport:
             request["params"] = params
 
         try:
-            response = self.session.post(
-                f"{self.url}/mcp",
-                json=request,  # pyright: ignore[reportArgumentType]
-                timeout=self.timeout,
-            )
+            response = self._post(request)
             response.raise_for_status()
-            result = response.json()
-
-            if "error" in result:
-                raise McpProtocolError(f"MCP error: {result['error'].get('message', 'Unknown error')}")
-            return result.get("result", {})
+            result = self._parse_jsonrpc(response)
         except (requests.RequestException, ValueError) as e:
             raise McpProtocolError(f"HTTP request failed: {e}")  # noqa: B904
+
+        if "error" in result:
+            raise McpProtocolError(f"MCP error: {result['error'].get('message', 'Unknown error')}")
+        return result.get("result", {})
 
     def close(self) -> None:
         """Close the HTTP session"""
@@ -321,12 +175,13 @@ class HttpTransport:
 
 class McpClient:
     """
-    Client for communicating with MCP servers.
+    Client for communicating with MCP servers over HTTP.
 
-    Supports multiple transport types:
-    - Stdio: Spawns a subprocess and communicates via stdin/stdout
+    Supported transport types:
     - SSE: Uses Server-Sent Events over HTTP
     - StreamableHTTP: Uses HTTP POST for requests
+
+    Stdio transport is not supported (see STDIO_TRANSPORT_REMOVED_MSG).
     """
 
     def __init__(
@@ -338,23 +193,14 @@ class McpClient:
         self.server_config = server_config
         self.connection_timeout = connection_timeout
         self.initialization_timeout = initialization_timeout
-        self._transport: StdioTransport | HttpTransport | None = None
+        self._transport: HttpTransport | None = None
         self._initialized = False
 
     def connect(self) -> None:
         """Connect to the MCP server"""
         transport_type = self.server_config.transport.lower()
 
-        if transport_type == "stdio":
-            if not self.server_config.command:
-                raise McpProtocolError("Command required for Stdio transport")
-            self._transport = StdioTransport(
-                command=self.server_config.command,
-                args=self.server_config.args,
-                env=self.server_config.env,
-                timeout=self.connection_timeout,
-            )
-        elif transport_type in ("sse", "streamablehttp"):
+        if transport_type in ("sse", "streamablehttp"):
             if not self.server_config.url:
                 raise McpProtocolError(f"URL required for {transport_type} transport")
             self._transport = HttpTransport(
@@ -362,6 +208,8 @@ class McpClient:
                 api_key=self.server_config.api_key,
                 timeout=self.connection_timeout,
             )
+        elif transport_type == "stdio":
+            raise McpProtocolError(STDIO_TRANSPORT_REMOVED_MSG)
         else:
             raise McpProtocolError(f"Unsupported transport type: {transport_type}")
 
@@ -388,6 +236,7 @@ class McpClient:
 
         self.server_config.server_info = result.get("serverInfo", {})
         self.server_config.capabilities = result.get("capabilities", {})
+        self._transport._protocol_version = result.get("protocolVersion", MCP_PROTOCOL_VERSION)
 
         self._transport.send_notification("notifications/initialized", {})
         self._initialized = True
@@ -476,12 +325,14 @@ def parse_claude_desktop_config(config_path: str, config: dict | None = None) ->
     mcp_servers = config.get("mcpServers", {})
 
     for name, server_config in mcp_servers.items():
+        transport = _get_transport(server_config)
         server_info = McpServerInfo(
             name=name,
-            transport="Stdio",
+            transport=transport,
             command=server_config.get("command"),
             args=server_config.get("args", []),
             env=server_config.get("env", {}),
+            url=server_config.get("url"),
         )
         servers.append(server_info)
         logger.debug(f"Found MCP server '{name}' in config")
@@ -523,7 +374,7 @@ def parse_vscode_config(config_path: str, config: dict | None = None) -> list[Mc
     for name, server_config in mcp_servers.items():
         server_info = McpServerInfo(
             name=name,
-            transport=server_config.get("transport", "Stdio"),
+            transport=_get_transport(server_config),
             command=server_config.get("command"),
             args=server_config.get("args", []),
             env=server_config.get("env", {}),
@@ -533,6 +384,13 @@ def parse_vscode_config(config_path: str, config: dict | None = None) -> list[Mc
         logger.debug(f"Found MCP server '{name}' in VS Code config")
 
     return servers
+
+
+def _get_transport(server_config: dict[str, Any]) -> str:
+    """Map client configuration transport names to OpenMetadata's schema values."""
+    transport = server_config.get("transport") or server_config.get("type") or "Stdio"
+    normalized = transport.lower()
+    return {"http": "StreamableHTTP", "sse": "SSE", "streamablehttp": "StreamableHTTP"}.get(normalized, transport)
 
 
 def discover_servers_from_config_files(
