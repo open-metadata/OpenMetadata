@@ -1160,10 +1160,10 @@ public class SearchResource {
 
       SearchStatsResponse$IndexStats indexStat = new SearchStatsResponse$IndexStats();
       indexStat.setName(stats.name());
-      indexStat.setDocuments((int) stats.documents());
+      indexStat.setDocuments(stats.documents());
       indexStat.setPrimaryShards(stats.primaryShards());
       indexStat.setReplicaShards(stats.replicaShards());
-      indexStat.setSizeInBytes((int) stats.sizeInBytes());
+      indexStat.setSizeInBytes(stats.sizeInBytes());
       indexStat.setSizeFormatted(formatBytes(stats.sizeInBytes()));
       indexStat.setHealth(stats.health());
       indexStat.setAliases(new java.util.ArrayList<>(stats.aliases()));
@@ -1186,7 +1186,7 @@ public class SearchResource {
                           .findFirst()
                           .map(IndexStats::sizeInBytes)
                           .orElse(0L);
-                  orphan.setSizeInBytes((int) size);
+                  orphan.setSizeInBytes(size);
                   orphan.setSizeFormatted(formatBytes(size));
                   return orphan;
                 })
@@ -1195,8 +1195,8 @@ public class SearchResource {
     SearchStatsResponse response = new SearchStatsResponse();
     response.setClusterHealth(clusterHealth);
     response.setTotalIndexes(allIndexStats.size());
-    response.setTotalDocuments((int) totalDocs);
-    response.setTotalSizeInBytes((int) totalSize);
+    response.setTotalDocuments(totalDocs);
+    response.setTotalSizeInBytes(totalSize);
     response.setTotalSizeFormatted(formatBytes(totalSize));
     response.setTotalPrimaryShards(totalPrimaryShards);
     response.setTotalReplicaShards(totalReplicaShards);
