@@ -14,27 +14,24 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
+import {
+  openTestCaseDetailsPage,
+  verifyTestCaseLastRunBanner,
+} from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 import { enableAiAppMode } from '../../Utils/appMode';
 
-const table = new TableClass();
-
-const getTestCaseFqn = () =>
-  table.testCasesResponseData[0].fullyQualifiedName as string;
+// Created in `beforeAll` rather than at module scope: the generated entity
+// name is fixed at construction, so a retry that reuses this worker would
+// re-run `create` with the same name and get a 409.
+let table!: TableClass;
 
 const openDetailsPage = async (page: Page) => {
   await enableAiAppMode(page);
-  await redirectToHomePage(page);
-  await page.goto(
-    `/observability/test-case/${encodeURIComponent(
-      getTestCaseFqn()
-    )}/test-case-results`
+  await openTestCaseDetailsPage(
+    page,
+    table.testCasesResponseData[0].fullyQualifiedName as string
   );
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
 };
 
 test.describe(
@@ -71,8 +68,6 @@ test.describe(
     test('renders the page frame with a two column result tab', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Open the app mode details page', async () => {
         await openDetailsPage(page);
       });
@@ -107,8 +102,6 @@ test.describe(
     });
 
     test('leads the main column with the result history', async ({ page }) => {
-      test.slow();
-
       await openDetailsPage(page);
 
       await expect(page.getByTestId('graph-container')).toBeVisible();
@@ -127,8 +120,6 @@ test.describe(
     test('aligns the page header card with the tab body content', async ({
       page,
     }) => {
-      test.slow();
-
       await openDetailsPage(page);
 
       await expect(
@@ -158,8 +149,6 @@ test.describe(
     test('aligns the last run banner with the tab body grid', async ({
       page,
     }) => {
-      test.slow();
-
       await openDetailsPage(page);
 
       await verifyTestCaseLastRunBanner(page, 'success');
