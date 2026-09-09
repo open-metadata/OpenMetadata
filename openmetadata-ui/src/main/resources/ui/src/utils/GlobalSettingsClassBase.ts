@@ -897,7 +897,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.worksheet-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
           },
