@@ -21,12 +21,20 @@ first batch — "a tag on a `describe`-loop body is not a scalpel". The list
 matches the full title instead, so it selects the single variant the evidence is
 about.
 
-After editing the list, run its check — it is the only thing standing between a
-drifted title and a quarantine entry that silently matches nothing:
+A drifted title is a quarantine entry that silently matches nothing — it looks
+quarantined and runs in the queue anyway. The guard against that runs in CI, in
+UI Checkstyle, and locally:
 
 ```bash
-node playwright/quarantine-list.check.mjs
+yarn test:eslint-rules
 ```
+
+It asserts every entry selects **exactly one** test. It lives in
+`playwright/eslint-rules/tests/quarantine-list.test.mjs` because that directory
+is already globbed by `test:eslint-rules` and is exempt from the corpus
+guardrail that keeps `playwright/` TypeScript-only (Playwright's default
+`testMatch` collects `.mjs`, so a check script beside the list would be run as
+an unlinted test).
 
 That split is the whole point: a flake in the queue ejects a batch and stalls
 everyone, while the same flake on a PR costs nothing (`retries: 1` turns it

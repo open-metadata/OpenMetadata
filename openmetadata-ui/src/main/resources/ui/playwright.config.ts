@@ -102,12 +102,18 @@ const QUARANTINE_MATCHER = new RegExp(
 );
 const runQuarantinedOnly = Boolean(process.env.PLAYWRIGHT_RUN_QUARANTINED);
 // Quarantine only takes tests out of the MERGE QUEUE, where a flake ejects a
-// batch and stalls everyone. PR runs still execute them — `retries` turns a
-// flake green there, so they cost the author nothing but stay visible to
-// whoever can fix them — and so do nightlies. GITHUB_EVENT_NAME is set by
-// Actions on every step; under `workflow_call` it carries the caller's
-// triggering event, so the reusable pipeline sees `merge_group` too. Set it
-// locally to reproduce what the queue runs.
+// batch and stalls everyone. PR runs still execute them — and so do nightlies —
+// so the coverage stays in front of whoever can fix it.
+//
+// What that costs a PR author depends entirely on the PR retry count, which is
+// NOT set here: at `retries >= 1` a flake retries green and costs nothing,
+// at `retries: 0` every quarantined test is a hard PR failure. #32833 proposes
+// exactly that change for `pull_request`, which would invert this trade — if it
+// lands, quarantined tests need their own PR retry budget or an exemption.
+//
+// GITHUB_EVENT_NAME is set by Actions on every step; under `workflow_call` it
+// carries the caller's triggering event, so the reusable pipeline sees
+// `merge_group` too. Set it locally to reproduce what the queue runs.
 const skipQuarantined = process.env.GITHUB_EVENT_NAME === 'merge_group';
 const asRegExpList = (value?: RegExp | RegExp[]) =>
   value === undefined ? [] : Array.isArray(value) ? value : [value];
