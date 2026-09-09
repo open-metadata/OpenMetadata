@@ -846,21 +846,21 @@ test.describe('Curated Assets – Description filter', () => {
 
       await selectAssetTypes(adminPage, ['Table']);
 
-      const rule0 = adminPage.locator('.rule').nth(0);
+      const rule0 = adminPage.getByTestId('query-builder-rule-0');
 
       await selectOption(
         adminPage,
-        rule0.locator('.rule--field'),
+        rule0.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         adminPage,
-        rule0.locator('.rule--operator'),
+        rule0.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
       await rule0
-        .locator('.rule--widget--TEXT input[type="text"]')
+        .locator('[data-testid=advanced-search-value] input[type="text"]')
         .fill(WORD_TO_SEARCH.toLowerCase());
     });
 

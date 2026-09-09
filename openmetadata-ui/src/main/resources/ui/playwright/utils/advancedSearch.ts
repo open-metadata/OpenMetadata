@@ -324,17 +324,17 @@ export const fillRule = async (
     index: number;
   }
 ) => {
-  const ruleLocator = page.locator('.rule').nth(index - 1);
+  const ruleLocator = page.getByTestId(`query-builder-rule-${index - 1}`);
 
   // Perform click on rule field
-  await selectOption(page, ruleLocator.locator('.rule--field'), field.id, true);
+  await selectOption(page, ruleLocator.getByTestId('advanced-search-field-select'), field.id, true);
 
   // Perform click on operator
-  await selectOption(page, ruleLocator.locator('.rule--operator'), condition);
+  await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), condition);
 
   if (searchCriteria) {
     const inputElement = ruleLocator.locator(
-      '.rule--widget--TEXT input[type="text"]'
+      '[data-testid=advanced-search-value] input[type="text"]'
     );
     const searchData = searchCriteria.toLowerCase();
 
@@ -342,7 +342,7 @@ export const fillRule = async (
       await inputElement.fill(searchData);
     } else {
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       const countMatchingOptions = async () => {
@@ -753,19 +753,19 @@ export const runRuleGroupTests = async (
 
 export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await showAdvancedSearchDialog(page);
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
   // Perform click on rule field
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Database',
     true
   );
-  await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
+  await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), '==');
 
   const inputElement = ruleLocator.locator(
-    '.rule--widget--SELECT input[role="combobox"]'
+    '[data-testid=advanced-search-value] input[role="combobox"]'
   );
 
   await inputElement.fill('non-existing-value');
@@ -810,16 +810,16 @@ export const fillStaticListRule = async (
     ruleIndex: number;
   }
 ) => {
-  const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
+  const ruleLocator = page.getByTestId(`query-builder-rule-${ruleIndex - 1}`);
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     fieldLabel,
     true
   );
-  await selectOption(page, ruleLocator.locator('.rule--operator'), condition);
-  await selectOption(page, ruleLocator.locator('.widget--widget'), value);
+  await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), condition);
+  await selectOption(page, ruleLocator.getByTestId('advanced-search-value'), value);
 };
 
 export const getFieldsSuggestionSearchText = (

@@ -19,7 +19,7 @@ import type { QueryBuilderButtonPreset } from './QueryBuilderButton.types';
  */
 export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
   iconClassName: 'tw:size-4',
-  addRuleLabel: () => t('label.add'),
+  addRuleLabel: () => t('label.add-new-entity', { entity: t('label.field') }),
   testIds: {
     addRule: 'advanced-search-add-rule',
     delRule: 'advanced-search-delete-rule',
@@ -52,6 +52,16 @@ export const COMPACT_BUTTON_PRESET: QueryBuilderButtonPreset = {
   iconClassName: 'tw:size-3.5',
   addRuleLabel: CONDITION_BUTTON_PRESET.addRuleLabel,
   testIds: CONDITION_BUTTON_PRESET.testIds,
+};
+
+/**
+ * Add-automation: the same controls, labelled for a screen whose rules are a
+ * list of fields rather than a set of conditions. The testids are the
+ * form-embedded ones, which is what its Playwright suites locate.
+ */
+export const AUTOMATION_BUTTON_PRESET: QueryBuilderButtonPreset = {
+  ...CONDITION_BUTTON_PRESET,
+  addRuleLabel: () => t('label.add-new-entity', { entity: t('label.field') }),
 };
 
 /**

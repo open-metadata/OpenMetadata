@@ -101,21 +101,21 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         team.responseData.displayName,
         true
       );
@@ -195,21 +195,21 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         user.getUserDisplayName(),
         true
       );
@@ -296,21 +296,21 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         user.getUserDisplayName(),
         true
       );
@@ -396,21 +396,21 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         user.getUserDisplayName(),
         true
       );
@@ -489,16 +489,16 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
@@ -568,16 +568,16 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
@@ -649,21 +649,21 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.contains
       );
 
       const inputElement = ruleLocator.locator(
-        '.rule--widget--TEXT input[type="text"]'
+        '[data-testid=advanced-search-value] input[type="text"]'
       );
       await inputElement.fill('description');
 
@@ -736,20 +736,20 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_contains
       );
       const inputElement = ruleLocator.locator(
-        '.rule--widget--TEXT input[type="text"]'
+        '[data-testid=advanced-search-value] input[type="text"]'
       );
       await inputElement.fill('description');
 
@@ -821,16 +821,16 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
@@ -905,16 +905,16 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
@@ -1034,21 +1034,21 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain1.responseData.name,
         true
       );
@@ -1116,21 +1116,21 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain2.responseData.name,
         true
       );
@@ -1199,21 +1199,21 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain1.responseData.name,
         true
       );
@@ -1280,21 +1280,21 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         domain1.responseData.name,
         true
       );
@@ -1361,16 +1361,16 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
@@ -1434,16 +1434,16 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Domain',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
@@ -1513,16 +1513,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
@@ -1536,7 +1536,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // and the save button stays enabled.
       await ruleLocator
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         )
         .fill('99.9');
 
@@ -1566,10 +1566,10 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
       await versionInput.clear();
       await versionInput.fill(actualVersion);
@@ -1630,16 +1630,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
@@ -1653,7 +1653,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // and the save button stays enabled.
       await ruleLocator
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         )
         .fill('99.9');
 
@@ -1688,10 +1688,10 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
       await versionInput.clear();
       await versionInput.fill(domainBumpedVersion);
@@ -1748,16 +1748,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
@@ -1765,7 +1765,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // check passes regardless of how many version bumps CI introduces.
       await ruleLocator
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         )
         .fill('99.9');
 
@@ -1786,10 +1786,10 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -1829,16 +1829,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
       );
 
@@ -1846,7 +1846,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // entity_version > 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         )
         .fill('99.9');
 
@@ -1868,10 +1868,10 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -1913,16 +1913,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
       );
 
@@ -1930,7 +1930,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // entity_version <= 99.9 always passes regardless of version bumps in CI.
       await ruleLocator
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         )
         .fill('99.9');
 
@@ -1951,10 +1951,10 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -1997,16 +1997,16 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Version',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
       );
 
@@ -2014,7 +2014,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // entity_version >= 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         )
         .fill('99.9');
 
@@ -2035,10 +2035,10 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       const versionInput = page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .first()
         .locator(
-          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+          '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -2105,22 +2105,22 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
@@ -2200,22 +2200,22 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
@@ -2295,21 +2295,21 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
@@ -2388,21 +2388,21 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         createdDataProducts[0].responseData.name,
         true
       );
@@ -2516,16 +2516,16 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
@@ -2597,16 +2597,16 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
@@ -2684,22 +2684,22 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
@@ -2771,22 +2771,22 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
@@ -2857,21 +2857,21 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
@@ -2943,21 +2943,21 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--value'),
+        ruleLocator.getByTestId('advanced-search-value'),
         table.entityResponseData.displayName || '',
         true
       );
@@ -3028,16 +3028,16 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
       );
 
@@ -3109,16 +3109,16 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
@@ -3189,16 +3189,16 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.between
       );
 
@@ -3274,16 +3274,16 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_between
       );
 
@@ -3359,22 +3359,22 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
       const date = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
 
-      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
+      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3405,9 +3405,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .nth(0)
-        .locator('.rule--value input[type="date"]')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
       // save and trigger contract validation
@@ -3445,16 +3445,16 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
       );
 
@@ -3463,7 +3463,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
+      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3494,9 +3494,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .nth(0)
-        .locator('.rule--value input[type="date"]')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
       // save and trigger contract validation
@@ -3534,16 +3534,16 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
       );
 
@@ -3552,7 +3552,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
+      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3582,9 +3582,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .nth(0)
-        .locator('.rule--value input[type="date"]')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
       // save and trigger contract validation
@@ -3626,16 +3626,16 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Updated on',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
       );
 
@@ -3644,7 +3644,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
+      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3674,9 +3674,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await page
-        .locator('.group')
+        .getByTestId('query-builder-group-card')
         .nth(0)
-        .locator('.rule--value input[type="date"]')
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
       // save and trigger contract validation
@@ -3719,7 +3719,7 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     });
 
     await test.step('Verify delete button is not visible with only one rule', async () => {
-      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+      await expect(page.getByTestId('delete-condition-button')).not.toBeVisible();
     });
 
     await test.step('fill the first rule completely', async () => {
@@ -3729,16 +3729,16 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Owners',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Is Set'
       );
     });
@@ -3746,20 +3746,20 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     await test.step('Add a second rule condition', async () => {
       await page.getByTestId('add-new-rule-btn').click();
 
-      await expect(page.locator('.action--DELETE').first()).toBeVisible();
+      await expect(page.getByTestId('delete-condition-button').first()).toBeVisible();
     });
 
     await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
-      const deleteButtons = page.locator('.action--DELETE');
+      const deleteButtons = page.getByTestId('delete-condition-button');
       await deleteButtons.first().click();
 
-      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+      await expect(page.getByTestId('delete-condition-button')).not.toBeVisible();
       await expect(page.getByText(/rule is required/i)).toBeVisible();
     });
 
     await test.step('select Is Set operator and error is hidden', async () => {
-      await selectOption(page, page.locator('.rule--field'), 'Owners', true);
-      await selectOption(page, page.locator('.rule--operator'), 'Is Set');
+      await selectOption(page, page.getByTestId('advanced-search-field-select'), 'Owners', true);
+      await selectOption(page, page.getByTestId('advanced-search-operator-select'), 'Is Set');
       await expect(page.getByText(/rule is required/i)).not.toBeVisible();
     });
   });

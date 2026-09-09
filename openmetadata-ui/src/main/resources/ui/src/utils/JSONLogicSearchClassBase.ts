@@ -644,7 +644,7 @@ class JSONLogicSearchClassBase {
 
   mainWidgetProps = {
     fullWidth: true,
-    valueLabel: t('label.criteria') + ':',
+    valueLabel: t('label.value'),
   };
 
   public autoCompleteTier: SelectFieldSettings['asyncFetch'] = async (
@@ -749,10 +749,10 @@ class JSONLogicSearchClassBase {
         showLabels,
         canReorder: false,
         renderSize: 'medium',
-        fieldLabel: t('label.field-plural') + ':',
-        operatorLabel: t('label.condition') + ':',
+        fieldLabel: t('label.field'),
+        operatorLabel: t('label.operator'),
         showNot: false,
-        valueLabel: t('label.criteria') + ':',
+        valueLabel: t('label.value'),
         renderButton,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,

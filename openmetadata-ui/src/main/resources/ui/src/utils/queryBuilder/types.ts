@@ -58,6 +58,46 @@ export type GroupMode =
  * filters. Changing their case breaks stored trees, so the UI uppercases the
  * *label* for display (see OMConjs) rather than touching these.
  */
+/**
+ * Which ground the group card sits on.
+ *
+ * The same builder appears on surfaces of different colour — a white side
+ * panel in the workflow editor, a tinted modal body in Explore — and a card
+ * that is always tinted reads as a stray block on the white one. Callers pick;
+ * `SUBTLE` stays the default so no existing screen shifts.
+ */
+export const QUERY_BUILDER_SURFACE = {
+  /** White — for a card sitting on a tinted or grouped background. */
+  PLAIN: 'plain',
+  /** Tinted — for a card sitting on white. */
+  SUBTLE: 'subtle',
+} as const;
+
+export type QueryBuilderSurface =
+  (typeof QUERY_BUILDER_SURFACE)[keyof typeof QUERY_BUILDER_SURFACE];
+
+/**
+ * How each surface paints its card.
+ *
+ * The two are not just different fills. A card on a white page can carry the
+ * tint itself; a card inside a panel that is already white needs an edge to
+ * read as a card at all, so it goes white-with-a-border and moves the tint to
+ * its header strip. Both tokens carry their own dark-mode value.
+ */
+export const QUERY_BUILDER_SURFACE_CLASS: Record<
+  QueryBuilderSurface,
+  { card: string; header: string }
+> = {
+  [QUERY_BUILDER_SURFACE.PLAIN]: {
+    card: 'tw:bg-primary tw:border tw:border-primary',
+    header: 'tw:bg-utility-gray-blue-50 tw:border-b tw:border-primary',
+  },
+  [QUERY_BUILDER_SURFACE.SUBTLE]: {
+    card: 'tw:bg-utility-gray-blue-50',
+    header: 'tw:border-b tw:border-secondary',
+  },
+};
+
 export const QUERY_BUILDER_CONJUNCTION = {
   AND: 'AND',
   OR: 'OR',

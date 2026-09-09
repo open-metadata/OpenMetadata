@@ -98,16 +98,16 @@ const fillSemanticsForm = async (
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);
 
-  const ruleLocator = page.locator('.group').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
   await selectOption(
     page,
-    ruleLocator.locator('.group--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     semanticsData.rules[0].field,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     semanticsData.rules[0].operator
   );
 

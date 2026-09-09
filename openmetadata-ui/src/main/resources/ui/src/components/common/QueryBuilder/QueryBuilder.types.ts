@@ -22,6 +22,7 @@ import type { QueryBuilderConfigOverrides } from '../../../utils/queryBuilder/co
 import type {
   ConjunctionMode,
   GroupMode,
+  QueryBuilderSurface,
 } from '../../../utils/queryBuilder/types';
 import type { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
@@ -50,6 +51,12 @@ export interface QueryBuilderProps {
   /** Plain user-created brackets only; `rule_group` is unaffected. */
   groupMode?: GroupMode;
   conjunctionMode?: ConjunctionMode;
+  /**
+   * Hides the AND/OR control without touching the stored conjunction, for a
+   * caller whose rules only ever combine one way. Restricting the config
+   * instead would rewrite a saved filter that used the other conjunction.
+   */
+  showConjunction?: boolean;
   entityType?: EntityType;
   /** Seed field for an empty tree. */
   defaultField?: string;
@@ -66,6 +73,8 @@ export interface QueryBuilderProps {
   // ---- escape hatch ----
   /** Merged last, after every mode flag. */
   configOverrides?: QueryBuilderConfigOverrides;
+  /** Which ground the group card sits on. Defaults to the tinted surface. */
+  surface?: QueryBuilderSurface;
   /** Overrides the preset the group/output mode would otherwise select. */
   buttonPreset?: QueryBuilderButtonPreset;
 

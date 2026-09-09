@@ -456,7 +456,7 @@ const handlePropertyValueInput = async (
   value: string | number | { start: string | number; end: string | number },
   propertyType?: string
 ) => {
-  const inputElement = ruleLocator.locator('.rule--widget input');
+  const inputElement = ruleLocator.getByTestId('advanced-search-value').locator('input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
   // Fill the input only if it's visible
@@ -508,25 +508,25 @@ export const applyCustomPropertyFilter = async (
   entityType: string = 'Dashboard',
   propertyType?: string
 ) => {
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Custom Properties',
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     entityType,
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     propertyName,
     true
   );
@@ -534,7 +534,7 @@ export const applyCustomPropertyFilter = async (
   const operatorLabel = getOperatorLabel(operator);
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     operatorLabel
   );
 
@@ -544,8 +544,8 @@ export const applyCustomPropertyFilter = async (
         start: string | number;
         end: string | number;
       };
-      const startInput = ruleLocator.locator('.rule--value input').first();
-      const endInput = ruleLocator.locator('.rule--value input').last();
+      const startInput = ruleLocator.getByTestId('advanced-search-value').locator('input').first();
+      const endInput = ruleLocator.getByTestId('advanced-search-value').locator('input').last();
 
       await startInput.click();
       await fillPropertyValue(startInput, rangeValue.start);

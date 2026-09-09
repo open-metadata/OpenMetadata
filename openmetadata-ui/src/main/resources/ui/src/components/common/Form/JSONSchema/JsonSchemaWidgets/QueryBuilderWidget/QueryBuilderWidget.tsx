@@ -21,6 +21,7 @@ import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilder from '../../../../QueryBuilder/QueryBuilder';
+import { QUERY_BUILDER_SURFACE } from '../../../../../../utils/queryBuilder/types';
 
 /**
  * RJSF adapter over the canonical `QueryBuilder`.
@@ -104,6 +105,7 @@ const QueryBuilderWidget: FC<
       readonly={readonly}
       showExploreLink={showExploreLink}
       subField={subField}
+      surface={QUERY_BUILDER_SURFACE.PLAIN}
       value={value}
       onActionsReady={getQueryActions}
       onChange={(nextValue) => onChange(nextValue)}

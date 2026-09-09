@@ -41,11 +41,11 @@ const CREATED_RULE_ID = '44444444-4444-4444-8444-444444444444';
 // Select.ComboBox (OMFieldSelect). The default "owners" rule leaves an empty,
 // hidden `<div class="rule--field">` first in the DOM, so scope to the
 // container that actually holds a combobox — the pre-migration
-// `.rule--field .ant-select` selector filtered these out implicitly.
-const comboboxField = (scope: Page | Locator, className: string): Locator =>
-  scope
-    .locator(className)
-    .filter({ has: scope.locator('input[role="combobox"]') });
+// `[data-testid=advanced-search-field-select] .ant-select` selector filtered these out implicitly.
+// The filter this used to carry excluded RAQB's non-combobox field markup.
+// The canvas renders one combobox per control, so the testid is exact.
+const comboboxField = (scope: Page | Locator, testId: string): Locator =>
+  scope.getByTestId(testId);
 
 // Reusable rule fixture for tests that only need a visible rule card to exist
 // (cache-state tests, edit-discard test). Keeps the inline mock objects DRY.
@@ -1312,7 +1312,7 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage.getByTestId('empty-add-context-rule').click();
     await adminPage.getByTestId('add-context-condition').click();
 
-    const fieldContainer = comboboxField(adminPage, '.rule--field').first();
+    const fieldContainer = comboboxField(adminPage, 'advanced-search-field-select').first();
     await fieldContainer.waitFor({ state: 'visible' });
     await selectOption(adminPage, fieldContainer, 'Custom Properties', true);
 
@@ -1376,16 +1376,16 @@ test.describe.serial('Persona AI Context', () => {
       .fill('service-is-regression-test');
 
     await adminPage.getByTestId('add-context-condition').click();
-    const serviceField = comboboxField(adminPage, '.rule--field').first();
+    const serviceField = comboboxField(adminPage, 'advanced-search-field-select').first();
     await serviceField.waitFor({ state: 'visible' });
 
     await selectOption(adminPage, serviceField, 'Service', true);
 
-    const operatorLocator = comboboxField(adminPage, '.rule--operator').first();
+    const operatorLocator = comboboxField(adminPage, 'advanced-search-operator-select').first();
     await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
     await selectOption(adminPage, operatorLocator, 'Is', false);
 
-    const valueSelect = comboboxField(adminPage, '.rule--widget').first();
+    const valueSelect = comboboxField(adminPage, 'advanced-search-value').first();
     await valueSelect.waitFor({ state: 'visible' });
 
     await selectOption(adminPage, valueSelect, dbService.entity.name, true);
@@ -1661,15 +1661,15 @@ test.describe.serial('Persona AI Context', () => {
         adminPage.getByTestId('delete-condition-button')
       ).toHaveCount(2);
 
-      const firstField = comboboxField(adminPage, '.rule--field').first();
+      const firstField = comboboxField(adminPage, 'advanced-search-field-select').first();
       await firstField.waitFor({ state: 'visible' });
       await selectOption(adminPage, firstField, 'Description', true);
 
-      const firstOp = comboboxField(adminPage, '.rule--operator').first();
+      const firstOp = comboboxField(adminPage, 'advanced-search-operator-select').first();
       await firstOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, firstOp, 'Contains', false);
       const alphaInput = drawer
-        .locator('.rule--widget--TEXT input[type="text"]')
+        .locator('[data-testid=advanced-search-value] input[type="text"]')
         .first();
       await alphaInput.fill('alpha');
       // Blur to commit the value to the RAQB immutable tree before adding the
@@ -1691,14 +1691,14 @@ test.describe.serial('Persona AI Context', () => {
         adminPage.getByTestId('delete-condition-button')
       ).toHaveCount(3);
 
-      const secondField = comboboxField(adminPage, '.rule--field').last();
+      const secondField = comboboxField(adminPage, 'advanced-search-field-select').last();
       await selectOption(adminPage, secondField, 'Description', true);
 
-      const secondOp = comboboxField(adminPage, '.rule--operator').last();
+      const secondOp = comboboxField(adminPage, 'advanced-search-operator-select').last();
       await secondOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, secondOp, 'Contains', false);
       const betaInput = drawer
-        .locator('.rule--widget--TEXT input[type="text"]')
+        .locator('[data-testid=advanced-search-value] input[type="text"]')
         .last();
       await betaInput.fill('beta');
       // Blur to commit before the conjunction change fires.

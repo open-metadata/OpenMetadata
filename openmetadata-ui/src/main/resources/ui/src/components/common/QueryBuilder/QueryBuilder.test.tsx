@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { JsonTree } from '@react-awesome-query-builder/ui';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilder from './QueryBuilder';
@@ -27,6 +28,35 @@ jest.mock('../../../rest/searchAPI', () => ({
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getExplorePath: jest.fn(),
+}));
+
+// `Add group` opens a react-aria menu, which cannot be opened under jsdom.
+// Standing in for it keeps these tests about the canvas: the stub exposes the
+// same testid plus one button per conjunction, so a test can add a group and
+// say which conjunction joins it.
+jest.mock('./QueryBuilderCanvas/QueryBuilderAddGroup', () => ({
+  __esModule: true,
+  default: ({
+    conjunctions,
+    testId,
+    onAdd,
+  }: {
+    conjunctions: string[];
+    testId: string;
+    onAdd: (conjunction?: string) => void;
+  }) => (
+    <div data-testid={testId}>
+      {conjunctions.map((conjunction) => (
+        <button
+          data-testid={`${testId}-${conjunction.toLowerCase()}`}
+          key={conjunction}
+          type="button"
+          onClick={() => onAdd(conjunction)}>
+          {conjunction}
+        </button>
+      ))}
+    </div>
+  ),
 }));
 
 const { searchQuery } = jest.requireMock('../../../rest/searchAPI');
@@ -47,6 +77,30 @@ const renderBuilder = (props = {}) =>
       {...props}
     />
   );
+
+/** Adds a peer group, saying which conjunction joins it. */
+const addGroup = (conjunction = 'AND') =>
+  fireEvent.click(
+    screen.getByTestId(`advanced-search-add-group-${conjunction.toLowerCase()}`)
+  );
+
+/**
+ * The conjunction the visible control governs: the innermost group that
+ * actually holds rules, skipping any wrapper group RAQB seeded around it.
+ */
+const conjunctionOfRuleHolder = (tree?: JsonTree) => {
+  let node = tree as JsonTree | undefined;
+
+  while (
+    node?.children1?.length === 1 &&
+    (node.children1 as JsonTree[])[0]?.children1
+  ) {
+    node = (node.children1 as JsonTree[])[0];
+  }
+
+  return (node?.properties as { conjunction?: string } | undefined)
+    ?.conjunction;
+};
 
 describe('QueryBuilder', () => {
   it('should render the builder', () => {
@@ -78,12 +132,18 @@ describe('QueryBuilder', () => {
     it('should still render a JSONLogic rule_group in flat mode', () => {
       // The seeded JSONLogic tree is group -> rule_group(some) -> rule. If
       // flat mode were implemented as a depth cap this would render nothing.
-      const { container } = renderBuilder({
+      renderBuilder({
         groupMode: 'flat',
         outputType: SearchOutputType.JSONLogic,
       });
 
-      expect(container.querySelector('.rule_group')).toBeInTheDocument();
+      // The rule_group renders as the outermost card — RAQB's wrapper group
+      // around it is chrome, so it is not drawn — and the field it groups on
+      // is edited in the row's Field column, so the card shows exactly one.
+      expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(1);
+      expect(
+        screen.getAllByTestId('advanced-search-field-select')
+      ).toHaveLength(1);
     });
   });
 
@@ -170,6 +230,7 @@ describe('QueryBuilder', () => {
   // These are the handles Playwright addresses the builder through. Before
   // they existed the specs had to reach into RAQB's own DOM — `.rule`,
   // `.rule--field`, `.rule--operator`, `.rule--widget--TEXT`, `.widget--widget`
+  // — none of which the canvas renders any more
   // — which is a bet on a third-party library's internals. Asserting them here
   // means a rename cannot pass CI silently.
   describe('Playwright test handles', () => {
@@ -238,7 +299,10 @@ describe('QueryBuilder', () => {
 
         const emittedTree = onChange.mock.calls.at(-1)?.[1];
 
-        expect(emittedTree?.properties?.conjunction).toBe('OR');
+        // The control belongs to the group that holds the rules. In nested
+        // mode RAQB wraps that group in one more, and the wrapper is not
+        // drawn, so the conjunction lands one level in.
+        expect(conjunctionOfRuleHolder(emittedTree)).toBe('OR');
       }
     );
 
@@ -246,19 +310,26 @@ describe('QueryBuilder', () => {
     // falsy. Forcing it true produced a group with nothing in it — a box the
     // user could see but not filter with.
     it('should put a usable rule inside a newly added group', async () => {
-      const { container } = renderBuilder({ groupMode: 'nested' });
+      renderBuilder({ groupMode: 'nested' });
 
-      const rulesBefore = container.querySelectorAll('.rule').length;
-      fireEvent.click(screen.getAllByTestId('advanced-search-add-group')[0]);
+      const rulesBefore = screen.getAllByTestId(
+        'advanced-search-field-select'
+      ).length;
+      const cardsBefore = screen.getAllByTestId(
+        'query-builder-group-card'
+      ).length;
+      addGroup();
 
       await waitFor(() =>
-        expect(container.querySelectorAll('.group').length).toBeGreaterThan(2)
+        expect(
+          screen.getAllByTestId('query-builder-group-card').length
+        ).toBeGreaterThan(cardsBefore)
       );
 
       // The new group must bring its own rule, not arrive empty.
-      expect(container.querySelectorAll('.rule').length).toBeGreaterThan(
-        rulesBefore
-      );
+      expect(
+        screen.getAllByTestId('advanced-search-field-select').length
+      ).toBeGreaterThan(rulesBefore);
     });
 
     it('should expose the add and delete affordances by testid in nested mode', () => {
@@ -381,10 +452,12 @@ describe('QueryBuilder – defaults', () => {
   it('should render with no output type or entity type given', () => {
     render(<QueryBuilder />);
 
-    expect(screen.getByTestId('query-builder-form-field')).toHaveClass(
-      'flat',
-      'elasticsearch'
-    );
+    // Elasticsearch output in flat mode: one card, and no "add group".
+    expect(screen.getByTestId('query-builder-form-field')).toBeInTheDocument();
+    expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(1);
+    expect(
+      screen.queryByTestId('advanced-search-add-group')
+    ).not.toBeInTheDocument();
   });
 
   it('should withhold the explore link when the caller opts out', async () => {

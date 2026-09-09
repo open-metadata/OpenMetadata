@@ -54,19 +54,19 @@ test.describe('Advanced Search Suggestions', () => {
       await waitForAllLoadersToDisappear(page);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         field.label,
         true
       );
 
-      await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
+      await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), '==');
 
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       const searchText = toLower(

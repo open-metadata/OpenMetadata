@@ -196,7 +196,7 @@ class AdvancedSearchClassBase {
 
   mainWidgetProps = {
     fullWidth: true,
-    valueLabel: t('label.criteria') + ':',
+    valueLabel: t('label.value'),
   };
 
   /**
@@ -761,10 +761,10 @@ class AdvancedSearchClassBase {
         showLabels,
         canReorder: false,
         renderSize: 'medium',
-        fieldLabel: t('label.field-plural') + ':',
-        operatorLabel: t('label.condition') + ':',
+        fieldLabel: t('label.field'),
+        operatorLabel: t('label.operator'),
         showNot: false,
-        valueLabel: t('label.criteria') + ':',
+        valueLabel: t('label.value'),
         removeEmptyGroupsOnLoad: false,
         setOpOnChangeField: ['none'],
         defaultField: EntityFields.OWNERS,

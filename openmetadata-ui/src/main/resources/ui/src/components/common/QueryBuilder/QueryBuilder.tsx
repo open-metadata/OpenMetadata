@@ -14,20 +14,15 @@ import { Divider, Typography } from '@openmetadata/ui-core-components';
 import type {
   Actions,
   BuilderProps,
-  ButtonProps,
   Config,
-  ConfigContext,
   ImmutableTree,
   JsonTree,
-  RenderSettings,
 } from '@react-awesome-query-builder/ui';
-import {
-  Builder,
-  Query,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/ui';
+import { Query, Utils as QbUtils } from '@react-awesome-query-builder/ui';
+// Both stylesheets target RAQB's own markup, which the canvas no longer
+// renders, so neither reaches this component's DOM. They are left in place for
+// the cleanup PR rather than removed here.
 import '@react-awesome-query-builder/ui/css/styles.css';
-import classNames from 'classnames';
 import { debounce, isEqual } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
@@ -41,56 +36,42 @@ import {
   formatQuery,
   isQueryTreeComplete,
 } from '../../../utils/queryBuilder/formatters';
+import { loadQueryBuilderTree } from '../../../utils/queryBuilder/tree';
 import {
-  getRuleCount,
-  loadQueryBuilderTree,
-} from '../../../utils/queryBuilder/tree';
+  QUERY_BUILDER_CONJUNCTION_MODE,
+  QUERY_BUILDER_GROUP_MODE,
+  QUERY_BUILDER_SURFACE,
+} from '../../../utils/queryBuilder/types';
 import { getQueryBuilderExploreUrl } from '../../../utils/queryBuilder/url';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import { createQueryBuilderButtons } from './QueryBuilderButton/QueryBuilderButton';
+import QueryBuilderCanvas from './QueryBuilderCanvas/QueryBuilderCanvas';
 import {
   COMPACT_BUTTON_PRESET,
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
 } from './QueryBuilderButton/QueryBuilderButton.constants';
-// Appearance is deliberately left exactly as it was, per caller: the flat
-// callers keep this stylesheet, and Explore keeps advanced-search-modal.less by
-// opting out of it (see the `groupMode` class on the root and the
-// `:not(.nested)` guards in the file). Nothing is restyled here — porting these
-// ~270 lines of RAQB layout to `tw:` utilities is a rewrite of the appearance,
-// and it belongs with the redesign, not with the unification. No new .less is
-// added; this import disappears when that file does.
-import {
-  QUERY_BUILDER_CONJUNCTION_MODE,
-  QUERY_BUILDER_GROUP_MODE,
-} from '../../../utils/queryBuilder/types';
+import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
 import '../QueryBuilderWidgetV1/query-builder-widget-v1.less';
 import QueryBuilderCountBanner from './QueryBuilderCountBanner/QueryBuilderCountBanner';
 import type { QueryBuilderProps } from './QueryBuilder.types';
 
 const COUNT_DEBOUNCE_MS = 300;
 
-// Built once: RAQB reads `settings.renderButton` on every render, and a fresh
-// closure each time would defeat its own memoisation.
-const EXPLORE_BUTTONS = createQueryBuilderButtons(EXPLORE_BUTTON_PRESET);
-const CONDITION_BUTTONS = createQueryBuilderButtons(CONDITION_BUTTON_PRESET);
-const COMPACT_BUTTONS = createQueryBuilderButtons(COMPACT_BUTTON_PRESET);
-
 /**
  * Nested groups only exist on Explore, which is also the only screen whose
  * addGroup/delGroup testids Playwright depends on. JSONLogic builders sit in
- * denser forms and use an icon-only add button.
+ * denser forms and label their add button differently.
  */
-function pickButtonRenderer(
+function pickButtonPreset(
   isNested: boolean,
   isJsonLogic: boolean
-): RenderSettings['renderButton'] {
+): QueryBuilderButtonPreset {
   if (isNested) {
-    return EXPLORE_BUTTONS;
+    return EXPLORE_BUTTON_PRESET;
   }
 
-  return isJsonLogic ? COMPACT_BUTTONS : CONDITION_BUTTONS;
+  return isJsonLogic ? COMPACT_BUTTON_PRESET : CONDITION_BUTTON_PRESET;
 }
 
 /**
@@ -108,6 +89,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   outputType = SearchOutputType.ElasticSearch,
   groupMode = QUERY_BUILDER_GROUP_MODE.FLAT,
   conjunctionMode = QUERY_BUILDER_CONJUNCTION_MODE.EDITABLE,
+  showConjunction = true,
   entityType = EntityType.ALL,
   defaultField,
   subField,
@@ -117,6 +99,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   showExploreLink = true,
   configOverrides,
   buttonPreset,
+  surface = QUERY_BUILDER_SURFACE.SUBTLE,
   onChange,
   onActionsReady,
   onValidityChange,
@@ -145,12 +128,6 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
         showLabels: groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
         useFriendlyOperatorLabels:
           groupMode !== QUERY_BUILDER_GROUP_MODE.NESTED,
-        renderButton: buttonPreset
-          ? createQueryBuilderButtons(buttonPreset)
-          : pickButtonRenderer(
-              groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
-              isJsonLogic
-            ),
       }),
     [
       outputType,
@@ -161,9 +138,17 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
       readonly,
       fields,
       configOverrides,
-      isJsonLogic,
-      buttonPreset,
     ]
+  );
+
+  const preset = useMemo(
+    () =>
+      buttonPreset ??
+      pickButtonPreset(
+        groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
+        isJsonLogic
+      ),
+    [buttonPreset, groupMode, isJsonLogic]
   );
 
   const configRef = useRef(config);
@@ -273,49 +258,31 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
     }
   }, [treeInternal, onActionsReady]);
 
-  // A builder that can be emptied down to nothing leaves the user with no way
-  // back, so the last rule keeps its delete button hidden. Every other rule
-  // must be removable — count rules at any depth, not root children, or the
-  // wrapper group RAQB seeds keeps the count at 1 forever.
-  const hasOnlyOneRule = useMemo(
-    () => getRuleCount(treeInternal) <= 1,
-    [treeInternal]
-  );
-
   const renderBuilder = useCallback(
     (builderProps: BuilderProps) => {
       actionsRef.current = builderProps.actions;
-      const baseRenderButton = builderProps.config.settings.renderButton;
-      const builderConfig = {
-        ...builderProps.config,
-        settings: {
-          ...builderProps.config.settings,
-          renderButton: ((btnProps: ButtonProps, ctx?: ConfigContext) =>
-            hasOnlyOneRule && btnProps?.type === 'delRule'
-              ? null
-              : baseRenderButton?.(
-                  btnProps,
-                  ctx
-                )) as RenderSettings['renderButton'],
-        },
-      };
 
       return (
-        <div className="query-builder-container query-builder qb-lite">
-          <Builder {...builderProps} config={builderConfig} />
-        </div>
+        <QueryBuilderCanvas
+          actions={builderProps.actions}
+          allowGroups={groupMode === QUERY_BUILDER_GROUP_MODE.NESTED}
+          config={builderProps.config}
+          preset={preset}
+          readonly={readonly}
+          showConjunction={showConjunction}
+          surface={surface}
+          tree={builderProps.tree}
+        />
       );
     },
-    [hasOnlyOneRule]
+    [groupMode, preset, readonly, showConjunction, surface]
   );
 
   return (
-    // No card, border or background here on purpose: chrome belongs to the
-    // screen embedding the builder, not to the builder. A caller that wants it
-    // boxed wraps this in its own Card. `outputType` and `groupMode` stay on
-    // the root purely so stylesheets and tests can tell the variants apart.
+    // No chrome here on purpose: the card belongs to each group, and anything
+    // around the builder belongs to the screen embedding it.
     <div
-      className={classNames('query-builder-form-field', groupMode, outputType)}
+      className="tw:flex tw:flex-col tw:gap-3"
       data-testid="query-builder-form-field">
       {isJsonLogic && label && (
         <>
