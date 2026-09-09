@@ -745,20 +745,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
   }
 
-  protected void updateTaskWithNewReviewers(Page page) {
-    Page currentPage =
-        Entity.getEntityByName(
-            KNOWLEDGE_PAGE_ENTITY,
-            page.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        currentPage.getFullyQualifiedName(),
-        new ArrayList<>(currentPage.getReviewers()),
-        currentPage.getUpdatedBy());
-  }
-
   @Override
   public void postUpdate(Page original, Page updated) {
     super.postUpdate(original, updated);
