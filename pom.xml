@@ -173,7 +173,8 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>12.1.10</jetty.version>
+    <!-- 12.1.12 clears CVE-2026-19203 (jetty-http) and CVE-2026-19204 (jetty-websocket-core-common). -->
+    <jetty.version>12.1.12</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>

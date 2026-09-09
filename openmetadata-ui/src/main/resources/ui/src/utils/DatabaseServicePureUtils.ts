@@ -78,6 +78,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/redshiftConnection.json'),
   [DatabaseServiceType.Salesforce]: () =>
     loadConnectionSchema('connections/database/salesforceConnection.json'),
+  [DatabaseServiceType.Data360]: () =>
+    loadConnectionSchema('connections/database/data360Connection.json'),
   [DatabaseServiceType.SingleStore]: () =>
     loadConnectionSchema('connections/database/singleStoreConnection.json'),
   [DatabaseServiceType.Snowflake]: () =>
