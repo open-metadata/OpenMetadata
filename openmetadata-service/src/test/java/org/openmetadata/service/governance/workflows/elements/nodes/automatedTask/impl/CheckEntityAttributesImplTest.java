@@ -17,7 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +27,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.AfterEach;
@@ -37,9 +40,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
@@ -163,6 +169,96 @@ class CheckEntityAttributesImplTest {
 
   private boolean result() {
     return Boolean.TRUE.equals(capturedVars.get(RESULT_KEY));
+  }
+
+  // --- DataProduct asset/outputPort count enrichment tests (#28433) ---
+
+  private static final String HAS_ASSETS_RULE =
+      "{\">\": [{\"var\": \"" + CheckEntityAttributesImpl.ASSETS_COUNT + "\"}, 0]}";
+  private static final String HAS_OUTPUT_PORTS_RULE =
+      "{\">\": [{\"var\": \"" + CheckEntityAttributesImpl.OUTPUT_PORTS_COUNT + "\"}, 0]}";
+
+  @Test
+  void dataProductWithAssets_assetsCountRule_evaluatesTrue() {
+    UUID dpId = UUID.randomUUID();
+    setupDataProductTest(dpId, 3, 0);
+
+    delegate.execute(execution);
+
+    assertTrue(result(), "A data product with assets must satisfy assetsCount > 0");
+  }
+
+  @Test
+  void dataProductWithoutAssets_assetsCountRule_evaluatesFalse() {
+    UUID dpId = UUID.randomUUID();
+    setupDataProductTest(dpId, 0, 0);
+
+    delegate.execute(execution);
+
+    assertFalse(result(), "A data product without assets must not satisfy assetsCount > 0");
+  }
+
+  @Test
+  void dataProductWithOutputPorts_outputPortsCountRule_evaluatesTrue() {
+    UUID dpId = UUID.randomUUID();
+    setupDataProductTestForOutputPorts(dpId, 0, 2);
+
+    delegate.execute(execution);
+
+    assertTrue(result(), "A data product with output ports must satisfy outputPortsCount > 0");
+  }
+
+  @Test
+  void dataProductWithoutOutputPorts_outputPortsCountRule_evaluatesFalse() {
+    UUID dpId = UUID.randomUUID();
+    setupDataProductTestForOutputPorts(dpId, 0, 0);
+
+    delegate.execute(execution);
+
+    assertFalse(
+        result(), "A data product without output ports must not satisfy outputPortsCount > 0");
+  }
+
+  private void setupDataProductTest(UUID dpId, int assetsCount, int outputPortsCount) {
+    setupDataProductExecution(dpId, HAS_ASSETS_RULE, assetsCount, outputPortsCount);
+  }
+
+  private void setupDataProductTestForOutputPorts(
+      UUID dpId, int assetsCount, int outputPortsCount) {
+    setupDataProductExecution(dpId, HAS_OUTPUT_PORTS_RULE, assetsCount, outputPortsCount);
+  }
+
+  private void setupDataProductExecution(
+      UUID dpId, String rule, int assetsCount, int outputPortsCount) {
+    when(rulesExpr.getValue(execution)).thenReturn(rule);
+    when(execution.getVariable("global_relatedEntity"))
+        .thenReturn("<#E::dataProduct::TestDomain.TestDP>");
+
+    DataProduct dp =
+        new DataProduct()
+            .withId(dpId)
+            .withName("TestDP")
+            .withFullyQualifiedName("TestDomain.TestDP")
+            .withDescription("Test data product");
+
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntity(
+                    any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
+        .thenReturn(dp);
+
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.countFindTo(
+            eq(dpId), eq(Entity.DATA_PRODUCT), eq(List.of(Relationship.HAS.ordinal()))))
+        .thenReturn(assetsCount);
+    when(relationshipDAO.countFindTo(
+            eq(dpId), eq(Entity.DATA_PRODUCT), eq(List.of(Relationship.OUTPUT_PORT.ordinal()))))
+        .thenReturn(outputPortsCount);
   }
 
   private static void injectField(Object target, String fieldName, Object value) throws Exception {
