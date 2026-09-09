@@ -14,6 +14,7 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { enableAiAppMode } from '../../../utils/appMode';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
@@ -25,6 +26,7 @@ const getTestCaseFqn = () =>
   table.testCasesResponseData[0].fullyQualifiedName as string;
 
 const openDetailsPage = async (page: Page) => {
+  await enableAiAppMode(page);
   await redirectToHomePage(page);
   await page.goto(
     `/observability/test-case/${encodeURIComponent(
@@ -92,6 +94,9 @@ test.describe(
       });
 
       await test.step('The rail sits to the right of the main column', async () => {
+        await expect(page.getByTestId('test-case-rail')).toBeVisible();
+        await expect(page.getByTestId('graph-container')).toBeVisible();
+
         const rail = await page.getByTestId('test-case-rail').boundingBox();
         const chart = await page.getByTestId('graph-container').boundingBox();
 
@@ -105,6 +110,9 @@ test.describe(
       test.slow();
 
       await openDetailsPage(page);
+
+      await expect(page.getByTestId('graph-container')).toBeVisible();
+      await expect(page.getByTestId('parameter-container')).toBeVisible();
 
       const chart = await page.getByTestId('graph-container').boundingBox();
       const parameters = await page
@@ -122,6 +130,13 @@ test.describe(
       test.slow();
 
       await openDetailsPage(page);
+
+      await expect(
+        page.getByTestId('test-case-header-container')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('test-case-result-tab-container')
+      ).toBeVisible();
 
       const headerCard = await page
         .getByTestId('test-case-header-container')
@@ -148,6 +163,10 @@ test.describe(
       await openDetailsPage(page);
 
       await verifyTestCaseLastRunBanner(page, 'success');
+
+      await expect(
+        page.getByTestId('test-case-result-tab-container')
+      ).toBeVisible();
 
       const banner = await page
         .getByTestId('test-case-last-run-banner-success')
