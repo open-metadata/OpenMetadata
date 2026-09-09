@@ -211,9 +211,14 @@ export const addMetric = async (page: Page) => {
 
   const selectFormOption = async (fieldTestId: string, title: string) => {
     const field = page.getByTestId(fieldTestId);
+    const optionName = new RegExp(
+      `^${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+      'i'
+    );
+
     await field.getByRole('button').click();
-    await page.getByRole('option', { exact: true, name: title }).click();
-    await expect(field).toContainText(title);
+    await page.getByRole('option', { name: optionName }).click();
+    await expect(field).toContainText(optionName);
   };
 
   await page.getByTestId('create-button').click();

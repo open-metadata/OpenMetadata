@@ -222,11 +222,18 @@ const MetricDetailsPage = () => {
             return previous;
           }
 
-          return {
+          const mergedMetric = {
             ...previous,
             version: res.version,
             ...(key ? { [key]: res[key] } : res),
           };
+
+          return omitBy(
+            mergedMetric,
+            (_value, field) =>
+              Object.prototype.hasOwnProperty.call(updatedData, field) &&
+              isUndefined(updatedData[field as keyof Metric])
+          ) as Metric;
         });
       }
     } catch (error) {

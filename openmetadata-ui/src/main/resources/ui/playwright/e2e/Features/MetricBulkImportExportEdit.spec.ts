@@ -584,13 +584,18 @@ const getFirstVisibleFixtureMetricRow = async (
   return { metric, row };
 };
 
+const getMetricActionsMenu = (page: Page) =>
+  page.getByRole('menu', { name: 'Open menu' });
+
 const openMetricActions = async (page: Page) => {
   await page.getByTestId('metric-actions').click();
-  await expect(page.getByRole('menu')).toBeVisible();
+  await expect(getMetricActionsMenu(page)).toBeVisible();
 };
 
 const clickMetricAction = async (page: Page, actionName: string) => {
-  await page.getByRole('menuitem', { name: actionName, exact: true }).click();
+  await getMetricActionsMenu(page)
+    .getByRole('menuitem', { name: actionName, exact: true })
+    .click();
 };
 
 const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
@@ -1450,13 +1455,13 @@ test.describe(
         ).toBeVisible();
         await openMetricActions(metricEditorPage);
         await expect(
-          metricEditorPage.getByRole('menuitem', {
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitem', {
             name: 'Export',
             exact: true,
           })
         ).toBeVisible();
         await expect(
-          metricEditorPage.getByRole('menuitem', {
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitem', {
             name: 'Import',
             exact: true,
           })

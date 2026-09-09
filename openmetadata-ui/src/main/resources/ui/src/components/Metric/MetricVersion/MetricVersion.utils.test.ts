@@ -14,6 +14,7 @@ import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
   getMetricVersionField,
   getMetricVersionMetadata,
+  getMetricVersionNumbers,
   getMetricVersionTags,
 } from './MetricVersion.utils';
 
@@ -64,5 +65,21 @@ describe('MetricVersion utils', () => {
         tags: [tag('Tier.Tier1'), tag('PII.Sensitive')],
       }).map(({ tagFQN }) => tagFQN)
     ).toEqual(['PII.Sensitive']);
+  });
+
+  it('extracts version numbers from serialized entity history', () => {
+    expect(
+      getMetricVersionNumbers([
+        JSON.stringify({ id: 'metric', version: 0.2 }),
+        JSON.stringify({ id: 'metric', version: 0.1 }),
+      ])
+    ).toEqual(['0.2', '0.1']);
+  });
+
+  it('keeps primitive versions and ignores unusable history entries', () => {
+    expect(getMetricVersionNumbers(['1.0', 0.9, null, {}, ''])).toEqual([
+      '1.0',
+      '0.9',
+    ]);
   });
 });

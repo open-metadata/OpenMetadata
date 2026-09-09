@@ -39,6 +39,7 @@ import type { MetricVersionProp } from './MetricVersion.interface';
 import {
   getMetricVersionField,
   getMetricVersionMetadata,
+  getMetricVersionNumbers,
   getMetricVersionTags,
 } from './MetricVersion.utils';
 
@@ -120,7 +121,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
     Operation.ViewCustomFields
   );
   const customProperties = Object.entries(currentVersionData.extension ?? {});
-  const versions = (versionList.versions ?? []).map(String);
+  const versions = getMetricVersionNumbers(versionList.versions);
   const breadcrumbItems = [
     ...slashedMetricName.map((item, index) => ({
       id: `${index}-${item.name}`,

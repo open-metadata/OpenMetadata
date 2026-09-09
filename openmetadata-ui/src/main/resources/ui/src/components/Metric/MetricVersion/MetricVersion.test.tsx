@@ -45,7 +45,7 @@ const metric: Metric = {
 };
 
 const props: MetricVersionProp = {
-  version: '1.1',
+  version: '0.2',
   currentVersionData: metric,
   isVersionLoading: false,
   owners: [{ id: 'owner', name: 'analytics', type: 'team' }],
@@ -57,7 +57,13 @@ const props: MetricVersionProp = {
     tagFQN: 'Tier.Tier1',
   },
   slashedMetricName: [{ name: 'Metrics', url: '/metrics' }],
-  versionList: { entityType: 'metric', versions: ['1.0', '1.1'] },
+  versionList: {
+    entityType: 'metric',
+    versions: [
+      JSON.stringify({ ...metric, version: 0.2 }),
+      JSON.stringify({ ...metric, version: 0.1 }),
+    ],
+  },
   backHandler: jest.fn(),
   versionHandler: jest.fn(),
   entityPermissions: {
@@ -122,9 +128,9 @@ describe('MetricVersion', () => {
     renderVersion();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
-    fireEvent.click(screen.getByTestId('version-1.0'));
+    fireEvent.click(screen.getByTestId('version-0.1'));
 
     expect(props.backHandler).toHaveBeenCalledTimes(1);
-    expect(props.versionHandler).toHaveBeenCalledWith('1.0');
+    expect(props.versionHandler).toHaveBeenCalledWith('0.1');
   });
 });

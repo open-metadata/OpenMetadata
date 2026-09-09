@@ -17,7 +17,10 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import type { MetricDetailsProps } from '../../../components/Metric/MetricDetails/MetricDetails.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import type { Metric } from '../../../generated/entity/data/metric';
+import {
+  UnitOfMeasurement,
+  type Metric,
+} from '../../../generated/entity/data/metric';
 import {
   addMetricFollower,
   getMetricByFqn,
@@ -111,6 +114,9 @@ jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
         <span data-testid="metric-followers">
           {props.metricDetails.followers?.length ?? 0}
         </span>
+        <span data-testid="metric-unit">
+          {props.metricDetails.unitOfMeasurement ?? 'none'}
+        </span>
         <button
           onClick={() => void props.onFollowMetric().catch(() => undefined)}>
           follow
@@ -132,6 +138,17 @@ jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
               .catch(() => undefined)
           }>
           update
+        </button>
+        <button
+          onClick={() =>
+            void props
+              .onMetricUpdate({
+                ...props.metricDetails,
+                unitOfMeasurement: undefined,
+              })
+              .catch(() => undefined)
+          }>
+          clear unit
         </button>
         <button
           onClick={() => void props.onRestoreMetric().catch(() => undefined)}>
@@ -361,6 +378,39 @@ describe('MetricDetailsPage', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       getVersionPath(EntityType.METRIC, 'finance.gross_margin', '1.2')
+    );
+  });
+
+  it('removes cleared fields from the local Metric state', async () => {
+    const metricWithUnit = {
+      ...metric,
+      unitOfMeasurement: UnitOfMeasurement.Dollars,
+    };
+    const { unitOfMeasurement: _unit, ...metricWithoutUnit } = metricWithUnit;
+    (getMetricByFqn as jest.Mock).mockResolvedValue(metricWithUnit);
+    (patchMetric as jest.Mock).mockResolvedValue(metricWithoutUnit);
+
+    renderPage();
+    await screen.findByTestId('metric-details');
+
+    expect(screen.getByTestId('metric-unit')).toHaveTextContent(
+      UnitOfMeasurement.Dollars
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'clear unit' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('metric-unit')).toHaveTextContent('none')
+    );
+
+    expect(patchMetric).toHaveBeenCalledWith(
+      'metric-id',
+      expect.arrayContaining([
+        expect.objectContaining({
+          op: 'remove',
+          path: '/unitOfMeasurement',
+        }),
+      ])
     );
   });
 

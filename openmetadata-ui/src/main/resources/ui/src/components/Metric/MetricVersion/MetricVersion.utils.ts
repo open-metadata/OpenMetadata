@@ -47,3 +47,26 @@ export const getMetricVersionMetadata = ({
 
 export const getMetricVersionTags = (metric: Metric) =>
   (metric.tags ?? []).filter(({ tagFQN }) => !isMetricTierTag(tagFQN));
+
+export const getMetricVersionNumbers = (versions: unknown[] = []) =>
+  versions.flatMap((entry) => {
+    let value = entry;
+
+    if (typeof entry === 'string') {
+      try {
+        value = JSON.parse(entry);
+      } catch {
+        return entry ? [entry] : [];
+      }
+    }
+
+    if (typeof value === 'object' && value !== null && 'version' in value) {
+      const version = (value as { version?: unknown }).version;
+
+      return version === undefined || version === null ? [] : [String(version)];
+    }
+
+    return typeof entry === 'string' || typeof entry === 'number'
+      ? [String(entry)]
+      : [];
+  });
