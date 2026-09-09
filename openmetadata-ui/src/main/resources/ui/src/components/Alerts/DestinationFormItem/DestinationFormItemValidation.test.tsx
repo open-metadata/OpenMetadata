@@ -115,6 +115,22 @@ function ParentFormDestinationChangeHarness() {
 }
 
 describe('DestinationFormItem validation', () => {
+  it('does not show the required destination error before a save attempt', () => {
+    const onFinish = jest.fn();
+    render(<ValidationHarness onFinish={onFinish} />);
+
+    // A fresh Create form (isRequired defaults to true, no destinations) must
+    // not flash a red required-destination error on mount. The submit-time
+    // validator owns that error; it should only surface after a Save attempt.
+    expect(
+      screen.queryByText('message.length-validator-error')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.minimum-count-error')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('parent-form-blocked')).not.toBeInTheDocument();
+  });
+
   it('shows the minimum destination error when required submission is blocked', async () => {
     const onFinish = jest.fn();
     render(<ValidationHarness onFinish={onFinish} />);
@@ -127,6 +143,31 @@ describe('DestinationFormItem validation', () => {
       'tw:text-error-primary'
     );
     expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('clears the required destination error live once a destination is added after a blocked save', async () => {
+    // Guards the live-clear effect: the submit-time validator only ever sets
+    // the destination error, so the child must clear it once a destination is
+    // added. Otherwise the error would stick after the user fixes the problem.
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{ resources: ['table'] }}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('message.length-validator-error');
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('message.length-validator-error')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('allows submission without a destination when optional', async () => {

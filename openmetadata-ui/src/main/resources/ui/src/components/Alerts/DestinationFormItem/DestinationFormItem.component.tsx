@@ -48,10 +48,9 @@ import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem
 
 function DestinationFormItem({
   isViewMode = false,
-  isRequired = false,
 }: Readonly<DestinationFormItemProps>) {
   const { t } = useTranslation();
-  const { control, setError, clearErrors, formState } = useFormContext();
+  const { control, clearErrors, formState } = useFormContext();
 
   const { fields, append, remove } = useFieldArray({
     name: 'destinations',
@@ -76,19 +75,15 @@ function DestinationFormItem({
 
   const selectedSource = selectedResources[0];
 
+  // The submit-time validator in DestinationFormItemFormBridge owns setting
+  // the required-destination error, so this effect only live-clears it once a
+  // destination exists. Setting it on mount would flash a red error on fresh,
+  // untouched Create forms before any save attempt.
   useEffect(() => {
-    if (fields.length === 0 && isRequired) {
-      setError('destinations', {
-        type: 'manual',
-        message: t('message.minimum-count-error', {
-          field: t('label.destination'),
-          count: 1,
-        }),
-      });
-    } else {
+    if (fields.length > 0) {
       clearErrors('destinations');
     }
-  }, [fields.length, setError, clearErrors, t, isRequired]);
+  }, [fields.length, clearErrors]);
 
   const isExternalDestinationSelected = useMemo(
     () => hasExternalDestination(destinations),

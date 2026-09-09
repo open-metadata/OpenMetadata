@@ -429,4 +429,22 @@ describe('DestinationFormItem', () => {
     expect(screen.getByTestId('connection-timeout-input')).toBeDisabled();
     expect(screen.getByTestId('read-timeout-input')).toBeDisabled();
   });
+
+  it('does not show the required destination error on initial mount', () => {
+    // Regression for the Create-flow flash: the bridge forwards isRequired on
+    // Create flows and destinations start empty, so the destination card must
+    // not render a red required-destination error before any save attempt. The
+    // submit-time validator in the bridge owns setting that error.
+    renderWithForm(<DestinationFormItem isRequired />, {
+      resources: [],
+      destinations: [],
+    });
+
+    expect(
+      screen.queryByText('message.minimum-count-error')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.length-validator-error')
+    ).not.toBeInTheDocument();
+  });
 });

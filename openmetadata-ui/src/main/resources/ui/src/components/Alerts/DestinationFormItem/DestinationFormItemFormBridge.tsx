@@ -148,7 +148,7 @@ function DestinationFormItemFormBridge({
     <>
       {renderValidationField?.(validate)}
       <FormProvider {...methods}>
-        <DestinationFormItem isRequired={isRequired} isViewMode={isViewMode} />
+        <DestinationFormItem isViewMode={isViewMode} />
       </FormProvider>
     </>
   );
