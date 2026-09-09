@@ -228,6 +228,43 @@ const renderControlled = (
   return { onChange, ...utils };
 };
 
+// Like renderControlled, but also exposes a setter so a test can drive the
+// parent's value from outside (simulating a non-remounting consumer that
+// reloads a different saved cron, e.g. a rerendered RHF/antd form field).
+const renderControlledWithExternalSet = (
+  initialValue: string | undefined = '',
+  extraProps: Record<string, unknown> = {}
+) => {
+  const onChange = jest.fn();
+  const setValueRef: {
+    current: ((value: string | undefined) => void) | null;
+  } = { current: null };
+
+  const Wrapper = () => {
+    const [value, setValue] = useState<string | undefined>(initialValue);
+    setValueRef.current = setValue;
+
+    return (
+      <ScheduleInterval
+        {...extraProps}
+        value={value}
+        onChange={(next) => {
+          onChange(next);
+          setValue(next);
+        }}
+      />
+    );
+  };
+
+  const utils = render(<Wrapper />);
+  const setExternalValue = (next: string | undefined) =>
+    act(() => {
+      setValueRef.current?.(next);
+    });
+
+  return { onChange, setExternalValue, ...utils };
+};
+
 describe('ScheduleInterval', () => {
   it('should render in on-demand mode when value is empty', async () => {
     await renderComponent({ value: '' });
@@ -283,6 +320,109 @@ describe('ScheduleInterval', () => {
 
     expect(onChange).toHaveBeenCalledWith(undefined);
     expect(screen.queryByTestId('cron-container')).not.toBeInTheDocument();
+  });
+
+  it('should restore the saved cron when toggling on-demand then schedule, not the period default', async () => {
+    const { onChange } = renderControlled('30 8 * * 5', {
+      includePeriodOptions: ['week'],
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.ON_DEMAND}`)
+      );
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.SCHEDULE}`)
+      );
+    });
+
+    // Restores the saved Friday 08:30 cron, not the weekly default
+    // '0 0 * * 1' (Monday midnight) that the pre-fix code reseeded every time.
+    expect(onChange).toHaveBeenLastCalledWith('30 8 * * 5');
+    expect(screen.getByTestId('frequency-week')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('day-options')).toHaveValue('5');
+  });
+
+  it('should restore the originally saved cron, not an in-progress edit, after an on-demand round-trip', async () => {
+    const { onChange } = renderControlled('30 8 * * 5', {
+      includePeriodOptions: ['week'],
+    });
+
+    // In-progress edit through the time picker - emits but should not become the
+    // restore target, matching the pre-refactor initialData.cron semantics.
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('time-picker'), {
+        target: { value: '9:0' },
+      });
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith('0 9 * * 5');
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.ON_DEMAND}`)
+      );
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.SCHEDULE}`)
+      );
+    });
+
+    // Restores the SAVED cron, not the in-progress edit '0 9 * * 5' nor the
+    // weekly default '0 0 * * 1'.
+    expect(onChange).toHaveBeenLastCalledWith('30 8 * * 5');
+  });
+
+  it('should re-seed the saved cron from an external value change and restore the latest on a subsequent toggle', async () => {
+    const { onChange, setExternalValue } = renderControlledWithExternalSet(
+      '30 8 * * 5',
+      { includePeriodOptions: ['week'] }
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.ON_DEMAND}`)
+      );
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
+
+    // Parent reloads a different saved cron externally (not an echo of our own
+    // emit) - simulates a non-remounting consumer editing a different entity.
+    await setExternalValue('0 12 * * 3');
+
+    expect(screen.getByTestId('frequency-week')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('day-options')).toHaveValue('3');
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.ON_DEMAND}`)
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.SCHEDULE}`)
+      );
+    });
+
+    // Restores the LATEST external cron, not the stale mount-time one.
+    expect(onChange).toHaveBeenLastCalledWith('0 12 * * 3');
   });
 
   it('should render only the time picker for a daily cron value', async () => {

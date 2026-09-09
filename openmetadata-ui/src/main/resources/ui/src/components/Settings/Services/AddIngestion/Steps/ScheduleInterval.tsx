@@ -50,6 +50,20 @@ import { ScheduleIntervalProps, StateValue } from './ScheduleInterval.types';
 import { validateCronExpression } from './ScheduleInterval.utils';
 import ScheduleSelectionCards from './ScheduleSelectionCards';
 
+// Resolves the cron to (re-)seed when entering Schedule mode: a previously-
+// saved cron if one was provided externally, otherwise the configured period
+// default. Extracted to the module scope so the restore fallback does not add
+// to the component's cyclomatic complexity.
+const getScheduleRestoreValue = (
+  savedCron: string | undefined,
+  {
+    includePeriodOptions,
+    defaultSchedule,
+  }: Pick<ScheduleIntervalProps, 'includePeriodOptions' | 'defaultSchedule'>
+): string | undefined =>
+  savedCron ||
+  getDefaultScheduleValue({ includePeriodOptions, defaultSchedule });
+
 const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   value,
   onChange,
@@ -109,6 +123,14 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   // empty string but hand it back as undefined.
   const lastEmittedValueRef = useRef(value || undefined);
 
+  // Holds the last externally-provided non-empty cron so that toggling back to
+  // Schedule after an On-Demand round-trip restores the previously-saved
+  // schedule instead of reseeding from the period default. It is re-stamped
+  // from the sync effect below whenever a non-empty value arrives from outside
+  // (never on this component's own emit), so it survives both remounting and
+  // in-place (non-remounting) consumer updates.
+  const savedCronRef = useRef<string | undefined>(value);
+
   const emitChange = useCallback(
     (cron?: string) => {
       lastEmittedValueRef.current = cron || undefined;
@@ -150,12 +172,14 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
         setState((prev) => ({ ...prev, cron: undefined }));
         emitChange(undefined);
       } else {
-        // When switching to schedule, use default schedule
-        const nonEmptyScheduleValue = getDefaultScheduleValue({
-          includePeriodOptions,
-          defaultSchedule,
-        });
-        const newState = getStateValue(nonEmptyScheduleValue);
+        // When switching to schedule, restore the previously-saved cron if one
+        // was provided externally; otherwise fall back to the period default.
+        const newState = getStateValue(
+          getScheduleRestoreValue(savedCronRef.current, {
+            includePeriodOptions,
+            defaultSchedule,
+          })
+        );
         setState(newState);
         emitChange(newState.cron);
       }
@@ -325,6 +349,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
       setSelectedSchedular(SchedularOptions.ON_DEMAND);
       setState((prev) => ({ ...prev, cron: undefined }));
     } else {
+      savedCronRef.current = normalizedValue;
       setSelectedSchedular(SchedularOptions.SCHEDULE);
       setState(getStateValue(value, initialDefaultSchedule));
     }
