@@ -7000,7 +7000,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityStream.spec.ts",
-        "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts"
       ]
     },
@@ -7010,7 +7009,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityStream.spec.ts",
-        "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts"
       ]
     },
