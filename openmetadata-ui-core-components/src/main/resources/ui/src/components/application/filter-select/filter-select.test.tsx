@@ -96,6 +96,24 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('resyncs staged selections on a controlled programmatic open', () => {
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} isOpen={false} selectedValues={['redshift']} />
+    );
+
+    rerender(<FilterSelect {...props} isOpen selectedValues={['snowflake']} />);
+    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(['snowflake']);
+  });
+
   it('does not commit staged toggles on cancel', () => {
     const { onChange } = renderFilter({ commitMode: 'staged' });
 

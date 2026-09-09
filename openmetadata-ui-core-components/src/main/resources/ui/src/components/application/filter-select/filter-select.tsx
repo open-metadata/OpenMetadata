@@ -18,7 +18,7 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
-import { useMemo, useState, type HTMLAttributes } from 'react';
+import { useEffect, useMemo, useState, type HTMLAttributes } from 'react';
 import { Button as AriaButton, type Selection } from 'react-aria-components';
 import type {
   FilterSelectOption,
@@ -231,13 +231,20 @@ export const FilterSelect = ({
 
   const commit = isStaged ? setStaged : onChange;
 
+  // Resync staged whenever the dropdown transitions open — including a
+  // programmatic open via the controlled `isOpen` prop, which never goes
+  // through react-aria's onOpenChange.
+  useEffect(() => {
+    if (isOpen && isStaged) {
+      setStaged(selectedValues);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   const handleOpenChange = (open: boolean) => {
     setInternalOpen(open);
     onOpenChange?.(open);
     setQuery('');
-    if (open) {
-      setStaged(selectedValues);
-    }
   };
 
   const handleSearch = (search: string) => {
