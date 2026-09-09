@@ -793,6 +793,11 @@ export interface Connection {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
