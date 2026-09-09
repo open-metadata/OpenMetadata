@@ -20,9 +20,7 @@ import {
   TagProps,
   TreeSelect,
   TreeSelectProps,
-  Typography,
 } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
@@ -179,7 +177,17 @@ const filterMutuallyExclusiveSiblings = (
   return filteredRawValues;
 };
 
-type TreeNode = Omit<DefaultOptionType, 'label'>;
+interface TreeNode {
+  id?: string;
+  value?: string | number;
+  name?: string;
+  title?: React.ReactNode;
+  checkable?: boolean;
+  isLeaf?: boolean;
+  selectable?: boolean;
+  children?: TreeNode[];
+  [key: string]: unknown;
+}
 
 const findTreeNode = (
   nodes: TreeNode[],
@@ -229,7 +237,7 @@ const injectMissingInitialOptions = (
         id: `initial-${option.value}`,
         value: option.value,
         name: leafName,
-        title: <Typography.Text ellipsis>{displayName}</Typography.Text>,
+        title: displayName,
         checkable: true,
         isLeaf: true,
         selectable: true,

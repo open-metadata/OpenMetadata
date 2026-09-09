@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { Form } from 'antd';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from './AsyncSelectList.interface';
 import TreeAsyncSelectList from './TreeAsyncSelectList';
@@ -215,7 +214,7 @@ describe('TreeAsyncSelectList', () => {
     expect(treeWithTerm[0].children).toHaveLength(1);
   });
 
-  it('should normalize array value to scalar in single-select mode when controlled by Form', async () => {
+  it('should normalize array value to scalar in single-select mode', async () => {
     mockConvertGlossaryTermsToTreeOptions.mockReturnValue(
       JSON.parse(JSON.stringify(MOCK_GLOSSARY_TREE))
     );
@@ -237,18 +236,15 @@ describe('TreeAsyncSelectList', () => {
 
     await act(async () => {
       render(
-        <Form initialValues={{ tags: ['Glossary.term1'] }}>
-          <Form.Item name="tags">
-            <TreeAsyncSelectList
-              initialOptions={initialOptions}
-              isMultiSelect={false}
-              isSubmitLoading={false}
-              tagType={TagSource.Glossary}
-              onCancel={onCancel}
-              onChange={onChange}
-            />
-          </Form.Item>
-        </Form>
+        <TreeAsyncSelectList
+          initialOptions={initialOptions}
+          isMultiSelect={false}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          value={['Glossary.term1'] as unknown as string[]}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
       );
     });
 
@@ -266,27 +262,21 @@ describe('TreeAsyncSelectList', () => {
     errorSpy.mockRestore();
   });
 
-  it('should keep array value in multi-select mode when controlled by Form', async () => {
+  it('should keep array value in multi-select mode', async () => {
     mockConvertGlossaryTermsToTreeOptions.mockReturnValue([]);
 
     const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
     await act(async () => {
       render(
-        <Form
-          initialValues={{
-            tags: ['Glossary.term1', 'Glossary.term2'],
-          }}>
-          <Form.Item name="tags">
-            <TreeAsyncSelectList
-              initialOptions={[]}
-              isSubmitLoading={false}
-              tagType={TagSource.Glossary}
-              onCancel={onCancel}
-              onChange={onChange}
-            />
-          </Form.Item>
-        </Form>
+        <TreeAsyncSelectList
+          initialOptions={[]}
+          isSubmitLoading={false}
+          tagType={TagSource.Glossary}
+          value={['Glossary.term1', 'Glossary.term2']}
+          onCancel={onCancel}
+          onChange={onChange}
+        />
       );
     });
 
