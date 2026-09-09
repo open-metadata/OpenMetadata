@@ -270,6 +270,11 @@ class DomainClassBase {
     return null;
   }
 
+  // Reviewers are Collate-only; overridden downstream.
+  public getReviewersField(): FieldProp | null {
+    return null;
+  }
+
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:

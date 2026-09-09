@@ -61,13 +61,13 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
   Button as AriaButton,
   ColumnResizer,
   Dialog,
-  DialogTrigger,
   Popover,
   ResizableTableContainer,
 } from 'react-aria-components';
@@ -200,6 +200,41 @@ const toCoreTableSize = (size: TableComponentProps<never>['size']) => {
  * padding every migrated table already renders with; the other steps move
  * around it.
  */
+// AntD's fixed-column "ping" shadow: a 30px strip translated past the boundary
+// cell carrying an inset shadow — a plain outset box-shadow reads as a hairline,
+// not the wide soft band. The row bottom border owns ::after, so it lives on
+// ::before.
+const PING_LEFT_CLASS = classNames(
+  "tw:before:content-[''] tw:before:absolute tw:before:top-0",
+  'tw:before:-bottom-px tw:before:right-0 tw:before:w-[30px]',
+  'tw:before:translate-x-full tw:before:pointer-events-none',
+  'tw:before:shadow-[inset_10px_0_8px_-8px_rgba(5,5,5,0.15)]'
+);
+const PING_RIGHT_CLASS = classNames(
+  "tw:before:content-[''] tw:before:absolute tw:before:top-0",
+  'tw:before:-bottom-px tw:before:left-0 tw:before:w-[30px]',
+  'tw:before:-translate-x-full tw:before:pointer-events-none',
+  'tw:before:shadow-[inset_-10px_0_8px_-8px_rgba(5,5,5,0.15)]'
+);
+
+const pingShadowClass = (
+  fixed: ColumnType<unknown>['fixed'],
+  colIdx: number,
+  lastLeftFixedIdx: number,
+  firstRightFixedIdx: number,
+  pingLeft: boolean,
+  pingRight: boolean
+): string => {
+  if (fixed === 'left' && colIdx === lastLeftFixedIdx && pingLeft) {
+    return PING_LEFT_CLASS;
+  }
+  if (fixed === 'right' && colIdx === firstRightFixedIdx && pingRight) {
+    return PING_RIGHT_CLASS;
+  }
+
+  return '';
+};
+
 const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
   compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
   small: 'tw:p-2',
@@ -285,6 +320,54 @@ const getIndentStyle = (
 
 const toAriaDirection = (order: 'ascend' | 'descend') =>
   order === 'descend' ? ('descending' as const) : ('ascending' as const);
+
+// The filter trigger cannot sit inside a `DialogTrigger`: a React Aria column
+// header is itself pressable, and its PressResponder both forwards the column's
+// press onto this button and closes the popover in the same click that opened
+// it (jsdom's synthetic click hides both). Owning the press and anchoring the
+// Popover through triggerRef, with propagation stopped at the boundary, keeps
+// the column's press machinery out of the loop.
+const HeaderFilterTrigger = ({
+  icon,
+  isOpen,
+  onOpenChange,
+  children,
+}: {
+  icon: ReactNode;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <span
+      className="tw:inline-flex"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}>
+      <AriaButton
+        aria-label="filter"
+        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        data-testid="filter-trigger"
+        ref={triggerRef}
+        onPress={() => onOpenChange(!isOpen)}>
+        {icon}
+      </AriaButton>
+      <Popover
+        isOpen={isOpen}
+        placement="bottom right"
+        triggerRef={triggerRef}
+        onOpenChange={onOpenChange}>
+        <Dialog aria-label="filter" className="tw:outline-none">
+          {children}
+        </Dialog>
+      </Popover>
+    </span>
+  );
+};
 
 /**
  * React Aria always opens a fresh sort on 'ascending'. AntD lets a column say
@@ -825,6 +908,65 @@ const TableV2 = <T extends object>(
     []
   );
 
+  // A column carrying `filteredValue` owns its filter state (AntD's controlled
+  // filters): the value drives the rows and lights the icon regardless of the
+  // dropdown draft. Keyed by the plain `key ?? dataIndex` the call sites use.
+  const controlledFilterState = useMemo((): Record<
+    string,
+    React.Key[] | undefined
+  > => {
+    const entries: Record<string, React.Key[] | undefined> = {};
+    (rest.columns ?? []).forEach((col, idx) => {
+      const c = col as ColumnType<T>;
+      if (c.filteredValue !== undefined) {
+        entries[String(c.key ?? c.dataIndex ?? idx)] = (c.filteredValue ??
+          []) as React.Key[];
+      }
+    });
+
+    return entries;
+  }, [rest.columns]);
+
+  // Live mirror of the dropdown drafts: `ColumnFilter` and its siblings call
+  // setSelectedKeys(...) then confirm() in the same tick, so the confirm reads
+  // the draft here rather than waiting for the state update to flush.
+  const filterDraftRef = useRef<Record<string, React.Key[]>>({});
+
+  const effectiveFilterOf = useCallback(
+    (colKey: string): React.Key[] =>
+      controlledFilterState[colKey] ?? filterState[colKey] ?? [],
+    [controlledFilterState, filterState]
+  );
+
+  // AntD's fixed-column scroll shadows. The core table owns the horizontal
+  // scroller (its overflow-x wrapper) and scroll does not bubble, so a native
+  // passive listener is attached to it; the flags flip only on boundary
+  // crossings to avoid re-render churn while scrolling.
+  const scrollWrapRef = useRef<HTMLDivElement>(null);
+  const pingScrollerRef = useRef<HTMLElement | null>(null);
+  const [pingLeft, setPingLeft] = useState(false);
+  const [pingRight, setPingRight] = useState(false);
+  const syncPing = useCallback(() => {
+    const el = pingScrollerRef.current;
+    if (!el) {
+      return;
+    }
+    const left = el.scrollLeft > 0;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setPingLeft((prev) => (prev === left ? prev : left));
+    setPingRight((prev) => (prev === right ? prev : right));
+  }, []);
+  useEffect(() => {
+    const scroller = scrollWrapRef.current?.querySelector('table[role="grid"]')
+      ?.parentElement as HTMLElement | null;
+    if (scroller && scroller !== pingScrollerRef.current) {
+      pingScrollerRef.current?.removeEventListener('scroll', syncPing);
+      pingScrollerRef.current = scroller;
+      scroller.addEventListener('scroll', syncPing, { passive: true });
+    }
+    syncPing();
+  });
+
   const {
     preferences: { selectedEntityTableColumns },
     setPreference,
@@ -923,6 +1065,19 @@ const TableV2 = <T extends object>(
   const columnKeys = useMemo(() => getColumnKeys(propsColumns), [propsColumns]);
   const columnIds = useMemo(() => getColumnIds(columnKeys), [columnKeys]);
 
+  const lastLeftFixedIdx = useMemo(
+    () =>
+      propsColumns.reduce(
+        (acc, c, idx) => ((c as ColumnType<T>).fixed === 'left' ? idx : acc),
+        -1
+      ),
+    [propsColumns]
+  );
+  const firstRightFixedIdx = useMemo(
+    () => propsColumns.findIndex((c) => (c as ColumnType<T>).fixed === 'right'),
+    [propsColumns]
+  );
+
   /**
    * Total of the columns' pixel widths, but only for a table that should
    * stretch to fill: no horizontal scroll, no resizing, and every column
@@ -1006,18 +1161,78 @@ const TableV2 = <T extends object>(
     return effectiveSort.direction === 'descending' ? sorted.reverse() : sorted;
   }, [rest.dataSource, effectiveSort, propsColumns, columnIds]);
 
-  const filteredDataSource = useMemo((): T[] => {
-    const activeFilters = Object.entries(filterState).filter(
-      ([, keys]) => keys.length > 0
-    );
-    if (!activeFilters.length) {
-      return sortedDataSource;
-    }
+  const applyColumnFilters = useCallback(
+    (state: Record<string, React.Key[]>): T[] => {
+      const activeFilters = Object.entries(state).filter(
+        ([, keys]) => keys.length > 0
+      );
+      if (!activeFilters.length) {
+        return sortedDataSource;
+      }
 
-    return sortedDataSource.filter((record) =>
-      recordMatchesActiveFilters(record, activeFilters, propsColumns, columnIds)
-    );
-  }, [sortedDataSource, filterState, propsColumns, columnIds]);
+      return sortedDataSource.filter((record) =>
+        recordMatchesActiveFilters(
+          record,
+          activeFilters,
+          propsColumns,
+          columnKeys
+        )
+      );
+    },
+    [sortedDataSource, propsColumns, columnKeys]
+  );
+
+  const filteredDataSource = useMemo((): T[] => {
+    // Controlled columns override the draft — `filteredValue` is the state of
+    // record wherever a call site provides it.
+    const merged: Record<string, React.Key[]> = { ...filterState };
+    Object.entries(controlledFilterState).forEach(([key, keys]) => {
+      if (keys !== undefined) {
+        merged[key] = keys;
+      }
+    });
+
+    return applyColumnFilters(merged);
+  }, [applyColumnFilters, filterState, controlledFilterState]);
+
+  // AntD's `onChange` filter map: every filterable column keyed by
+  // `key ?? dataIndex`, active columns carrying their keys and inactive ones
+  // null — the filteredValue call sites read the next state off this argument.
+  const reportFilterChange = useCallback(
+    (nextState: Record<string, React.Key[]>) => {
+      if (!rest.onChange) {
+        return;
+      }
+      const filters: Record<string, FilterValue | null> = {};
+      const effectiveNext: Record<string, React.Key[]> = {};
+      (rest.columns ?? []).forEach((col, idx) => {
+        const c = col as ColumnType<T>;
+        if (!c.filters && !c.filterDropdown) {
+          return;
+        }
+        const key = String(c.key ?? c.dataIndex ?? idx);
+        // A controlled column the user never opened has no draft entry — its
+        // filteredValue must still be reported, or a parent syncing from this
+        // map clears the untouched filter.
+        const keys = nextState[key] ?? controlledFilterState[key] ?? [];
+        effectiveNext[key] = keys;
+        filters[key] = keys.length ? (keys as FilterValue) : null;
+      });
+      rest.onChange(
+        {} as TablePaginationConfig,
+        filters,
+        {} as SorterResult<T>,
+        {
+          // Recomputed from the just-confirmed state, not the memo — for a
+          // controlled column the memo only updates once the parent echoes the
+          // new filteredValue back.
+          currentDataSource: applyColumnFilters(effectiveNext),
+          action: 'filter',
+        } as TableCurrentDataSource<T>
+      );
+    },
+    [rest.onChange, rest.columns, controlledFilterState, applyColumnFilters]
+  );
 
   const currentPage =
     clientPagination?.controlledCurrent ?? internalCurrentPage;
@@ -1504,6 +1719,7 @@ const TableV2 = <T extends object>(
         // the viewport happens to be rather than over the rows it is masking.
         className="tw:relative tw:flex tw:flex-col tw:w-full"
         data-testid={dataTestId}
+        ref={scrollWrapRef}
         style={scrollStyle}>
         {rest.title && (
           // AntD's table-level title slot: a band above the table, handed the
@@ -1594,6 +1810,11 @@ const TableV2 = <T extends object>(
                     isRowHeader?: boolean;
                   };
                   const colKey = columnIds[colIdx];
+                  // Filter state is keyed by AntD's `key ?? dataIndex`, not the
+                  // React Aria column id (which carries a `col:` prefix and
+                  // dedup suffixes) — the row filter and onChange map both read
+                  // the plain key.
+                  const filterKey = columnKeys[colIdx];
                   const colWidth =
                     columnWidths[colKey] ??
                     (colType.width as number | undefined);
@@ -1609,7 +1830,15 @@ const TableV2 = <T extends object>(
                         // line of a row its own cells may wrap past.
                         'tw:align-top tw:text-sm tw:text-tertiary',
                         getAlignClass(colType.align),
-                        getHeaderAlignClass(colType.align)
+                        getHeaderAlignClass(colType.align),
+                        pingShadowClass(
+                          colType.fixed,
+                          colIdx,
+                          lastLeftFixedIdx,
+                          firstRightFixedIdx,
+                          pingLeft,
+                          pingRight
+                        )
                       )}
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
@@ -1635,52 +1864,67 @@ const TableV2 = <T extends object>(
                         data-testid="column-header-content">
                         {resolveColumnTitle(colType, propsColumns)}
                         {Boolean(colType.filters || colType.filterDropdown) && (
-                          <DialogTrigger
+                          <HeaderFilterTrigger
+                            icon={
+                              typeof colType.filterIcon === 'function'
+                                ? colType.filterIcon(
+                                    Boolean(effectiveFilterOf(filterKey).length)
+                                  )
+                                : colType.filterIcon ?? null
+                            }
                             isOpen={openFilterKey === colKey}
                             onOpenChange={(isOpen) =>
                               setOpenFilterKey(isOpen ? colKey : null)
                             }>
-                            {/*
-                              `DialogTrigger` opens its popover through a React
-                              Aria `PressResponder`, which only reaches a React
-                              Aria pressable child. A core `Button` here is not
-                              one — it warns "PressResponder was rendered
-                              without a pressable child" and the dropdown never
-                              opens. */}
-                            <AriaButton
-                              aria-label="filter"
-                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
-                              data-testid="filter-trigger">
-                              {typeof colType.filterIcon === 'function'
-                                ? colType.filterIcon(
-                                    Boolean(filterState[colKey]?.length)
-                                  )
-                                : colType.filterIcon ?? null}
-                            </AriaButton>
-                            <Popover placement="bottom right">
-                              <Dialog className="tw:outline-none">
-                                <div
-                                  className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
-                                  data-testid="filter-dropdown"
-                                  style={{ minWidth: '200px' }}>
-                                  {typeof colType.filterDropdown === 'function'
-                                    ? colType.filterDropdown({
-                                        prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) =>
-                                          setFilterSelectedKeys(colKey, keys),
-                                        selectedKeys: filterState[colKey] ?? [],
-                                        confirm: () => setOpenFilterKey(null),
-                                        clearFilters: () =>
-                                          clearFilterKeys(colKey),
-                                        filters: colType.filters,
-                                        visible: true,
-                                        close: () => setOpenFilterKey(null),
-                                      })
-                                    : colType.filterDropdown}
-                                </div>
-                              </Dialog>
-                            </Popover>
-                          </DialogTrigger>
+                            <div
+                              // AntD's filter dropdown caps at ~264px and
+                              // scrolls, with 32px rows; a bare antd Menu
+                              // outside a Dropdown falls back to its roomy
+                              // vertical-nav metrics, so compress it here.
+                              className={classNames(
+                                'tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
+                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto',
+                                'tw:[&_.ant-menu-vertical]:border-r-0 tw:[&_.ant-menu-item]:h-8',
+                                'tw:[&_.ant-menu-item]:leading-8 tw:[&_.ant-menu-item]:my-0'
+                              )}
+                              data-testid="filter-dropdown"
+                              style={{ minWidth: '200px' }}>
+                              {typeof colType.filterDropdown === 'function'
+                                ? colType.filterDropdown({
+                                    prefixCls: 'ant-table-filter-dropdown',
+                                    setSelectedKeys: (keys) => {
+                                      filterDraftRef.current = {
+                                        ...filterDraftRef.current,
+                                        [filterKey]: keys,
+                                      };
+                                      setFilterSelectedKeys(filterKey, keys);
+                                    },
+                                    selectedKeys: effectiveFilterOf(filterKey),
+                                    confirm: () => {
+                                      reportFilterChange({
+                                        ...filterState,
+                                        ...filterDraftRef.current,
+                                      });
+                                      setOpenFilterKey(null);
+                                    },
+                                    clearFilters: () => {
+                                      filterDraftRef.current = {
+                                        ...filterDraftRef.current,
+                                        [filterKey]: [],
+                                      };
+                                      clearFilterKeys(filterKey);
+                                      reportFilterChange({
+                                        ...filterState,
+                                        ...filterDraftRef.current,
+                                      });
+                                    },
+                                    filters: colType.filters,
+                                    visible: true,
+                                    close: () => setOpenFilterKey(null),
+                                  })
+                                : colType.filterDropdown}
+                            </div>
+                          </HeaderFilterTrigger>
                         )}
                       </div>
                       {rest.resizableColumns && (
@@ -1697,12 +1941,17 @@ const TableV2 = <T extends object>(
 
               <UntitledTable.Body
                 renderEmptyState={() =>
-                  isLoading ? null : (
-                    // The padding is the placeholder's breathing room and
-                    // belongs to whatever fills the slot: a call site's own
-                    // placeholder needs it as much as the fallback does, and
-                    // without it the empty state crowds the header.
-                    <div className="tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
+                  isLoading ? (
+                    // A real body height while loading — collapsed to zero the
+                    // absolute spinner overlay would centre on the header row.
+                    <div className="tw:min-h-32" />
+                  ) : (
+                    // `relative` + a real min-height contain call-site
+                    // placeholders (the core EmptyPlaceholder is
+                    // absolute/inset-0 and fills its nearest positioned
+                    // ancestor); the padding is the placeholder's breathing
+                    // room and belongs to whatever fills the slot.
+                    <div className="tw:relative tw:min-h-40 tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
                       {
                         // AntD fell back to its own <Empty> illustration, not
                         // bare text, so a table with no rows read as an empty
@@ -1835,6 +2084,14 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              pingShadowClass(
+                                colType.fixed,
+                                colIdx,
+                                lastLeftFixedIdx,
+                                firstRightFixedIdx,
+                                pingLeft,
+                                pingRight
+                              ),
                               'tw:group-data-[dragging]:opacity-40',
                               'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
                               'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
@@ -1864,12 +2121,15 @@ const TableV2 = <T extends object>(
                               // inline — a Glossary Terms dropdown came out a
                               // few pixels wide.
                               className={classNames({
-                                'tw:flex tw:gap-1 tw:max-w-full':
+                                // items-start + a text-line-height icon box
+                                // keep the expander on the value's first line
+                                // (center floats it low when the cell wraps).
+                                'tw:flex tw:items-start tw:gap-1 tw:max-w-full':
                                   showExpandInCell,
                                 'tw:contents': !showExpandInCell,
                               })}>
                               {showExpandInCell && (
-                                <div className="tw:flex tw:items-center tw:shrink-0">
+                                <div className="tw:flex tw:h-5 tw:items-center tw:shrink-0">
                                   <ExpandControl
                                     ExpandIcon={ExpandIcon}
                                     hasChildren={hasChildren}

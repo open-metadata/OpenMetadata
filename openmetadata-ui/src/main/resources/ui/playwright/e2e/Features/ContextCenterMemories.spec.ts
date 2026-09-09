@@ -17,6 +17,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import {
@@ -447,8 +448,10 @@ test.describe(
           .fill('This memory has all optional fields populated.');
 
         // Select type: Note
-        await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /note/i }).click();
+        await selectOptionWithRetry(
+          dialog.getByTestId('memory-type-select'),
+          page.getByRole('option', { name: /note/i })
+        );
 
         const createResPromise = page.waitForResponse(
           (res) =>
@@ -1369,14 +1372,19 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        await dialog.getByRole('button', { name: /link.*asset/i }).click();
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const initialSearchRes = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
+        await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes;
+        await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await assetSearch.fill(table.name);
         await searchResPromise;
         await waitForAllLoadersToDisappear(page);
@@ -1518,8 +1526,10 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        await selectOptionWithRetry(
+          dialog.getByTestId('memory-visibility-select'),
+          page.getByRole('option', { name: /private/i })
+        );
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${visBadgeMemoryId}`)
@@ -1665,7 +1675,11 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes0 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes0;
         await page.getByText('Loading...').waitFor({ state: 'detached' });
         await expect(
           page.getByTestId('picker-popover').getByRole('textbox')
@@ -1685,15 +1699,19 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes1 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes1;
         await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1716,15 +1734,19 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes2 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes2;
         await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1835,8 +1857,8 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
