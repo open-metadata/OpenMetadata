@@ -19,6 +19,9 @@ const prefix = 'playwright-results-json-';
 
 function readEvidence(directory, file) {
   const filename = path.join(directory, file);
+  if (!fs.existsSync(filename)) {
+    throw new Error(`Missing execution evidence: ${file} in ${directory}`);
+  }
   if (fs.statSync(filename).size > 64 * 1024 * 1024) {
     throw new Error(`Oversized execution evidence: ${filename}`);
   }
@@ -60,13 +63,21 @@ function normalizeArtifacts(root, expectedHeadSha = '') {
     if (expectedHeadSha && status.value.headSha !== expectedHeadSha) {
       throw new Error(`Wrong commit for ${directory}: expected ${expectedHeadSha}`);
     }
+    const attempt = Number(status.value.runAttempt);
+    if (expectedHeadSha && (
+      !/^[1-9]\d*$/.test(String(status.value.runId ?? '')) ||
+      !/^[1-9]\d*$/.test(String(status.value.runAttempt ?? '')) ||
+      !Number.isSafeInteger(attempt)
+    )) {
+      throw new Error(`Invalid workflow execution identity for ${directory}`);
+    }
     const candidates = byShard.get(shard) ?? [];
     candidates.push({
       directory,
       reportDigest: report.digest,
       statusDigest: status.digest,
       runId: status.value.runId,
-      attempt: Number(status.value.runAttempt),
+      attempt,
     });
     byShard.set(shard, candidates);
   }

@@ -15,7 +15,6 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
@@ -54,12 +53,16 @@ const selectEntityType = async (page: Page, entityType: string) => {
   const entityTypeSelect = page.getByTestId('entity-type');
   const entityTypeTrigger = entityTypeSelect.getByRole('button');
 
+  await entityTypeTrigger.scrollIntoViewIfNeeded();
   await entityTypeTrigger.focus();
   await expect(entityTypeTrigger).toBeFocused();
-  await selectOptionWithRetry(
-    entityTypeTrigger,
-    page.getByRole('option', { name: entityType, exact: true })
-  );
+  await entityTypeTrigger.click();
+  const entityTypeOption = page.getByRole('option', {
+    name: entityType,
+    exact: true,
+  });
+  await expect(entityTypeOption).toBeVisible();
+  await entityTypeOption.click();
 
   await expect(entityTypeTrigger).toHaveText(entityType);
 };
@@ -408,10 +411,8 @@ test.describe(
           ).toHaveCount(0);
 
           // Add dbt
-          await selectOptionWithRetry(
-            page.getByTestId('test-platforms'),
-            page.getByRole('option', { name: 'dbt', exact: true })
-          );
+          await page.getByTestId('test-platforms').click();
+          await page.getByRole('option', { name: 'dbt', exact: true }).click();
 
           // Close dropdown
           await page.keyboard.press('Escape');
@@ -772,7 +773,9 @@ test.describe(
         await dimensionTrigger.scrollIntoViewIfNeeded();
         await dimensionTrigger.focus();
         await expect(dimensionTrigger).toBeFocused();
-        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
+        await dimensionTrigger.click();
+        await expect(accuracyOption).toBeVisible();
+        await accuracyOption.click();
         // The field's hidden native select contains every option's text even
         // when empty, so only the visible trigger proves selection succeeded.
         await expect(dimensionTrigger).toHaveText('Accuracy');

@@ -14,6 +14,9 @@ from test_playwright_ci_planning import load_script
         ("unexpected", "Unexpected native result"),
         ("unexecuted", "No execution attempts"),
         ("empty-plan", "No tests were planned"),
+        ("retried", "More than one execution attempt"),
+        ("failed", "Unexpected test outcome"),
+        ("flaky", "Unexpected test outcome"),
     ],
 )
 def test_native_results_independently_verify_timing_coverage(
@@ -37,6 +40,15 @@ def test_native_results_independently_verify_timing_coverage(
         specs.append({**spec, "id": "unplanned-test"})
     if fault == "unexecuted":
         spec["tests"][0]["results"] = []
+    if fault == "retried":
+        spec["tests"][0]["results"] = [
+            {"status": "failed", "retry": 0},
+            {"status": "passed", "retry": 1},
+        ]
+    if fault == "failed":
+        spec["tests"][0]["results"] = [{"status": "failed"}]
+    if fault == "flaky":
+        spec["tests"][0]["status"] = "flaky"
     planned = [] if fault == "empty-plan" else ["planned-test"]
     (tmp_path / "plan.json").write_text(
         json.dumps({"shardId": "chromium-01", "testIds": planned})
@@ -73,6 +85,7 @@ def test_native_results_independently_verify_timing_coverage(
             "--result-glob",
             str(tmp_path / "result.json"),
             "--require-native-evidence",
+            "--require-single-attempt",
             "--output",
             str(output),
         ],

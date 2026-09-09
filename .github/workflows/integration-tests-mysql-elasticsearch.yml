@@ -185,23 +185,9 @@ jobs:
 
       - name: Upload Integration Test Runtime
         id: upload-runtime
-        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
-          overwrite: true
-          path: ${{ runner.temp }}/java-it-build
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
-
-      # A failed finalize can reserve the first name without publishing it.
-      # The download helper also resolves this uniquely named retry.
-      - name: Upload Integration Test Runtime (retry)
-        if: ${{ steps.upload-runtime.outcome == 'failure' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: java-it-build-mysql-elasticsearch-${{ github.run_id }}-retry
           overwrite: true
           path: ${{ runner.temp }}/java-it-build
           if-no-files-found: error
@@ -301,7 +287,7 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Download Integration Test Runtime
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
           path: ${{ runner.temp }}/java-it-build

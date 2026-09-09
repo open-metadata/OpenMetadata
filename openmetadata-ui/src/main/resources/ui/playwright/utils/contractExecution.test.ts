@@ -58,7 +58,7 @@ for (const scenario of [
         context,
         'contract',
         'execution',
-        scenario === 'complete' ? 3_000 : 200
+        scenario === 'queued' ? 200 : 3_000
       );
       if (scenario === 'complete') {
         await result;
@@ -73,6 +73,9 @@ for (const scenario of [
             ? /invalid status/
             : /terminal result/;
         await expect(result).rejects.toThrow(message);
+        if (scenario !== 'queued') {
+          expect(requests).toBe(1);
+        }
       }
     } finally {
       await context.dispose();

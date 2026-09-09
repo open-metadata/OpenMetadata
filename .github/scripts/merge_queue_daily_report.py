@@ -264,13 +264,21 @@ def _render(
     for run in test_runs:
         if run.get("report"):
             reports_by_sha.setdefault(run["sha"], run["report"])
-    raw = mq.aggregate_test_reports([run.get("report") for run in test_runs])
+    local_runs = [run for run in test_runs if run.get("reportExpected") is False]
+    raw = mq.aggregate_test_reports(
+        [run.get("report") for run in test_runs if run.get("reportExpected", True)]
+    )
     md += [
         "",
         "**First workflow attempts — Playwright merge groups**",
         "",
         (
-            f"{raw['firstAttemptPassed']} test executions passed immediately; "
+            f"{len(local_runs)} runs used shard-local coverage verification without report uploads; "
+            f"{sum(run.get('shardGateConclusion') == 'success' for run in local_runs)} "
+            "passed the gate on the first workflow attempt. Detailed artifacts remain on PR checks."
+        ),
+        (
+            f"In artifact-backed runs, {raw['firstAttemptPassed']} test executions passed immediately; "
             f"{raw['firstAttemptFailed']} failed their first attempt; "
             f"{raw['retriedTests']} used test retries; {raw['skippedTests']} skipped. "
             f"{sum(run.get('attempts', 1) > 1 for run in test_runs)} workflows were rerun."
@@ -280,6 +288,10 @@ def _render(
             f"{raw['legacyReports']}. These are unknown coverage, not zero failures. "
             f"Excluded quarantined test slots across measured runs: {raw['quarantinedTests']}; "
             f"quarantine inventory unavailable in {raw['quarantineUnknownReports']} measured reports."
+        ),
+        (
+            f"{sum(run.get('reportExpected', True) is None for run in test_runs)} runs are "
+            "pending or have unavailable validation evidence; they are not counted as passes."
         ),
         (
             f"Measured reports without verified coverage: {raw['unverifiedCoverageReports']}; "

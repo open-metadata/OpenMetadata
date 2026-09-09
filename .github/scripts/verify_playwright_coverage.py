@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timing-glob", required=True)
     parser.add_argument("--result-glob")
     parser.add_argument("--require-native-evidence", action="store_true")
+    parser.add_argument("--require-single-attempt", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
@@ -126,10 +127,26 @@ def main() -> None:
     for filename in result_files:
         payload = json.loads(Path(filename).read_text(encoding="utf-8"))
         zero_attempt_skipped.update(zero_attempt_skipped_tests(payload, executed))
-        if args.require_native_evidence:
+        if args.require_native_evidence or args.require_single_attempt:
             for suite in payload.get("suites", []):
                 for spec in iter_specs(suite):
                     for test in spec.get("tests", []):
+                        if args.require_single_attempt:
+                            attempts = test.get("results", [])
+                            if len(attempts) > 1 or any(
+                                attempt.get("retry", 0) != 0 for attempt in attempts
+                            ):
+                                native_evidence_issues.append(
+                                    f"More than one execution attempt: {spec.get('id')}"
+                                )
+                            if test.get("status") not in {"expected", "skipped"} or any(
+                                attempt.get("status")
+                                not in {test.get("expectedStatus", "passed"), "skipped"}
+                                for attempt in attempts
+                            ):
+                                native_evidence_issues.append(
+                                    f"Unexpected test outcome: {spec.get('id')}"
+                                )
                         if test.get("projectName") in LIFECYCLE_PROJECTS:
                             continue
                         test_id = spec.get("id")
@@ -156,7 +173,7 @@ def main() -> None:
     missing = sorted(planned.keys() - executed.keys() - zero_attempt_skipped.keys())
     unexpected = sorted(executed.keys() - planned.keys())
 
-    if args.require_native_evidence:
+    if args.require_native_evidence or args.require_single_attempt:
         native_evidence_issues.extend(
             f"Missing native result: {test_id}"
             for test_id in sorted(planned.keys() - native.keys())

@@ -75,15 +75,6 @@ on:
         required: false
         type: boolean
         default: false
-      retries:
-        description: >-
-          Playwright per-test retry count, exported to playwright.config.ts as
-          PLAYWRIGHT_RETRIES on the shard test step only (the fixture populator
-          and bundle-smoke keep the config default). The default matches the
-          config's CI default of 1; release-branch nightlies raise it to 2.
-        required: false
-        type: number
-        default: 1
       send_slack_notification:
         description: Post a Slack summary once the run finishes.
         required: false
@@ -554,7 +545,7 @@ jobs:
             "$BUILD_TOOLCHAIN"
 
       - name: Upload OpenMetadata distribution
-        uses: ./.github/actions/upload-artifact-with-retry
+        uses: actions/upload-artifact@v6
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -639,7 +630,7 @@ jobs:
           persist-credentials: false
 
       - name: Download selection
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection
@@ -726,6 +717,7 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
       - name: Download recent full-suite timings
+        if: ${{ github.event_name != 'merge_group' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -811,6 +803,7 @@ jobs:
             "$RUNNER_TEMP/playwright-plans/matrix.json"
 
       - name: Inventory existing quarantined coverage
+        if: ${{ github.event_name != 'merge_group' }}
         run: |
           docker run --rm --network none --read-only \
             --cap-drop ALL --security-opt no-new-privileges \
@@ -832,7 +825,7 @@ jobs:
             > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"
 
       - name: Upload shard plans
-        uses: ./.github/actions/upload-artifact-with-retry
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -914,7 +907,7 @@ jobs:
 
       - name: Upload restored seeded fixture
         if: ${{ steps.validate-fixture.outputs.usable == 'true' }}
-        uses: ./.github/actions/upload-artifact-with-retry
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -923,7 +916,7 @@ jobs:
 
       - name: Upload restored ingestion image
         if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}
-        uses: ./.github/actions/upload-artifact-with-retry
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-ingestion-image
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -994,7 +987,7 @@ jobs:
 
       - name: Download OpenMetadata distribution
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: openmetadata-distribution
           path: openmetadata-dist/target
@@ -1166,7 +1159,7 @@ jobs:
           PW_DEDICATED_INGESTION: "true"
           PW_DEDICATED_IMPORT_EXPORT: "true"
         run: |
-          npx playwright test --project=entity-data-setup --reporter=line
+          npx playwright test --project=entity-data-setup --reporter=line --retries=0
           test -s playwright/.auth/admin.json
           test -s playwright/.auth/admin-api-token.json
           test -s playwright/output/entity-response-data.json
@@ -1178,10 +1171,10 @@ jobs:
           PLAYWRIGHT_IS_OSS: "true"
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
           PW_PRESEEDED_STATE: "true"
-        run: npx playwright test --project=bundle-smoke --reporter=line
+        run: npx playwright test --project=bundle-smoke --reporter=line --retries=0
 
       - name: Upload fixture-state failure diagnostics
-        if: ${{ failure() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true')) }}
+        if: ${{ github.event_name != 'merge_group' && failure() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true')) }}
         continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
@@ -1252,7 +1245,7 @@ jobs:
 
       - name: Upload seeded fixture
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: ./.github/actions/upload-artifact-with-retry
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -1261,7 +1254,7 @@ jobs:
 
       - name: Upload ingestion image
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
-        uses: ./.github/actions/upload-artifact-with-retry
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-ingestion-image
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -1333,14 +1326,14 @@ jobs:
 
       - name: Download OpenMetadata distribution
         id: download-distribution
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: openmetadata-distribution
           path: ${{ runner.temp }}/openmetadata-distribution
 
       - name: Download seeded fixture
         id: download-fixture
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ runner.temp }}/playwright-fixture
@@ -1348,14 +1341,14 @@ jobs:
       - name: Download ingestion image
         id: download-ingestion-image
         if: ${{ matrix.requiresAirflow }}
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: playwright-ingestion-image
           path: ${{ runner.temp }}/playwright-ingestion-image
 
       - name: Download shard plans
         id: download-plans
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -1544,7 +1537,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
-        run: npx playwright test --project=bundle-smoke --reporter=line
+        run: npx playwright test --project=bundle-smoke --reporter=line --retries=0
 
       # Recorded AFTER every setup step (fixture restore, node, yarn, browser
       # install, bundle-smoke) so the 5-min `environmentAtMostFiveMinutes`
@@ -1615,7 +1608,7 @@ jobs:
           # step. Alert there, do not kill here.
           set +e
           timeout --signal=TERM --kill-after=30s 60m \
-            npx playwright test "${project_args[@]}" "${files[@]}"
+            npx playwright test --retries=0 "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
           finished_at=$(date +%s)
@@ -1629,7 +1622,6 @@ jobs:
           PW_SHARD_ID: ${{ matrix.shardId }}
           PW_SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
           PW_WORKERS: ${{ matrix.workers }}
-          PLAYWRIGHT_RETRIES: ${{ inputs.retries }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
@@ -1679,6 +1671,26 @@ jobs:
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify shard coverage and first attempt
+        id: verify-shard-coverage
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.run-tests.outcome != 'skipped' }}
+        env:
+          SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
+          SHARD_ID: ${{ matrix.shardId }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == 'merge_group' && "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
+            echo 'The shard did not test the merge-group commit' >&2
+            exit 1
+          fi
+          jq -e --arg shard "$SHARD_ID" '.shardId == $shard and (.testIds | length > 0)' "$SHARD_PLAN" >/dev/null
+          python3 .github/scripts/verify_playwright_coverage.py \
+            --require-native-evidence --require-single-attempt \
+            --plan-glob "$SHARD_PLAN" \
+            --timing-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/playwright-timings.json" \
+            --result-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json" \
+            --output "$RUNNER_TEMP/shard-coverage.json"
+          jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
 
       - name: Record shard phase metrics
         if: always()
@@ -1783,7 +1795,7 @@ jobs:
 
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shardId }}
@@ -1795,7 +1807,7 @@ jobs:
 
       - name: Upload failure-only test results
         uses: actions/upload-artifact@v6
-        if: failure() || cancelled()
+        if: ${{ github.event_name != 'merge_group' && (failure() || cancelled()) }}
         continue-on-error: true
         with:
           name: playwright-test-results-${{ matrix.shardId }}
@@ -1806,7 +1818,7 @@ jobs:
 
       - name: Upload timing and request metrics
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
           name: playwright-timings-${{ matrix.shardId }}
@@ -1818,13 +1830,10 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-      # A FinalizeArtifact 403 can reserve a name without publishing it.
-      # Retry immutable results under a new name; normalize before coverage.
       - name: Upload results JSON for summary
         id: upload-results-json
         uses: actions/upload-artifact@v6
-        if: always()
-        continue-on-error: true
+        if: ${{ always() && github.event_name != 'merge_group' }}
         with:
           name: playwright-results-json-${{ matrix.shardId }}
           overwrite: true
@@ -1832,34 +1841,10 @@ jobs:
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json
             openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
           retention-days: 1
-          if-no-files-found: ignore
-
-      # The retry uploads to a DIFFERENT name (`-retry` suffix). Reusing the
-      # primary name races an artifact-service failure mode where the first
-      # attempt's blob upload succeeds but `FinalizeArtifact` returns 403
-      # from the intermediary — the name is now a ghost reservation that the
-      # next `CreateArtifact` rejects with `409 Conflict: an artifact with
-      # this name already exists on the workflow run` (run 34244326002:
-      # chromium-09 upload + retry both 403/409 on the same name, results
-      # never landed). `overwrite: true` doesn't help against the ghost.
-      # A unique retry name sidesteps the collision; render_playwright_summary
-      # collapses `<shardId>-retry` back to `<shardId>` and prefers the retry
-      # when both are present.
-      - name: Retry upload results JSON for summary
-        if: always() && steps.upload-results-json.outcome == 'failure'
-        uses: actions/upload-artifact@v6
-        continue-on-error: true
-        with:
-          name: playwright-results-json-${{ matrix.shardId }}-retry
-          overwrite: true
-          path: |
-            openmetadata-ui/src/main/resources/ui/playwright/output/results.json
-            openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
-          retention-days: 1
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Collect failure diagnostics
-        if: failure() || cancelled()
+        if: ${{ github.event_name != 'merge_group' && (failure() || cancelled()) }}
         continue-on-error: true
         run: |
           DIAGNOSTICS_DIR="${RUNNER_TEMP}/playwright-ci-diagnostics"
@@ -1900,7 +1885,7 @@ jobs:
 
       - name: Upload failure diagnostics
         uses: actions/upload-artifact@v6
-        if: failure() || cancelled()
+        if: ${{ github.event_name != 'merge_group' && (failure() || cancelled()) }}
         continue-on-error: true
         with:
           name: playwright-ci-diagnostics-${{ matrix.shardId }}
@@ -1921,7 +1906,7 @@ jobs:
   slack-notify:
     name: Slack notification
     needs: [playwright-ci]
-    if: ${{ always() && inputs.send_slack_notification }}
+    if: ${{ always() && github.event_name != 'merge_group' && inputs.send_slack_notification }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -1970,7 +1955,7 @@ jobs:
           done
 
       - name: Download blob reports
-        uses: ./.github/actions/download-artifact-with-retry
+        uses: actions/download-artifact@v7
         with:
           pattern: playwright-blob-*
           path: openmetadata-ui/src/main/resources/ui/blob-reports

@@ -13,7 +13,6 @@
 import { expect, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../constant/serviceForm';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
-import { selectOptionWithRetry } from './common';
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -53,8 +52,11 @@ export const selectOneOfOption = async (
       .locator('.core-one-of-field-select-popover')
       .getByRole('option', { name: optionName, exact: true });
 
+    await trigger.scrollIntoViewIfNeeded();
     await trigger.focus();
-    await selectOptionWithRetry(trigger, option);
+    await trigger.click();
+    await expect(option).toBeVisible();
+    await option.click();
     await expect(trigger).toContainText(optionName);
 
     return;
@@ -80,8 +82,11 @@ export const selectIngestionRunnerFromDropdown = async (
       .locator('.core-select-widget-popover')
       .getByRole('option', { name: runnerDisplayName, exact: true });
 
+    await trigger.scrollIntoViewIfNeeded();
     await trigger.focus();
-    await selectOptionWithRetry(trigger, option);
+    await trigger.click();
+    await expect(option).toBeVisible();
+    await option.click();
     await expect(trigger).toContainText(runnerDisplayName);
   }
 };

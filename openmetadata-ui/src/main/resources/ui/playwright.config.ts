@@ -44,6 +44,7 @@ const hasDedicatedIngestionLane =
 const hasDedicatedImportExportLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
 const isPlannedShard = Boolean(shardPlan);
+const isMergeGroup = process.env.GITHUB_EVENT_NAME === 'merge_group';
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
 const entityDependencies = hasPreseededState
@@ -148,11 +149,14 @@ const combineGrep = (base?: RegExp) => {
 // Each conditional group is annotated separately: TypeScript does not propagate a
 // contextual type into a spread expression, so inlining these ternaries would widen
 // the tuples to arrays and break assignability to ReporterDescription.
-const htmlReporter: ReporterDescription[] = isPlannedShard
-  ? []
-  : [['html', { outputFolder: './playwright/output/playwright-report' }]];
+const htmlReporter: ReporterDescription[] =
+  isPlannedShard || isMergeGroup
+    ? []
+    : [['html', { outputFolder: './playwright/output/playwright-report' }]];
 
-const blobReporter: ReporterDescription[] = isPlannedShard
+const blobReporter: ReporterDescription[] = isMergeGroup
+  ? []
+  : isPlannedShard
   ? [
       [
         'blob',
@@ -181,7 +185,7 @@ const reporters: ReporterDescription[] = [
     {
       useDetails: true,
       showError: true,
-      showArtifactsLink: true,
+      showArtifactsLink: !isMergeGroup,
     },
   ],
   ...blobReporter,
@@ -206,10 +210,7 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only; PLAYWRIGHT_RETRIES (set per workflow via the reusable's
-   * `retries` input) overrides the CI default of 1. The parens are semantic:
-   * without them `?? CI ? 1 : 0` collapses every override to 1. */
-  retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
+  retries: 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
@@ -227,9 +228,9 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
-    /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    /* PRs retain first-failure diagnostics; merge groups verify results locally. */
+    trace: isMergeGroup ? 'off' : 'retain-on-failure',
+    screenshot: isMergeGroup ? 'off' : 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
      * This ensures page.goto() and waitForLoadState() calls timeout after 60s
@@ -327,7 +328,10 @@ export default defineConfig({
         '**/SSORenewal.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
+      use: {
+        ...devices['Desktop Chrome'],
+        trace: isMergeGroup ? 'off' : 'retain-on-failure',
+      },
       fullyParallel: false,
       workers: 1,
     },

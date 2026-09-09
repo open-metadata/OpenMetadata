@@ -670,12 +670,9 @@ export class OverviewPageObject extends RightPanelBase {
       Teams: 'team',
     };
 
-    await expect(async () => {
-      if (!(await this.selectOwnerTabs.isVisible())) {
-        await this.editOwnersIcon.click();
-      }
-      await expect(this.selectOwnerTabs).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+    await this.editOwnersIcon.scrollIntoViewIfNeeded();
+    await this.editOwnersIcon.click();
+    await expect(this.selectOwnerTabs).toBeVisible();
 
     await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
 

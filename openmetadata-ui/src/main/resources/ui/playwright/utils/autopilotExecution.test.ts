@@ -74,9 +74,7 @@ for (const scenario of [
         context,
         entityLink,
         startedAfter,
-        scenario === 'complete' || scenario === 'changed-execution'
-          ? 10000
-          : 200
+        scenario === 'stale' || scenario === 'running' ? 200 : 10000
       );
       if (scenario === 'complete') {
         expect(await result).toEqual(
@@ -101,6 +99,17 @@ for (const scenario of [
           (failure) => String(failure)
         );
         expect(error).toMatch(message);
+        if (
+          [
+            'FAILURE',
+            'EXCEPTION',
+            'SUPERSEDED',
+            'http-error',
+            'malformed',
+          ].includes(scenario)
+        ) {
+          expect(requests).toBe(1);
+        }
       }
     } finally {
       await context.dispose();

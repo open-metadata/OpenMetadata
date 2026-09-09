@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { waitForAntdPopupToSettle } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -34,18 +35,11 @@ test.describe('Table & Data Model columns table pagination', () => {
     await tablePageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(tablePageSizeDropdown).toBeVisible();
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await expect(async () => {
-      await tablePageSizeDropdown.hover();
-      if (!(await menuItem.isVisible())) {
-        await tablePageSizeDropdown.click();
-      }
-      await expect(menuItem).toBeVisible({ timeout: 2_000 });
-      await menuItem.click();
-      await expect(tablePageSizeDropdown).toHaveText('25 / Page');
-    }).toPass({
-      timeout: 30_000,
-      intervals: [500, 1_000, 2_000],
-    });
+    await tablePageSizeDropdown.hover();
+    await expect(menuItem).toBeVisible();
+    await waitForAntdPopupToSettle(page);
+    await menuItem.click();
+    await expect(tablePageSizeDropdown).toHaveText('25 / Page');
 
     await waitForAllLoadersToDisappear(page);
 
@@ -78,19 +72,10 @@ test.describe('Table & Data Model columns table pagination', () => {
         url.searchParams.get('size') === '50'
       );
     });
-    await expect(async () => {
-      if (!(await option50.isVisible())) {
-        await pageSizeRecordBtn.click();
-      }
-      await expect(option50).toBeVisible({ timeout: 2_000 });
-      await option50.click();
-      await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
-        '50'
-      );
-    }).toPass({
-      timeout: 30_000,
-      intervals: [500, 1_000, 2_000],
-    });
+    await pageSizeRecordBtn.click();
+    await expect(option50).toBeVisible();
+    await option50.click();
+    await expect(pageSizeRecordBtn).toHaveText('50');
 
     await waitForAllLoadersToDisappear(page);
 

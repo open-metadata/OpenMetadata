@@ -24,7 +24,6 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
-  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   visitEntityPage,
@@ -132,8 +131,11 @@ class ServiceBaseClass {
         .locator('.core-select-widget-popover')
         .getByRole('option', { name: runnerLabel, exact: true });
 
+      await trigger.scrollIntoViewIfNeeded();
       await trigger.focus();
-      await selectOptionWithRetry(trigger, option);
+      await trigger.click();
+      await expect(option).toBeVisible();
+      await option.click();
       await expect(trigger).toContainText(runnerLabel);
     }
 

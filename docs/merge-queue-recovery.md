@@ -3,7 +3,8 @@
 The objective is zero avoidable ejections with complete execution evidence. A
 100% first-enqueue merge rate over an observed window is useful; incompatible
 changes, test regressions, manual removals, and conflicts must remain visible.
-Queue concurrency stays at five. Required coverage and test retries are unchanged.
+Queue concurrency stays at five. Test selection stays unchanged; Playwright test
+retries are zero in PR and merge-queue checks.
 
 ## Current failures on September 9
 
@@ -188,16 +189,27 @@ default. Prefer reducing repeated full-page navigation where the scenario allows
 
 ## Changes in this recovery
 
-- Artifact downloads have bounded recovery. Critical uploads use a fresh fallback
-  name to avoid the failed-finalization name reservation. Native reports and shard
-  status are validated against the tested commit before aggregation. Identical
-  duplicate uploads count once; conflicting evidence within one execution or
-  invalid evidence fails validation. For workflow reruns, a verified newer attempt
-  supersedes that shard's older fallback; untouched successful shards can retain
-  their earlier evidence for the same commit. First-attempt ledgers remain separate.
-- Coverage reconciles planned identities independently with native results and
-  timing records. An optional HTML/report upload problem is a reporting warning;
-  missing execution evidence or a coverage mismatch remains a failure.
+- PR checks retain native results, timings, blob/HTML reports, and failure traces
+  and screenshots. Artifact transfers use the standard GitHub actions without
+  custom retry wrappers or fallback uploads. The report normalizer still reads
+  historical fallback artifacts without double counting them.
+- Merge groups skip diagnostic/report uploads, blob/HTML generation, traces,
+  screenshots, and summary downloads. The planner verifies that shard plans cover
+  all selected test identities exactly once. Each shard checks its checkout against
+  the merge-group SHA and reconciles its plan with native results and timing records
+  locally, rejecting retry-pass results, failures, and incomplete coverage. The
+  required summary gate accepts only successful authorization, a nonempty unique
+  shard matrix, successful planning, and successful shards; it needs no checkout
+  or downloaded reports. Existing declared skips remain visible in shard logs.
+- Build distributions, shard plans, ingestion images, and seeded fixtures still
+  travel between jobs because the shards run on separate runners. Their absence
+  remains a setup failure. Merge groups use the checked-in timing baseline instead
+  of searching recent run artifacts; baseline refresh now runs only after a full
+  validation explicitly dispatched against main, outside queue validation.
+- Whole-test retries are disabled, including the reusable workflow's test command.
+  Changed selectors focus or hover once, wait for readiness, select once, and verify
+  the selected value. Polling observes one asynchronous execution; HTTP errors and
+  terminal failures stop it without starting the operation again.
 - Page-size, owner-picker, asset-search, task-panel, and widget tests use scoped
   interactions and observable completion. Search-dependent setup waits for the
   index; it does not assume REST creation makes an asset immediately searchable.
@@ -213,7 +225,10 @@ default. Prefer reducing repeated full-page navigation where the scenario allows
 - The digest paginates check runs, deduplicates workflow/report pairs, links failed
   scenarios and signatures, and separates cancellation evidence from direct
   failure. Raw first-attempt outcomes, retries, reruns, bypasses, skips, quarantine
-  inventory, and unavailable measurements are reported separately.
+  inventory, and unavailable measurements are reported separately. New merge-group
+  runs use the first workflow attempt's shard-gate result; historical artifact-backed
+  test counts are labeled separately. A successful manual rerun never replaces the
+  original failure, and intentionally absent queue reports are not transport errors.
 - Access-log metrics include bounded latency histograms, API/static request
   counts, HTTP 5xx/429 counts, and the endpoints consuming the most server time.
   Workflow p95/p99 values are upper bounds from merged histogram counts, never
@@ -343,6 +358,18 @@ redeploy HTTP 500. The separate DagContext race fix already exists in
 
 ## Local evidence and remaining checks
 
+- The reporting split passes 245 CI-script tests, including missing/invalid
+  execution identity, incomplete coverage, failed tests, and retry-pass rejection.
+  Actual Chromium runs using the PR configuration retain a first-failure blob,
+  trace, and screenshot; merge-group runs produce none of those and still reject
+  a deliberate failure. Both execute the test once even with the old retry override
+  set to nine. A shared spec under two projects produces two distinct test IDs and
+  passes coverage verification. These checks do not measure full-suite speedup.
+- All 17 HTTP helper tests pass in the isolated workflow container with three
+  workers and zero retries. Playwright lint has zero errors and 214 existing
+  warnings; the TypeScript comparison has no introduced diagnostics. Workflow lint
+  has the same nine existing reusable-output `jobs.*.result` diagnostics; no new
+  workflow diagnostics remain.
 - Nine new AutoPilot HTTP-boundary tests pass with three workers and zero retries.
   The extracted old completion behavior fails the failure/exception, HTTP-error,
   and stale-execution checks. These are helper regressions, not the full browser
@@ -412,8 +439,8 @@ queue; use short local runs for diagnosis. Preserve representative neighboring
 tests and background work in the affected shards. Repeating an isolated scenario
 on an otherwise idle server does not reproduce contention from a full shard.
 Use a separate diagnostic run with bounded concurrency, not 50 simultaneous queue
-builds. The normal `on-first-retry` trace setting records no trace with zero
-retries, so the diagnostic command explicitly retains first-failure traces.
+builds. PR checks retain first-failure traces with zero retries; normal merge-group
+runs disable tracing, so the diagnostic command explicitly retains those traces.
 
 The transport acceptance exercise must include interrupted uploads/downloads,
 primary-only and fallback-only artifacts, identical duplicate uploads, conflicting

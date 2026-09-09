@@ -70,7 +70,38 @@ def test_invalid_execution_evidence_is_rejected(tmp_path, fault):
         status = json.loads((directory / "ci-status.json").read_text())
         status["headSha" if fault == "wrong-commit" else "shard"] = "other"
         (directory / "ci-status.json").write_text(json.dumps(status))
-    assert normalize(tmp_path).returncode != 0
+    result = normalize(tmp_path)
+    assert result.returncode != 0
+    if fault == "missing":
+        assert "Missing execution evidence: ci-status.json" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("runId", None),
+        ("runId", ""),
+        ("runId", "invalid"),
+        ("runAttempt", None),
+        ("runAttempt", ""),
+        ("runAttempt", 0),
+        ("runAttempt", -1),
+        ("runAttempt", 1.5),
+        ("runAttempt", "invalid"),
+    ],
+)
+def test_missing_or_invalid_workflow_identity_is_rejected(tmp_path, key, value):
+    directory = write_report(tmp_path)
+    status_file = directory / "ci-status.json"
+    status = json.loads(status_file.read_text())
+    if value is None:
+        status.pop(key)
+    else:
+        status[key] = value
+    status_file.write_text(json.dumps(status))
+    result = normalize(tmp_path)
+    assert result.returncode != 0
+    assert "Invalid workflow execution identity" in result.stderr
 
 
 def test_real_failure_survives_identical_transport_retry(tmp_path):

@@ -5,15 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import math
 import re
 import statistics
-from collections import defaultdict
+import sys
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 FULL_PROJECTS = {
     "chromium",
@@ -417,7 +417,10 @@ def emit_unweighted_warnings(
             stats[unit.file]["count"] += 1
     for file, entry in sorted(stats.items()):
         reserved_ms = entry["count"] * FALLBACK_TEST_MS
-        if entry["count"] < UNWEIGHTED_WARN_MIN_TESTS and reserved_ms < UNWEIGHTED_WARN_MIN_MS:
+        if (
+            entry["count"] < UNWEIGHTED_WARN_MIN_TESTS
+            and reserved_ms < UNWEIGHTED_WARN_MIN_MS
+        ):
             continue
         message = (
             f"{entry['count']} test(s) in {file} have no timing history; "
@@ -451,10 +454,9 @@ def stale_baseline_files_in_plan(
                 continue
             by_file_unweighted[unit.file] += 1
     return sorted(
-        (file, by_file_planned[file])
+        (file, planned)
         for file, planned in by_file_planned.items()
-        if planned >= STALE_BASELINE_MIN_TESTS
-        and by_file_unweighted[file] == planned
+        if planned >= STALE_BASELINE_MIN_TESTS and by_file_unweighted[file] == planned
     )
 
 
@@ -475,9 +477,7 @@ def misrouted_lane_hint_violations(
                 continue
             if unit.project == expected_project:
                 continue
-            violations.append(
-                (unit.file, unit.project, expected_project, expected_tag)
-            )
+            violations.append((unit.file, unit.project, expected_project, expected_tag))
             break  # one hint per file — first-match wins
     # Sort + dedupe: multiple units per file (audit-split) collapse to one line.
     return sorted(set(violations))
@@ -683,7 +683,9 @@ def backfill_from_checked_in_baseline(
     baseline = next(
         (
             candidate
-            for candidate in (root / CHECKED_IN_BASELINE for root in SPEC_ROOT_CANDIDATES)
+            for candidate in (
+                root / CHECKED_IN_BASELINE for root in SPEC_ROOT_CANDIDATES
+            )
             if candidate.is_file()
         ),
         None,
@@ -695,6 +697,22 @@ def backfill_from_checked_in_baseline(
         weights.setdefault(test_id, weight)
     for identity, weight in fallback_identity.items():
         identity_weights.setdefault(identity, weight)
+
+
+def verify_plan_partition(units: list[Unit], plans: list[dict[str, Any]]) -> None:
+    expected = Counter(test_id for unit in units for test_id in unit.test_ids)
+    assigned = Counter(test_id for plan in plans for test_id in plan["testIds"])
+    if (
+        not expected
+        or expected != assigned
+        or any(count != 1 for count in assigned.values())
+    ):
+        raise SystemExit(
+            "Shard plans must assign every selected test exactly once: "
+            f"{len(expected.keys() - assigned.keys())} missing, "
+            f"{len(assigned.keys() - expected.keys())} unexpected, "
+            f"{sum(count != 1 for count in assigned.values())} duplicated"
+        )
 
 
 def main() -> None:
@@ -857,6 +875,13 @@ def main() -> None:
         for index, shard_units in enumerate(shards):
             matrix_entries.append(write_plan(args.output_dir, lane, index, shard_units))
 
+    verify_plan_partition(
+        units,
+        [
+            json.loads((args.output_dir / entry["plan"]).read_text(encoding="utf-8"))
+            for entry in matrix_entries
+        ],
+    )
     matrix = {"include": matrix_entries}
     matrix_path = args.output_dir / "matrix.json"
     matrix_path.write_text(json.dumps(matrix, indent=2) + "\n", encoding="utf-8")

@@ -20,7 +20,6 @@ import subprocess
 import tarfile
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / ".github" / "scripts"
 
@@ -491,10 +490,7 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "playwright-distribution-v2-" in workflow
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
-    assert (
-        "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}"
-        in workflow
-    )
+    assert "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}" in workflow
     assert (
         "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}"
         in workflow
@@ -550,7 +546,13 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
 
     writers = workflow.count("uses: actions/cache/save@")
     assert writers == 5, f"cache writer count changed to {writers}; guard each one"
-    assert workflow.count(guard) == writers
+    cache_steps = [
+        step
+        for step in workflow.split("      - name:")
+        if "uses: actions/cache/save@" in step
+    ]
+    assert len(cache_steps) == writers
+    assert all(guard in step for step in cache_steps)
 
     # cache-ui-dist is the documented exception: it wraps `actions/cache`, whose
     # save is a post-step, so a step-level `if:` would suppress the restore too

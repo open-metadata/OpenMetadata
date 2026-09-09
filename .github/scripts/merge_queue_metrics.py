@@ -33,9 +33,10 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Sequence
+from typing import Any
 from urllib.parse import urlencode
 
 GITHUB_GRAPHQL = "https://api.github.com/graphql"
@@ -549,7 +550,7 @@ def read_summary_artifact(
             raise ApiError(f"Summary download failed for run {run_id}")
         return completed.stdout
 
-    archive_bytes = _retrying(download)
+    archive_bytes = download()
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
         member = archive.getinfo("outcome.json")
         if member.file_size > 8 * 1024 * 1024:
@@ -654,17 +655,51 @@ def playwright_window_reports(
     warnings = []
 
     def collect(run):
+        first_run = None
         try:
-            report = read_summary_artifact(run["id"], owner, repo, token)
+            first_run = (
+                rest(
+                    f"/repos/{owner}/{repo}/actions/runs/{run['id']}/attempts/1", token
+                )
+                if run.get("run_attempt", 1) > 1
+                else run
+            )
+            completed = first_run.get("status") == "completed"
+            report = (
+                read_summary_artifact(run["id"], owner, repo, token)
+                if completed
+                else None
+            )
             if report and report.get("context", {}).get("sourceSha") != run["head_sha"]:
                 raise ApiError(f"Summary commit mismatch in run {run['id']}")
+            local_gate = None
+            if report is None and completed:
+                jobs = paginated_items(
+                    f"/repos/{owner}/{repo}/actions/runs/{run['id']}/attempts/1/jobs",
+                    "jobs",
+                    token,
+                )
+                local_gate = next(
+                    (
+                        step
+                        for job in jobs
+                        for step in job.get("steps", [])
+                        if step.get("name") == "Gate verified merge-group shards"
+                    ),
+                    None,
+                )
             return {
                 "runId": run["id"],
                 "sha": run["head_sha"],
-                "conclusion": run["conclusion"],
+                "conclusion": first_run["conclusion"],
+                "latestConclusion": run["conclusion"],
                 "attempts": run.get("run_attempt", 1),
                 "createdAt": run["created_at"],
                 "report": report,
+                "reportExpected": local_gate is None if completed else None,
+                "shardGateConclusion": local_gate.get("conclusion")
+                if local_gate
+                else None,
             }, None
         except (
             ApiError,
@@ -677,9 +712,11 @@ def playwright_window_reports(
             return {
                 "runId": run["id"],
                 "sha": run["head_sha"],
-                "conclusion": run["conclusion"],
+                "conclusion": first_run.get("conclusion") if first_run else None,
+                "latestConclusion": run["conclusion"],
                 "attempts": run.get("run_attempt", 1),
                 "report": None,
+                "reportExpected": None,
             }, str(exc)
 
     with ThreadPoolExecutor(max_workers=6) as pool:

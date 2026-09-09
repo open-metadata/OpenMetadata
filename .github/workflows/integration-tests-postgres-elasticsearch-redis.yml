@@ -202,22 +202,6 @@ jobs:
 
       - name: Upload Integration Test Runtime
         id: upload-runtime
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: java-it-build-postgres-elasticsearch-redis-${{ github.run_id }}
-          overwrite: true
-          path: ${{ runner.temp }}/java-it-build
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
-
-      # upload-artifact has no built-in retry, and a FinalizeArtifact 403 from the
-      # blob-storage intermediary is transient — without a second attempt it fails the
-      # build job and every lane that depends on it. overwrite: true keeps the re-upload
-      # safe even when the first attempt already staged blobs.
-      - name: Upload Integration Test Runtime (retry)
-        if: ${{ steps.upload-runtime.outcome == 'failure' }}
         uses: actions/upload-artifact@v7
         with:
           name: java-it-build-postgres-elasticsearch-redis-${{ github.run_id }}
