@@ -325,7 +325,6 @@ export const CredentialFileInput = ({
 
   const handleManualChange = (nextValue: string) => {
     setErrorKind(null);
-    setFileMeta(null);
     onChange?.(nextValue === '' ? undefined : nextValue);
   };
 
@@ -371,7 +370,14 @@ export const CredentialFileInput = ({
         />
       )}
 
-      {allowManualInput && (
+      {/*
+        The drop zone and the textarea are two ways to supply one value, so only
+        one is offered at a time. Once a file is attached its chip stands for the
+        credential; showing the textarea too would render the same secret twice
+        with an "or" between them, implying a choice that no longer exists.
+        Removing the chip brings the choice back.
+      */}
+      {allowManualInput && !selectedFile && (
         <>
           <Divider label={mergedLabels.or} labelAlign="center" />
           <PasswordInput

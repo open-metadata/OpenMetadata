@@ -214,6 +214,55 @@ describe('CredentialFileInput', () => {
       ).toBeInTheDocument();
     });
 
+    it('replaces the choice with the chip once a file is attached', async () => {
+      render(<CredentialFileInput allowManualInput />);
+
+      dropFiles([pemFile()]);
+
+      // Chip and textarea would otherwise both show the same credential, with
+      // an "or" between them implying a choice that no longer exists.
+      expect(await screen.findByTestId('credential-file-chip')).toBeVisible();
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('credential-file-dropzone')
+      ).not.toBeInTheDocument();
+    });
+
+    it('brings the choice back when the file is removed', async () => {
+      const Harness = () => {
+        const [value, setValue] = useState<string | undefined>();
+
+        return (
+          <CredentialFileInput
+            allowManualInput
+            value={value}
+            onChange={setValue}
+          />
+        );
+      };
+
+      render(<Harness />);
+      dropFiles([pemFile()]);
+
+      await userEvent.click(
+        await screen.findByTestId('credential-file-remove')
+      );
+
+      expect(
+        screen.getByTestId('credential-file-dropzone')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('textbox')).toHaveValue('');
+    });
+
+    it('keeps the textarea while the value was typed rather than attached', () => {
+      render(<CredentialFileInput allowManualInput value={PEM} />);
+
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('credential-file-chip')
+      ).not.toBeInTheDocument();
+    });
+
     it('submits typed content unchanged', async () => {
       const onChange = vi.fn();
       // The component is fully controlled, so a state owner is required for
