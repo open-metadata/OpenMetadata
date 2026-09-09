@@ -50,21 +50,21 @@ jest.mock('react-quill-new', () => {
     'react'
   ) as typeof import('react');
 
+  const noop = () => undefined;
+  const mockEditorApi = {
+    getFormat: () => ({}),
+    format: noop,
+  };
+  const mockEditorHandle: MockEditorRef = {
+    focus: noop,
+    getEditor: () => mockEditorApi,
+  };
+
   const MockReactQuill = forwardRef<MockEditorRef, MockQuillProps>(
     (_props, ref) => {
       const toolbarRef = useRef<HTMLDivElement>(null);
 
-      useImperativeHandle(
-        ref,
-        () => ({
-          focus: () => undefined,
-          getEditor: () => ({
-            getFormat: () => ({}),
-            format: () => undefined,
-          }),
-        }),
-        []
-      );
+      useImperativeHandle(ref, () => mockEditorHandle, []);
 
       const checkEmojiBoxExist = () => {
         const existing = document.getElementById('textarea-emoji');
