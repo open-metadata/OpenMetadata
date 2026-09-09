@@ -111,6 +111,7 @@ export const AvatarGroup = ({
     const chip = (
       <span
         className="tw:block"
+        data-testid={nameStr}
         key={owner.id}
         title={
           typeof rawDisplayName === 'string' ? rawDisplayName : owner.name
