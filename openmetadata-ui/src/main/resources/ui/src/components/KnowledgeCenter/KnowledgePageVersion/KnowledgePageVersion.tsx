@@ -128,10 +128,12 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                   <Space size={4}>
                     <Space direction="vertical" size={0}>
                       <Owner
+                        isCompactView={false}
                         ownerDisplayName={ownerDisplayName}
                         owners={toOwnerRefs(
                           knowledgePage?.owners ?? ownerRef ?? []
                         )}
+                        showLabel={false}
                       />
                       <span
                         className="self-center text-grey-muted"

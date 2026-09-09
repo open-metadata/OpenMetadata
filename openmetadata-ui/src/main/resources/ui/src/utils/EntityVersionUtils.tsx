@@ -318,8 +318,10 @@ export const getOwnerVersionLabel = (
     if (!isEmpty(owners)) {
       return (
         <Owner
+          isCompactView={false}
           ownerDisplayName={ownerDisplayName}
           owners={toOwnerRefs(owners)}
+          showLabel={false}
         />
       );
     }

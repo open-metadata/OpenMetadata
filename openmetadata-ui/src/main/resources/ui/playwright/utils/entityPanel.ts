@@ -305,7 +305,9 @@ export const editTags = async (page: Page, tagName: string) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  const tagOption = page.getByTitle(tagName);
+  const tagOption = page
+    .locator('.selectable-list-item')
+    .filter({ hasText: tagName });
   // Wait for tag option to be visible before clicking
   await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
@@ -449,7 +451,9 @@ export const verifyDeletedEntityNotVisible = async (
   expect(searchResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
-  const deletedItem = page.getByTitle(entityName);
+  const deletedItem = page
+    .locator('.selectable-list-item')
+    .filter({ hasText: entityName });
 
   return deletedItem;
 };
@@ -492,7 +496,9 @@ export const removeTagsFromPanel = async (
   await waitForAllLoadersToDisappear(page);
 
   for (const tagName of tagDisplayNames) {
-    const tagOption = page.getByTitle(tagName);
+    const tagOption = page
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
     await tagOption.waitFor({ state: 'visible' });
     await tagOption.click();
   }

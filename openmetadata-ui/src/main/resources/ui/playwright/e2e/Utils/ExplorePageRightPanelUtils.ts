@@ -48,17 +48,15 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
   const ownerTabs = page.getByTestId('select-owner-tabs');
   await ownerTabs.waitFor({ state: 'visible' });
 
-  const teamsTab = ownerTabs.locator('[data-node-key="teams"]');
-  const usersTab = ownerTabs.locator('[data-node-key="users"]');
+  const usersTab = ownerTabs.getByRole('tab', { name: 'Users' });
   const searchBar = page.getByTestId('owner-select-users-search-bar');
 
   await waitForAllLoadersToDisappear(page);
 
-  const isTeamsActive = await teamsTab.evaluate((el) =>
-    el.classList.contains('ant-tabs-tab-active')
-  );
+  const isUsersActive =
+    (await usersTab.getAttribute('aria-selected')) === 'true';
 
-  if (isTeamsActive) {
+  if (!isUsersActive) {
     await usersTab.click();
     await waitForAllLoadersToDisappear(page);
   }

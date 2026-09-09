@@ -103,8 +103,10 @@ function DataAssetsVersionHeader({
                 </>
               )}
               <Owner
+                isCompactView={false}
                 ownerDisplayName={ownerDisplayName}
                 owners={toOwnerRefs(currentVersionData?.owners ?? ownerRef)}
+                showLabel={false}
               />
               <Divider className="self-center m-x-sm" type="vertical" />
 

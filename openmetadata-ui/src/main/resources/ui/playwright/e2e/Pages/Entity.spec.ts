@@ -527,7 +527,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .fill('PersonalData.SpecialCategory');
           await searchTag;
 
-          const tagOption = page.getByTitle('SpecialCategory');
+          const tagOption = page
+            .locator('.selectable-list-item')
+            .filter({ hasText: 'SpecialCategory' });
           await tagOption.waitFor({ state: 'visible' });
           await tagOption.click();
 
@@ -699,7 +701,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Wait for tag option to be visible before clicking
-          const tagOption = page.getByTitle('Sensitive', { exact: true });
+          const tagOption = page
+            .locator('.selectable-list-item')
+            .filter({ hasText: 'Sensitive' });
           await expect(tagOption).toBeVisible();
           await tagOption.click();
 
@@ -771,10 +775,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           await page
-            .getByTitle(
-              EntityDataClass.glossaryTerm1.responseData.displayName,
-              { exact: true }
-            )
+            .locator('.selectable-list-item')
+            .filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            })
             .click();
           const glossaryCleanupResponse = page.waitForResponse(
             (response) =>
@@ -800,7 +804,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await searchTagCleanup2;
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByTitle('Sensitive', { exact: true }).click();
+          await page
+            .locator('.selectable-list-item')
+            .filter({ hasText: 'Sensitive' })
+            .click();
           const tagCleanupResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
