@@ -13,6 +13,7 @@
 
 import * as fs from 'fs';
 import { expect, test } from '../../support/fixtures/base';
+import { selectOptionWithRetry } from '../../utils/common';
 import {
   dismissLineageMapOnboarding,
   performZoomOut,
@@ -86,8 +87,10 @@ test.describe(
         .waitFor({ state: 'visible' });
 
       // Select PNG (the modal defaults to CSV for entity lineage)
-      await page.getByTestId('export-type-select').click();
-      await page.getByRole('option', { name: 'PNG' }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('export-type-select'),
+        page.getByRole('option', { name: 'PNG' })
+      );
       await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
       // Trigger download

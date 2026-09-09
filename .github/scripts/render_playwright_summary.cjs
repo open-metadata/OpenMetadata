@@ -840,13 +840,50 @@ async function renderPlaywrightSummary({ github, context, core }) {
     core.warning(`Could not write the Playwright job summary: ${error.message}`);
   }
 
-  if (totalFailed > 0 || infrastructureIssues.length > 0) {
+  // Gate policy:
+  //   * PR / dispatch / schedule (STRICT): any test failure OR any
+  //     infrastructure issue fails the check. Authors have to fix drift,
+  //     invalid results JSON, missing artifacts, etc. before a PR can
+  //     enter the merge queue.
+  //   * merge_group (RELAXED): trust the shard matrix's own result. Fail
+  //     only on a real test failure, or when PLAYWRIGHT_RESULT itself is
+  //     not 'success' (matrix failure / skipped / cancelled). Every
+  //     strict validation already ran on the PR before it entered the
+  //     queue; infra flakes on the tentative merge (artifact-upload
+  //     403/409 races, summary-side download failures that lose ALL
+  //     per-shard results, coverage misses cascading from those, missing
+  //     ci-status.json, etc.) should not dequeue an otherwise-green PR
+  //     (with the repo's ALLGREEN grouping strategy, any failing check
+  //     dissolves the whole batch).
+  //
+  //   PLAYWRIGHT_RESULT === 'success' is authoritative: it means every
+  //   shard job succeeded, which means every shard's Playwright test
+  //   step passed. That signal is safe even when the summary job's
+  //   download-artifact step later flakes and leaves us with zero
+  //   per-shard results (see run 34312746335: 37/37 shards succeeded,
+  //   summary's Download-all-results-JSON returned failure, 75 infra
+  //   issues cascaded — the merge_group check must trust the matrix).
+  //
+  //   All infrastructure issues are still enumerated in the rendered
+  //   job summary above for debuggability — they just don't fail the
+  //   check on merge_group.
+  const isMergeGroup = context.eventName === 'merge_group';
+  const upstreamGreen = upstreamResult === 'success';
+  const shouldFail = isMergeGroup
+    ? (totalFailed > 0 || !upstreamGreen)
+    : (totalFailed > 0 || infrastructureIssues.length > 0);
+
+  if (shouldFail) {
     // Tell the author which kind of red this is: test failures need their
     // action; infrastructure-only failures explicitly do not.
-    const verdict =
-      totalFailed > 0
-        ? 'test failures — author action needed'
-        : 'no test failures — CI infrastructure/reporting problem, not this change';
+    let verdict;
+    if (totalFailed > 0) {
+      verdict = 'test failures — author action needed';
+    } else if (isMergeGroup && !upstreamGreen) {
+      verdict = `shard matrix not green on merge_group (PLAYWRIGHT_RESULT=${upstreamResult || 'unset'}) — refusing synthetic green`;
+    } else {
+      verdict = 'no test failures — CI infrastructure/reporting problem, not this change';
+    }
     core.setFailed(
       `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s) (${verdict}).`
     );

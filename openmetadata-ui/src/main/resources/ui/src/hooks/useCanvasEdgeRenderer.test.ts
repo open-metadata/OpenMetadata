@@ -175,6 +175,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -191,12 +192,39 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
     result.current.redraw();
 
     expect(requestAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('schedules a redraw when the active theme changes', () => {
+    const colors = createMockColors();
+    const dqHighlightedEdges = new Set<string>();
+    const edges: Edge[] = [];
+    const initialProps: { theme: 'light' | 'dark' } = { theme: 'light' };
+    const { rerender } = renderHook(
+      ({ theme }: { theme: 'light' | 'dark' }) =>
+        useCanvasEdgeRenderer({
+          canvasRef,
+          colors,
+          containerHeight: 600,
+          containerWidth: 800,
+          dqHighlightedEdges,
+          edges,
+          theme,
+        }),
+      { initialProps }
+    );
+    const initialRedrawCount = (requestAnimationFrame as jest.Mock).mock.calls
+      .length;
+
+    rerender({ theme: 'dark' });
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(initialRedrawCount + 1);
   });
 
   it('draws visible edges', () => {
@@ -223,6 +251,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -255,6 +284,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -291,6 +321,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -311,6 +342,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -339,6 +371,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -381,6 +414,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -419,6 +453,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -468,6 +503,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -523,6 +559,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -541,6 +578,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -578,13 +616,14 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
     expect(mockCtx.setLineDash).toHaveBeenCalledWith([6, 4]);
   });
 
-  it('reuses drawn paths on pan and highlight, then rebuilds changed geometry', () => {
+  it('reuses drawn paths for visual changes and rebuilds changed geometry', () => {
     const path = {
       edgePath: 'M 0,0 C 100,0 100,100 200,100',
       edgeCenterX: 100,
@@ -595,13 +634,14 @@ describe('useCanvasEdgeRenderer', () => {
       targetY: 100,
     };
     const edge = createMockEdge({ data: { computedPath: path } });
-    const props = {
+    const props: Parameters<typeof useCanvasEdgeRenderer>[0] = {
       canvasRef,
       edges: [edge],
       dqHighlightedEdges: new Set<string>(),
       colors: createMockColors(),
       containerWidth: 800,
       containerHeight: 600,
+      theme: 'light',
       isPathHighlightActive: false,
       pathHighlightedEdgeIds: new Set([edge.id]),
     };
@@ -615,6 +655,13 @@ describe('useCanvasEdgeRenderer', () => {
 
     expect(mockCtx.stroke).toHaveBeenLastCalledWith(initialPath);
     expect(mockCtx.strokeStyle).toBe(props.colors.primary);
+    expect(Path2D).toHaveBeenCalledTimes(1);
+
+    const strokeCount = (mockCtx.stroke as jest.Mock).mock.calls.length;
+    rerender({ ...props, isPathHighlightActive: true, theme: 'dark' });
+
+    expect(mockCtx.stroke).toHaveBeenCalledTimes(strokeCount + 1);
+    expect(mockCtx.stroke).toHaveBeenLastCalledWith(initialPath);
     expect(Path2D).toHaveBeenCalledTimes(1);
 
     const movedPath = 'M 0,0 C 150,0 150,100 300,100';
@@ -640,13 +687,14 @@ describe('useCanvasEdgeRenderer', () => {
       getContext: () => ({ isPointInStroke: () => true }),
     })) as unknown as typeof OffscreenCanvas;
     const edge = createMockEdge();
-    const props = {
+    const props: Parameters<typeof useCanvasEdgeRenderer>[0] = {
       canvasRef,
       edges: [edge],
       dqHighlightedEdges: new Set<string>(),
       colors: createMockColors(),
       containerWidth: 800,
       containerHeight: 600,
+      theme: 'light',
     };
     const { result, rerender } = renderHook(useCanvasEdgeRenderer, {
       initialProps: props,

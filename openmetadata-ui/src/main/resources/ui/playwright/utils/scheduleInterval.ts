@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { selectOptionWithRetry } from './common';
 
 /**
  * Helpers for the ScheduleInterval scheduler used by the Add / Edit Ingestion
@@ -51,8 +52,10 @@ export const expectScheduleFrequencySelected = async (
 };
 
 const selectOption = async (page: Page, testId: string, option: string) => {
-  await page.getByTestId(testId).getByRole('button').click();
-  await page.getByRole('option', { name: option, exact: true }).click();
+  await selectOptionWithRetry(
+    page.getByTestId(testId).getByRole('button'),
+    page.getByRole('option', { name: option, exact: true })
+  );
 };
 
 export const selectScheduleMinute = async (page: Page, minute: string) =>

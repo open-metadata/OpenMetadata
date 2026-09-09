@@ -20,12 +20,15 @@ import {
 } from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
+import { Theme } from '../context/UntitledUIThemeProvider/theme-provider.interface';
 import {
   CanvasButton,
+  CanvasButtonColors,
   createCanvasButton,
   drawCanvasButton,
   ECanvasButtonType,
   isPointInButton,
+  resolveCanvasButtonColors,
 } from '../utils/CanvasButtonUtils';
 import {
   drawArrowMarker,
@@ -53,6 +56,7 @@ interface UseCanvasEdgeRendererProps {
   colors: LineageEdgeColors;
   containerWidth: number;
   containerHeight: number;
+  theme: Theme;
 }
 
 interface EdgeHitEntry {
@@ -217,7 +221,8 @@ const getCanvasButtonHit = (
   edge: Edge,
   edgePathCacheRef: MutableRefObject<WeakMap<Edge, CanvasEdgePath>>,
   hoveredButtonRef: MutableRefObject<CanvasButton | null>,
-  isDQEnabled: boolean
+  isDQEnabled: boolean,
+  getButtonColors: () => CanvasButtonColors
 ): CanvasButtonHitData | null => {
   const edgeData = edge.data ?? {};
   const { hasPipeline, hasFunction } = getEdgeButtonFlags(edgeData);
@@ -246,7 +251,13 @@ const getCanvasButtonHit = (
     hoveredButtonRef.current?.type === button.type;
 
   ctx.save();
-  drawCanvasButton(ctx, button, isButtonHovered, isDQEnabled);
+  drawCanvasButton(
+    ctx,
+    button,
+    getButtonColors(),
+    isButtonHovered,
+    isDQEnabled
+  );
   ctx.restore();
 
   return { button, edge };
@@ -262,6 +273,7 @@ export function useCanvasEdgeRenderer({
   colors,
   containerWidth,
   containerHeight,
+  theme,
 }: UseCanvasEdgeRendererProps) {
   const rafIdRef = useRef<number>();
   const isDirtyRef = useRef(false);
@@ -438,6 +450,14 @@ export function useCanvasEdgeRenderer({
 
     const hitPaths: EdgeHitEntry[] = [];
     const canvasButtons: CanvasButtonHitData[] = [];
+    // Resolve lazily inside the scheduled draw so the root theme class is current,
+    // while graphs without pipeline/function controls avoid unnecessary DOM probes.
+    let buttonColors: CanvasButtonColors | undefined;
+    const getButtonColors = () => {
+      buttonColors ??= resolveCanvasButtonColors();
+
+      return buttonColors;
+    };
 
     visibleEdges.forEach((edge) => {
       ctx.save();
@@ -453,7 +473,8 @@ export function useCanvasEdgeRenderer({
         edge,
         edgePathCacheRef,
         hoveredButtonRef,
-        isDQEnabled
+        isDQEnabled,
+        getButtonColors
       );
 
       if (buttonHit) {
@@ -601,6 +622,7 @@ export function useCanvasEdgeRenderer({
     isDQEnabled,
     isEditMode,
     scheduleRedraw,
+    theme,
   ]);
 
   useEffect(() => {
