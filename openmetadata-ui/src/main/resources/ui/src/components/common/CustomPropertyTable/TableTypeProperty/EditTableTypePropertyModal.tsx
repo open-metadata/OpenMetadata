@@ -51,7 +51,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
 
   const [dataSource, setDataSource] = useState<
     TableTypePropertyValueType['rows']
-  >(() => rows.map((row, index) => ({ ...row, id: index + '' })));
+  >(() => rows.map((row, index) => ({ ...row, __row_id__: index + '' })));
 
   const filterColumns = useMemo(() => getGridColumns(columns), [columns]);
 
@@ -74,7 +74,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
 
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource
-      .map((row) => omit(row, 'id'))
+      .map((row) => omit(row, '__row_id__'))
       // if the row is empty, filter it out
       .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
     await onSave({ rows: modifiedRows, columns });
