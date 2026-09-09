@@ -357,7 +357,9 @@ test.describe(
       'Create Superset service with password',
       async ({ browser }) => {
         const { apiContext, afterAction } = await createNewPage(browser);
-        await supersetService.create(apiContext);
+        // Pass an empty array so DashboardServiceClass skips child-dashboard
+        // creation — we only need the service itself for the connection form test.
+        await supersetService.create(apiContext, []);
         await afterAction();
       }
     );
