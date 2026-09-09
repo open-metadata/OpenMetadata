@@ -123,7 +123,8 @@ export interface EventPublisherJob {
     /**
      * This schema publisher run modes.
      */
-    recreateIndex?: boolean;
+    recreateIndex?:                    boolean;
+    relationshipIsolationMaxFailures?: number;
     /**
      * Recreate Indexes with updated Language
      */

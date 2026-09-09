@@ -73,8 +73,8 @@ Fraction of records that must index successfully before a blue/green rebuild is 
 $$
 
 $$section
-### Max Retries $(id="maxRetries")
+### Relationship Isolation Failure Limit $(id="relationshipIsolationMaxFailures")
 
-Maximum number of failed write attempts tolerated per relationship source before that source is abandoned for the run.
+Maximum failed per-source writes during isolation of a failed RDF relationship batch. Once this limit is reached, remaining sources are recorded as failures. Successful writes do not consume the budget; zero disables per-source isolation. This is separate from HTTP request retries.
 
 $$

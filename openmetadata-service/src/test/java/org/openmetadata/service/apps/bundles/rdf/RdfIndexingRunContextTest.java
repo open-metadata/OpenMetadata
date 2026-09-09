@@ -17,9 +17,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfWriteMode;
 
 class RdfIndexingRunContextTest {
+  @Test
+  void relationshipIsolationHasItsOwnPersistedFailureBudget() {
+    final EventPublisherJob job =
+        JsonUtils.readValue(
+            "{\"relationshipIsolationMaxFailures\":7,\"maxRetries\":9}", EventPublisherJob.class);
+    final EventPublisherJob restored =
+        JsonUtils.readValue(JsonUtils.pojoToJson(job), EventPublisherJob.class);
+    assertEquals(7, RdfIndexingRunContext.forJob(restored).relationshipIsolationMaxFailures());
+    assertEquals(9, restored.getMaxRetries());
+  }
+
+  @Test
+  void httpRetrySettingsDoNotChangeTheRelationshipIsolationBudget() {
+    assertEquals(
+        3,
+        RdfIndexingRunContext.forJob(new EventPublisherJob().withMaxRetries(0))
+            .relationshipIsolationMaxFailures());
+  }
+
   @Test
   void distributedTargetAndBudgetSurviveSerializationWithoutFollowingLaterConfigChanges() {
     final EventPublisherJob job =

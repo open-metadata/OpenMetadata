@@ -208,14 +208,7 @@ public class RdfLiveWriteRecoveryIT {
       assertTrue(restarted.processNext(fixture::apply));
       assertTrue(restarted.processNext(fixture::apply));
       assertEquals(0, fixture.other.pendingWrites());
-      final Model remaining = fixture.storage.getEntity("table", id);
-      try {
-        assertTrue(remaining == null || remaining.isEmpty());
-      } finally {
-        if (remaining != null) {
-          remaining.close();
-        }
-      }
+      fixture.assertEntityDeleted(id);
     }
   }
 
@@ -282,6 +275,94 @@ public class RdfLiveWriteRecoveryIT {
     }
   }
 
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void exhaustedCommandDoesNotBlockLaterWritesAndRequiresReconciliation(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long rebuildStarted = fixture.primary.failureVersion();
+      fixture.primary.enqueue("malformed");
+      fixture.primary.enqueue(insert(1));
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+      assertTrue(fixture.primary.processNext(fixture::apply), "An exhausted head must advance");
+      assertEquals(1, fixture.other.pendingWrites());
+      assertEquals(1, fixture.deadLetters());
+      fixture.assertMalformedDeadLetter();
+      fixture.database.applyReleaseMigration();
+      assertEquals(1, fixture.deadLetters());
+      assertTrue(fixture.newStore().isDegraded());
+      assertTrue(fixture.other.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertTrue(
+          fixture
+              .storage
+              .executeSparqlQuery(
+                  "ASK { GRAPH <" + GRAPH + "> { <urn:queued:1> <" + NAME + "> \"value\" } }",
+                  "json")
+              .contains("true"));
+      fixture.primary.markRebuilt(rebuildStarted);
+      assertTrue(fixture.other.isDegraded());
+      assertEquals(1, fixture.deadLetters());
+      fixture.primary.markRebuilt(fixture.primary.failureVersion());
+      assertFalse(fixture.newStore().isDegraded());
+      assertEquals(0, fixture.deadLetters());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void anExhaustedWriteCannotBeReplayedAfterALaterDelete(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final UUID id = UUID.randomUUID();
+      fixture.primary.enqueue(entity(id, "before-delete"));
+      fixture.primary.enqueue(JsonUtils.pojoToJson(new RdfMutation.EntityDelete("table", id)));
+      for (int attempt = 1; attempt <= 10; attempt++) {
+        final boolean advanced =
+            fixture.primary.processNext(
+                payload -> {
+                  fixture.apply(payload);
+                  throw new IllegalStateException("Cannot acknowledge this entity write");
+                });
+        assertEquals(attempt == 10, advanced);
+        fixture.clock.advance(60_000);
+      }
+      assertTrue(fixture.other.processNext(fixture::apply));
+      fixture.primary.markRebuilt(fixture.primary.failureVersion());
+      assertFalse(fixture.newStore().processNext(fixture::apply));
+      fixture.assertEntityDeleted(id);
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void failureToPersistDeadLetterRollsBackTheQueueAndHealth(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue("malformed");
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+      final long failureVersion = fixture.primary.failureVersion();
+      fixture
+          .database
+          .jdbi()
+          .useHandle(handle -> handle.execute("DROP TABLE rdf_live_write_dead_letter"));
+      try {
+        assertThrows(RuntimeException.class, () -> fixture.primary.processNext(fixture::apply));
+        assertEquals(1, fixture.other.pendingWrites());
+        assertEquals(failureVersion, fixture.other.failureVersion());
+      } finally {
+        fixture.database.applyReleaseMigration();
+      }
+      assertTrue(fixture.other.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(1, fixture.deadLetters());
+    }
+  }
+
   private static void await(final CountDownLatch latch) {
     try {
       assertTrue(latch.await(5, TimeUnit.SECONDS));
@@ -329,6 +410,7 @@ public class RdfLiveWriteRecoveryIT {
           .useHandle(
               handle -> {
                 handle.execute("DELETE FROM rdf_live_write_queue");
+                handle.execute("DELETE FROM rdf_live_write_dead_letter");
                 handle.execute(
                     "UPDATE rdf_projection_health SET failureVersion = 0, repairedVersion = 0, lastError = NULL");
               });
@@ -366,6 +448,39 @@ public class RdfLiveWriteRecoveryIT {
                       .one());
     }
 
+    long deadLetters() {
+      return database
+          .jdbi()
+          .withHandle(
+              handle ->
+                  handle
+                      .createQuery("SELECT COUNT(*) FROM rdf_live_write_dead_letter")
+                      .mapTo(Long.class)
+                      .one());
+    }
+
+    void assertMalformedDeadLetter() {
+      final DeadLetter letter =
+          database
+              .jdbi()
+              .withHandle(
+                  handle ->
+                      handle
+                          .createQuery(
+                              "SELECT payload, attempts, lastError, failureVersion FROM rdf_live_write_dead_letter")
+                          .map(
+                              (result, context) ->
+                                  new DeadLetter(
+                                      result.getString("payload"), result.getInt("attempts"),
+                                      result.getString("lastError"),
+                                          result.getLong("failureVersion")))
+                          .one());
+      assertEquals("malformed", letter.payload());
+      assertEquals(10, letter.attempts());
+      assertTrue(letter.lastError().contains("JsonParsingException"));
+      assertEquals(primary.failureVersion(), letter.failureVersion());
+    }
+
     void assertName(final UUID id, final String expected) {
       final Model model = storage.getEntity("table", id);
       try {
@@ -377,6 +492,17 @@ public class RdfLiveWriteRecoveryIT {
       }
     }
 
+    void assertEntityDeleted(final UUID id) {
+      final Model remaining = storage.getEntity("table", id);
+      try {
+        assertTrue(remaining == null || remaining.isEmpty());
+      } finally {
+        if (remaining != null) {
+          remaining.close();
+        }
+      }
+    }
+
     @Override
     public void close() {
       storage.close();
@@ -384,6 +510,8 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   private static final class SimulatedProcessCrash extends Error {}
+
+  private record DeadLetter(String payload, int attempts, String lastError, long failureVersion) {}
 
   private static final class MutableClock extends Clock {
     private final AtomicLong now = new AtomicLong(System.currentTimeMillis());

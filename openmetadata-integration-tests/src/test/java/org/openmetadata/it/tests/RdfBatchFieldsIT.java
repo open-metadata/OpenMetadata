@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -85,7 +86,7 @@ public class RdfBatchFieldsIT {
   }
 
   @Test
-  void batchTeamReadsRetainHierarchyChildren(final TestNamespace namespace) {
+  void batchTeamReadsRetainHierarchyChildrenAndIgnoreMissingTeams(final TestNamespace namespace) {
     final var client = SdkClients.adminClient();
     final Team parent =
         namespace.trackRoot(
@@ -110,8 +111,17 @@ public class RdfBatchFieldsIT {
     assertEquals(Set.of(child.getId()), ids(normal.getChildren()));
     final TeamRepository repository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
     final Team batch = repository.getDao().findEntityById(parent.getId());
-    repository.setFieldsInBulk(repository.getFields("children"), List.of(batch));
-    assertEquals(ids(normal.getChildren()), ids(batch.getChildren()));
+    final UUID missingChild = UUID.randomUUID();
+    final var relationships = Entity.getCollectionDAO().relationshipDAO();
+    relationships.insert(
+        parent.getId(), missingChild, Entity.TEAM, Entity.TEAM, Relationship.PARENT_OF.ordinal());
+    try {
+      repository.setFieldsInBulk(repository.getFields("children"), List.of(batch));
+      assertEquals(ids(normal.getChildren()), ids(batch.getChildren()));
+    } finally {
+      relationships.delete(
+          parent.getId(), Entity.TEAM, missingChild, Entity.TEAM, Relationship.PARENT_OF.ordinal());
+    }
   }
 
   private static User createUser(

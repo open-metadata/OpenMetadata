@@ -139,6 +139,13 @@ The 2.0.2 migration creates the live queue and shared projection health tables f
 PostgreSQL. Pending work survives server restarts and executor rejection. A failed operation stays
 at the head of the queue, with its attempt count and error recorded, and retries after 1, 2, 4, …,
 up to 60 seconds. Later operations wait so a failed add cannot be replayed after its matching delete.
+A command that fails ten delivery attempts is moved to `rdf_live_write_dead_letter`, including its
+payload, attempt count, and error. Moving it, advancing the queue, and marking shared health degraded
+are one SQL transaction. Later commands can proceed while the skipped operation remains visible for
+reconciliation. Dead letters are never replayed behind newer writes, which could restore an edge
+that a later command deleted. A successful full rebuild removes only dead letters whose failure
+versions were known when that rebuild started.
+
 A crash after Jena commits but before SQL acknowledges causes replay; entity reconciliation and
 set-based relationship updates tolerate that repeated delivery. Recovery uses the current serving
 dataset and participates in the existing blue/green mutation journal.
@@ -157,13 +164,17 @@ FROM rdf_live_write_queue ORDER BY id LIMIT 50;
 
 SELECT failureVersion, repairedVersion, updatedAt, lastError
 FROM rdf_projection_health WHERE id = 'active';
+
+SELECT id, createdAt, attempts, failedAt, lastError, failureVersion
+FROM rdf_live_write_dead_letter ORDER BY id LIMIT 50;
 ```
 
 The queue retains unacknowledged operations rather than expiring them. Monitor SQL disk usage and
 `ontology.rdf.queue.pending` / `ontology.rdf.queue.lag` during prolonged outages. The pending gauge
 reports the shared backlog on each server; aggregate it with `max` across instances. An invalid command
-can block later work; correct the reported underlying error so replay can resume. Do not delete
-queue rows to make status green. Failed operations remain visible until recovered.
+blocks later work only until its delivery attempts are exhausted. Repair the reported error and run a
+full rebuild to reconcile dead letters. Do not delete queue or dead-letter rows to make status green.
+Failed operations remain visible until recovered.
 
 Writes already dropped by older releases have no recovery record and need a one-time rebuild.
 The metadata commit and queue insert are still separate transactions: a process crash in that
@@ -190,6 +201,11 @@ so it does not restore an old entity snapshot or copy service connection credent
 
 This adds a small SQL transaction per live hook and an entity read per replay. Measure ingestion
 request latency and queue lag under the expected load when comparing throughput.
+
+The RDF app's `relationshipIsolationMaxFailures` setting separately limits failed per-source writes
+when isolating a failed relationship batch (default three; zero disables that isolation pass).
+Successful source writes do not consume this budget. It is independent of HTTP request retries and
+the live queue's ten-delivery limit.
 
 Throughput therefore depends on the number and size of write transactions:
 

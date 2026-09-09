@@ -28,36 +28,45 @@ public record RdfIndexingRunContext(
     Set<String> entityTypesInRun,
     UUID jobId,
     String serverId,
-    int maxRetries,
+    int relationshipIsolationMaxFailures,
     StorageTarget storageTarget) {
 
   /**
-   * How many individual write attempts a failure-isolation pass may spend before it gives up and
+   * How many failed per-source writes a relationship-isolation pass may spend before it gives up and
    * marks the remainder failed. Deliberately small: isolating one bad row among many is useful,
    * but attempting every row after a systemic failure is how a slow backend turns one bad batch
    * into hours of timeouts. Operators can raise it from the app's configuration.
    */
-  public static final int DEFAULT_MAX_RETRIES = 3;
+  public static final int DEFAULT_RELATIONSHIP_ISOLATION_MAX_FAILURES = 3;
 
   public RdfIndexingRunContext {
     writeMode = writeMode != null ? writeMode : RdfWriteMode.RECONCILE;
     entityTypesInRun = entityTypesInRun != null ? Set.copyOf(entityTypesInRun) : Set.of();
-    maxRetries = Math.max(0, maxRetries);
+    relationshipIsolationMaxFailures = Math.max(0, relationshipIsolationMaxFailures);
     storageTarget = storageTarget != null ? storageTarget : new StorageTarget(null, null, 0);
   }
 
   public RdfIndexingRunContext(
-      RdfWriteMode mode, Set<String> types, UUID jobId, String serverId, int maxRetries) {
-    this(mode, types, jobId, serverId, maxRetries, null);
+      RdfWriteMode mode,
+      Set<String> types,
+      UUID jobId,
+      String serverId,
+      int relationshipIsolationMaxFailures) {
+    this(mode, types, jobId, serverId, relationshipIsolationMaxFailures, null);
   }
 
   public RdfIndexingRunContext(RdfWriteMode writeMode, Set<String> entityTypesInRun) {
-    this(writeMode, entityTypesInRun, null, null, DEFAULT_MAX_RETRIES);
+    this(writeMode, entityTypesInRun, null, null, DEFAULT_RELATIONSHIP_ISOLATION_MAX_FAILURES);
   }
 
   public RdfIndexingRunContext withJobIdentity(UUID jobId, String serverId) {
     return new RdfIndexingRunContext(
-        writeMode, entityTypesInRun, jobId, serverId, maxRetries, storageTarget);
+        writeMode,
+        entityTypesInRun,
+        jobId,
+        serverId,
+        relationshipIsolationMaxFailures,
+        storageTarget);
   }
 
   public static RdfIndexingRunContext reconcileDefaults() {
@@ -77,7 +86,7 @@ public record RdfIndexingRunContext(
         job.getEntities(),
         null,
         null,
-        resolveMaxRetries(job.getMaxRetries()),
+        resolveRelationshipIsolationMaxFailures(job.getRelationshipIsolationMaxFailures()),
         StorageTarget.forJob(job));
   }
 
@@ -97,7 +106,9 @@ public record RdfIndexingRunContext(
     }
   }
 
-  static int resolveMaxRetries(Integer configured) {
-    return configured != null ? Math.max(0, configured) : DEFAULT_MAX_RETRIES;
+  static int resolveRelationshipIsolationMaxFailures(Integer configured) {
+    return configured != null
+        ? Math.max(0, configured)
+        : DEFAULT_RELATIONSHIP_ISOLATION_MAX_FAILURES;
   }
 }

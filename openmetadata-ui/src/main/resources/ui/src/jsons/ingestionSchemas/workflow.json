@@ -4650,9 +4650,9 @@
                           "minimum": 0,
                           "maximum": 1
                         },
-                        "maxRetries": {
-                          "title": "Max Retries",
-                          "description": "Maximum number of failed write attempts tolerated per relationship source before that source is abandoned for the run.",
+                        "relationshipIsolationMaxFailures": {
+                          "title": "Relationship Isolation Failure Limit",
+                          "description": "Maximum failed per-source writes during isolation of a failed RDF relationship batch. Once this limit is reached, remaining sources are recorded as failures. Successful writes do not consume the budget; zero disables per-source isolation. This is separate from HTTP request retries.",
                           "type": "integer",
                           "default": 3,
                           "minimum": 0

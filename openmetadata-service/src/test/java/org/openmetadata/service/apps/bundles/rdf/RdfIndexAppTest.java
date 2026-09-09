@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.rdf;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
@@ -164,7 +165,7 @@ class RdfIndexAppTest {
       JobDetail jobDetail = mock(JobDetail.class);
       JobDataMap jobDataMap = new JobDataMap();
       if (triggerType != null) {
-        jobDataMap.put("triggerType", triggerType);
+        jobDataMap.put(TRIGGER_TYPE_KEY, triggerType);
       }
       when(context.getJobDetail()).thenReturn(jobDetail);
       lenient().when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);

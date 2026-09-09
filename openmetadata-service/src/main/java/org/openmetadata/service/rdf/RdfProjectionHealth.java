@@ -33,7 +33,7 @@ public final class RdfProjectionHealth {
   public static boolean isDegraded() {
     try {
       flushLocalFailures();
-      return store != null ? store.isDegraded() : LOCAL_FAILURES.get() > LOCAL_REPAIRED.get();
+      return LOCAL_FAILURES.get() > LOCAL_REPAIRED.get() || (store != null && store.isDegraded());
     } catch (RuntimeException exception) {
       LOG.warn("Cannot read shared RDF projection health", exception);
       return true;
@@ -80,8 +80,13 @@ public final class RdfProjectionHealth {
   static synchronized void flushLocalFailures() {
     final long failures = LOCAL_FAILURES.get();
     if (store != null && failures > LOCAL_REPAIRED.get()) {
-      store.markDegraded("RDF operation failed while shared health storage was unavailable");
-      LOCAL_REPAIRED.set(failures);
+      try {
+        store.markDegraded("RDF operation failed while shared health storage was unavailable");
+        LOCAL_REPAIRED.set(failures);
+      } catch (RuntimeException exception) {
+        LOG.warn(
+            "Could not flush RDF projection failures; local state retained for retry", exception);
+      }
     }
   }
 

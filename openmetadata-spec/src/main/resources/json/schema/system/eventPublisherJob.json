@@ -306,6 +306,9 @@
       "default": 5,
       "minimum": 0
     },
+    "relationshipIsolationMaxFailures": {
+      "$ref": "../entity/applications/configuration/internal/rdfIndexingAppConfig.json#/properties/relationshipIsolationMaxFailures"
+    },
     "initialBackoff": {
       "title": "Initial Backoff Millis",
       "description": "Initial backoff time in milliseconds",

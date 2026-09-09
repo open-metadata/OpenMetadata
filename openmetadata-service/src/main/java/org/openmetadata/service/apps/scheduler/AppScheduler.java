@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static com.cronutils.model.CronType.UNIX;
 import static org.openmetadata.service.apps.AbstractNativeApplication.getAppRuntime;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import com.cronutils.mapper.CronMapper;
@@ -56,7 +57,6 @@ import org.quartz.impl.matchers.GroupMatcher;
 public class AppScheduler {
   private static final Map<String, String> defaultAppScheduleConfig = new HashMap<>();
   public static final String ON_DEMAND_JOB = "OnDemandJob";
-  public static final String TRIGGER_TYPE_KEY = "triggerType";
 
   static {
     defaultAppScheduleConfig.put("org.quartz.scheduler.instanceName", "AppScheduler");
@@ -240,11 +240,9 @@ public class AppScheduler {
   }
 
   /**
-   * Heavy full-reindex apps must NOT fire a missed trigger on startup. Quartz's default
-   * (SMART_POLICY → FIRE_ONCE_NOW with our 60s misfireThreshold) means a pod restarting more than
-   * a minute after a missed weekend fire immediately launches a multi-hour full reindex at what is
-   * typically deploy time. For these apps a missed run waits for the next scheduled fire; light
-   * daily apps keep the catch-up behavior, which is desirable for them.
+   * Heavy full-reindex apps skip every misfire and wait for the next scheduled trigger,
+   * regardless of their cron frequency. Quartz's default catch-up policy could otherwise launch
+   * a multi-hour reindex during deployment or recovery. Other apps retain the default policy.
    */
   static final Set<String> SKIP_MISSED_RUN_APPS =
       Set.of("SearchIndexingApplication", "RdfIndexApp");

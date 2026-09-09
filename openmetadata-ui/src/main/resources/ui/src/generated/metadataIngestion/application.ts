@@ -190,9 +190,6 @@ export interface CollateAIAppConfig {
     maxConcurrentRequests?: number;
     /**
      * Maximum number of retries for a failed request
-     *
-     * Maximum number of failed write attempts tolerated per relationship source before that
-     * source is abandoned for the run.
      */
     maxRetries?: number;
     /**
@@ -273,6 +270,13 @@ export interface CollateAIAppConfig {
      * Recreate the RDF store before indexing.
      */
     recreateIndex?: boolean;
+    /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
     /**
      * Enable distributed RDF indexing across multiple servers with partition coordination and
      * recovery.

@@ -416,7 +416,8 @@ public class RdfBatchProcessor {
     int failedAttempts = 0;
     int firstUnattempted = pending.size();
     for (int index = 0; index < pending.size(); index++) {
-      if (failedAttempts >= runContext.maxRetries() || nanoTime.getAsLong() >= deadlineNanos) {
+      if (failedAttempts >= runContext.relationshipIsolationMaxFailures()
+          || nanoTime.getAsLong() >= deadlineNanos) {
         firstUnattempted = index;
         break;
       }
@@ -445,7 +446,7 @@ public class RdfBatchProcessor {
       failures += countUnattempted(pending, firstUnattempted, edgesBySource);
       LOG.warn(
           "Stopped per-source relationship isolation for {} after {} failed attempt(s); "
-              + "{} source(s) not attempted. Raise maxRetries on the RDF index app to isolate "
+              + "{} source(s) not attempted. Raise relationshipIsolationMaxFailures on the RDF index app to isolate "
               + "further. Last reason: {}",
           entityType,
           failedAttempts,

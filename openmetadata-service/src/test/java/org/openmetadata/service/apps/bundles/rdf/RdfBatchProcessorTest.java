@@ -251,8 +251,8 @@ class RdfBatchProcessorTest {
   }
 
   @Test
-  @DisplayName("per-source relationship isolation stops after maxRetries failed attempts")
-  void perSourceIsolationStopsAfterMaxRetries() {
+  @DisplayName("per-source relationship isolation stops at its configured failure limit")
+  void perSourceIsolationStopsAfterFailureLimit() {
     processor =
         new RdfBatchProcessor(
             collectionDAO,
@@ -270,8 +270,7 @@ class RdfBatchProcessorTest {
     RdfBatchProcessor.BatchProcessingResult result =
         processor.processEntities("table", entities, null);
 
-    // 1 bulk attempt + at most maxRetries per-source attempts; the other sources are
-    // marked failed without being attempted.
+    // A systemic failure must not spend another timeout on every remaining source.
     verify(rdfRepository, times(3)).bulkAddRelationships(anyList(), any(), any(RdfWriteMode.class));
     assertEquals(5, result.successCount(), "entity writes are unaffected by relationship failures");
     assertTrue(result.relationshipFailureCount() >= 5, "every source is accounted as failed");
@@ -303,13 +302,14 @@ class RdfBatchProcessorTest {
   }
 
   @Test
-  @DisplayName("maxRetries defaults to 3 and is taken from the app configuration when set")
-  void maxRetriesComesFromAppConfiguration() {
+  @DisplayName("the relationship isolation failure limit defaults to 3 and is configurable")
+  void relationshipIsolationMaxFailuresComesFromAppConfiguration() {
     assertEquals(
-        RdfIndexingRunContext.DEFAULT_MAX_RETRIES, RdfIndexingRunContext.resolveMaxRetries(null));
-    assertEquals(7, RdfIndexingRunContext.resolveMaxRetries(7));
-    assertEquals(0, RdfIndexingRunContext.resolveMaxRetries(0));
-    assertEquals(0, RdfIndexingRunContext.resolveMaxRetries(-1));
+        RdfIndexingRunContext.DEFAULT_RELATIONSHIP_ISOLATION_MAX_FAILURES,
+        RdfIndexingRunContext.resolveRelationshipIsolationMaxFailures(null));
+    assertEquals(7, RdfIndexingRunContext.resolveRelationshipIsolationMaxFailures(7));
+    assertEquals(0, RdfIndexingRunContext.resolveRelationshipIsolationMaxFailures(0));
+    assertEquals(0, RdfIndexingRunContext.resolveRelationshipIsolationMaxFailures(-1));
   }
 
   @Test

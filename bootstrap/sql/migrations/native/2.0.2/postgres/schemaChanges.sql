@@ -90,6 +90,18 @@ CREATE TABLE IF NOT EXISTS rdf_projection_health (
 );
 INSERT INTO rdf_projection_health (id) VALUES ('active') ON CONFLICT (id) DO NOTHING;
 
+-- Exhausted deliveries stop blocking the queue but remain degraded until a covering rebuild.
+CREATE TABLE IF NOT EXISTS rdf_live_write_dead_letter (
+    id BIGINT NOT NULL PRIMARY KEY,
+    payload TEXT NOT NULL,
+    createdAt BIGINT NOT NULL,
+    attempts INT NOT NULL,
+    failedAt BIGINT NOT NULL,
+    lastError TEXT NOT NULL,
+    failureVersion BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rdf_live_dead_letter_failure_version ON rdf_live_write_dead_letter (failureVersion);
+
 -- Pipeline alert starting watermark - OpenMetadata 2.0.2
 
 -- Alerts must not fire for pipeline executions that finished before the alert existed (#31782).

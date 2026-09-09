@@ -21,11 +21,12 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 
-/** Shared, ordered delivery and health state. Only acknowledged writes are removed. */
+/** Shared, ordered delivery and health state, with exhausted writes retained for reconciliation. */
 @Slf4j
 public final class RdfLiveWriteStore {
   private static final long MAX_HEALTHY_LAG_MILLIS = Duration.ofSeconds(30).toMillis();
   private static final int MAX_ERROR_LENGTH = 8192;
+  private static final int MAX_DELIVERY_ATTEMPTS = 10;
   private final Jdbi jdbi;
   private final Clock clock;
 
@@ -76,16 +77,19 @@ public final class RdfLiveWriteStore {
     try {
       write.accept(entry.payload());
     } catch (RuntimeException exception) {
-      recordFailure(handle, entry, exception);
-      return false;
+      return recordFailure(handle, entry, exception);
     }
     handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", entry.id());
     return true;
   }
 
-  private void recordFailure(
+  private boolean recordFailure(
       final Handle handle, final Entry entry, final RuntimeException failure) {
     final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
+    if (attempts >= MAX_DELIVERY_ATTEMPTS) {
+      deadLetter(handle, entry, attempts, failure);
+      return true;
+    }
     handle.execute(
         "UPDATE rdf_live_write_queue SET attempts = ?, nextAttemptAt = ?, lastError = ? WHERE id = ?",
         attempts,
@@ -94,6 +98,28 @@ public final class RdfLiveWriteStore {
         entry.id());
     LOG.warn(
         "Live RDF write {} failed (attempt {}); retained for retry", entry.id(), attempts, failure);
+    return false;
+  }
+
+  private void deadLetter(
+      final Handle handle, final Entry entry, final int attempts, final RuntimeException failure) {
+    final String reason = failureReason(failure);
+    markDegraded(handle, reason);
+    handle.execute(
+        "INSERT INTO rdf_live_write_dead_letter (id, payload, createdAt, attempts, failedAt, lastError, failureVersion) "
+            + "SELECT ?, ?, ?, ?, ?, ?, failureVersion FROM rdf_projection_health WHERE id = 'active'",
+        entry.id(),
+        entry.payload(),
+        entry.createdAt(),
+        attempts,
+        clock.millis(),
+        reason);
+    handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", entry.id());
+    LOG.error(
+        "Live RDF write {} exhausted {} attempts; dead-lettered for reconciliation",
+        entry.id(),
+        attempts,
+        failure);
   }
 
   static long retryDelayMillis(final int attempts) {
@@ -115,20 +141,29 @@ public final class RdfLiveWriteStore {
   }
 
   public void markDegraded(final String reason) {
-    jdbi.useHandle(
-        handle ->
-            handle.execute(
-                "UPDATE rdf_projection_health SET failureVersion = failureVersion + 1, lastError = ?, updatedAt = ? WHERE id = 'active'",
-                reason,
-                clock.millis()));
+    jdbi.useHandle(handle -> markDegraded(handle, reason));
+  }
+
+  private void markDegraded(final Handle handle, final String reason) {
+    final int updated =
+        handle.execute(
+            "UPDATE rdf_projection_health SET failureVersion = failureVersion + 1, lastError = ?, updatedAt = ? WHERE id = 'active'",
+            reason,
+            clock.millis());
+    if (updated != 1) {
+      throw new IllegalStateException("RDF projection health row is missing");
+    }
   }
 
   public void markRebuilt(final long failureVersion) {
-    jdbi.useHandle(
-        handle ->
-            handle.execute(
-                "UPDATE rdf_projection_health SET repairedVersion = GREATEST(repairedVersion, ?) WHERE id = 'active'",
-                failureVersion));
+    jdbi.useTransaction(
+        handle -> {
+          handle.execute(
+              "UPDATE rdf_projection_health SET repairedVersion = GREATEST(repairedVersion, ?) WHERE id = 'active'",
+              failureVersion);
+          handle.execute(
+              "DELETE FROM rdf_live_write_dead_letter WHERE failureVersion <= ?", failureVersion);
+        });
   }
 
   public boolean isDegraded() {

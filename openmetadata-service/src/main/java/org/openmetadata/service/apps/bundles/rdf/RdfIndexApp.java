@@ -2,9 +2,9 @@ package org.openmetadata.service.apps.bundles.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.RDF_INDEX_JOB_BROADCAST_CHANNEL;
 
