@@ -1,0 +1,32 @@
+{
+  "name": "Data360Pipeline",
+  "displayName": "Data360 Pipeline Test Connection",
+  "description": "This Test Connection validates the access against the Salesforce Data 360 instance and the basic metadata extraction of Data Streams, Calculated Insights and Data Transforms.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the Salesforce Data 360 instance and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to Salesforce Data 360 — please validate the Consumer Key, Consumer Secret, and Salesforce Domain.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetPipelines",
+      "description": "List the Data 360 Data Streams, which are ingested as pipelines.",
+      "errorMessage": "Failed to fetch Data Streams, please validate that the connected app can read the ssot/data-streams endpoint.",
+      "mandatory": true
+    },
+    {
+      "name": "GetCalculatedInsights",
+      "description": "List the Data 360 Calculated Insights, which are ingested as pipelines. Not mandatory: an instance with no Calculated Insight still ingests its Data Streams.",
+      "errorMessage": "Failed to fetch Calculated Insights. Data Streams will still be ingested.",
+      "mandatory": false
+    },
+    {
+      "name": "GetDataTransforms",
+      "description": "List the Data 360 Data Transforms, which are ingested as pipelines and back their run status. Not mandatory: an instance with no Data Transform still ingests its Data Streams.",
+      "errorMessage": "Failed to fetch Data Transforms. Data Streams will still be ingested.",
+      "mandatory": false
+    }
+  ]
+}
