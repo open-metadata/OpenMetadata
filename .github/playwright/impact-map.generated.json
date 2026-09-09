@@ -459,7 +459,6 @@
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
-        "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
