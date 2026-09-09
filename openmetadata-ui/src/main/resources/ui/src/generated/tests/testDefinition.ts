@@ -20,9 +20,9 @@ export interface TestDefinition {
      */
     changeDescription?: ChangeDescription;
     /**
-     * Name of the data quality dimension test cases of this test definition are classified
-     * with by default. Any dimension registered in Settings > Preferences > Data Quality can
-     * be used, system and custom alike.
+     * Name of the data quality dimension test cases of this test definition are classified with
+     * by default. Any dimension registered in Settings > Preferences > Data Quality can be
+     * used, system and custom alike.
      */
     dataQualityDimension?: string;
     /**
