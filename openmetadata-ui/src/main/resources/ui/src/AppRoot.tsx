@@ -28,10 +28,12 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
+import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
+
   const {
     applicationConfig,
     setApplicationConfig,
@@ -48,15 +50,17 @@ const AppRoot: FC = () => {
 
   const fetchApplicationConfig = async () => {
     try {
-      // FIX: Handle promises independently so a theme fetch failure doesn't 
+      // Handle promises independently so a theme fetch failure doesn't
       // drop the successfully fetched tenant timeFormat default.
       const themeDataPromise = getCustomUiThemePreference().catch((err) => {
+        // eslint-disable-next-line no-console
         console.error('Failed to fetch theme data:', err);
 
         return null;
       });
-      
+
       const systemConfigPromise = getSystemConfig().catch((err) => {
+        // eslint-disable-next-line no-console
         console.error('Failed to fetch system config:', err);
 
         return null;
@@ -79,7 +83,8 @@ const AppRoot: FC = () => {
         setTimeFormat(systemConfig.timeFormat || '12h');
       }
     } catch (error) {
-      console.error('Failed to fetch application config:', error);
+      // eslint-disable-next-line no-console
+      console.error(error);
     }
   };
 
@@ -89,12 +94,14 @@ const AppRoot: FC = () => {
   }, []);
 
   useEffect(() => {
-    const faviconHref =
-      isEmpty(applicationConfig?.customLogoConfig?.customFaviconUrlPath)
-        ? '/favicon.png'
-        : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
-          '/favicon.png';
+    const faviconHref = isEmpty(
+      applicationConfig?.customLogoConfig?.customFaviconUrlPath
+    )
+      ? '/favicon.png'
+      : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
+        '/favicon.png';
     const link = document.querySelectorAll('link[rel~="icon"]');
+
     if (!isEmpty(link)) {
       link.forEach((item) => {
         item.setAttribute('href', faviconHref);
@@ -105,7 +112,9 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter basename={getBasePath()}>
+        <BrowserRouter
+          basename={getBasePath()}
+          useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
             <AntDConfigProvider>
               <HelmetProvider>
