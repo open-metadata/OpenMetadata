@@ -52,6 +52,7 @@ import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-u
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
@@ -364,15 +365,13 @@ const GlossaryTermNameCell = ({
 
   return (
     <div className="tw:flex tw:min-w-0 tw:items-center">
-      {record.style?.iconURL && (
-        <img
-          alt={record.name}
-          className="m-r-xss"
-          data-testid="tag-icon"
-          height={12}
-          src={record.style.iconURL}
-        />
-      )}
+      <EntityStyleIcon
+        alt={record.name}
+        className="m-r-xs tw:shrink-0"
+        iconValue={record.style?.iconURL}
+        imageClassName="tw:block"
+        size={18}
+      />
       <Link
         className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
         data-testid={name}

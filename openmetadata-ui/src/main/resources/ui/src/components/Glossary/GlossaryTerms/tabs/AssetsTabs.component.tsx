@@ -27,7 +27,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isObject } from 'lodash';
+import { isEmpty, isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import {
   forwardRef,
@@ -284,6 +284,8 @@ const AssetsFilterBar = ({
         <Dropdown
           menu={{
             items: filterMenu,
+            multiple: true,
+            selectable: true,
             selectedKeys: selectedFilter,
           }}
           trigger={['click']}>
@@ -470,7 +472,11 @@ const AssetsTabs = forwardRef(
     );
 
     const handleMenuClick = ({ key }: { key: string }) => {
-      setSelectedFilter((prevSelected) => [...prevSelected, key]);
+      setSelectedFilter((prevSelected) =>
+        prevSelected.includes(key)
+          ? prevSelected.filter((selectedKey) => selectedKey !== key)
+          : [...prevSelected, key]
+      );
     };
 
     const filterMenu: ItemType[] = useMemo(() => {
@@ -954,10 +960,12 @@ const AssetsTabs = forwardRef(
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
-    const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-      const quickFilterQuery = getQuickFilterQuery(data);
-      setQuickFilterQuery(quickFilterQuery);
-    };
+    const handleQuickFiltersChange = useCallback(
+      (data: ExploreQuickFilterField[]) => {
+        setQuickFilterQuery(getQuickFilterQuery(data));
+      },
+      []
+    );
 
     const handleQuickFiltersValueSelect = useCallback(
       (field: ExploreQuickFilterField) => {
@@ -975,7 +983,7 @@ const AssetsTabs = forwardRef(
           return data;
         });
       },
-      [setSelectedQuickFilters]
+      [handleQuickFiltersChange]
     );
 
     const assetListing = useMemo(
@@ -1121,20 +1129,9 @@ const AssetsTabs = forwardRef(
 
     const clearFilters = useCallback(() => {
       setQuickFilterQuery(undefined);
-      setSelectedQuickFilters((pre) => {
-        const data = pre.map((preField) => {
-          return { ...preField, value: [] };
-        });
-
-        handleQuickFiltersChange(data);
-
-        return data;
-      });
-    }, [
-      setQuickFilterQuery,
-      handleQuickFiltersChange,
-      setSelectedQuickFilters,
-    ]);
+      setSelectedFilter([]);
+      setSelectedQuickFilters([]);
+    }, []);
 
     useEffect(() => {
       fetchAssets({
@@ -1155,30 +1152,36 @@ const AssetsTabs = forwardRef(
     }, [type]);
 
     useEffect(() => {
-      const updatedQuickFilters = filters
-        .filter((filter) => selectedFilter.includes(filter.key))
-        .map((selectedFilterItem) => {
-          const originalFilterItem = selectedQuickFilters?.find(
-            (filter) => filter.key === selectedFilterItem.key
-          );
-
-          return originalFilterItem || selectedFilterItem;
-        });
-
-      const newItems = updatedQuickFilters.filter(
-        (item) =>
-          !selectedQuickFilters.some(
-            (existingItem) => item.key === existingItem.key
-          )
+      const retainedFilters = selectedQuickFilters.filter((field) =>
+        selectedFilter.includes(field.key)
+      );
+      const newFilters = filters.filter(
+        (filter) =>
+          selectedFilter.includes(filter.key) &&
+          !retainedFilters.some((field) => field.key === filter.key)
       );
 
-      if (newItems.length > 0) {
-        setSelectedQuickFilters((prevSelected) => [
-          ...prevSelected,
-          ...newItems,
-        ]);
+      if (
+        newFilters.length > 0 ||
+        retainedFilters.length !== selectedQuickFilters.length
+      ) {
+        const updatedQuickFilters = [...retainedFilters, ...newFilters];
+        setSelectedQuickFilters(updatedQuickFilters);
+
+        const removedFilterHadValue = selectedQuickFilters.some(
+          (field) =>
+            !selectedFilter.includes(field.key) && !isEmpty(field.value)
+        );
+        if (removedFilterHadValue) {
+          handleQuickFiltersChange(updatedQuickFilters);
+        }
       }
-    }, [selectedFilter, selectedQuickFilters, filters]);
+    }, [
+      selectedFilter,
+      selectedQuickFilters,
+      filters,
+      handleQuickFiltersChange,
+    ]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
