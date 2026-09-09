@@ -496,13 +496,12 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Tier').click();
 
+    // The tier option renders the tag name, not the FQN
     await expect(
-      page.getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+      page.getByTitle(EntityDataClass.tierTag1.responseData.name)
     ).toBeVisible();
 
-    await page
-      .getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
-      .click();
+    await page.getByTitle(EntityDataClass.tierTag1.responseData.name).click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
@@ -985,11 +984,7 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Tier').click();
 
-    await page
-      .getByTitle(
-        EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
-      )
-      .click();
+    await page.getByTitle(EntityDataClass.tierTag1.responseData.name).click();
 
     await page.getByRole('button', { name: 'Update' }).click();
     await waitForAllLoadersToDisappear(page);
