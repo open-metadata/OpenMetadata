@@ -572,7 +572,7 @@ export const removeOwnerFromPanel = async (
     }
 
     const ownerItem = page
-      .locator('.ant-list-item')
+      .locator('[data-testid="owner-option"]')
       .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
     await ownerItem.click();

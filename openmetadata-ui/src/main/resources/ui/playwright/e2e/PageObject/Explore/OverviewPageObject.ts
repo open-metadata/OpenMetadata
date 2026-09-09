@@ -429,11 +429,16 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
+    const ownerOption = this.page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner });
+    await ownerOption.waitFor({ state: 'visible' });
+
     const ownerPatchPromise = this.waitForPatchResponse();
     if (type === 'Teams') {
-      await this.page.getByRole('listitem', { name: owner }).click();
+      await ownerOption.click();
     } else {
-      await this.page.getByRole('listitem', { name: owner }).click();
+      await ownerOption.click();
       await this.updateOwnersButton.click();
     }
     await ownerPatchPromise;
