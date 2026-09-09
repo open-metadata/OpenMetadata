@@ -107,7 +107,6 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     await expect(searchInput).toBeVisible();
 
     await expect(page.getByTestId('metric-name').first()).toBeVisible();
-    const initialCount = await page.getByTestId('metric-name').count();
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538
@@ -139,13 +138,20 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await searchInput.fill('');
 
-      await clearResponse;
+      const clearHttpResponse = await clearResponse;
+      const clearData: { hits?: { hits?: unknown[] } } =
+        await clearHttpResponse.json();
       await waitForAllLoadersToDisappear(page);
 
-      // The list is paginated — specific names may not be on page 1 after
-      // the full list is restored. Verify restoration by checking the visible
-      // row count on the current page is back to the pre-search count.
-      await expect(page.getByTestId('metric-name')).toHaveCount(initialCount);
+      // Derive the restored row count from the clear response that repopulates
+      // the table, never from a snapshot taken before the search. Parallel
+      // specs mutate the shared metric index, so a pre-search count drifts by
+      // the time the full list is restored — the source of this step's flake.
+      // The table renders exactly the hits this response returns for the
+      // current (first) page.
+      await expect(page.getByTestId('metric-name')).toHaveCount(
+        clearData.hits?.hits?.length ?? 0
+      );
     });
   });
 });

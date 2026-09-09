@@ -1760,7 +1760,8 @@
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
-        "playwright/e2e/Pages/ExploreTree.spec.ts"
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
+        "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
     {

@@ -3134,6 +3134,116 @@ def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
         )
 
 
+def test_playwright_summary_prefers_retry_artifact_over_primary(tmp_path):
+    # The shard-side upload has a `-retry` fallback (added after run
+    # 34244326002 to sidestep the FinalizeArtifact 403 / CreateArtifact 409
+    # ghost-reservation cycle). When both `playwright-results-json-<shardId>`
+    # and `playwright-results-json-<shardId>-retry` land in the summary's
+    # download directory, the render script must:
+    #   * collapse them to a single canonical <shardId> (no
+    #     "Unexpected shard <shardId>-retry uploaded results" issue),
+    #   * prefer the retry copy (the primary is the reason we retried).
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+
+    def write_shard(name, statuses):
+        d = tmp_path / "results" / f"playwright-results-json-{name}"
+        d.mkdir(parents=True)
+        (d / "results.json").write_text(
+            json.dumps(
+                {
+                    "suites": [
+                        {
+                            "file": "playwright/e2e/example.spec.ts",
+                            "specs": [
+                                {
+                                    "title": f"case-{i}",
+                                    "tests": [{"status": status, "results": [{}]}],
+                                }
+                                for i, status in enumerate(statuses)
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+        (d / "ci-status.json").write_text(
+            json.dumps({"steps": {"tests": "success"}})
+        )
+
+    # Primary reports 3 tests, one flaky; retry reports the full 5 passing
+    # (canonical "primary was incomplete, retry salvaged it" shape).
+    write_shard("chromium-01", ["expected", "flaky", "expected"])
+    write_shard("chromium-01-retry", ["expected"] * 5)
+
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let failure = null;
+let summaryBody = '';
+const summary = {{
+  addRaw(body) {{ summaryBody = body; return summary; }},
+  async write() {{}},
+}};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{ failure = message; }},
+}};
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'pull_request',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ failure, summaryBody }}));
+}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    payload = json.loads(payload_path.read_text())
+
+    # Retry wins: totals reflect the 5-passing retry, not the 3-with-flaky primary.
+    assert payload["totals"]["passed"] == 5, payload["totals"]
+    assert payload["totals"]["flaky"] == 0, payload["totals"]
+
+    # Shard was reported once under the canonical id, not twice.
+    shard_ids = [s["id"] for s in payload["shards"] if s["present"]]
+    assert shard_ids == ["chromium-01"], shard_ids
+
+    # No "Unexpected shard chromium-01-retry" noise.
+    assert "chromium-01-retry" not in rendered["summaryBody"]
+    assert rendered["failure"] is None, rendered["failure"]
+
+
 def test_normal_vite_build_keeps_hashed_entry_assets():
     vite_config = (
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
