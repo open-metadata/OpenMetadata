@@ -1187,9 +1187,27 @@ describe('getCustomPropertiesSubFields', () => {
             'table_field_not_equal',
             'table_field_like',
             'table_field_not_like',
-            'is_null',
-            'is_not_null',
           ]);
+        });
+      });
+
+      it('should not offer is_null/is_not_null for table-cp columns with JSONLogic output', () => {
+        mockGetEntityName.mockReturnValue('Test Table');
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockTableField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(Array.isArray(result)).toBe(true);
+
+        if (!Array.isArray(result)) {
+          return;
+        }
+
+        result.forEach((entry) => {
+          expect(entry.dataObject.operators).not.toContain('is_null');
+          expect(entry.dataObject.operators).not.toContain('is_not_null');
         });
       });
     });

@@ -1560,6 +1560,10 @@ class AdvancedSearchClassBase {
         // JSONLogicSearchClassBase.configOperators, not in this class's configOperators (used by
         // Elasticsearch-backed Advanced Search), so Advanced Search keeps TEXT_FIELD_OPERATORS —
         // those compile to real ES queries and never hit the jsonLogic `var`-on-array problem.
+        // is_null/is_not_null are deliberately absent: they emit the same flat
+        // {"==":[{"var":"...rows.<col>"},null]}, so `var` throws on the array and RuleEngine
+        // swallows it into false — "Is Set" could never be true. Restore them only alongside a
+        // backend op that walks the path.
         const tableFieldOperators =
           searchOutputType === SearchOutputType.JSONLogic
             ? [
@@ -1567,8 +1571,6 @@ class AdvancedSearchClassBase {
                 'table_field_not_equal',
                 'table_field_like',
                 'table_field_not_like',
-                'is_null',
-                'is_not_null',
               ]
             : TEXT_FIELD_OPERATORS;
 
