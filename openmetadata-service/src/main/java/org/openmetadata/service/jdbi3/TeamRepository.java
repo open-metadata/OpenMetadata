@@ -944,45 +944,28 @@ public class TeamRepository extends EntityRepository<Team> {
       return Collections.emptyList();
     }
     List<String> hashes = new ArrayList<>();
-    collectSubtreeTeamHashes(team.getId(), team.getName(), hashes, new HashSet<>());
+    hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(team.getName())));
+    for (EntityReference descendant : getDescendantTeams(team)) {
+      hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(descendant.getName())));
+    }
     return hashes;
   }
 
-  private void collectSubtreeTeamHashes(
-      UUID teamId, String teamName, List<String> hashes, Set<UUID> visited) {
-    // Teams form a DAG (a Division/Department may have multiple parents), so dedupe by id to
-    // avoid revisiting a team reachable through more than one path (e.g. a diamond hierarchy).
-    if (!visited.add(teamId)) {
-      return;
-    }
-    hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(teamName)));
-    for (EntityReference child : getChildren(teamId)) {
-      collectSubtreeTeamHashes(child.getId(), child.getName(), hashes, visited);
-    }
-  }
-
   /**
-   * All teams nested under {@code team}, resolved recursively (the subtree, excluding the team
-   * itself). Computed on read like {@code childrenCount}/{@code userCount} — nothing is stored, so it
-   * stays correct across reparents/renames with no reindex. Backs the {@code descendantTeams} field
-   * the Users tab uses to scope its member search to a non-Group team's sub-groups.
+   * All teams nested under {@code team} (the subtree, excluding the team itself). Reuses the batched,
+   * cycle-safe {@link #discoverSubtreeTeams} traversal that {@link #getUserCount} uses, so the count,
+   * the Users tab/export rollup, and the {@code descendantTeams} field all reflect one identical
+   * subtree. Computed on read like {@code childrenCount}/{@code userCount} — nothing is stored, so it
+   * stays correct across reparents/renames with no reindex.
    */
   private List<EntityReference> getDescendantTeams(Team team) {
-    List<EntityReference> descendants = new ArrayList<>();
-    collectDescendantTeams(team.getId(), descendants, new HashSet<>());
-    return descendants;
-  }
-
-  private void collectDescendantTeams(
-      UUID teamId, List<EntityReference> descendants, Set<UUID> visited) {
-    for (EntityReference child : getChildren(teamId)) {
-      // Teams form a DAG (a Division/Department may have multiple parents); dedupe by id so a
-      // team reachable through more than one path is listed once, not per path.
-      if (visited.add(child.getId())) {
-        descendants.add(child);
-        collectDescendantTeams(child.getId(), descendants, visited);
-      }
+    Map<UUID, List<UUID>> childrenMap = new HashMap<>();
+    Set<UUID> subtreeTeamIds = discoverSubtreeTeams(List.of(team.getId()), childrenMap);
+    subtreeTeamIds.remove(team.getId());
+    if (subtreeTeamIds.isEmpty()) {
+      return Collections.emptyList();
     }
+    return Entity.getEntityReferencesByIds(TEAM, new ArrayList<>(subtreeTeamIds), NON_DELETED);
   }
 
   private List<EntityReference> getOwns(Team team) {
