@@ -43,6 +43,7 @@ import {
   NAME_VALIDATION_ERROR,
   readElementInListWithScroll,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
@@ -661,11 +662,15 @@ export const fillDomainForm = async (
     .getByTestId('add-domain-form')
     .getByTestId('domainType')
     .getByRole('button');
-  await domainTypeTrigger.click();
+  const domainTypeOption = page.getByRole('option', {
+    name: entity.domainType,
+    exact: true,
+  });
 
-  await page
-    .getByRole('option', { name: entity.domainType, exact: true })
-    .click();
+  // React Aria can close the listbox mid-click and detach the option
+  // ("element was detached from the DOM"); selectOptionWithRetry re-resolves the
+  // trigger's expanded state and reopens the popover before retrying the click.
+  await selectOptionWithRetry(domainTypeTrigger, domainTypeOption);
 };
 
 /**
