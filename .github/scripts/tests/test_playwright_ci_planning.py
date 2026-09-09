@@ -2755,6 +2755,291 @@ const core = {{
     assert payload["shards"][0]["id"] == "chromium-01"
 
 
+def _run_playwright_summary_harness(tmp_path, *, event_name, extra_env, expected_shards):
+    """Run renderPlaywrightSummary with a single passing shard and a matrix
+    that expects TWO shards, so the second is always "missing" — a canonical
+    infrastructure-issue setup (see run 34244326002 — chromium-09 and
+    advanced-search-01 uploaded blob but 403'd on FinalizeArtifact, so their
+    results.json never landed and the summary counted 149 missing tests +
+    4 per-shard "did not upload" issues). Returns the parsed harness result.
+    """
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+    results_dir = tmp_path / "results/playwright-results-json-chromium-01"
+    results_dir.mkdir(parents=True)
+    (results_dir / "results.json").write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "playwright/e2e/example.spec.ts",
+                        "specs": [
+                            {
+                                "title": "passes",
+                                "tests": [
+                                    {
+                                        "status": "expected",
+                                        "results": [{}],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    (results_dir / "ci-status.json").write_text(
+        json.dumps({"steps": {"tests": "success"}})
+    )
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let summaryBody = '';
+let failure = null;
+const summary = {{
+  addRaw(body) {{
+    summaryBody = body;
+    return summary;
+  }},
+  async write() {{}},
+}};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{
+    failure = message;
+  }},
+}};
+
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: {json.dumps(event_name)},
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ summaryBody, failure }}));
+}})().catch(error => {{
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+}});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps(
+                {"include": [{"shardId": shard} for shard in expected_shards]}
+            ),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    env.update(extra_env)
+
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout), json.loads(payload_path.read_text())
+
+
+def test_playwright_summary_pr_fails_when_expected_shard_is_missing(tmp_path):
+    rendered, payload = _run_playwright_summary_harness(
+        tmp_path,
+        event_name="pull_request",
+        extra_env={},
+        expected_shards=["chromium-01", "chromium-99"],
+    )
+    assert rendered["failure"] is not None, (
+        "PR runs must gate on missing-shard infrastructure issues so authors "
+        "regenerate / re-upload before the PR enters the queue."
+    )
+    assert "CI/reporting failure(s)" in rendered["failure"]
+    assert payload["infrastructureIssueCount"] >= 1
+
+
+def test_playwright_summary_merge_group_passes_when_only_infra_issues(tmp_path):
+    # Merge-queue tentative merges must NOT fail on infra-only issues. The
+    # repo's merge-queue grouping strategy is ALLGREEN — a failing non-required
+    # check still dissolves the whole batch — so an artifact-upload race on
+    # one shard (run 34244326002) is enough to eject a green batch. The strict
+    # checks already ran on the PR before it entered the queue.
+    rendered, payload = _run_playwright_summary_harness(
+        tmp_path,
+        event_name="merge_group",
+        extra_env={},
+        expected_shards=["chromium-01", "chromium-99"],
+    )
+    assert rendered["failure"] is None, (
+        f"merge_group check should ignore infra-only issues, got: {rendered['failure']}"
+    )
+    # The issues are still rendered in the summary body / payload — the check
+    # just doesn't fail on them.
+    assert payload["infrastructureIssueCount"] >= 1
+    assert "did not upload" in rendered["summaryBody"]
+
+
+def test_playwright_summary_merge_group_fails_on_real_test_failure(tmp_path):
+    # Real test failures still gate the merge_group check — this is the only
+    # signal that the tentative merge broke something on `main`.
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+    results_dir = tmp_path / "results/playwright-results-json-chromium-01"
+    results_dir.mkdir(parents=True)
+    (results_dir / "results.json").write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "playwright/e2e/example.spec.ts",
+                        "specs": [
+                            {
+                                "title": "fails",
+                                "tests": [
+                                    {"status": "unexpected", "results": [{}]},
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    (results_dir / "ci-status.json").write_text(
+        json.dumps({"steps": {"tests": "failure"}})
+    )
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let failure = null;
+const summary = {{ addRaw() {{ return summary; }}, async write() {{}} }};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{ failure = message; }},
+}};
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'merge_group',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ failure }}));
+}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    assert rendered["failure"] is not None
+    assert "1 Playwright test failure(s)" in rendered["failure"]
+    assert "author action needed" in rendered["failure"]
+
+
+def test_playwright_summary_merge_group_fails_when_no_tests_reported(tmp_path):
+    # Refuse synthetic green: if not a single test result reached the summary
+    # (e.g., every shard's upload flake'd, or the matrix job silently produced
+    # no results), fail the merge_group check even though there are no
+    # explicit test failures. Prevents an all-flake run from being counted
+    # as a green tentative merge.
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let failure = null;
+const summary = {{ addRaw() {{ return summary; }}, async write() {{}} }};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{ failure = message; }},
+}};
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'merge_group',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ failure }}));
+}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    assert rendered["failure"] is not None
+    assert "no tests reported" in rendered["failure"]
+
+
 def test_normal_vite_build_keeps_hashed_entry_assets():
     vite_config = (
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"

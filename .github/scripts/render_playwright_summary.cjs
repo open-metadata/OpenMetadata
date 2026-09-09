@@ -840,13 +840,42 @@ async function renderPlaywrightSummary({ github, context, core }) {
     core.warning(`Could not write the Playwright job summary: ${error.message}`);
   }
 
-  if (totalFailed > 0 || infrastructureIssues.length > 0) {
+  // Gate policy:
+  //   * PR / dispatch / schedule (STRICT): any test failure OR any
+  //     infrastructure issue fails the check. Authors have to fix drift,
+  //     invalid results JSON, missing artifacts, etc. before a PR can
+  //     enter the merge queue.
+  //   * merge_group (RELAXED): only real test failures — or a fully
+  //     collapsed shard matrix, or a run that produced zero test results
+  //     — fail the check. Every strict validation already ran on the PR
+  //     before it entered the queue; infra flakes on the tentative merge
+  //     (artifact-upload 403/409 races, coverage misses caused by those
+  //     missing artifacts, missing ci-status.json, etc.) should not
+  //     dequeue an otherwise-green PR (with the repo's ALLGREEN grouping
+  //     strategy, any failing check dissolves the whole batch). All
+  //     infrastructure issues are still enumerated in the rendered job
+  //     summary above for debuggability — they just don't fail the
+  //     check on merge_group.
+  const isMergeGroup = context.eventName === 'merge_group';
+  const shardMatrixCollapsed = upstreamResult === 'failure';
+  const noTestsReported = totalPassed === 0 && totalFailed === 0;
+  const shouldFail = isMergeGroup
+    ? (totalFailed > 0 || shardMatrixCollapsed || noTestsReported)
+    : (totalFailed > 0 || infrastructureIssues.length > 0);
+
+  if (shouldFail) {
     // Tell the author which kind of red this is: test failures need their
     // action; infrastructure-only failures explicitly do not.
-    const verdict =
-      totalFailed > 0
-        ? 'test failures — author action needed'
-        : 'no test failures — CI infrastructure/reporting problem, not this change';
+    let verdict;
+    if (totalFailed > 0) {
+      verdict = 'test failures — author action needed';
+    } else if (isMergeGroup && shardMatrixCollapsed) {
+      verdict = 'shard matrix collapsed on merge_group — refusing synthetic green';
+    } else if (isMergeGroup && noTestsReported) {
+      verdict = 'no tests reported on merge_group — refusing synthetic green';
+    } else {
+      verdict = 'no test failures — CI infrastructure/reporting problem, not this change';
+    }
     core.setFailed(
       `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s) (${verdict}).`
     );
