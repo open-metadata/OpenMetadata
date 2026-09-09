@@ -31,6 +31,7 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
@@ -42,6 +43,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { visitClassificationPage } from '../../utils/tag';
 import {
   addUser,
   checkDataConsumerPermissions,
@@ -68,6 +70,8 @@ import {
 } from '../../utils/user';
 
 const userName = `pw-user-${uuid()}`;
+const SYSTEM_CLASSIFICATION = 'Certification';
+
 const expirationTime = [1, 7, 30, 60, 90];
 
 const updatedUserDetails = {
@@ -361,20 +365,58 @@ test.describe('User with Data Consumer Roles', () => {
       await checkEditOwnerButtonPermission(dataConsumerPage);
     }
 
-    // Check CRUD for Tags
-    await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
+    // Check CRUD for Tags. The Tags page lands on whichever classification the
+    // API lists first, so pin the classification instead of relying on order:
+    // a system classification offers a viewer no Manage action at all, while
+    // a user classification offers only Export (gated on ViewAll).
+    await visitClassificationPage(
+      dataConsumerPage,
+      SYSTEM_CLASSIFICATION,
+      SYSTEM_CLASSIFICATION
+    );
 
     await expect(
-      dataConsumerPage.locator('[data-testid="add-classification"]')
+      dataConsumerPage.getByTestId('add-classification')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('add-new-tag-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('manage-button')
     ).not.toBeVisible();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
-    ).not.toBeVisible();
+    const classification = new ClassificationClass();
+    const { apiContext, afterAction } = await createAdminApiContext();
+    try {
+      await classification.create(apiContext);
+      await visitClassificationPage(
+        dataConsumerPage,
+        classification.data.name,
+        classification.data.displayName
+      );
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('add-new-tag-button')
+      ).not.toBeVisible();
+
+      const manageButton = dataConsumerPage.getByTestId('manage-button');
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
+
+      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('import-button')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('edit-classification')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('delete-button')
+      ).not.toBeVisible();
+    } finally {
+      await classification.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Operations for settings page for Data Consumer', async ({

@@ -230,6 +230,14 @@ test.describe('Context Center Articles', () => {
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    // `cc_classification_*` sorts ahead of every system classification, so a
+    // leaked one becomes the Tags page default for every spec that runs later.
+    await articleTagClassification.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
