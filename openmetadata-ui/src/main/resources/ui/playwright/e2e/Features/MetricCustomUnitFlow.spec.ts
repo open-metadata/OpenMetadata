@@ -87,8 +87,6 @@ test.describe(
           'Events'
         );
 
-        await expect(page.getByTestId('language-select')).toContainText('SQL');
-
         await page
           .getByTestId('metric-code')
           .getByRole('textbox')

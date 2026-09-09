@@ -1342,13 +1342,26 @@ base.describe(
 
           await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId('global-setting-left-panel').getByText('All')
-          ).toBeVisible();
+          if (entity === EntityDataClass.metric1) {
+            const activityTabs = page.getByRole('tablist', {
+              name: 'Activity',
+            });
 
-          await expect(
-            page.getByTestId('global-setting-left-panel').getByText('Tasks')
-          ).toBeVisible();
+            await expect(
+              activityTabs.getByRole('tab', { name: /^All Activity/ })
+            ).toBeVisible();
+            await expect(
+              activityTabs.getByRole('tab', { name: /^Tasks/ })
+            ).toBeVisible();
+          } else {
+            await expect(
+              page.getByTestId('global-setting-left-panel').getByText('All')
+            ).toBeVisible();
+
+            await expect(
+              page.getByTestId('global-setting-left-panel').getByText('Tasks')
+            ).toBeVisible();
+          }
 
           const lineageResponse = page.waitForResponse(
             `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
