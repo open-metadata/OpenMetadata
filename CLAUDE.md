@@ -115,6 +115,8 @@ hand-edit generated output.** Details in `.claude/rules/schema-first.md`.
 **Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus
 on functionality over education. Do not add unnecessary blank lines between prose and code blocks.
 
+**No wrappers around core-ui components.** Use `openmetadata-ui-core-components` components directly at the call site — do not create an intermediate wrapper component (e.g. `MyButton.tsx` that just re-exports `<Button>`) unless the wrapper adds genuine, non-trivial behaviour (custom hook logic, composed sub-components, domain-specific state). A wrapper that only passes props through is a maintenance liability: it hides which core component is in use and drifts from upstream updates.
+
 ## Pointer index — when to reach for what
 
 ### Path-scoped rules (`.claude/rules/*.md`, auto-load on matching files)
