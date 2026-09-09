@@ -24,8 +24,8 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
-  getCustomUiThemePreference,
-  getSystemConfig,
+    getCustomUiThemePreference,
+    getSystemConfig
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
@@ -53,11 +53,13 @@ const AppRoot: FC = () => {
       // drop the successfully fetched tenant timeFormat default.
       const themeDataPromise = getCustomUiThemePreference().catch((err) => {
         console.error('Failed to fetch theme data:', err);
+
         return null;
       });
       
       const systemConfigPromise = getSystemConfig().catch((err) => {
         console.error('Failed to fetch system config:', err);
+
         return null;
       });
 

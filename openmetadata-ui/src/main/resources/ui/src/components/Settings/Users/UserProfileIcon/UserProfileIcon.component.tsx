@@ -38,12 +38,12 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-  getImageWithResolutionAndFallback,
-  ImageQuality,
+    getImageWithResolutionAndFallback,
+    ImageQuality
 } from '../../../../utils/ProfilerUtils';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+    getTeamAndUserDetailsPath,
+    getUserPath
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
@@ -134,6 +134,7 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
     return false;
   }, []);
 
@@ -164,6 +165,7 @@ export const UserProfileIcon = () => {
         }
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
+
         return Array.from(uniquePersonasMap.values());
       })(),
     };
@@ -235,6 +237,7 @@ export const UserProfileIcon = () => {
       }
     }
     const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
+
     return [
       ...(defaultMatch ? [defaultMatch] : []),
       ...(selectedMatch ? [selectedMatch] : []),
