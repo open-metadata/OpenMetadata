@@ -48,12 +48,12 @@ import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElastic
 import {
   addEntityTypeFilter,
   buildExploreUrlParams,
+  fromLegacyTableColumnJsonLogic,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
-  fromLegacyTableColumnJsonLogic,
   migrateJsonLogic,
-  toLegacyTableColumnJsonLogic,
   READONLY_SETTINGS,
+  toLegacyTableColumnJsonLogic,
 } from '../../../../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
