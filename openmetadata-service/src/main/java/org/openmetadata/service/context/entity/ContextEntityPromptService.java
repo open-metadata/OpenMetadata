@@ -1,4 +1,4 @@
-package org.openmetadata.service.context;
+package org.openmetadata.service.context.entity;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
