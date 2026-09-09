@@ -550,7 +550,10 @@ const waitForMetricsPage = async (page: Page) => {
   await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('heading')).toHaveText('Metrics');
+  await expect(page.getByTestId('metric-list-page')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Metrics', level: 1 })
+  ).toBeVisible();
 };
 
 const filterMetrics = async (page: Page, searchText: string) => {

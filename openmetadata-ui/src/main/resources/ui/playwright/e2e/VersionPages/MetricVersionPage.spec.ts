@@ -72,7 +72,9 @@ const openMetricVersion = async (page: Page, versionLabel: string) => {
 
   expect((await versionResponse).status()).toBe(200);
 
-  const versionSelector = page.getByTestId(`version-selector-${versionLabel}`);
+  const versionSelector = page.getByTestId(
+    `version-${versionLabel.replace(/^v/, '')}`
+  );
 
   await expect(versionSelector).toBeVisible();
   await versionSelector.click();

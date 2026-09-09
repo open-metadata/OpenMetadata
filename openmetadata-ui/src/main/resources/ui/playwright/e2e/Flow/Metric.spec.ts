@@ -94,10 +94,17 @@ test.describe(
 
       await listAPIPromise;
 
-      await expect(page.getByTestId('heading')).toHaveText('Metrics');
-      await expect(page.getByTestId('sub-heading')).toHaveText(
-        'Define and catalog standardized metrics across your organization.'
-      );
+      const metricListHeader = page.getByTestId('metric-list-header');
+
+      await expect(
+        metricListHeader.getByRole('heading', { name: 'Metrics', level: 1 })
+      ).toBeVisible();
+      await expect(
+        metricListHeader.getByText(
+          'Define and catalog standardized metrics across your organization.',
+          { exact: true }
+        )
+      ).toBeVisible();
 
       await page.getByTestId('create-metric').click();
 

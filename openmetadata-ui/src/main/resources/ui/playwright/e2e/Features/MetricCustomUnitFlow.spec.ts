@@ -87,8 +87,7 @@ test.describe(
           'Events'
         );
 
-        // Select language and add expression
-        await selectMetricFormOption(page, 'language-select', 'SQL');
+        await expect(page.getByTestId('language-select')).toContainText('SQL');
 
         await page
           .getByTestId('metric-code')
