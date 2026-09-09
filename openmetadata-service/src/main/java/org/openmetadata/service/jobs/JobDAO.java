@@ -176,6 +176,22 @@ public interface JobDAO {
   BackgroundJob findCsvJobById(@Bind("id") long id);
 
   @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE createdBy = :createdBy "
+          + "AND jobType = 'ONTOLOGY_BULK' ORDER BY createdAt DESC LIMIT :limit")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  List<BackgroundJob> listOntologyBulkJobsByUser(
+      @Bind("createdBy") String createdBy, @Bind("limit") int limit);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_BULK'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findOntologyBulkJobById(@Bind("id") long id);
+
+  @SqlQuery(
       "SELECT result FROM background_jobs WHERE id = :id "
           + "AND jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT')")
   String findCsvJobResultById(@Bind("id") long id);
@@ -245,16 +261,14 @@ public interface JobDAO {
   @SqlQuery("SELECT cancelRequested FROM background_jobs WHERE id = :id")
   Boolean isCancelRequested(@Bind("id") long id);
 
-  // Scoped by updatedAt so a server only reaps jobs nobody is working on. An
-  // unscoped sweep would fail every RUNNING job in the cluster, so each pod
-  // starting during a rolling deploy would kill its peers' live exports.
-  // Workers heartbeat updatedAt, so anything past the window has no live owner.
+  // Workers heartbeat updatedAt, so the cutoff prevents a rolling deployment from failing jobs
+  // owned by another server. Only job types managed by GenericBackgroundWorker belong here.
   @SqlUpdate(
       "UPDATE background_jobs SET status = 'FAILED', error = 'Job stopped responding and was marked failed.', "
           + "message = 'Job stopped responding and was marked failed.', updatedAt = :updatedAt, completedAt = :updatedAt "
-          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT') "
+          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK') "
           + "AND status = 'RUNNING' AND updatedAt < :staleBefore")
-  int markStaleRunningCsvJobsFailed(
+  int markStaleRunningJobsFailed(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);
 
   @SqlUpdate("UPDATE background_jobs SET updatedAt = :updatedAt WHERE id = :id")

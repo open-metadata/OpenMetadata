@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.io.IOException;
 import java.net.URI;
@@ -54,7 +56,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
@@ -173,16 +174,17 @@ class SearchRepositoryTest {
     Fields fields = mock(Fields.class);
     doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
     EntityInterface survivor = mock(EntityInterface.class);
-    doReturn(survivor).when(tableRepository).get(isNull(), eq(survivorId), eq(fields));
-    doThrow(new EntityNotFoundException("table " + deletedId + " not found"))
+    doReturn(List.of(survivor))
         .when(tableRepository)
-        .get(isNull(), eq(deletedId), eq(fields));
+        .get(isNull(), eq(List.of(deletedId, survivorId)), eq(fields), eq(NON_DELETED));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
 
       searchRepository.updateEntitiesByReference(List.of(deletedRef, survivorRef));
 
+      verify(tableRepository)
+          .get(isNull(), eq(List.of(deletedId, survivorId)), eq(fields), eq(NON_DELETED));
       @SuppressWarnings("unchecked")
       ArgumentCaptor<List<EntityInterface>> indexed = ArgumentCaptor.forClass(List.class);
       verify(searchRepository).updateEntitiesIndex(indexed.capture());
@@ -219,14 +221,16 @@ class SearchRepositoryTest {
     Fields fields = mock(Fields.class);
     doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
     EntityInterface entity = mock(EntityInterface.class);
-    doReturn(entity).when(tableRepository).get(isNull(), eq(id), eq(fields));
+    doReturn(List.of(entity))
+        .when(tableRepository)
+        .get(isNull(), eq(List.of(id)), eq(fields), eq(NON_DELETED));
 
     try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class)) {
       entityStatic.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
 
       searchRepository.updateEntitiesByReference(List.of(ref, ref, ref));
 
-      verify(tableRepository, times(1)).get(isNull(), eq(id), eq(fields));
+      verify(tableRepository, times(1)).get(isNull(), eq(List.of(id)), eq(fields), eq(NON_DELETED));
       @SuppressWarnings("unchecked")
       ArgumentCaptor<List<EntityInterface>> indexed = ArgumentCaptor.forClass(List.class);
       verify(searchRepository).updateEntitiesIndex(indexed.capture());
@@ -234,6 +238,45 @@ class SearchRepositoryTest {
           List.of(entity),
           indexed.getValue(),
           "a repeated reference is resolved and indexed once, not per duplicate");
+    }
+  }
+
+  @Test
+  void updateEntitiesByReference_loadsAndIndexesBoundedBatches() {
+    searchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    lenient()
+        .when(searchRepository.searchIndexFactory.getReindexFieldsFor(anyString()))
+        .thenReturn(Set.of("name"));
+    doCallRealMethod().when(searchRepository).updateEntitiesByReference(anyList());
+    doNothing().when(searchRepository).updateEntitiesIndex(anyList());
+
+    List<EntityReference> refs =
+        java.util.stream.IntStream.range(0, 101)
+            .mapToObj(
+                ignored -> new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE))
+            .toList();
+    EntityRepository<?> tableRepository = mock(EntityRepository.class);
+    Fields fields = mock(Fields.class);
+    doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
+    doAnswer(
+            invocation -> {
+              List<UUID> ids = invocation.getArgument(1);
+              return ids.stream().map(ignored -> mock(EntityInterface.class)).toList();
+            })
+        .when(tableRepository)
+        .get(isNull(), anyList(), eq(fields), eq(NON_DELETED));
+
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
+
+      searchRepository.updateEntitiesByReference(refs);
+
+      @SuppressWarnings("unchecked")
+      ArgumentCaptor<List<UUID>> batches = ArgumentCaptor.forClass(List.class);
+      verify(tableRepository, times(2))
+          .get(isNull(), batches.capture(), eq(fields), eq(NON_DELETED));
+      assertEquals(List.of(100, 1), batches.getAllValues().stream().map(List::size).toList());
+      verify(searchRepository, times(2)).updateEntitiesIndex(anyList());
     }
   }
 

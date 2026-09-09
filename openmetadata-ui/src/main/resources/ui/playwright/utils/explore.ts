@@ -141,9 +141,6 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
-  await page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
-  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
   const dataAssetDropdownRequest = waitForAggregation(page, {
     field: 'entityType.keyword',
@@ -201,9 +198,7 @@ export const expandServiceInExploreTree = async (
     // Expanding the serviceType groups its services. The service drill-down
     // goes through the aggregate API (POST /search/aggregate) so the buckets
     // carry service.style top hits for custom service icons.
-    // Not a facet dropdown: the tree drill-down is a POST aggregate with no
-    // field/value pair for waitForAggregation to discriminate on.
-    // eslint-disable-next-line openmetadata-playwright/require-aggregation-wait-helper
+    // eslint-disable-next-line openmetadata-playwright/require-aggregation-wait-helper -- not a facet dropdown: the tree drill-down is a POST aggregate with no field/value pair for waitForAggregation to discriminate on
     const serviceNameRes = page.waitForResponse(
       (response) =>
         response.url().endsWith('/api/v1/search/aggregate') &&

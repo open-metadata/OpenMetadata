@@ -14,11 +14,21 @@
 /**
  * SVGR component template — generates each {IconName}.tsx file.
  * Mirrors the template used by @untitledui/icons.
+ *
+ * Custom icons never reference the color binding in JSX (they preserve
+ * authored brand colors instead of a themeable stroke), so they destructure
+ * it renamed to `_color` (`color: _color`) to satisfy eslint's
+ * no-unused-vars ignore pattern while keeping `Props.color` as the one
+ * declared property for both pipelines. Regular icons use the binding
+ * directly (`stroke={color}`), so theirs stays a plain `color`.
  */
-const template = ({ componentName, jsx }, { tpl }) => {
-  const name = componentName.replace(/^Svg/, '');
+function createComponentTemplate(isCustom) {
+  const colorParam = isCustom ? "color: _color = 'currentColor'" : "color = 'currentColor'";
 
-  return tpl`/*
+  return ({ componentName, jsx }, { tpl }) => {
+    const name = componentName.replace(/^Svg/, '');
+
+    return tpl`/*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -39,11 +49,12 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const ${name}: FC<Props> = ({ size = 24, color = 'currentColor', ...props }) => (
+export const ${name}: FC<Props> = ({ size = 24, ${colorParam}, ...props }) => (
   ${jsx}
 );
 ${name}.displayName = '${name}';
 `;
-};
+  };
+}
 
-module.exports = template;
+module.exports = createComponentTemplate;

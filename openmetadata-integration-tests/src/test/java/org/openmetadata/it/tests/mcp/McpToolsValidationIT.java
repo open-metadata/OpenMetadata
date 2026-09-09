@@ -475,9 +475,10 @@ public class McpToolsValidationIT extends McpTestBase {
   @Order(17)
   void testCreateMetricMissingExpression() throws Exception {
     Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", "metric");
     arguments.put("name", "incomplete_metric");
     arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
-    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_metric", arguments);
+    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_entity", arguments);
 
     JsonNode result = executeToolCall(toolCall);
     assertThat(result.has("isError")).isTrue();

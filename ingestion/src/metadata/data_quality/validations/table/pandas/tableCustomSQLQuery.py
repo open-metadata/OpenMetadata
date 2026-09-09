@@ -13,8 +13,6 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -36,7 +34,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
         )
 
-    def compute_row_count(self) -> Optional[int]:  # noqa: UP045
+    def compute_row_count(self) -> int | None:
         """Compute row count for the given column
 
         Returns:

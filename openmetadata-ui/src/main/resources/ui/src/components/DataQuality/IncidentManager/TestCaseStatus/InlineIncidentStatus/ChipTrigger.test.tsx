@@ -24,7 +24,7 @@ jest.mock('@untitledui/icons', () => ({
 // verifiable here is the contract truncation depends on: the untruncated label
 // must stay in the DOM (accessible name) and be exposed on hover (issue #30522),
 // and an unbounded chip must not advertise a tooltip it cannot need.
-const LONG_LABEL = 'Критичность инцидента отсутствует';
+const LONG_LABEL = 'Серьёзность отсутствует';
 
 const renderChip = ({
   chipLabel = LONG_LABEL,

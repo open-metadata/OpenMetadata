@@ -37,6 +37,7 @@ import {
   Typography,
 } from 'antd';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
@@ -90,6 +91,7 @@ const TaskFormBuilderSection = ({
   baseFormSchema,
   baseUiSchema,
 }: TaskFormBuilderSectionProps) => {
+  const { t } = useTranslation();
   const previewConfig = useMemo(
     () => buildDesignerSchema(fields, baseFormSchema, baseUiSchema),
     [baseFormSchema, baseUiSchema, fields]
@@ -127,7 +129,7 @@ const TaskFormBuilderSection = ({
           data-testid={`${testIdPrefix}-add-field`}
           icon={<PlusOutlined />}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
-          Add field
+          {t('label.add-field')}
         </Button>
       </div>
 
@@ -164,7 +166,7 @@ const TaskFormBuilderSection = ({
                           )
                         )
                       }>
-                      Remove
+                      {t('label.remove')}
                     </Button>
                   }
                   key={field.key}
@@ -291,7 +293,7 @@ const TaskFormBuilderSection = ({
                             required: event.target.checked,
                           }))
                         }>
-                        Required
+                        {t('label.required')}
                       </Checkbox>
                       <Checkbox
                         checked={field.hidden}
@@ -302,7 +304,7 @@ const TaskFormBuilderSection = ({
                             hidden: event.target.checked,
                           }))
                         }>
-                        Hidden
+                        {t('label.hidden')}
                       </Checkbox>
                     </Space>
                   </div>
@@ -334,7 +336,7 @@ const TaskFormBuilderSection = ({
             </div>
           ) : (
             <Typography.Text className="text-grey-muted">
-              Add fields to preview this form.
+              {t('message.add-fields-to-preview-form')}
             </Typography.Text>
           )}
         </Card>

@@ -32,7 +32,15 @@ export const Glossary: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect rx={3} stroke="currentColor" strokeWidth={1.3} x={4} y={2} />
+    <rect
+      height={16}
+      rx={3}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      width={12}
+      x={4}
+      y={2}
+    />
     <path
       d="M13.174 9.489a.5.5 0 0 1-.854.353l-.88-.88a.5.5 0 0 0-.707 0l-.88.88A.5.5 0 0 1 9 9.49V2.696A.696.696 0 0 1 9.696 2h2.782a.696.696 0 0 1 .696.696z"
       stroke="currentColor"

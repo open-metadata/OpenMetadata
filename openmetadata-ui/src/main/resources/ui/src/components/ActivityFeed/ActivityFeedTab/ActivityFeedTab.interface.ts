@@ -14,7 +14,7 @@ import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Column } from '../../../generated/entity/data/table';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import { EntityReference } from '../../../generated/entity/type';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { Task, TaskStatusGroup } from '../../../rest/tasksAPI';
@@ -83,19 +83,20 @@ export interface TaskFilterBarProps {
 export interface ActivityFeedTabListProps {
   activityEvents: ActivityEvent[];
   emptyPlaceholderText: ReactNode;
-  entityThread: Thread[];
+  entityThread: Conversation[];
   isActivityLoading?: boolean;
+  isAllTab: boolean;
   isFirstLoad: boolean;
   isFullWidth: boolean;
   isTaskListTab: boolean;
   loading: boolean;
   selectedActivity?: ActivityEvent;
   selectedTask?: Task;
-  selectedThread?: Thread;
+  selectedThread?: Conversation;
   tasks: Task[];
   onActivityClick: (activity: ActivityEvent) => void;
   onAfterClose: () => void;
-  onFeedClick: (feed: Thread) => void;
+  onFeedClick: (feed: Conversation) => void;
   onPanelResize: (isFullWidth: boolean) => void;
   onTaskClick: (task: Task) => void;
 }

@@ -199,7 +199,10 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
+  MessagingServiceType.Nats,
   DashboardServiceType.SapS4Hana,
+  DatabaseServiceType.Data360,
+  PipelineServiceType.Data360Pipeline,
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
   PipelineServiceType.Prefect,
@@ -365,4 +368,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
   [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
   [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
+  [DatabaseServiceType.Data360, 'Salesforce Data 360'],
+  [PipelineServiceType.Data360Pipeline, 'Salesforce Data 360 Pipeline'],
 ]);

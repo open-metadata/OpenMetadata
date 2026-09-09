@@ -1,0 +1,370 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageConnection",
+  "description": "OpenLineage Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection",
+  "definitions": {
+    "OpenLineageType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "OpenLineage"
+      ],
+      "default": "OpenLineage"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "default": "OpenLineage",
+      "type": "string",
+      "enum": [
+        "OpenLineage"
+      ]
+    },
+    "brokerConfig": {
+      "title": "Broker Configuration",
+      "description": "Event broker configuration. Choose between Kafka and Kinesis.",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Kafka",
+          "description": "Kafka broker configuration for OpenLineage events.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "brokersUrl": {
+              "title": "Kafka Brokers List",
+              "description": "Kafka bootstrap servers URL.",
+              "type": "string"
+            },
+            "topicName": {
+              "title": "Topic Name",
+              "description": "Topic from where OpenLineage events will be pulled.",
+              "type": "string"
+            },
+            "consumerGroupName": {
+              "title": "Consumer Group",
+              "description": "Kafka consumer group name.",
+              "type": "string"
+            },
+            "consumerOffsets": {
+              "title": "Initial Consumer Offsets",
+              "description": "Initial Kafka consumer offset.",
+              "default": "earliest",
+              "type": "string",
+              "enum": [
+                "earliest",
+                "latest"
+              ],
+              "javaEnums": [
+                {
+                  "name": "earliest"
+                },
+                {
+                  "name": "latest"
+                }
+              ]
+            },
+            "poolTimeout": {
+              "title": "Single Pool Call Timeout",
+              "description": "Max allowed wait time.",
+              "type": "number",
+              "default": 1
+            },
+            "sessionTimeout": {
+              "title": "Broker Inactive Session Timeout",
+              "description": "Max allowed inactivity time.",
+              "type": "integer",
+              "default": 30
+            },
+            "securityProtocol": {
+              "title": "Kafka Security Protocol",
+              "description": "Kafka security protocol config.",
+              "default": "PLAINTEXT",
+              "type": "string",
+              "enum": [
+                "PLAINTEXT",
+                "SASL_PLAINTEXT",
+                "SSL",
+                "SASL_SSL"
+              ],
+              "javaEnums": [
+                {
+                  "name": "PLAINTEXT"
+                },
+                {
+                  "name": "SASL_PLAINTEXT"
+                },
+                {
+                  "name": "SSL"
+                },
+                {
+                  "name": "SASL_SSL"
+                }
+              ]
+            },
+            "sslConfig": {
+              "title": "SSL",
+              "description": "SSL Configuration details.",
+              "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+              "mask": true,
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Validate SSL Client Config",
+                  "description": "OpenMetadata Client configured to validate SSL certificates.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                  "additionalProperties": false,
+                  "properties": {
+                    "caCertificate": {
+                      "title": "CA Certificate",
+                      "description": "The CA certificate used for SSL validation.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslCertificate": {
+                      "title": "SSL Certificate",
+                      "description": "The SSL certificate used for client authentication.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslKey": {
+                      "title": "SSL Key",
+                      "description": "The private key associated with the SSL certificate.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    }
+                  }
+                }
+              ]
+            },
+            "saslConfig": {
+              "title": "SASL",
+              "description": "SASL Configuration details.",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.sasl.SASLClientConfig",
+              "additionalProperties": false,
+              "properties": {
+                "saslMechanism": {
+                  "title": "SASL Mechanism",
+                  "description": "SASL security mechanism",
+                  "default": "PLAIN",
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
+                  "type": "string",
+                  "enum": [
+                    "PLAIN",
+                    "GSSAPI",
+                    "SCRAM-SHA-256",
+                    "SCRAM-SHA-512",
+                    "OAUTHBEARER"
+                  ]
+                },
+                "saslUsername": {
+                  "title": "SASL Username",
+                  "description": "The SASL authentication username.",
+                  "type": "string"
+                },
+                "saslPassword": {
+                  "title": "SASL Password",
+                  "description": "The SASL authentication password.",
+                  "type": "string",
+                  "format": "password"
+                }
+              }
+            }
+          },
+          "required": [
+            "brokersUrl",
+            "topicName"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Kinesis",
+          "description": "AWS Kinesis Data Streams configuration for OpenLineage events.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "streamName": {
+              "title": "Stream Name",
+              "description": "Kinesis Data Stream name.",
+              "type": "string"
+            },
+            "awsConfig": {
+              "title": "AWS Credentials Configuration",
+              "description": "AWS credentials configuration.",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+              "properties": {
+                "enabled": {
+                  "title": "Enable IAM Auth",
+                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "awsAccessKeyId": {
+                  "title": "AWS Access Key ID",
+                  "description": "AWS Access key ID.",
+                  "type": "string"
+                },
+                "awsSecretAccessKey": {
+                  "title": "AWS Secret Access Key",
+                  "description": "AWS Secret Access Key.",
+                  "type": "string",
+                  "format": "password"
+                },
+                "awsRegion": {
+                  "title": "AWS Region",
+                  "description": "AWS Region",
+                  "type": "string"
+                },
+                "awsSessionToken": {
+                  "title": "AWS Session Token",
+                  "description": "AWS Session Token.",
+                  "type": "string"
+                },
+                "endPointURL": {
+                  "title": "Endpoint URL",
+                  "description": "EndPoint URL for the AWS",
+                  "type": "string",
+                  "format": "uri"
+                },
+                "profileName": {
+                  "title": "Profile Name",
+                  "description": "The name of a profile to use with the boto session.",
+                  "type": "string"
+                },
+                "assumeRoleArn": {
+                  "title": "Role Arn for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                  "type": "string"
+                },
+                "assumeRoleSessionName": {
+                  "title": "Role Session Name for Assume Role",
+                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                  "type": "string",
+                  "default": "OpenMetadataSession"
+                },
+                "assumeRoleSourceIdentity": {
+                  "title": "Source Identity for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "awsRegion"
+              ]
+            },
+            "consumerOffsets": {
+              "title": "Initial Consumer Offsets",
+              "description": "Initial Kinesis shard iterator type.",
+              "default": "TRIM_HORIZON",
+              "type": "string",
+              "enum": [
+                "TRIM_HORIZON",
+                "LATEST"
+              ],
+              "javaEnums": [
+                {
+                  "name": "TRIM_HORIZON"
+                },
+                {
+                  "name": "LATEST"
+                }
+              ]
+            },
+            "poolTimeout": {
+              "title": "Poll Interval",
+              "description": "Poll interval in seconds.",
+              "type": "number",
+              "default": 1
+            },
+            "sessionTimeout": {
+              "title": "Session Timeout",
+              "description": "Max inactivity timeout in seconds.",
+              "type": "integer",
+              "default": 30
+            }
+          },
+          "required": [
+            "streamName",
+            "awsConfig"
+          ]
+        }
+      ]
+    },
+    "namespaceToServiceMapping": {
+      "title": "Namespace to Service Mapping",
+      "description": "Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names. Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' -> 'mysql-cluster-a'.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "brokerConfig"
+  ],
+  "additionalProperties": false
+}

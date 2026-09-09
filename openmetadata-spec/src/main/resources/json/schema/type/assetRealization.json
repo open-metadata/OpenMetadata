@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/type/assetRealization.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AssetRealization",
+  "description": "A data asset that physically realizes an ontology concept. Unlike a tag label, which records that an asset merely references a concept, a realization records that the asset stores the instances of the concept.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.AssetRealization",
+  "definitions": {
+    "realizationRole": {
+      "javaType": "org.openmetadata.schema.type.AssetRealizationRole",
+      "description": "Role the asset plays in realizing the concept. At most one asset may be the primary store of a concept.",
+      "type": "string",
+      "enum": ["PRIMARY_STORE", "DERIVED", "REPLICA"],
+      "default": "PRIMARY_STORE"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Stable identifier used by drafts and version diffs.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "asset": {
+      "description": "Data asset realizing the concept.",
+      "$ref": "entityReference.json"
+    },
+    "role": {
+      "$ref": "#/definitions/realizationRole"
+    },
+    "description": {
+      "description": "Human-readable note about how the asset realizes the concept.",
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "provenance": {
+      "description": "How this realization edge originated. Defaults to 'Manual'.",
+      "$ref": "termRelation.json#/definitions/provenance"
+    }
+  },
+  "required": ["asset"],
+  "additionalProperties": false
+}

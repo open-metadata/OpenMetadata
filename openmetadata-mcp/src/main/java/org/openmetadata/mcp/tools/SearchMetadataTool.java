@@ -120,12 +120,15 @@ public class SearchMetadataTool implements McpTool {
               McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
           .toList();
 
+  /** Lucene match-anything query, mirroring the {@code @DefaultValue("*")} on the REST search API. */
+  private static final String MATCH_ANY_QUERY = "*";
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    LOG.info("Executing searchMetadata with params: {}", params);
-    String query = stringParam(params, "query", "*");
+    LOG.debug("Executing searchMetadata with params: {}", params);
+    String query = stringParam(params, "query", MATCH_ANY_QUERY);
     String entityType = stringParam(params, "entityType", null);
     String index = resolveIndex(entityType);
 
@@ -241,47 +244,32 @@ public class SearchMetadataTool implements McpTool {
     // (OpenSearchSearchManager.applyQueryFilter), so the engine applies it and the page backfills.
     String exclusionFilter = queryFilter == null ? excludeOnlyFilter(excludedTypes) : null;
 
-    LOG.info(
+    LOG.debug(
         "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
         queryFilter,
         index,
         size,
         includeDeleted);
 
-    SearchRequest searchRequest;
-    if (!nullOrEmpty(queryFilter)) {
-      // When queryFilter is provided, use it directly as it's already a transformed OpenSearch
-      // query
-      searchRequest =
-          new SearchRequest()
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withQueryFilter(queryFilter)
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-    } else {
-      // Fallback to basic query when no queryFilter is provided
-      searchRequest =
-          new SearchRequest()
-              .withQuery(query)
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withQueryFilter(exclusionFilter)
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-    }
+    // One request shape for both cases. A caller-supplied queryFilter used to be sent through
+    // searchWithDirectQuery, which reads neither the text query nor the deleted flag, so both were
+    // silently dropped whenever a filter was present. The standard search path ANDs the filter
+    // under
+    // the text query (OpenSearchSearchManager#applyQueryFilter) and additionally applies the
+    // deleted
+    // filter, ranked scoring, and the search preference.
+    SearchRequest searchRequest =
+        new SearchRequest()
+            .withQuery(nullOrEmpty(query) ? MATCH_ANY_QUERY : query)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withQueryFilter(nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter)
+            .withSize(size)
+            .withFrom(from)
+            .withFetchSource(true)
+            .withDeleted(includeDeleted);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    Response response;
-    if (!nullOrEmpty(queryFilter)) {
-      // Use direct query method when queryFilter is provided since it's already a transformed query
-      response = Entity.getSearchRepository().searchWithDirectQuery(searchRequest, subjectContext);
-    } else {
-      // Use regular search for basic queries
-      response = Entity.getSearchRepository().search(searchRequest, subjectContext);
-    }
+    Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
@@ -596,28 +584,6 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
-  @SuppressWarnings("unused")
-  /**
-   * Entity references and tag labels are collapsed to the identifier a caller can act on.
-   *
-   * <p>{@code tier}, {@code service}, {@code database} and {@code databaseSchema} each repeat a full
-   * descriptor on every hit, which on a 10-hit response was most of the payload. Every MCP tool is
-   * addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
-   */
-  /**
-   * Caps a hydrated bulk field on a search hit.
-   *
-   * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
-   * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
-   * the full detail lives.
-   */
-  /** True when hit scores vary, i.e. something actually ranked them. */
-  /**
-   * Wraps a query so excluded entity types never match, letting the engine backfill the page.
-   *
-   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a broad
-   * sweep can return mostly columns inheriting their parent's tags or certification.
-   */
   /**
    * A queryFilter whose only job is to exclude entity types, for the path where the caller supplied
    * no filter of their own. Null when there is nothing to exclude, so the request is unchanged.
@@ -633,6 +599,12 @@ public class SearchMetadataTool implements McpTool {
     return filter;
   }
 
+  /**
+   * Wraps a query so excluded entity types never match, letting the engine backfill the page.
+   *
+   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a broad
+   * sweep can return mostly columns inheriting their parent's tags or certification.
+   */
   private static JsonNode excludeTypesFrom(JsonNode query, Set<String> excluded) {
     JsonNode result = query;
     if (!excluded.isEmpty()) {
@@ -652,6 +624,7 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
+  /** True when hit scores vary, i.e. something actually ranked them. */
   private static boolean scoresDiscriminate(List<?> hits) {
     Object first = null;
     boolean varies = false;
@@ -671,6 +644,13 @@ public class SearchMetadataTool implements McpTool {
     return varies;
   }
 
+  /**
+   * Caps a hydrated bulk field on a search hit.
+   *
+   * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
+   * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
+   * the full detail lives.
+   */
   private static Object capBulkField(String field, Object value, Map<String, Object> result) {
     Object capped = value;
     if (BULK_FIELDS.contains(field)
@@ -683,6 +663,13 @@ public class SearchMetadataTool implements McpTool {
     return capped;
   }
 
+  /**
+   * Entity references and tag labels are collapsed to the identifier a caller can act on.
+   *
+   * <p>{@code tier}, {@code service}, {@code database} and {@code databaseSchema} each repeat a full
+   * descriptor on every hit, which on a 10-hit response was most of the payload. Every MCP tool is
+   * addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
+   */
   private static Object slimField(String field, Object value) {
     Object result = value;
     if (REFERENCE_FIELDS.contains(field)) {

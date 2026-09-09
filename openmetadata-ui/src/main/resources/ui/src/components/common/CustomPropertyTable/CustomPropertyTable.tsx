@@ -300,6 +300,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     <div className="custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
+          // eslint-disable-next-line react/no-array-index-key -- static grid-layout column partition, fixed order
           <Col key={colIndex} span={8}>
             {columns.map((record) => (
               <div key={record.name} style={{ marginBottom: '16px' }}>

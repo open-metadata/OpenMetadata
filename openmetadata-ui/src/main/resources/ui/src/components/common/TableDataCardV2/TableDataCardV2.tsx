@@ -96,13 +96,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         source.entityType !== EntityType.GLOSSARY_TERM &&
         source.entityType !== EntityType.TAG
       ) {
+        const tierName = isString(source.tier)
+          ? source.tier
+          : getEntityName(source.tier);
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : getEntityName(source.tier)
-            : '',
+          value: source.tier ? tierName : '',
         });
       }
 
@@ -207,7 +206,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="m-t-xs" key={i}>
+              <span className="m-t-xs" key={data.key}>
                 {`${data.value} ${t('label.in-lowercase')} 
                 ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
               </span>

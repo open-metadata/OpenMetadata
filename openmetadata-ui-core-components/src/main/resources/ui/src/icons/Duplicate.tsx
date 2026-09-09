@@ -33,10 +33,12 @@ export const Duplicate: FC<Props> = ({
     width={size}
     {...props}>
     <rect
+      height={11.608}
       rx={2.5}
       stroke="currentColor"
       strokeDasharray="2.6 2.6"
       strokeWidth={1.3}
+      width={11.608}
       x={2.004}
       y={6.391}
     />

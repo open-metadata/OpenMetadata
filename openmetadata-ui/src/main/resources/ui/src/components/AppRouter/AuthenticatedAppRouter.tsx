@@ -208,6 +208,12 @@ const OntologyExplorerPage = withPageSuspenseFallback(
   )
 );
 
+const SparqlPlaygroundPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
+  )
+);
+
 const WorkflowsListPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
@@ -378,6 +384,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={<SparqlPlaygroundPage />}
+        path={ROUTES.SPARQL_PLAYGROUND}
       />
       <Route
         element={<OntologyExplorerPage />}
@@ -779,7 +789,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         return <Route key={route.path ?? route.id} {...route} />;
       })}
 
-      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
+      <Route element={<MyDataPage />} path={ROUTES.HOME} />
       <Route
         element={
           <AdminProtectedRoute>
@@ -820,13 +830,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<EntityRouter />}
         path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
       />
-      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.SIGNIN} />
+      <Route element={<Navigate to={ROUTES.HOME} />} path={ROUTES.SIGNIN} />
+      <Route element={<Navigate to={ROUTES.HOME} />} path={ROUTES.REGISTER} />
       <Route
-        element={<Navigate to={ROUTES.MY_DATA} />}
-        path={ROUTES.REGISTER}
-      />
-      <Route
-        element={<Navigate to={ROUTES.MY_DATA} />}
+        element={<Navigate to={ROUTES.HOME} />}
         path={ROUTES.FORGOT_PASSWORD}
       />
       <Route

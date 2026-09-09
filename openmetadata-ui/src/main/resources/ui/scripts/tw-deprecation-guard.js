@@ -16,10 +16,11 @@
  * Deprecation guard for the Antd + Less → UntitledUI + Tailwind migration.
  *
  * Antd (864 files) and Less (449 files) can't be a blanket error — instead we
- * enforce "no NEW debt": fail if a change ADDS a `.less` file or ADDS an
- * `import … from 'antd'` specifier that wasn't already imported from that
- * same module before the change. Existing usage is untouched and migrates
- * over time.
+ * enforce "no NEW debt": fail if a change ADDS an `import … from 'antd'`
+ * specifier that wasn't already imported from that same module before the
+ * change. New `.less` files are reported but do NOT fail the guard while the
+ * app-mode migration still ships `.less` for the AI shell. Existing usage is
+ * untouched and migrates over time.
  *
  * The antd check compares full before/after file contents (via `git show`)
  * rather than raw diff lines. A diff-line scan flags
@@ -185,10 +186,12 @@ function newAntdImports() {
 function main() {
   const less = newLessFiles();
   const antd = newAntdImports();
-  const problems = less.length + antd.length;
+  // New `.less` files are reported but do NOT fail the guard — the app-mode
+  // migration still lands `.less` for the AI shell. Only new `antd` debt blocks.
+  const problems = antd.length;
 
   if (less.length) {
-    process.stderr.write(C.red(`\n✖ New .less file(s) are not allowed — style with Tailwind (tw:) + UntitledUI:\n`));
+    process.stderr.write(C.gray(`\nⓘ New .less file(s) detected (allowed for now — prefer Tailwind (tw:) + UntitledUI):\n`));
     less.forEach((f) => process.stderr.write(`    ${f}\n`));
   }
   if (antd.length) {
@@ -202,7 +205,7 @@ function main() {
     );
     process.exit(1);
   }
-  process.stdout.write(C.green('✔ No new Antd imports or .less files.\n'));
+  process.stdout.write(C.green('✔ No new Antd imports.\n'));
 }
 
 if (require.main === module) {

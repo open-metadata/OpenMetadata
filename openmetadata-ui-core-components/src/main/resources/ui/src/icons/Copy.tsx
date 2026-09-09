@@ -32,7 +32,15 @@ export const Copy: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect rx={2.5} stroke="currentColor" strokeWidth={1.3} x={2} y={4.668} />
+    <rect
+      height={13.333}
+      rx={2.5}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      width={13.333}
+      x={2}
+      y={4.668}
+    />
     <path
       d="M7.332 2.001h7.666a3 3 0 0 1 3 3v7.667"
       stroke="currentColor"

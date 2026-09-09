@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/type/rdfValidationReport.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RdfValidationReport",
+  "description": "Bounded, typed SHACL validation result for RDF import and governance APIs.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.RdfValidationReport",
+  "definitions": {
+    "violation": {
+      "javaType": "org.openmetadata.schema.type.RdfValidationViolation",
+      "type": "object",
+      "properties": {
+        "focusNode": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resultPath": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "sourceConstraint": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": ["focusNode", "message", "severity"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "conforms": {
+      "type": "boolean"
+    },
+    "reportTurtle": {
+      "description": "Complete machine-readable SHACL report serialized as Turtle.",
+      "type": "string"
+    },
+    "performed": {
+      "description": "Whether SHACL validation was executed for this operation.",
+      "type": "boolean"
+    },
+    "truncated": {
+      "description": "Whether the typed violation list was capped while reportTurtle remains complete.",
+      "type": "boolean"
+    },
+    "violationCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/violation"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "conforms",
+    "performed",
+    "reportTurtle",
+    "truncated",
+    "violationCount",
+    "violations"
+  ],
+  "additionalProperties": false
+}

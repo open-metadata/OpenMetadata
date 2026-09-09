@@ -14,7 +14,7 @@
 import hashlib
 import re
 import traceback
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import text
@@ -107,7 +107,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
@@ -152,7 +152,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             logger.warning(f"Failed to fetch string property type ref: {exc}")
             logger.debug(traceback.format_exc())
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -182,7 +182,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """Get Athena table partition detail
 
         Args:
@@ -218,7 +218,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
@@ -256,7 +256,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield table and column tags

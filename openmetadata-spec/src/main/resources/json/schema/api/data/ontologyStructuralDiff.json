@@ -1,0 +1,114 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyStructuralDiff.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyStructuralDiff",
+  "description": "Typed three-way structural comparison between a captured base, current source, and application subset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyStructuralDiff",
+  "definitions": {
+    "state": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyStructuralDiffState",
+      "type": "string",
+      "enum": [
+        "UNCHANGED",
+        "SOURCE_CHANGED",
+        "SUBSET_CHANGED",
+        "MERGEABLE",
+        "CONFLICT"
+      ]
+    },
+    "termDiff": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyTermStructuralDiff",
+      "type": "object",
+      "properties": {
+        "subsetTerm": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "sourceTerm": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "baseVersion": {
+          "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+        },
+        "currentSourceVersion": {
+          "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+        },
+        "subsetVersion": {
+          "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+        },
+        "state": {
+          "$ref": "#/definitions/state"
+        },
+        "sourceChangedFields": {
+          "type": "array",
+          "items": {
+            "$ref": "../../type/ontologyTermStructure.json#/definitions/field"
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "subsetChangedFields": {
+          "type": "array",
+          "items": {
+            "$ref": "../../type/ontologyTermStructure.json#/definitions/field"
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "conflictingFields": {
+          "type": "array",
+          "items": {
+            "$ref": "../../type/ontologyTermStructure.json#/definitions/field"
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "base": {
+          "$ref": "../../type/ontologyTermStructure.json"
+        },
+        "currentSource": {
+          "$ref": "../../type/ontologyTermStructure.json"
+        },
+        "currentSubset": {
+          "$ref": "../../type/ontologyTermStructure.json"
+        }
+      },
+      "required": [
+        "subsetTerm",
+        "sourceTerm",
+        "baseVersion",
+        "currentSourceVersion",
+        "subsetVersion",
+        "state",
+        "sourceChangedFields",
+        "subsetChangedFields",
+        "conflictingFields",
+        "base",
+        "currentSource",
+        "currentSubset"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "sourceGlossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "targetGlossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/termDiff"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "sourceGlossary",
+    "targetGlossary",
+    "data"
+  ],
+  "additionalProperties": false
+}

@@ -184,6 +184,8 @@ export interface TestServiceConnectionConnection {
  *
  * QuestDB Connection Config
  *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
  * SAP BW/4HANA Database Connection Config
  *
  * Looker Connection Config
@@ -238,6 +240,8 @@ export interface TestServiceConnectionConnection {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -289,6 +293,8 @@ export interface TestServiceConnectionConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
@@ -382,6 +388,9 @@ export interface Connection {
     sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
+     *
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
      */
     supportsMetadataExtraction?: boolean;
     /**
@@ -704,6 +713,10 @@ export interface Connection {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
@@ -1052,6 +1065,8 @@ export interface Connection {
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
      *
+     * NATS authentication method. Leave empty for anonymous authentication.
+     *
      * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
      * Types of methods used to authenticate to the alation instance
@@ -1262,12 +1277,16 @@ export interface Connection {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -1540,7 +1559,13 @@ export interface Connection {
     /**
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
+     *
      * Pagination limit used while querying the tableau metadata API for getting data sources
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
      *
      * Pagination limit used for Alation APIs pagination
      */
@@ -1867,8 +1892,27 @@ export interface Connection {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2058,6 +2102,22 @@ export interface Connection {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?: string;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -2415,6 +2475,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch topics that matches the pattern.
  *
+ * Regex to only fetch subjects/streams that match the pattern.
+ *
  * Regex exclude pipelines.
  *
  * Regex to filter MuleSoft applications by name.
@@ -2572,6 +2634,14 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
  * Choose between Prefect Cloud or a self-hosted Prefect Server.
  *
  * Authentication configuration for Prefect Cloud.
@@ -2611,6 +2681,8 @@ export interface AuthenticationType {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     *
+     * Token for NATS authentication.
      */
     token?: string;
     /**
@@ -2649,6 +2721,8 @@ export interface AuthenticationType {
      * Password to access the service.
      *
      * Password to authenticate with SAP S/4HANA.
+     *
+     * Password for NATS authentication.
      *
      * Elastic Search Password for Login
      *
@@ -2703,6 +2777,8 @@ export interface AuthenticationType {
      *
      * Username to authenticate with SAP S/4HANA.
      *
+     * Username for NATS authentication.
+     *
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
@@ -2726,6 +2802,10 @@ export interface AuthenticationType {
      * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
      */
     tokenEndpoint?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
     /**
      * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
      */
@@ -3298,6 +3378,8 @@ export enum KafkaSecurityProtocol {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for Prefect API connection.
  *
@@ -4057,6 +4139,8 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -4740,6 +4824,8 @@ export enum AirflowConnectionScheme {
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -4857,6 +4943,8 @@ export enum SpaceType {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for Prefect API connection.
  *
@@ -5075,6 +5163,8 @@ export enum AirflowConnectionType {
     CustomStorage = "CustomStorage",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360 = "Data360",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
@@ -5124,6 +5214,7 @@ export enum AirflowConnectionType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",

@@ -109,7 +109,11 @@ class ExtensionHighlightSearchIT {
       }
     }
     settings.setConfigValue(config);
-    putSearchSettings(JsonUtils.pojoToJson(settings));
+    // Written straight to the repository rather than through PUT /v1/system/settings, because
+    // SearchSettingsHandler.validateHighlightFields now rejects this exact value at save time. The
+    // guard under test protects clusters that stored such a value before that check existed (or via
+    // the unvalidated PATCH path), so the test has to reproduce a stored value, not a saveable one.
+    Entity.getSystemRepository().createOrUpdate(settings);
     SettingsCache.invalidateSettings(SettingsType.SEARCH_SETTINGS.value());
   }
 

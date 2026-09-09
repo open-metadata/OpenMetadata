@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/type/semanticReference.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SemanticReference",
+  "description": "Reference to a governed glossary term or an external semantic resource.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.SemanticReference",
+  "properties": {
+    "iri": {
+      "description": "Canonical IRI of the referenced semantic resource.",
+      "type": "string",
+      "format": "uri"
+    },
+    "term": {
+      "description": "Resolved glossary term when the referenced resource is governed locally.",
+      "$ref": "entityReference.json"
+    }
+  },
+  "required": ["iri"],
+  "additionalProperties": false
+}

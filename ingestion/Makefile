@@ -50,11 +50,13 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 .PHONY: py_format
 py_format:  ## Run ruff to lint-fix and format the Python codebase
 	ruff check --fix $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --prune
 	ruff format $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --check
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: generate_settings_docs

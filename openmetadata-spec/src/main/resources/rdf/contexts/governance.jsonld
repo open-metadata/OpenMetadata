@@ -35,7 +35,7 @@
         "@type": "om:Entity"
       },
       "glossary": {
-        "@id": "om:belongsToGlossary",
+        "@id": "skos:inScheme",
         "@type": "@id"
       },
       "synonyms": {
@@ -62,7 +62,7 @@
         "@type": "xsd:string"
       },
       "classification": {
-        "@id": "om:belongsToClassification",
+        "@id": "skos:inScheme",
         "@type": "@id"
       },
       "usageCount": {
@@ -130,8 +130,25 @@
         "@type": "@id",
         "@container": "@set"
       },
-      "childTerms": {
+      "parent": {
+        "@id": "skos:broader",
+        "@type": "@id"
+      },
+      "children": {
         "@id": "skos:narrower",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "contractStatus": {
+        "@id": "om:contractStatus",
+        "@type": "xsd:string"
+      },
+      "appliesTo": {
+        "@id": "om:appliesToEntity",
+        "@type": "@id"
+      },
+      "users": {
+        "@id": "om:appliesToUser",
         "@type": "@id",
         "@container": "@set"
       },

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { JsonTree, Utils } from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils } from '@react-awesome-query-builder/ui';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -94,8 +94,8 @@ const mocks = {
   },
 };
 
-jest.mock('@react-awesome-query-builder/antd', () => {
-  const actual = jest.requireActual('@react-awesome-query-builder/antd');
+jest.mock('@react-awesome-query-builder/ui', () => {
+  const actual = jest.requireActual('@react-awesome-query-builder/ui');
 
   return {
     ...actual,
@@ -414,7 +414,7 @@ describe('QueryBuilderWidgetV1', () => {
       expect(searchQuery).toHaveBeenCalled();
 
       expect(
-        container.querySelector('.ant-skeleton.ant-skeleton-active')
+        container.querySelector('[aria-hidden="true"]')
       ).toBeInTheDocument();
 
       await act(async () => {
@@ -649,11 +649,11 @@ describe('QueryBuilderWidgetV1', () => {
         <QueryBuilderWidgetV1 outputType={SearchOutputType.ElasticSearch} />
       );
 
-      const col = screen
+      const innerDiv = screen
         .getByTestId('query-builder-form-field')
-        .querySelector('.ant-col');
+        .querySelector('.tw\\:pt-2');
 
-      expect(col).toHaveClass('p-t-sm');
+      expect(innerDiv).toBeInTheDocument();
     });
   });
 

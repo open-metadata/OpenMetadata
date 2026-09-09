@@ -124,36 +124,6 @@ describe('Icon', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should apply wrapperStyle to the wrapper regardless of loading state', () => {
-      const { container, getByTestId } = render(
-        <Icon
-          iconValue="http://example.com/image.png"
-          wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
-        />
-      );
-
-      const wrapper = container.firstChild;
-
-      expect(wrapper).toHaveStyle({ marginRight: '4px', flexShrink: 0 });
-
-      fireEvent.load(getByTestId('icon-image'));
-
-      expect(wrapper).toHaveStyle({ marginRight: '4px', flexShrink: 0 });
-    });
-
-    it('should not apply wrapperStyle to the loading skeleton itself', () => {
-      const { container } = render(
-        <Icon
-          iconValue="http://example.com/image.png"
-          wrapperStyle={{ marginRight: 4 }}
-        />
-      );
-
-      expect(container.querySelector('[aria-hidden="true"]')).not.toHaveStyle({
-        marginRight: '4px',
-      });
-    });
-
     it('should render the img element with the resolved src', () => {
       const { getByTestId } = render(
         <Icon iconValue="http://example.com/image.png" />

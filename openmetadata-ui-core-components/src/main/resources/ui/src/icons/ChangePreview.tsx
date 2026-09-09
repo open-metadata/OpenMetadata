@@ -42,7 +42,15 @@ export const ChangePreview: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <rect rx={3} stroke="currentColor" strokeWidth={1.3} x={2} y={2} />
+    <rect
+      height={16}
+      rx={3}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      width={16}
+      x={2}
+      y={2}
+    />
   </svg>
 );
 ChangePreview.displayName = 'ChangePreview';

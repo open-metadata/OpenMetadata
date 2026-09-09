@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -29,7 +30,7 @@ import {
   visitAlertDetailsPage,
   visitEditAlertPage,
 } from '../../utils/alert';
-import { descriptionBox, getApiContext } from '../../utils/common';
+import { getApiContext, getDescriptionBox } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addFilterWithUsersListInput,
@@ -264,7 +265,7 @@ test('Multiple Filters Alert', async ({ page }) => {
     await visitEditAlertPage(page, data.alertDetails);
 
     // Remove description
-    await page.locator(descriptionBox).clear();
+    await getDescriptionBox(page).clear();
 
     // Remove all filters with state verification
     for (let i = 5; i >= 0; i--) {

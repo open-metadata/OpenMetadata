@@ -34,22 +34,29 @@
  *   1. Drop SVG in icons-custom/  →  yarn icons:generate
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join, basename, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { transform } from '@svgr/core';
 import { optimize } from 'svgo';
+import prettierModule from 'prettier';
+import { ESLint } from 'eslint';
+
+const prettier = prettierModule.default ?? prettierModule;
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
+const prettierConfig = await prettier.resolveConfig(join(ROOT, '.prettierrc.yaml'));
+const eslint = new ESLint({ cwd: ROOT, fix: true });
+
 const ICONS_DIR = join(ROOT, 'icons');
 const CUSTOM_DIR = join(ROOT, 'icons-custom');
 const OUT_DIR = join(ROOT, 'src', 'icons');
 
-const componentTemplate = require('../templates/component.cjs');
+const createComponentTemplate = require('../templates/component.cjs');
 
 /** Convert any filename to a valid PascalCase component name. */
 function toComponentName(filename) {
@@ -60,6 +67,14 @@ function toComponentName(filename) {
     .join('');
 }
 
+/** Run this package's own eslint --fix (react/jsx-sort-props, padding-line-
+ *  between-statements, etc. from eslint.config.mjs) against generated code,
+ *  matching the same auto-fix pass CI's ui-checkstyle job applies. */
+async function eslintFix(code, filePath) {
+  const [result] = await eslint.lintText(code, { filePath });
+  return result.output ?? code;
+}
+
 /** SVGO plugins shared by both pipelines. */
 const sharedPlugins = [
   {
@@ -67,13 +82,17 @@ const sharedPlugins = [
     params: { overrides: { removeViewBox: false } },
   },
   { name: 'cleanupIds', params: { minify: true, remove: true } },
-  // Remove layout/meta attributes that SVGR re-injects dynamically.
+  // Remove the root <svg>'s width/height — SVGR's svgProps re-injects them
+  // dynamically as size props. Root-only by design, so inner shapes (e.g. a
+  // <rect> that legitimately carries width/height as geometry) keep theirs.
+  { name: 'removeDimensions' },
+  // Remove other layout/meta attributes that SVGR re-injects dynamically.
   // 'id' excluded — cleanupIds already prunes unreferenced ids safely.
   // 'stroke-width' excluded — preserves each icon's designed stroke weight.
   {
     name: 'removeAttrs',
     params: {
-      attrs: ['xmlns', 'width', 'height', 'data-name', 'style'],
+      attrs: ['xmlns', 'data-name', 'style'],
     },
   },
 ];
@@ -148,7 +167,7 @@ function buildSvgrConfig(isCustom) {
     expandProps: 'end',
     svgo: false,
     prettier: false,
-    template: componentTemplate,
+    template: createComponentTemplate(isCustom),
     svgProps: isCustom
       ? {
           width: '{size}',
@@ -170,7 +189,9 @@ function buildSvgrConfig(isCustom) {
 async function processFolder(dir, isCustom, generatedNames) {
   if (!existsSync(dir)) return;
 
-  const svgFiles = readdirSync(dir).filter((f) => f.endsWith('.svg'));
+  const svgFiles = readdirSync(dir)
+    .filter((f) => f.endsWith('.svg'))
+    .sort((a, b) => a.localeCompare(b));
   if (svgFiles.length === 0) return;
 
   for (const svgFile of svgFiles) {
@@ -188,8 +209,14 @@ async function processFolder(dir, isCustom, generatedNames) {
 
     const svgrConfig = buildSvgrConfig(isCustom);
     const tsx = await transform(optimizedSvg, svgrConfig, { componentName });
+    const fixedTsx = await eslintFix(tsx, outputPath);
+    const formattedTsx = await prettier.format(fixedTsx, {
+      ...prettierConfig,
+      parser: 'typescript',
+      filepath: outputPath,
+    });
 
-    writeFileSync(outputPath, tsx, 'utf8');
+    writeFileSync(outputPath, formattedTsx, 'utf8');
     generatedNames.push(componentName);
     console.log(`  ✓ ${componentName}`);
   }
@@ -219,6 +246,19 @@ async function main() {
   await processFolder(ICONS_DIR, false, generatedNames);
   await processFolder(CUSTOM_DIR, true, generatedNames);
 
+  // Remove stale .tsx output for SVGs deleted from icons/ or icons-custom/
+  // since the last run — processFolder only ever adds/updates files, so
+  // without this, a removed SVG's .tsx keeps existing (unused, unexported)
+  // forever. Scoped to .tsx only: OUT_DIR also holds hand-authored files
+  // (e.g. types.ts) that generate-icons.mjs must never touch.
+  const expectedTsxFiles = new Set(generatedNames.map((name) => `${name}.tsx`));
+  for (const existingFile of readdirSync(OUT_DIR)) {
+    if (existingFile.endsWith('.tsx') && !expectedTsxFiles.has(existingFile)) {
+      unlinkSync(join(OUT_DIR, existingFile));
+      console.log(`  ✗ removed stale ${existingFile}`);
+    }
+  }
+
   // Generate index.ts
   const allExports = generatedNames
     .map((name) => `export { ${name} } from './${name}'`)
@@ -244,7 +284,15 @@ export type { IconProps } from '../icons-static/types';
 ${allExports}
 `;
 
-  writeFileSync(join(OUT_DIR, 'index.ts'), indexContent, 'utf8');
+  const indexPath = join(OUT_DIR, 'index.ts');
+  const fixedIndexContent = await eslintFix(indexContent, indexPath);
+  const formattedIndexContent = await prettier.format(fixedIndexContent, {
+    ...prettierConfig,
+    parser: 'typescript',
+    filepath: indexPath,
+  });
+
+  writeFileSync(indexPath, formattedIndexContent, 'utf8');
 
   console.log(`\nGenerated ${generatedNames.length} icons → src/icons/`);
   console.log('Updated src/icons/index.ts');

@@ -19,16 +19,13 @@ interface Props extends SVGProps<SVGSVGElement> {
 
 export const Gold: FC<Props> = ({
   size = 24,
-  color = 'currentColor',
+  color: _color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
     fill="none"
     height={size}
-    stroke={color}
-    strokeLinecap="round"
-    strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,8 +33,15 @@ export const Gold: FC<Props> = ({
       d="M5.223 2h9.553a2.15 2.15 0 0 1 2.149 2.15v5.014c0 4.155-3.057 7.117-6.925 8.836-3.87-1.72-6.926-4.68-6.926-8.836V4.15A2.15 2.15 0 0 1 5.224 2Z"
       fill="url(#gold_a)"
       stroke="#C67E17"
+      strokeLinejoin="round"
     />
-    <mask id="gold_b" maskUnits="userSpaceOnUse" x={3} y={2}>
+    <mask
+      height={16}
+      id="gold_b"
+      maskUnits="userSpaceOnUse"
+      width={14}
+      x={3}
+      y={2}>
       <path
         d="M5.223 2h9.553a2.15 2.15 0 0 1 2.149 2.15v5.014c0 4.155-3.057 7.117-6.925 8.836-3.87-1.72-6.926-4.68-6.926-8.836V4.15A2.15 2.15 0 0 1 5.224 2"
         fill="#fff"

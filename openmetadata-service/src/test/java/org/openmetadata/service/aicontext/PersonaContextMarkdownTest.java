@@ -34,9 +34,36 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
+import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 
 class PersonaContextMarkdownTest {
+
+  @Test
+  void searchScopeDescribesARelevanceDefault() {
+    Persona persona = persona();
+    PersonaContext context =
+        new PersonaContext()
+            .withPersona(persona.getEntityReference())
+            .withGeneratedAt(1782864000000L)
+            .withSearchScope(new SearchScope().withEntityTypes(Set.of("table")))
+            .withSharedKnowledge(new SharedKnowledge());
+
+    String markdown =
+        PersonaContextMarkdown.render(
+                persona,
+                new PersonaContextDefinition().withCharacterBudget(50_000),
+                List.of(),
+                context,
+                false)
+            .markdown();
+
+    assertTrue(markdown.contains("Search tools are asked to apply this scope by default"));
+    assertTrue(markdown.contains("results may be narrowed"));
+    assertTrue(markdown.contains("not a permission boundary"));
+    assertTrue(markdown.contains("tool may search outside it"));
+    assertFalse(markdown.contains("will not appear in results"));
+  }
 
   @Test
   void renderReservesFullKnowledgeBeforeAssetsEvenWhenKnowledgeExceedsTheBudget() {

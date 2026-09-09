@@ -14,14 +14,14 @@ Multi DB Source Abstract class
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 
 
 class MultiDBSource(ABC):
     @abstractmethod
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         """
         Method to return the name of default configured database if available
         """
