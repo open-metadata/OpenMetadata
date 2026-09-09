@@ -14,6 +14,14 @@ import { queryByAttribute, render, screen } from '@testing-library/react';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
 
+jest.mock('../../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    grid: '#234567',
+    primary: '#345678',
+    primaryArea: '#456789',
+  }),
+}));
+
 const mockProps = {
   customMetricsGraphData: {
     CountOfFRAddress: [

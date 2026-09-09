@@ -191,6 +191,26 @@ describe('CustomizePageUtils', () => {
 
       expect(result).toBe(true);
     });
+
+    it('should return true for chart details view (mirrors dashboard)', () => {
+      const result = checkIfExpandViewSupported(
+        { key: EntityTabs.DETAILS, label: 'Details' },
+        EntityTabs.DETAILS,
+        PageType.Chart
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false for chart non-details view', () => {
+      const result = checkIfExpandViewSupported(
+        { key: EntityTabs.DETAILS, label: 'Details' },
+        EntityTabs.ACTIVITY_FEED,
+        PageType.Chart
+      );
+
+      expect(result).toBe(false);
+    });
   });
 
   describe('getDefaultTabs', () => {
