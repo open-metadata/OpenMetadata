@@ -3221,6 +3221,7 @@ class TestTelemetryFailureHint:
         client.is_confluent_cloud = True
         client._telemetry_auth = ("k", "s")
         client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._connect_authenticated = True
         client._telemetry_topics_by_connector_id = None
         client._query_dataflow_topics_by_client = MagicMock(
             side_effect=self._error(403, {"errors": [{"detail": "not authorized"}]})
@@ -3288,6 +3289,7 @@ class TestTelemetryFailureHint:
         client.is_confluent_cloud = True
         client._telemetry_auth = ("KEYID123", "SUPERSECRET")
         client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._connect_authenticated = True
         client._telemetry_topics_by_connector_id = None
         client._query_dataflow_topics_by_client = MagicMock(
             side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
@@ -3300,3 +3302,30 @@ class TestTelemetryFailureHint:
         assert "KEYID123" in rendered, "the key id identifies which credential to check"
         assert "SUPERSECRET" not in rendered, "the secret must never be logged"
         assert "authenticates to the Connect API" in rendered, "Connect worked, so say so"
+
+    def test_empty_cluster_is_not_mistaken_for_a_rejected_credential(self):
+        """
+        A cluster with no connectors and a cluster we cannot authenticate to both yield an
+        empty connector list. Inferring the credential from that list would tell an operator
+        with a working key and an empty cluster to go and replace the key.
+        """
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("KEYID123", "SECRET")
+        client._telemetry_topics_by_connector_id = None
+        client._connector_ids = None
+        client._connect_authenticated = None
+        # Connect answers, the cluster simply has no connectors.
+        client.get_connectors_list = MagicMock(return_value={})
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "authenticates to the Connect API" in rendered, (
+            "an empty connector list still means Connect authenticated"
+        )
+        assert "cannot authenticate here" not in rendered
