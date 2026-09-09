@@ -594,7 +594,7 @@ const openMetricActions = async (page: Page) => {
 
 const clickMetricAction = async (page: Page, actionName: string) => {
   await getMetricActionsMenu(page)
-    .getByRole('menuitem', { name: actionName, exact: true })
+    .getByRole('menuitemradio', { name: actionName, exact: true })
     .click();
 };
 
@@ -1455,13 +1455,13 @@ test.describe(
         ).toBeVisible();
         await openMetricActions(metricEditorPage);
         await expect(
-          getMetricActionsMenu(metricEditorPage).getByRole('menuitem', {
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitemradio', {
             name: 'Export',
             exact: true,
           })
         ).toBeVisible();
         await expect(
-          getMetricActionsMenu(metricEditorPage).getByRole('menuitem', {
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitemradio', {
             name: 'Import',
             exact: true,
           })

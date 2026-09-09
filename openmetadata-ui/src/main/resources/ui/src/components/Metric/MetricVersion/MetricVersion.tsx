@@ -29,10 +29,13 @@ import type {
   ChangeDescription,
   Metric,
 } from '../../../generated/entity/data/metric';
+import { UnitOfMeasurement } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import MetricCustomPropertyValue from '../MetricCustomPropertyValue/MetricCustomPropertyValue.component';
 import MetricExpression from '../MetricExpression/MetricExpression';
 import type { MetricVersionProp } from './MetricVersion.interface';
@@ -63,6 +66,85 @@ const MetricVersionBadges = ({
         </Badge>
       )}
     </>
+  );
+};
+
+const MetricVersionDefinitionDetails = ({
+  changeDescription,
+  metric,
+}: {
+  changeDescription: ChangeDescription;
+  metric: Pick<
+    Metric,
+    | 'customUnitOfMeasurement'
+    | 'granularity'
+    | 'metricType'
+    | 'unitOfMeasurement'
+  >;
+}) => {
+  const { t } = useTranslation();
+  const metricType = getEntityVersionByField(
+    changeDescription,
+    'metricType',
+    metric.metricType
+  );
+  const unitOfMeasurement = getEntityVersionByField(
+    changeDescription,
+    'unitOfMeasurement',
+    metric.unitOfMeasurement
+  );
+  const customUnitOfMeasurement = getEntityVersionByField(
+    changeDescription,
+    'customUnitOfMeasurement',
+    metric.customUnitOfMeasurement
+  );
+  const displayUnitOfMeasurement =
+    unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+      ? customUnitOfMeasurement
+      : unitOfMeasurement;
+  const granularity = getEntityVersionByField(
+    changeDescription,
+    'granularity',
+    metric.granularity
+  );
+  const details = [
+    {
+      label: t('label.metric-type'),
+      testId: 'metric-type-version-info',
+      value: metricType,
+    },
+    {
+      label: t('label.unit-of-measurement'),
+      testId: 'unit-of-measurement-version-info',
+      value: displayUnitOfMeasurement,
+    },
+    {
+      label: t('label.granularity'),
+      testId: 'granularity-version-info',
+      value: granularity,
+    },
+  ].filter(({ value }) => Boolean(value));
+
+  if (!details.length) {
+    return null;
+  }
+
+  return (
+    <Box align="center" className="tw:flex-wrap" gap={3}>
+      {details.map(({ label, testId, value }) => (
+        <Box align="center" gap={1} key={testId}>
+          <Typography
+            className="tw:text-tertiary"
+            size="text-xs"
+            weight="semibold">
+            {label}:
+          </Typography>
+          <Typography data-testid={testId} size="text-xs">
+            {stringToHTML(value)}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
   );
 };
 
@@ -176,6 +258,10 @@ const MetricVersion: FC<MetricVersionProp> = ({
                 </Badge>
                 <MetricVersionBadges metric={currentVersionData} />
               </Box>
+              <MetricVersionDefinitionDetails
+                changeDescription={changeDescription}
+                metric={currentVersionData}
+              />
             </Box>
           </Box>
         </Box>

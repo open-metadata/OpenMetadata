@@ -216,9 +216,11 @@ export const addMetric = async (page: Page) => {
       'i'
     );
 
-    await field.getByRole('button').click();
+    const trigger = field.getByRole('button');
+
+    await trigger.click();
     await page.getByRole('option', { name: optionName }).click();
-    await expect(field).toContainText(optionName);
+    await expect(trigger).toContainText(optionName);
   };
 
   await page.getByTestId('create-button').click();

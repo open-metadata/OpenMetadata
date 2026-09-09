@@ -15,7 +15,9 @@ import { MemoryRouter } from 'react-router-dom';
 import type { Metric } from '../../../generated/entity/data/metric';
 import {
   EntityStatus,
+  MetricGranularity,
   MetricType,
+  UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -36,6 +38,9 @@ const metric: Metric = {
   fullyQualifiedName: 'finance.margin',
   description: 'Gross profit divided by revenue',
   metricType: MetricType.Ratio,
+  granularity: MetricGranularity.Day,
+  unitOfMeasurement: UnitOfMeasurement.Other,
+  customUnitOfMeasurement: 'Leads',
   entityStatus: EntityStatus.Approved,
   metricExpression: { code: 'profit / revenue' },
   extension: {
@@ -106,6 +111,38 @@ describe('MetricVersion', () => {
     );
     expect(screen.getByText('label.ratio')).toBeInTheDocument();
     expect(screen.getByText('label.approved')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-type-version-info')).toHaveTextContent(
+      MetricType.Ratio
+    );
+    expect(
+      screen.getByTestId('unit-of-measurement-version-info')
+    ).toHaveTextContent('Leads');
+    expect(screen.getByTestId('granularity-version-info')).toHaveTextContent(
+      MetricGranularity.Day
+    );
+  });
+
+  it('renders both sides of a changed unit of measurement', () => {
+    renderVersion({
+      currentVersionData: {
+        ...metric,
+        unitOfMeasurement: UnitOfMeasurement.Dollars,
+        changeDescription: {
+          fieldsUpdated: [
+            {
+              name: 'unitOfMeasurement',
+              oldValue: UnitOfMeasurement.Other,
+              newValue: UnitOfMeasurement.Dollars,
+            },
+          ],
+        },
+      },
+    });
+
+    const unit = screen.getByTestId('unit-of-measurement-version-info');
+
+    expect(unit).toHaveTextContent(UnitOfMeasurement.Other);
+    expect(unit).toHaveTextContent(UnitOfMeasurement.Dollars);
   });
 
   it('hides custom properties without view permission', () => {
