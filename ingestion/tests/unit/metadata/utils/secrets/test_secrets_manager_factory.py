@@ -60,7 +60,16 @@ class TestSecretsManagerFactory(TestCase):
         assert secrets_manager_factory.get_secrets_manager() is not None
         assert isinstance(secrets_manager_factory.get_secrets_manager(), DBSecretsManager)
 
-    @patch.dict(os.environ, {"AZURE_KEY_VAULT_NAME": "test"})
+    @patch.dict(
+        os.environ,
+        {
+            "AZURE_KEY_VAULT_NAME": "test",
+            # OpenBao has no ambient credential chain to fall back on, so the env loader needs an
+            # address and a token in the same way Azure needs a vault name.
+            "OPENBAO_ADDRESS": "http://localhost:8200",
+            "OPENBAO_TOKEN": "test-token",
+        },
+    )
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
     @patch("metadata.clients.aws_client.boto3")
