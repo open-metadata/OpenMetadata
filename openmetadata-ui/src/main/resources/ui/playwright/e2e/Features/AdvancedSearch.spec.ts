@@ -1218,9 +1218,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag1.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag1.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table1 (tagged with tag1) is visible', async () => {
@@ -1268,9 +1268,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag2.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag2.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table2 (tagged with tag2) is visible', async () => {
