@@ -337,6 +337,11 @@ test.describe('User with Data Consumer Roles', () => {
 
       await waitForAllLoadersToDisappear(dataConsumerPage);
 
+      // Confirm the glossary page has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('glossary-details')
+      ).toBeVisible();
+
       await expect(
         dataConsumerPage.locator('[data-testid="add-glossary"]')
       ).not.toBeVisible();
