@@ -700,7 +700,11 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
-    return this.page.getByTitle(ownerName);
+    // Scope to the owner selection dropdown, not the whole page: a page-wide
+    // getByTitle also matches the entity's still-assigned owner chip in the
+    // panel, whose removal after the user hard-delete is eventually consistent
+    // and independent of this search-backed dropdown — the deleted-entity flake.
+    return this.selectOwnerTabs.getByTitle(ownerName);
   }
 
   /**
@@ -729,7 +733,11 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
-    return this.page.getByTitle(tagName);
+    // Scope to the tag selection dropdown, not the whole page: a page-wide
+    // getByTitle also matches the entity's still-assigned tag chip in the panel,
+    // whose removal after the tag hard-delete is eventually consistent and
+    // independent of this search-backed dropdown — the deleted-entity flake.
+    return this.selectableList.getByTitle(tagName);
   }
 
   /**
@@ -760,7 +768,11 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
-    return this.page.getByTitle(termName);
+    // Scope to the glossary-term selection dropdown, not the whole page: a
+    // page-wide getByTitle also matches the entity's still-assigned term chip in
+    // the panel, whose removal after the term hard-delete is eventually
+    // consistent and independent of this search-backed dropdown — the flake.
+    return this.selectableList.getByTitle(termName);
   }
 
   // ============ HELPER METHODS ============
