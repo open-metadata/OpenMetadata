@@ -62,11 +62,11 @@ test.describe(
           }
         );
 
-        // Enable the single-glossary-term rule
+        // Enable ONLY the single-glossary-term rule; keep all others disabled
+        // to avoid poisoning Domain/DataProduct tests in the same shard.
         const rules = DATA_ASSET_RULES.map((r) => ({
           ...r,
-          enabled:
-            r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE ? true : r.enabled,
+          enabled: r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE,
         }));
         await apiContext.put('/api/v1/system/settings', {
           data: {
@@ -88,11 +88,12 @@ test.describe(
       await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
 
-      // Reset the single-glossary-term rule to its default state
+      // Disable all entity rules to restore the default state for other tests
+      // in this shard. The server-side setting is global, so leaving rules
+      // enabled would break Domain/DataProduct tests that run later.
       const rules = DATA_ASSET_RULES.map((r) => ({
         ...r,
-        enabled:
-          r.name === SINGLE_GLOSSARY_TERM_FOR_TABLE_RULE ? true : r.enabled,
+        enabled: false,
       }));
       await apiContext.put('/api/v1/system/settings', {
         data: {
