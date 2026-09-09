@@ -248,7 +248,7 @@ const DataProductsContainer = ({
         dataTestId="data-products-container"
         forceExpand={isEditMode}
         headerExtra={headerExtra}
-        isExpandDisabled={isEmpty(dataProducts) && !isEditMode}
+        isExpandDisabled={isEmpty(dataProducts) && !isEditMode && !domainMissing}
         title={t('label.data-product-plural')}>
         {renderer}
       </WidgetCard>
