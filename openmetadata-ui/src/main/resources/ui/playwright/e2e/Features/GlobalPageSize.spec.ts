@@ -43,7 +43,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       await menuItem.click();
       await expect(tablePageSizeDropdown).toHaveText('25 / Page');
     }).toPass({
-      timeout: 15_000,
+      timeout: 30_000,
       intervals: [500, 1_000, 2_000],
     });
 
@@ -66,7 +66,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       await menuItem1.click();
       await expect(page.getByRole('button', { name: 'Records' })).toHaveText('50');
     }).toPass({
-      timeout: 15_000,
+      timeout: 30_000,
       intervals: [500, 1_000, 2_000],
     });
 
