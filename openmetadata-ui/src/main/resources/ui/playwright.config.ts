@@ -17,7 +17,7 @@ import {
 } from '@playwright/test';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
-import { QUARANTINE_LIST, QuarantineEntry } from './playwright/quarantine-list';
+import { QuarantineEntry, QUARANTINE_LIST } from './playwright/quarantine-list';
 
 /**
  * Read environment variables from file.
