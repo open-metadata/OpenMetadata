@@ -20,7 +20,12 @@ import {
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { buildFqn, okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  buildFqn,
+  okJson,
+  withNetworkRetry,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -623,10 +628,16 @@ export class TableClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/databaseServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=${hardDelete}`
+    // Service teardown lands on the peak-parallel path — the backend has been
+    // observed to close the socket mid-DELETE ("socket hang up") when many
+    // shards teardown at once. withNetworkRetry replays the transport-level
+    // failure without leaking retry logic into every teardown call site.
+    const serviceResponse = await withNetworkRetry(() =>
+      apiContext.delete(
+        `/api/v1/services/databaseServices/name/${encodeURIComponent(
+          this.serviceResponseData?.fullyQualifiedName ?? ''
+        )}?recursive=true&hardDelete=${hardDelete}`
+      )
     );
 
     return {
@@ -636,8 +647,10 @@ export class TableClass extends EntityClass {
   }
 
   async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
-    const tableResponse = await apiContext.delete(
-      `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
+    const tableResponse = await withNetworkRetry(() =>
+      apiContext.delete(
+        `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
+      )
     );
 
     return tableResponse;

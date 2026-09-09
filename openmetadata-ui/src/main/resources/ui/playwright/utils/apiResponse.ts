@@ -124,6 +124,70 @@ export const withNotFoundRetry = async (
 };
 
 /**
+ * Errors from `apiContext.{post,patch,delete,put,get}` that come from the
+ * transport layer, not from an HTTP response — the server closed the socket
+ * before answering, or the Node client aborted mid-flight. These are almost
+ * always the Dropwizard backend swapping a worker thread under peak parallel
+ * load; the same request replayed a moment later succeeds.
+ *
+ * Match on the message rather than an error class because Playwright wraps the
+ * underlying `Error` in its own type and re-emits the original message.
+ */
+const NETWORK_ERROR_PATTERNS = [
+  'socket hang up',
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'other side closed',
+  'network socket disconnected',
+];
+
+const isTransientNetworkError = (err: unknown): boolean => {
+  const message = err instanceof Error ? err.message : String(err);
+
+  return NETWORK_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+};
+
+/**
+ * Re-run a raw `apiContext.*` call when it throws a transient network error.
+ *
+ * Playwright's `apiRequestContext` methods throw synchronously (rather than
+ * returning a non-2xx response) when the transport itself fails — `socket hang
+ * up`, `ECONNRESET`, etc. The retry loops elsewhere in this file check
+ * `response.status()` and so cannot see these; the request never got that far.
+ *
+ * Wrap the call site's thunk in this helper and a peak-load hiccup becomes a
+ * ~600 ms pause instead of an ejected PR at the 0-retry gate:
+ *
+ *     const response = await withNetworkRetry(() => apiContext.delete(url));
+ *
+ * A genuine server outage still surfaces after `MAX_ATTEMPTS` tries.
+ */
+const NETWORK_RETRY_ATTEMPTS = 3;
+const NETWORK_RETRY_BASE_DELAY_MS = 300;
+
+export const withNetworkRetry = async <T>(
+  send: () => Promise<T>
+): Promise<T> => {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= NETWORK_RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await send();
+    } catch (err) {
+      if (!isTransientNetworkError(err)) {
+        throw err;
+      }
+      lastError = err;
+      if (attempt < NETWORK_RETRY_ATTEMPTS) {
+        await sleep(NETWORK_RETRY_BASE_DELAY_MS * attempt);
+      }
+    }
+  }
+
+  throw lastError;
+};
+
+/**
  * POST that treats "already exists" as success.
  *
  * The nightly topology runs many Playwright processes against a single server,
@@ -157,7 +221,13 @@ export const createOrFetch = async <T = ResponseBody>(
   }
 ): Promise<T> => {
   const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
-  let createResponse = await apiContext.post(createPath, { data });
+  // Wrap in withNetworkRetry so a socket hang up on the peak-parallel setup
+  // path (backend swapping a Dropwizard worker under load) becomes a ~600 ms
+  // pause instead of an ejected shard at the 0-retry gate. Every support
+  // class that creates an entity routes through here.
+  let createResponse = await withNetworkRetry(() =>
+    apiContext.post(createPath, { data })
+  );
 
   // 404 and 5xx are both "the server did not apply this", so re-sending is
   // safe in either case — nothing was partially written. The 5xx arm covers a
@@ -171,7 +241,9 @@ export const createOrFetch = async <T = ResponseBody>(
     attempt++
   ) {
     await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
-    createResponse = await apiContext.post(createPath, { data });
+    createResponse = await withNetworkRetry(() =>
+      apiContext.post(createPath, { data })
+    );
   }
 
   if (createResponse.status() === 409) {
@@ -184,8 +256,10 @@ export const createOrFetch = async <T = ResponseBody>(
     if (fields) {
       params.push(`fields=${encodeURIComponent(fields)}`);
     }
-    const getResponse = await apiContext.get(
-      `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
+    const getResponse = await withNetworkRetry(() =>
+      apiContext.get(
+        `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
+      )
     );
 
     const existing = await okJson<T>(
