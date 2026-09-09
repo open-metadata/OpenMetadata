@@ -1828,7 +1828,7 @@ test.describe(
         .first();
       await expect(row).toBeVisible();
 
-      await row.locator('.metric-status-pill').first().click();
+      await row.getByRole('status').click();
 
       await expect(page).toHaveURL(/\/metric\//);
     });

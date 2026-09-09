@@ -18,7 +18,6 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
   redirectToHomePage,
   waitForMetricsListingResponse,
 } from '../../utils/common';
@@ -164,11 +163,11 @@ test.describe(
 
       await page.getByTestId('edit-description-order_date').click();
 
-      await page
-        .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
-        .clear();
-      await page
-        .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
+      const editDimensionDialog = page.getByRole('dialog', {
+        name: /Edit Dimension/,
+      });
+      await editDimensionDialog
+        .getByRole('textbox', { name: 'Description' })
         .fill('Updated dimension description.');
 
       const patchPromise = page.waitForResponse(
@@ -178,8 +177,8 @@ test.describe(
           response.ok()
       );
 
-      await page
-        .locator(`[data-testid="markdown-editor"] [data-testid="save"]`)
+      await editDimensionDialog
+        .getByRole('button', { name: 'Save', exact: true })
         .click();
 
       await patchPromise;
