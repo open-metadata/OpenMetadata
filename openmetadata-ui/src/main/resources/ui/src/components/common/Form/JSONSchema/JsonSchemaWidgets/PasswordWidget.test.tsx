@@ -118,11 +118,50 @@ describe('Test PasswordWidget Component', () => {
     expect(mockOnChange).toHaveBeenCalledWith('*******');
   });
 
-  it('Should not show password if the value is masked', async () => {
+  it('Should show masked value as dots so the user knows a secret is stored', async () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
       'password-input-widget-root/password'
+    );
+
+    // The input now shows the masked sentinel as password-hidden dots so users
+    // can see that a value is stored and use the allowClear × to remove it.
+    expect(passwordInput).toHaveValue('******');
+  });
+
+  it('Should call onChange with undefined when the field is cleared', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
+
+    // Clearing converts '' to undefined — the '' → undefined conversion in
+    // handleChange prevents the RJSF form data from holding an explicit empty
+    // string, which would produce replace/'' in the JSON Patch on save.
+    fireEvent.change(passwordInput, { target: { value: '' } });
+
+    expect(mockOnChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it('Should show empty after clearing — no dots visible', () => {
+    const { rerender } = render(<PasswordWidget {...mockProps} />);
+
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
+
+    expect(passwordInput).toHaveValue('******');
+
+    // Re-render as the parent would after onChange(undefined) — value is now
+    // undefined, so the input must show empty, not the previous masked dots.
+    rerender(
+      <PasswordWidget
+        {...mockProps}
+        value={undefined}
+        onChange={mockOnChange}
+      />
     );
 
     expect(passwordInput).toHaveValue('');
