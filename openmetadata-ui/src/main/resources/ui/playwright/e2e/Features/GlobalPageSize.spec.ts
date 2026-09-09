@@ -47,24 +47,26 @@ test.describe('Table & Data Model columns table pagination', () => {
       intervals: [500, 1_000, 2_000],
     });
 
-
-
     await waitForAllLoadersToDisappear(page);
 
     // Go to Explore Page
     await sidebarClick(page, SidebarItem.EXPLORE);
 
     await waitForAllLoadersToDisappear(page);
-    await expect(page.getByRole('button', { name: 'Records' })).toHaveText('25');
+    await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
+      '25'
+    );
 
     // Change page size to 50
-   const menuItem1 = page.getByTestId('rows-per-page-option-50');
-   const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' })
-   await expect(async () => {
+    const menuItem1 = page.getByTestId('rows-per-page-option-50');
+    const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' });
+    await expect(async () => {
       await pageSizeRecordBtn.click();
       await expect(menuItem1).toBeVisible({ timeout: 2_000 });
       await menuItem1.click();
-      await expect(page.getByRole('button', { name: 'Records' })).toHaveText('50');
+      await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
+        '50'
+      );
     }).toPass({
       timeout: 30_000,
       intervals: [500, 1_000, 2_000],
