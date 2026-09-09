@@ -22,7 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -161,8 +161,28 @@ const Certification = ({
 
             const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
             const renderedIcon = iconURL ? (
-              <Icon alt={title} iconValue={iconURL} size={28} />
+              <Icon
+                alt={title}
+                fallback={<CertificationIcon height={28} width={28} />}
+                iconValue={iconURL}
+                size={28}
+              />
             ) : null;
+
+            let iconContent: ReactNode;
+            if (!renderedIcon) {
+              iconContent = (
+                <div className="certification-icon">
+                  <CertificationIcon height={28} width={28} />
+                </div>
+              );
+            } else if (isIcon) {
+              iconContent = (
+                <div className="certification-icon">{renderedIcon}</div>
+              );
+            } else {
+              iconContent = renderedIcon;
+            }
 
             return (
               <div
@@ -179,17 +199,7 @@ const Certification = ({
                   value={fullyQualifiedName}
                 />
                 <div className="certification-card-content">
-                  {renderedIcon ? (
-                    isIcon ? (
-                      <div className="certification-icon">{renderedIcon}</div>
-                    ) : (
-                      renderedIcon
-                    )
-                  ) : (
-                    <div className="certification-icon">
-                      <CertificationIcon height={28} width={28} />
-                    </div>
-                  )}
+                  {iconContent}
                   <div>
                     <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
                       {title}

@@ -1,0 +1,195 @@
+---
+name: Merge green backport PRs
+# yamllint disable-line rule:comments
+run-name: "Auto-merge check for ${{ inputs.pr && format('PR #{0}', inputs.pr) || github.event.check_suite.head_sha }}"
+
+# Second half of the backport pipeline (see backport-labeled-prs.yaml):
+#
+#   checks pass -> merge it, nobody is involved
+#   checks fail -> the author of the PR this was backported from is asked to look
+#
+# The sibling workflow in openmetadata-collate and ai-platform gives Claude one
+# pass at repairing a red backport before involving a person. That token is not
+# available to this repository, so a red backport goes straight to its author.
+#
+# Why this is event-driven rather than `gh pr merge --auto`: auto-merge waits on
+# *required* status checks, and the release branches have none configured
+# (`required_status_checks: null` on `1.13` and `2.0`). With no required checks,
+# `--auto` merges immediately — before CI has even started — which would be
+# worse than the direct push this replaced.
+#
+# `check_suite: completed` alone is enough: every check on a PR here is a GitHub
+# Actions check run, so there are no third-party commit statuses to catch. A
+# `status:` trigger would start a run on every status of every commit in the
+# repo for a case that does not arise.
+#
+# If no check ever reports, nothing merges and the PR stays open. A backport is
+# never merged blind; the manual dispatch below covers that case.
+
+# yamllint disable-line rule:truthy
+on:
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Backport PR number to re-evaluate"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    # `check_suite: completed` can fire more than once for the same commit, so
+    # two runs could both see green and both try to merge. Serialise per commit
+    # and never cancel: the second run then finds the PR already merged and the
+    # provenance gate below exits it cleanly.
+    concurrency:
+      group: backport-automerge-${{ github.event.check_suite.head_sha || inputs.pr }}
+      cancel-in-progress: false
+    timeout-minutes: 10
+    steps:
+      # Provenance gate. Matching on the branch name alone would be an access
+      # control hole: anyone able to open a PR could name a branch
+      # `backport/2.0/pr-1`, target a release branch, and have arbitrary code
+      # merged by this workflow the moment one check passed. So establish that
+      # this PR really came from backport-labeled-prs.yaml before touching it.
+      - name: Find the backport PR
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.check_suite.head_sha }}
+          INPUT_PR: ${{ inputs.pr }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          if [ -n "${INPUT_PR:-}" ]; then
+            PR="$INPUT_PR"
+          else
+            # Ask which PRs this commit belongs to rather than scanning the
+            # open-PR list: a `--limit` there is a silent ceiling, and on a busy
+            # repo a backport PR past that page would never be evaluated at all.
+            PR=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                   --jq '[.[] | select(.state == "open")][0].number // empty' 2>/dev/null || true)
+          fi
+          if [ -z "$PR" ]; then
+            echo "No open PR at ${SHA:-$INPUT_PR}; nothing to do."
+            echo "pr=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          # Herestring, not a heredoc: a heredoc terminator has to sit at
+          # column 0 after YAML dedents this block, which makes the security
+          # gate below silently dependent on this step's indentation.
+          INFO=$(gh pr view "$PR" --repo "$REPO" \
+                   --json state,isCrossRepository,baseRefName,headRefName,body \
+                   --jq '[.state, .isCrossRepository, .baseRefName, .headRefName,
+                          (.body | contains("<!-- automated-backport -->"))] | @tsv')
+          IFS=$'\t' read -r STATE CROSS BASE HEAD MARKED <<< "$INFO"
+
+          # Every one of these must hold. A fork PR can never be ours: the
+          # backport branch is pushed into this repository. The body marker is
+          # written by backport-labeled-prs.yaml and is what separates a real
+          # backport from a branch someone happened to name that way.
+          REASON=""
+          [ "$STATE"  = "OPEN"  ] || REASON="state is $STATE"
+          [ "$CROSS"  = "false" ] || REASON="from a fork"
+          [ "$BASE"  != "main"  ] || REASON="targets main"
+          [ "$MARKED" = "true"  ] || REASON="no automated-backport marker in the body"
+          case "$HEAD" in
+            "backport/$BASE/pr-"[0-9]*) ;;
+            *) REASON="head \`$HEAD\` is not backport/$BASE/pr-<n>" ;;
+          esac
+
+          if [ -n "$REASON" ]; then
+            echo "PR #$PR is not an automated backport ($REASON); ignoring."
+            echo "pr=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "Backport PR: #$PR -> $BASE"
+          {
+            echo "pr=$PR"
+            echo "base=$BASE"
+            echo "head=$HEAD"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate checks
+        id: checks
+        if: steps.find.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.find.outputs.pr }}
+        run: |
+          set -uo pipefail
+          # Buckets are gh's own normalisation: pass / fail / pending /
+          # skipping / cancel. `gh pr checks` exits non-zero whenever anything
+          # is failing or pending, so the exit code is not the signal — the
+          # JSON is. Hence the `|| true`.
+          BUCKETS=$(gh pr checks "$PR" --repo "$REPO" --json bucket \
+                      --jq '[.[].bucket] | unique | join(" ")' 2>/dev/null || true)
+          echo "buckets: [${BUCKETS:-none}]"
+
+          if [ -z "$BUCKETS" ]; then
+            VERDICT=waiting  # nothing has reported yet
+          elif printf '%s' "$BUCKETS" | grep -qw pending; then
+            VERDICT=waiting  # still running; a later check_suite event decides
+          elif printf '%s' "$BUCKETS" | grep -qwE 'fail|cancel'; then
+            VERDICT=failed
+          else
+            VERDICT=green
+          fi
+
+          echo "verdict=$VERDICT"
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+
+      - name: Merge
+        if: steps.checks.outputs.verdict == 'green'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.find.outputs.pr }}
+        run: |
+          set -uo pipefail
+          # Squash is the only method enabled on these repos, and a backport
+          # branch carries exactly one commit, so it is also the faithful one.
+          # Checked, not assumed: there is no `set -e` here, so an unchecked
+          # `gh pr merge` would let the comment below claim success on a PR that
+          # never merged — green run, false comment, nobody alerted.
+          if ! gh pr merge "$PR" --repo "$REPO" --squash --delete-branch; then
+            echo "::error::gh pr merge failed for #$PR; it has NOT been merged."
+            exit 1
+          fi
+          gh pr comment "$PR" --repo "$REPO" \
+            --body "🤖 All checks passed — merged automatically by the backport pipeline."
+
+      # ---------------------------------------------------------------- report
+      - name: Report a red backport
+        if: steps.checks.outputs.verdict == 'failed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.find.outputs.pr }}
+          BASE: ${{ steps.find.outputs.base }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          MARKER='<!-- backport-automerge-failed -->'
+          if gh pr view "$PR" --repo "$REPO" --json comments \
+               --jq '.comments[].body' | grep -qF "$MARKER"; then
+            echo "Already reported on #$PR."; exit 0
+          fi
+
+          # backport-labeled-prs.yaml records the original author in the body.
+          # Mentioning them is what actually notifies; the assignee set at
+          # creation time is best-effort and may not have stuck.
+          AUTHOR=$(gh pr view "$PR" --repo "$REPO" --json body --jq '.body' \
+                     | sed -n 's/^| Author | @\([A-Za-z0-9_-]*\) |.*/\1/p' | head -1)
+          FAILED=$(gh pr checks "$PR" --repo "$REPO" --json bucket,name \
+                     --jq '[.[] | select(.bucket == "fail" or .bucket == "cancel") | .name]
+                           | unique | join(", ")' 2>/dev/null || true)
+
+          gh pr comment "$PR" --repo "$REPO" --body "$(printf '%s\n🤖 **This backport is red, so it will not merge itself.**%s\n\nFailing: `%s`\n\nThe change is **not** on `%s` yet. You raised the PR this was backported from, so please take a look. Push a fix to this branch and it merges automatically once the checks go green.\n\n<sub>[run log](%s)</sub>' \
+            "$MARKER" "${AUTHOR:+ @$AUTHOR}" "${FAILED:-unknown}" "$BASE" "$RUN_URL")"

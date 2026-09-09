@@ -14,7 +14,6 @@ Validator for column value to be in set test case
 """
 
 from ast import literal_eval
-from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column, literal
 
@@ -50,7 +49,7 @@ class ColumnValuesToBeInSetValidator(
 ):
     """Validator for column value to be in set test case"""
 
-    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> int | None:
         """compute result of the test case
 
         Args:
@@ -66,7 +65,7 @@ class ColumnValuesToBeInSetValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates

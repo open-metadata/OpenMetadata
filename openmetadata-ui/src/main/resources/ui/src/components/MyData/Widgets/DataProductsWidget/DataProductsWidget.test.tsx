@@ -97,7 +97,7 @@ const mockSearchResponse = {
   statusText: 'OK',
   headers: {},
   config: {},
-} as any;
+};
 
 // Mock API functions
 jest.mock('../../../../rest/miscAPI', () => ({

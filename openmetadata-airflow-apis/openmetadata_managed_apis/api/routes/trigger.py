@@ -13,7 +13,7 @@ Trigger endpoint
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response, jsonify, make_response, request
 

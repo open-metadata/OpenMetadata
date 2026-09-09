@@ -140,10 +140,10 @@ jest.mock('../../../common/DataQualitySection', () => {
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
       <div data-testid="data-quality-section">
         <div data-testid="total-tests">{totalTests}</div>
-        {tests.map((test: DataQualityTest, index: number) => (
+        {tests.map((test: DataQualityTest) => (
           <div
             data-testid={`test-${test.type}`}
-            key={index}
+            key={test.type}
             role="button"
             tabIndex={0}
             onClick={() => onFilterChange?.(test.type)}
@@ -660,8 +660,8 @@ describe('DataQualityTab', () => {
       const failedButtons = screen.getAllByTestId('test-failed');
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
-      );
-      fireEvent.click(failedButtonWithZeroCount!);
+      ) as HTMLElement;
+      fireEvent.click(failedButtonWithZeroCount);
 
       // Wait for the component to re-render with the filtered results
       await waitFor(() => {

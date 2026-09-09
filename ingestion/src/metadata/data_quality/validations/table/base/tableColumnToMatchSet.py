@@ -16,7 +16,6 @@ Validator for table column to match set test case
 import collections
 import traceback
 from abc import abstractmethod
-from typing import List  # noqa: UP035
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
@@ -95,5 +94,5 @@ class BaseTableColumnToMatchSetValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _run_results(self) -> List[str]:  # noqa: UP006
+    def _run_results(self) -> list[str]:
         raise NotImplementedError

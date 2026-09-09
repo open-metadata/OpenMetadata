@@ -18,7 +18,7 @@ import SearchPreview from './SearchPreview';
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
   debounce: jest.fn((fn) => {
-    const mockFn = function (...args: any[]) {
+    const mockFn = function (...args: unknown[]) {
       return fn(...args);
     };
     mockFn.cancel = jest.fn();

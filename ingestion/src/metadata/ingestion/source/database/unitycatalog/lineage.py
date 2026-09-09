@@ -14,7 +14,8 @@ Databricks Unity Catalog Lineage Source Module
 
 import traceback
 from collections import defaultdict
-from typing import TYPE_CHECKING, Iterable, Optional, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import text
 
@@ -101,7 +102,7 @@ class UnitycatalogLineageSource(Source):
         """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
@@ -120,6 +121,12 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_TABLE_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
+                    # A table never derives from itself. The system tables record
+                    # access rather than derivation, so a streaming or CDC write
+                    # legitimately names its target as its own source. Kept as
+                    # lineage it renders as a loop on the node and says nothing.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     self.table_lineage_map[row.target_table_full_name].add(row.source_table_full_name)
             logger.info(
                 f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "
@@ -133,6 +140,10 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_COLUMN_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
+                    # The table pair this belongs to is dropped above, so caching the
+                    # columns only grows the map with entries nothing can read.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     table_key = (
                         row.source_table_full_name,
                         row.target_table_full_name,
@@ -162,7 +173,7 @@ class UnitycatalogLineageSource(Source):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to cache external table locations: {exc}")
 
-    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
+    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> str | None:
         if not data_model_entity:
             logger.debug(f"No data model entity provided for column: {column}")
             return None
@@ -174,7 +185,7 @@ class UnitycatalogLineageSource(Source):
 
     def _get_container_column_lineage(
         self, data_model_entity: ContainerDataModel, table_entity: Table
-    ) -> Optional[LineageDetails]:  # noqa: UP045
+    ) -> LineageDetails | None:
         try:
             column_lineage = []
             for column in table_entity.columns:
@@ -201,7 +212,7 @@ class UnitycatalogLineageSource(Source):
         to_table: Table,
         source_table_fqn: str,
         target_table_fqn: str,
-    ) -> Optional[LineageDetails]:  # noqa: UP045
+    ) -> LineageDetails | None:
         try:
             table_key = (source_table_fqn, target_table_fqn)
             column_pairs = self.column_lineage_map.get(table_key, [])

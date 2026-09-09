@@ -13,7 +13,7 @@ Return a list of the 10 last status for the ingestion Pipeline
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response
 

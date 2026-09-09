@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftFabricPipelineConnection",
+  "description": "Microsoft Fabric Data Factory Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MicrosoftFabricPipelineConnection",
+  "definitions": {
+    "MicrosoftFabricPipelineType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "MicrosoftFabricPipeline"
+      ],
+      "default": "MicrosoftFabricPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "MicrosoftFabricPipeline",
+      "type": "string",
+      "enum": [
+        "MicrosoftFabricPipeline"
+      ]
+    },
+    "workspaceId": {
+      "title": "Workspace ID",
+      "description": "The Microsoft Fabric workspace ID where the pipelines are located.",
+      "type": "string"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Azure Application (client) ID for Service Principal authentication.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Azure Application client secret for Service Principal authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Azure Directory (tenant) ID for Service Principal authentication.",
+      "type": "string"
+    },
+    "authorityUri": {
+      "title": "Authority URI",
+      "description": "Azure Active Directory authority URI. Defaults to https://login.microsoftonline.com/",
+      "type": "string",
+      "default": "https://login.microsoftonline.com/"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex to only include/exclude pipelines that matches the pattern.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "workspaceId",
+    "clientId",
+    "clientSecret",
+    "tenantId"
+  ]
+}

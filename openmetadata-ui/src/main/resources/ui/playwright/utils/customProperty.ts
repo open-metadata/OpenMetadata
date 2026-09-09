@@ -28,6 +28,8 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
+  getDescriptionBox,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -141,7 +143,8 @@ export const setValueForProperty = async (data: {
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await expect(page.locator(descriptionBox)).toBeVisible();
+      await expect(getDescriptionBox(page)).toHaveCount(1);
+      await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -768,8 +771,9 @@ export const addCustomPropertiesForEntity = async ({
     page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
 
-  await page.locator(descriptionBox).waitFor({ state: 'visible' });
-  await page.locator(descriptionBox).click();
+  await getDescriptionBox(page).waitFor({ state: 'visible' });
+  await expect(getDescriptionBox(page)).toHaveCount(1);
+  await getDescriptionBox(page).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
   // Click on name field to blur description and trigger validation without closing modal
@@ -838,8 +842,8 @@ export const editCreatedProperty = async (
   await page.fill('[data-testid="display-name"]', '');
   await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
 
-  await page.locator(descriptionBox).fill('');
-  await page.locator(descriptionBox).fill('This is new description');
+  await fillDescriptionBox(page, '');
+  await fillDescriptionBox(page, 'This is new description');
 
   if (type === 'Enum') {
     await page.click(String.raw`#root\/customPropertyConfig`);
@@ -949,7 +953,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   // Select "Custom Properties" from the field dropdown
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     'Custom Properties',
     true
   );
@@ -957,7 +961,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   if (entityType !== 'TableColumn') {
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field .ant-select'),
+      ruleLocator.locator('.rule--field'),
       entityType,
       true
     );
@@ -965,26 +969,26 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     if (propertyType === 'Time Interval') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} (Start)`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} (End)`,
         true
       );
     } else if (propertyType === 'Hyperlink') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} URL`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         `${propertyName} Display Text`,
         true
       );
@@ -992,7 +996,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
       for (const column of propertyConfig ?? []) {
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field .ant-select'),
+          ruleLocator.locator('.rule--field'),
           `${propertyName} - ${column}`,
           true
         );
@@ -1000,7 +1004,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     } else {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         propertyName,
         true
       );
@@ -1068,12 +1072,13 @@ export const editColumnCustomProperty = async (
     const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
-    await input.fill(value);
-    await page.waitForResponse(
+    const assetSearchResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
+    await input.fill(value);
+    await assetSearchResponse;
     await page.getByTestId(value).click();
 
     // Verify selection is applied before saving
@@ -1327,7 +1332,8 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   switch (propertyType) {
     case 'markdown':
-      await expect(page.locator(descriptionBox)).toBeVisible();
+      await expect(getDescriptionBox(page)).toHaveCount(1);
+      await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();

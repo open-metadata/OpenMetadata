@@ -13,8 +13,6 @@
 Python Dependencies
 """
 
-from typing import Dict, List, Set  # noqa: UP035
-
 from setuptools import setup
 
 # Add here versions required for multiple plugins
@@ -45,6 +43,12 @@ VERSIONS = {
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
+    # 2.6.0 annotates with typing.Self (3.11+) but declares no requires-python floor, so
+    # pip/uv installs it on 3.10 and `import pygtrie` raises AttributeError. Airflow pulls
+    # it in unpinned (apache-airflow-core/task-sdk require pygtrie>=2.5.0) and imports it
+    # from airflow._shared.logging.structlog, which breaks `import airflow` on our main CI
+    # interpreter. Drop the cap once pygtrie declares its floor or 3.10 support is dropped.
+    "pygtrie": "pygtrie<2.6",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy>=2,<3",
@@ -70,10 +74,11 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
+    "pydoris": "pydoris==1.2.0",
     "starrocks": "pymysql~=1.0",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
-    "pyathena": "pyathena~=3.25.0",
+    "pyathena": "pyathena~=3.35.4",  # <3.35.4 routes DELETE/CTAS to the Hive escaper -> SQL injection (CVE-2026-65321)
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     # <1.0: 1.0.0 is a SQLAlchemy-2.0 rewrite (first release since 0.0.5 in 2020) that drops
@@ -200,11 +205,12 @@ base_requirements = {
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {  # noqa: UP006
+plugins: dict[str, set[str]] = {
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
+        VERSIONS["pygtrie"],
         # Transitive floor pins for Airflow 3.x stack — Dependabot CVEs.
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
@@ -301,9 +307,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
-    # pydoris-custom declares sqlalchemy<2 but works at runtime with SA 2.0.
-    # Pre-installed with --no-deps in Dockerfiles.
-    "doris": set(),
+    "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
@@ -350,6 +354,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
+    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -490,6 +495,7 @@ test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
+    VERSIONS["pygtrie"],
     "boto3-stubs",
     "mypy-boto3-glue",
     "coverage",
@@ -524,7 +530,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
-    # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
+    VERSIONS["pydoris"],
     VERSIONS["starrocks"],
     *plugins["vertica"],
     "testcontainers~=4.8.0",
@@ -592,7 +598,7 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
+def filter_requirements(filtered: set[str]) -> list[str]:
     """Filter out requirements from base_requirements"""
     return list(
         base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])

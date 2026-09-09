@@ -51,7 +51,7 @@ export const AssetSelectionModal = ({
           title={t('label.add-entity', { entity: t('label.asset-plural') })}
           width={675}
           onClose={onCancel}>
-          <Dialog.Content className="tw:max-h-[70vh] tw:overflow-hidden">
+          <Dialog.Content>
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}

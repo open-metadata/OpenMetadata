@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.USER;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,13 +27,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Announcement;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -141,47 +140,20 @@ public class WebsocketNotificationHandler {
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {
-    int responseCode = responseContext.getStatus();
-    if (responseCode == Response.Status.CREATED.getStatusCode()
-        && responseContext.getEntity() != null
-        && responseContext.getEntity().getClass().equals(Thread.class)) {
-      Thread thread = (Thread) responseContext.getEntity();
-      switch (thread.getType()) {
-        case Task -> handleTaskNotification(thread);
-        case Conversation -> handleConversationNotification(thread);
-        case Announcement -> handleAnnouncementNotification(thread);
-      }
+    if (responseContext.getStatus() != Response.Status.CREATED.getStatusCode()
+        || responseContext.getEntity() == null) {
+      return;
     }
-  }
 
-  public static void handleTaskNotification(Thread thread) {
-    String jsonThread = JsonUtils.pojoToJson(thread);
-    if (thread.getPostsCount() == 0) {
-      List<EntityReference> assignees = thread.getTask().getAssignees();
-      Set<UUID> receiversList = new HashSet<>();
-      // Update Assignee
-      assignees.forEach(
-          e -> {
-            if (Entity.USER.equals(e.getType())) {
-              receiversList.add(e.getId());
-            } else if (Entity.TEAM.equals(e.getType())) {
-              // fetch all that are there in the team
-              List<CollectionDAO.EntityRelationshipRecord> records =
-                  Entity.getCollectionDAO()
-                      .relationshipDAO()
-                      .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-              records.forEach(eRecord -> receiversList.add(eRecord.getId()));
-            }
-          });
-
-      // Send WebSocket Notification
-      WebSocketManager.getInstance()
-          .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
-    } else {
-      List<MessageParser.EntityLink> mentions;
-      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
-      notifyMentionedUsers(mentions, jsonThread);
+    Object entity = responseContext.getEntity();
+    if (entity instanceof Task task) {
+      handleTaskNotification(task);
+    } else if (entity instanceof Conversation conversation) {
+      handleConversationNotification(conversation);
+    } else if (entity instanceof ConversationReply reply) {
+      handleConversationReplyNotification(reply);
+    } else if (entity instanceof Announcement announcement) {
+      handleAnnouncementNotification(announcement);
     }
   }
 
@@ -216,29 +188,28 @@ public class WebsocketNotificationHandler {
         .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonTask);
   }
 
-  private void handleAnnouncementNotification(Thread thread) {
-    String jsonThread = JsonUtils.pojoToJson(thread);
-    AnnouncementDetails announcementDetails = thread.getAnnouncement();
-    Long currentTimestamp = Instant.now().getEpochSecond();
-    if (announcementDetails.getStartTime() <= currentTimestamp
-        && currentTimestamp <= announcementDetails.getEndTime()) {
+  private void handleAnnouncementNotification(Announcement announcement) {
+    String jsonAnnouncement = JsonUtils.pojoToJson(announcement);
+    long currentTimestamp = System.currentTimeMillis();
+    if (announcement.getStartTime() <= currentTimestamp
+        && currentTimestamp <= announcement.getEndTime()) {
       WebSocketManager.getInstance()
-          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
+          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonAnnouncement);
     }
   }
 
-  private void handleConversationNotification(Thread thread) {
-    String jsonThread = JsonUtils.pojoToJson(thread);
+  private void handleConversationNotification(Conversation conversation) {
+    String jsonConversation = JsonUtils.pojoToJson(conversation);
     WebSocketManager.getInstance()
-        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
-    List<MessageParser.EntityLink> mentions;
-    if (thread.getPostsCount() == 0) {
-      mentions = MessageParser.getEntityLinks(thread.getMessage());
-    } else {
-      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
-    }
-    notifyMentionedUsers(mentions, jsonThread);
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonConversation);
+    notifyMentionedUsers(MessageParser.getEntityLinks(conversation.getMessage()), jsonConversation);
+  }
+
+  private void handleConversationReplyNotification(ConversationReply reply) {
+    String jsonReply = JsonUtils.pojoToJson(reply);
+    WebSocketManager.getInstance()
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonReply);
+    notifyMentionedUsers(MessageParser.getEntityLinks(reply.getMessage()), jsonReply);
   }
 
   private static void notifyMentionedUsers(

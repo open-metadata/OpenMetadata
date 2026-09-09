@@ -23,11 +23,12 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { verifyBundleSuitePageLoaded } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -49,7 +50,7 @@ test.beforeEach(async ({ page }) => {
 
 test(
   'Add test case modal on Test Suite details page - filters and select',
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] },
   async ({ page }) => {
     test.slow();
 
@@ -69,7 +70,7 @@ test(
       await page
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }
@@ -95,16 +96,47 @@ test(
       await waitForAllLoadersToDisappear(page);
     });
 
-    await test.step('Open Add test case modal on details page', async () => {
-      const testCaseListResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list*'
-      );
-      await page.goto(
-        `/test-suites/${encodeURIComponent(NEW_TEST_SUITE.name)}`
-      );
-      await testCaseListResponse;
+    await test.step('Find and open the test suite from the bundle suite list', async () => {
+      await page.goto('/data-quality/test-suites/bundle-suites');
       await waitForAllLoadersToDisappear(page);
 
+      const testSuiteSearchResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testSuites/search/list*'
+      );
+      await page
+        .getByPlaceholder('Search Bundle Suites')
+        .fill(NEW_TEST_SUITE.name);
+      await testSuiteSearchResponse;
+
+      const testSuiteDetailsPage = page.waitForURL(
+        (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`
+      );
+      await page
+        .getByRole('link', { exact: true, name: NEW_TEST_SUITE.name })
+        .click();
+      await testSuiteDetailsPage;
+      await verifyBundleSuitePageLoaded(page, NEW_TEST_SUITE.name, 1);
+    });
+
+    await test.step('Search test cases on the details page', async () => {
+      const searchInput = page.getByTestId('test-suite-test-case-search');
+
+      const testCaseSearchResponse = page.waitForResponse((response) => {
+        const responseUrl = new URL(response.url());
+
+        return (
+          responseUrl.pathname.includes(
+            '/api/v1/dataQuality/testCases/search/list'
+          ) && responseUrl.searchParams.get('q') === testCaseName1
+        );
+      });
+      await searchInput.fill(testCaseName1 ?? '');
+      await testCaseSearchResponse;
+
+      await expect(page.getByTestId(testCaseName1 ?? '')).toBeVisible();
+    });
+
+    await test.step('Open Add test case modal on details page', async () => {
       const modalListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );

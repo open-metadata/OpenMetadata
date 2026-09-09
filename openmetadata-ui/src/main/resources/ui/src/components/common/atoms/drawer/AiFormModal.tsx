@@ -146,6 +146,15 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   const { t } = useTranslation();
   const hasHintColumn = hintOpen !== undefined;
 
+  let modalWidth: number;
+  if (!hasHintColumn) {
+    modalWidth = WIDTH_NO_HINT_COLUMN;
+  } else if (hintOpen) {
+    modalWidth = WIDTH_WITH_HINT;
+  } else {
+    modalWidth = WIDTH_WITHOUT_HINT;
+  }
+
   // The submit handler surfaces failures via an inline alert in the form body
   // and resolves so the modal stays open; swallow the rejection here so React
   // does not log an unhandled promise rejection.
@@ -180,13 +189,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
           <Dialog
             showCloseButton
             panelClassName="tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out"
-            width={
-              hasHintColumn
-                ? hintOpen
-                  ? WIDTH_WITH_HINT
-                  : WIDTH_WITHOUT_HINT
-                : WIDTH_NO_HINT_COLUMN
-            }
+            width={modalWidth}
             onClose={onClose}>
             {/* The Request Data Access modal's header verbatim, that form being
                 the reference design named:
@@ -272,8 +275,8 @@ export const AiFormModal: FC<AiFormModalProps> = ({
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:max-h-[calc(88vh-141px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0 tw:sm:p-0'
-                  : 'tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto'
+                  ? 'tw:flex-row tw:gap-0 tw:p-0 tw:sm:p-0'
+                  : undefined
               }>
               {children}
             </Dialog.Content>

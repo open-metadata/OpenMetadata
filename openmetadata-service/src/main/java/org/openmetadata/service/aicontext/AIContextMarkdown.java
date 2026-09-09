@@ -159,11 +159,41 @@ public final class AIContextMarkdown {
     }
   }
 
+  /**
+   * Says which of three states an all-zero test line means. They are identical in the counts above
+   * and are opposite trust verdicts.
+   *
+   * <p>{@code total} is the discriminator and was ignored: gating only on passed+failed+aborted told
+   * an asset with a suite but no test cases - a normal state, since the suite is created first -
+   * that "no test has ever executed … treat quality here as unverified". This markdown is served
+   * over REST and read by an LLM, so a wrong verdict propagates into answers.
+   */
+  private static void appendCoverageVerdict(
+      StringBuilder markdown, DataQuality dataQuality, int executed) {
+    int total = orZero(dataQuality.getTotal());
+    if (total == 0) {
+      markdown.append(
+          "\n> No data-quality test is defined on this asset. Quality here is unmeasured - which is"
+              + " neither good nor bad, and is not the same as tests passing.\n");
+    } else if (executed == 0) {
+      markdown
+          .append("\n> None of the ")
+          .append(total)
+          .append(
+              " data-quality tests defined on this asset has ever executed. This is NOT the same as"
+                  + " passing: treat quality here as unverified.\n");
+    }
+  }
+
   private static void appendDataQuality(
       StringBuilder markdown, DataQuality dataQuality, String headingPrefix) {
     if (dataQuality != null) {
       appendHeading(markdown, headingPrefix, "Data Quality");
       markdown.append('\n');
+      int executed =
+          orZero(dataQuality.getPassed())
+              + orZero(dataQuality.getFailed())
+              + orZero(dataQuality.getAborted());
       markdown
           .append("Tests — passed: ")
           .append(orZero(dataQuality.getPassed()))
@@ -172,6 +202,7 @@ public final class AIContextMarkdown {
           .append(", aborted: ")
           .append(orZero(dataQuality.getAborted()))
           .append('\n');
+      appendCoverageVerdict(markdown, dataQuality, executed);
       if (dataQuality.getFailed() != null && dataQuality.getFailed() > 0) {
         markdown
             .append("\n> ")
@@ -525,6 +556,11 @@ public final class AIContextMarkdown {
     if (!nullOrEmpty(promptContent)) {
       String content = promptContent.strip();
       markdown.append('\n').append(truncateContent ? truncate(content) : content).append('\n');
+      // The cue only rides alongside visible content (it is charged to the item's budget share in
+      // fitItem); a reference-only item renders the fetch hint below instead.
+      if (Boolean.TRUE.equals(item.getStale())) {
+        markdown.append(staleCue(item));
+      }
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
@@ -540,6 +576,18 @@ public final class AIContextMarkdown {
     if (!nullOrEmpty(fqn)) {
       markdown.append('`').append(fqn).append("`\n");
     }
+  }
+
+  /**
+   * The stale trust cue rendered for a knowledge item in Compact Markdown. Its exact length is
+   * charged to the item's budget share in {@code AIContextBuilder.fitItem}, so cue + excerpt can
+   * never push a bundle past the caller's knowledge budget.
+   */
+  static String staleCue(KnowledgeItem item) {
+    List<String> reasons = listOrEmpty(item.getStaleReasons());
+    return "\n_⚠ Stale"
+        + (reasons.isEmpty() ? "" : " — " + String.join(", ", reasons))
+        + ". Weigh this against the asset's current state before relying on it for decisions._\n";
   }
 
   private static String labelOf(KnowledgeItem item) {

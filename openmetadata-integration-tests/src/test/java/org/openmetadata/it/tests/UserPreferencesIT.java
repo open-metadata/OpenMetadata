@@ -36,9 +36,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * IT tests for the lightweight {@code user_preferences} resource: {@code GET/PUT/DELETE
- * /v1/users/{userId}/preferences[/{type}]}, the self-or-admin auth rule, and the delete cascade
- * wired via {@code UserRepository#postDelete}. Each preference entry is a typed discriminated
- * union {@code {type, config}} - only {@code appMode} is wired end-to-end today.
+ * /v1/users/{userId}/preferences[/{type}]}, the self-or-admin auth rule, and user lifecycle cleanup
+ * wired via {@code UserRepository#postDelete}. Each preference entry is a typed discriminated union
+ * {@code {type, config}} - only {@code appMode} is wired end-to-end today.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class UserPreferencesIT {
@@ -126,6 +126,22 @@ public class UserPreferencesIT {
     assertTrue(
         afterDelete.getPreferences().isEmpty(),
         "Cascade delete should have purged the user_preferences row");
+  }
+
+  @Test
+  void softDeleteAndRestore_preservesPreferences() throws Exception {
+    User user = createUser("prefs-restore");
+    try {
+      putAppMode(clientFor(user), user.getId(), "ai");
+
+      SdkClients.adminClient().users().delete(user.getId().toString());
+      SdkClients.adminClient().users().restore(user.getId().toString());
+
+      UserPreferences restored = getPreferences(SdkClients.adminClient(), user.getId());
+      assertEquals("ai", appModeValue(restored));
+    } finally {
+      deleteUser(user);
+    }
   }
 
   @Test

@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -23,6 +22,7 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/Table';
+import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
