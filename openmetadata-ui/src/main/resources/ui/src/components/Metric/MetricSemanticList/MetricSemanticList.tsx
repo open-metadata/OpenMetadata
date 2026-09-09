@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Badge,
   Box,
   Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
-import { Metric } from '../../../generated/entity/data/metric';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import ReactMarkdown from 'react-markdown';
+import type { Metric } from '../../../generated/entity/data/metric';
 import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
   MetricSemanticItem,
   MetricSemanticListProps,
@@ -35,6 +36,9 @@ import {
 const VISIBLE_ITEM_COUNT = 5;
 
 const MetricSemanticList = <T extends MetricSemanticItem>({
+  metric,
+  permissions,
+  onUpdate,
   items,
   title,
   fieldKey,
@@ -46,18 +50,14 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
   const { t } = useTranslation();
   const [isShowMore, setIsShowMore] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
-
-  const {
-    data: metricDetails,
-    onUpdate,
-    permissions,
-  } = useGenericContext<Metric>();
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const hasEditPermission = useMemo(
     () =>
-      (permissions.EditAll || permissions.EditDescription) &&
-      !metricDetails.deleted,
-    [permissions, metricDetails.deleted]
+      (permissions.EditAll || permissions.EditDescription) && !metric.deleted,
+    [permissions, metric.deleted]
   );
 
   const visibleItems = useMemo(
@@ -68,23 +68,45 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
   const selectedItem =
     selectedIndex === undefined ? undefined : items[selectedIndex];
 
-  const handleDescriptionSave = useCallback(
-    async (value: string) => {
-      const updatedItems = items.map((item, index) =>
-        index === selectedIndex ? { ...item, description: value } : item
-      );
+  const handleDescriptionSave = useCallback(async () => {
+    const updatedItems = items.map((item, index) =>
+      index === selectedIndex
+        ? { ...item, description: descriptionDraft }
+        : item
+    );
 
-      const updatedMetric = {
-        ...metricDetails,
-        [fieldKey]: updatedItems,
-      } as Metric;
+    const updatedMetric = {
+      ...metric,
+      [fieldKey]: updatedItems,
+    } as Metric;
 
+    setIsSaving(true);
+    setSaveError(false);
+    try {
       await onUpdate(updatedMetric, fieldKey);
-
       setSelectedIndex(undefined);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [descriptionDraft, fieldKey, items, metric, onUpdate, selectedIndex]);
+
+  const handleEdit = useCallback(
+    (index: number) => {
+      setSelectedIndex(index);
+      setDescriptionDraft(items[index].description ?? '');
+      setSaveError(false);
     },
-    [items, selectedIndex, metricDetails, fieldKey, onUpdate]
+    [items]
   );
+
+  const handleClose = useCallback(() => {
+    if (!isSaving) {
+      setSelectedIndex(undefined);
+      setSaveError(false);
+    }
+  }, [isSaving]);
 
   const renderRow = useCallback(
     (item: T, index: number) => {
@@ -141,7 +163,7 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
                   title={t('label.edit-entity', {
                     entity: t('label.description'),
                   })}
-                  onClick={() => setSelectedIndex(index)}
+                  onClick={() => handleEdit(index)}
                 />
               )}
             </Box>
@@ -154,12 +176,16 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
               {t('label.no-description')}
             </Typography>
           ) : (
-            <RichTextEditorPreviewNew markdown={item.description ?? ''} />
+            <div
+              className="tw:text-xs tw:text-secondary tw:[&_p]:m-0"
+              data-testid="description-preview">
+              <ReactMarkdown>{item.description}</ReactMarkdown>
+            </div>
           )}
         </Box>
       );
     },
-    [getBadge, hasEditPermission, t]
+    [getBadge, handleEdit, hasEditPermission, t]
   );
 
   return (
@@ -194,23 +220,61 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
         </div>
       )}
       {selectedItem && (
-        <EntityAttachmentProvider
-          entityFqn={selectedItem.fullyQualifiedName}
-          entityType={EntityType.METRIC}>
-          <ModalWithMarkdownEditor
-            visible
-            header={t('label.edit-entity-name', {
-              entityType: entityLabel,
-              entityName: selectedItem.name,
-            })}
-            placeholder={t('label.enter-field-description', {
-              field: entityLabelLowercase,
-            })}
-            value={selectedItem.description ?? ''}
-            onCancel={() => setSelectedIndex(undefined)}
-            onSave={handleDescriptionSave}
-          />
-        </EntityAttachmentProvider>
+        <ModalOverlay
+          isOpen
+          isDismissable={!isSaving}
+          onOpenChange={(isOpen) => !isOpen && handleClose()}>
+          <Modal>
+            <Dialog
+              showCloseButton
+              data-testid="semantic-description-dialog"
+              title={t('label.edit-entity-name', {
+                entityType: entityLabel,
+                entityName: selectedItem.name,
+              })}
+              width={640}
+              onClose={handleClose}>
+              <Dialog.Content>
+                <Box direction="col" gap={3}>
+                  {saveError && (
+                    <Alert
+                      title={t('server.entity-updating-error', {
+                        entityName: selectedItem.name,
+                      })}
+                      variant="error"
+                    />
+                  )}
+                  <TextArea
+                    data-testid="semantic-description-input"
+                    isDisabled={isSaving}
+                    label={t('label.description')}
+                    placeholder={t('label.enter-field-description', {
+                      field: entityLabelLowercase,
+                    })}
+                    rows={8}
+                    value={descriptionDraft}
+                    onChange={setDescriptionDraft}
+                  />
+                </Box>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  isDisabled={isSaving}
+                  onPress={handleClose}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="semantic-description-save"
+                  isLoading={isSaving}
+                  onPress={handleDescriptionSave}>
+                  {t('label.save')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
       )}
     </WidgetCard>
   );

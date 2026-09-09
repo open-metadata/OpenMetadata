@@ -11,36 +11,17 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import type { Metric } from '../../../generated/entity/data/metric';
 import MetricSemanticList from './MetricSemanticList';
 import { MetricSemanticItem } from './MetricSemanticList.interface';
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn(),
+jest.mock('react-markdown', () => ({
+  __esModule: true,
+  default: ({ children }: { children: string }) => <>{children}</>,
 }));
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
-  jest.fn(({ markdown }) => (
-    <div data-testid="description-preview">{markdown}</div>
-  ))
-);
-
 const NEW_DESCRIPTION = 'new description';
-
-jest.mock(
-  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
-  () => ({
-    ModalWithMarkdownEditor: jest.fn(({ visible, onSave }) =>
-      visible ? (
-        <button
-          data-testid="save-description"
-          onClick={() => onSave('new description')}>
-          save
-        </button>
-      ) : null
-    ),
-  })
-);
 
 const mockOnUpdate = jest.fn();
 
@@ -53,14 +34,16 @@ const ITEMS: MetricSemanticItem[] = [
   { name: 'region', expression: 'c.region' },
 ];
 
-const setContext = (overrides = {}) => {
-  (useGenericContext as jest.Mock).mockReturnValue({
-    data: { id: 'metric-1', name: 'revenue', dimensions: ITEMS },
-    onUpdate: mockOnUpdate,
-    permissions: { EditAll: true, EditDescription: false },
-    ...overrides,
-  });
-};
+const METRIC = {
+  id: 'metric-1',
+  name: 'revenue',
+  dimensions: ITEMS,
+} as Metric;
+
+const PERMISSIONS = {
+  EditAll: true,
+  EditDescription: false,
+} as OperationPermission;
 
 const renderList = (props = {}) =>
   render(
@@ -71,7 +54,10 @@ const renderList = (props = {}) =>
       fieldKey="dimensions"
       getBadge={(item) => (item as { type?: string }).type}
       items={ITEMS}
+      metric={METRIC}
+      permissions={PERMISSIONS}
       title="Dimensions"
+      onUpdate={mockOnUpdate}
       {...props}
     />
   );
@@ -79,7 +65,6 @@ const renderList = (props = {}) =>
 describe('MetricSemanticList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    setContext();
   });
 
   it('renders one row per item with name and expression', () => {
@@ -90,6 +75,7 @@ describe('MetricSemanticList', () => {
     expect(
       screen.getByText('DATE_TRUNC(day, o.created_at)')
     ).toBeInTheDocument();
+    expect(screen.getByText('Order day')).toBeInTheDocument();
   });
 
   it('renders the badge when the accessor returns a value', () => {
@@ -116,8 +102,9 @@ describe('MetricSemanticList', () => {
   });
 
   it('hides the edit button when the user lacks permission', () => {
-    setContext({ permissions: { EditAll: false, EditDescription: false } });
-    renderList();
+    renderList({
+      permissions: { EditAll: false, EditDescription: false },
+    });
 
     expect(
       screen.queryByTestId('edit-description-order_date')
@@ -125,15 +112,14 @@ describe('MetricSemanticList', () => {
   });
 
   it('hides the edit button when the metric is deleted', () => {
-    setContext({
-      data: {
+    renderList({
+      metric: {
         id: 'metric-1',
         name: 'revenue',
         dimensions: ITEMS,
         deleted: true,
       },
     });
-    renderList();
 
     expect(
       screen.queryByTestId('edit-description-order_date')
@@ -144,7 +130,11 @@ describe('MetricSemanticList', () => {
     renderList();
 
     fireEvent.click(screen.getByTestId('edit-description-region'));
-    fireEvent.click(await screen.findByTestId('save-description'));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /label\.description/ }),
+      { target: { value: NEW_DESCRIPTION } }
+    );
+    fireEvent.click(await screen.findByTestId('semantic-description-save'));
 
     await waitFor(() =>
       expect(mockOnUpdate).toHaveBeenCalledWith(
@@ -168,13 +158,17 @@ describe('MetricSemanticList', () => {
       { name: 'region', expression: 'c.region' },
       { name: 'region', expression: 'o.region' },
     ];
-    setContext({
-      data: { id: 'metric-1', name: 'revenue', dimensions: duplicates },
+    renderList({
+      items: duplicates,
+      metric: { id: 'metric-1', name: 'revenue', dimensions: duplicates },
     });
-    renderList({ items: duplicates });
 
     fireEvent.click(screen.getAllByTestId('edit-description-region')[1]);
-    fireEvent.click(await screen.findByTestId('save-description'));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /label\.description/ }),
+      { target: { value: NEW_DESCRIPTION } }
+    );
+    fireEvent.click(await screen.findByTestId('semantic-description-save'));
 
     await waitFor(() =>
       expect(mockOnUpdate).toHaveBeenCalledWith(

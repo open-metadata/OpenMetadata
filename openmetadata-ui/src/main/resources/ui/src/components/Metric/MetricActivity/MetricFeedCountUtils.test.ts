@@ -43,6 +43,7 @@ describe('getMetricFeedCounts', () => {
     });
 
     await expect(getMetricFeedCounts('finance.margin')).resolves.toEqual({
+      activityCount: 13,
       conversationCount: 13,
       openTaskCount: 2,
       closedTaskCount: 3,
@@ -70,6 +71,7 @@ describe('getMetricFeedCounts', () => {
       .mockResolvedValueOnce({ data: [], paging: { total: 3 } });
 
     await expect(getMetricFeedCounts('metric', 'user-1')).resolves.toEqual({
+      activityCount: 0,
       conversationCount: 7,
       openTaskCount: 0,
       closedTaskCount: 0,
@@ -104,6 +106,7 @@ describe('getMetricFeedCounts', () => {
     });
 
     await expect(getMetricFeedCounts('metric', 'user-1')).resolves.toEqual({
+      activityCount: 8,
       closedTaskCount: 2,
       conversationCount: 13,
       mentionCount: 3,
@@ -117,6 +120,7 @@ describe('getMetricFeedCounts', () => {
     (getEntityActivityByFqn as jest.Mock).mockResolvedValue({ data: [] });
 
     await expect(getMetricFeedCounts('metric')).resolves.toEqual({
+      activityCount: 0,
       closedTaskCount: 0,
       conversationCount: 0,
       mentionCount: 0,

@@ -81,7 +81,6 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DeleteType } from '../../common/DeleteWidget/DeleteWidget.interface';
-import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { getMetricFeedCounts } from '../MetricActivity/MetricFeedCountUtils';
@@ -1367,24 +1366,25 @@ const MetricDetails: FC<MetricDetailsProps> = ({
               data-testid="metric-overview-main"
               direction="col"
               gap={5}>
-              <GenericProvider<Metric>
-                activeTab={EntityTabs.OVERVIEW}
-                data={metricDetails}
+              <MetricHierarchyCard
+                canAddChild={Boolean(metricPermissions.Create)}
+                metric={metricDetails}
+              />
+              <MetricDefinitionCard
+                canEdit={canEdit}
+                metric={metricDetails}
+                onUpdate={onMetricUpdate}
+              />
+              <MetricDimensions
+                metric={metricDetails}
                 permissions={metricPermissions}
-                type={EntityType.METRIC}
-                onUpdate={onMetricUpdate}>
-                <MetricHierarchyCard
-                  canAddChild={Boolean(metricPermissions.Create)}
-                  metric={metricDetails}
-                />
-                <MetricDefinitionCard
-                  canEdit={canEdit}
-                  metric={metricDetails}
-                  onUpdate={onMetricUpdate}
-                />
-                <MetricDimensions />
-                <MetricMeasures />
-              </GenericProvider>
+                onUpdate={onMetricUpdate}
+              />
+              <MetricMeasures
+                metric={metricDetails}
+                permissions={metricPermissions}
+                onUpdate={onMetricUpdate}
+              />
             </Box>
             <MetricMetadataRail
               metric={metricDetails}

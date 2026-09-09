@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Metric } from '../../../generated/entity/data/metric';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import type { Metric } from '../../../generated/entity/data/metric';
 
 export interface MetricSemanticItem {
   name: string;
@@ -20,6 +21,9 @@ export interface MetricSemanticItem {
 }
 
 export interface MetricSemanticListProps<T extends MetricSemanticItem> {
+  metric: Metric;
+  permissions: OperationPermission;
+  onUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   items: T[];
   title: string;
   fieldKey: Extract<keyof Metric, 'dimensions' | 'measures'>;
