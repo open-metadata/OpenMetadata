@@ -50,6 +50,7 @@ export interface AvatarProps {
    */
   focusable?: boolean;
   style?: CSSProperties;
+  'data-testid'?: string;
 }
 
 const styles = {
@@ -104,6 +105,7 @@ export const Avatar = ({
   focusable = false,
   className,
   style,
+  'data-testid': dataTestId,
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
 
@@ -169,6 +171,7 @@ export const Avatar = ({
   return (
     <div
       data-avatar
+      data-testid={dataTestId}
       className={cx(
         'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-transparent',
         // Focus styles
