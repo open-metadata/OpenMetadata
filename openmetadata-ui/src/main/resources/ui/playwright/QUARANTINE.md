@@ -36,7 +36,6 @@ generated variant rather than per source line.
 | `e2e/Pages/Lineage/LineageInteraction.spec.ts` | Verify node panel opens on click | 11/11 | `clickLineageNode` → `entity-header-display-name` never visible (15s). The topic node is not in the graph the `beforeEach` renders. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 11/11 | `entity-summary-panel-container` → owner chip not found (10s). Regressed around #31853, which removed the welcome-banner dismiss helpers. |
 | `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | 7/11 | Test timeout. |
-| `e2e/Pages/Domains.spec.ts` | Verify domain tags and glossary terms | 6/11 | Fails both attempts more often than it flakes — likely a real defect, not timing. |
 | `e2e/Features/Table.spec.ts` | should persist page size | 6/11 | Test timeout after `waitForAllLoadersToDisappear`. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal — filters and select | 3/11 | `waitForResponse` on the test-case search never resolves. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |

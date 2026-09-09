@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,18 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.context;
 
-public final class TokenCounter {
-  private TokenCounter() {}
+import {
+  ExtractionStats,
+  ProcessingStatus,
+} from '../../../generated/entity/data/contextFile';
 
-  public static int countTokens(String text) {
-    if (text == null || text.isEmpty()) {
-      return 0;
-    }
-    // Approximation: 1 token ≈ 4 characters for English text. Good enough for budget
-    // enforcement in prompt assembly. A jtokkit-based implementation can replace this
-    // if more accurate tokenization is required.
-    return Math.max(1, (text.length() + 3) / 4);
-  }
+export interface DocumentStatusBadgeProps {
+  error?: string;
+  stats?: ExtractionStats;
+  status?: ProcessingStatus;
 }
