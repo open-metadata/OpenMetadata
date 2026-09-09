@@ -11,7 +11,7 @@ public class SearchIndexNotFoundException extends WebServiceException {
     super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
   }
 
-  private SearchIndexNotFoundException(Response.Status status, String message) {
+  public SearchIndexNotFoundException(Response.Status status, String message) {
     super(status, ERROR_TYPE, message);
   }
 
