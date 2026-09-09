@@ -39,7 +39,6 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
       <Input.Password
         allowClear
         autoComplete="off"
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus is driven by the RJSF widget schema
         autoFocus={props.autofocus}
         data-testid={`password-input-widget-${props.id}`}
         disabled={disabled || props.disabled}

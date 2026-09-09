@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page, expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SERVICE_TYPE } from '../../constant/service';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
