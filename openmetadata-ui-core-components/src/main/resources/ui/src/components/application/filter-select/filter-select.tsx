@@ -69,6 +69,9 @@ const TriggerButton = ({
       <Button
         className={cx(
           'tw:whitespace-nowrap',
+          // The borderless trigger hugs its label like the legacy quick
+          // filters, so a full toolbar of them fits on one row.
+          !bordered && 'tw:px-2',
           hasSelection &&
             !bordered &&
             'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
@@ -78,7 +81,7 @@ const TriggerButton = ({
         data-testid={testId}
         iconLeading={icon}
         iconTrailing={ChevronDown}
-        size="md">
+        size={bordered ? 'md' : 'sm'}>
         {text}
       </Button>
     );
