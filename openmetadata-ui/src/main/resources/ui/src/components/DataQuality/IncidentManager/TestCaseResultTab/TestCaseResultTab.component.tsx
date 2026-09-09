@@ -125,6 +125,10 @@ function SqlParamsSection({
 
 function TestCaseSidePanel({
   testCaseData,
+  description,
+  descriptionChangeSummaryEntry,
+  hasEditDescriptionPermission,
+  handleDescriptionChange,
   hasEditTagsPermission,
   hasEditGlossaryTermsPermission,
   updatedTags,
@@ -140,6 +144,17 @@ function TestCaseSidePanel({
       className="transition-all-200ms tw:col-span-3"
       data-testid="test-case-rail">
       <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+        <div className="tw:w-full">
+          <Description
+            wrapInCard
+            changeSummaryEntry={descriptionChangeSummaryEntry}
+            description={description}
+            entityType={EntityType.TEST_CASE}
+            hasEditAccess={hasEditDescriptionPermission}
+            showCommentsIcon={false}
+            onDescriptionUpdate={handleDescriptionChange}
+          />
+        </div>
         <div className="tw:w-full">
           <TagsContainerV2
             newLook
@@ -353,18 +368,6 @@ const TestCaseResultTab = ({
             </div>
           )}
 
-          <div className="tw:w-full">
-            <Description
-              wrapInCard
-              changeSummaryEntry={descriptionChangeSummaryEntry}
-              description={description}
-              entityType={EntityType.TEST_CASE}
-              hasEditAccess={hasEditDescriptionPermission}
-              showCommentsIcon={false}
-              onDescriptionUpdate={handleDescriptionChange}
-            />
-          </div>
-
           <div className="tw:w-full" data-testid="parameter-container">
             <div className="parameter-container">
               <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
@@ -425,8 +428,12 @@ const TestCaseResultTab = ({
       </div>
       {isSidePanelVisible && (
         <TestCaseSidePanel
+          description={description}
+          descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
           handleDataProductsSave={handleDataProductsSave}
+          handleDescriptionChange={handleDescriptionChange}
           handleTagSelection={handleTagSelection}
+          hasEditDescriptionPermission={hasEditDescriptionPermission}
           hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
           hasEditPermission={hasEditPermission}
           hasEditTagsPermission={hasEditTagsPermission}

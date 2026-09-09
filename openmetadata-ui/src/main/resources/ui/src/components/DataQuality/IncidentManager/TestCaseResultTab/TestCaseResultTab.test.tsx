@@ -187,6 +187,10 @@ describe('TestCaseResultTab', () => {
   });
 
   it('Should render component', async () => {
+    // The description now lives in the rail, so it has to be visible for this
+    // whole-page assertion to see it.
+    mockUseTestCaseStore.isTabExpanded = true;
+
     render(<TestCaseResultTab />);
 
     expect(
@@ -671,19 +675,30 @@ describe('TestCaseResultTab', () => {
     });
   });
 
-  // TCD-0 — the page shell. The mock leads the main column with the result
-  // history region; Description sits below it, not above.
+  // TCD-0 — the page shell. The result history region leads the main column,
+  // and the description moves to the rail alongside the other metadata cards.
   describe('main column order', () => {
-    it('renders the result history chart above the description', async () => {
+    it('renders the result history chart above the parameters', async () => {
       render(<TestCaseResultTab />);
 
       const chart = await screen.findByText('TestSummary');
-      const description = await screen.findByText('Description');
+      const parameters = await screen.findByTestId('parameter-container');
 
       expect(
-        chart.compareDocumentPosition(description) &
+        chart.compareDocumentPosition(parameters) &
           Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
+    });
+
+    it('renders the description in the rail, not the main column', async () => {
+      mockUseTestCaseStore.isTabExpanded = true;
+
+      render(<TestCaseResultTab />);
+
+      const rail = await screen.findByTestId('test-case-rail');
+      const description = await screen.findByText('Description');
+
+      expect(rail).toContainElement(description);
     });
   });
 
