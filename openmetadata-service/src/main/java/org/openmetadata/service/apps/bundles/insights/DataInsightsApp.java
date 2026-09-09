@@ -8,7 +8,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getI
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -167,7 +166,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
         }
       }
     } catch (IOException ex) {
-      throw new UncheckedIOException("Could not prepare Data Insights snapshot indexes", ex);
+      LOG.error("Couldn't install DataInsightsApp: Can't initialize Elasticsearch indexes.", ex);
     }
   }
 

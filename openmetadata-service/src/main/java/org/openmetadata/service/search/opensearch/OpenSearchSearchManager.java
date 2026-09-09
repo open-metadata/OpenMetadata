@@ -109,6 +109,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
   private static final String SORT_FIELD_ID_KEYWORD = "id.keyword";
+  private static final int EXPORT_SEARCH_MAX_ATTEMPTS = 3;
+  private static final long EXPORT_SEARCH_RETRY_DELAY_MILLIS = 100L;
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -1350,11 +1352,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
-
-      if (response.timedOut() || response.shards().failed() > 0) {
-        throw new IOException("Incomplete search export for " + request.getIndex());
-      }
+      SearchResponse<JsonData> response =
+          searchForCompleteExportResponse(searchRequest, request.getIndex());
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
@@ -1386,6 +1385,40 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  private SearchResponse<JsonData> searchForCompleteExportResponse(
+      SearchRequest searchRequest, String index) throws IOException {
+    for (int attempt = 1; attempt <= EXPORT_SEARCH_MAX_ATTEMPTS; attempt++) {
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      int failedShards = response.shards().failed();
+      if (!response.timedOut() && failedShards == 0) {
+        return response;
+      }
+      if (attempt == EXPORT_SEARCH_MAX_ATTEMPTS) {
+        throw new IOException(
+            "Incomplete search export for %s after %d attempts (timedOut=%s, failedShards=%d)"
+                .formatted(index, attempt, response.timedOut(), failedShards));
+      }
+      LOG.warn(
+          "Incomplete search export response for {} (timedOut={}, failedShards={}); retrying ({}/{})",
+          index,
+          response.timedOut(),
+          failedShards,
+          attempt,
+          EXPORT_SEARCH_MAX_ATTEMPTS);
+      waitBeforeExportRetry(attempt, index);
+    }
+    throw new IllegalStateException("Export search retry loop terminated unexpectedly");
+  }
+
+  private static void waitBeforeExportRetry(int attempt, String index) throws IOException {
+    try {
+      Thread.sleep(EXPORT_SEARCH_RETRY_DELAY_MILLIS * attempt);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Interrupted while retrying search export for " + index, ex);
     }
   }
 

@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -243,6 +244,9 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       if (!stopped && !workflowStats.hasFailed()) {
         runExtensions.complete();
       }
+    } catch (CancellationException ex) {
+      stopped = true;
+      LOG.info("[Data Insights] Data Assets workflow stopped: {}", ex.getMessage());
     } finally {
       this.extensions = null;
     }

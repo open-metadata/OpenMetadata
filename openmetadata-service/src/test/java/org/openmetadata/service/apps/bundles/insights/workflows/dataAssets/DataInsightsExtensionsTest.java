@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsExtension.RunContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsExtension.Session;
@@ -42,8 +43,8 @@ class DataInsightsExtensionsTest {
       run.beforeBatch(List.of());
       run.enrich(new HashMap<>());
       cancelled.set(true);
-      assertThrows(IllegalStateException.class, run::complete);
-      assertThrows(IllegalStateException.class, () -> run.enrich(new HashMap<>()));
+      assertThrows(CancellationException.class, run::complete);
+      assertThrows(CancellationException.class, () -> run.enrich(new HashMap<>()));
       assertEquals(List.of("batch", "asset"), calls);
     }
   }
