@@ -21,6 +21,7 @@ from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
@@ -43,6 +44,11 @@ from metadata.ingestion.source.database.common_pg_mappings import (
     POLYGON,
 )
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
+from metadata.ingestion.source.database.postgres.models import PostgresStoredProcedure
+from metadata.ingestion.source.database.postgres.queries import (
+    POSTGRES_GET_FUNCTIONS,
+    POSTGRES_GET_STORED_PROCEDURES,
+)
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
@@ -357,22 +363,24 @@ class PostgresUnitTest(TestCase):
         mock_engine = MagicMock()
         self.postgres_source.engine = mock_engine
 
-        # Mock rows
+        # Mock rows. The `language` value mirrors what the real
+        # POSTGRES_GET_STORED_PROCEDURES query returns via `pg_language.lanname`
+        # (lowercase, e.g. "sql", "plpgsql").
         row1 = MagicMock()
         row1._mapping = {
             "procedure_name": "sp_include",
             "schema_name": "test_schema",
             "definition": "def1",
-            "language": "SQL",
-            "procedure_type": "PROCEDURE",
+            "language": "sql",
+            "procedure_type": "StoredProcedure",
         }
         row2 = MagicMock()
         row2._mapping = {
             "procedure_name": "sp_exclude",
             "schema_name": "test_schema",
             "definition": "def2",
-            "language": "SQL",
-            "procedure_type": "PROCEDURE",
+            "language": "sql",
+            "procedure_type": "StoredProcedure",
         }
 
         # PostgreSQL get_stored_procedures calls _get_stored_procedures_internal twice
@@ -392,6 +400,59 @@ class PostgresUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+        # The language column selected by the query must be parsed into the model
+        self.assertEqual(results[0].language, "sql")
+
+    def _yield_language(self, language: str | None, procedure_type: str) -> Language | None:
+        """Build a PostgresStoredProcedure (via the same model_validate(dict) path the
+        production connector uses) and return the language mapped by
+        yield_stored_procedure into the CreateStoredProcedureRequest."""
+        row_mapping = {
+            "procedure_name": "proc",
+            "schema_name": "test_schema",
+            "definition": "SELECT 1",
+            "language": language,
+            "procedure_type": procedure_type,
+        }
+        stored_procedure = PostgresStoredProcedure.model_validate(row_mapping)
+        request = next(iter(self.postgres_source.yield_stored_procedure(stored_procedure))).right
+        assert request is not None
+        return request.storedProcedureCode.language
+
+    def test_yield_stored_procedure_maps_sql_language(self):
+        """A Postgres `sql` routine (the common LANGUAGE sql case) maps to Language.SQL,
+        for both stored procedures and functions."""
+        self.assertEqual(
+            self._yield_language("sql", "StoredProcedure"),
+            Language.SQL,
+        )
+        self.assertEqual(
+            self._yield_language("sql", "Function"),
+            Language.SQL,
+        )
+
+    def test_yield_stored_procedure_unmapped_language_stays_none(self):
+        """Postgres languages with no Language enum member (plpgsql, c, internal, ...)
+        must NOT be mislabelled as SQL -- they stay None (honest "unknown")."""
+        self.assertIsNone(self._yield_language("plpgsql", "StoredProcedure"))
+        self.assertIsNone(self._yield_language("c", "Function"))
+        self.assertIsNone(self._yield_language("internal", "StoredProcedure"))
+
+    def test_stored_procedure_queries_select_language_column(self):
+        """Both Postgres SP/Function queries must select pg_language.lanname and join
+        pg_language, otherwise the language is silently null (regression guard)."""
+        for query in (POSTGRES_GET_STORED_PROCEDURES, POSTGRES_GET_FUNCTIONS):
+            self.assertIn("pg_language.lanname AS language", query)
+            self.assertIn("JOIN pg_language ON pg_proc.prolang = pg_language.oid", query)
+
+    def test_postgres_does_not_reuse_mssql_language_map(self):
+        """The Postgres connector must not depend on the MSSQL-specific
+        STORED_PROC_LANGUAGE_MAP (which is keyed on uppercase SQL/EXTERNAL and does
+        not cover Postgres' sql/plpgsql vocabulary)."""
+        from metadata.ingestion.source.database.postgres import metadata as postgres_metadata
+
+        self.assertFalse(hasattr(postgres_metadata, "STORED_PROC_LANGUAGE_MAP"))
+        self.assertTrue(hasattr(postgres_metadata, "POSTGRES_STORED_PROC_LANGUAGE_MAP"))
 
     def test_get_version_info(self):
         mock_engine = MagicMock()

@@ -59,9 +59,11 @@ from metadata.ingestion.source.database.common_pg_mappings import (
     RELKIND_MAP,
     ischema_names,
 )
-from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.postgres.models import PostgresStoredProcedure
+from metadata.ingestion.source.database.postgres.models import (
+    POSTGRES_STORED_PROC_LANGUAGE_MAP,
+    PostgresStoredProcedure,
+)
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
@@ -301,7 +303,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 name=EntityName(stored_procedure.name),
                 description=Markdown(stored_procedure.description) if stored_procedure.description else None,
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    language=POSTGRES_STORED_PROC_LANGUAGE_MAP.get((stored_procedure.language or "").lower()),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(
