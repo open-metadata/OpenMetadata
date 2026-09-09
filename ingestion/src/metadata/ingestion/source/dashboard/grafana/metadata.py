@@ -114,16 +114,16 @@ class GrafanaSource(DashboardServiceSource):
             self.datasources[ds.name] = ds
         logger.info("Found %s datasources", len(datasources))
 
-    def get_dashboards_list(self) -> list[dict] | None:
+    def get_dashboards_list(self) -> list[GrafanaSearchResult] | None:
         """Get list of dashboards"""
         dashboards_list = self.client.search_dashboards()
         return dashboards_list  # noqa: RET504
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard: GrafanaSearchResult) -> str:
         """Get dashboard name"""
         return dashboard.uid
 
-    def get_dashboard_details(self, dashboard: dict) -> GrafanaDashboardResponse | None:
+    def get_dashboard_details(self, dashboard: GrafanaSearchResult) -> GrafanaDashboardResponse | None:
         """Get detailed dashboard information"""
         try:
             return self.client.get_dashboard(dashboard.uid)
