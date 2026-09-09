@@ -16,6 +16,7 @@ import re
 import traceback
 from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
+from http import HTTPStatus
 from urllib.parse import urlparse
 
 import requests
@@ -179,6 +180,10 @@ CONFLUENT_PRODUCER_CLIENT_PATTERN = re.compile(r"connector-producer-(?P<connecto
 # telemetry query filters on.
 CONFLUENT_CLUSTER_ID_PATTERN = re.compile(r"/clusters/(?P<cluster_id>lkc-[a-z0-9]+)")
 
+# Confluent's error bodies are short, but this is an unbounded remote string being put into
+# a log line, so it is capped rather than trusted.
+MAX_TELEMETRY_ERROR_CHARS = 300
+
 
 def extract_internal_topic_names(connector_config: dict | None) -> set[str]:
     """
@@ -239,6 +244,74 @@ def confluent_managed_internal_topic_names(connector_config: dict | None, connec
         f"{prefix}.{connector_id}.transaction",
         f"dbhistory.{prefix}.{connector_id}",
     }
+
+
+def _telemetry_error_detail(response) -> str:
+    """
+    What Confluent said, which the raised HTTPError does not carry.
+
+    ``raise_for_status`` renders only the status line, so the body is lost even though it
+    is the part that identifies the failure: "Invalid credentials" and "Query must filter
+    by at least one of your authorized resources" arrive under the same 4xx otherwise.
+    """
+    if response is None:
+        return ""
+
+    try:
+        body = response.json()
+    except Exception:
+        text = (getattr(response, "text", "") or "").strip()
+        return text[:MAX_TELEMETRY_ERROR_CHARS]
+
+    # Confluent's error envelope puts the useful sentence in errors[].detail. Anything else
+    # is rendered as-is rather than dropped, because an unexpected shape is itself worth
+    # seeing when diagnosing, and a body we chose not to print cannot be recovered later.
+    if isinstance(body, dict):
+        details = [
+            str(err.get("detail")).strip()
+            for err in (body.get("errors") or [])
+            if isinstance(err, dict) and err.get("detail")
+        ]
+        if details:
+            return ", ".join(details)[:MAX_TELEMETRY_ERROR_CHARS]
+    return str(body)[:MAX_TELEMETRY_ERROR_CHARS]
+
+
+def telemetry_failure_hint(exc: Exception) -> str:
+    """
+    Confluent's own error text plus the operator-facing next step, for a failed lookup.
+
+    The two authentication failures need opposite fixes and were indistinguishable in the
+    log. Confluent answers 401 when the credential is not a Cloud API key at all, which no
+    role grant repairs, and 403 when the credential is valid but its account holds no role
+    granting metrics on the cluster, which no key change repairs.
+
+    The status to cause mapping is measured against the live API rather than taken from
+    documentation. A Kafka cluster-scoped key, a wrong secret and an unknown key all give
+    401. A Cloud key lacking a metrics role, or one querying a cluster in another
+    organisation, gives 403.
+    """
+    response = getattr(exc, "response", None)
+    parts = []
+
+    detail = _telemetry_error_detail(response)
+    if detail:
+        parts.append(f"Confluent said: {detail}")
+
+    status = getattr(response, "status_code", None)
+    if status == HTTPStatus.UNAUTHORIZED:
+        parts.append(
+            "The Kafka Connect credential is not accepted by the Telemetry API. It has to be a "
+            "Confluent Cloud API key, because a Kafka cluster-scoped key cannot authenticate here"
+        )
+    elif status == HTTPStatus.FORBIDDEN:
+        parts.append(
+            "The credential authenticated but is not authorised for metrics on this cluster. Grant "
+            "its account the MetricsViewer role, or use an account that already holds one conferring "
+            "metrics access"
+        )
+
+    return f". {'. '.join(parts)}" if parts else ""
 
 
 def _to_python_replacement(replacement: str) -> str:
@@ -489,7 +562,12 @@ class KafkaConnectClient:
             # Recorded as empty rather than left unset, so one failure does not become one
             # failed call per connector. The API is rate limited per hour, and a large
             # estate would spend that budget retrying a call that already failed.
-            logger.warning("Confluent telemetry unavailable for cluster %s, topics not enriched: %s", cluster_id, exc)
+            logger.warning(
+                "Confluent telemetry unavailable for cluster %s, topics not enriched: %s%s",
+                cluster_id,
+                exc,
+                telemetry_failure_hint(exc),
+            )
             logger.debug(traceback.format_exc())
 
         self._telemetry_topics_by_connector_id = by_connector

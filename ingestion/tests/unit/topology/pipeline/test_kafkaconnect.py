@@ -19,13 +19,18 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+import requests
 
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
+from metadata.ingestion.source.pipeline.kafkaconnect import client as client_module
+from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+    KafkaConnectClient,
+    telemetry_failure_hint,
+)
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
@@ -2911,3 +2916,105 @@ class TestConfluentTelemetryTopics:
             pytest.raises(Exception, match="401"),
         ):
             client.check_confluent_telemetry()
+
+
+class TestTelemetryFailureHint:
+    """
+    A failed telemetry lookup has to say which of the two fixes applies.
+
+    Confluent answers 401 when the credential is not a Cloud API key at all and 403 when it
+    is valid but unauthorised for metrics. The fixes are opposite, a different key versus a
+    role grant, and the raised HTTPError renders only the status line, so without this the
+    log said the same thing for both.
+    """
+
+    @staticmethod
+    def _error(status, body=None, text=""):
+        response = MagicMock()
+        response.status_code = status
+        response.text = text
+        if body is None:
+            response.json = MagicMock(side_effect=ValueError("not json"))
+        else:
+            response.json = MagicMock(return_value=body)
+        exc = requests.exceptions.HTTPError(f"{status} Client Error")
+        exc.response = response
+        return exc
+
+    def test_unauthorized_names_the_key_as_the_problem(self):
+        """401 is unauthenticated, so no role grant can fix it. The key itself is wrong."""
+        hint = telemetry_failure_hint(
+            self._error(401, {"errors": [{"status": "401", "detail": "Invalid credentials"}]})
+        )
+
+        assert "Invalid credentials" in hint, "Confluent's own wording must survive"
+        assert "Cloud API key" in hint
+        assert "MetricsViewer" not in hint, "a role grant cannot fix an unauthenticated key"
+
+    def test_forbidden_names_the_role_as_the_problem(self):
+        """403 authenticated fine, so the key is right and only the role is missing."""
+        hint = telemetry_failure_hint(
+            self._error(
+                403,
+                {
+                    "errors": [
+                        {
+                            "status": "403",
+                            "detail": "Query must filter by at least one of your authorized resources",
+                        }
+                    ]
+                },
+            )
+        )
+
+        assert "authorized resources" in hint, "Confluent's own wording must survive"
+        assert "MetricsViewer" in hint
+        assert "Cloud API key" not in hint, "the key authenticated, so it is not the problem"
+
+    def test_other_failures_report_the_response_but_prescribe_no_fix(self):
+        """
+        A timeout or a 500 is not an auth problem, so naming a fix would send the reader
+        after the wrong thing. What Confluent returned is still reported, because an
+        unexpected shape is worth seeing and a body we declined to print is lost for good.
+        """
+        hint = telemetry_failure_hint(self._error(500, {"errors": []}))
+
+        assert "MetricsViewer" not in hint and "Cloud API key" not in hint, (
+            "a non-auth failure must not prescribe an auth fix"
+        )
+        assert "errors" in hint, "the response itself is still worth reporting"
+
+    def test_no_response_at_all_adds_nothing(self):
+        """A connection error never reached Confluent, so there is no response to report."""
+        assert telemetry_failure_hint(requests.exceptions.ConnectionError("no route")) == ""
+
+    def test_non_json_body_falls_back_to_text(self):
+        """A proxy in front of the API answers HTML, which must not crash the handler."""
+        hint = telemetry_failure_hint(self._error(401, body=None, text="<html>gateway</html>"))
+
+        assert "gateway" in hint
+        assert "Cloud API key" in hint
+
+    def test_remote_text_is_capped(self):
+        """The body is remote input going into a log line, so it cannot be unbounded."""
+        hint = telemetry_failure_hint(self._error(403, {"errors": [{"detail": "x" * 5000}]}))
+
+        assert len(hint) < 1000, "an unbounded remote string must not reach the log"
+
+    def test_hint_reaches_the_warning(self):
+        """The hint is worthless unless it lands in the line an operator actually reads."""
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("k", "s")
+        client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._telemetry_topics_by_connector_id = None
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(403, {"errors": [{"detail": "not authorized"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "MetricsViewer" in rendered
+        assert "not authorized" in rendered
