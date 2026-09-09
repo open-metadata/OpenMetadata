@@ -18,7 +18,42 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-NAME_PATTERN = r"(?<=call)(.*?)(?=\()|(?<=begin)(.*?)(?=\()|(?<=begin)(.*?)(?=;\s*end)"
+# The optionally qualified procedure name, plus the whitespace before it. Bounded on purpose:
+# an unbounded `.*?` runs to the next paren anywhere in the statement, which would let
+# `UPDATE call_log SET x = pkg.refresh_stats(1)` resolve to a real procedure. `\s` matches
+# newlines, so a multi-line call parses without re.DOTALL.
+#
+# Unquoted covers Oracle's `[schema.][package|type][@dblink] name` and the `$` / `#` its
+# identifiers allow. A quoted segment is taken whole, since a delimited identifier may hold any
+# character, which is how BigQuery spells a hyphenated project id.
+# https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/CALL.html
+# https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+# https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+_QUALIFIED_NAME = r"(?:[\s\w.@$#]|`[^`]*`|\"[^\"]*\")*?"
+
+# Where the name ends. A `CALL` runs up to the argument list. A parameterless PL/SQL call inside
+# a block has no argument list, so it runs up to the statement terminator instead.
+_BEFORE_ARG_LIST = r"(?=\()"
+_BEFORE_BLOCK_END = r"(?=;\s*end)"
+
+
+def _invocation(keyword: str, ends_at: str) -> str:
+    """Build one `<keyword> <qualified name>` alternation.
+
+    The keyword needs a boundary on both sides. `\\b` before it rejects `recall`, and `(?!\\w)`
+    after it rejects an identifier that merely starts with the keyword, so `SELECT call_center(1)`
+    is not read as an invocation of a procedure named `_center`.
+    """
+    return rf"(?<=\b{keyword})(?!\w){_QUALIFIED_NAME}{ends_at}"
+
+
+NAME_PATTERN = "|".join(
+    (
+        _invocation("call", _BEFORE_ARG_LIST),
+        _invocation("begin", _BEFORE_ARG_LIST),
+        _invocation("begin", _BEFORE_BLOCK_END),
+    )
+)
 
 
 def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False) -> str | None:
@@ -33,7 +68,7 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     We'll return the lowered procedure name
     """
 
-    res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else None)
+    res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:
         return None
 
@@ -42,7 +77,11 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
             res.group(0)  # Get the first match
             .strip()  # Remove whitespace
             .lower()  # Replace all the lowercase variants of the procedure name prefixes
-            .replace("`", "")  # Clean weird characters from escaping the SQL
+            # Drop the identifier delimiters. StoredProcedure entity names are stored
+            # undelimited, and the caller matches on `procedure.name.root.lower()`, so a name
+            # kept as `"my proc"` would never match the entity it names.
+            .replace("`", "")
+            .replace('"', "")
             .split(".")[-1]
         )
     except Exception as exc:

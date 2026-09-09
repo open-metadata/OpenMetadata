@@ -949,16 +949,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       capturedUpdatedDomains = null;
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
     public List<EntityReference> getCapturedOriginalDomains() {
       return capturedOriginalDomains;
     }
@@ -1257,20 +1247,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataProduct dataProduct) {
-    dataProduct =
-        Entity.getEntityByName(
-            Entity.DATA_PRODUCT,
-            dataProduct.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataProduct.getFullyQualifiedName(),
-        new ArrayList<>(dataProduct.getReviewers()),
-        dataProduct.getUpdatedBy());
   }
 
   public org.openmetadata.schema.entity.data.DataContract getDataProductContract(

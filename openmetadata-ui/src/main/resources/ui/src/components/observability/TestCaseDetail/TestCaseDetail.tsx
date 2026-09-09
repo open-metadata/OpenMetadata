@@ -17,6 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
@@ -29,6 +30,13 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { TestCasePageTabs } from '../../../pages/IncidentManager/IncidentManager.interface';
+import { TEST_CASE_NEXT_RUN_QUERY_KEY } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.constants';
+import {
+  fetchNextTestCaseRunTimestamp,
+  getTestSuiteFqns,
+  shouldFetchNextRun,
+} from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
@@ -50,6 +58,7 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
+import TestCaseLastRunBanner from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
@@ -84,6 +93,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
 
   const {
     testCase,
+    testCaseFQN,
     isLoading,
     hasViewPermission,
     hasDeletePermission,
@@ -113,6 +123,17 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     fetchTaskCount: getEntityFeedCount,
     isVersionPage,
   });
+  const testSuiteFqns = useMemo(() => getTestSuiteFqns(testCase), [testCase]);
+  const { data: nextRunTimestamp } = useQuery({
+    queryKey: [TEST_CASE_NEXT_RUN_QUERY_KEY, testCaseFQN, testSuiteFqns],
+    queryFn: () => fetchNextTestCaseRunTimestamp(testSuiteFqns),
+    enabled: shouldFetchNextRun({
+      activeTab,
+      dimensionKey,
+      isVersionPage,
+      testSuiteFqns,
+    }),
+  });
 
   const activeTabContent = useMemo(() => {
     const currentTab = tabs.find(({ key }) => key === activeTab) ?? tabs.at(0);
@@ -121,10 +142,44 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
       return null;
     }
 
-    const { Tab } = currentTab;
+    const { Tab, key } = currentTab;
 
-    return <Tab editVariant="modal" showSidePanel={isTabExpanded} />;
-  }, [tabs, activeTab, isTabExpanded]);
+    return (
+      <>
+        {key === TestCasePageTabs.TEST_CASE_RESULTS &&
+          !isVersionPage &&
+          !dimensionKey && (
+            <div
+              className="tw:px-4 tw:pt-4"
+              data-testid="test-case-last-run-banner-tab-container">
+              <TestCaseLastRunBanner
+                incidentTask={incidentHeaderData.incidentTask}
+                nextRunTimestamp={nextRunTimestamp}
+                parameterValues={testCase?.parameterValues}
+                taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                testCaseResult={testCase?.testCaseResult}
+                testCaseStatus={testCase?.testCaseStatus}
+                testCaseStatusData={incidentHeaderData.testCaseStatusData}
+              />
+            </div>
+          )}
+        <Tab editVariant="modal" showSidePanel={isTabExpanded} />
+      </>
+    );
+  }, [
+    tabs,
+    activeTab,
+    isTabExpanded,
+    dimensionKey,
+    isVersionPage,
+    nextRunTimestamp,
+    incidentHeaderData.incidentTask,
+    incidentHeaderData.taskLinkInfo,
+    incidentHeaderData.testCaseStatusData,
+    testCase?.parameterValues,
+    testCase?.testCaseResult,
+    testCase?.testCaseStatus,
+  ]);
 
   const breadcrumbItems = useMemo(() => {
     // The origin trail wins so the crumb reflects where the user came from;
