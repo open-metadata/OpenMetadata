@@ -52,7 +52,7 @@ export const SelectAssetTypeField = ({
       CURATED_ASSETS_LIST,
       false,
       selectedResource,
-      false
+      true
     );
 
     // Create tree structure with "All" as parent

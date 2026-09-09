@@ -231,9 +231,15 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => {
-        setEditorContent(editor, htmlContent);
+      // The editor is destroyed on unmount, so a timer left pending past this
+      // effect would call updateState on a torn-down ProseMirror view.
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
+          setEditorContent(editor, htmlContent);
+        }
       });
+
+      return () => clearTimeout(timer);
     }, [content, editor]);
 
     // this effect to handle the editable state
@@ -248,7 +254,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => editor.setEditable(editable));
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
+          editor.setEditable(editable);
+        }
+      });
+
+      return () => clearTimeout(timer);
     }, [editable, editor]);
 
     // this effect to handle the RTL and LTR direction

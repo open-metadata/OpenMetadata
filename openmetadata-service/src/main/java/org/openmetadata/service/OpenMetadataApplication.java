@@ -62,6 +62,7 @@ import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jena.sys.JenaSystem;
 import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -118,6 +119,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.BackgroundJobCleanupScheduler;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
@@ -201,7 +203,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "2.0.0",
+            version = "2.0.2",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -246,6 +248,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     this.environment = environment;
 
+    // Initialize Jena before anything can touch org.apache.jena.vocabulary.RDF. On Jena 6.2.0
+    // InitJenaCore's TypeMapper.reset() registers the RDF 1.2 datatypes by reading RDF.dtLangString
+    // and friends, so if RDF is the first Jena class the JVM initializes, its <clinit> triggers
+    // JenaSystem.init() re-entrantly on the same thread and TypeMapper reads those fields while
+    // they
+    // are still null: NPE inside a static initializer, which then leaves *every* Jena class in the
+    // JVM permanently unusable ("Could not initialize class org.apache.jena.graph.NodeFactory").
+    // Jena 5.6.0 did not have this cycle. An explicit init here is idempotent and orders the
+    // subsystem startup ahead of the RDF resources, which construct Jena objects even when RDF is
+    // disabled. Remove once the RDF/TypeMapper init cycle is fixed upstream.
+    JenaSystem.init();
+
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
     // Configure URI compliance to LEGACY mode by default for Jetty 12
@@ -272,6 +286,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
     // Metrics initialization now handled by MicrometerBundle
+
+    AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     // Initialize the MigrationValidationClient, used in the Settings Repository
@@ -391,9 +407,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
 
-    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
-    // RequestEntityCache, impersonation context) after every response so state
-    // cannot leak across requests that share a Jetty worker thread.
+    // Clears per-request ThreadLocals (ReadBundleContext, RequestEntityCache, impersonation
+    // context) after every response so state cannot leak across requests that share a Jetty
+    // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
 
     // Register User Activity Tracking
@@ -405,6 +421,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
+    environment
+        .lifecycle()
+        .manage(
+            new BackgroundJobCleanupScheduler(
+                jdbi.onDemand(JobDAO.class), CsvAsyncJobManager.getInstance()));
 
     environment
         .lifecycle()
@@ -625,7 +647,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize RDF if enabled (core infrastructure)
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
-      RdfUpdater.initialize(rdfConfig);
+      RdfUpdater.initialize(rdfConfig, config.getAsyncOperationsConfiguration());
       LOG.info("RDF knowledge graph support initialized");
     }
 

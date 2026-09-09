@@ -44,7 +44,8 @@ export interface DomainDetailPageTabProps {
   subDomainsCount: number;
   dataProductsCount: number;
   assetCount: number;
-  activeTab: EntityTabs;
+  // Undefined when no tab is explicitly selected (landing URL / tree view).
+  activeTab?: EntityTabs;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
   onDeleteSubDomain: () => void;
@@ -266,6 +267,11 @@ class DomainClassBase {
   }
 
   public getCoverImageField(): FieldProp | null {
+    return null;
+  }
+
+  // Reviewers are Collate-only; overridden downstream.
+  public getReviewersField(): FieldProp | null {
     return null;
   }
 

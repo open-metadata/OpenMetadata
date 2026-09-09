@@ -330,8 +330,8 @@ export const getBreadcrumbForKnowledgePage = (
   includeCurrent: boolean
 ) => [
   {
-    name: i18n.t('label.knowledge-center'),
-    url: ROUTES.KNOWLEDGE_CENTER,
+    name: i18n.t('label.context-center'),
+    url: ROUTES.CONTEXT_CENTER_ARTICLES,
   },
   {
     name: entityName,

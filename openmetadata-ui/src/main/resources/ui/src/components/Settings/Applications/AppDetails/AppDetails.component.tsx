@@ -51,6 +51,7 @@ import {
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/entity/type';
 import { Include } from '../../../../generated/type/include';
+import { useAuth } from '../../../../hooks/authHooks';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   configureApp,
@@ -61,7 +62,10 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
-import { isCacheWarmupApplication } from '../../../../utils/ApplicationUtils';
+import {
+  isCacheWarmupApplication,
+  isMcpApplication,
+} from '../../../../utils/ApplicationUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -78,6 +82,7 @@ import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
+import McpApplicationConfiguration from '../McpApplicationConfiguration/McpApplicationConfiguration';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
@@ -99,6 +104,7 @@ const AppDetails = () => {
   });
   const { getResourceLimit } = useLimitStore();
   const { plugins } = useApplicationsProvider();
+  const { isAdminUser } = useAuth();
   const isRuntimeDisabled = appData?.enabled === false && !appData.deleted;
   const runtimeDisabledReason =
     isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
@@ -121,7 +127,7 @@ const AppDetails = () => {
       } catch {
         setJsonSchema(undefined);
         showErrorToast(
-          t('message.no-application-schema-found', { appName: fqn })
+          t('server.no-application-schema-found', { appName: fqn })
         );
       }
     } catch (error) {
@@ -372,11 +378,25 @@ const AppDetails = () => {
     const ApplicationConfigurationComponent =
       applicationsClassBase.getApplicationConfigurationComponent();
     const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
+
+    // The MCP app stores no configuration of its own. Its settings live in the `mcpConfiguration`
+    // system setting, which is admin-only, so its tab uses a dedicated component and is hidden
+    // from non-admins rather than letting them submit a request the server will reject.
+    const showMcpConfigTab = Boolean(
+      isMcpApplication(appData?.name) &&
+        isAdminUser &&
+        jsonSchema &&
+        !isRuntimeDisabled
+    );
+    const showAppConfigTab = Boolean(
+      !showMcpConfigTab &&
+        appData?.appConfiguration &&
+        appData.allowConfiguration &&
+        jsonSchema &&
+        !isRuntimeDisabled
+    );
     const tabConfiguration =
-      appData?.appConfiguration &&
-      appData.allowConfiguration &&
-      jsonSchema &&
-      !isRuntimeDisabled
+      showMcpConfigTab || showAppConfigTab
         ? [
             {
               label: (
@@ -386,11 +406,16 @@ const AppDetails = () => {
                 />
               ),
               key: ApplicationTabs.CONFIGURATION,
-              children: (
+              children: showMcpConfigTab ? (
+                <McpApplicationConfiguration
+                  appName={appData?.name ?? ''}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
+              ) : (
                 <ApplicationConfigurationComponent
-                  appData={appData}
+                  appData={appData as App}
                   isLoading={loadingState.isSaveLoading}
-                  jsonSchema={jsonSchema}
+                  jsonSchema={jsonSchema as RJSFSchema}
                   onConfigSave={onConfigSave}
                 />
               ),
@@ -468,6 +493,7 @@ const AppDetails = () => {
     ];
   }, [
     appData,
+    isAdminUser,
     isAppUnavailable,
     isRuntimeDisabled,
     jsonSchema,
@@ -506,7 +532,7 @@ const AppDetails = () => {
   return (
     <PageLayoutV1
       className="app-details-page-layout"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={getEntityName(appData) || t('label.application-plural')}>
       <Row>
         <Col className="d-flex" flex="auto">
           <Button

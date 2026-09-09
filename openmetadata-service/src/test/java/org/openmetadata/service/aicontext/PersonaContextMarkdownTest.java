@@ -69,6 +69,52 @@ class PersonaContextMarkdownTest {
   }
 
   @Test
+  void anInlineImageInAnArticleDoesNotStarveTheAssetRulesOfBudget() {
+    // Reproduces divisionsinc: one article carried a base64 architecture diagram that was larger
+    // than the whole character budget, so every asset rule fell through to the manifest.
+    String article =
+        "<p>The semantic layer unifies definitions.</p>"
+            + "<p><img src=\"data:image/png;base64,"
+            + "A".repeat(20_000)
+            + "\"></p>";
+    Persona persona = persona();
+    ContextRule assetRule = rule();
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withCharacterBudget(4_000).withRules(List.of(assetRule));
+    PersonaContext context =
+        new PersonaContext()
+            .withPersona(persona.getEntityReference())
+            .withGeneratedAt(1782864000000L)
+            .withSharedKnowledge(
+                new SharedKnowledge()
+                    .withArticles(
+                        List.of(
+                            new KnowledgeItem()
+                                .withType(KnowledgeItem.Type.PAGE)
+                                .withName("Semantic Layer")
+                                .withFullyQualifiedName("kb.semantic-layer")
+                                .withContent(article))));
+
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            definition,
+            List.of(
+                new PersonaContextBuilder.RuleMaterialization(
+                    assetRule, 1, List.of(selectedEntity()))),
+            context,
+            false);
+
+    assertFalse(result.markdown().contains("base64"));
+    assertTrue(result.markdown().contains("The semantic layer unifies definitions."));
+    // The budget the image was consuming now reaches the asset rule, which renders in full.
+    assertTrue(result.markdown().contains("### Schema"));
+    assertEquals(1, result.context().getRules().getFirst().getRenderedFull());
+    assertTrue(result.context().getManifest().isEmpty());
+    assertFalse(Boolean.TRUE.equals(result.context().getTruncated()));
+  }
+
+  @Test
   void knowledgeRulesAreAlwaysFullyRendered() {
     Persona persona = persona();
     ContextRule selectedRule =

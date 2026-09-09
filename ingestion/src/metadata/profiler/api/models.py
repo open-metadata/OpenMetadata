@@ -33,6 +33,12 @@ from metadata.sampler.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
+def processor_config_payload(processor) -> dict:
+    """Return a workflow processor's inner config, or an empty mapping when the
+    processor block or its config is absent."""
+    return (processor.model_dump().get("config") if processor else None) or {}
+
+
 class ProfilerProcessorConfig(ConfigModel):
     """
     Defines how we read the processor information

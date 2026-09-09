@@ -32,8 +32,8 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
+import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { GRAY_600 } from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
@@ -45,6 +45,7 @@ import {
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
 import { generatePalette } from '../../../../styles/colorPallet';
+import { getDataInsightPathWithFqn } from '../../../../utils/DataInsightPureUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -357,7 +358,7 @@ const TotalDataAssetsWidget = ({
         title={t('label.data-insight-total-entity-summary')}
         widgetKey={widgetKey}
         onSortChange={(key) => setSelectedSortBy(key)}
-        onTitleClick={() => navigate(ROUTES.DATA_INSIGHT)}
+        onTitleClick={() => navigate(getDataInsightPathWithFqn())}
       />
     ),
     [

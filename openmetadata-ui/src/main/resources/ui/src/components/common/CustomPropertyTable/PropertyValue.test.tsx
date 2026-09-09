@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
@@ -40,9 +47,15 @@ jest.mock('./PropertyInput', () => ({
     )),
 }));
 
-jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
-  jest.fn().mockReturnValue(<div data-testid="SchemaEditor">SchemaEditor</div>)
-);
+jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
+  const { forwardRef } = jest.requireActual<typeof import('react')>('react');
+
+  return forwardRef<HTMLDivElement>((_props, ref) => (
+    <div data-testid="SchemaEditor" ref={ref}>
+      SchemaEditor
+    </div>
+  ));
+});
 jest.mock(
   '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
   () =>
@@ -65,7 +78,17 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 }));
 
 jest.mock('../../../utils/CustomProperty.utils', () => ({
+  formatCustomPropertyDateTime: jest
+    .fn()
+    .mockImplementation((value) => value.toFormat('dd-MM-yyyy')),
   getCustomPropertyLuxonFormat: jest.fn().mockReturnValue('dd-MM-yyyy'),
+  parseCustomPropertyDateTime: jest
+    .fn()
+    .mockImplementation((value) =>
+      jest
+        .requireActual<typeof import('luxon')>('luxon')
+        .DateTime.fromFormat(value, 'dd-MM-yyyy')
+    ),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
@@ -83,6 +106,12 @@ jest.mock('../DatePicker/DatePicker', () =>
 );
 
 const mockUpdate = jest.fn();
+const RouterWrapper = ({ children }: { children: ReactNode }) => (
+  <MemoryRouter
+    future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    {children}
+  </MemoryRouter>
+);
 
 const mockData = {
   extension: { yNumber: 87 },
@@ -406,6 +435,96 @@ describe('Test PropertyValue Component', () => {
     expect(await screen.findByTestId('SchemaEditor')).toBeInTheDocument();
   });
 
+  it('Should render and edit the URL and display text for "hyperlink-cp" type', async () => {
+    const extension = {
+      yNumber: {
+        displayText: 'OpenMetadata',
+        url: 'https://open-metadata.org',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'hyperlink-cp',
+    };
+
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType }}
+      />
+    );
+
+    const hyperlink = await screen.findByTestId('hyperlink-value');
+
+    expect(hyperlink).toHaveAttribute('href', 'https://open-metadata.org');
+    expect(hyperlink).toHaveTextContent('OpenMetadata');
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('edit-icon'));
+    });
+
+    expect(
+      await screen.findByTestId('hyperlink-url-input')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('hyperlink-display-text-input')
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('hyperlink-url-input'), {
+      target: { value: 'https://updated.example.com/docs' },
+    });
+    fireEvent.change(screen.getByTestId('hyperlink-display-text-input'), {
+      target: { value: 'Updated docs' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-save-btn'));
+    });
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith({
+        yNumber: {
+          displayText: 'Updated docs',
+          url: 'https://updated.example.com/docs',
+        },
+      })
+    );
+  });
+
+  it('Should drop an empty display text when saving a "hyperlink-cp" value', async () => {
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'hyperlink-cp',
+    };
+
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={{}}
+        property={{ ...mockData.property, propertyType }}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('edit-icon'));
+    });
+
+    fireEvent.change(await screen.findByTestId('hyperlink-url-input'), {
+      target: { value: 'https://open-metadata.org' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-save-btn'));
+    });
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith({
+        yNumber: { url: 'https://open-metadata.org' },
+      })
+    );
+  });
+
   it('Should render entity reference select component for "entityReference" type', async () => {
     const extension = {
       yNumber: {
@@ -425,7 +544,7 @@ describe('Test PropertyValue Component', () => {
         extension={extension}
         property={{ ...mockData.property, propertyType: propertyType }}
       />,
-      { wrapper: MemoryRouter }
+      { wrapper: RouterWrapper }
     );
 
     const iconElement = await screen.findByTestId('edit-icon');
@@ -474,7 +593,7 @@ describe('Test PropertyValue Component', () => {
         property={{ ...mockData.property, propertyType: propertyType }}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: RouterWrapper,
       }
     );
 

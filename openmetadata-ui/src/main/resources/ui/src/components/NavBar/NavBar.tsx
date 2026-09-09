@@ -76,7 +76,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -108,7 +108,7 @@ const NavBar = () => {
     handleDeleteEntityWebsocketResponse
   );
   handleDeleteEntityResponseRef.current = handleDeleteEntityWebsocketResponse;
-  const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
+  const Logo = brandClassBase.getMonogram().src;
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
@@ -134,12 +134,11 @@ const NavBar = () => {
     setPreference,
   } = useCurrentUserPreferences();
 
-  // Check if current route is home page
-  const isHomePage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname === ROUTES.MY_DATA;
-  }, [location.pathname]);
+  // Check if current route is the landing page (either `/` or `/my-data`)
+  const isHomePage = useMemo(
+    () => isLandingPagePath(location.pathname),
+    [location.pathname]
+  );
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -274,7 +273,7 @@ const NavBar = () => {
                 isAxiosError: true,
                 message: 'Invalid job arguments: entityType is required',
               } as AxiosError,
-              t('message.unexpected-error')
+              t('server.unexpected-error')
             );
 
             break;

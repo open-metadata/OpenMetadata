@@ -180,16 +180,38 @@ export const findPageWithAlert = async (
 ) => {
   const { id } = alertDetails;
   await waitForAllLoadersToDisappear(page);
+
+  // The alerts page renders no [data-testid="loader"], so the wait above is
+  // vacuous here, and the table body renders zero rows while a fetch is in
+  // flight. isHidden() does NOT wait, so sampling it against an unpainted table
+  // reports a false "not on this page"; isEnabled() DOES wait, so it resolves
+  // after the paint and reports Next as enabled. That mismatch walked the
+  // pagination past the alert, and because the walk is forward-only and returns
+  // silently, the caller's click then waited out the whole test budget on a row
+  // sitting on an earlier page. Wait for the body to paint before sampling.
+  await expect(page.locator('[data-row-key]').first()).toBeVisible();
+
   // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
   const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
-  if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
-    const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
-    await nextButton.click();
-    await getAlerts;
-    await waitForAllLoadersToDisappear(page);
-    await findPageWithAlert(page, alertDetails);
+
+  if (await alertRow.isVisible()) {
+    return;
   }
+
+  // isVisible() before isEnabled(): isEnabled() waits for attachment with no
+  // timeout, so on a single-page list — where pagination is not rendered at all
+  // — it would block indefinitely.
+  if (!(await nextButton.isVisible()) || !(await nextButton.isEnabled())) {
+    throw new Error(
+      `Alert "${alertDetails.name}" (${id}) was not found on any page of the alerts list.`
+    );
+  }
+
+  const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
+  await nextButton.click();
+  await getAlerts;
+  await findPageWithAlert(page, alertDetails);
 };
 
 export const deleteAlertSteps = async (
@@ -986,15 +1008,38 @@ export const inputBasicAlertInformation = async ({
   await page.locator(descriptionBox).clear();
   await page.locator(descriptionBox).fill(ALERT_DESCRIPTION);
 
-  // Select all source
-  await page.click('[data-testid="add-source-button"]');
-
-  await page
+  // Select the alert source.
+  //
+  // The antd Dropdown opens with a slide-up motion. Playwright's `stable`
+  // actionability check clears once the bounding box holds for two animation
+  // frames, which the tail of the cubic-bezier ease satisfies while the
+  // transform is still running — so mousedown and mouseup can land on different
+  // nodes and the browser never synthesises a `click`. rc-menu's handler then
+  // never runs, `source-select` is never rendered, and because `locator.click()`
+  // retries actionability but never the *effect*, the assertion below would
+  // spend its whole budget on an element that can no longer appear. Retry the
+  // selection itself instead. The `isVisible()` calls are branch conditions for
+  // that retry, not assertions — the assertion is `toBeVisible` below them.
+  const sourceOption = page
     .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`)
-    .click();
+    .getByTestId(`${sourceName}-option`);
+  const sourceSelect = page.getByTestId('source-select');
 
-  await expect(page.getByTestId('source-select')).toHaveText(sourceDisplayName);
+  await expect(async () => {
+    if (!(await sourceSelect.isVisible())) {
+      // Gate on the option rather than the menu: `drop-down-menu` is also used
+      // by SearchDropdown, so probing it unscoped risks a strict-mode violation.
+      if (!(await sourceOption.isVisible())) {
+        await page.click('[data-testid="add-source-button"]');
+      }
+
+      await sourceOption.click();
+    }
+
+    await expect(sourceSelect).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+
+  await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
 export const saveAlertAndVerifyResponse = async (page: Page) => {

@@ -80,7 +80,7 @@ export const getTagImageSrc = (iconURL: string): string => {
     return iconURL;
   }
 
-  return `${window.location.origin}/${iconURL}`;
+  return `${window.location.origin}/${iconURL.replace(/^\/+/, '')}`;
 };
 
 // Map of icon names to their components
@@ -152,69 +152,6 @@ export const createIconWithStroke = (
 ) => {
   return (props: { size?: number; style?: React.CSSProperties }) => (
     <IconComponent {...props} strokeWidth={strokeWidth} />
-  );
-};
-
-interface RenderIconOptions {
-  size?: number;
-  className?: string;
-  style?: React.CSSProperties;
-  strokeWidth?: number;
-  alt?: string;
-}
-
-/**
- * Utility function to render an icon from either a URL or an icon name
- * @param iconValue - Either a URL string or an icon name from ICON_MAP
- * @param options - Options for rendering the icon
- * @returns React element of the icon or image, or null if invalid
- */
-export const renderIcon = (
-  iconValue: string | undefined,
-  options: RenderIconOptions = {}
-) => {
-  const {
-    size = 24,
-    className = '',
-    style = {},
-    strokeWidth = 1.5,
-    alt = 'icon',
-  } = options;
-
-  if (!iconValue) {
-    return null;
-  }
-
-  // Check if it's a known icon name
-  const IconComponent = ICON_MAP[iconValue];
-  if (IconComponent) {
-    return (
-      <IconComponent
-        className={className}
-        size={size}
-        style={{ strokeWidth, ...style }}
-      />
-    );
-  }
-
-  // Only render as image if it looks like a valid URL/path or has an image extension
-  if (!isImageUrl(iconValue)) {
-    return null;
-  }
-
-  // Render as image with error handling
-  return (
-    <img
-      alt={alt}
-      className={className}
-      src={getTagImageSrc(iconValue)}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-        ...style,
-      }}
-    />
   );
 };
 

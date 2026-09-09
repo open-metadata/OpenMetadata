@@ -26,6 +26,7 @@ import {
   Breadcrumbs as AriaBreadcrumbs,
   Button as AriaButton,
   Link as AriaLink,
+  LinkContext,
 } from 'react-aria-components';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
@@ -48,7 +49,7 @@ export interface BreadcrumbItemType {
 }
 
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
-  /** Ordered list of crumbs; the last item is treated as the current page. */
+  /** Ordered list of crumbs. */
   items: BreadcrumbItemType[];
   /** Visual style of the crumbs. */
   type?: BreadcrumbsType;
@@ -329,18 +330,22 @@ export const Breadcrumbs = ({
                   type={type}
                   onAction={onAction}
                 />
-              ) : !isCurrent && (item.href || onAction) ? (
-                <AriaLink
-                  aria-label={item.ariaLabel}
-                  className={cx(linkClassName, styles[type].link, padding)}
-                  href={onAction ? undefined : item.href}
-                  onPress={() => onAction?.(item.id)}>
-                  <CrumbLabel
-                    item={item}
-                    maxItemWidth={maxItemWidth}
-                    size={size}
-                  />
-                </AriaLink>
+              ) : item.href || (onAction && !isCurrent) ? (
+                // React Aria disables the physical last crumb, so clear its
+                // context when href marks that crumb as a destination.
+                <LinkContext.Provider value={{}}>
+                  <AriaLink
+                    aria-label={item.ariaLabel}
+                    className={cx(linkClassName, styles[type].link, padding)}
+                    href={onAction ? undefined : item.href}
+                    onPress={() => onAction?.(item.id)}>
+                    <CrumbLabel
+                      item={item}
+                      maxItemWidth={maxItemWidth}
+                      size={size}
+                    />
+                  </AriaLink>
+                </LinkContext.Provider>
               ) : (
                 <span
                   aria-current={isCurrent ? 'page' : undefined}

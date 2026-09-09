@@ -25,6 +25,7 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -119,6 +120,8 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         cols = None
         if columns:
             cols = [col.name for col in columns]
+        if sample_query is not None and not is_safe_pandas_query(sample_query):
+            raise RuntimeError(f"Unsafe sample query expression\n\n{sample_query}")
         rows = []
         # Sample Data should not exceed sample limit
         for chunk in df_iterator():

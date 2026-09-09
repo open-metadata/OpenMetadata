@@ -1,6 +1,5 @@
 package org.openmetadata.service.drive;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
@@ -299,7 +298,7 @@ public class ContextFileExtractionService {
         return false;
       }
       try {
-        repository.updateIfCurrent(null, current, updated, ADMIN_USER_NAME);
+        repository.updateIfCurrent(null, current, updated, current.getUpdatedBy());
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
@@ -325,7 +324,9 @@ public class ContextFileExtractionService {
         return false;
       }
       try {
-        repository.getContentRepository().updateIfCurrent(null, current, updated, ADMIN_USER_NAME);
+        repository
+            .getContentRepository()
+            .updateIfCurrent(null, current, updated, current.getUpdatedBy());
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file content {} changed during extraction update", contentId);

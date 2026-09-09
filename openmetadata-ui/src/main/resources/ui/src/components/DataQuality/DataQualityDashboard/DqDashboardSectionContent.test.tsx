@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import { DqDashboardSectionContent } from './DqDashboardSectionContent.component';
+
+const mockTestCaseStatusAreaChartWidget = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const Grid = ({ children }: React.PropsWithChildren) => (
@@ -105,9 +108,15 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(({ name }: { name: string }) => (
-        <div data-testid={`test-case-status-area-widget-${name}`} />
-      ))
+      .mockImplementation(
+        (props: { name: string; redirectPath?: { search?: string } }) => {
+          mockTestCaseStatusAreaChartWidget(props);
+
+          return (
+            <div data-testid={`test-case-status-area-widget-${props.name}`} />
+          );
+        }
+      )
 );
 
 jest.mock(
@@ -171,6 +180,23 @@ describe('DqDashboardSectionContent component', () => {
     expect(
       screen.getByTestId('test-case-status-area-widget-failed')
     ).toBeInTheDocument();
+
+    [
+      ['success', TestCaseStatus.Success],
+      ['aborted', TestCaseStatus.Aborted],
+      ['failed', TestCaseStatus.Failed],
+    ].forEach(([name, status]) => {
+      expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name,
+          redirectPath: expect.objectContaining({
+            search: expect.stringContaining(
+              `testCaseStatus=${status}&lastRunRange%5BstartTs%5D=1000&lastRunRange%5BendTs%5D=2000`
+            ),
+          }),
+        })
+      );
+    });
   });
 
   it('should render the incident-metrics section with incident type and time widgets', () => {

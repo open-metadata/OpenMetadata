@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import type { OldJsonTree } from '@react-awesome-query-builder/antd';
-import { Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -23,6 +22,7 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
   TAG_ASSETS_DROPDOWN_ITEMS,
+  TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import {
@@ -42,6 +42,7 @@ import type {
   TopicSearchSource,
 } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
+import { generateUUID } from './StringUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -61,6 +62,9 @@ export const getAssetsPageQuickFilters = (
 
     case AssetsOfEntity.LINEAGE:
       return [...LINEAGE_DROPDOWN_ITEMS];
+
+    case AssetsOfEntity.TEAM:
+      return [...TEAM_ASSETS_DROPDOWN_ITEMS];
 
     default:
       return [...COMMON_DROPDOWN_ITEMS];
@@ -207,9 +211,65 @@ export const getServiceOptions = (
     : option.text;
 };
 
+const extractSourceValue = (
+  src: Record<string, unknown>,
+  path: string,
+  bucketKey: string
+): string | undefined => {
+  const parts = path.split('.');
+  let val: unknown = src;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (Array.isArray(val)) {
+      // When we hit an array mid-traversal, find the element whose resolved
+      // leaf value case-insensitively equals the bucket key, falling back to [0].
+      const remainingPath = parts.slice(i).join('.');
+      const match = (val as unknown[]).find((item) => {
+        const leaf = extractSourceValue(
+          item as Record<string, unknown>,
+          remainingPath,
+          bucketKey
+        );
+
+        return leaf?.toLowerCase() === bucketKey.toLowerCase();
+      });
+      const chosen = match ?? (val as unknown[])[0];
+      if (chosen === undefined) {
+        return undefined;
+      }
+
+      return extractSourceValue(
+        chosen as Record<string, unknown>,
+        remainingPath,
+        bucketKey
+      );
+    } else if (val && typeof val === 'object' && part in (val as object)) {
+      val = (val as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"])
+  if (Array.isArray(val)) {
+    const strings = (val as unknown[]).filter(
+      (item): item is string => typeof item === 'string'
+    );
+    const match = strings.find(
+      (s) => s.toLowerCase() === bucketKey.toLowerCase()
+    );
+
+    return match ?? strings[0];
+  }
+
+  return typeof val === 'string' ? val : undefined;
+};
+
 export const getOptionsFromAggregationBucket = (
   buckets: Bucket[],
-  labelFormatter?: (key: string) => string
+  labelFormatter?: (key: string) => string,
+  sourceFields?: string
 ) => {
   if (!buckets) {
     return [];
@@ -220,11 +280,30 @@ export const getOptionsFromAggregationBucket = (
       (item) =>
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
-    .map((option) => ({
-      key: option.key,
-      label: labelFormatter ? labelFormatter(option.key) : option.key,
-      count: option.doc_count ?? 0,
-    }));
+    .map((option) => {
+      let label = labelFormatter ? labelFormatter(option.key) : option.key;
+
+      if (sourceFields) {
+        const topHitsData = (option as Record<string, unknown>)[
+          'top_hits#top'
+        ] as
+          | {
+              hits?: {
+                hits?: Array<{ _source?: Record<string, unknown> }>;
+              };
+            }
+          | undefined;
+        const src = topHitsData?.hits?.hits?.[0]?._source;
+        const extracted = src
+          ? extractSourceValue(src, sourceFields, option.key)
+          : undefined;
+        if (extracted) {
+          label = extracted;
+        }
+      }
+
+      return { key: option.key, label, count: option.doc_count ?? 0 };
+    });
 };
 
 export const formatQueryValueBasedOnType = (
@@ -253,21 +332,21 @@ export const getEmptyJsonTree = (
   defaultField: string = EntityFields.OWNERS
 ): OldJsonTree => {
   return {
-    id: QbUtils.uuid(),
+    id: generateUUID(),
     type: 'group',
     properties: {
       conjunction: 'AND',
       not: false,
     },
     children1: {
-      [QbUtils.uuid()]: {
+      [generateUUID()]: {
         type: 'group',
         properties: {
           conjunction: 'AND',
           not: false,
         },
         children1: {
-          [QbUtils.uuid()]: {
+          [generateUUID()]: {
             type: 'rule',
             properties: {
               field: defaultField,
@@ -286,9 +365,9 @@ export const getEmptyJsonTreeForQueryBuilder = (
   defaultField: string = EntityReferenceFields.OWNERS,
   subField = 'fullyQualifiedName'
 ): OldJsonTree => {
-  const uuid1 = QbUtils.uuid();
-  const uuid2 = QbUtils.uuid();
-  const uuid3 = QbUtils.uuid();
+  const uuid1 = generateUUID();
+  const uuid2 = generateUUID();
+  const uuid3 = generateUUID();
 
   return {
     id: uuid1,

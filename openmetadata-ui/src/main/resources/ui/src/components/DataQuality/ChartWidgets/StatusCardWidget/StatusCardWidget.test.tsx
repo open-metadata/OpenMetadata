@@ -19,10 +19,10 @@ import { StatusCardWidgetProps } from './StatusCardWidget.interface';
 
 const mockStatusData = {
   title: 'Test Title',
-  total: 100,
-  success: 80,
-  aborted: 10,
-  failed: 10,
+  total: 10_000,
+  success: 3_333,
+  aborted: 3_334,
+  failed: 3_333,
 };
 
 const MockIcon = ({
@@ -67,6 +67,14 @@ describe('StatusDataWidget', () => {
     expect(screen.getByTestId('failed-count')).toHaveTextContent(
       mockStatusData.failed.toString()
     );
+  });
+
+  it('should render the card with internal padding', () => {
+    render(<StatusDataWidget {...defaultProps} />);
+
+    const statusCard = screen.getByTestId('status-data-widget').parentElement;
+
+    expect(statusCard).toHaveClass('tw:px-4', 'tw:py-3');
   });
 
   it('should render the icon with correct props', () => {

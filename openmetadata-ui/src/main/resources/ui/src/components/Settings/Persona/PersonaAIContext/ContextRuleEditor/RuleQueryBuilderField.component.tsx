@@ -11,13 +11,25 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
+import {
+  Actions,
+  Config,
+  FieldOrGroup,
+  JsonTree,
+} from '@react-awesome-query-builder/antd';
 import { Plus } from '@untitledui/icons';
-import { useCallback, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
+import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
+import {
+  getTreeConfig,
+  processEntityTypeFields,
+} from '../../../../../utils/AdvancedSearchUtils';
 import { getRuleFilterTree } from '../../../../../utils/PersonaAIContextUtils';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider';
+import searchClassBase from '../../../../../utils/SearchClassBase';
+import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import QueryBuilderWidgetV1 from '../../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
 import { SearchOutputType } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
@@ -27,6 +39,7 @@ interface RuleQueryBuilderFieldProps {
   queryFilter?: string;
   readonly?: boolean;
   onChange: (queryFilter: string, filterJsonTree?: string) => void;
+  onValidityChange?: (isValid: boolean) => void;
 }
 
 export const RuleQueryBuilderField = ({
@@ -35,9 +48,59 @@ export const RuleQueryBuilderField = ({
   queryFilter,
   readonly,
   onChange,
+  onValidityChange,
 }: RuleQueryBuilderFieldProps) => {
   const { t } = useTranslation();
   const [queryActions, setQueryActions] = useState<Actions>();
+  const [enrichedFields, setEnrichedFields] = useState<
+    Config['fields'] | undefined
+  >();
+  // getAllCustomProperties returns data for ALL entity types regardless of
+  // which entityType is currently selected — fetch once on mount and cache it
+  // in state. The second effect rebuilds enriched fields whenever entityType
+  // changes without issuing a redundant network request.
+  const [customProps, setCustomProps] = useState<Awaited<
+    ReturnType<typeof getAllCustomProperties>
+  > | null>(null);
+
+  useEffect(() => {
+    getAllCustomProperties()
+      .then(setCustomProps)
+      .catch(() => setCustomProps({}));
+  }, []);
+
+  useEffect(() => {
+    // Skip until the custom-property fetch resolves; the effect re-runs
+    // automatically once customProps transitions from null to the map.
+    if (customProps === null) {
+      return;
+    }
+
+    const subfields: Record<string, FieldOrGroup> = {};
+    Object.entries(customProps).forEach(([resEntityType, fields]) => {
+      processEntityTypeFields(
+        resEntityType,
+        fields,
+        subfields,
+        entityType,
+        SearchOutputType.ElasticSearch
+      );
+    });
+
+    const searchIndex =
+      searchClassBase.getEntityTypeSearchIndexMapping()[entityType];
+    const baseConfig = getTreeConfig({
+      searchIndex,
+      searchOutputType: SearchOutputType.ElasticSearch,
+      isExplorePage: false,
+    });
+    const nextFields = { ...baseConfig.fields };
+    if (!isEmpty(subfields) && 'subfields' in nextFields.extension) {
+      nextFields.extension = { ...nextFields.extension, subfields };
+    }
+    setEnrichedFields(nextFields);
+  }, [entityType, customProps]);
+
   const tree = useMemo(
     () => getRuleFilterTree(filterJsonTree, queryFilter),
     [filterJsonTree, queryFilter]
@@ -53,16 +116,20 @@ export const RuleQueryBuilderField = ({
 
   return (
     <DrawerPopupContainerProvider>
-      <QueryBuilderWidgetV1
-        entityType={entityType as EntityType}
-        getQueryActions={setQueryActions}
-        outputType={SearchOutputType.ElasticSearch}
-        readonly={readonly}
-        showCountPreview={false}
-        tree={tree}
-        value={queryFilter ?? ''}
-        onChange={handleChange}
-      />
+      <div className="persona-context-rule-builder">
+        <QueryBuilderWidgetV1
+          entityType={entityType as EntityType}
+          fields={enrichedFields}
+          getQueryActions={setQueryActions}
+          outputType={SearchOutputType.ElasticSearch}
+          readonly={readonly}
+          showCountPreview={false}
+          tree={tree}
+          value={queryFilter ?? ''}
+          onChange={handleChange}
+          onValidityChange={onValidityChange}
+        />
+      </div>
       {!readonly && (
         <Button
           className="m-t-sm tw:self-start"

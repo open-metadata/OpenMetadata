@@ -27,6 +27,9 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = sampler_logger()
 
+# Distinguishes an absent path from a field explicitly set to null.
+MISSING = object()
+
 
 class MessagingSampler(SamplerInterface):
     """
@@ -108,15 +111,42 @@ class MessagingSampler(SamplerInterface):
         """
 
     @staticmethod
-    def _resolve(msg: dict, dotted: str) -> object:
-        """Walk a dotted path into nested dicts, returning None when absent."""
+    def _walk(msg: dict, dotted: str) -> object:
+        """Walk a dotted path into nested dicts, returning MISSING when absent.
+
+        Schema paths interleave record *type* names with field names: the avro
+        parser emits ``Order.shipping.Address.city`` for a wire message shaped
+        ``{"shipping": {"city": ...}}``, naming the record type at every RECORD
+        level. Only the field names reach the wire, so a segment the current
+        object does not carry is a type name and is skipped.
+
+        The leaf is exempt from that skip. A missing leaf is a genuine miss, and
+        letting it through would resolve the column to its own container.
+        """
         cur: object = msg
-        for part in dotted.split("."):
-            if isinstance(cur, dict):
-                cur = cur.get(part)
-            else:
-                return None
+        parts = dotted.split(".")
+        for index, part in enumerate(parts):
+            if not isinstance(cur, dict):
+                return MISSING
+            if part in cur:
+                cur = cur[part]
+            elif index == len(parts) - 1:
+                return MISSING
         return cur
+
+    @staticmethod
+    def _resolve(msg: dict, dotted: str) -> object:
+        """Resolve a column path against a message, tolerating schema type names.
+
+        Column paths carry the schema's record type names because that is what
+        the auto-classification processor matches on, while the message on the
+        wire carries only field names. Consuming a segment whenever the message
+        does have it keeps a genuinely wrapped message winning over a same-named
+        sibling, and keeps a field explicitly set to null on its own value
+        instead of inheriting one.
+        """
+        value = MessagingSampler._walk(msg, dotted)
+        return None if value is MISSING else value
 
     def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
         column_objs = columns or self.get_columns()

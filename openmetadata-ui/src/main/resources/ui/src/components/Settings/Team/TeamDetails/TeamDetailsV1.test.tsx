@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
+import { TeamsPageTab } from './team.interface';
 import TeamDetailsV1 from './TeamDetailsV1';
 import { TeamDetailsProp } from './TeamDetailsV1.interface';
 
@@ -34,9 +35,10 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { id: 'admin-id' } }),
 }));
 
+let mockLocationSearch = '';
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
   __esModule: true,
-  default: () => ({ search: '' }),
+  default: () => ({ search: mockLocationSearch }),
 }));
 
 jest.mock(
@@ -56,8 +58,9 @@ jest.mock(
   })
 );
 
+const mockGetTabs = jest.fn().mockReturnValue([]);
 jest.mock('./TeamDetailsV1.utils', () => ({
-  getTabs: () => [],
+  getTabs: (...args: unknown[]) => mockGetTabs(...args),
 }));
 
 jest.mock('../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
@@ -185,5 +188,62 @@ describe('TeamDetailsV1 Import/Export permission gating', () => {
 
     expect(await screen.findByTestId('export-button')).toBeInTheDocument();
     expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+  });
+});
+
+describe('TeamDetailsV1 default tab selection', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetTabs.mockReturnValue([]);
+    mockLocationSearch = '';
+  });
+
+  it('should default to the first tab in the list when teamType is inconsistent with the tab list', async () => {
+    mockGetTabs.mockReturnValue([
+      { name: 'label.team-plural', key: TeamsPageTab.TEAMS },
+    ]);
+
+    // Corrupted data shape: root team named Organization but typed Group.
+    // The old teamType-based default picked the Users tab, which is not in
+    // the tab list, rendering no tab pane at all.
+    renderComponent({
+      currentTeam: {
+        ...ORGANIZATION_TEAM,
+        teamType: TeamType.Group,
+      } as Team,
+      childTeams: [ORGANIZATION_TEAM],
+    });
+
+    expect(await screen.findByText('TeamHierarchy')).toBeInTheDocument();
+  });
+
+  it('should default to the Users tab for a Group team', async () => {
+    mockGetTabs.mockReturnValue([
+      { name: 'label.user-plural', key: TeamsPageTab.USERS },
+      { name: 'label.asset-plural', key: TeamsPageTab.ASSETS },
+    ]);
+
+    renderComponent({
+      currentTeam: {
+        ...ORGANIZATION_TEAM,
+        name: 'group-team',
+        teamType: TeamType.Group,
+      } as Team,
+    });
+
+    expect(await screen.findByText('UserTab')).toBeInTheDocument();
+  });
+
+  it('should never fall back when an explicit activeTab is in the URL, even if it is not in the tab list yet', async () => {
+    // Plugin-contributed tabs register asynchronously; an explicit URL tab
+    // must be honored as-is rather than redirected while tabs populate.
+    mockLocationSearch = '?activeTab=policies';
+    mockGetTabs.mockReturnValue([
+      { name: 'label.team-plural', key: TeamsPageTab.TEAMS },
+    ]);
+
+    renderComponent({ childTeams: [ORGANIZATION_TEAM] });
+
+    expect(screen.queryByText('TeamHierarchy')).not.toBeInTheDocument();
   });
 });

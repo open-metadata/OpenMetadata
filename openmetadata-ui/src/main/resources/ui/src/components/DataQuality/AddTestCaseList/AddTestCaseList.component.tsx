@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
 import VirtualList from 'rc-virtual-list';
@@ -62,6 +63,7 @@ import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -270,8 +272,12 @@ export const AddTestCaseList = ({
       try {
         setIsLoading(true);
         const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
+        // The search/list endpoint rejects `* && filter`; without free text,
+        // testCaseFilters is already the complete scoped query.
         const q = testCaseFilters
-          ? `${globalSearch} && ${testCaseFilters}`
+          ? searchText
+            ? `${globalSearch} && ${testCaseFilters}`
+            : testCaseFilters
           : globalSearch;
 
         const columnNamesFromKeys =
@@ -328,6 +334,8 @@ export const AddTestCaseList = ({
             : (prevItems) => [...prevItems, ...testCaseResponse.data]
         );
         setPageNumber(page);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }

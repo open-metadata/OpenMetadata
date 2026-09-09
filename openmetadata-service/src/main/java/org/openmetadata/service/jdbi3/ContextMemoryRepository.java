@@ -26,10 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -42,6 +40,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+/**
+ * Every memory is written to the search index regardless of its {@code shareConfig.visibility}, and
+ * privacy is enforced at query time by {@link
+ * org.openmetadata.service.search.security.ContextMemorySearchVisibility}. Indexing only org-wide
+ * memories would hide a user's own PRIVATE memories and the SHARED ones they are a principal of
+ * from {@code GET /contextCenter/memories}, which serves the ContextCenter listing from search
+ * whenever it is given a query, filter, sort or offset.
+ */
 @Slf4j
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
@@ -66,31 +72,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
-  }
-
-  /**
-   * Only org-wide ({@link MemoryVisibility#ENTITY}) memories are searchable; PRIVATE and SHARED
-   * memories (and the {@code null}/unset default, which is PRIVATE) are kept out of the search
-   * index. This live-write check and {@link #getReindexFilter()} (the bulk-reindex equivalent
-   * expressed as a DB query) are the primary index-time enforcement points. A query-time
-   * defense-in-depth filter still protects restricted documents written before this policy was
-   * introduced. Owners and shared principals read restricted memories through the REST {@code
-   * /contextCenter/memories} endpoints (see {@link
-   * org.openmetadata.service.resources.context.ContextMemoryVisibility}).
-   */
-  @Override
-  public boolean isSearchIndexable(EntityInterface entity) {
-    boolean searchable = false;
-    if (entity instanceof ContextMemory memory && memory.getShareConfig() != null) {
-      searchable = memory.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
-    }
-    return searchable;
-  }
-
-  @Override
-  public ListFilter getReindexFilter() {
-    return new ListFilter(Include.ALL)
-        .addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, MemoryVisibility.ENTITY.value());
   }
 
   @Override
@@ -208,8 +189,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> idsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
       idsByType
-          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .computeIfAbsent(fromType, type -> new HashSet<>())
           .add(UUID.fromString(record.getFromId()));
     }
     Map<String, EntityReference> refById = new HashMap<>();

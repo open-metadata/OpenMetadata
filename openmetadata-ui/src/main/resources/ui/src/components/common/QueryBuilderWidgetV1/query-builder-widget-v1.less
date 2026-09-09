@@ -275,3 +275,27 @@
     display: none;
   }
 }
+
+// Persona rule editor (io.collate PersonaAIContext): push the AND/OR conjunction
+// toggle up to the group header (as the workflow / JSONLogic builder does)
+// instead of the centered default that overlaps the condition rows. Scoped to
+// the `.persona-context-rule-builder` wrapper so other elasticsearch query
+// builders (ScopeFilter, DataContract) are unaffected.
+.persona-context-rule-builder {
+  .query-builder-card.elasticsearch .query-builder-container {
+    .group-or-rule-container.group-container
+      > .group.group-or-rule
+      > .group--header {
+      order: 0;
+
+      .group--conjunctions {
+        top: -75px;
+      }
+
+      // The persona editor renders its own "Add condition" button below.
+      .action.action--ADD-RULE {
+        display: none;
+      }
+    }
+  }
+}

@@ -103,14 +103,8 @@ const ActivityFeedCardNew = ({
 
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const {
-    selectedThread,
-    postFeed,
-    updateFeed,
-    isPostsLoading,
-    postActivityComment,
-    activityThread,
-  } = useActivityFeedProvider();
+  const { selectedThread, postFeed, updateFeed, isPostsLoading } =
+    useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [, , user] = useUserProfile({
@@ -123,16 +117,12 @@ const ActivityFeedCardNew = ({
   }, [feedId]);
 
   const onSave = (message: string) => {
-    if (isActivityEvent && activity) {
-      postActivityComment(message, activity).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-      });
-    } else {
-      postFeed(message, selectedThread?.id ?? '').catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
-    }
+    // Change-event activities are read-only (no discussion thread); only
+    // conversation threads accept replies.
+    postFeed(message, selectedThread?.id ?? '').catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+      // Added block for sonar code smell
+    });
     setShowFeedEditor(false);
   };
 
@@ -253,12 +243,12 @@ const ActivityFeedCardNew = ({
   };
 
   const posts = useMemo(() => {
-    if (!showThread) {
+    // Activities are read-only change events — never render replies for them.
+    if (!showThread || isActivityEvent) {
       return null;
     }
 
-    // For activity events, use activityThread; for regular feeds, use feed
-    const threadToDisplay = isActivityEvent ? activityThread : feed;
+    const threadToDisplay = feed;
 
     if (!threadToDisplay) {
       return null;
@@ -293,14 +283,7 @@ const ActivityFeedCardNew = ({
         ))}
       </Col>
     );
-  }, [
-    feed,
-    showThread,
-    closeFeedEditor,
-    isPostsLoading,
-    isActivityEvent,
-    activityThread,
-  ]);
+  }, [feed, showThread, closeFeedEditor, isPostsLoading, isActivityEvent]);
 
   const feedMessage = useMemo(() => {
     if (isActivityEvent) {
@@ -532,7 +515,7 @@ const ActivityFeedCardNew = ({
           )}
         </Space>
       </Space>
-      {(showThread || isOpenInDrawer) && (
+      {!isActivityEvent && (showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
           {(showActivityFeedEditor || isOpenInDrawer) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">

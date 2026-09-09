@@ -60,6 +60,11 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
   @JsonProperty private Long leakDetectionThreshold;
 
+  @JsonProperty
+  @Min(1)
+  @Max(3600)
+  private int queryTimeoutSeconds = 300;
+
   @JsonProperty private boolean autoCommit = true;
 
   @JsonProperty private boolean cachePrepStmts = true;

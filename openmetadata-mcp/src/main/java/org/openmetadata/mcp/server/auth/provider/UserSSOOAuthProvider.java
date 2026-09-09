@@ -113,6 +113,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Cryptographically secure random number generator for authorization codes and tokens
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+  // Sent as the "iss" parameter on authorization responses. Volatile because the transport provider
+  // sets it again whenever the configured base URL changes while the server is running.
+  private volatile String issuer;
+
   public UserSSOOAuthProvider(
       JWTTokenGenerator jwtGenerator, AuthenticatorHandler credentialAuthenticator) {
     this.jwtGenerator = jwtGenerator;
@@ -125,6 +129,16 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.revocationHandler = new RevocationHandler(tokenRepository);
 
     LOG.info("Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth)");
+  }
+
+  @Override
+  public String getIssuer() {
+    return issuer;
+  }
+
+  @Override
+  public void setIssuer(String issuer) {
+    this.issuer = issuer;
   }
 
   public AuthenticatorHandler getCredentialAuthenticator() {
@@ -574,7 +588,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     if (pendingRequest.mcpState() != null) {
       queryParams.put("state", pendingRequest.mcpState());
     }
-    String redirectUrl = UriUtils.constructRedirectUri(pendingRequest.redirectUri(), queryParams);
+    String redirectUrl =
+        UriUtils.constructAuthorizationResponseUri(
+            pendingRequest.redirectUri(), queryParams, issuer);
 
     // Serve an HTML success page that auto-redirects to the client callback.
     // A raw 302 redirect leaves the SSO provider's login page visible in the browser

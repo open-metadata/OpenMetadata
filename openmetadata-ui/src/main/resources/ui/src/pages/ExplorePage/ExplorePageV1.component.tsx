@@ -29,6 +29,7 @@ import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
+  ROUTES,
 } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -51,7 +52,7 @@ import {
   parseSearchParams,
 } from '../../utils/ExplorePureUtils';
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
-import { getExplorePath } from '../../utils/RouterUtils';
+import { getExplorePath, getExploreTabPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
@@ -145,6 +146,13 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortValueChange = (sortVal: string) => {
     navigate({
+      // When tab is present, build the pathname from the route param rather
+      // than the router's current location: a search-only navigate is *relative*
+      // and can resolve against a stale route-match context if another component
+      // fired a pushState moments earlier.  When tab is absent (bare /explore
+      // route) fall back to the static ROUTES.EXPLORE constant so the pathname
+      // is never derived from any router state.
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
@@ -155,6 +163,7 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortOrderChange = (sortOrderVal: string) => {
     navigate({
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
@@ -226,13 +235,14 @@ const ExplorePageV1: FC<unknown> = () => {
   const handleQuickFilterChange = useCallback(
     (quickFilter?: QueryFilterInterface) => {
       navigate({
+        pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
         }),
       });
     },
-    [parsedSearch]
+    [parsedSearch, tab]
   );
 
   // A tree click may update the browse location AND the Type quick filter
@@ -248,6 +258,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setAdvancedSearchQuickFilters(quickFilter);
       }
       navigate({
+        pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
         search: Qs.stringify({
           ...parsedSearch,
           browsePath: isEmpty(updatedBrowseFields)
@@ -257,13 +268,14 @@ const ExplorePageV1: FC<unknown> = () => {
         }),
       });
     },
-    [parsedSearch]
+    [parsedSearch, tab]
   );
 
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
     navigate({
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,

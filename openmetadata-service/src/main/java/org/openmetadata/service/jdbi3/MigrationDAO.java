@@ -19,6 +19,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface MigrationDAO {
   @ConnectionAwareSqlQuery(
@@ -73,7 +74,7 @@ public interface MigrationDAO {
       @Bind("version") String version,
       @Bind("migrationFileName") String migrationFileName,
       @Bind("checksum") String checksum,
-      @Bind("metrics") String metrics);
+      @BindJson("metrics") String metrics);
 
   @ConnectionAwareSqlUpdate(
       value =

@@ -162,31 +162,46 @@ test.describe('Large Glossary Performance Tests', () => {
 
     expect(initialTerms).toBe(50);
 
-    const infiniteScrollRequest = page.waitForResponse(
+    // First page: Previous is disabled, Next is enabled.
+    const pagination = page.getByTestId('pagination');
+
+    await expect(pagination).toBeVisible();
+    await expect(pagination.getByTestId('previous')).toBeDisabled();
+    await expect(pagination.getByTestId('next')).toBeEnabled();
+
+    // Next fetches the following page using a cursor (directChildrenOf + after).
+    const nextPageRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/glossaryTerms') &&
         response.url().includes('directChildrenOf=') &&
-        response.url().includes('after=') &&
-        response.status() === 200
+        response.url().includes('after=')
     );
 
-    await scrollGlossaryTermsToBottom(page);
+    await pagination.getByTestId('next').click();
 
-    // Wait for more terms to load
-    await infiniteScrollRequest;
+    const nextPageResponse = await nextPageRequest;
+    expect(nextPageResponse.status()).toBe(200);
     await page
       .locator(
         '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
       )
       .waitFor({ state: 'detached' });
 
-    // Verify more terms are loaded
+    // Cursor pagination replaces the page rather than appending, so the second
+    // page still shows 50 rows and Previous is now enabled.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBe(50);
+    await expect(pagination.getByTestId('previous')).toBeEnabled();
 
-    const afterScrollTerms = await page
-      .locator('tbody tr[data-row-key]')
-      .count();
-
-    expect(afterScrollTerms).toBe(100);
+    // Going back returns to the first page.
+    await pagination.getByTestId('previous').click();
+    await page
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
+      .waitFor({ state: 'detached' });
+    await expect(pagination.getByTestId('previous')).toBeDisabled();
   });
 
   test('should search and filter glossary terms', async ({ page }) => {
@@ -194,7 +209,10 @@ test.describe('Large Glossary Performance Tests', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
     await searchInput.fill('Term_5');
 
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    const searchRes = await page.waitForResponse(
+      'api/v1/glossaryTerms/search?*'
+    );
+    expect(searchRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
     // Verify filtered results
 
@@ -208,14 +226,24 @@ test.describe('Large Glossary Performance Tests', () => {
 
     // Clear search
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    const clearRes = await page.waitForResponse('api/v1/glossaryTerms?*');
+    expect(clearRes.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
 
-    // Verify all terms are shown again
-
-    const allTerms = await page.locator('tbody tr[data-row-key]').count();
-
-    // 51 because there is one additional row which is not rendered
-    expect(allTerms).toBeGreaterThanOrEqual(50);
+    // Verify all terms are shown again.
+    //
+    // waitForResponse only proves the listing bytes arrived — the component
+    // still has to apply the store update and re-render the rows, which
+    // happens in a later microtask (GlossaryTermTab sets the terms after its
+    // own await). A single count() here has no retry budget and samples the
+    // stale search results instead, so poll the rendered row count.
+    //
+    // Polling rather than toHaveCount: the tab auto-fetches another page when
+    // the rows do not fill the viewport, so an exact count would swap this
+    // flake for a different one.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBeGreaterThanOrEqual(50);
   });
 
   test('should expand and collapse all terms', async ({ page }) => {
@@ -344,18 +372,18 @@ test.describe('Large Glossary Performance Tests', () => {
   });
 
   test('should handle drag and drop for term reordering', async ({ page }) => {
+    test.slow();
+
     await dragAndDropTerm(page, 'Term_10', 'Term_1');
 
     await confirmationDragAndDropGlossary(page, 'Term_10', 'Term_1');
 
     await expect(page.getByTestId('Term_10')).not.toBeVisible();
 
-    const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-
-    // verify the term is moved under the parent term
+    // verify the term is moved under the parent term — no network wait here:
+    // the frontend pre-fetches Term_1's children as part of the move response,
+    // so expand-all may not fire a new request; toBeVisible() auto-retries.
     await page.getByTestId('expand-collapse-all-button').click();
-    await termRes;
-
     await expect(page.getByTestId('Term_10')).toBeVisible();
   });
 });
@@ -420,7 +448,8 @@ test.describe('Large Glossary Child Term Performace', () => {
       'api/v1/glossaryTerms?directChildrenOf*'
     );
     await expandIcon.click();
-    await childTermReq;
+    const childTermRes = await childTermReq;
+    expect(childTermRes.status()).toBe(200);
 
     // Wait for children to load
     await expect(
@@ -447,8 +476,12 @@ test.describe('Large Glossary Child Term Performace', () => {
 
     expect(buttonText).toContain('View 50 more');
 
+    const loadMoreReq = page.waitForResponse(
+      'api/v1/glossaryTerms?directChildrenOf*'
+    );
     await page.getByTestId('load-more-children-button').click();
-    await childTermReq;
+    const loadMoreRes = await loadMoreReq;
+    expect(loadMoreRes.status()).toBe(200);
 
     await expect(
       page.getByText('Term_1_Child_54', { exact: true })

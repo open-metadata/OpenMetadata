@@ -21,8 +21,9 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const ARTICLE_PAGE_ROUTE = '/context-center/articles/:fqn';
+const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
+const ARTICLE_PAGE_ROUTE = `${ARTICLE_PATH_PREFIX}${FQN_PLACEHOLDER}`;
 
 export const deletePage = async (
   page: Page,
@@ -487,7 +488,9 @@ export const getKnowledgePageCardEntityIdentifier = async (
 ): Promise<string> => {
   const href =
     (await card.getByTestId('knowledge-page-link').getAttribute('href')) ?? '';
-  const fqn = href.split('/knowledge-center/').pop() ?? '';
+  // getArticlePath builds this href from the Context Center route; splitting on the old
+  // /knowledge-center/ prefix never matched, so the fallback returned the whole URL.
+  const fqn = href.split(ARTICLE_PATH_PREFIX).pop() ?? '';
   const displayText = (
     await card.getByTestId('knowledge-card-title').textContent()
   )?.trim();
@@ -606,6 +609,27 @@ export const applyTextFormatting = async (
   format: 'bold' | 'italic' | 'code'
 ): Promise<void> => {
   await page.keyboard.press(SHORTCUTS[format]);
+};
+
+/**
+ * Selects text inside the editor and waits until ProseMirror has actually
+ * ingested the selection.
+ *
+ * `locator.selectText()` assigns only the *DOM* selection. ProseMirror picks
+ * that up asynchronously through its DOM observer, so a formatting shortcut
+ * pressed immediately afterwards is applied against the previous (collapsed)
+ * editor selection: it toggles a stored mark, the range is never wrapped, and
+ * no <em>/<code> node is produced. Selecting via a keyboard shortcut does not
+ * have this problem, which is why the bold steps never flake.
+ *
+ * The bubble menu is rendered from `state.selection.empty`, so its appearance
+ * proves the editor state now holds the range. Requiring it hidden first makes
+ * this an edge trigger rather than a match against a stale selection.
+ */
+export const selectTextInEditor = async (page: Page, text: string) => {
+  await page.waitForSelector('.menu-wrapper', { state: 'hidden' });
+  await page.getByText(text).selectText();
+  await page.waitForSelector('.menu-wrapper', { state: 'visible' });
 };
 
 export const selectAllText = async (page: Page) => {

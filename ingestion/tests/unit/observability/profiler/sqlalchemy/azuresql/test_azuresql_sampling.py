@@ -185,9 +185,8 @@ class SampleTest(TestCase):
             return TableData(columns=[], rows=[])
 
         with (
-            patch.object(
-                sampler,
-                "_get_temporal_column_names",
+            patch(
+                "metadata.sampler.sqlalchemy.azuresql.sampler.get_temporal_column_names",
                 return_value=frozenset({"ValidFrom", "ValidTo"}),
             ),
             patch.object(
@@ -203,11 +202,11 @@ class SampleTest(TestCase):
         assert "ValidTo" not in passed_names
         assert "id" in passed_names
 
-    def test_all_columns_filtered_passes_empty_list_not_original(self, sampler_mock):
+    def test_all_columns_filtered_returns_no_sample(self, sampler_mock):
         """
-        When every column is a temporal period column, sqa_columns is [].
-        The empty list must be passed to super(), not the original column list —
-        otherwise the filter is bypassed entirely (falsy empty list bug).
+        When the filter empties the column list there is nothing left to sample.
+        Handing [] to super() reads as "caller gave me nothing, use them all", which
+        puts the filtered columns straight back into the query.
         """
         from unittest.mock import MagicMock, patch
 
@@ -227,29 +226,46 @@ class SampleTest(TestCase):
         valid_to_col.name = "ValidTo"
         valid_to_col.type = DateTime()
 
-        received = {}
-
-        def capture_fetch(cols=None):
-            received["columns"] = cols
-            from metadata.generated.schema.entity.data.table import TableData
-
-            return TableData(columns=[], rows=[])
-
         with (
-            patch.object(
-                sampler,
-                "_get_temporal_column_names",
+            patch(
+                "metadata.sampler.sqlalchemy.azuresql.sampler.get_temporal_column_names",
                 return_value=frozenset({"ValidFrom", "ValidTo"}),
             ),
-            patch.object(
-                SQASampler,
-                "fetch_sample_data",
-                side_effect=capture_fetch,
-            ),
+            patch.object(SQASampler, "fetch_sample_data") as super_fetch,
         ):
-            sampler.fetch_sample_data(columns=[valid_from_col, valid_to_col])
+            table_data = sampler.fetch_sample_data(columns=[valid_from_col, valid_to_col])
 
-        assert received["columns"] == [], "Expected empty list when all columns are filtered, not the original list"
+        assert table_data.columns == []
+        assert table_data.rows == []
+        super_fetch.assert_not_called()
+
+    def test_all_columns_unsupported_by_pyodbc_returns_no_sample(self, sampler_mock):
+        """A table of only geography columns must not un-filter back into the pyodbc
+        'ODBC SQL type -151 is not yet supported' crash NOT_COMPUTE_PYODBC guards against.
+        """
+        from unittest.mock import MagicMock, patch
+
+        geography_col = MagicMock()
+        geography_col.name = "shape"
+        geography_col.type.__class__.__name__ = "SQASGeography"
+
+        sampler = AzureSQLSampler(
+            service_connection_config=self.azuresql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+        )
+
+        with (
+            patch(
+                "metadata.sampler.sqlalchemy.azuresql.sampler.get_temporal_column_names",
+                return_value=frozenset(),
+            ),
+            patch.object(SQASampler, "fetch_sample_data") as super_fetch,
+        ):
+            table_data = sampler.fetch_sample_data(columns=[geography_col])
+
+        assert table_data.columns == []
+        super_fetch.assert_not_called()
 
     def test_sampling_with_partition(self, sampler_mock):
         """

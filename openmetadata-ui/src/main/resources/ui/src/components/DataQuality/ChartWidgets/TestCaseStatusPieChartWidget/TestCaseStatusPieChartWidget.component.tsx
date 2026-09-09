@@ -67,14 +67,14 @@ const TestCaseStatusPieChartWidget = ({
     (_entry: CustomPieChartData, index: number) => {
       const status = TEST_CASE_STATUS_PIE_SEGMENT_ORDER[index];
       if (status) {
-        const redirectPath = getTestCaseTabPath(status);
+        const redirectPath = getTestCaseTabPath(status, chartFilter);
         navigate({
           ...redirectPath,
           pathname: testCasesPath ?? redirectPath.pathname,
         });
       }
     },
-    [navigate, testCasesPath]
+    [chartFilter, navigate, testCasesPath]
   );
 
   const { data, chartLabel } = useMemo(

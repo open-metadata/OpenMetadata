@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -160,6 +162,61 @@ class AuthorizationHandlerTest {
     assertThat(response.isRedirect()).isTrue();
     assertThat(response.getRedirectUrl()).contains("code=auth-code-123");
     assertThat(response.getRedirectUrl()).contains("state=state123");
+  }
+
+  @Test
+  void testSuccessfulAuthCodeGeneration_includesIssuerParameter()
+      throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getIssuer()).thenReturn("https://om.example.com/mcp");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope(any())).thenReturn(null);
+    when(provider.authorize(eq(client), any()))
+        .thenReturn(CompletableFuture.completedFuture("auth-code-123"));
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(validParams()).join();
+
+    assertThat(response.getRedirectUrl())
+        .contains("iss=" + URLEncoder.encode("https://om.example.com/mcp", StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testErrorRedirect_includesIssuerParameter()
+      throws InvalidRedirectUriException, InvalidScopeException {
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getIssuer()).thenReturn("https://om.example.com/mcp");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope("admin")).thenThrow(new InvalidScopeException("Not allowed"));
+
+    Map<String, String> params = validParams();
+    params.put("scope", "admin");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.getRedirectUrl()).contains("error=invalid_scope");
+    assertThat(response.getRedirectUrl())
+        .contains("iss=" + URLEncoder.encode("https://om.example.com/mcp", StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testUnresolvedIssuer_omitsIssuerParameter()
+      throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
+    // Before the base URL is resolved the issuer is null. RFC 9207 clients must not be handed an
+    // empty iss they would then fail to match against the recorded issuer.
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getIssuer()).thenReturn(null);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope(any())).thenReturn(null);
+    when(provider.authorize(eq(client), any()))
+        .thenReturn(CompletableFuture.completedFuture("auth-code-123"));
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(validParams()).join();
+
+    assertThat(response.getRedirectUrl()).contains("code=auth-code-123");
+    assertThat(response.getRedirectUrl()).doesNotContain("iss=");
   }
 
   @Test

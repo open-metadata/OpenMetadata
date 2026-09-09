@@ -24,7 +24,11 @@ import {
 import { AppMode } from '../generated/type/personaPreferences';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
-import { readAppModeSession, useAppModeStore } from './useAppMode';
+import {
+  readAppModeSession,
+  setAppDefaultMode,
+  useAppModeStore,
+} from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 import { useResolvedAppMode } from './useResolvedAppMode';
 
@@ -43,12 +47,14 @@ const seedUser = (opts?: {
   personaName?: string;
   authenticated?: boolean;
   applicationsLoaded?: boolean;
+  omitPersonaFqn?: boolean;
 }) => {
   const {
     personaId,
     personaName,
     authenticated = true,
     applicationsLoaded = true,
+    omitPersonaFqn = false,
   } = opts ?? {};
   useApplicationStore.setState({
     isAuthenticated: authenticated,
@@ -58,7 +64,14 @@ const seedUser = (opts?: {
           id: USER_NAME,
           name: USER_NAME,
           defaultPersona: personaId
-            ? { id: personaId, name: personaName ?? 'p', type: 'persona' }
+            ? {
+                id: personaId,
+                name: personaName ?? 'p',
+                ...(omitPersonaFqn
+                  ? {}
+                  : { fullyQualifiedName: personaName ?? 'p' }),
+                type: 'persona',
+              }
             : undefined,
         } as unknown as ReturnType<
           typeof useApplicationStore.getState
@@ -91,7 +104,11 @@ const seedUserPref = (appMode: string | null) => {
 };
 
 const seedSessionTuple = (
-  tuple: { personaAppMode: string | null; mode: string } | null
+  tuple: {
+    personaAppMode: string | null;
+    mode: string;
+    source?: 'boot' | 'resolver' | 'manual';
+  } | null
 ) => {
   if (tuple === null) {
     globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
@@ -143,6 +160,7 @@ describe('useResolvedAppMode', () => {
     seedSessionTuple(null);
     seedHint(null);
     seedRegistry(false);
+    setAppDefaultMode(null);
     usePersistentStorage.setState({ preferences: {} } as never);
     seedUser({ authenticated: false });
     getDocumentByFQN.mockReset();
@@ -169,6 +187,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -185,6 +204,62 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: AI_APP_MODE,
         mode: AI_APP_MODE,
+        source: 'resolver',
+      });
+    });
+  });
+
+  it('rung 4 (user pref) beats rung 5 (persona) — both set, no session', async () => {
+    // User has "remembered" Classic via the switcher; persona says AI.
+    // The user's persisted choice beats the admin's group default.
+    seedUser({ personaId: 'persona-1', personaName: 'p' });
+    seedRegistry(true);
+    seedUserPref(DEFAULT_APP_MODE);
+    getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.AI));
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: AI_APP_MODE,
+        mode: DEFAULT_APP_MODE,
+        source: 'resolver',
+      });
+    });
+  });
+
+  it('rung 5 (persona) beats rung 6 (tenant default) — persona set, no user pref, tenant Classic', async () => {
+    seedUser({ personaId: 'persona-1', personaName: 'p' });
+    seedRegistry(true);
+    setAppDefaultMode(DEFAULT_APP_MODE);
+    getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.AI));
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: AI_APP_MODE,
+        mode: AI_APP_MODE,
+        source: 'resolver',
+      });
+    });
+  });
+
+  it('rung 6 (tenant default) beats rung 7 (DEFAULT_APP_MODE) — no user pref, no persona, tenant AI', async () => {
+    seedUser({});
+    seedRegistry(true);
+    setAppDefaultMode(AI_APP_MODE);
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -205,6 +280,35 @@ describe('useResolvedAppMode', () => {
     expect(readAppModeSession()).toBeNull();
   });
 
+  it('does not deadlock when the default persona has no fullyQualifiedName (regression guard)', async () => {
+    // A persona with an id/name but no fullyQualifiedName leaves the
+    // docStore query permanently disabled (personaFqn resolves to null).
+    // hasDefaultPersona must fold that in, or the effect's
+    // `hasDefaultPersona && isPersonaPending` guard would wait forever
+    // on a query that can never settle (React Query v5 keeps a disabled
+    // query's isPending === true), and no app mode would ever be written.
+    seedUser({
+      personaId: 'persona-1',
+      personaName: 'p',
+      omitPersonaFqn: true,
+    });
+    seedRegistry(true);
+    seedUserPref(AI_APP_MODE);
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: AI_APP_MODE,
+        source: 'resolver',
+      });
+    });
+
+    expect(getDocumentByFQN).not.toHaveBeenCalled();
+  });
+
   it('falls back to user preference when persona has no appMode', async () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
@@ -218,15 +322,15 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
 
-  it('respects an existing session tuple when persona appMode matches its snapshot', async () => {
+  it('respects a valid session tuple regardless of what persona says (rung 1 wins)', async () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
-    // User previously switched to Classic during this tab (personaAppMode
-    // snapshot stored as `ai` — the persona still says AI).
+    // User manually switched to Classic during this tab.
     seedSessionTuple({ personaAppMode: AI_APP_MODE, mode: DEFAULT_APP_MODE });
     useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
     getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.AI));
@@ -237,7 +341,7 @@ describe('useResolvedAppMode', () => {
       expect(getDocumentByFQN).toHaveBeenCalled();
     });
 
-    // Tuple matches persona snapshot — session sticks, mode unchanged.
+    // Session wins even though persona (AI) disagrees with the tuple's mode.
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
     expect(readAppModeSession()).toEqual({
       personaAppMode: AI_APP_MODE,
@@ -245,11 +349,44 @@ describe('useResolvedAppMode', () => {
     });
   });
 
-  it('overrides an existing session tuple when persona appMode differs from its snapshot', async () => {
+  it('overrides a `source: "boot"` session tuple with the persona-based candidate', async () => {
+    // The classic rung-4 case: `AuthProvider.hydrateAndResolveAppMode`
+    // wrote `default` at boot because persona wasn't known
+    // synchronously; the resolver now has persona=AI and MUST
+    // override the boot-provisional tuple. Under the pre-provisional
+    // design this override was blocked by `if (validSession) return`,
+    // and Rung 4 could not be satisfied without deferring the boot
+    // write entirely (which broke fast-boot rendering).
+    seedUser({ personaId: 'persona-1', personaName: 'p' });
+    seedRegistry(true);
+    seedSessionTuple({
+      personaAppMode: null,
+      mode: DEFAULT_APP_MODE,
+      source: 'boot',
+    });
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+    getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.AI));
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: AI_APP_MODE,
+        mode: AI_APP_MODE,
+        source: 'resolver',
+      });
+    });
+  });
+
+  it('keeps a valid session tuple even when persona changed since it was written (regression guard)', async () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
     // Prior tuple recorded `null` for personaAppMode (no persona at time
-    // of write) — persona now says Classic. Should snap to Classic.
+    // of write); persona now says Classic. The old behaviour clobbered
+    // the tuple in this asymmetric case — new behaviour keeps it, so
+    // the user's manual `ai` switch survives an admin persona edit
+    // made after the click.
     seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
     useAppModeStore.setState({ currentMode: AI_APP_MODE });
     getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.Classic));
@@ -257,11 +394,13 @@ describe('useResolvedAppMode', () => {
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
-      expect(readAppModeSession()).toEqual({
-        personaAppMode: DEFAULT_APP_MODE,
-        mode: DEFAULT_APP_MODE,
-      });
+      expect(getDocumentByFQN).toHaveBeenCalled();
+    });
+
+    expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    expect(readAppModeSession()).toEqual({
+      personaAppMode: null,
+      mode: AI_APP_MODE,
     });
   });
 
@@ -310,6 +449,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -371,6 +511,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -389,6 +530,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -410,6 +552,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: DEFAULT_APP_MODE,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -426,6 +569,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -470,6 +614,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
 

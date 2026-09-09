@@ -75,7 +75,11 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
   if (!hasNonDefaultMode) {
     return (
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings App Mode Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.app-mode'),
+        })}>
         <div data-testid="app-mode-unavailable-placeholder">
           <ErrorPlaceHolder
             className="m-t-lg"
@@ -91,7 +95,11 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings App Mode Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.app-mode'),
+        })}>
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader

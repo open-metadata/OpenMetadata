@@ -17,11 +17,15 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import React, { act } from 'react';
+import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { restoreTestCase } from '../../../../rest/testAPI';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
@@ -193,8 +197,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTable.Cell = ({
     children,
     className,
-  }: React.PropsWithChildren<{ className?: string }>) => (
-    <td className={className}>{children}</td>
+    ...props
+  }: React.ComponentPropsWithoutRef<'td'>) => (
+    <td className={className} {...props}>
+      {children}
+    </td>
   );
 
   const MockBox = ({
@@ -264,6 +271,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
+  restoreTestCase: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
@@ -364,6 +377,28 @@ jest.mock('../../../common/DeleteModal/DeleteModal', () =>
       </div>
     ) : null
   )
+);
+
+jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+        visible ? (
+          <div>
+            <p>DeleteEntityModal</p>
+            <span data-testid="allow-soft-delete">
+              {String(Boolean(allowSoftDelete))}
+            </span>
+            <button
+              data-testid="soft-delete-confirm"
+              onClick={afterDeleteAction}>
+              delete
+            </button>
+            <button onClick={onCancel}>cancel</button>
+          </div>
+        ) : null
+    )
 );
 
 jest.mock(
@@ -538,6 +573,62 @@ describe('DataQualityTab test', () => {
     expect(deleteButton).toBeInTheDocument();
   });
 
+  it('Should keep action dropdowns aligned when dimensions are present', async () => {
+    const dimensionalTestCase: TestCase = {
+      ...MOCK_TEST_CASE[0],
+      id: 'dimensional-test-case',
+      name: 'dimensional_test_case',
+      fullyQualifiedName: 'sample_data.dimensional_test_case',
+      dimensionColumns: ['country'],
+    };
+    const standardTestCase: TestCase = {
+      ...MOCK_TEST_CASE[1],
+      id: 'standard-test-case',
+      name: 'standard_test_case',
+      fullyQualifiedName: 'sample_data.standard_test_case',
+      dimensionColumns: undefined,
+    };
+
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          testCases={[dimensionalTestCase, standardTestCase]}
+        />
+      );
+    });
+
+    const dimensionalAction = await screen.findByTestId(
+      `action-dropdown-${dimensionalTestCase.name}`
+    );
+    const standardAction = await screen.findByTestId(
+      `action-dropdown-${standardTestCase.name}`
+    );
+
+    expect(
+      screen.getByTestId(`dimension-count-${dimensionalTestCase.name}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`dimension-count-${standardTestCase.name}`)
+    ).not.toBeInTheDocument();
+    expect(dimensionalAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(standardAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(dimensionalAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
+    expect(standardAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
+  });
+
   it('Should show loading skeletons when isLoading is true', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} isLoading />);
@@ -640,7 +731,10 @@ describe('DataQualityTab test', () => {
       );
     });
 
-    expect(await screen.findByTestId('next-previous')).toBeInTheDocument();
+    const pagination = await screen.findByTestId('next-previous');
+
+    expect(pagination).toBeInTheDocument();
+    expect(pagination.parentElement).not.toHaveClass('dq-pagination-sticky');
   });
 
   it('Should not show NextPrevious when showPagination is false', async () => {
@@ -1223,6 +1317,210 @@ describe('DataQualityTab test', () => {
       expect(
         screen.queryByTestId('incident-manager-status')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('soft delete and restore', () => {
+    const deletedTestCase = {
+      ...MOCK_TEST_CASE[0],
+      name: 'deleted_test_case',
+      deleted: true,
+    };
+
+    it('should use soft deletion only when requested by the caller', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[firstRowData]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${firstRowData.name}`)
+      );
+      fireEvent.click(await screen.findByTestId(`delete-${firstRowData.name}`));
+
+      expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
+      expect(screen.getByTestId('allow-soft-delete')).toHaveTextContent('true');
+      expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
+    });
+
+    it('should show restore as the only action for a deleted test case', async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+
+      expect(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`edit-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`delete-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should restore a deleted test case and refresh the current view', async () => {
+      const afterDeleteAction = jest.fn();
+      render(
+        <DataQualityTab
+          {...mockProps}
+          afterDeleteAction={afterDeleteAction}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id)
+      );
+
+      expect(afterDeleteAction).toHaveBeenCalled();
+    });
+
+    it('should preserve the newer restore loading state when an older restore finishes', async () => {
+      let resolveFirstRestore: (() => void) | undefined;
+      let resolveSecondRestore: (() => void) | undefined;
+      const afterDeleteAction = jest.fn();
+      const secondDeletedTestCase = {
+        ...deletedTestCase,
+        id: 'second-deleted-test-case-id',
+        name: 'second_deleted_test_case',
+      };
+      (restoreTestCase as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveFirstRestore = () => resolve();
+            })
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveSecondRestore = () => resolve();
+            })
+        );
+      render(
+        <DataQualityTab
+          {...mockProps}
+          afterDeleteAction={afterDeleteAction}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase, secondDeletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id)
+      );
+      fireEvent.click(await screen.findByText('cancel'));
+      fireEvent.click(
+        await screen.findByTestId(
+          `action-dropdown-${secondDeletedTestCase.name}`
+        )
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${secondDeletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenLastCalledWith(
+          secondDeletedTestCase.id
+        )
+      );
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+      expect(screen.getByTestId('submit-btn-loading')).toBeInTheDocument();
+
+      await act(async () => resolveFirstRestore?.());
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalledTimes(1));
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+      expect(screen.getByTestId('submit-btn-loading')).toBeInTheDocument();
+      expect(showSuccessToast).toHaveBeenCalled();
+      expect(showErrorToast).not.toHaveBeenCalled();
+
+      await act(async () => resolveSecondRestore?.());
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalledTimes(2));
+
+      expect(screen.queryByText('ConfirmationModal')).not.toBeInTheDocument();
+    });
+
+    it('should keep the restore modal open and report restore failures', async () => {
+      const error = new Error('Restore failed');
+      (restoreTestCase as jest.Mock).mockRejectedValueOnce(error);
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
+    });
+
+    it('should render deleted incident status as read-only', async () => {
+      const deletedWithIncident = {
+        ...deletedTestCase,
+        incidentStatus: {
+          stateId: 'state-1',
+          testCaseResolutionStatusType: 'New',
+        },
+      } as unknown as TestCase;
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedWithIncident]}
+        />
+      );
+
+      await screen.findByTestId('incident-manager-status');
+
+      expect(TestCaseIncidentManagerStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: false }),
+        expect.anything()
+      );
     });
   });
 });

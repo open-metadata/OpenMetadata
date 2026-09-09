@@ -395,7 +395,7 @@ const BulkEntityImportPage = () => {
         } catch (error) {
           showErrorToast(
             error as AxiosError,
-            t('message.entity-fetch-error', { entity: entityType })
+            t('server.entity-fetch-error', { entity: entityType })
           );
         }
       }
@@ -410,7 +410,7 @@ const BulkEntityImportPage = () => {
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('message.entity-fetch-error', { entity: entityType })
+          t('server.entity-fetch-error', { entity: entityType })
         );
       }
     }

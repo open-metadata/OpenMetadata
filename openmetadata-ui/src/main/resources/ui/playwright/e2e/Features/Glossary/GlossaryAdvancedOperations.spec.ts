@@ -31,9 +31,12 @@ import {
 } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
+  fillStyleIconUrl,
   openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  selectStyleColor,
+  selectStyleIcon,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -362,7 +365,7 @@ test.describe('Glossary Advanced Operations', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       await assignDomainWidget(page, domain1.responseData);
-      await assignDomainWidget(page, domain2.responseData);
+      await assignDomainWidget(page, domain2.responseData, false, true);
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);
@@ -388,9 +391,9 @@ test.describe('Glossary Advanced Operations', () => {
       await page.fill('[data-testid="name"]', termName);
       await page.locator(descriptionBox).fill('Term with custom color');
 
-      // Set custom color
-      const customColor = '#FF5733';
-      await page.getByTestId('color-color-input').fill(customColor);
+      // Set custom color (must be one of the palette swatches)
+      const customColor = '#F14C75';
+      await selectStyleColor(page, customColor);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -425,9 +428,9 @@ test.describe('Glossary Advanced Operations', () => {
       await page.fill('[data-testid="name"]', termName);
       await page.locator(descriptionBox).fill('Term with custom icon');
 
-      // Set custom icon URL
+      // Set custom icon URL through the picker's URL tab
       const iconUrl = 'https://example.com/icon.png';
-      await page.getByTestId('icon-url').fill(iconUrl);
+      await fillStyleIconUrl(page, iconUrl);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -438,6 +441,44 @@ test.describe('Glossary Advanced Operations', () => {
       expect(responseData.style?.iconURL).toBe(iconUrl);
 
       // Verify term is created
+      await expect(page.getByTestId(termName)).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // T-C16b: Create term with a built-in icon picked from the grid
+  test('should create term with an icon picked from the picker grid', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await openAddGlossaryTermModal(page);
+
+      const termName = `GridIconTerm${Date.now()}`;
+      await page.fill('[data-testid="name"]', termName);
+      await page.locator(descriptionBox).fill('Term with a built-in icon');
+
+      // The grid stores the icon's name, not a URL — the UI resolves it back
+      // to the component when rendering.
+      const iconName = 'Folder';
+      await selectStyleIcon(page, iconName);
+
+      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+      await page.click('[data-testid="save-glossary-term"]');
+      const response = await createResponse;
+      const responseData = await response.json();
+
+      expect(responseData.style?.iconURL).toBe(iconName);
+
       await expect(page.getByTestId(termName)).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
@@ -467,10 +508,9 @@ test.describe('Glossary Advanced Operations', () => {
 
       await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
-      // Set custom color
-      const customColor = '#28A745';
-      await page.getByTestId('color-color-input').clear();
-      await page.getByTestId('color-color-input').fill(customColor);
+      // Set custom color (must be one of the palette swatches)
+      const customColor = '#05A580';
+      await selectStyleColor(page, customColor);
 
       const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.click('[data-testid="save-glossary-term"]');
@@ -508,10 +548,9 @@ test.describe('Glossary Advanced Operations', () => {
 
       await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
-      // Set custom icon URL
+      // Set custom icon URL through the picker's URL tab
       const iconUrl = 'https://example.com/new-icon.png';
-      await page.getByTestId('icon-url').clear();
-      await page.getByTestId('icon-url').fill(iconUrl);
+      await fillStyleIconUrl(page, iconUrl);
 
       const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.click('[data-testid="save-glossary-term"]');

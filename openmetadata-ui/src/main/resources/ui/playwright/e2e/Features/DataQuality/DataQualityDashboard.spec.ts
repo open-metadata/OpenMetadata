@@ -626,7 +626,9 @@ test.describe(
         ).toBeVisible();
       });
 
-      await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
+      // table3 is given an owner in beforeAll, so the incident raised by the
+      // Consistency failure is auto-assigned on creation instead of opening as New.
+      await test.step('Verify Assigned incident for Consistency test case on table3 DQ tab', async () => {
         await visitDataQualityTab(page, table3);
         await expect(
           page.locator(
@@ -635,7 +637,7 @@ test.describe(
         ).toContainText('Failed');
         await expect(
           page.locator(`[data-testid="${consistencyTestCaseName}-status"]`)
-        ).toContainText('New');
+        ).toContainText('Assigned');
       });
 
       await test.step('Verify Resolved incident chip for Uniqueness test case on table4 DQ tab', async () => {
@@ -980,9 +982,20 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
+        const expectedStatuses = [
+          TestCaseStatus.Failed,
+          TestCaseStatus.Aborted,
+        ];
+        const navFailed = page.waitForURL((url) => {
+          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+
+          return (
+            url.pathname === '/data-quality/test-cases' &&
+            expectedStatuses.every((status) =>
+              selectedStatuses.includes(status)
+            )
+          );
+        });
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
@@ -990,7 +1003,9 @@ test.describe(
         );
         await navFailed;
         await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        expect(
+          new URL(page.url()).searchParams.getAll('testCaseStatus[]')
+        ).toEqual(expectedStatuses);
       });
     });
 

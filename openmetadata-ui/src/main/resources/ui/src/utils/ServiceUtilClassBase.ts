@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { ObjectFieldTemplatePropertyType, RJSFSchema } from '@rjsf/utils';
 import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -43,7 +43,7 @@ import {
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
 import {
-  ConfigObject,
+  Connection as ConfigObject,
   WorkflowType,
 } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -237,6 +237,13 @@ class ServiceUtilClassBase {
 
   public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
+  }
+
+  public validateSecretPrefixFields(
+    _schema: RJSFSchema,
+    _formData: Record<string, unknown>
+  ): { path: (string | number)[]; message: string }[] {
+    return [];
   }
 
   public getSupportedServiceFromList() {

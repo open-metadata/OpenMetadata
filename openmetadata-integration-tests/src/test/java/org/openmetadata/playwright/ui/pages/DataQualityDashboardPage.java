@@ -56,10 +56,16 @@ public final class DataQualityDashboardPage extends PageObject {
 
   /**
    * Click the first available pie chart segment and assert the URL navigates to
-   * {@code /data-quality/test-cases} carrying ANY {@code testCaseStatus=} param.
+   * {@code /data-quality/test-cases} carrying ANY {@code testCaseStatus} param.
    * Recharts only renders segments for non-zero data and the rendering order isn't
    * stable across data shapes, so this method asserts the navigation contract
    * rather than a specific segment-to-status mapping.
+   *
+   * <p>The status filter is multi-select, so a segment may map to one status
+   * ({@code testCaseStatus=Failed}) or several, which serialize with bracket array
+   * syntax ({@code testCaseStatus[]=Failed&testCaseStatus[]=Aborted}, URL-encoded as
+   * {@code testCaseStatus%5B%5D=}). The pattern accepts the bare, literal-bracket, and
+   * encoded-bracket forms so both single- and multi-status pies satisfy the contract.
    */
   public DataQualityDashboardPage clickPieChartSegmentExpectsStatusNav(final String chartId) {
     final Locator segment =
@@ -68,7 +74,7 @@ public final class DataQualityDashboardPage extends PageObject {
         .isVisible(new LocatorAssertions.IsVisibleOptions().setTimeout(15_000));
     segment.evaluate("el => el.dispatchEvent(new MouseEvent('click', { bubbles: true }))");
     page.waitForURL(
-        Pattern.compile("/data-quality/test-cases.*testCaseStatus="),
+        Pattern.compile("/data-quality/test-cases.*testCaseStatus(%5B%5D|\\[\\])?="),
         new Page.WaitForURLOptions().setTimeout(20_000));
     return this;
   }

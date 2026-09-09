@@ -52,6 +52,7 @@ from metadata.ingestion.source.database.lineage_processors import (
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
+from metadata.utils.db_utils import ViewLineageExtension
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -335,13 +336,7 @@ class LineageSource(QueryParserSource, ABC):
                         logger.debug(traceback.format_exc())
                         logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 logger.info(f"Processed {row_count} query log entries for lineage")
-                result_limit = getattr(self.source_config, "resultLimit", None)
-                if isinstance(result_limit, int) and row_count >= result_limit:
-                    logger.debug(
-                        f"Reached the configured resultLimit of {result_limit} query log entries; "
-                        f"if more queries exist they were truncated and lineage may be incomplete. "
-                        f"Consider increasing resultLimit."
-                    )
+                self.warn_if_query_log_truncated(row_count, "lineage")
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """
@@ -432,6 +427,16 @@ class LineageSource(QueryParserSource, ABC):
                 continue
             yield view
 
+    def get_view_lineage_extension(self) -> ViewLineageExtension | None:
+        """
+        Extra view lineage this source contributes on top of what the SQL parsers report.
+
+        Some dialects express an edge outside of the query itself -- a Clickhouse
+        materialized view writes its rows into the table named by its `TO` clause -- and
+        those connectors return the builder of that edge here.
+        """
+        return None
+
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
         producer_fn = self.view_lineage_producer
@@ -445,6 +450,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
             self.source_config.overrideViewLineage,  # pyright: ignore[reportAttributeAccessIssue]
             self.get_query_parser_type(),
+            self.get_view_lineage_extension(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,

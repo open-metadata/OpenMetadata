@@ -13,15 +13,26 @@
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
+
+type MergedFeedItem =
+  | { type: 'feed'; id: string; timestamp: number; feed: Thread }
+  | {
+      type: 'activity';
+      id: string;
+      timestamp: number;
+      activity: ActivityEvent;
+    };
+
+const getThreadTimestamp = (feed: Thread): number =>
+  feed.updatedAt ?? feed.threadTs ?? 0;
 interface ActivityFeedListV1Props {
   feedList?: Thread[];
   activityList?: ActivityEvent[];
@@ -33,11 +44,8 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
-  componentsVisibility?: {
-    showThreadIcon?: boolean;
-    showRepliesContainer?: boolean;
-  };
   selectedThread?: Thread;
+  selectedActivity?: ActivityEvent;
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
@@ -51,10 +59,6 @@ const ActivityFeedListV1New = ({
   activityList,
   isLoading,
   showThread = true,
-  componentsVisibility = {
-    showThreadIcon: true,
-    showRepliesContainer: true,
-  },
   onFeedClick,
   onActivityClick,
   activeFeedId,
@@ -63,112 +67,141 @@ const ActivityFeedListV1New = ({
   isFullWidth,
   emptyPlaceholderText,
   selectedThread,
+  selectedActivity,
   onAfterClose,
   onUpdateEntityDetails,
   handlePanelResize,
   isFeedWidget = false,
   isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const isActivityMode = !isUndefined(activityList) && activityList.length > 0;
+  const mergedList = useMemo<MergedFeedItem[]>(() => {
+    const feedItems: MergedFeedItem[] = (feedList ?? []).map((feed) => ({
+      type: 'feed',
+      id: feed.id,
+      timestamp: getThreadTimestamp(feed),
+      feed,
+    }));
+    const activityItems: MergedFeedItem[] = (activityList ?? []).map(
+      (activity) => ({
+        type: 'activity',
+        id: activity.id,
+        timestamp: activity.timestamp ?? 0,
+        activity,
+      })
+    );
+
+    return [...activityItems, ...feedItems].sort(
+      (a, b) => b.timestamp - a.timestamp
+    );
+  }, [feedList, activityList]);
+
+  // Id of the item WE auto-selected, so we can tell our own selection apart
+  // from a deliberate user click.
+  const autoSelectedIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (feedList && !isActivityMode) {
-      const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
-      setEntityThread(updatedFeedList);
+    const firstItem = mergedList[0];
+    if (isUndefined(firstItem)) {
+      return;
     }
-  }, [feedList, isActivityMode]);
 
-  useEffect(() => {
-    if (isActivityMode) {
-      const activity = activityList?.find(
-        (activity) => activity.id === selectedThread?.id
-      );
+    const currentSelectedId = selectedThread?.id ?? selectedActivity?.id;
+    const selectionInList =
+      !isUndefined(currentSelectedId) &&
+      mergedList.some((item) => item.id === currentSelectedId);
 
-      if (
-        onActivityClick &&
-        (isUndefined(selectedThread) || isUndefined(activity))
-      ) {
-        onActivityClick(activityList ? activityList[0] : ({} as ActivityEvent));
-      }
+    // A real, in-list selection that isn't our own auto-pick means the user
+    // deliberately chose it — never override that. (A stale selection no longer
+    // in the list falls through so we can re-select the newest item.)
+    const userHasChosen =
+      selectionInList && currentSelectedId !== autoSelectedIdRef.current;
+    if (userHasChosen) {
+      return;
+    }
+
+    // Already on the newest item — nothing to do.
+    if (firstItem.id === currentSelectedId) {
+      return;
+    }
+
+    // No user choice yet: keep the newest (first) item selected as the two
+    // async sources (activities + conversations) settle. This makes the initial
+    // selection deterministic regardless of which request resolves first —
+    // otherwise the first response to arrive would lock in its own top item.
+    autoSelectedIdRef.current = firstItem.id;
+    if (firstItem.type === 'activity') {
+      onActivityClick?.(firstItem.activity);
     } else {
-      const thread = entityThread.find(
-        (feed) => feed.id === selectedThread?.id
-      );
-
-      if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
-        onFeedClick(entityThread[0]);
-      }
+      onFeedClick?.(firstItem.feed);
     }
-  }, [entityThread, selectedThread, onFeedClick, isActivityMode]);
+  }, [
+    mergedList,
+    selectedThread,
+    selectedActivity,
+    onFeedClick,
+    onActivityClick,
+  ]);
 
   useEffect(() => {
-    const listToCheck = isActivityMode ? activityList : feedList;
-    if (isEmpty(listToCheck) && handlePanelResize) {
-      handlePanelResize?.(true);
-    } else {
-      handlePanelResize?.(false);
-    }
-  }, [feedList, activityList, isActivityMode]);
+    handlePanelResize?.(isEmpty(mergedList));
+  }, [mergedList, handlePanelResize]);
 
   const feeds = useMemo(() => {
-    if (isActivityMode && activityList) {
-      return activityList.map((activity) => (
+    return mergedList.map((item) =>
+      item.type === 'activity' ? (
         <FeedPanelBodyV1New
-          activity={activity}
+          activity={item.activity}
           handlePanelResize={handlePanelResize}
           hidePopover={hidePopover}
-          isActive={activeFeedId === activity.id}
+          isActive={activeFeedId === item.id}
           isFeedWidget={isFeedWidget}
           isForFeedTab={isForFeedTab}
           isFullSizeWidget={isFullSizeWidget}
           isFullWidth={isFullWidth}
-          key={activity.id}
+          key={item.id}
           showThread={showThread}
           onActivityClick={onActivityClick}
           onAfterClose={onAfterClose}
           onUpdateEntityDetails={onUpdateEntityDetails}
         />
-      ));
-    }
-
-    return entityThread.map((feed) => (
-      <FeedPanelBodyV1New
-        feed={feed}
-        handlePanelResize={handlePanelResize}
-        hidePopover={hidePopover}
-        isActive={activeFeedId === feed.id}
-        isFeedWidget={isFeedWidget}
-        isForFeedTab={isForFeedTab}
-        isFullSizeWidget={isFullSizeWidget}
-        isFullWidth={isFullWidth}
-        key={feed.id}
-        showThread={showThread}
-        onAfterClose={onAfterClose}
-        onFeedClick={onFeedClick}
-        onUpdateEntityDetails={onUpdateEntityDetails}
-      />
-    ));
+      ) : (
+        <FeedPanelBodyV1New
+          feed={item.feed}
+          handlePanelResize={handlePanelResize}
+          hidePopover={hidePopover}
+          isActive={activeFeedId === item.id}
+          isFeedWidget={isFeedWidget}
+          isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
+          isFullWidth={isFullWidth}
+          key={item.id}
+          showThread={showThread}
+          onAfterClose={onAfterClose}
+          onFeedClick={onFeedClick}
+          onUpdateEntityDetails={onUpdateEntityDetails}
+        />
+      )
+    );
   }, [
-    entityThread,
-    activityList,
-    isActivityMode,
+    mergedList,
     activeFeedId,
-    componentsVisibility,
     hidePopover,
     isForFeedTab,
     showThread,
     isFullWidth,
     isFullSizeWidget,
+    isFeedWidget,
+    handlePanelResize,
     onActivityClick,
+    onFeedClick,
+    onAfterClose,
+    onUpdateEntityDetails,
   ]);
   if (isLoading) {
     return <Loader />;
   }
 
-  const hasNoData = isActivityMode
-    ? isEmpty(activityList)
-    : isEmpty(entityThread) && isEmpty(feedList);
+  const hasNoData = isEmpty(mergedList);
 
   if (hasNoData && !isLoading) {
     return (

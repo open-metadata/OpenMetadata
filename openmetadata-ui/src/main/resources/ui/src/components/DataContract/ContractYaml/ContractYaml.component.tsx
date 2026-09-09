@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import yaml from 'js-yaml';
+import { dump } from 'js-yaml';
 import { lazy, useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -24,7 +24,7 @@ const SchemaEditor = withSuspenseFallback(
 
 const ContractYaml = ({ contract }: { contract: DataContract }) => {
   const schemaEditorValue = useMemo(() => {
-    return yaml.dump(getUpdatedContractDetails(contract, contract));
+    return dump(getUpdatedContractDetails(contract, contract));
   }, [contract]);
 
   return (

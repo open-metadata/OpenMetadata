@@ -43,14 +43,14 @@ const waitForTourBadgeWithRetry = async (
   }
 };
 
-const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
-  const badge = page.locator('[data-tour-elem="badge"]');
-  await badge.waitFor({ state: 'visible', timeout });
-  await expect
-    .poll(async () => (await badge.textContent())?.trim(), {
-      timeout,
-    })
-    .toBe(step);
+const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
+  // A single web-first assertion. The badge re-renders on every step transition,
+  // so a separate visibility wait followed by a text poll gave the transition two
+  // independent budgets to lose against; toHaveText auto-waits for the element to
+  // attach *and* carry the expected step, and reports the actual step on failure.
+  await expect(page.locator('[data-tour-elem="badge"]')).toHaveText(step, {
+    timeout,
+  });
 };
 
 const validateTourSteps = async (page: Page) => {
@@ -173,7 +173,11 @@ test.describe(
     });
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      await user.login(page);
+      // Tour is entered from the welcome banner, so this suite must NOT suppress
+      // it. The other tour tests already guard against the banner if present.
+      await user.login(page, undefined, undefined, {
+        suppressWelcomeScreen: false,
+      });
     });
 
     test('Tour should work from help section', async ({ page }) => {

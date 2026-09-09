@@ -20,6 +20,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -154,9 +155,10 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
             <div
               className="d-flex items-center gap-2"
               data-testid={`option-${value}`}>
-              <div className="flex-center data-asset-icon">
-                {searchClassBase.getEntityIcon(reference.type)}
-              </div>
+              {searchClassBase.getEntityIconWithBg(
+                reference.type,
+                EntityIconSize.Size14
+              )}
               <div className="d-flex flex-col">
                 <span className="text-grey-muted text-xs">
                   {reference.type}

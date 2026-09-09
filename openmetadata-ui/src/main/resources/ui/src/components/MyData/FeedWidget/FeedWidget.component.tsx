@@ -14,8 +14,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
+import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/widget/activity-feed.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -47,8 +47,13 @@ const MyFeedWidgetInternal = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const { isActivityLoading, activityEvents, fetchMyActivityFeed } =
-    useActivityFeedProvider();
+  const {
+    isActivityLoading,
+    activityEvents,
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+  } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
   );
@@ -64,13 +69,35 @@ const MyFeedWidgetInternal = ({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  // Each filter maps to its own endpoint: ALL is every event, OWNER is entities
+  // owned by the user or their teams, FOLLOWS is entities they follow.
+  const fetchActivityForFilter = useCallback(() => {
+    switch (selectedFilter) {
+      case FeedFilter.OWNER:
+        fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
+
+        break;
+      case FeedFilter.FOLLOWS:
+        fetchFollowingActivity({ limit: PAGE_SIZE_MEDIUM });
+
+        break;
+      default:
+        fetchActivityEvents({ limit: PAGE_SIZE_MEDIUM });
+    }
+  }, [
+    selectedFilter,
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+  ]);
+
   const handleUpdateEntityDetails = useCallback(() => {
-    fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
-  }, [fetchMyActivityFeed]);
+    fetchActivityForFilter();
+  }, [fetchActivityForFilter]);
 
   useEffect(() => {
-    fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
-  }, [fetchMyActivityFeed]);
+    fetchActivityForFilter();
+  }, [fetchActivityForFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
@@ -154,7 +181,7 @@ const MyFeedWidgetInternal = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<ActivityFeedIcon height={22} width={22} />}
+        icon={<ActivityFeedIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
         sortOptions={translatedSortOptions}

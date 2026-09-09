@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://open-metadata.org/schema/api/configuration/appConfiguration.json",
+  "title": "AppConfiguration",
+  "description": "App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.AppConfiguration",
+  "properties": {
+    "defaultAppMode": {
+      "description": "Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have not chosen one; user preference and persona-level app mode still win over this default. Null means no tenant default is configured.",
+      "type": ["string", "null"],
+      "enum": ["ai", "classic", null],
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

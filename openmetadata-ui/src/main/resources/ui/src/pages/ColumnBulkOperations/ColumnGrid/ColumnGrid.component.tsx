@@ -444,6 +444,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           <AsyncSelectList
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={classificationTagOptions}
             key={`tags-${drawerKey}`}
             mode="multiple"
@@ -500,6 +501,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           </Typography>
           <TreeAsyncSelectList
             hasNoActionButtons
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={glossaryTermOptions}
             key={`glossaryTerms-${drawerKey}`}
             open={false}
@@ -1936,50 +1938,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   handleSelectRef.current = selectWithDescendants;
 
   // Set up data table with custom row component
-  const CustomTableRow = useCallback(
-    (props: Record<string, unknown>) => {
-      const { entity, isSelected, tableColumns } = props as {
-        entity: ColumnGridRowData;
-        isSelected: boolean;
-        tableColumns: { id: string }[];
-      };
-
-      const isChildRow = Boolean(entity.parentId || entity.isStructChild);
-      const isParentExpanded =
-        columnGridListing.expandedRows.has(entity.id) ||
-        columnGridListing.expandedStructRows.has(entity.id);
-      const showParentChildColors = isChildRow || isParentExpanded;
-
-      return (
-        <ColumnGridTableRow
-          columnWidthPercent={COLUMN_WIDTH_PERCENT}
-          entity={entity}
-          isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
-          isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
-          isSelected={isSelected}
-          renderColumnNameCell={renderColumnNameCellFinal}
-          renderDescriptionCell={renderDescriptionCellAdapter}
-          renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
-          renderPathCell={renderPathCellAdapter}
-          renderTagsCell={renderTagsCellAdapter}
-          showParentChildColors={showParentChildColors}
-          tableColumns={tableColumns}
-        />
-      );
-    },
-    [
-      columnGridListing.expandedRows,
-      columnGridListing.expandedStructRows,
-      pendingRefetchRowIds,
-      recentlyUpdatedRowIds,
-      renderColumnNameCellFinal,
-      renderPathCellAdapter,
-      renderDescriptionCellAdapter,
-      renderTagsCellAdapter,
-      renderGlossaryTermsCellAdapter,
-    ]
-  );
-
   // Filter entities to show only selected ones when viewSelectedOnly is true
   const filteredEntities = useMemo(() => {
     if (viewSelectedOnly) {
@@ -2123,7 +2081,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             handleTableSelectionChange(keys as Set<string>);
           }
         }}>
-        <Table.Header columns={tableColumns}>
+        <Table.Header className="tw:bg-transparent" columns={tableColumns}>
           {(column) => (
             <Table.Head
               id={column.id}
@@ -2169,13 +2127,26 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               );
             }
 
+            const isChildRow = Boolean(entity.parentId || entity.isStructChild);
+            const isParentExpanded =
+              columnGridListing.expandedRows.has(entity.id) ||
+              columnGridListing.expandedStructRows.has(entity.id);
+
             return (
-              <CustomTableRow
+              <ColumnGridTableRow
+                columnWidthPercent={COLUMN_WIDTH_PERCENT}
                 entity={entity}
+                isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
+                isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
                 isSelected={columnGridListing.isSelected(entity.id)}
                 key={entity.id}
+                renderColumnNameCell={renderColumnNameCellFinal}
+                renderDescriptionCell={renderDescriptionCellAdapter}
+                renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
+                renderPathCell={renderPathCellAdapter}
+                renderTagsCell={renderTagsCellAdapter}
+                showParentChildColors={isChildRow || isParentExpanded}
                 tableColumns={tableColumns}
-                onSelect={columnGridListing.handleSelect}
               />
             );
           }}
@@ -2191,8 +2162,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       columnGridListing.loading,
       columnGridListing.isSelected,
       t,
-      columnGridListing.handleSelect,
-      CustomTableRow,
+      columnGridListing.expandedRows,
+      columnGridListing.expandedStructRows,
+      pendingRefetchRowIds,
+      recentlyUpdatedRowIds,
+      renderColumnNameCellFinal,
+      renderPathCellAdapter,
+      renderDescriptionCellAdapter,
+      renderTagsCellAdapter,
+      renderGlossaryTermsCellAdapter,
     ]
   );
 

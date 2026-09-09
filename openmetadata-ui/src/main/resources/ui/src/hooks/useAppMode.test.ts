@@ -14,6 +14,7 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
+  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
@@ -22,10 +23,15 @@ import {
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import {
   clearAppMode,
+  CONFIG_MODE_TO_RUNTIME,
+  getAppDefaultMode,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
+  resolveEffectiveAppMode,
   resolveInitialAppMode,
+  setAppDefaultMode,
+  translateWireMode,
   useAppMode,
   useAppModeStore,
   writeAppMode,
@@ -105,6 +111,7 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: 'ai',
       mode: 'ai',
+      source: 'manual',
     });
   });
 
@@ -117,6 +124,7 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: 'ai',
       mode: DEFAULT_APP_MODE,
+      source: 'manual',
     });
   });
 
@@ -128,6 +136,7 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: null,
       mode: 'ai',
+      source: 'manual',
     });
   });
 
@@ -140,7 +149,40 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: null,
       mode: 'ai',
+      source: 'manual',
     });
+  });
+
+  it('records the source when `options.source` is passed', () => {
+    writeAppMode('ai', null, { source: 'boot' });
+
+    const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+
+    expect(JSON.parse(raw ?? '')).toEqual({
+      personaAppMode: null,
+      mode: 'ai',
+      source: 'boot',
+    });
+  });
+
+  it('does NOT write the cross-tab hint for `source: "boot"` writes', () => {
+    writeAppMode('ai', null, { source: 'boot' });
+
+    // Boot-provisional writes must not leak to sibling tabs as an
+    // authoritative "user chose this" hint — the hint only carries
+    // deliberate user choices (`manual`) and resolver conclusions
+    // (`resolver`), not synchronous best-guesses.
+    expect(
+      globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
+    ).toBeNull();
+  });
+
+  it('writes the cross-tab hint for `source: "resolver"` writes', () => {
+    writeAppMode('ai', null, { source: 'resolver' });
+
+    expect(
+      globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
+    ).not.toBeNull();
   });
 
   it('writes the cross-tab hint to localStorage', () => {
@@ -485,5 +527,66 @@ describe('resolveInitialAppMode', () => {
       .setUserPreference(TEST_USER, { appMode: DEFAULT_APP_MODE });
 
     expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+  });
+});
+
+describe('resolveEffectiveAppMode', () => {
+  it('user preference wins over everything', () => {
+    expect(resolveEffectiveAppMode('ai', 'default', 'default')).toBe('ai');
+  });
+
+  it('persona wins over app default', () => {
+    expect(resolveEffectiveAppMode(null, 'ai', 'default')).toBe('ai');
+  });
+
+  it('app default wins over constant', () => {
+    expect(resolveEffectiveAppMode(null, null, 'ai')).toBe('ai');
+  });
+
+  it('constant is the final fallback', () => {
+    expect(resolveEffectiveAppMode(null, null, null)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('treats undefined the same as null for every signal', () => {
+    expect(resolveEffectiveAppMode(undefined, undefined, undefined)).toBe(
+      DEFAULT_APP_MODE
+    );
+  });
+});
+
+describe('CONFIG_MODE_TO_RUNTIME / translateWireMode', () => {
+  it('maps the wire "classic" value to DEFAULT_APP_MODE', () => {
+    expect(CONFIG_MODE_TO_RUNTIME.classic).toBe(DEFAULT_APP_MODE);
+    expect(translateWireMode('classic')).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('maps the wire "ai" value to AI_APP_MODE', () => {
+    expect(CONFIG_MODE_TO_RUNTIME.ai).toBe(AI_APP_MODE);
+    expect(translateWireMode('ai')).toBe(AI_APP_MODE);
+  });
+
+  it('returns null for a null/undefined wire value', () => {
+    expect(translateWireMode(null)).toBeNull();
+    expect(translateWireMode(undefined)).toBeNull();
+  });
+
+  it('returns null for an unrecognised wire value', () => {
+    expect(translateWireMode('bogus')).toBeNull();
+  });
+});
+
+describe('setAppDefaultMode / getAppDefaultMode', () => {
+  afterEach(() => {
+    setAppDefaultMode(null);
+  });
+
+  it('defaults to null', () => {
+    expect(getAppDefaultMode()).toBeNull();
+  });
+
+  it('stores and returns whatever was set', () => {
+    setAppDefaultMode(AI_APP_MODE);
+
+    expect(getAppDefaultMode()).toBe(AI_APP_MODE);
   });
 });

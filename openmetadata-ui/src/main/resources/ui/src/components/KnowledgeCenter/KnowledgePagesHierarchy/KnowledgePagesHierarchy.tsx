@@ -22,6 +22,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -66,6 +67,7 @@ import {
   PageType,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   deleteKnowledgePage,
   getListKnowledgePages,
@@ -73,6 +75,7 @@ import {
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -88,6 +91,7 @@ import {
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
+  remapSubtreeFqn,
   updateTreeData,
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
@@ -103,6 +107,11 @@ interface KnowledgePagesHierarchyProps {
   onQuickLinkClick?: (fqn: string) => void;
 }
 const SCROLL_BOTTOM_THRESHOLD = 1;
+
+// Deduped via React Query — multiple mount/create-hash/delete/forceRefresh
+// triggers all collapse into a single in-flight request instead of firing
+// one GET /contextCenter/pages?limit=0 per trigger.
+const KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY = ['knowledge-pages-total-count'];
 
 const KnowledgePagesHierarchy = forwardRef<
   KnowledgePagesHierarchyRef,
@@ -139,8 +148,20 @@ const KnowledgePagesHierarchy = forwardRef<
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isExpandingAll, setIsExpandingAll] = useState(false);
-    const [knowledgePagesTotalCount, setKnowledgePagesTotalCount] =
-      useState<number>(0);
+    const { data: knowledgePagesTotalCount = 0 } = useQuery({
+      queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
+      queryFn: async () => {
+        try {
+          const res = await getListKnowledgePages({ limit: 0 });
+
+          return res.paging.total;
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          throw error;
+        }
+      },
+    });
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
     const [isMovingPage, setIsMovingPage] = useState<boolean>(false);
@@ -154,6 +175,10 @@ const KnowledgePagesHierarchy = forwardRef<
       hierarchyPaginationInitialState
     );
 
+    const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
+    const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
+    const nodeChildrenOffsetRef = useRef<Map<string, number>>(new Map());
+
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
       try {
@@ -166,7 +191,10 @@ const KnowledgePagesHierarchy = forwardRef<
         ): PageHierarchy[] => {
           const unloaded: PageHierarchy[] = [];
           nodes.forEach((n) => {
-            if (n.childrenCount > (n.children?.length ?? 0)) {
+            const isExhausted = nodesWithNoMoreChildrenRef.current.has(
+              n.fullyQualifiedName
+            );
+            if (n.childrenCount > (n.children?.length ?? 0) && !isExhausted) {
               unloaded.push(n);
             } else if (n.children) {
               unloaded.push(...collectUnloadedExpandableNodes(n.children));
@@ -181,19 +209,45 @@ const KnowledgePagesHierarchy = forwardRef<
 
         while (nodesPendingChildren.length > 0) {
           const childrenResults = await Promise.all(
-            nodesPendingChildren.map((node) =>
-              getPageHierarchyFromES(node.fullyQualifiedName)
-            )
+            nodesPendingChildren.map((node) => {
+              const offset =
+                nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
+                node.children?.length ??
+                0;
+
+              return getPageHierarchyFromES(
+                node.fullyQualifiedName,
+                undefined,
+                offset,
+                KNOWLEDGE_CENTER_PAGINATION_LIMIT
+              );
+            })
           );
 
           nodesPendingChildren.forEach((node, index) => {
-            fetchedChildrenByParentFqn.set(
+            const fetchedChildren = childrenResults[index].data;
+            const offset =
+              nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
+              node.children?.length ??
+              0;
+
+            nodeChildrenOffsetRef.current.set(
               node.fullyQualifiedName,
-              childrenResults[index].data
+              offset + fetchedChildren.length
             );
+
+            if (fetchedChildren.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
+              nodesWithNoMoreChildrenRef.current.add(node.fullyQualifiedName);
+            }
+
+            fetchedChildrenByParentFqn.set(node.fullyQualifiedName, [
+              ...(fetchedChildrenByParentFqn.get(node.fullyQualifiedName) ??
+                []),
+              ...fetchedChildren,
+            ]);
             traversalHierarchy = updateTreeData(
               traversalHierarchy,
-              childrenResults[index].data,
+              fetchedChildren,
               node.fullyQualifiedName
             );
           });
@@ -232,17 +286,6 @@ const KnowledgePagesHierarchy = forwardRef<
         setIsExpandingAll(false);
       }
     }, [knowledgePageHierarchy]);
-
-    const fetchKnowledgePagesTotalCount = useCallback(async () => {
-      try {
-        const { paging } = await getListKnowledgePages({
-          limit: 0,
-        });
-        setKnowledgePagesTotalCount(paging.total);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }, []);
 
     const fetchKnowledgePageHierarchy = async (
       setLoading = true,
@@ -299,10 +342,12 @@ const KnowledgePagesHierarchy = forwardRef<
           if (forceRefresh) {
             setExpandedKeys([]);
             setIsUserExpandedAll(false);
+            nodesWithNoMoreChildrenRef.current.clear();
+            nodesLoadingChildrenRef.current.clear();
+            nodeChildrenOffsetRef.current.clear();
           }
           if (isCreateHash) {
             consumedCreateHashFqnRef.current = fqn;
-            fetchKnowledgePagesTotalCount();
           }
         } else {
           const fqnParts = fqn ? Fqn.split(fqn) : [];
@@ -339,16 +384,43 @@ const KnowledgePagesHierarchy = forwardRef<
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
-        if (!node || node.childrenCount <= (node.children?.length ?? 0)) {
+        const loadedCount = node?.children?.length ?? 0;
+        if (!node || node.childrenCount <= loadedCount) {
           return;
         }
+        if (
+          nodesLoadingChildrenRef.current.has(nodeKey) ||
+          nodesWithNoMoreChildrenRef.current.has(nodeKey)
+        ) {
+          return;
+        }
+        nodesLoadingChildrenRef.current.add(nodeKey);
         try {
-          const { data: children } = await getPageHierarchyFromES(nodeKey);
+          const fetchOffset =
+            nodeChildrenOffsetRef.current.get(nodeKey) ?? loadedCount;
+          const { data: children } = await getPageHierarchyFromES(
+            nodeKey,
+            undefined,
+            fetchOffset,
+            KNOWLEDGE_CENTER_PAGINATION_LIMIT
+          );
+          nodeChildrenOffsetRef.current.set(
+            nodeKey,
+            fetchOffset + children.length
+          );
+          if (children.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
+            nodesWithNoMoreChildrenRef.current.add(nodeKey);
+          }
+          if (children.length === 0) {
+            return;
+          }
           setKnowledgePageHierarchy(
             updateTreeData(knowledgePageHierarchy, children, nodeKey)
           );
         } catch {
           // do nothing
+        } finally {
+          nodesLoadingChildrenRef.current.delete(nodeKey);
         }
       },
       [knowledgePageHierarchy]
@@ -386,7 +458,9 @@ const KnowledgePagesHierarchy = forwardRef<
         onPageDelete?.(deletedPages);
 
         await getResourceLimit('knowledgeCenter', true, true);
-        await fetchKnowledgePagesTotalCount();
+        queryClient.invalidateQueries({
+          queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
+        });
 
         updateKnowledgeCenterRecentViewed(
           recentlyViewed.filter(
@@ -408,13 +482,7 @@ const KnowledgePagesHierarchy = forwardRef<
           navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
-      [
-        knowledgePageHierarchy,
-        onPageDelete,
-        activeKey,
-        activePage,
-        fetchKnowledgePagesTotalCount,
-      ]
+      [knowledgePageHierarchy, onPageDelete, activeKey, activePage]
     );
 
     const handleMovePage = async (movedPageData: MovedEntity) => {
@@ -467,10 +535,32 @@ const KnowledgePagesHierarchy = forwardRef<
             targetNode.fullyQualifiedName
           );
 
+          nodesWithNoMoreChildrenRef.current.delete(
+            targetNode.fullyQualifiedName
+          );
+          nodesLoadingChildrenRef.current.delete(targetNode.fullyQualifiedName);
+          nodeChildrenOffsetRef.current.delete(targetNode.fullyQualifiedName);
+
+          const targetChildrenWithMovedSubtree = targetNodeChildren.data.map(
+            (child) =>
+              child.fullyQualifiedName === newSourceFQN &&
+              isEmpty(child.children) &&
+              !isEmpty(sourceNode.children)
+                ? {
+                    ...child,
+                    children: remapSubtreeFqn(
+                      sourceNode.children ?? [],
+                      oldSourceFQN,
+                      newSourceFQN
+                    ),
+                  }
+                : child
+          );
+
           setKnowledgePageHierarchy((prev) =>
             getUpdatePageHierarchy(
               prev,
-              { ...targetNode, children: targetNodeChildren.data },
+              { ...targetNode, children: targetChildrenWithMovedSubtree },
               true
             )
           );
@@ -479,6 +569,16 @@ const KnowledgePagesHierarchy = forwardRef<
 
           if (sourceNodeParent) {
             const sourceNodeParentChildren = await getPageHierarchyFromES(
+              sourceNodeParent.fullyQualifiedName
+            );
+
+            nodesWithNoMoreChildrenRef.current.delete(
+              sourceNodeParent.fullyQualifiedName
+            );
+            nodesLoadingChildrenRef.current.delete(
+              sourceNodeParent.fullyQualifiedName
+            );
+            nodeChildrenOffsetRef.current.delete(
               sourceNodeParent.fullyQualifiedName
             );
 
@@ -677,7 +777,9 @@ const KnowledgePagesHierarchy = forwardRef<
           forceRefresh
         );
         if (forceRefresh) {
-          await fetchKnowledgePagesTotalCount();
+          queryClient.invalidateQueries({
+            queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
+          });
         }
       },
     }));
@@ -692,12 +794,11 @@ const KnowledgePagesHierarchy = forwardRef<
       }
     }, [hash, fqn]);
 
-    useEffect(() => {
-      fetchKnowledgePagesTotalCount();
-    }, [fetchKnowledgePagesTotalCount]);
+    const autoExpandedForKeyRef = useRef<string | undefined>(undefined);
 
     useEffect(() => {
-      if (activeKey) {
+      if (activeKey && autoExpandedForKeyRef.current !== activeKey) {
+        autoExpandedForKeyRef.current = activeKey;
         setExpandedKeys((prev) =>
           uniq([
             ...prev,
@@ -885,6 +986,9 @@ const KnowledgePagesHierarchy = forwardRef<
                 } else {
                   await deleteKnowledgePage(deletePage.id);
                 }
+                queryClient.invalidateQueries({
+                  queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+                });
                 removeDraft(deletePage.id);
                 await handleAfterDeletePage(deletePage);
                 setDeletePage(undefined);
@@ -911,21 +1015,29 @@ const KnowledgePagesHierarchy = forwardRef<
                 onClose={() => setMovedPage(undefined)}>
                 <Dialog.Header
                   title={t('label.move-the-entity', {
-                    entity: t('label.knowledge-page'),
+                    entity: t('label.article'),
                   })}
                 />
                 <Dialog.Content className="tw:block">
-                  <Transi18next
-                    i18nKey="message.entity-transfer-message"
-                    renderElement={<strong />}
-                    values={{
-                      from: getEntityName(movedPage?.sourceNode),
-                      to: movedPage?.targetNode
-                        ? getEntityName(movedPage.targetNode)
-                        : t('label.base-knowledge'),
-                      entity: t('label.page-lowercase'),
-                    }}
-                  />
+                  {movedPage?.targetNode ? (
+                    <Transi18next
+                      i18nKey="message.entity-transfer-message"
+                      renderElement={<strong />}
+                      values={{
+                        from: getEntityName(movedPage?.sourceNode),
+                        to: getEntityName(movedPage.targetNode),
+                        entity: t('label.page-lowercase'),
+                      }}
+                    />
+                  ) : (
+                    <Transi18next
+                      i18nKey="message.move-page-to-top-level-message"
+                      renderElement={<strong />}
+                      values={{
+                        entity: getEntityName(movedPage?.sourceNode),
+                      }}
+                    />
+                  )}
                 </Dialog.Content>
                 <Dialog.Footer className="quick-link-modal-footer">
                   <Button

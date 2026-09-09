@@ -118,6 +118,57 @@ JAVA_NUMBERED_BACKREF_PATTERN = re.compile(r"\$(\d+)")
 JAVA_NAMED_GROUP_PATTERN = re.compile(r"\(\?<(?![=!])(\w+)>")
 
 
+# Statuses that mean the route itself is absent, as opposed to a request that failed.
+# Confluent Cloud answers 404 "route_not_found" for /connectors/{name}/topics, and a proxy
+# in front of Connect may answer 405 or 501. These are properties of the deployment, so
+# re-asking per connector only costs a doomed request each time.
+UNSUPPORTED_ROUTE_STATUS_CODES = frozenset({404, 405, 501})
+
+# A worker started with topic.tracking.enable=false answers 403 with this message. A 403
+# is only latched off when the body says so: a proxy or per-route RBAC can also answer 403
+# while the endpoint exists, and latching on the status alone would silently disable
+# runtime topic discovery for every connector behind the first such response.
+TOPIC_TRACKING_DISABLED_MARKER = "topic tracking is disabled"
+
+# Config keys naming a topic the connector creates for its own bookkeeping rather than
+# for data. Debezium's schema history and the Connect error-handling dead letter queue.
+INTERNAL_TOPIC_CONFIG_KEYS = (
+    "schema.history.internal.kafka.topic",
+    "database.history.kafka.topic",
+    "errors.deadletterqueue.topic.name",
+)
+
+
+def extract_internal_topic_names(connector_config: Optional[dict]) -> set[str]:  # noqa: UP045
+    """
+    Topic names a connector creates for its own bookkeeping, derived from its config.
+
+    Connect's active-topic tracking legitimately reports these next to data topics:
+    Debezium's schema-change topic is named exactly ``topic.prefix``, and its transaction
+    metadata topic ``topic.prefix + ".transaction"``. They are metadata plumbing, not data
+    assets, so they must never become lineage endpoints.
+
+    Derived from configuration rather than matched by shape on purpose. A rule like "ends
+    in .transaction" would delete a legitimately named customer topic, whereas the config
+    states the actual names. Names that do not exist for a given connector simply never
+    match, which is what makes this safe for connectors that have no such topics.
+    """
+    names: set[str] = set()
+    if not isinstance(connector_config, dict):
+        return names
+
+    prefix = connector_config.get("topic.prefix") or connector_config.get("database.server.name")
+    if prefix:
+        names.update({prefix, f"{prefix}.transaction"})
+
+    for key in INTERNAL_TOPIC_CONFIG_KEYS:
+        configured = connector_config.get(key)
+        if configured:
+            names.add(configured)
+
+    return names
+
+
 def _to_python_replacement(replacement: str) -> str:
     """Convert Java RegexRouter backreferences ($1, ${1}, ${name}) to Python \\g<...>."""
     replacement = JAVA_NAMED_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
@@ -187,6 +238,8 @@ class KafkaConnectClient:
         # Detect if this is Confluent Cloud (managed connectors)
         parsed_url = urlparse(url)
         self.is_confluent_cloud = parsed_url.hostname == "api.confluent.cloud"
+        # None until the /topics endpoint has been probed once for this cluster
+        self._topics_endpoint_supported = None
 
     def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
         """
@@ -217,13 +270,17 @@ class KafkaConnectClient:
 
     def _enrich_connector_details(self, connector_details: KafkaConnectPipelineDetails, connector_name: str) -> None:
         """Helper method to enrich connector details with additional information."""
-        connector_details.topics = self.get_connector_topics(connector=connector_name)
+        # Config first: the topic listing needs it to recognise the connector's own
+        # bookkeeping topics, and fetching it once here avoids a second round trip.
         connector_details.config = self.get_connector_config(connector=connector_name)
+        connector_details.topics = self.get_connector_topics(
+            connector=connector_name, connector_config=connector_details.config
+        )
         if connector_details.config:
             connector_details.description = connector_details.config.get("description", None)
 
             # For CDC connectors without explicit topics, try to infer from server name
-            if not connector_details.topics and connector_details.conn_type.lower() == "source":
+            if not connector_details.topics and (connector_details.conn_type or "").lower() == "source":
                 database_server_name = connector_details.config.get(
                     "database.server.name"
                 ) or connector_details.config.get("topic.prefix")
@@ -389,47 +446,135 @@ class KafkaConnectClient:
 
         return None
 
-    def get_connector_topics(self, connector: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+    def _list_topics_from_api(self, connector: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
         """
-        Get the list of topics for a connector.
+        Ask the Connect runtime which topics the connector actually produced (KIP-558).
 
-        For Confluent Cloud, the /topics endpoint is not supported, so we extract
-        topics from the connector configuration instead.
+        This is the only reliable source for a connector whose destination topic is
+        computed at runtime — a Debezium outbox EventRouter routing by a row value has
+        no static topic name anywhere in its config.
+
+        Not every deployment implements the endpoint, so the first response that says the
+        route does not exist stops us asking for the rest of the run rather than issuing a
+        doomed request per connector.
+
+        Only a status that actually denotes a missing route latches that off. A timeout or
+        5xx is transient and must not disable the endpoint for the whole run: the config
+        fallback yields nothing for a connector that routes by row value, so treating one
+        blip on whichever connector happens to be processed first as "unsupported" would
+        silently drop lineage for every outbox connector behind it.
+        """
+        if self._topics_endpoint_supported is False:
+            return None
+        try:
+            result = self.client.list_connector_topics(connector=connector).get(connector)
+            self._topics_endpoint_supported = True
+            if result:
+                return [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
+        except Exception as exc:
+            response = getattr(exc, "response", None)
+            status_code = getattr(response, "status_code", None)
+            tracking_disabled = status_code == 403 and TOPIC_TRACKING_DISABLED_MARKER in (
+                f"{getattr(response, 'text', '')} {exc}".lower()
+            )
+            if status_code in UNSUPPORTED_ROUTE_STATUS_CODES or tracking_disabled:
+                if self._topics_endpoint_supported is None:
+                    self._topics_endpoint_supported = False
+                    remedy = (
+                        " The worker reports topic tracking as disabled: set "
+                        "topic.tracking.enable=true on the Connect workers to restore it."
+                        if tracking_disabled
+                        else ""
+                    )
+                    logger.info(
+                        f"Connect /connectors/{{name}}/topics is unavailable on this cluster ({exc})."
+                        f"{remedy} Falling back to topic names declared in connector configs. "
+                        "Connectors that route by row value (e.g. a Debezium outbox EventRouter) "
+                        "cannot be resolved this way."
+                    )
+            else:
+                logger.warning(
+                    f"Transient failure listing topics for connector '{connector}' ({exc}); "
+                    "will retry the endpoint for the next connector."
+                )
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _list_data_topics_from_api(
+        self,
+        connector: str,
+        connector_config: Optional[dict],  # noqa: UP045
+    ) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+        """
+        The topics the Connect runtime says this connector touched, minus its own
+        bookkeeping topics.
+
+        Returns None when that leaves nothing, so the caller falls back to the
+        config-declared names. Active-topic tracking records what a connector has
+        touched so far, so a connector that has produced nothing, or so far only its own
+        schema-change topic, is at a cold start rather than asserting it has no data
+        topics. Its declared names are still the better answer.
+        """
+        topics = self._list_topics_from_api(connector)
+        if not topics:
+            return None
+
+        excluded = extract_internal_topic_names(connector_config)
+        data_topics = [topic for topic in topics if topic.name not in excluded]
+        dropped = len(topics) - len(data_topics)
+        if dropped:
+            logger.debug(
+                f"Excluded {dropped} internal topic(s) from connector '{connector}': "
+                f"{sorted(excluded & {topic.name for topic in topics})}"
+            )
+        return data_topics or None
+
+    @staticmethod
+    def _parse_topics_from_config(connector_config: Optional[dict]) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+        """Topic names written explicitly in the connector config, as a sink's `topics` list is."""
+        if not connector_config:
+            return None
+
+        topics = []
+        for key in ConnectorConfigKeys.TOPIC_KEYS:
+            topic_value = connector_config.get(key)
+            # Either a single topic or a comma-separated list.
+            if isinstance(topic_value, str):
+                topics.extend(KafkaConnectTopics(name=name.strip()) for name in topic_value.split(",") if name.strip())
+        return topics or None
+
+    def get_connector_topics(
+        self,
+        connector: str,
+        connector_config: Optional[dict] = None,  # noqa: UP045
+    ) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+        """
+        Get the list of data topics for a connector, most authoritative source first.
+
+        The Connect runtime knows what the connector actually produced or consumed,
+        including a routed name that appears nowhere in the config, so it wins. The
+        config-declared names are the fallback for deployments that do not serve it.
 
         Args:
             connector (str): The name of the connector.
+            connector_config (dict): The connector's config, when the caller already
+                holds it. Fetched on demand otherwise.
 
         Returns:
-            Optional[List[KafkaConnectTopics]]: A list of KafkaConnectTopics objects
-                                            representing the connector's topics,
-                                            or None if the connector is not found
-                                            or an error occurs.
+            Optional[List[KafkaConnectTopics]]: The connector's data topics, or None when
+                                            neither source names one.
         """
         try:
-            if self.is_confluent_cloud:
-                # Confluent Cloud doesn't support /connectors/{name}/topics endpoint
-                # Extract topics from connector config instead
-                config = self.get_connector_config(connector=connector)
-                if config:
-                    topics = []
-                    # Check common topic configuration keys
-                    for key in ConnectorConfigKeys.TOPIC_KEYS:
-                        if key in config:
-                            topic_value = config[key]
-                            # Handle single topic or comma-separated list
-                            if isinstance(topic_value, str):
-                                topic_list = [t.strip() for t in topic_value.split(",")]
-                                topics.extend([KafkaConnectTopics(name=topic) for topic in topic_list])
+            config = connector_config if connector_config is not None else self.get_connector_config(connector)
 
-                    if topics:
-                        logger.info(f"Extracted {len(topics)} topics from Confluent Cloud connector config")
-                        return topics
-            else:
-                # Self-hosted Kafka Connect supports /topics endpoint
-                result = self.client.list_connector_topics(connector=connector).get(connector)
-                if result:
-                    topics = [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
-                    return topics  # noqa: RET504
+            topics = self._list_data_topics_from_api(connector, config)
+            if topics:
+                return topics
+
+            topics = self._parse_topics_from_config(config)
+            if topics:
+                logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")
+                return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get connector Topics {exc}")

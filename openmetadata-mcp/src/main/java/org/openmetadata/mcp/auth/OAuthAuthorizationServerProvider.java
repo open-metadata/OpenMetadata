@@ -12,6 +12,20 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 public interface OAuthAuthorizationServerProvider {
 
   /**
+   * Returns the issuer identifier of this authorization server. It is sent as the {@code iss}
+   * parameter on authorization responses so clients can confirm who issued the code.
+   * @return The issuer identifier, or null if the base URL is not resolved yet.
+   */
+  String getIssuer();
+
+  /**
+   * Sets the issuer identifier. Called when the transport starts up and again whenever the
+   * configured base URL changes, so this value always matches the published OAuth metadata.
+   * @param issuer The issuer identifier.
+   */
+  void setIssuer(String issuer);
+
+  /**
    * Retrieves client information by client ID.
    * @param clientId The ID of the client to retrieve.
    * @return A CompletableFuture that resolves to the client information, or null if the

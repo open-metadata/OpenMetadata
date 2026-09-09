@@ -16,11 +16,12 @@ import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -34,6 +35,7 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
+import { getTestCaseListDisplayState } from './TestCases.utils';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
 export const TestCases = () => {
@@ -66,11 +68,13 @@ export const TestCases = () => {
     isLoading,
     pagingData,
     showPagination,
-    fetchTestCases,
     sortTestCase,
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    handleShowDeletedChange,
+    handleAfterDeleteAction,
   } = useTestCaseListPage();
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
@@ -87,6 +91,15 @@ export const TestCases = () => {
 
     return action;
   }, [createActions?.canCreateTestCase, createActions?.onAddTestCase, t]);
+
+  const { displayedEmptyStateAction, enableBulkActions, hasListActiveFilters } =
+    getTestCaseListDisplayState({
+      canCreate: Boolean(testSuitePermission?.Create),
+      emptyStateAction,
+      hasActiveFilters,
+      searchValue,
+      showDeleted,
+    });
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return (
@@ -175,14 +188,15 @@ export const TestCases = () => {
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
               <Form.Item
-                className="m-0 w-40"
+                className="m-0 w-64"
                 label={t('label.status')}
                 name="testCaseStatus">
                 <Select
                   allowClear
                   data-testid="status-select-filter"
                   getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_STATUS_OPTION}
+                  mode="multiple"
+                  options={TEST_CASE_STATUS_FILTER_OPTIONS}
                   placeholder={t('label.status')}
                 />
               </Form.Item>
@@ -290,7 +304,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
-          afterDeleteAction={fetchTestCases}
+          afterDeleteAction={handleAfterDeleteAction}
           breadcrumbData={[
             {
               name: t('label.data-quality'),
@@ -299,10 +313,11 @@ export const TestCases = () => {
               ),
             },
           ]}
-          emptyStateAction={emptyStateAction}
-          enableBulkActions={Boolean(testSuitePermission?.Create)}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          emptyStateAction={displayedEmptyStateAction}
+          enableBulkActions={enableBulkActions}
           fetchTestCases={sortTestCase}
-          hasActiveFilters={Boolean(searchValue) || hasActiveFilters}
+          hasActiveFilters={hasListActiveFilters}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
@@ -310,7 +325,9 @@ export const TestCases = () => {
             <TestCaseListTableHeader
               extraDropdownContent={extraDropdownContent}
               searchValue={searchValue}
+              showDeleted={showDeleted}
               onSearch={(value) => handleSearchParam('searchValue', value)}
+              onShowDeletedChange={handleShowDeletedChange}
             />
           }
           testCases={testCase}

@@ -13,6 +13,7 @@ Redshift models
 """
 
 import re
+from datetime import datetime
 from enum import Enum
 from typing import Dict, FrozenSet, List, Optional, Tuple  # noqa: UP035
 
@@ -27,6 +28,19 @@ class RedshiftInstanceType(Enum):
 
     PROVISIONED = "PROVISIONED"
     SERVERLESS = "SERVERLESS"
+
+
+class RedshiftIamCredential(BaseModel):
+    """A temporary Redshift IAM credential and the time it expires.
+
+    Returned by GetClusterCredentials (provisioned) and GetCredentials
+    (serverless). ``expiration`` is the API-provided expiry timestamp, or None
+    when the response omits it.
+    """
+
+    user: str
+    password: str
+    expiration: Optional[datetime] = None  # noqa: UP045
 
 
 class RedshiftStoredProcedure(BaseModel):

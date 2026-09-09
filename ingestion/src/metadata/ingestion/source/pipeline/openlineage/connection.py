@@ -23,15 +23,20 @@ from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    KafkaBrokerConfig,
-    KinesisBrokerConfig,
+from metadata.generated.schema.entity.services.connections.messaging.saslMechanismType import (
+    SaslMechanismType as KafkaSaslMechanism,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    SecurityProtocol as KafkaSecProtocol,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    Kinesis as KinesisBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection as OpenLineageConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    SecurityProtocol as KafkaSecProtocol,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -43,45 +48,73 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.ssl_manager import SSLManager
 
 
-def _get_kafka_connection(broker: KafkaBrokerConfig) -> KafkaConsumer:
+def _get_kafka_connection(
+    broker: KafkaBrokerConfig,
+) -> tuple[KafkaConsumer, SSLManager | None]:
+    security_protocol = broker.securityProtocol or KafkaSecProtocol.PLAINTEXT
+    requires_ssl = security_protocol.value in (
+        KafkaSecProtocol.SSL.value,
+        KafkaSecProtocol.SASL_SSL.value,
+    )
+    requires_sasl = security_protocol.value in (
+        KafkaSecProtocol.SASL_PLAINTEXT.value,
+        KafkaSecProtocol.SASL_SSL.value,
+    )
+    ssl_config = broker.sslConfig
+    if requires_ssl and ssl_config is None:
+        raise SourceConnectionException("SSL security protocol requires an SSL configuration with a CA certificate.")
+    sasl_config = broker.saslConfig
+    if requires_sasl and sasl_config is None:
+        raise SourceConnectionException(
+            "SASL security protocol requires a SASL configuration with a username and password."
+        )
+    ssl_manager = None
     try:
         config = {
             "bootstrap.servers": broker.brokersUrl,
             "group.id": broker.consumerGroupName,
             "auto.offset.reset": broker.consumerOffsets.value,
-            "security.protocol": broker.securityProtocol.value,
+            "security.protocol": security_protocol.value,
         }
-        if broker.securityProtocol.value in (
-            KafkaSecProtocol.SSL.value,
-            KafkaSecProtocol.SASL_SSL.value,
-        ):
-            config.update(
-                {
-                    "ssl.ca.location": broker.sslConfig.root.caCertificate,
-                    "ssl.certificate.location": broker.sslConfig.root.sslCertificate,
-                    "ssl.key.location": broker.sslConfig.root.sslKey,
-                }
+        if requires_ssl and ssl_config is not None:
+            # confluent_kafka's ssl.*.location keys take file paths, but the
+            # connection config holds the cert/key content (pasted or uploaded).
+            # Materialize them to temp files so the broker is handed a real bundle;
+            # the caller registers ssl_manager.cleanup_temp_files to tear them down.
+            ssl_manager = SSLManager(
+                ca=ssl_config.root.caCertificate,
+                cert=ssl_config.root.sslCertificate,
+                key=ssl_config.root.sslKey,
             )
+            ssl_locations = {
+                "ssl.ca.location": ssl_manager.ca_file_path,
+                "ssl.certificate.location": ssl_manager.cert_file_path,
+                "ssl.key.location": ssl_manager.key_file_path,
+            }
+            config.update({key: value for key, value in ssl_locations.items() if value is not None})
 
-        if broker.securityProtocol.value in (
-            KafkaSecProtocol.SASL_PLAINTEXT.value,
-            KafkaSecProtocol.SASL_SSL.value,
-        ):
+        if requires_sasl and sasl_config is not None:
             config.update(
                 {
-                    "sasl.mechanism": broker.saslConfig.saslMechanism.value,
-                    "sasl.username": broker.saslConfig.saslUsername,
-                    "sasl.password": broker.saslConfig.saslPassword,
+                    "sasl.mechanism": (sasl_config.saslMechanism or KafkaSaslMechanism.PLAIN).value,
+                    "sasl.username": sasl_config.saslUsername,
                 }
             )
+            if sasl_config.saslPassword is not None:
+                config["sasl.password"] = sasl_config.saslPassword.get_secret_value()
 
         kafka_consumer = KafkaConsumer(config)
         kafka_consumer.subscribe([broker.topicName])
 
-        return kafka_consumer  # noqa: TRY300
+        return kafka_consumer, ssl_manager  # noqa: TRY300
     except Exception as exc:
+        # The cert material is materialized to temp files before the consumer is
+        # created; tear it down if we never hand the manager to the caller.
+        if ssl_manager is not None:
+            ssl_manager.cleanup_temp_files()
         msg = f"Unknown error connecting with Kafka broker: {exc}."
         raise SourceConnectionException(msg)  # noqa: B904
 
@@ -102,8 +135,10 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
         broker = self.service_connection.brokerConfig
 
         if isinstance(broker, KafkaBrokerConfig):
-            consumer = _get_kafka_connection(broker)
+            consumer, ssl_manager = _get_kafka_connection(broker)
             self._on_close(consumer.close)
+            if ssl_manager is not None:
+                self._on_close(ssl_manager.cleanup_temp_files)
             return consumer
 
         if isinstance(broker, KinesisBrokerConfig):

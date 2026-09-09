@@ -183,7 +183,7 @@ services:
     build:
       context: ../rdf-store
       dockerfile: Dockerfile
-    image: openmetadata-fuseki:5.6.0
+    image: openmetadata-fuseki:6.2.0
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"

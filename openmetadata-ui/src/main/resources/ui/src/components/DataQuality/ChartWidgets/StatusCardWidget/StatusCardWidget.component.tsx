@@ -90,7 +90,7 @@ const StatusDataWidget = ({
   if (isLoading) {
     return (
       <Card
-        className={classNames('status-card-widget-container', {
+        className={classNames('status-card-widget-container tw:px-4 tw:py-3', {
           'chart-widget-link-no-underline': !isUndefined(redirectPath),
         })}>
         <Skeleton height={120} width="100%" />
@@ -100,7 +100,7 @@ const StatusDataWidget = ({
 
   return (
     <Card
-      className={classNames('status-card-widget-container', {
+      className={classNames('status-card-widget-container tw:px-4 tw:py-3', {
         'chart-widget-link-no-underline': !isUndefined(redirectPath),
       })}>
       {redirectPath ? <Link to={redirectPath}>{body}</Link> : body}

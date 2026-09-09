@@ -213,7 +213,7 @@ export const getEntityByFqnUtil = (
 
     case EntityType.KNOWLEDGE_PAGE:
     case EntityType.KNOWLEDGE_CENTER:
-      return getKnowledgePageByFqn(entityFQN);
+      return getKnowledgePageByFqn(entityFQN, { fields });
 
     default:
       return null;

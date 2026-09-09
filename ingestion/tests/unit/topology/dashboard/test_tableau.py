@@ -12,6 +12,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -40,6 +41,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     TableauOwner,
     UpstreamColumn,
     UpstreamTable,
+    UpstreamTableColumn,
 )
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -1090,3 +1092,374 @@ class TableauUnitTest(TestCase):
         list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
 
         assert self.tableau.progress_tracking.registry._global["Dashboard"].done == 1
+
+    def test_plain_column_field_collapses_mirror_child(self):
+        """
+        A plain ColumnField wraps a single same-named physical column. Nesting it would render an
+        identical-looking duplicate row, so the field absorbs the column's type instead.
+        """
+        data_source = DataSource(
+            id="ds-mirror-001",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue",
+                    name="revenue",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children is None
+        assert columns[0].displayName == "revenue"
+        assert columns[0].dataTypeDisplay == "NUMERIC"
+        assert columns[0].dataType == DataType.NUMERIC
+
+    def test_collapse_mirror_child_is_case_insensitive(self):
+        """Tableau keeps the field label casing while the database column may differ."""
+        data_source = DataSource(
+            id="ds-mirror-002",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-perf",
+                    name="Perf",
+                    upstreamColumns=[UpstreamColumn(id="col-perf", name="perf", remoteType="STRING")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children is None
+        assert columns[0].dataType == DataType.STRING
+
+    def test_renamed_column_field_keeps_child(self):
+        """A renamed field no longer mirrors the column, so the physical column stays visible."""
+        data_source = DataSource(
+            id="ds-renamed-001",
+            name="Customer Facts",
+            fields=[
+                DatasourceField(
+                    id="fld-signup",
+                    name="Signup Date",
+                    upstreamColumns=[UpstreamColumn(id="col-signup", name="SIGNUP_DATE", remoteType="DATE")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert columns[0].dataType == DataType.RECORD
+        assert len(columns[0].children) == 1
+        assert columns[0].children[0].displayName == "SIGNUP_DATE"
+
+    def test_calculated_field_keeps_children(self):
+        """A field fanning out to several columns keeps them all: they are not duplicates."""
+        data_source = DataSource(
+            id="ds-calc-003",
+            name="Margins",
+            fields=[
+                DatasourceField(
+                    id="fld-margin",
+                    name="margin",
+                    formula="[revenue] - [cost]",
+                    upstreamColumns=[
+                        UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC"),
+                        UpstreamColumn(id="col-cost", name="cost", remoteType="NUMERIC"),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert len(columns[0].children) == 2
+
+    def test_calculated_field_with_single_same_named_upstream_keeps_child(self):
+        """
+        A CalculatedField referencing one same-named column is not a mirror: its value is a
+        transformation, so the physical column must stay visible and its remoteType must not be
+        reported as the field's own type.
+        """
+        data_source = DataSource(
+            id="ds-calc-004",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue-calc",
+                    name="revenue",
+                    formula="ZN([revenue])",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert columns[0].dataType == DataType.RECORD
+        assert len(columns[0].children) == 1
+        assert columns[0].children[0].displayName == "revenue"
+
+    def test_field_without_upstream_columns_stays_tableau_field(self):
+        """Nothing to absorb, so the synthetic Tableau Field type is retained."""
+        data_source = DataSource(
+            id="ds-noupstream-001",
+            name="Territory Analysis",
+            fields=[DatasourceField(id="fld-bucket", name="Region Bucket", upstreamColumns=[])],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].children is None
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert columns[0].dataType == DataType.RECORD
+
+    def test_build_upstream_column_map(self):
+        """Each physical column maps to every field consuming it."""
+        data_source = DataSource(
+            id="ds-map-001",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue",
+                    name="revenue",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue")],
+                ),
+                DatasourceField(
+                    id="fld-margin",
+                    name="margin",
+                    upstreamColumns=[
+                        UpstreamColumn(id="col-revenue", name="revenue"),
+                        UpstreamColumn(id="col-cost", name="cost"),
+                        None,
+                    ],
+                ),
+            ],
+        )
+
+        upstream_column_map = self.tableau._build_upstream_column_map(data_source)
+
+        assert upstream_column_map["col-revenue"] == {"fld-revenue", "fld-margin"}
+        assert upstream_column_map["col-cost"] == {"fld-margin"}
+
+    def test_data_model_column_fqn_resolves_collapsed_parent(self):
+        """A collapsed field has no child, so lineage must land on the field column itself."""
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-revenue",
+                    displayName="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="svc.model.Sales.fld-revenue",
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id="col-revenue",
+            field_names={"fld-revenue"},
+        )
+
+        assert columns == ["svc.model.Sales.fld-revenue"]
+
+    def test_data_model_column_fqn_resolves_child_without_parent(self):
+        """
+        A fan-out field keeps children, and only the matching child is linked. Returning the parent
+        as well would recreate the duplicate lineage edges reported in issue #30639.
+        """
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Margins",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-margin",
+                    displayName="margin",
+                    dataType=DataType.RECORD,
+                    fullyQualifiedName="svc.model.Margins.fld-margin",
+                    children=[
+                        Column(
+                            name="col-revenue",
+                            displayName="revenue",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.col-revenue",
+                        ),
+                        Column(
+                            name="col-cost",
+                            displayName="cost",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.col-cost",
+                        ),
+                    ],
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id="col-revenue",
+            field_names={"fld-margin"},
+        )
+
+        assert columns == ["svc.model.Margins.fld-margin.col-revenue"]
+
+    def test_data_model_column_fqn_matches_truncated_child_name(self):
+        """
+        Child names are stored truncated to 256 chars. Matching the raw id would miss the child and
+        fall back to the parent, pointing lineage at the wrong column.
+        """
+        long_column_id = "col-" + ("x" * 300)
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Margins",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-margin",
+                    displayName="margin",
+                    dataType=DataType.RECORD,
+                    fullyQualifiedName="svc.model.Margins.fld-margin",
+                    children=[
+                        Column(
+                            name=long_column_id[:256],
+                            displayName="revenue",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.truncated",
+                        ),
+                    ],
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id=long_column_id,
+            field_names={"fld-margin"},
+        )
+
+        assert columns == ["svc.model.Margins.fld-margin.truncated"]
+
+    def test_data_model_column_fqn_ignores_unrelated_fields(self):
+        """Only the fields actually consuming the physical column are linked."""
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-revenue",
+                    displayName="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="svc.model.Sales.fld-revenue",
+                ),
+                Column(
+                    name="fld-perf",
+                    displayName="perf",
+                    dataType=DataType.STRING,
+                    fullyQualifiedName="svc.model.Sales.fld-perf",
+                ),
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id="col-revenue",
+            field_names={"fld-revenue"},
+        )
+
+        assert columns == ["svc.model.Sales.fld-revenue"]
+
+    @staticmethod
+    def _sales_data_model_entity():
+        return DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-revenue",
+                    displayName="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="svc.model.Sales.fld-revenue",
+                )
+            ],
+        )
+
+    @staticmethod
+    def _sales_table_entity():
+        return Table(
+            id=uuid.uuid4(),
+            name="sales",
+            columns=[
+                Column(
+                    name="revenue",
+                    dataType=DataType.NUMERIC,
+                    fullyQualifiedName="db.schema.sales.revenue",
+                )
+            ],
+        )
+
+    def test_column_lineage_emits_single_edge_to_collapsed_column(self):
+        """
+        A physical column feeding a collapsed field yields exactly one edge, landing on the
+        top-level data model column. Columns no field consumes are skipped.
+        """
+        upstream_table = UpstreamTable(
+            id="tbl-001",
+            luid="tbl-luid-001",
+            name="sales",
+            columns=[
+                UpstreamTableColumn(id="col-revenue", name="revenue"),
+                UpstreamTableColumn(id="col-unused", name="unused"),
+            ],
+        )
+
+        column_lineage = self.tableau._get_column_lineage(
+            upstream_table,
+            self._sales_table_entity(),
+            self._sales_data_model_entity(),
+            {"col-revenue": {"fld-revenue"}},
+        )
+
+        assert len(column_lineage) == 1
+        assert column_lineage[0].fromColumns[0].root == "db.schema.sales.revenue"
+        assert column_lineage[0].toColumn.root == "svc.model.Sales.fld-revenue"
+
+    def test_column_lineage_skips_upstream_column_without_name(self):
+        """A nameless physical column cannot be resolved to a table column FQN."""
+        upstream_table = UpstreamTable(
+            id="tbl-002",
+            luid="tbl-luid-002",
+            name="sales",
+            columns=[UpstreamTableColumn(id="col-revenue")],
+        )
+
+        column_lineage = self.tableau._get_column_lineage(
+            upstream_table,
+            self._sales_table_entity(),
+            self._sales_data_model_entity(),
+            {"col-revenue": {"fld-revenue"}},
+        )
+
+        assert column_lineage == []

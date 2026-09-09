@@ -48,7 +48,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -95,13 +94,16 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -137,6 +139,8 @@ public class UserRepository extends EntityRepository<User> {
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+  private final UserPreferencesRepository userPreferencesRepository =
+      new UserPreferencesRepository();
 
   public UserRepository() {
     super(
@@ -244,6 +248,9 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void prepare(User user, boolean update) {
     validateTeams(user);
+    if (!update) {
+      validateGroupTeams(user.getTeams());
+    }
     validateRoles(user.getRoles());
   }
 
@@ -511,6 +518,18 @@ public class UserRepository extends EntityRepository<User> {
       teams.sort(EntityUtil.compareEntityReference);
     } else {
       user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
+    }
+  }
+
+  private void validateGroupTeams(List<EntityReference> teamReferences) {
+    for (EntityReference teamReference : listOrEmpty(teamReferences)) {
+      if (!teamReference.getId().equals(getOrganization().getId())) {
+        Team team = Entity.getEntity(TEAM, teamReference.getId(), "teamType", ALL);
+        if (!TeamType.GROUP.equals(team.getTeamType())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidTeamDirectUserAssignment(team.getTeamType()));
+        }
+      }
     }
   }
 
@@ -1325,17 +1344,43 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
+    revokeLiveSessions(entity);
+    // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
+    userPreferencesRepository.delete(entity.getId());
     deleteSuggestionTasksForUser(entity);
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            updateIncidentAssignee(entity);
-          } catch (Exception ex) {
-            LOG.error("Error updating test case incident assignee: ", ex);
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.USER_CLEANUP,
+            entity.getFullyQualifiedName(),
+            () -> {
+              try {
+                updateIncidentAssignee(entity);
+              } catch (Exception ex) {
+                LOG.error("Error updating test case incident assignee: ", ex);
+              }
+            });
+  }
+
+  /**
+   * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
+   * user's existing session-bound tokens keep working until natural expiry (7 days by default)
+   * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
+   * sockets as well.
+   */
+  private void revokeLiveSessions(User entity) {
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null || entity.getId() == null) {
+      return;
+    }
+    try {
+      int revoked = sessionService.revokeSessionsForUser(entity.getId().toString());
+      if (revoked > 0) {
+        LOG.info("Revoked {} session(s) for deleted user {}", revoked, entity.getName());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to revoke sessions for deleted user {}", entity.getName(), e);
+    }
   }
 
   private void deleteSuggestionTasksForUser(User entity) {
@@ -1591,12 +1636,13 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     private void updateTeams(User original, User updated) {
+      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
+      validateGroupTeams(updatedTeams);
+
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
       assignTeams(updated, updated.getTeams());
-
-      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
-      List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);

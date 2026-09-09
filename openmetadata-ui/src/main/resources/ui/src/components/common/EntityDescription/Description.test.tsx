@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
@@ -175,6 +176,20 @@ describe('Description', () => {
     expect(screen.getByTestId('edit-description')).toBeInTheDocument();
   });
 
+  it('should use the shared edit-new svg asset for the edit icon', () => {
+    render(<Description {...defaultProps} />);
+
+    const editButtonProps = (Button as unknown as jest.Mock).mock.calls
+      .map(([props]) => props)
+      .find((props) => props['data-testid'] === 'edit-description');
+
+    // Every *.svg resolves to the string 'svg-mock' under jest (see src/test/unit/mocks/svg.mock),
+    // so an asset import is distinguishable from untitled's `Edit02`, which is a function
+    // component. Guards the regression where this button used a visibly different pencil than the
+    // edit-new.svg one every other edit affordance on an entity page uses.
+    expect(editButtonProps?.iconLeading).toBe('svg-mock');
+  });
+
   it('should hide the edit button when edit access is not granted', () => {
     render(<Description {...defaultProps} hasEditAccess={false} />);
 
@@ -320,6 +335,7 @@ describe('Description', () => {
   it('should render the authored-by footer when change metadata is present', () => {
     mockUseGenericContext.mockReturnValue({
       isVersionView: false,
+      type: EntityType.TABLE,
       changeSummary: {
         description: {
           changeSource: ChangeSource.Manual,
@@ -333,6 +349,27 @@ describe('Description', () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.getByTestId('authored-by-footer')).toBeInTheDocument();
+  });
+
+  it('should not inherit the page-level change summary when entityType differs from the context entity', () => {
+    // Regression test for #32256: a Query rendered on a Table page must not pick up the
+    // table's description-provenance from the GenericProvider context.
+    mockUseGenericContext.mockReturnValue({
+      isVersionView: false,
+      type: EntityType.TABLE,
+      changeSummary: {
+        description: {
+          changeSource: ChangeSource.Suggested,
+          changedBy: 'admin',
+          changedAt: 1700000000000,
+        },
+      },
+      onThreadLinkSelect: mockOnThreadLinkSelect,
+    });
+
+    render(<Description {...defaultProps} entityType={EntityType.QUERY} />);
+
+    expect(screen.queryByTestId('authored-by-footer')).not.toBeInTheDocument();
   });
 
   it('should not render the authored-by footer when change metadata is absent', () => {

@@ -76,7 +76,7 @@ function PlatformInsightsWidget({
                 entity: t('label.platform'),
               })}
             </Typography.Text>
-            <Typography.Text className="text-grey-muted text-sm">
+            <Typography.Text className="tw:text-tertiary text-sm">
               {t('message.platform-insight-description')}
             </Typography.Text>
           </div>

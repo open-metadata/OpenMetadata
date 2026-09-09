@@ -18,12 +18,14 @@ import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.search.SearchSettingsTestHelper;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.PreviewSearchRequest;
 
 /**
  * Relevancy coverage driven through {@code POST /v1/search/preview}: each test indexes a small,
@@ -254,6 +256,45 @@ class SearchRelevancyPreviewIT {
     assertThat(topHit(marker, boostTier2))
         .as("re-targeting the per-asset boost onto Tier2 must flip the top hit")
         .isEqualTo(tier2Table.getId().toString());
+  }
+
+  @Test
+  void previewExcludesSoftDeletedEntitiesLikeExplore(final TestNamespace ns) {
+    final String marker = ns.uniqueShortId();
+    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    final String liveId =
+        RelevancyFixtures.createTable(schema, marker + "a", marker, null).getId().toString();
+    final String softDeletedId =
+        RelevancyFixtures.createTable(schema, marker + "b", marker, null).getId().toString();
+    awaitIndexed(marker, 2);
+    SdkClients.adminClient().tables().delete(softDeletedId);
+
+    final SearchSettings base = currentSettings();
+
+    // The soft delete reaches the index asynchronously, so poll until the flag flips rather than
+    // assert once. Explore sends deleted=false; preview omits the field entirely, so this asserts
+    // the schema default lands on the same filter.
+    Awaitility.await("preview drops the soft-deleted table once the delete reaches the index")
+        .atMost(INDEXED_TIMEOUT)
+        .pollInterval(RANK_POLL)
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertThat(
+                        SearchSettingsTestHelper.previewIds(server, marker, TABLE_INDEX, base, 10))
+                    .as("preview must exclude soft-deleted entities by default, as Explore does")
+                    .contains(liveId)
+                    .doesNotContain(softDeletedId));
+
+    final PreviewSearchRequest includingDeleted =
+        SearchSettingsTestHelper.previewRequest(marker, TABLE_INDEX, base, 10).withDeleted(true);
+    assertThat(
+            SearchSettingsTestHelper.idsOf(
+                SearchSettingsTestHelper.preview(server, includingDeleted)))
+        .as("an explicit deleted=true must preview the soft-deleted entity instead")
+        .contains(softDeletedId)
+        .doesNotContain(liveId);
   }
 
   private static SearchSettings boostTier(final SearchSettings base, final String tierFqn) {

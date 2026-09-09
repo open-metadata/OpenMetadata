@@ -31,7 +31,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -318,7 +317,12 @@ public class OpenSearchSourceBuilderFactory
     }
 
     if (isColumnIndex(indexName)) {
-      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+      // Column docs carry fqnParts and structured search fields (the "tableColumn"
+      // AssetTypeConfiguration). Route through the data-asset builder so an FQN query
+      // matches precisely (operator AND over fqnParts) instead of OR-matching every
+      // column that merely shares a parent-name token.
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (isServiceIndex(indexName)) {
@@ -373,25 +377,6 @@ public class OpenSearchSourceBuilderFactory
   public OpenSearchRequestBuilder buildTestCaseResultSearchV2(String query, int from, int size) {
     Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
     Highlight highlighter = buildHighlightsV2(new ArrayList<>());
-    return searchBuilderV2(queryBuilder, highlighter, from, size);
-  }
-
-  public OpenSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    Query queryBuilder;
-    if (nullOrEmpty(query) || "*".equals(query.trim())) {
-      queryBuilder = Query.of(q -> q.matchAll(m -> m));
-    } else {
-      Map<String, Float> fields = ColumnSearchIndex.getFields();
-      queryBuilder =
-          OpenSearchQueryBuilder.multiMatchQuery(
-              query,
-              fields,
-              TextQueryType.BestFields,
-              Operator.Or,
-              String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
-    }
-    Highlight highlighter = buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
 
@@ -1103,6 +1088,7 @@ public class OpenSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
+      case PREFIX -> buildPrefixRankingStageQueryV2(significantQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
           significantQuery, stage, assetConfig, getFuzziness(significantQuery));
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
@@ -1137,6 +1123,27 @@ public class OpenSearchSourceBuilderFactory
     return OpenSearchQueryBuilder.constantScoreQuery(exactQuery.build(), weight);
   }
 
+  /**
+   * Prefix stage: {@code match_bool_prefix} treats the last query token as a prefix, so a
+   * partially typed name ranks in its own band above an incidental substring hit. It also covers
+   * queries shorter than {@code om_ngram}'s three-character minimum, which previously matched
+   * nothing at all.
+   */
+  private Query buildPrefixRankingStageQueryV2(String query, RankingStage stage) {
+    OpenSearchQueryBuilder.BoolQueryBuilder prefixQuery = OpenSearchQueryBuilder.boolQuery();
+    for (String field : stage.getFields()) {
+      prefixQuery.should(
+          OpenSearchQueryBuilder.matchBoolPrefixQuery(
+              field,
+              query,
+              SearchRankingHelper.minimumShouldMatch(stage),
+              rankingQueryName(stage, field)));
+    }
+    prefixQuery.minimumShouldMatch(1);
+    return OpenSearchQueryBuilder.constantScoreQuery(
+        prefixQuery.build(), SearchRankingHelper.stageWeight(stage));
+  }
+
   private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
     OpenSearchQueryBuilder.BoolQueryBuilder phraseQuery = OpenSearchQueryBuilder.boolQuery();
     float weight = SearchRankingHelper.stageWeight(stage);
@@ -1164,7 +1171,7 @@ public class OpenSearchSourceBuilderFactory
               fields,
               TextQueryType.BestFields,
               Operator.And,
-              String.valueOf(DEFAULT_TIE_BREAKER),
+              String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
               "0",
               null,
               null,
@@ -1179,17 +1186,22 @@ public class OpenSearchSourceBuilderFactory
   private Query buildTextRankingStageQueryV2(
       String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
     Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
-    return OpenSearchQueryBuilder.multiMatchQuery(
-        query,
-        fields,
-        TextQueryType.BestFields,
-        Operator.Or,
-        String.valueOf(DEFAULT_TIE_BREAKER),
-        fuzziness,
-        SearchRankingHelper.minimumShouldMatch(stage),
-        SearchRankingHelper.stageWeight(stage),
-        rankingQueryName(stage, "text"),
-        SearchRankingHelper.stageSearchAnalyzer(stage));
+    Query textQuery =
+        OpenSearchQueryBuilder.multiMatchQuery(
+            query,
+            fields,
+            TextQueryType.BestFields,
+            Operator.Or,
+            String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
+            fuzziness,
+            SearchRankingHelper.minimumShouldMatch(stage),
+            null,
+            rankingQueryName(stage, "text"),
+            SearchRankingHelper.stageSearchAnalyzer(stage));
+    return OpenSearchQueryBuilder.scriptScoreQuery(
+        textQuery,
+        SearchRankingHelper.STAGE_SATURATION_SCRIPT,
+        SearchRankingHelper.stageSaturationParams(stage));
   }
 
   private String rankingQueryName(RankingStage stage, String field) {

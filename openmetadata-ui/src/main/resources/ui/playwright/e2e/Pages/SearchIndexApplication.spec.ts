@@ -144,7 +144,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
         timeout: 300_000,
       }
     )
-    .toEqual(expect.stringMatching(/success|activeError/g));
+    .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
 
   await page.reload();
 
@@ -163,7 +163,7 @@ const verifyLastExecutionRun = async (page: Page, response: Response) => {
       await verifyLastExecutionStatus(page);
     } else {
       expect(responseData.data[0].status).toEqual(
-        expect.stringMatching(/success|activeError/g)
+        expect.stringMatching(SUCCESSFUL_RUN_STATUS)
       );
     }
   }

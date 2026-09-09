@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -57,6 +58,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -108,17 +110,69 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallback_noPendingSession_writesErrorResponse() throws Exception {
+  void handleCallback_noPendingSession_redirectsToSignin() throws Exception {
     when(sessionService.getPendingSession(request, response)).thenReturn(Optional.empty());
 
     AuthenticationCodeFlowHandler handler =
         createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_silentAuthError_redirectsToSignin() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"login_required"},
+                "error_description",
+                    new String[] {
+                      "The client specified not to prompt, but the user is not logged in."
+                    }));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_nonSilentAuthError_writesErrorResponse() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"server_error"}));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
 
     handler.handleCallback(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     String body = captureOutputStream.getCapturedOutput();
-    assertTrue(body.contains("No pending session found for callback"));
+    assertTrue(body.contains("Bad authentication response"));
+    verify(response, never()).sendRedirect(anyString());
   }
 
   @Test
@@ -635,6 +689,26 @@ class AuthenticationCodeFlowHandlerTest {
     assertFalse((Boolean) method.invoke(handler, TEST_SERVER_URL + "/auth/callback"));
     assertFalse((Boolean) method.invoke(handler, "https://evil.example.com" + MCP_CALLBACK));
     assertFalse((Boolean) method.invoke(handler, (Object) null));
+  }
+
+  @Test
+  void resolveProviderMetadata_initializesResolverAndReturnsLoadedMetadata() throws Exception {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "resolveProviderMetadata", OidcConfiguration.class);
+    method.setAccessible(true);
+
+    Object result = method.invoke(null, oidcConfiguration);
+
+    // pac4j 6 removed getProviderMetadata(); the helper must initialize the resolver, then load().
+    assertEquals(metadata, result);
+    verify(oidcConfiguration).ensuresMetadataResolverInitialized();
+    verify(resolver).load();
   }
 
   private void stubOidcConfigForLogin() {

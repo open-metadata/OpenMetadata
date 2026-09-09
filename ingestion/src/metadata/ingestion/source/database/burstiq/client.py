@@ -64,6 +64,7 @@ class BurstIQClient:
             backoff_factor=1,  # sleeps 1s, 2s, 4s between tries
             status_forcelist=(502, 503, 504),
             allowed_methods=None,  # retry POST too — TQL queries are read-only
+            respect_retry_after_header=False,  # ignore server Retry-After; cap total wait by our backoff, not the server
         )
         self.session.mount("https://", HTTPAdapter(max_retries=retry))
 

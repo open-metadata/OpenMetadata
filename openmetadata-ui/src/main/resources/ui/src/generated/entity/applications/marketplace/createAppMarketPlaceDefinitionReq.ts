@@ -143,9 +143,6 @@ export interface CreateAppMarketPlaceDefinitionReq {
  * This schema defines the type of application.
  */
 export enum AgentType {
-    CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 
@@ -155,8 +152,6 @@ export enum AgentType {
  * Configuration for the Automator External Application.
  *
  * This schema defines the Slack App Information
- *
- * Configuration for the Collate AI Quality Agent.
  *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
@@ -176,8 +171,6 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
-     *
-     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -213,13 +206,7 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?: string;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?:                boolean;
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -357,6 +344,12 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed
+     * by the extension's name. OpenMetadata never reads these values; it hands them to the
+     * registered DataRetentionExtension, which decides what a missing key means.
+     */
+    extensions?: any;
+    /**
      * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
      * months).
      */
@@ -366,6 +359,10 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -1324,8 +1321,6 @@ export enum Type {
     Automator = "Automator",
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",

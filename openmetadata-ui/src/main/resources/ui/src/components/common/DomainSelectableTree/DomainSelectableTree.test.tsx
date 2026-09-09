@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import * as domainAPI from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableTree from './DomainSelectableTree';
 
 const mockDomains: Domain[] = [
@@ -108,6 +110,11 @@ jest.mock('../../../utils/EntityReferenceUtils', () => ({
 jest.mock('../../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((value) => value),
   getEncodedFqn: jest.fn().mockImplementation((value) => value),
+  getErrorText: jest
+    .fn()
+    .mockImplementation(
+      (error, fallback) => error?.response?.data?.message ?? fallback
+    ),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -431,6 +438,113 @@ describe('DomainSelectableTree', () => {
 
     await waitFor(() => {
       expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
+    });
+  });
+
+  it('should show an inline error inside the list when a search fails', async () => {
+    const error = new AxiosError('Request failed with status code 400');
+    jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'a||||b' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('retry-domain-search')).toBeInTheDocument();
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
+    // no message on the error, so the static fallback is shown
+    expect(screen.getByText('server.entity-fetch-error')).toBeInTheDocument();
+  });
+
+  it("should show the server's own message when the response carries one", async () => {
+    const error = new AxiosError('Request failed with status code 400');
+    error.response = {
+      status: 400,
+      data: { code: 400, message: 'Invalid field name childrenCount' },
+    } as never;
+    jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'eng' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Invalid field name childrenCount')
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText('server.entity-fetch-error')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should retry the search from the inline error and recover', async () => {
+    jest
+      .spyOn(domainAPI, 'searchDomains')
+      .mockRejectedValueOnce(
+        new AxiosError('Request failed with status code 400')
+      )
+      .mockResolvedValueOnce([mockDomains[0]]);
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'Engineering' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('retry-domain-search'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('domain-search-error')
+      ).not.toBeInTheDocument();
+    });
+
+    expect(domainAPI.searchDomains).toHaveBeenCalledTimes(2);
+  });
+
+  it('should clear the inline error when the search box is cleared', async () => {
+    jest
+      .spyOn(domainAPI, 'searchDomains')
+      .mockRejectedValueOnce(
+        new AxiosError('Request failed with status code 400')
+      );
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'a||||b' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: '' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('domain-search-error')
+      ).not.toBeInTheDocument();
     });
   });
 });

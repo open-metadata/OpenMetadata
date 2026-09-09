@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
 import removeMarkdown from 'remove-markdown';
@@ -55,9 +56,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
   const wordsCount = words.length;
 
   if (wordsCount === 1) {
-    // In case of only one word (possibly too long URL)
-    // return the whole word instead of trimming
-    return content.split(' ')[0];
+    return slicedContent;
   }
 
   // Eliminate word at the end to avoid using broken words
@@ -93,15 +92,19 @@ export const getQueryWithSlash = (query: string): string =>
   query.replaceAll(/["']/g, String.raw`\$&`);
 
 /**
- * Convert a template string into HTML DOM nodes
- * Same as React.createElement(type, options, children)
- * @param  {String} str The template string
- * @return {Node}       The template HTML
+ * Convert a template string into HTML DOM nodes.
+ * Input is sanitized with DOMPurify before being parsed so any HTML string
+ * flowing through this helper — search-hit highlights, entity
+ * name/displayName in headers and summary panels, version diff snippets —
+ * is scrubbed before being turned into React nodes. DOMPurify's default
+ * profile preserves the benign markup callers rely on
+ * (<span class>, <mark>, <em>, <ins>, <del>) while stripping <iframe>,
+ * <script>, event handler attributes, and javascript:/data: URLs.
  */
 export const stringToHTML = function (
   strHTML: string
 ): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(strHTML) : strHTML;
+  return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
 };
 
 /**
