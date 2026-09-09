@@ -21,8 +21,11 @@ export interface FilterSelectOption {
   textValue?: string;
   /** Result count shown as a trailing badge on the row. */
   count?: number;
-  /** Leading icon (service logo, domain color chip, entity icon, …). */
-  icon?: FC<{ className?: string }>;
+  /**
+   * Leading icon (service logo, domain color chip, entity icon, …) — an icon
+   * component, or an already-rendered node.
+   */
+  icon?: FC<{ className?: string }> | ReactNode;
 }
 
 export type FilterSelectTriggerVariant = 'button' | 'chip' | 'input';
@@ -46,6 +49,8 @@ export interface FilterSelectProps {
   commitMode?: FilterSelectCommitMode;
   'data-testid'?: string;
   emptyState?: ReactNode;
+  /** Muted helper line rendered under the search box. */
+  helperText?: ReactNode;
   hideCounts?: boolean;
   isLoading?: boolean;
   isOpen?: boolean;
