@@ -149,7 +149,7 @@ const OptionRow = ({
       showCheckbox={showCheckbox}
       textValue={optionText(option)}>
       {(state) => (
-        <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs">
+        <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:text-primary">
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
               {iconNode}
