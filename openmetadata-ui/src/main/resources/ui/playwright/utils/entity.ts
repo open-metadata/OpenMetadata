@@ -1588,9 +1588,9 @@ export const validateFollowedEntityToWidget = async (
     ).toBeVisible({ timeout: 30_000 });
   } else {
     await expect(followingWidget).toBeVisible();
-    await expect(
-      followingWidget.getByTestId(`Following-${entity}`)
-    ).toBeHidden({ timeout: 30_000 });
+    await expect(followingWidget.getByTestId(`Following-${entity}`)).toBeHidden(
+      { timeout: 30_000 }
+    );
   }
 
   return followingWidget;
