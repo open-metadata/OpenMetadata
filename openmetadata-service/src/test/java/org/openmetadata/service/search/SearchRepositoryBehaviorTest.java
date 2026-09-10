@@ -439,11 +439,36 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void getIndexOrAliasNameUsesDataInsightsClusterPrefix() {
-    assertEquals("cluster-di-data-assets-*", repository.getIndexOrAliasName("di-data-assets-*"));
+  void getIndexOrAliasNameUsesDataInsightsDataStreamPrefix() {
+    for (String index : List.of("di-data-assets*", "di-data-assets-*", "di-data-assets-table")) {
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName(index));
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName("cluster-" + index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesClusterAliasesStartingWithDataInsightsPrefix() {
+    SearchRepository diCluster = newRepository(Map.of(), "di-data-assets-prod");
+    for (String index :
+        List.of("di-data-assets-prod_table_search_index", "di-data-assets-prod-di-data-assets-*")) {
+      assertEquals(index, diCluster.getIndexOrAliasName(index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesDataInsightsWithoutClusterAlias() {
     assertEquals(
-        "cluster-di-data-assets-table",
-        repository.getIndexOrAliasName("cluster-di-data-assets-table"));
+        "di-data-assets-*", newRepository(Map.of(), null).getIndexOrAliasName("di-data-assets-*"));
+    assertEquals(
+        "di-data-assets-table",
+        newRepository(Map.of(), "").getIndexOrAliasName("di-data-assets-table"));
+  }
+
+  @Test
+  void getIndexOrAliasNameResolvesMixedDataInsightsAndEntityIndexes() {
+    assertEquals(
+        "cluster_table_search_index,cluster-di-data-assets-*,cluster_dataAsset",
+        repository.getIndexOrAliasName("table, di-data-assets-*, dataAsset"));
   }
 
   /**

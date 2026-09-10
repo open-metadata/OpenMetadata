@@ -1077,6 +1077,34 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testPersonaQueryFilterReachesBothVectorEngines() throws Exception {
+    String personaFilter =
+        "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"entityType\":\"table\"}},"
+            + "{\"term\":{\"service.name.keyword\":\"finance\"}}]}}}";
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            "customer data",
+            Map.of("tier", List.of("Tier.Tier1")),
+            10,
+            0,
+            100,
+            0.0,
+            null,
+            null,
+            personaFilter);
+
+    String osQuery = VectorSearchQueryBuilder.build(new float[] {0.1f}, parameters);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(new float[] {0.1f}, parameters, 2);
+
+    JsonNode osMust = MAPPER.readTree(osQuery).at("/query/knn/embedding/filter/bool/must");
+    JsonNode esMust = MAPPER.readTree(esQuery).at("/knn/filter/bool/must");
+    assertEquals(osMust, esMust);
+    assertEquals(3, osMust.size());
+    assertEquals("table", osMust.get(2).at("/bool/filter/0/term/entityType").asText());
+    assertEquals("finance", osMust.get(2).at("/bool/filter/1/term/service.name.keyword").asText());
+  }
+
+  @Test
   void nullFiltersProduceOnlyTheDeletedClauseWithoutThrowing() throws Exception {
     float[] vector = {0.1f, 0.2f};
 

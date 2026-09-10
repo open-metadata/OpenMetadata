@@ -113,6 +113,25 @@ describe('Test FeedEditor Component', () => {
     expect(editorWrapper).toBeInTheDocument();
   });
 
+  it('renders entity mention names and breadcrumbs as text', () => {
+    render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const payload = '<img src=x onerror="alert(1)">';
+
+    const suggestion = mentionModule().renderItem({
+      id: 'entity-id',
+      value: 'entity-fqn',
+      link: '/table/entity-fqn',
+      name: payload,
+      type: 'table',
+      breadcrumbs: [{ name: payload }],
+    });
+
+    expect(suggestion.querySelector('img')).not.toBeInTheDocument();
+    expect(suggestion).toHaveTextContent(`${payload}${payload}`);
+  });
+
   it("Should call onSave method on 'Enter' keydown", async () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
