@@ -222,7 +222,10 @@ const ReindexFailures = ({
           total,
         }}
         rowKey="id"
-        scroll={{ y: 'calc(100vh - 280px)' }}
+        // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
+        // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
+        // rather than collapsing the columns into the drawer width.
+        scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
         size="small"
         onChange={({ current }) => handlePageChange(current ?? 1)}
       />
