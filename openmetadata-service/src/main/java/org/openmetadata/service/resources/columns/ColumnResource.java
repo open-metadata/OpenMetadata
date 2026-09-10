@@ -319,13 +319,15 @@ public class ColumnResource {
           boolean hasMissingMetadata,
       @Parameter(
               description =
-                  "Filter by metadata status: MISSING (no description AND no tags), "
+                  "Filter by aggregate metadata status of a column across all its occurrences: "
+                      + "MISSING (no description AND no tags), "
                       + "INCOMPLETE (has description OR tags, but not both), "
-                      + "COMPLETE (has both description AND tags)",
+                      + "COMPLETE (has both description AND tags), "
+                      + "INCONSISTENT (occurrences disagree on description/tags)",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"MISSING", "INCOMPLETE", "COMPLETE"}))
+                      allowableValues = {"MISSING", "INCOMPLETE", "COMPLETE", "INCONSISTENT"}))
           @QueryParam("metadataStatus")
           String metadataStatus,
       @Parameter(

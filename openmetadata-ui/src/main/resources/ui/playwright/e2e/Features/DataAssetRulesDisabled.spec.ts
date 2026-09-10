@@ -400,7 +400,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database description.');
 
         // Verify Owners
@@ -544,7 +544,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database Schema description.');
 
         // Verify Owners
@@ -683,7 +683,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Table description');
 
         // Go to Table Page

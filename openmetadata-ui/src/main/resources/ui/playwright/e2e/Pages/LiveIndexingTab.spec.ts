@@ -115,7 +115,7 @@ test.describe(
       });
 
       await test.step('Verify table structure', async () => {
-        const table = page.locator('.ant-table');
+        const table = page.locator('[role="grid"]');
 
         await expect(table).toBeVisible();
 
@@ -230,7 +230,7 @@ test.describe(
         });
         await liveIndexingTab.click();
 
-        const table = page.locator('.ant-table');
+        const table = page.locator('[role="grid"]');
 
         await expect(table).toBeVisible();
 

@@ -1025,7 +1025,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. The full ontology is roughly 65 KB, so prefer passing 'resource' for a focused DESCRIBE; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. Prefer passing 'resource' for a focused DESCRIBE because the full ontology can exceed the response limit; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
       "parameters": {
         "type": "object",
         "properties": {
