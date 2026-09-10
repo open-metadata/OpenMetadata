@@ -36,11 +36,6 @@ import {
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 import {
-  ensureAccordionExpanded,
-  selectComboBoxOption,
-  selectDropdownOption,
-} from './destination';
-import {
   addMultiOwner,
   updateDescription,
   waitForAllLoadersToDisappear,
@@ -104,54 +99,81 @@ export const addExternalDestination = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  await selectComboBoxOption({
-    page,
-    testId: `destination-category-select-${destinationNumber}`,
-    optionName: category,
-  });
+  // Select destination category
+  await page.click(
+    `[data-testid="destination-category-select-${destinationNumber}"]`
+  );
 
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
+    state: 'visible',
+  });
+  // Select external tab
+  const externalTab = page.locator(
+    `.ant-select-dropdown:visible [data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="tab-label-external"]`
+  );
+  await expect(externalTab).toBeVisible();
+  await externalTab.click();
+
+  // Select destination category option
+  await page.click(
+    `[data-testid="destination-category-dropdown-${destinationNumber}"]:visible [data-testid="${category}-external-option"]:visible`
+  );
+
+  // Input the destination receivers value
   if (category === 'Email') {
-    await page
-      .getByTestId(`email-input-field-${destinationNumber}`)
-      .fill(input);
+    await page.fill(
+      `[data-testid="email-input-${destinationNumber}"] [role="combobox"]`,
+      input
+    );
     await page.keyboard.press('Enter');
   } else {
-    await page
-      .getByTestId(`endpoint-input-field-${destinationNumber}`)
-      .fill(input);
+    await page.fill(
+      `[data-testid="endpoint-input-${destinationNumber}"]`,
+      input
+    );
   }
 
+  // Input the secret key value
   if (category === 'Webhook' && secretKey) {
-    await ensureAccordionExpanded(
-      page.getByTestId(`destination-${destinationNumber}`),
-      'Advanced Configuration'
+    await page
+      .getByTestId(`destination-${destinationNumber}`)
+      .getByText('Advanced Configuration')
+      .click();
+
+    const authTypeSelect = page.getByTestId(
+      `auth-type-select-${destinationNumber}`
+    );
+    await expect(authTypeSelect).toBeVisible();
+    await authTypeSelect.click();
+    await page.click(
+      `.ant-select-dropdown:visible [title="Bearer (HMAC Signature)"]:visible`
     );
 
-    await selectDropdownOption({
-      page,
-      testId: `auth-type-select-${destinationNumber}`,
-      optionName: 'Bearer (HMAC Signature)',
-    });
+    await expect(
+      page.getByTestId(`secret-key-input-${destinationNumber}`)
+    ).toBeVisible();
 
-    const secretKeyInput = page
-      .getByTestId(`secret-key-input-${destinationNumber}`)
-      .locator('input');
-    await expect(secretKeyInput).toBeVisible();
-    await secretKeyInput.fill(secretKey);
+    await page.fill(
+      `[data-testid="secret-key-input-${destinationNumber}"]`,
+      secretKey
+    );
   }
 
   if (advancedConfig) {
-    await ensureAccordionExpanded(
-      page.getByTestId(`destination-${destinationNumber}`),
-      'Advanced Configuration'
-    );
+    await page
+      .getByTestId(`destination-${destinationNumber}`)
+      .getByText('Advanced Configuration')
+      .click();
 
     if (advancedConfig.secretKey) {
-      const secretKeyInput = page
-        .getByTestId(`secret-key-input-${destinationNumber}`)
-        .locator('input');
-      await expect(secretKeyInput).toBeVisible();
-      await secretKeyInput.fill(advancedConfig.secretKey);
+      await expect(
+        page.getByTestId(`secret-key-input-${destinationNumber}`)
+      ).toBeVisible();
+
+      await page.fill(
+        `[data-testid="secret-key-input-${destinationNumber}"]`,
+        advancedConfig.secretKey
+      );
     }
 
     if (advancedConfig.headers) {
@@ -162,17 +184,14 @@ export const addExternalDestination = async ({
           .getByTestId(`add-header-button-${destinationNumber}`)
           .click();
 
-        const headerKey = page.getByTestId(
-          `header-key-input-field-${destinationNumber}-${i}`
-        );
-        const headerValue = page.getByTestId(
-          `header-value-input-field-${destinationNumber}-${i}`
-        );
+        await expect(page.getByTestId(`header-key-input-${i}`)).toBeVisible();
+        await expect(page.getByTestId(`header-value-input-${i}`)).toBeVisible();
 
-        await expect(headerKey).toBeVisible();
-        await expect(headerValue).toBeVisible();
-        await headerKey.fill(header.key);
-        await headerValue.fill(header.value);
+        await page.fill(`[data-testid="header-key-input-${i}"]`, header.key);
+        await page.fill(
+          `[data-testid="header-value-input-${i}"]`,
+          header.value
+        );
       }
     }
 
@@ -185,24 +204,20 @@ export const addExternalDestination = async ({
           .click();
 
         await expect(
-          page.getByTestId(
-            `query-param-key-input-field-${destinationNumber}-${i}`
-          )
+          page.getByTestId(`query-param-key-input-${i}`)
         ).toBeVisible();
         await expect(
-          page.getByTestId(
-            `query-param-value-input-field-${destinationNumber}-${i}`
-          )
+          page.getByTestId(`query-param-value-input-${i}`)
         ).toBeVisible();
 
-        await page
-          .getByTestId(`query-param-key-input-field-${destinationNumber}-${i}`)
-          .fill(queryParam.key);
-        await page
-          .getByTestId(
-            `query-param-value-input-field-${destinationNumber}-${i}`
-          )
-          .fill(queryParam.value);
+        await page.fill(
+          `[data-testid="query-param-key-input-${i}"]`,
+          queryParam.key
+        );
+        await page.fill(
+          `[data-testid="query-param-value-input-${i}"]`,
+          queryParam.value
+        );
       }
     }
   }
@@ -746,9 +761,11 @@ export const checkAlertConfigDetails = async ({
   ).toBeAttached();
 
   await expect(
-    page.getByTestId('destination-category-select-0').getByRole('combobox')
-  ).toHaveValue('Slack');
-  await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
+    page
+      .getByTestId('destination-category-select-0')
+      .getByTestId('Slack-external-option')
+  ).toBeAttached();
+  await expect(page.getByTestId('endpoint-input-0')).toHaveValue(
     'https://slack.com'
   );
 };

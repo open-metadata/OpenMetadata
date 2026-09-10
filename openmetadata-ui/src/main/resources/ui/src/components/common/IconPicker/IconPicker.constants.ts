@@ -68,11 +68,6 @@ export const DEFAULT_DATA_PRODUCT_ICON: IconDefinition = {
   component: Cube01,
   category: 'default',
 };
-export const DEFAULT_GLOSSARY_TERM_ICON: IconDefinition = {
-  name: 'File01',
-  component: File01,
-  category: 'default',
-};
 export const DEFAULT_TAG_ICON: IconDefinition = {
   name: 'LayersThree01',
   component: LayersThree01,

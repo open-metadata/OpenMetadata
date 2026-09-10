@@ -24,7 +24,6 @@ import {
   addRelatedTerms,
   addRelatedTermsByRelationType,
   addSynonyms,
-  fillStyleIconUrl,
   openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
@@ -446,9 +445,9 @@ test.describe('Glossary Term Details Operations', () => {
       await page.locator('#name-0').fill('Documentation');
       await page.locator('#url-0').fill('https://docs.example.com');
 
-      // Add icon URL (custom style) through the picker's URL tab
+      // Add icon URL (custom style)
       const iconUrl = 'https://example.com/icon.png';
-      await fillStyleIconUrl(page, iconUrl);
+      await page.getByTestId('icon-url').fill(iconUrl);
 
       // Submit the term
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
