@@ -48,9 +48,12 @@ logger = ingestion_logger()
 class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
     """SAP Hana lineage, from two passes covering disjoint kinds of object.
 
-    The shared LineageSource handles everything expressed in SQL: view definitions
-    (with column-level lineage), query history, and stored procedures. This is the
-    only pass that produces anything on SAP HANA Cloud.
+    The shared LineageSource handles what is expressed in SQL: view definitions, with
+    column-level lineage, and query history for table-to-table edges. This is the only
+    pass that produces anything on SAP HANA Cloud.
+
+    Stored-procedure lineage stays unsupported. It needs StoredProcedureLineageMixin,
+    which is not mixed in here, so LineageSource.yield_procedure_lineage is a no-op.
 
     The CDATA pass handles the repository model types, which are XML rather than SQL
     and exist only in _SYS_REPO on on-prem and HXE instances:
@@ -90,10 +93,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         for either in super()._iter():
             sql_edges += 1 if either.right else 0
             yield either
-        logger.info(
-            "SAP HANA SQL lineage produced %d edges from view definitions, query history and stored procedures",
-            sql_edges,
-        )
+        logger.info("SAP HANA SQL lineage produced %d edges from view definitions and query history", sql_edges)
 
         cdata_edges = 0
         for either in self.yield_cdata_lineage():
