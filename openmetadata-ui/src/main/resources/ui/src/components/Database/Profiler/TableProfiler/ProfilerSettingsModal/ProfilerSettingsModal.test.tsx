@@ -315,7 +315,9 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
     expect(payload.partitioning?.partitionValues).toEqual(['edited']);
   });
 
-  it('should block the save instead of writing a partial config when a partition value is blank', async () => {
+  // Documents current behaviour, not desired behaviour: a stored config with a
+  // blank partition value cannot be saved at all until the field is cleared.
+  it('currently blocks the save outright when a stored partition value is blank', async () => {
     (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
       ...MOCK_TABLE,
       tableProfilerConfig: {
