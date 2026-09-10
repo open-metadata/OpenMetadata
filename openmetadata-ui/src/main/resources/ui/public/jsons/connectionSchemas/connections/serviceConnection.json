@@ -2645,9 +2645,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -3466,9 +3470,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -7302,9 +7310,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -8081,9 +8093,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -8350,9 +8366,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -8601,9 +8621,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -8968,9 +8992,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -9279,9 +9307,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -9893,9 +9925,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -10980,9 +11016,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -11801,9 +11841,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -11978,9 +12022,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -12224,9 +12272,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -12469,9 +12521,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -12839,9 +12895,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -13944,9 +14004,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -14190,9 +14254,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -14563,9 +14631,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -15067,9 +15139,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -15554,9 +15630,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -15795,9 +15875,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -16261,9 +16345,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -16954,9 +17042,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -17313,9 +17405,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -17710,9 +17806,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -17951,9 +18051,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -18173,9 +18277,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -18854,9 +18962,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -19386,9 +19498,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -20435,9 +20551,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -21321,9 +21441,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -21773,9 +21897,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -22309,9 +22437,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -23499,9 +23631,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -24098,9 +24234,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -27281,9 +27421,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -28102,9 +28246,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -30176,9 +30324,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -30707,9 +30859,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -30933,9 +31089,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -31374,9 +31534,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -31795,9 +31959,13 @@
                                   "type": "object",
                                   "properties": {
                                     "storageConfig": {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
+                                      "oneOf": [
+                                        {
+                                          "title": "OpenMetadata Storage",
+                                          "type": "object",
+                                          "additionalProperties": false
+                                        }
+                                      ]
                                     }
                                   }
                                 }
@@ -41561,9 +41729,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -42382,9 +42554,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -46218,9 +46394,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -46997,9 +47177,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -47266,9 +47450,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -47517,9 +47705,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -47884,9 +48076,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -48195,9 +48391,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -48809,9 +49009,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -49896,9 +50100,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -50717,9 +50925,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -50894,9 +51106,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -51140,9 +51356,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -51385,9 +51605,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -51755,9 +51979,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -52860,9 +53088,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -53106,9 +53338,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -53479,9 +53715,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -53983,9 +54223,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -54470,9 +54714,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -54711,9 +54959,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -55177,9 +55429,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -55870,9 +56126,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -56229,9 +56489,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -56626,9 +56890,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -56867,9 +57135,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -57089,9 +57361,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -57770,9 +58046,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -58302,9 +58582,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -59351,9 +59635,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -60237,9 +60525,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -60689,9 +60981,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -61225,9 +61521,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -62415,9 +62715,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -63014,9 +63318,13 @@
                               "type": "object",
                               "properties": {
                                 "storageConfig": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
+                                  "oneOf": [
+                                    {
+                                      "title": "OpenMetadata Storage",
+                                      "type": "object",
+                                      "additionalProperties": false
+                                    }
+                                  ]
                                 }
                               }
                             }
@@ -66197,9 +66505,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -67018,9 +67330,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -69092,9 +69408,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -69623,9 +69943,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -69849,9 +70173,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -70290,9 +70618,13 @@
                                       "type": "object",
                                       "properties": {
                                         "storageConfig": {
-                                          "title": "OpenMetadata Storage",
-                                          "type": "object",
-                                          "additionalProperties": false
+                                          "oneOf": [
+                                            {
+                                              "title": "OpenMetadata Storage",
+                                              "type": "object",
+                                              "additionalProperties": false
+                                            }
+                                          ]
                                         }
                                       }
                                     }
@@ -70711,9 +71043,13 @@
                                   "type": "object",
                                   "properties": {
                                     "storageConfig": {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
+                                      "oneOf": [
+                                        {
+                                          "title": "OpenMetadata Storage",
+                                          "type": "object",
+                                          "additionalProperties": false
+                                        }
+                                      ]
                                     }
                                   }
                                 }
