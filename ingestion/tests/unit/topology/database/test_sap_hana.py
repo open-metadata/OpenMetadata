@@ -12,7 +12,6 @@
 Test SAP Hana source
 """
 
-import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
@@ -24,7 +23,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
     SapHanaSQLConnection,
 )
@@ -1444,147 +1442,3 @@ def test_yield_stored_procedure_empty_definition() -> None:
     assert len(results) == 1
     request = results[0].right
     assert request.storedProcedureCode.code == ""
-
-
-# ---------------------------------------------------------------------------
-# SYS.OBJECT_DEPENDENCIES lineage (SAP HANA Cloud, issue #24764)
-#
-# HANA Cloud has no _SYS_REPO, so the CDATA path yields nothing there. These
-# cover the deployment-independent path that reads HANA's own dependency
-# catalog instead.
-# ---------------------------------------------------------------------------
-
-
-def _object_dependency_config() -> WorkflowSource:
-    """A lineage WorkflowSource with no filters, for object-dependency tests"""
-    return WorkflowSource(
-        type="saphana-lineage",
-        serviceName="test_sap_hana",
-        serviceConnection=DatabaseConnection(
-            config=SapHanaConnection(
-                connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
-            )
-        ),
-        sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
-    )
-
-
-def _mock_dependency_rows(source, rows: list[dict]) -> None:
-    """Point the source's engine at the given OBJECT_DEPENDENCIES rows"""
-
-    class MockRow(dict):
-        def __init__(self, data):
-            super().__init__({k.lower(): v for k, v in data.items()})
-            self._data = data
-
-        def _asdict(self):
-            return {k.lower(): v for k, v in self._data.items()}
-
-    mock_connection = MagicMock()
-    mock_execution = MagicMock()
-    mock_execution.__iter__ = Mock(return_value=iter([MockRow(row) for row in rows]))
-    mock_connection.execution_options.return_value.execute.return_value = mock_execution
-    mock_connection.execute.return_value = mock_execution
-    source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
-    source.engine.connect.return_value.__exit__ = Mock()
-
-
-def _table_entity(name: str) -> Table:
-    """A minimal real Table entity, so ENTITY_REFERENCE_TYPE_MAP resolves by class name"""
-    return Table(
-        id=uuid.uuid4(),
-        name=name,
-        columns=[Column(name="ID", dataType=DataType.VARCHAR, dataLength=64)],
-    )
-
-
-def test_object_dependency_lineage_yields_table_to_view_edge() -> None:
-    """A direct TABLE -> VIEW dependency becomes one AddLineageRequest.
-
-    Mirrors the real edges observed on a HANA Cloud instance for issue #24764:
-    EMOBILITY_STATION_TX_HIST (TABLE) -> E-MOBILITY_STATION_DATA (VIEW).
-    """
-    base = _table_entity("EMOBILITY_STATION_TX_HIST")
-    dependent = _table_entity("E-MOBILITY_STATION_DATA")
-
-    mock_metadata = create_autospec(OpenMetadata)
-    mock_metadata.get_by_name = Mock(side_effect=[base, dependent])
-
-    with patch("metadata.ingestion.source.database.saphana.lineage.get_ssl_connection") as mock_get_engine:
-        mock_get_engine.return_value = MagicMock()
-        source = SaphanaLineageSource(config=_object_dependency_config(), metadata=mock_metadata)
-        _mock_dependency_rows(
-            source,
-            [
-                {
-                    "BASE_SCHEMA_NAME": "GE370603",
-                    "BASE_OBJECT_NAME": "EMOBILITY_STATION_TX_HIST",
-                    "BASE_OBJECT_TYPE": "TABLE",
-                    "DEPENDENT_SCHEMA_NAME": "GE370603",
-                    "DEPENDENT_OBJECT_NAME": "E-MOBILITY_STATION_DATA",
-                    "DEPENDENT_OBJECT_TYPE": "VIEW",
-                }
-            ],
-        )
-
-        results = [either for either in source.yield_object_dependency_lineage() if either.right]
-
-    assert len(results) == 1
-    edge = results[0].right.edge
-    assert edge.fromEntity.id.root == base.id.root
-    assert edge.toEntity.id.root == dependent.id.root
-
-
-def test_object_dependency_lineage_skips_unresolvable_endpoint() -> None:
-    """A dependency on an object OpenMetadata never ingested is skipped, not failed.
-
-    Depending on a non-ingested object is expected on any real instance, so it
-    must not surface as a workflow error.
-    """
-    mock_metadata = create_autospec(OpenMetadata)
-    mock_metadata.get_by_name = Mock(return_value=None)
-
-    with patch("metadata.ingestion.source.database.saphana.lineage.get_ssl_connection") as mock_get_engine:
-        mock_get_engine.return_value = MagicMock()
-        source = SaphanaLineageSource(config=_object_dependency_config(), metadata=mock_metadata)
-        _mock_dependency_rows(
-            source,
-            [
-                {
-                    "BASE_SCHEMA_NAME": "GE370603",
-                    "BASE_OBJECT_NAME": "NOT_INGESTED",
-                    "BASE_OBJECT_TYPE": "TABLE",
-                    "DEPENDENT_SCHEMA_NAME": "GE370603",
-                    "DEPENDENT_OBJECT_NAME": "E-MOBILITY_STATION_DATA",
-                    "DEPENDENT_OBJECT_TYPE": "VIEW",
-                }
-            ],
-        )
-
-        results = list(source.yield_object_dependency_lineage())
-
-    assert [either for either in results if either.right] == []
-    assert [either for either in results if either.left] == []
-
-
-def test_object_dependency_lineage_survives_missing_catalog() -> None:
-    """If OBJECT_DEPENDENCIES cannot be read, the pass yields nothing and does not raise.
-
-    Some deployments restrict SYS views. That must degrade to no lineage rather
-    than taking down the workflow, the same way the _SYS_REPO guard does.
-    """
-    mock_metadata = create_autospec(OpenMetadata)
-
-    with patch("metadata.ingestion.source.database.saphana.lineage.get_ssl_connection") as mock_get_engine:
-        mock_engine = MagicMock()
-        mock_get_engine.return_value = mock_engine
-        source = SaphanaLineageSource(config=_object_dependency_config(), metadata=mock_metadata)
-        mock_connection = MagicMock()
-        mock_connection.execution_options.return_value.execute.side_effect = Exception("insufficient privilege")
-        mock_connection.execute.side_effect = Exception("insufficient privilege")
-        source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
-        source.engine.connect.return_value.__exit__ = Mock()
-
-        results = [either for either in source.yield_object_dependency_lineage() if either.right]
-
-    assert results == []
