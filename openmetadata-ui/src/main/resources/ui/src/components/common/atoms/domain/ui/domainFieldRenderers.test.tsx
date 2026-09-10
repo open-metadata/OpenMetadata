@@ -157,11 +157,7 @@ describe('renderDomainOwnersCell', () => {
 
 describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', () => {
   it('forwards emptyPlaceholder to TagBadgeList for glossary terms', () => {
-    render(
-      <>
-        {renderDomainGlossaryTagsCell({ tags: [] }, { emptyPlaceholder: '--' })}
-      </>
-    );
+    render(<>{renderDomainGlossaryTagsCell({ tags: [] }, '--')}</>);
 
     expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
       'data-empty-placeholder',
@@ -170,14 +166,7 @@ describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', ()
   });
 
   it('forwards emptyPlaceholder to TagBadgeList for classification tags', () => {
-    render(
-      <>
-        {renderDomainClassificationTagsCell(
-          { tags: [] },
-          { emptyPlaceholder: '--' }
-        )}
-      </>
-    );
+    render(<>{renderDomainClassificationTagsCell({ tags: [] }, '--')}</>);
 
     expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
       'data-empty-placeholder',
