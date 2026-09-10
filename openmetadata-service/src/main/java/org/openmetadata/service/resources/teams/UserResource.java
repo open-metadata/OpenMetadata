@@ -325,9 +325,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the members
       // inherited from their sub-group descendants (empty for Group/Organization teams).
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
-      List<String> subtreeTeamHashes = teamRepository.getSubtreeTeamHashes(teamParam);
-      if (!subtreeTeamHashes.isEmpty()) {
-        filter.addQueryParam("teamHashes", String.join(",", subtreeTeamHashes));
+      List<String> subtreeTeamIds = teamRepository.getSubtreeTeamIds(teamParam);
+      if (!subtreeTeamIds.isEmpty()) {
+        filter.addQueryParam("teamIds", String.join(",", subtreeTeamIds));
       }
     }
     if (isAdmin != null) {

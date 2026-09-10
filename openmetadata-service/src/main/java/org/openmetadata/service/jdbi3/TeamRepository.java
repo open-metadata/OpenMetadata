@@ -89,7 +89,6 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -106,7 +105,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -925,13 +923,13 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   /**
-   * Name hashes to match when listing/exporting the users under {@code teamName}'s umbrella. Group
-   * and Organization teams keep direct membership (empty result &rarr; callers fall back to the
-   * plain {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree
-   * (self + all descendants) so their Users tab and export include the members inherited from their
+   * Team ids to match when listing/exporting the users under {@code teamName}'s umbrella. Group and
+   * Organization teams keep direct membership (empty result &rarr; callers fall back to the plain
+   * {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree (self +
+   * all descendants) so their Users tab and export include the members inherited from their
    * sub-groups, matching what {@link #getUserCount} already counts.
    */
-  public List<String> getSubtreeTeamHashes(String teamName) {
+  public List<String> getSubtreeTeamIds(String teamName) {
     Team team;
     try {
       team = getByName(null, teamName, Fields.EMPTY_FIELDS);
@@ -943,12 +941,12 @@ public class TeamRepository extends EntityRepository<Team> {
     if (teamType != DEPARTMENT && teamType != DIVISION && teamType != BUSINESS_UNIT) {
       return Collections.emptyList();
     }
-    List<String> hashes = new ArrayList<>();
-    hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(team.getName())));
+    List<String> ids = new ArrayList<>();
+    ids.add(team.getId().toString());
     for (EntityReference descendant : getDescendantTeams(team)) {
-      hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(descendant.getName())));
+      ids.add(descendant.getId().toString());
     }
-    return hashes;
+    return ids;
   }
 
   /**
