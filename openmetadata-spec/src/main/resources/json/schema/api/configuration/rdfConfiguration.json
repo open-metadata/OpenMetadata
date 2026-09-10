@@ -9,14 +9,24 @@
     "reasoningLevel": {
       "description": "Level of reasoning/inference to apply to SPARQL queries",
       "type": "string",
-      "enum": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"],
+      "enum": [
+        "NONE",
+        "RDFS",
+        "OWL_LITE",
+        "OWL_DL",
+        "CUSTOM"
+      ],
       "default": "NONE"
     },
     "shaclValidationMode": {
       "description": "SHACL validation behavior for RDF import and asynchronous projections.",
       "javaType": "org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode",
       "type": "string",
-      "enum": ["OFF", "REPORT", "ENFORCE_IMPORTS"],
+      "enum": [
+        "OFF",
+        "REPORT",
+        "ENFORCE_IMPORTS"
+      ],
       "default": "REPORT"
     }
   },
@@ -29,7 +39,10 @@
     "storageType": {
       "description": "Type of RDF storage backend",
       "type": "string",
-      "enum": ["FUSEKI", "QLEVER"],
+      "enum": [
+        "FUSEKI",
+        "QLEVER"
+      ],
       "default": "FUSEKI"
     },
     "remoteEndpoint": {
@@ -84,6 +97,34 @@
       "type": "integer",
       "default": 50,
       "minimum": 1
+    },
+    "maxUpdatePayloadBytes": {
+      "description": "Approximate maximum serialized payload size in bytes for a single bulk RDF write request. Chunks are budgeted by estimated triple size and split when the serialized body exceeds this cap, so wide entities cannot produce requests that overwhelm the storage backend. A single entity larger than the cap is still sent alone.",
+      "type": "integer",
+      "default": 4194304,
+      "minimum": 65536
+    },
+    "maxAppendPayloadBytes": {
+      "description": "Approximate maximum serialized payload size in bytes for an insert-only (append) bulk RDF write. Append writes carry no DELETE statements and are parsed by the streaming RDF parser rather than the SPARQL grammar, so they tolerate much larger bodies than reconciling updates; larger bodies mean fewer storage transactions, which is the main throughput lever on a single-writer store. Raising this also raises peak heap in the indexer, since a whole chunk is materialized as an in-memory model before it is sent.",
+      "type": "integer",
+      "default": 16777216,
+      "minimum": 65536
+    },
+    "bulkAppendEntityBatchSize": {
+      "description": "Maximum number of entity models written in a single insert-only (append) bulk request. Acts as a guard alongside maxAppendPayloadBytes so a chunk of very small entities cannot grow without bound.",
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1
+    },
+    "streamingAppendEnabled": {
+      "description": "Stream insert-only bulk appends to the storage backend (per-entity models written incrementally into the request body) instead of materializing a combined in-memory model first. Streaming keeps indexer memory constant regardless of chunk size; disable only to fall back to the library upload path when diagnosing transport issues.",
+      "type": "boolean",
+      "default": true
+    },
+    "gzipRequests": {
+      "description": "Compress streamed insert-only request bodies with gzip. The backend reads the request body inside its single-writer transaction, so on network-constrained links compression directly shortens writer-lock hold time. Off by default; enable after verifying throughput on your deployment. Only gzip is ever used - deflate is intentionally unsupported.",
+      "type": "boolean",
+      "default": false
     },
     "username": {
       "description": "Username for RDF storage authentication",
@@ -172,6 +213,9 @@
       "default": null
     }
   },
-  "required": ["enabled", "storageType"],
+  "required": [
+    "enabled",
+    "storageType"
+  ],
   "additionalProperties": false
 }

@@ -83,6 +83,15 @@ class OpenMetadataBaseUrlValidatorTest {
   }
 
   @Test
+  void rejectsBaseUrlSettingWithoutConfigValue() {
+    Settings setting =
+        new Settings().withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION);
+
+    assertThrows(
+        SystemSettingsException.class, () -> OpenMetadataBaseUrlValidator.validate(setting));
+  }
+
+  @Test
   void ignoresOtherSettingTypes() {
     Settings setting =
         new Settings()

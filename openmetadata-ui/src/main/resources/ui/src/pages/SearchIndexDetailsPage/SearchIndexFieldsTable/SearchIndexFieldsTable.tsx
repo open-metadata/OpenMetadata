@@ -33,7 +33,7 @@ import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFall
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../components/common/Table/Table';
+import Table from '../../../components/common/Table/TableV2';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
