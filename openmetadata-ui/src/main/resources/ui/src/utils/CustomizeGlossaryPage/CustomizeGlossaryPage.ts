@@ -43,34 +43,22 @@ class CustomizeGlossaryPageClassBase {
   }
 
   public getWidgetHeight(widgetName: string) {
-    switch (widgetName) {
-      case 'HEADER':
-        return this.defaultHeights.HEADER;
-      case 'DESCRIPTION':
-        return this.defaultHeights.DESCRIPTION;
-      case 'TAGS':
-        return this.defaultHeights.TAGS;
-      case 'DOMAIN':
-        return this.defaultHeights.DOMAIN;
-      case 'CUSTOM_PROPERTIES':
-        return this.defaultHeights.CUSTOM_PROPERTIES;
-      case 'TABS':
-        return this.defaultHeights.TABS;
-      case 'SYNONYMS':
-        return this.defaultHeights.SYNONYMS;
-      case 'RELATED_TERMS':
-        return this.defaultHeights.RELATED_TERMS;
-      case 'REFERENCES':
-        return this.defaultHeights.REFERENCES;
-      case 'OWNER':
-        return this.defaultHeights.OWNER;
-      case 'REVIEWER':
-        return this.defaultHeights.REVIEWER;
-      case 'WORKFLOW_HISTORY':
-        return this.defaultHeights.WORKFLOW_HISTORY;
-      default:
-        return this.defaultWidgetHeight;
-    }
+    const heightByWidget: Record<string, number> = {
+      HEADER: this.defaultHeights.HEADER,
+      DESCRIPTION: this.defaultHeights.DESCRIPTION,
+      TAGS: this.defaultHeights.TAGS,
+      DOMAIN: this.defaultHeights.DOMAIN,
+      CUSTOM_PROPERTIES: this.defaultHeights.CUSTOM_PROPERTIES,
+      TABS: this.defaultHeights.TABS,
+      SYNONYMS: this.defaultHeights.SYNONYMS,
+      RELATED_TERMS: this.defaultHeights.RELATED_TERMS,
+      REFERENCES: this.defaultHeights.REFERENCES,
+      OWNER: this.defaultHeights.OWNER,
+      REVIEWER: this.defaultHeights.REVIEWER,
+      WORKFLOW_HISTORY: this.defaultHeights.WORKFLOW_HISTORY,
+    };
+
+    return heightByWidget[widgetName] ?? this.defaultWidgetHeight;
   }
 
   public getDefaultWidgetForTab(tab: EntityTabs) {

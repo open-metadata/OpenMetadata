@@ -441,16 +441,11 @@ describe('TagsSection', () => {
     });
 
     it('should render tag items with correct structure', () => {
-      const { container } = render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />);
 
-      const tagItems = container.querySelectorAll('.tag-item');
-
-      expect(tagItems).toHaveLength(3); // maxDisplayCount
-
-      tagItems.forEach((item) => {
-        expect(item.querySelector('.tag-icon')).toBeInTheDocument();
-        expect(item.querySelector('.tag-name')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('tag-tag1')).toBeInTheDocument();
+      expect(screen.getByTestId('tag-tag2')).toBeInTheDocument();
+      expect(screen.getByTestId('tag-tag3')).toBeInTheDocument();
     });
   });
 

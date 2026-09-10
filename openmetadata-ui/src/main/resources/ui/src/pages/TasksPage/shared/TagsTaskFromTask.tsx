@@ -30,6 +30,51 @@ interface TagsTaskFromTaskProps {
   onChange?: (newTags: TagLabel[]) => void;
 }
 
+interface OpenTaskTagsProps {
+  isRequestTag: boolean;
+  isUpdateTag: boolean;
+  canEditTags: boolean;
+  currentValue?: string;
+  value?: TagLabel[];
+  onChange?: (newTags: TagLabel[]) => void;
+  suggestedTagsDiff: JSX.Element;
+}
+
+const OpenTaskTags: FC<OpenTaskTagsProps> = ({
+  isRequestTag,
+  isUpdateTag,
+  canEditTags,
+  currentValue,
+  value,
+  onChange,
+  suggestedTagsDiff,
+}) => (
+  <div data-testid="tags-task">
+    {isRequestTag && (
+      <div data-testid="request-tags">
+        {canEditTags ? (
+          <TagSuggestion value={value} onChange={onChange} />
+        ) : (
+          suggestedTagsDiff
+        )}
+      </div>
+    )}
+    {isUpdateTag && (
+      <div data-testid="update-tags">
+        {canEditTags ? (
+          <TagsTabs
+            tags={JSON.parse(currentValue ?? '[]')}
+            value={value ?? []}
+            onChange={onChange}
+          />
+        ) : (
+          suggestedTagsDiff
+        )}
+      </div>
+    )}
+  </div>
+);
+
 const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
   value,
   isTaskActionEdit = false,
@@ -111,30 +156,15 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
         {isTaskClosed ? (
           diffView
         ) : (
-          <div data-testid="tags-task">
-            {isRequestTag && (
-              <div data-testid="request-tags">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <TagSuggestion value={value} onChange={onChange} />
-                ) : (
-                  suggestedTagsDiff
-                )}
-              </div>
-            )}
-            {isUpdateTag && (
-              <div data-testid="update-tags">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <TagsTabs
-                    tags={JSON.parse(currentValue ?? '[]')}
-                    value={value ?? []}
-                    onChange={onChange}
-                  />
-                ) : (
-                  suggestedTagsDiff
-                )}
-              </div>
-            )}
-          </div>
+          <OpenTaskTags
+            canEditTags={isTaskActionEdit && hasEditAccess}
+            currentValue={currentValue}
+            isRequestTag={isRequestTag}
+            isUpdateTag={isUpdateTag}
+            suggestedTagsDiff={suggestedTagsDiff}
+            value={value}
+            onChange={onChange}
+          />
         )}
       </Fragment>
     </div>

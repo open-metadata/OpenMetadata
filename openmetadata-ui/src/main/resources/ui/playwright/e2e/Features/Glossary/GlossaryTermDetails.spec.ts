@@ -15,8 +15,9 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
 } from '../../../utils/common';
 import {
@@ -24,6 +25,7 @@ import {
   addRelatedTerms,
   addRelatedTermsByRelationType,
   addSynonyms,
+  fillStyleIconUrl,
   openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
@@ -355,8 +357,8 @@ test.describe('Glossary Term Details Operations', () => {
 
       // Update the description
       const newDescription = 'Updated description via table edit modal';
-      await page.locator(descriptionBox).clear();
-      await page.locator(descriptionBox).fill(newDescription);
+      await getDescriptionBox(page).clear();
+      await fillDescriptionBox(page, newDescription);
 
       // Add a synonym
       const newSynonym = 'TableEditSynonym';
@@ -425,7 +427,7 @@ test.describe('Glossary Term Details Operations', () => {
       const termName = `FullTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
       await page.fill('[data-testid="display-name"]', termName);
-      await page.locator(descriptionBox).fill('A comprehensive test term');
+      await fillDescriptionBox(page, 'A comprehensive test term');
 
       // Add synonyms
       const synonyms = ['synonym1', 'synonym2', 'alternative'];
@@ -445,9 +447,9 @@ test.describe('Glossary Term Details Operations', () => {
       await page.locator('#name-0').fill('Documentation');
       await page.locator('#url-0').fill('https://docs.example.com');
 
-      // Add icon URL (custom style)
+      // Add icon URL (custom style) through the picker's URL tab
       const iconUrl = 'https://example.com/icon.png';
-      await page.getByTestId('icon-url').fill(iconUrl);
+      await fillStyleIconUrl(page, iconUrl);
 
       // Submit the term
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');

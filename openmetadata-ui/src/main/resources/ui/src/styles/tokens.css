@@ -39,7 +39,6 @@
  * ========================================================================= */
 
 :root {
-
   /* -- Spacing -- */
   --om-space-0: 0px;
   --om-space-2: 2px;
@@ -74,8 +73,10 @@
   --om-radius-full: var(--radius-full, 9999px);
 
   /* -- Typography -- */
-  --om-font-sans: 'Inter', 'Poppins', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  --om-font-mono: ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --om-font-sans: 'Inter', 'Poppins', -apple-system, 'Segoe UI', Roboto, Arial,
+    sans-serif;
+  --om-font-mono: ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
   --om-font-size-xs: var(--text-xs, 12px);
   --om-font-size-sm: var(--text-sm, 14px);
   --om-font-size-md: var(--text-md, 16px);
@@ -106,12 +107,34 @@
 
   /* -- Elevation -- */
   --om-shadow-xs: var(--shadow-xs, 0px 1px 2px rgba(10, 13, 18, 0.05));
-  --om-shadow-sm: var(--shadow-sm, 0px 1px 3px rgba(10, 13, 18, 0.1), 0px 1px 2px -1px rgba(10, 13, 18, 0.1));
-  --om-shadow-md: var(--shadow-md, 0px 4px 6px -1px rgba(10, 13, 18, 0.1), 0px 2px 4px -2px rgba(10, 13, 18, 0.06));
-  --om-shadow-lg: var(--shadow-lg, 0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03));
-  --om-shadow-xl: var(--shadow-xl, 0px 20px 24px -4px rgba(10, 13, 18, 0.08), 0px 8px 8px -4px rgba(10, 13, 18, 0.03));
-  --om-shadow-2xl: var(--shadow-2xl, 0px 24px 48px -12px rgba(10, 13, 18, 0.18));
-  --om-shadow-3xl: var(--shadow-3xl, 0px 32px 64px -12px rgba(10, 13, 18, 0.14));
+  --om-shadow-sm: var(
+    --shadow-sm,
+    0px 1px 3px rgba(10, 13, 18, 0.1),
+    0px 1px 2px -1px rgba(10, 13, 18, 0.1)
+  );
+  --om-shadow-md: var(
+    --shadow-md,
+    0px 4px 6px -1px rgba(10, 13, 18, 0.1),
+    0px 2px 4px -2px rgba(10, 13, 18, 0.06)
+  );
+  --om-shadow-lg: var(
+    --shadow-lg,
+    0px 12px 16px -4px rgba(10, 13, 18, 0.08),
+    0px 4px 6px -2px rgba(10, 13, 18, 0.03)
+  );
+  --om-shadow-xl: var(
+    --shadow-xl,
+    0px 20px 24px -4px rgba(10, 13, 18, 0.08),
+    0px 8px 8px -4px rgba(10, 13, 18, 0.03)
+  );
+  --om-shadow-2xl: var(
+    --shadow-2xl,
+    0px 24px 48px -12px rgba(10, 13, 18, 0.18)
+  );
+  --om-shadow-3xl: var(
+    --shadow-3xl,
+    0px 32px 64px -12px rgba(10, 13, 18, 0.14)
+  );
 
   /* -- z-index (semantic ladder; migration also emits exact --om-z-<n>) -- */
   --om-z-base: 0;

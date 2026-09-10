@@ -46,8 +46,8 @@ import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -81,6 +81,7 @@ export const DashboardChartTable = ({
   >([]);
 
   const [charts, setCharts] = useState<ChartType[]>([]);
+  const [isChartsLoading, setIsChartsLoading] = useState<boolean>(true);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -136,6 +137,7 @@ export const DashboardChartTable = ({
 
   const initializeCharts = useCallback(async () => {
     try {
+      setIsChartsLoading(true);
       const res = await fetchCharts(
         listChartIds,
         chartFilters.showDeletedCharts
@@ -148,6 +150,8 @@ export const DashboardChartTable = ({
           entity: t('label.chart-plural'),
         })
       );
+    } finally {
+      setIsChartsLoading(false);
     }
   }, [listChartIds, chartFilters.showDeletedCharts]);
 
@@ -453,6 +457,7 @@ export const DashboardChartTable = ({
             </Typography.Text>
           </span>
         }
+        loading={isChartsLoading}
         locale={{
           emptyText: (
             <div

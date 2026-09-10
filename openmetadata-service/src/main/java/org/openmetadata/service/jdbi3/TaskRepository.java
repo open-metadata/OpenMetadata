@@ -24,7 +24,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -85,7 +84,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -1389,37 +1387,6 @@ public class TaskRepository extends EntityRepository<Task> {
     if (task != null) {
       closeTask(task, user, comment);
     }
-  }
-
-  /**
-   * Update assignees on an open approval task for the given entity.
-   * Used when an entity's reviewers change while an approval task is in progress.
-   * Silently does nothing if no open task exists.
-   *
-   * @param entityFqn Fully qualified name of the target entity
-   * @param newAssignees The new list of assignees (typically entity reviewers)
-   * @param updatedBy The user making the change
-   */
-  public void updateApprovalTaskAssignees(
-      String entityFqn, List<EntityReference> newAssignees, String updatedBy) {
-    Task task = findOpenTaskByEntityAndCategory(entityFqn, TaskCategory.Approval);
-    if (task == null) {
-      return;
-    }
-
-    Task currentTask = get(null, task.getId(), getFields("*"));
-    Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
-    updatedTask.setAssignees(newAssignees);
-    updatedTask.setUpdatedBy(updatedBy);
-    updatedTask.setUpdatedAt(System.currentTimeMillis());
-
-    JsonPatch patch = JsonUtils.getJsonPatch(currentTask, updatedTask);
-    if (patch.toJsonArray().isEmpty()) {
-      return;
-    }
-
-    Task patchedTask = patch(null, currentTask.getId(), updatedBy, patch).entity();
-    WebsocketNotificationHandler.handleTaskNotification(patchedTask);
   }
 
   @Override

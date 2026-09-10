@@ -57,6 +57,78 @@ const AlertSpinnerIcon: FC<{ className?: string }> = () => (
   <Loading01 className="tw:size-5 tw:animate-spin" />
 );
 
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+const isBetaExportType = (exportType: string): boolean =>
+  BETA_EXPORT_TYPES.some((beta) => beta === exportType);
+
+const getExportAlertIcon = (
+  csvExportJob: Partial<CSVExportJob>,
+  downloading: boolean
+) => (!csvExportJob.error && downloading ? AlertSpinnerIcon : undefined);
+
+const getExportAlertTitle = (
+  csvExportJob: Partial<CSVExportJob>,
+  t: TranslateFn
+): string =>
+  csvExportJob.statusUnavailable
+    ? t('server.entity-fetch-error', { entity: t('label.status') })
+    : csvExportJob.error ?? csvExportJob.message ?? '';
+
+const getExportAlertVariant = (
+  csvExportJob: Partial<CSVExportJob>,
+  downloading: boolean
+): 'error' | 'brand' | 'success' => {
+  if (csvExportJob.error || csvExportJob.statusUnavailable) {
+    return 'error';
+  }
+
+  return downloading ? 'brand' : 'success';
+};
+
+interface ExportJobStatusProps {
+  csvExportJob?: Partial<CSVExportJob>;
+  downloading: boolean;
+  isExportInProgress: boolean;
+  t: TranslateFn;
+}
+
+const ExportJobStatus: FC<ExportJobStatusProps> = ({
+  csvExportJob,
+  downloading,
+  isExportInProgress,
+  t,
+}) => {
+  if (!csvExportJob?.jobId) {
+    return null;
+  }
+
+  return (
+    <Fragment>
+      {isExportInProgress &&
+        csvExportJob.progress !== undefined &&
+        csvExportJob.total !== undefined && (
+          <div className="tw:flex tw:flex-col tw:gap-2">
+            <ProgressBarBase
+              max={csvExportJob.total}
+              value={csvExportJob.progress}
+            />
+            <Typography as="span" className="tw:text-tertiary" size="text-xs">
+              {csvExportJob.message}
+            </Typography>
+          </div>
+        )}
+      {!isExportInProgress && (
+        <Alert
+          icon={getExportAlertIcon(csvExportJob, downloading)}
+          title={getExportAlertTitle(csvExportJob, t)}
+          variant={getExportAlertVariant(csvExportJob, downloading)}
+        />
+      )}
+    </Fragment>
+  );
+};
+
 export const EntityExportModal: FC<EntityExportModalProps> = ({
   csvExportJob,
   downloading,
@@ -115,9 +187,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
                 <Select.Item id={item.id} textValue={item.label}>
                   <div className="tw:flex tw:items-center tw:gap-2">
                     {item.label}
-                    {BETA_EXPORT_TYPES.some(
-                      (exportType) => exportType === item.id
-                    ) && (
+                    {isBetaExportType(item.id) && (
                       <Badge color="gray" size="sm">
                         {t('label.beta')}
                       </Badge>
@@ -141,49 +211,12 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
               <InputBase inputDataTestId="file-name-input" />
             </InputGroup>
 
-            {csvExportJob?.jobId && (
-              <Fragment>
-                {isExportInProgress &&
-                  csvExportJob.progress !== undefined &&
-                  csvExportJob.total !== undefined && (
-                    <div className="tw:flex tw:flex-col tw:gap-2">
-                      <ProgressBarBase
-                        max={csvExportJob.total}
-                        value={csvExportJob.progress}
-                      />
-                      <Typography
-                        as="span"
-                        className="tw:text-tertiary"
-                        size="text-xs">
-                        {csvExportJob.message}
-                      </Typography>
-                    </div>
-                  )}
-                {!isExportInProgress && (
-                  <Alert
-                    icon={
-                      !csvExportJob.error && downloading
-                        ? AlertSpinnerIcon
-                        : undefined
-                    }
-                    title={
-                      csvExportJob.statusUnavailable
-                        ? t('server.entity-fetch-error', {
-                            entity: t('label.status'),
-                          })
-                        : csvExportJob.error ?? csvExportJob.message ?? ''
-                    }
-                    variant={
-                      csvExportJob.error || csvExportJob.statusUnavailable
-                        ? 'error'
-                        : downloading
-                        ? 'brand'
-                        : 'success'
-                    }
-                  />
-                )}
-              </Fragment>
-            )}
+            <ExportJobStatus
+              csvExportJob={csvExportJob}
+              downloading={downloading}
+              isExportInProgress={isExportInProgress}
+              t={t}
+            />
           </Dialog.Content>
           <Dialog.Footer>
             <Button color="secondary" size="lg" onClick={onCancel}>

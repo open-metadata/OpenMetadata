@@ -31,8 +31,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   toastNotification,
   uuid,
 } from './common';
@@ -1005,8 +1006,8 @@ export const inputBasicAlertInformation = async ({
   });
 
   // Enter description
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(ALERT_DESCRIPTION);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, ALERT_DESCRIPTION);
 
   // Select the alert source.
   //

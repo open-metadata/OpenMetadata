@@ -12,7 +12,7 @@
  */
 import { Space, Tooltip, Typography } from 'antd';
 import { isEmpty, map } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -64,19 +64,24 @@ const TableConstraints = ({
   const showAddConstraint = hasPermission && isEmpty(data?.tableConstraints);
   const showEditConstraint = hasPermission && !isEmpty(data?.tableConstraints);
 
-  const headerExtra = showAddConstraint ? (
-    <WidgetPlusButton
-      data-testid="table-constraints-add-button"
-      title={t('label.add-entity', { entity: t('label.table-constraints') })}
-      onClick={handleOpenEditConstraintModal}
-    />
-  ) : showEditConstraint ? (
-    <WidgetEditButton
-      data-testid="edit-table-constraint-button"
-      title={t('label.edit-entity', { entity: t('label.table-constraints') })}
-      onClick={handleOpenEditConstraintModal}
-    />
-  ) : null;
+  let headerExtra: ReactNode = null;
+  if (showAddConstraint) {
+    headerExtra = (
+      <WidgetPlusButton
+        data-testid="table-constraints-add-button"
+        title={t('label.add-entity', { entity: t('label.table-constraints') })}
+        onClick={handleOpenEditConstraintModal}
+      />
+    );
+  } else if (showEditConstraint) {
+    headerExtra = (
+      <WidgetEditButton
+        data-testid="edit-table-constraint-button"
+        title={t('label.edit-entity', { entity: t('label.table-constraints') })}
+        onClick={handleOpenEditConstraintModal}
+      />
+    );
+  }
 
   const content = isEmpty(data?.tableConstraints) ? null : (
     <Space className="w-full new-header-border-card" direction="vertical">

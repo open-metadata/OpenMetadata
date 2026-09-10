@@ -120,6 +120,194 @@ const splitValues = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+// Passed down to subcomponents that render a nested OntologyExpressionEditor,
+// so they don't need to reference OntologyExpressionEditor directly (which
+// would create a module-level circular reference between const declarations).
+type RenderChildExpression = (props: {
+  key?: string;
+  depth: number;
+  expression: OntologyExpression;
+  onChange: (expression: OntologyExpression) => void;
+  onRemove?: () => void;
+}) => JSX.Element;
+
+interface OntologyValueRestrictionFieldsProps {
+  expression: OntologyExpression;
+  t: (key: string) => string;
+  updateExpression: (next: OntologyExpression) => void;
+}
+
+const OntologyValueRestrictionFields = ({
+  expression,
+  t,
+  updateExpression,
+}: OntologyValueRestrictionFieldsProps) => {
+  return (
+    <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
+      <Input
+        label={`${t('label.target')} ${t('label.concept-iri')}`}
+        value={expression.individualIri ?? ''}
+        onChange={(individualIri) =>
+          updateExpression({
+            ...expression,
+            individualIri,
+            literal: individualIri ? undefined : expression.literal,
+          })
+        }
+      />
+      <Input
+        label={t('label.value')}
+        value={expression.literal?.value ?? ''}
+        onChange={(value) =>
+          updateExpression({
+            ...expression,
+            individualIri: value ? undefined : expression.individualIri,
+            literal: value
+              ? { datatypeIri: expression.literal?.datatypeIri, value }
+              : undefined,
+          })
+        }
+      />
+      {expression.literal ? (
+        <Input
+          className="tw:md:col-span-2"
+          label={`${t('label.data-type')} ${t('label.concept-iri')}`}
+          value={expression.literal.datatypeIri ?? ''}
+          onChange={(datatypeIri) =>
+            updateExpression({
+              ...expression,
+              literal: {
+                datatypeIri,
+                value: expression.literal?.value ?? '',
+              },
+            })
+          }
+        />
+      ) : null}
+    </div>
+  );
+};
+
+interface OntologyRestrictionFieldsProps {
+  depth: number;
+  expression: OntologyExpression;
+  hasCardinality: boolean;
+  hasNestedFiller: boolean;
+  renderChildExpression: RenderChildExpression;
+  restrictionKind: RestrictionKind;
+  restrictionOptions: { id: RestrictionKind; label: string }[];
+  t: (key: string) => string;
+  updateExpression: (next: OntologyExpression) => void;
+  onChangeRestriction: (key: Key | null) => void;
+}
+
+const OntologyRestrictionFields = ({
+  depth,
+  expression,
+  hasCardinality,
+  hasNestedFiller,
+  renderChildExpression,
+  restrictionKind,
+  restrictionOptions,
+  t,
+  updateExpression,
+  onChangeRestriction,
+}: OntologyRestrictionFieldsProps) => {
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-3">
+      <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
+        <Input
+          isRequired
+          label={`${t('label.property')} ${t('label.concept-iri')}`}
+          value={expression.propertyIri ?? ''}
+          onChange={(propertyIri) =>
+            updateExpression({ ...expression, propertyIri })
+          }
+        />
+        <Select
+          items={restrictionOptions}
+          label={t('label.constraint-type')}
+          value={restrictionKind}
+          onChange={onChangeRestriction}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+      </div>
+      {hasCardinality ? (
+        <Input
+          isRequired
+          label={t('label.cardinality')}
+          type="number"
+          value={String(expression.cardinality ?? 1)}
+          onChange={(value) =>
+            updateExpression({
+              ...expression,
+              cardinality: nonNegative(value),
+            })
+          }
+        />
+      ) : null}
+      {restrictionKind === RestrictionKind.Value ? (
+        <OntologyValueRestrictionFields
+          expression={expression}
+          t={t}
+          updateExpression={updateExpression}
+        />
+      ) : null}
+      {hasNestedFiller && expression.filler
+        ? renderChildExpression({
+            depth: depth + 1,
+            expression: expression.filler,
+            onChange: (filler) => updateExpression({ ...expression, filler }),
+          })
+        : null}
+    </div>
+  );
+};
+
+interface OntologyBooleanOperandsProps {
+  addOperand: () => void;
+  changeOperand: (index: number, value: OntologyExpression) => void;
+  depth: number;
+  operands: OntologyExpression[];
+  removeOperand: (index: number) => void;
+  renderChildExpression: RenderChildExpression;
+  t: (key: string) => string;
+}
+
+const OntologyBooleanOperands = ({
+  addOperand,
+  changeOperand,
+  depth,
+  operands,
+  removeOperand,
+  renderChildExpression,
+  t,
+}: OntologyBooleanOperandsProps) => {
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-3">
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t('label.constraint-plural')}
+      </Typography>
+      {operands.map((operand, index) =>
+        renderChildExpression({
+          depth: depth + 1,
+          expression: operand,
+          key: getExpressionRenderKey(operand),
+          onChange: (value) => changeOperand(index, value),
+          onRemove: () => removeOperand(index),
+        })
+      )}
+      {depth < MAX_EXPRESSION_DEPTH ? (
+        <Button color="secondary" size="sm" onClick={addOperand}>
+          {t('label.add')} {t('label.constraint')}
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
 const OntologyExpressionEditor = ({
   depth = 0,
   expression,
@@ -201,6 +389,22 @@ const OntologyExpressionEditor = ({
     });
   };
 
+  const renderChildExpression: RenderChildExpression = ({
+    key,
+    depth: childDepth,
+    expression: childExpression,
+    onChange: onChildChange,
+    onRemove: onChildRemove,
+  }) => (
+    <OntologyExpressionEditor
+      depth={childDepth}
+      expression={childExpression}
+      key={key}
+      onChange={onChildChange}
+      onRemove={onChildRemove}
+    />
+  );
+
   return (
     <Card
       className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4"
@@ -248,114 +452,30 @@ const OntologyExpressionEditor = ({
       ) : null}
 
       {expression.kind === ExpressionKind.Restriction ? (
-        <div className="tw:flex tw:flex-col tw:gap-3">
-          <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
-            <Input
-              isRequired
-              label={`${t('label.property')} ${t('label.concept-iri')}`}
-              value={expression.propertyIri ?? ''}
-              onChange={(propertyIri) =>
-                updateExpression({ ...expression, propertyIri })
-              }
-            />
-            <Select
-              items={restrictionOptions}
-              label={t('label.constraint-type')}
-              value={restrictionKind}
-              onChange={changeRestriction}>
-              {(item) => (
-                <Select.Item id={item.id} key={item.id} label={item.label} />
-              )}
-            </Select>
-          </div>
-          {hasCardinality ? (
-            <Input
-              isRequired
-              label={t('label.cardinality')}
-              type="number"
-              value={String(expression.cardinality ?? 1)}
-              onChange={(value) =>
-                updateExpression({
-                  ...expression,
-                  cardinality: nonNegative(value),
-                })
-              }
-            />
-          ) : null}
-          {restrictionKind === RestrictionKind.Value ? (
-            <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
-              <Input
-                label={`${t('label.target')} ${t('label.concept-iri')}`}
-                value={expression.individualIri ?? ''}
-                onChange={(individualIri) =>
-                  updateExpression({
-                    ...expression,
-                    individualIri,
-                    literal: individualIri ? undefined : expression.literal,
-                  })
-                }
-              />
-              <Input
-                label={t('label.value')}
-                value={expression.literal?.value ?? ''}
-                onChange={(value) =>
-                  updateExpression({
-                    ...expression,
-                    individualIri: value ? undefined : expression.individualIri,
-                    literal: value
-                      ? { datatypeIri: expression.literal?.datatypeIri, value }
-                      : undefined,
-                  })
-                }
-              />
-              {expression.literal ? (
-                <Input
-                  className="tw:md:col-span-2"
-                  label={`${t('label.data-type')} ${t('label.concept-iri')}`}
-                  value={expression.literal.datatypeIri ?? ''}
-                  onChange={(datatypeIri) =>
-                    updateExpression({
-                      ...expression,
-                      literal: {
-                        datatypeIri,
-                        value: expression.literal?.value ?? '',
-                      },
-                    })
-                  }
-                />
-              ) : null}
-            </div>
-          ) : null}
-          {hasNestedFiller && expression.filler ? (
-            <OntologyExpressionEditor
-              depth={depth + 1}
-              expression={expression.filler}
-              onChange={(filler) => updateExpression({ ...expression, filler })}
-            />
-          ) : null}
-        </div>
+        <OntologyRestrictionFields
+          depth={depth}
+          expression={expression}
+          hasCardinality={hasCardinality}
+          hasNestedFiller={hasNestedFiller}
+          renderChildExpression={renderChildExpression}
+          restrictionKind={restrictionKind}
+          restrictionOptions={restrictionOptions}
+          t={t}
+          updateExpression={updateExpression}
+          onChangeRestriction={changeRestriction}
+        />
       ) : null}
 
       {isBooleanExpression(expression.kind) ? (
-        <div className="tw:flex tw:flex-col tw:gap-3">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.constraint-plural')}
-          </Typography>
-          {operands.map((operand, index) => (
-            <OntologyExpressionEditor
-              depth={depth + 1}
-              expression={operand}
-              key={getExpressionRenderKey(operand)}
-              onChange={(value) => changeOperand(index, value)}
-              onRemove={() => removeOperand(index)}
-            />
-          ))}
-          {depth < MAX_EXPRESSION_DEPTH ? (
-            <Button color="secondary" size="sm" onClick={addOperand}>
-              {t('label.add')} {t('label.constraint')}
-            </Button>
-          ) : null}
-        </div>
+        <OntologyBooleanOperands
+          addOperand={addOperand}
+          changeOperand={changeOperand}
+          depth={depth}
+          operands={operands}
+          removeOperand={removeOperand}
+          renderChildExpression={renderChildExpression}
+          t={t}
+        />
       ) : null}
     </Card>
   );
