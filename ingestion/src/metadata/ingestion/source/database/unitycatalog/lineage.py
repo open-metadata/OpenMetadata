@@ -74,6 +74,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 TABLE_CACHE_MAX_SIZE = 500
+LINEAGE_ROW_BUFFER_SIZE = 1000
 
 
 class UnitycatalogLineageSource(Source):
@@ -96,13 +97,12 @@ class UnitycatalogLineageSource(Source):
         connection = cast("UnityCatalogConnectionHandler", self._connection)
         self.connection_obj = connection.client
         self.engine = connection.sql.client
-        self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
-        self.column_lineage_map: dict[tuple[str, str], dict[tuple[str, str], None]] = defaultdict(dict)
         self.external_location_map: dict[str, str] = {}
         self.path_to_table_map: dict[str, set[str]] = defaultdict(set)
-        self.path_lineage_map: dict[str, set[str]] = defaultdict(set)
-        self.edge_sql: dict[tuple[str, str], str] = {}
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
+        # A table can be both a lineage target and an external table; the run summary
+        # should still name it once.
+        self._filter_reported: set[str] = set()
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -194,73 +194,101 @@ class UnitycatalogLineageSource(Source):
             if isinstance(pair, dict) and pair.get("source") and pair.get("target")
         )
 
-    def _cache_lineage(self):
+    def _stream_native_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
-        Read every native lineage edge, its column mappings and its SQL in one pass.
+        Emit native lineage one target at a time, as its rows arrive.
 
-        The pairs are kept keyed by table name rather than emitted row by row: the same
-        edge is reported twice when Databricks names one side by path and the other by
-        table, and lineage is stored per edge, so a second request for a pair already
-        sent would overwrite the mappings of the first.
+        The rows are ordered by target, so a target's edges are complete as soon as the
+        next target appears and nothing needs to be held past the target in hand.
+
+        They are grouped at all because Databricks reports one edge twice when it names
+        a side by table on one row and by path on another, and `addLineage` replaces an
+        edge's details instead of merging them: a second request for a pair already sent
+        would drop the column mappings of the first.
         """
         query_log_duration = self.source_config.queryLogDuration or 1
         include_query_history = self._probe_query_history()
         logger.info(
-            "Caching native lineage from system tables (lookback: %s days, SQL text: %s)",
+            "Reading native lineage from system tables (lookback: %s days, SQL text: %s)",
             query_log_duration,
             "yes" if include_query_history else "no",
         )
 
-        # Every edge a statement wrote holds the same text; one string per statement
-        # keeps a run over a large catalog from holding a copy per edge.
-        interned_statements: dict[str, str] = {}
+        target: tuple[str | None, str | None] | None = None
+        upstream_columns: dict[str, dict[tuple[str, str], None]] = {}
+        upstream_sql: dict[str, str] = {}
+        upstream_paths: set[str] = set()
+        targets = 0
+        emitted = 0
 
         try:
             with self.engine.connect() as conn:
-                rows = conn.execute(text(unity_catalog_native_lineage_query(query_log_duration, include_query_history)))
+                rows = conn.execution_options(stream_results=True, max_row_buffer=LINEAGE_ROW_BUFFER_SIZE).execute(
+                    text(unity_catalog_native_lineage_query(query_log_duration, include_query_history))
+                )
+
                 for row in rows:
+                    row_target = (row.target_table_full_name, row.target_path)
+                    if target is not None and row_target != target:
+                        targets += 1
+                        for either in self._process_target_lineage(
+                            target, upstream_columns, upstream_sql, upstream_paths
+                        ):
+                            emitted += 1
+                            yield either
+                        upstream_columns, upstream_sql, upstream_paths = {}, {}, set()
+                    target = row_target
+
                     source_tables, source_path = self._resolve_lineage_side(row.source_table_full_name, row.source_path)
-                    target_tables, _ = self._resolve_lineage_side(row.target_table_full_name, row.target_path)
                     column_pairs = self._parse_column_pairs(row.column_pairs)
-                    statement_text = row.statement_text
+                    for source_table in source_tables:
+                        pairs = upstream_columns.setdefault(source_table, {})
+                        for column_pair in column_pairs:
+                            pairs.setdefault(column_pair, None)
+                        if row.statement_text:
+                            upstream_sql[source_table] = row.statement_text
 
-                    for target_table in target_tables:
-                        for source_table in source_tables:
-                            # A table never derives from itself. The system tables record
-                            # access rather than derivation, so a streaming or CDC write
-                            # legitimately names its target as its own source. Kept as
-                            # lineage it renders as a loop on the node and says nothing.
-                            if source_table == target_table:
-                                continue
-                            self.table_lineage_map[target_table].add(source_table)
-                            table_key = (source_table, target_table)
-                            if column_pairs:
-                                # One edge reaches us twice when Databricks reports it both
-                                # by name and by path, and a duplicated pair would be sent
-                                # as a duplicated column edge.
-                                pairs = self.column_lineage_map[table_key]
-                                for column_pair in column_pairs:
-                                    if column_pair not in pairs:
-                                        pairs[column_pair] = None
-                            if statement_text:
-                                self.edge_sql[table_key] = interned_statements.setdefault(
-                                    statement_text, statement_text
-                                )
+                    if source_path:
+                        upstream_paths.add(source_path)
 
-                        if source_path:
-                            self.path_lineage_map[target_table].add(source_path)
-            logger.info(
-                "Cached native lineage: %s edges for %s target tables, %s column mappings, "
-                "%s edges with SQL, plus %s unresolved path upstreams",
-                sum(len(v) for v in self.table_lineage_map.values()),
-                len(self.table_lineage_map),
-                sum(len(v) for v in self.column_lineage_map.values()),
-                len(self.edge_sql),
-                sum(len(v) for v in self.path_lineage_map.values()),
-            )
+                if target is not None:
+                    targets += 1
+                    for either in self._process_target_lineage(target, upstream_columns, upstream_sql, upstream_paths):
+                        emitted += 1
+                        yield either
+
+            logger.info("Native lineage: emitted %s edges over %s targets", emitted, targets)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to cache native lineage: %s", exc)
+            logger.warning("Failed to read native lineage: %s", exc)
+
+    def _process_target_lineage(
+        self,
+        target: tuple[str | None, str | None],
+        upstream_columns: dict[str, dict[tuple[str, str], None]],
+        upstream_sql: dict[str, str],
+        upstream_paths: set[str],
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Emit the edges collected for one target.
+
+        A target addressed by location stands for every table declared over it, so the
+        rows of one target can belong to more than one table.
+        """
+        target_tables, _ = self._resolve_lineage_side(*target)
+
+        for target_table in sorted(target_tables):
+            if self._is_filtered(target_table):
+                continue
+
+            table = self._get_table_entity(target_table)
+            if not table:
+                logger.debug("Unable to find downstream entity: %s", target_table)
+                continue
+
+            yield from self._process_table_lineage(table, target_table, upstream_columns, upstream_sql)
+
+            yield from self._process_path_lineage(table, target_table, upstream_paths)
 
     def _cache_external_locations(self):
         """
@@ -366,12 +394,9 @@ class UnitycatalogLineageSource(Source):
         self,
         from_table: Table,
         to_table: Table,
-        source_table_fqn: str,
-        target_table_fqn: str,
+        column_pairs: dict[tuple[str, str], None],
     ) -> LineageDetails | None:
         try:
-            table_key = (source_table_fqn, target_table_fqn)
-            column_pairs = self.column_lineage_map.get(table_key, {})
             if not column_pairs:
                 return None
 
@@ -435,14 +460,16 @@ class UnitycatalogLineageSource(Source):
             logger.debug(f"Error processing external location lineage for {databricks_table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
-    def _process_path_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
+    def _process_path_lineage(
+        self, table: Table, databricks_table_fqn: str, upstream_paths: set[str]
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Emit lineage for upstream locations that no registered table is declared over.
 
         These reach the table only as a path, so the container ingested from the object
         store is the one entity that can stand in for them.
         """
-        for storage_path in sorted(self.path_lineage_map.get(databricks_table_fqn, set())):
+        for storage_path in sorted(upstream_paths):
             try:
                 location_entity = None
                 for candidate in container_path_candidates(storage_path):
@@ -484,10 +511,20 @@ class UnitycatalogLineageSource(Source):
                 )
                 logger.debug(traceback.format_exc())
 
-    def _process_table_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
-        upstream_tables = self.table_lineage_map.get(databricks_table_fqn, set())
-
-        for source_table_full_name in sorted(upstream_tables):
+    def _process_table_lineage(
+        self,
+        table: Table,
+        databricks_table_fqn: str,
+        upstream_columns: dict[str, dict[tuple[str, str], None]],
+        upstream_sql: dict[str, str],
+    ) -> Iterable[Either[AddLineageRequest]]:
+        for source_table_full_name in sorted(upstream_columns):
+            # A table never derives from itself. The system tables record access rather
+            # than derivation, so a streaming or CDC write legitimately names its target
+            # as its own source. Kept as lineage it renders as a loop on the node and
+            # says nothing.
+            if source_table_full_name == databricks_table_fqn:
+                continue
             try:
                 from_entity = self._get_table_entity(source_table_full_name)
                 if not from_entity:
@@ -497,11 +534,10 @@ class UnitycatalogLineageSource(Source):
                 lineage_details = self._get_column_lineage_details(
                     from_table=from_entity,
                     to_table=table,
-                    source_table_fqn=source_table_full_name,
-                    target_table_fqn=databricks_table_fqn,
+                    column_pairs=upstream_columns[source_table_full_name],
                 ) or LineageDetails(source=LineageSource.QueryLineage)
 
-                if sql_query := self.edge_sql.get((source_table_full_name, databricks_table_fqn)):
+                if sql_query := upstream_sql.get(source_table_full_name):
                     lineage_details.sqlQuery = SqlQuery(root=sql_query)
 
                 yield Either(
@@ -517,13 +553,6 @@ class UnitycatalogLineageSource(Source):
                 logger.debug(f"Error processing lineage {source_table_full_name} -> {databricks_table_fqn}: {exc}")
                 logger.debug(traceback.format_exc())
 
-    def _lineage_targets(self) -> list[str]:
-        """
-        The tables an edge can end at: a lineage target, a table written by location,
-        or an external table whose storage may have been ingested as a container.
-        """
-        return sorted(set(self.table_lineage_map) | set(self.path_lineage_map) | set(self.external_location_map))
-
     def _is_filtered(self, databricks_table_fqn: str) -> bool:
         """Apply the pipeline's filter patterns to a `catalog.schema.table` name."""
         parts = databricks_table_fqn.split(".")
@@ -534,15 +563,20 @@ class UnitycatalogLineageSource(Source):
         entity_fqn = f"{self.config.serviceName}.{databricks_table_fqn}"
 
         if filter_by_database(self.source_config.databaseFilterPattern, catalog_name):
-            self.status.filter(entity_fqn, "Catalog Filtered Out")
+            self._report_filtered(entity_fqn, "Catalog Filtered Out")
             return True
         if filter_by_schema(self.source_config.schemaFilterPattern, schema_name):
-            self.status.filter(entity_fqn, "Schema Filtered Out")
+            self._report_filtered(entity_fqn, "Schema Filtered Out")
             return True
         if filter_by_table(self.source_config.tableFilterPattern, table_name):
-            self.status.filter(entity_fqn, "Table Filtered Out")
+            self._report_filtered(entity_fqn, "Table Filtered Out")
             return True
         return False
+
+    def _report_filtered(self, entity_fqn: str, reason: str) -> None:
+        if entity_fqn not in self._filter_reported:
+            self._filter_reported.add(entity_fqn)
+            self.status.filter(entity_fqn, reason)
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -557,27 +591,14 @@ class UnitycatalogLineageSource(Source):
         # External locations first: resolving a path-based lineage row to the table
         # declared over that path needs the location map already populated.
         self._cache_external_locations()
-        self._cache_lineage()
 
-        for databricks_table_fqn in self._lineage_targets():
+        yield from self._stream_native_lineage()
+
+        for databricks_table_fqn in sorted(self.external_location_map):
             if self._is_filtered(databricks_table_fqn):
                 continue
 
             yield from self._process_external_location_lineage(databricks_table_fqn)
-
-            if not (
-                self.table_lineage_map.get(databricks_table_fqn) or self.path_lineage_map.get(databricks_table_fqn)
-            ):
-                continue
-
-            table = self._get_table_entity(databricks_table_fqn)
-            if not table:
-                logger.debug("Unable to find downstream entity: %s", databricks_table_fqn)
-                continue
-
-            yield from self._process_table_lineage(table, databricks_table_fqn)
-
-            yield from self._process_path_lineage(table, databricks_table_fqn)
 
     def test_connection(self) -> None:
         if self._connection is not None:

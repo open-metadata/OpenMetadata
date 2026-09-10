@@ -108,6 +108,7 @@ UNITY_CATALOG_NATIVE_LINEAGE = textwrap.dedent(
         AND table_edges.source_path <=> column_edges.source_path
         AND table_edges.target_table_full_name <=> column_edges.target_table_full_name
         AND table_edges.target_path <=> column_edges.target_path{history_join}
+    ORDER BY table_edges.target_table_full_name, table_edges.target_path
     """
 )
 
@@ -139,6 +140,9 @@ def unity_catalog_native_lineage_query(query_log_duration: int, include_query_hi
     Column mappings are aggregated into a JSON array per edge so the second result set
     they used to arrive in is no longer needed, and the statement is joined here rather
     than looked up per batch of edges, which re-scanned the lineage window each time.
+
+    Ordered by target so the rows of one target arrive together and the reader can emit
+    them and move on, instead of holding every edge of the catalog to group them.
 
     `include_query_history` is False when `system.query.history` cannot be read: the
     statement columns and the join are then left out entirely so a missing grant costs
