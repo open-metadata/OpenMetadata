@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.List;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -59,6 +60,7 @@ final class RdfTestDatabase implements AutoCloseable {
             + "/rdf"
             + suffix;
     jdbi = Jdbi.create(url, backend == Backend.POSTGRES ? "postgres" : "root", "rdf-test");
+    jdbi.installPlugin(new SqlObjectPlugin());
     Awaitility.await()
         .atMost(Duration.ofMinutes(2))
         .ignoreExceptions()
