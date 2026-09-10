@@ -16,6 +16,7 @@ import { SearchIndex } from '../enums/search.enum';
 import {
   applyQuickFilterLabels,
   getOptionsFromAggregationBucket,
+  getQuickFilterLabelTransform,
   getQuickFilterSourceFields,
   hydrateQuickFilterLabels,
 } from '../utils/AdvancedSearchPureUtils';
@@ -195,7 +196,8 @@ export const useQuickFilterLabels = ({
         const label = getOptionsFromAggregationBucket(
           buckets,
           undefined,
-          sourceFields
+          sourceFields,
+          getQuickFilterLabelTransform(field)
         ).find((option) => option.key === optionKey)?.label;
 
         return label && label !== optionKey ? { cacheKey, label } : undefined;

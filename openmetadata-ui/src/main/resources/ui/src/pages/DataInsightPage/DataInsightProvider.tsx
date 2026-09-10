@@ -50,6 +50,20 @@ const fetchTeamSuggestions = advancedSearchClassBase.autocomplete({
   entityField: EntityFields.DISPLAY_NAME_KEYWORD,
 });
 
+/**
+ * Data Insight page state provider.
+ *
+ * **Option semantics (Gap 2 — quick-filter alignment):**
+ * Tier options are fetched from the tag API (`getTags({ parent: 'Tier' })`) and
+ * list every tier tag in the catalog, regardless of whether any asset in the
+ * current chart window carries it.  This is the **catalog-lookup** approach,
+ * intentional for analytics/reporting surfaces where the user needs to pivot
+ * between tiers without being limited to the current result set.
+ *
+ * **Label shape (Gap 1):**
+ * Tier labels use `getEntityName(op)` which resolves to `displayName || name`
+ * — the short form (e.g. `Tier1`).  This matches the chosen label shape.
+ */
 const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
   const [teamsOptions, setTeamsOptions] = useState<TeamStateType>({
     defaultOptions: [],

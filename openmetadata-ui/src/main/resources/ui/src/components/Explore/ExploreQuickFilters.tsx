@@ -23,6 +23,7 @@ import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   getOptionsFromAggregationBucket,
+  getQuickFilterLabelTransform,
   getQuickFilterSourceFields,
 } from '../../utils/AdvancedSearchPureUtils';
 import { EntityIconSize } from '../../utils/EntityIconUtils';
@@ -183,7 +184,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     requestId: number,
     fieldSearchIndex?: SearchIndex,
     fieldSearchKey?: string,
-    sourceFields?: string
+    sourceFields?: string,
+    labelTransform?: (label: string) => string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -236,7 +238,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           getOptionsFromAggregationBucket(
             buckets,
             getOptionLabelFormatter(key, untitledDropdown),
-            sourceFields
+            sourceFields,
+            labelTransform
           ),
           isEqual
         )
@@ -248,7 +251,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     key: string,
     fieldSearchIndex?: SearchIndex,
     fieldSearchKey?: string,
-    sourceFields?: string
+    sourceFields?: string,
+    labelTransform?: (label: string) => string
   ) => {
     const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
@@ -269,7 +273,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         requestId,
         fieldSearchIndex,
         fieldSearchKey,
-        sourceFields
+        sourceFields,
+        labelTransform
       );
     } catch (error) {
       if (isLatestOptionsRequest(requestId)) {
@@ -287,7 +292,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     key: string,
     fieldSearchIndex?: SearchIndex,
     fieldSearchKey?: string,
-    sourceFields?: string
+    sourceFields?: string,
+    labelTransform?: (label: string) => string
   ) => {
     const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
@@ -308,7 +314,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key, fieldSearchIndex, fieldSearchKey, sourceFields);
+        getInitialOptions(key, fieldSearchIndex, fieldSearchKey, sourceFields, labelTransform);
 
         return;
       }
@@ -343,7 +349,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             getOptionsFromAggregationBucket(
               buckets,
               getOptionLabelFormatter(key, untitledDropdown),
-              sourceFields
+              sourceFields,
+              labelTransform
             ),
             isEqual
           )
@@ -390,7 +397,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                getQuickFilterSourceFields(field)
+                getQuickFilterSourceFields(field),
+                getQuickFilterLabelTransform(field)
               )
             }
             onSearch={(value, key) =>
@@ -399,7 +407,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                getQuickFilterSourceFields(field)
+                getQuickFilterSourceFields(field),
+                getQuickFilterLabelTransform(field)
               )
             }
           />
@@ -431,7 +440,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                getQuickFilterSourceFields(field)
+                getQuickFilterSourceFields(field),
+                getQuickFilterLabelTransform(field)
               )
             }
             onSearch={(value, key) =>
@@ -440,7 +450,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                getQuickFilterSourceFields(field)
+                getQuickFilterSourceFields(field),
+                getQuickFilterLabelTransform(field)
               )
             }
           />
