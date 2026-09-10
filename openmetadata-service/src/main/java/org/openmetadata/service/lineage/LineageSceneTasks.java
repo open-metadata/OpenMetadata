@@ -56,6 +56,12 @@ final class LineageSceneTasks {
     ExecutorService executor =
         Executors.newFixedThreadPool(Math.max(1, parallelism), Thread.ofVirtual().factory());
     try {
+      // invokeAll only reports an already-set interrupt when it has to block on a future that is
+      // still pending, so a fan-out whose tasks all complete first silently discards the
+      // cancellation and returns results to a caller that has gone away.
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Interrupted before dispatching lineage scene lookups");
+      }
       List<Callable<T>> contextualTasks =
           tasks.stream().map(LineageSceneTasks::withContext).toList();
       return completedResults(
