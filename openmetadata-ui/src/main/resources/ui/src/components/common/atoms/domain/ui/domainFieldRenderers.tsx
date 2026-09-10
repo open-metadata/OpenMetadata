@@ -121,8 +121,7 @@ export const renderDomainOwnersCell = (
 
 export const renderDomainGlossaryTagsCell = (
   entity: TaggedEntity,
-  size?: TagSize,
-  emptyPlaceholder?: string
+  { size, emptyPlaceholder }: { size?: TagSize; emptyPlaceholder?: string } = {}
 ): ReactNode => (
   <TagBadgeList
     emptyPlaceholder={emptyPlaceholder}
@@ -133,8 +132,7 @@ export const renderDomainGlossaryTagsCell = (
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity,
-  size?: TagSize,
-  emptyPlaceholder?: string
+  { size, emptyPlaceholder }: { size?: TagSize; emptyPlaceholder?: string } = {}
 ): ReactNode => (
   <TagBadgeList
     emptyPlaceholder={emptyPlaceholder}

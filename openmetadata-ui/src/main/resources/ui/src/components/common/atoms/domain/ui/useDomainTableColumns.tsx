@@ -61,17 +61,15 @@ export const useDomainTableColumns = ({
         case 'owners':
           return renderDomainOwnersCell(entity, true);
         case 'glossaryTerms':
-          return renderDomainGlossaryTagsCell(
-            entity,
-            tagSize,
-            NO_DATA_PLACEHOLDER
-          );
+          return renderDomainGlossaryTagsCell(entity, {
+            size: tagSize,
+            emptyPlaceholder: NO_DATA_PLACEHOLDER,
+          });
         case 'tags':
-          return renderDomainClassificationTagsCell(
-            entity,
-            tagSize,
-            NO_DATA_PLACEHOLDER
-          );
+          return renderDomainClassificationTagsCell(entity, {
+            size: tagSize,
+            emptyPlaceholder: NO_DATA_PLACEHOLDER,
+          });
         default:
           return null;
       }
