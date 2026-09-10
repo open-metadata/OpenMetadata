@@ -60,20 +60,6 @@ import { parseBucketsData } from './SearchPureUtils';
 const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
-// Custom-property types whose sub-field needs an async fetch (select/multiselect).
-const ASYNC_CUSTOM_PROPERTY_TYPES: string[] = [
-  'array<entityReference>',
-  'entityReference',
-  'enum',
-];
-
-// Custom-property types that expand into multiple sub-fields.
-const MULTI_VALUE_CUSTOM_PROPERTY_TYPES: string[] = [
-  'timeInterval',
-  'hyperlink-cp',
-  'table-cp',
-];
-
 // Sub-field config, plus the `!struct` / `!group` keys used by nested types.
 type OMFieldOrGroup = Field & {
   subfields?: Fields;
@@ -1623,6 +1609,8 @@ class AdvancedSearchClassBase {
     }
   }
 
+  // One switch on the custom property type. Types with no special handling fall
+  // through to the scalar builder, which switches again on date / number / text.
   private buildCustomPropertiesSubFields(
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType
@@ -1635,19 +1623,32 @@ class AdvancedSearchClassBase {
       searchOutputType
     );
 
-    if (ASYNC_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
-      return this.buildAsyncCustomPropertySubField(field, subfieldsKey, label);
-    }
+    switch (field.type) {
+      case 'array<entityReference>':
+      case 'entityReference':
+      case 'enum':
+        return this.buildAsyncCustomPropertySubField(
+          field,
+          subfieldsKey,
+          label
+        );
 
-    if (MULTI_VALUE_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
-      return this.buildMultiValueCustomPropertySubFields(
-        field,
-        label,
-        searchOutputType
-      );
-    }
+      case 'timeInterval':
+      case 'hyperlink-cp':
+      case 'table-cp':
+        return this.buildMultiValueCustomPropertySubFields(
+          field,
+          label,
+          searchOutputType
+        );
 
-    return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);
+      default:
+        return this.buildScalarCustomPropertySubField(
+          field,
+          subfieldsKey,
+          label
+        );
+    }
   }
 }
 
