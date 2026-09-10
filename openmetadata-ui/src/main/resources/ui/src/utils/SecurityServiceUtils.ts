@@ -14,6 +14,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { Type } from '../generated/entity/services/securityService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
@@ -22,9 +23,7 @@ type SchemaLoader = () => Promise<SchemaModule>;
 
 const securitySchemaLoaders: Partial<Record<Type, SchemaLoader>> = {
   [Type.Ranger]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/security/rangerConnection.json'
-    ),
+    loadConnectionSchema('connections/security/rangerConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

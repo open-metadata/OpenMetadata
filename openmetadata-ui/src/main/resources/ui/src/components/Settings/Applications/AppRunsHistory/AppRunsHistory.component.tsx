@@ -60,8 +60,8 @@ import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.compon
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
@@ -70,6 +70,15 @@ import {
   AppRunRecordWithId,
   AppRunsHistoryProps,
 } from './AppRunsHistory.interface';
+
+// Statuses in which an app run has already finished, so it can no longer be stopped.
+const TERMINAL_APP_RUN_STATUSES: Status[] = [
+  Status.Success,
+  Status.Failed,
+  Status.Stopped,
+  Status.Completed,
+  Status.StopInProgress,
+];
 
 const renderAppLogsRow = (record: AppRunRecordWithId, maxRecords?: number) => (
   <AppLogsViewer
@@ -198,6 +207,11 @@ const AppRunsHistory = forwardRef(
 
     const getActionButton = useCallback(
       (record: AppRunRecordWithId) => {
+        const canStopAppRun =
+          !record.isSynthetic &&
+          !TERMINAL_APP_RUN_STATUSES.includes(record.status as Status) &&
+          Boolean(appData?.supportsInterrupt);
+
         return (
           <>
             <Button
@@ -218,28 +232,22 @@ const AppRunsHistory = forwardRef(
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
-            {!record.isSynthetic &&
-              record.status !== Status.Success &&
-              record.status !== Status.Failed &&
-              record.status !== Status.Stopped &&
-              record.status !== Status.Completed &&
-              record.status !== Status.StopInProgress &&
-              Boolean(appData?.supportsInterrupt) && (
-                <Button
-                  className="m-l-xs p-0"
-                  data-testid="stop-button"
-                  size="small"
-                  type="link"
-                  onClick={() => {
-                    const rawRunId = record.properties?.pipelineRunId;
-                    setSelectedRunId(
-                      typeof rawRunId === 'string' ? rawRunId : undefined
-                    );
-                    setIsStopModalOpen(true);
-                  }}>
-                  {t('label.stop')}
-                </Button>
-              )}
+            {canStopAppRun && (
+              <Button
+                className="m-l-xs p-0"
+                data-testid="stop-button"
+                size="small"
+                type="link"
+                onClick={() => {
+                  const rawRunId = record.properties?.pipelineRunId;
+                  setSelectedRunId(
+                    typeof rawRunId === 'string' ? rawRunId : undefined
+                  );
+                  setIsStopModalOpen(true);
+                }}>
+                {t('label.stop')}
+              </Button>
+            )}
           </>
         );
       },

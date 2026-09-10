@@ -107,12 +107,30 @@ export const openEntitySummaryPanel = async ({
         return false;
       }
     }
+    // Two different components own the query depending on where the caller
+    // landed: /explore renders its own ExploreSearchInput and never mounts the
+    // NavBar's GlobalSearchBar, so waiting for the NavBar box there can only
+    // ever time out. Pick whichever this page actually renders.
+    // `explore-search-input` marks the field wrapper, not the field, so the
+    // textbox inside it is what accepts fill().
+    const exploreSearchWrapper = page.getByTestId('explore-search-input');
+    const searchBox =
+      (await exploreSearchWrapper.count()) > 0
+        ? exploreSearchWrapper.getByRole('textbox')
+        : page.getByTestId('searchBox');
+
+    try {
+      await searchBox.waitFor({ state: 'visible', timeout: 15_000 });
+    } catch {
+      return false;
+    }
+
     const searchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/search/query')
     );
-    await page.getByTestId('searchBox').fill(entityName);
+    await searchBox.fill(entityName);
     await searchResponsePromise;
-    await page.getByTestId('searchBox').press('Enter');
+    await searchBox.press('Enter');
     await waitForAllLoadersToDisappear(page);
 
     // Select the entity-type tab as part of each search attempt: for callers that
@@ -120,6 +138,13 @@ export const openEntitySummaryPanel = async ({
     // only renders under its tab, so the poll's visibility check must run after the
     // tab is selected — not once, after the poll.
     if (exploreTab) {
+      // The left panel only becomes an entity-type Menu once the URL carries a
+      // search query -- ExploreV1 renders <ExploreTree> otherwise, whose items
+      // are plain divs with no menuitem role. Waiting for the query first turns
+      // "no menuitem ever appears" into a fast, legible failure instead of a
+      // callback that hangs until the whole test times out.
+      await page.waitForURL(/[?&]search=[^&]+/, { timeout: 30_000 });
+
       const tab = page
         .getByTestId('explore-left-panel')
         .getByRole('menuitem', { name: exploreTab });
@@ -171,7 +196,10 @@ export const openEntitySummaryPanel = async ({
 
           return entityResultCard.isVisible();
         },
-        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
+        // Deliberately under the 60s default test budget: a poll sized at or
+        // above it can never finish, so the test dies on its own timeout and
+        // reports nothing instead of this poll's message.
+        { timeout: 45_000, intervals: [2_000, 3_000, 5_000, 5_000] }
       )
       .toBe(true);
   }
@@ -261,13 +289,26 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
 
 export const editTags = async (page: Page, tagName: string) => {
   const editIcon = page.locator('[data-testid="edit-icon-tags"]');
+  // Fallback for ML Model, which uses an 'Add' chip instead of the edit icon.
+  const addTagChip = page.locator(
+    '[data-testid="entity-tags"] [data-testid="add-tag"]'
+  );
+
+  // isVisible() resolves immediately, so gate on whichever affordance renders
+  // before discriminating -- otherwise a slow render picks the wrong branch
+  // and the click waits out the test.
+  // Counted, not unioned: a combined locator would be ambiguous under strict
+  // mode on any page carrying more than one of either affordance.
+  await expect
+    .poll(async () => (await editIcon.count()) + (await addTagChip.count()), {
+      timeout: 15000,
+    })
+    .toBeGreaterThan(0);
+
   if (await editIcon.isVisible()) {
     await editIcon.click();
   } else {
-    // Fallback for ML Model which uses an 'Add' chip
-    await page
-      .locator('[data-testid="entity-tags"] [data-testid="add-tag"]')
-      .click();
+    await addTagChip.click();
   }
 
   await page
@@ -319,13 +360,23 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     });
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
+  // Fallback for ML Model, which uses an 'Add' chip instead of the edit icon.
+  const addTermChip = page.locator(
+    '[data-testid="glossary-container"] [data-testid="add-tag"]'
+  );
+
+  // Counted, not unioned: a combined locator would be ambiguous under strict
+  // mode on any page carrying more than one of either affordance.
+  await expect
+    .poll(async () => (await editIcon.count()) + (await addTermChip.count()), {
+      timeout: 15000,
+    })
+    .toBeGreaterThan(0);
+
   if (await editIcon.isVisible()) {
     await editIcon.click();
   } else {
-    // Fallback for ML Model which uses an 'Add' chip
-    await page
-      .locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
-      .click();
+    await addTermChip.click();
   }
 
   await page
@@ -542,20 +593,17 @@ export const removeOwnerFromPanel = async (
         ? 'owner-select-users-search-bar'
         : 'owner-select-teams-search-bar';
     const searchBar = page.getByTestId(searchBarDataTestId);
+    // The search bar is absent for some owner widgets; filling it is the only
+    // part that differs, so keep one selection path for both shapes.
     if (await searchBar.isVisible()) {
       await searchBar.fill(ownerName);
-      const ownerItem = page
-        .locator('.ant-list-item')
-        .filter({ hasText: ownerName });
-      await ownerItem.waitFor({ state: 'visible' });
-      await ownerItem.click();
-    } else {
-      const ownerItem = page
-        .locator('.ant-list-item')
-        .filter({ hasText: ownerName });
-      await ownerItem.waitFor({ state: 'visible' });
-      await ownerItem.click();
     }
+
+    const ownerItem = page
+      .locator('.ant-list-item')
+      .filter({ hasText: ownerName });
+    await ownerItem.waitFor({ state: 'visible' });
+    await ownerItem.click();
   }
 
   const updateButton = page.getByTestId('selectable-list-update-btn');

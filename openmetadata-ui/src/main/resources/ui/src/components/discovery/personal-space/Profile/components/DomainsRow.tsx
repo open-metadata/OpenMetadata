@@ -15,6 +15,7 @@ import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { User } from '../../../../../generated/entity/teams/user';
@@ -100,6 +101,19 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
     );
   };
 
+  const handleItemCleared = useCallback(
+    (key: Key) => setDraftIds((prev) => prev.filter((id) => id !== key)),
+    []
+  );
+
+  const handleItemInserted = useCallback(
+    (key: Key) =>
+      setDraftIds((prev) =>
+        prev.includes(key as string) ? prev : [...prev, key as string]
+      ),
+    []
+  );
+
   return (
     <InlineEditCard
       canEdit={canEdit}
@@ -122,14 +136,8 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
             />
           )}
           selectedItems={selectedItems}
-          onItemCleared={(key) =>
-            setDraftIds((prev) => prev.filter((id) => id !== key))
-          }
-          onItemInserted={(key) =>
-            setDraftIds((prev) =>
-              prev.includes(key as string) ? prev : [...prev, key as string]
-            )
-          }
+          onItemCleared={handleItemCleared}
+          onItemInserted={handleItemInserted}
           onSearchChange={handleSearchChange}>
           {(item) => (
             <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>

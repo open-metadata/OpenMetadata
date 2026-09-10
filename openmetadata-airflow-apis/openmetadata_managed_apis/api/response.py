@@ -28,6 +28,7 @@ class ApiResponse:
     STATUS_UNAUTHORIZED = 401
     STATUS_NOT_FOUND = 404
     STATUS_SERVER_ERROR = 500
+    UNEXPECTED_ERROR = "An unexpected problem occurred"
 
     @staticmethod
     def standard_response(status, response_obj) -> Response:
@@ -43,6 +44,10 @@ class ApiResponse:
 
     @staticmethod
     def error(status, error):
+        if not isinstance(status, int):
+            status = ApiResponse.STATUS_SERVER_ERROR
+        if status >= ApiResponse.STATUS_SERVER_ERROR:
+            error = ApiResponse.UNEXPECTED_ERROR
         return ApiResponse.standard_response(status, {"error": error})
 
     @staticmethod
@@ -58,8 +63,8 @@ class ApiResponse:
         return ApiResponse.error(ApiResponse.STATUS_UNAUTHORIZED, error)
 
     @staticmethod
-    def server_error(error="An unexpected problem occurred"):
-        return ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, error)
+    def server_error():
+        return ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, ApiResponse.UNEXPECTED_ERROR)
 
 
 class ResponseFormat:

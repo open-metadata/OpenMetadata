@@ -1,0 +1,199 @@
+---
+name: Backport labeled PRs to release branches
+# yamllint disable-line rule:comments
+run-name: Backport PR #${{ github.event.pull_request.number }} to release branches
+
+# First half of the backport pipeline. This repository decides *whether* a
+# backport should happen; openmetadata-collate does the work.
+#
+# Why the split: creating the backport PR needs a token that can push a branch
+# and open a pull request here, and — critically — one that is not
+# GITHUB_TOKEN, because GitHub does not run workflows on a PR that
+# GITHUB_TOKEN opened. A backport PR with no CI on it would defeat the entire
+# point. This repository has no such credential: `RELEASE_BOT_TOKEN` is
+# referenced by auto-revert-release.yml and the Playwright baseline refresh but
+# resolves empty here, which is what the `|| secrets.GITHUB_TOKEN` fallbacks in
+# those workflows have been quietly papering over.
+#
+# openmetadata-collate does have one, plus the Claude token used to adapt a
+# conflicting cherry-pick. So this workflow authorises the label, works out
+# which release branches are open, and dispatches one job per branch to
+# `Resolve an OpenMetadata backport conflict` there. That workflow checks this
+# repository out, cherry-picks, resolves anything that conflicts, and opens the
+# backport PR back here. backport-automerge.yaml then merges it on green —
+# merging is the one privileged action GITHUB_TOKEN can do, because nothing
+# needs to be triggered by it.
+#
+# Same channel maven-build-collate.yml already uses in this direction.
+
+# yamllint disable-line rule:truthy
+on:
+  # pull_request_target, not pull_request: this repository takes fork PRs, and a
+  # `pull_request` run from a fork cannot read the secrets this needs. The usual
+  # danger of pull_request_target does not apply — this only fires after a
+  # merge and never checks out or executes any PR code at all.
+  pull_request_target:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: write
+
+env:
+  # Endpoint that returns the branches currently marked for release, as JSON.
+  # Org-level Actions variable, shared with the sibling repos.
+  CURRENT_RELEASE_ENDPOINT: ${{ vars.CURRENT_RELEASE_ENDPOINT }}
+
+jobs:
+  plan:
+    if: github.event.pull_request.merged == true &&
+        contains(github.event.pull_request.labels.*.name, 'To release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release_branches: ${{ steps.resolve.outputs.release_branches }}
+    steps:
+      # `To release` is what causes code to reach a release branch, and GitHub
+      # has no per-label permission — triage access is enough to apply one. So
+      # authorise it: find who actually applied the label, and require them to
+      # have write access here.
+      #
+      # The check is "can this user be assigned", which is GitHub's own proxy
+      # for push access and needs no privileged token — unlike
+      # `collaborators/{user}/permission`, which 401s without one. That matters:
+      # on a public repository every GitHub user reads as `read`, so the gate
+      # has to distinguish write from read, and it has to do so with the only
+      # credential this workflow reliably has.
+      - name: Authorise the label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          ACTOR=$(gh api "repos/$REPO/issues/$PR/timeline" --paginate \
+                    --jq '[.[] | select(.event == "labeled" and .label.name == "To release")
+                               | .actor.login] | last // empty' 2>/dev/null || true)
+          if [ -z "$ACTOR" ]; then
+            echo "::error::Could not determine who applied the 'To release' label; refusing to backport."
+            exit 1
+          fi
+          echo "Label applied by: $ACTOR"
+
+          CODE=$(gh api "repos/$REPO/assignees/$ACTOR" --silent -i 2>/dev/null \
+                   | head -1 | grep -oE '[0-9]{3}' | head -1)
+          case "${CODE:-000}" in
+            204)
+              echo "$ACTOR has write access; proceeding." ;;
+            404)
+              gh pr comment "$PR" --repo "$REPO" --body "🤖 The \`To release\` label was applied by @$ACTOR, who does not have write access to this repository, so this PR was **not** backported. Backports are restricted to the team. Ask a maintainer to re-apply the label if this change should ship in a release."
+              echo "::error::'To release' was applied by $ACTOR, who does not have write access. No backport was attempted."
+              exit 1 ;;
+            *)
+              echo "::error::Could not check $ACTOR's access to $REPO (HTTP ${CODE:-none}). Refusing to backport rather than guessing."
+              exit 1 ;;
+          esac
+
+      # A bare `curl -s` here would turn an unreachable endpoint into an empty
+      # branch list, a skipped matrix and no signal at all — a labelled PR
+      # silently missing the release. Retry, then fail loudly.
+      - name: Resolve release branches
+        id: resolve
+        run: |
+          set -uo pipefail
+          if [ -z "${CURRENT_RELEASE_ENDPOINT:-}" ]; then
+            echo "::error::CURRENT_RELEASE_ENDPOINT is not set; cannot determine release branches."
+            exit 1
+          fi
+          RESPONSE=$(curl -fsS --max-time 20 --retry 3 --retry-delay 5 \
+            "$CURRENT_RELEASE_ENDPOINT") || {
+            echo "::error::Could not reach CURRENT_RELEASE_ENDPOINT. No backport was attempted."
+            exit 1
+          }
+          BRANCHES=$(printf '%s' "$RESPONSE" | jq -c '.collate_branches // []') || {
+            echo "::error::CURRENT_RELEASE_ENDPOINT returned something that is not JSON."
+            exit 1
+          }
+          echo "Branches currently marked for release: $BRANCHES"
+          echo "release_branches=$BRANCHES" >> "$GITHUB_OUTPUT"
+
+      # An empty list is legitimate — no branch is marked for release right now.
+      # Legitimate, but not something to swallow: the label was applied for a
+      # reason and the author should know it went nowhere.
+      - name: Report that nothing is marked for release
+        if: steps.resolve.outputs.release_branches == '[]'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "🤖 This PR is labelled \`To release\`, but no release branch is currently marked for release, so nothing was backported. Re-run this workflow, or backport by hand, once a branch is marked."
+
+  dispatch:
+    needs: plan
+    if: needs.plan.outputs.release_branches != '' && needs.plan.outputs.release_branches != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      # One branch failing must not stop the others being handed over.
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.plan.outputs.release_branches) }}
+    concurrency:
+      group: backport-${{ github.event.pull_request.number }}-${{ matrix.branch }}
+      cancel-in-progress: false
+    env:
+      TARGET: ${{ matrix.branch }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Build resolver inputs
+        id: rinputs
+        run: |
+          set -uo pipefail
+          # Built with jq, not string-interpolated: a PR title containing a
+          # quote or a newline would otherwise produce invalid JSON, and the
+          # title is attacker-influenced text going into a dispatch payload.
+          JSON=$(jq -cn --arg pr "$PR_NUMBER" --arg sha "$MERGE_SHA" \
+                        --arg target "$TARGET" --arg title "$PR_TITLE" \
+                        --arg author "$PR_AUTHOR" \
+                        '{pr: $pr, sha: $sha, target: $target, title: $title, author: $author}')
+          echo "json=$JSON" >> "$GITHUB_OUTPUT"
+
+      # Fire and forget: a backport takes minutes and holding a runner open for
+      # it buys nothing. The resolver reports its own outcome onto this PR.
+      - name: Hand the backport to the resolver
+        id: dispatch
+        uses: benc-uk/workflow-dispatch@v1.3.2
+        with:
+          # By filename, not display name. This was `Resolve an OpenMetadata
+          # backport conflict` and broke the moment that workflow was renamed —
+          # a dispatch by display name is a cross-repo reference with nothing
+          # checking it. The filename is stable across renames.
+          workflow: oss-backport-resolve.yaml
+          repo: open-metadata/openmetadata-collate
+          ref: main
+          token: ${{ secrets.COLLATE_PAT }}
+          inputs: ${{ steps.rinputs.outputs.json }}
+
+      - name: Comment on the source PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISPATCH: ${{ steps.dispatch.outcome }}
+        run: |
+          set -uo pipefail
+          if [ "$DISPATCH" = "success" ]; then
+            BODY="🤖 Backport to \`$TARGET\` is under way. It is built from openmetadata-collate, which holds the credentials needed to open a PR here, and it will comment again with the result — nothing is needed from you unless it reports otherwise."
+          else
+            BODY=$(printf '🤖 **Backport to `%s` could not be started.** The handover to the resolver failed, so this change is **not** on that branch.\n\nTo do it by hand:\n```bash\ngit fetch origin\ngit checkout -b backport/%s/pr-%s origin/%s\ngit cherry-pick -x %s\n# resolve anything that conflicts, then:\ngit push origin backport/%s/pr-%s\n```\n\n<sub>[run log](%s)</sub>' \
+              "$TARGET" "$TARGET" "$PR_NUMBER" "$TARGET" "$MERGE_SHA" \
+              "$TARGET" "$PR_NUMBER" "$RUN_URL")
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$BODY"

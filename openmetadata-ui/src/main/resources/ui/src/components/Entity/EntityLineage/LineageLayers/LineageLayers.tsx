@@ -84,11 +84,10 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
     (entityType &&
       entityType !== EntityType.DOMAIN &&
       !isEmpty(entity?.domains));
+  const dataProductCount = ((entity as Table)?.dataProducts ?? []).length;
   const showDataProduct =
     isPlatformLineage ||
-    (entityType &&
-      entityType !== EntityType.DOMAIN &&
-      ((entity as Table)?.dataProducts ?? []).length > 0);
+    (entityType && entityType !== EntityType.DOMAIN && dataProductCount > 0);
 
   const { layerButtons, renderedValues } = useMemo(() => {
     const buttons = [];

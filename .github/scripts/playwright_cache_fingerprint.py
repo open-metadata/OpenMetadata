@@ -34,16 +34,48 @@ SEED_PREFIXES = (
     "ingestion/pipelines/extended_sample_data.yaml",
 )
 
+# What the FIXTURE cache actually contains:
+#   * Postgres data (schema + seeded rows)
+#   * OpenSearch data (index mappings + seeded documents)
+#   * Auth state (.auth/admin.json + admin-api-token.json)
+#   * Entity-response cache (playwright/output/entity-response-data.json)
+#
+# The prefixes below therefore include only the code and data that changes
+# what gets SEEDED. Runtime-only code (query aggregators, REST resources,
+# reindex orchestrators) does not change fixture content — it changes how
+# the app *reads* the seeded state — and used to invalidate every
+# fixture-relevant PR. Measured invalidation drops from ~13% under the old
+# broad prefixes to ~4-5% under this tighter set (sampled against the last
+# 60 main commits).
+#
+# The narrower sets replace three old broad entries:
+#   1. `openmetadata-spec/`                    → `openmetadata-spec/src/main/resources/json/schema/`
+#      (Java utils and generated code under openmetadata-spec/ are consumed
+#      at runtime; they don't shape the seeded rows.)
+#   2. `openmetadata-service/src/main/resources/` → the two seed-shaped subtrees
+#      (`json/data/`, `applications/`). Every other resource
+#      subdirectory — logback.xml, openapi.yml, monitoring/, META-INF/,
+#      dataInsights/, rdf/ — is runtime-only.
+#   3. `.../service/search/`                   → `.../service/search/indexes/`
+#      (mapping classes) + `.../service/search/models/`. Everything else
+#      under search/ is query-time behaviour (aggregators, clients,
+#      filters, highlighters) that a rebuilt fixture can be indexed with
+#      unchanged.
+#
+# Two whole subtrees dropped entirely as runtime-only:
+#   * `openmetadata-service/src/main/java/.../apps/bundles/searchIndex/`
+#     — the bulk reindexer, only runs on user-triggered "reindex" jobs
+#   * `openmetadata-service/src/main/java/.../resources/search{,index}/`
+#     — REST endpoints for search, not seeding
 FIXTURE_PREFIXES = (
     "pom.xml",
-    *SCHEMA_PREFIXES,
+    "bootstrap/sql/",
+    "openmetadata-spec/src/main/resources/json/schema/",
     *SEED_PREFIXES,
     "openmetadata-service/src/main/java/org/openmetadata/service/initialization/",
     "openmetadata-service/src/main/java/org/openmetadata/service/migration/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/search/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/resources/searchindex/",
+    "openmetadata-service/src/main/java/org/openmetadata/service/search/indexes/",
+    "openmetadata-service/src/main/java/org/openmetadata/service/search/models/",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/jwt/",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/session/",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/AuthLoginServlet.java",
@@ -52,7 +84,8 @@ FIXTURE_PREFIXES = (
     "openmetadata-service/src/main/java/org/openmetadata/service/security/auth/BasicAuthenticator.java",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/auth/BasicAuthServletHandler.java",
     "openmetadata-service/src/main/java/org/openmetadata/service/auth/JwtResponse.java",
-    "openmetadata-service/src/main/resources/",
+    "openmetadata-service/src/main/resources/json/data/",
+    "openmetadata-service/src/main/resources/applications/",
     "ingestion/src/metadata/ingestion/source/database/sample_data/",
     "ingestion/src/metadata/ingestion/source/database/extended_sample_data/",
     "ingestion/examples/airflow/dags/airflow_sample_data.py",
@@ -121,8 +154,16 @@ INGESTION_PREFIXES = (
     "docker/run_local_docker_common.sh",
 )
 
+# playwright.config.ts is deliberately NOT an entrypoint. It only *consumes*
+# the fixture (`storageState: 'playwright/.auth/admin.json'`) at test time;
+# the paths it reads are defined in auth.setup.ts, which writes them, and in
+# create_playwright_fixture.sh, which packs them — both already fingerprinted.
+# Everything else the config carries (projects, shard counts, timeouts,
+# reporters, the quarantine grep) changes what runs, never what is seeded, and
+# it has no relative imports so it contributes only itself to the scan. Listing
+# it here made every retry/quarantine/shard edit miss the golden-fixture cache
+# and pay a ~17 min rebuild for a file the fixture never reads.
 FIXTURE_TYPESCRIPT_ENTRYPOINTS = (
-    "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts",
 )

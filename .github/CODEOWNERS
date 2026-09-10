@@ -13,8 +13,7 @@
 /openmetadata-service/ @open-metadata/backend
 
 # Review from Ingestion owners for changes around Ingestion code
-/ingestion @open-metadata/ingestion
-/ingestion-core @open-metadata/ingestion
+/ingestion @open-metadata/ingestion @akashverma0786
 
 # Review from Devops owners for changes around workflows
 /.github @akash-jain-10 @harshach @tutte @open-metadata/mergers

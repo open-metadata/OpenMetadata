@@ -276,6 +276,60 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Test
+  void patch_systemClassificationProvider_rejected(TestNamespace ns) throws Exception {
+    // #29974: flipping a system classification's provider to user via PATCH must be rejected -
+    // otherwise it loses its delete protection and system metadata can be removed, leaving the
+    // instance in a partially-deleted inconsistent state.
+    Classification tier = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(ProviderType.SYSTEM, tier.getProvider());
+
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PATCH,
+                    "/v1/classifications/" + tier.getId(),
+                    providerToUser,
+                    Classification.class),
+        "Changing the provider of a system classification should be rejected");
+
+    Classification reloaded = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain unchanged");
+  }
+
+  @Test
+  void put_systemClassificationProvider_preserved(TestNamespace ns) throws Exception {
+    // A PUT carrying a user provider must not downgrade a system classification - the system
+    // provider is preserved silently instead of stored as user.
+    Classification tier = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(ProviderType.SYSTEM, tier.getProvider());
+
+    CreateClassification putBody =
+        new CreateClassification()
+            .withName(tier.getName())
+            .withDescription(tier.getDescription())
+            .withMutuallyExclusive(tier.getMutuallyExclusive())
+            .withProvider(ProviderType.USER);
+    Classification updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/classifications", putBody, Classification.class);
+    assertEquals(
+        ProviderType.SYSTEM, updated.getProvider(), "PUT must not downgrade the system provider");
+
+    // Reload to confirm the system provider was persisted, not just reflected in the response.
+    Classification reloaded = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain persisted");
+  }
+
+  @Test
   void test_classificationOwnerPermissions(TestNamespace ns) {
     // Create classification without owners
     CreateClassification request = new CreateClassification();

@@ -38,11 +38,14 @@ public final class DomainAccessFilter {
 
   private DomainAccessFilter() {}
 
-  /** Returns true when the subject's view must be narrowed to its own domain hierarchy. */
+  /**
+   * Returns true when the subject's view must be narrowed to its own domain hierarchy. A bot holding
+   * the role is narrowed like any other subject; exempting bots here left a bot-authenticated caller
+   * seeing every domain's lineage and incidents even though the role had been assigned to it.
+   */
   public static boolean shouldApply(SubjectContext subjectContext) {
     return subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && subjectContext.hasDomainOnlyAccessRole();
   }
 

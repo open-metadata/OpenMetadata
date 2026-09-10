@@ -1,0 +1,19 @@
+# Allowlist-style ignore for docker/development/Dockerfile, same shape as
+# docker/storybook/Dockerfile.dockerignore. The build context has to be the repo
+# root so the Dockerfile can reach both openmetadata-dist/target and docker/,
+# but the root context also carries ~1.6 GB of node_modules from the UI build
+# (and, in a Conductor worktree, a multi-GB .context/.m2). Excluding everything
+# and re-including the two paths this Dockerfile COPYs keeps the context to the
+# tarball itself.
+
+# Exclude everything.
+**
+
+# The distribution tarball this image unpacks.
+!openmetadata-dist/
+!openmetadata-dist/target/
+!openmetadata-dist/target/openmetadata-*.tar.gz
+
+# The entrypoint script.
+!docker/
+!docker/openmetadata-start.sh

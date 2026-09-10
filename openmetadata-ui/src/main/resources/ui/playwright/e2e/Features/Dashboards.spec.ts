@@ -35,8 +35,6 @@ const dashboardEntity = new DashboardServiceClass();
 const dashboard = new DashboardClass();
 
 test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -99,8 +97,6 @@ test.describe(
   'Dashboard and Charts deleted toggle',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

@@ -13,16 +13,17 @@
 Utils module to parse the protobuf schema
 """
 
-import glob
-import importlib
-import shutil
-import sys
+import tempfile
 import traceback
 from enum import Enum
-from pathlib import Path, PureWindowsPath
+from importlib.resources import files
+from pathlib import Path
+from typing import TypeVar
 
 import grpc_tools.protoc
-from pydantic import BaseModel
+from google.protobuf import descriptor_pb2, descriptor_pool
+from google.protobuf.descriptor import Descriptor, FileDescriptor
+from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
@@ -30,6 +31,12 @@ from metadata.utils.helpers import snake_to_camel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+ProtobufField = TypeVar("ProtobufField", FieldModel, Column)
+
+PROTO_FILE_NAME = "schema.proto"
+DESCRIPTOR_SET_FILE_NAME = "schema.desc"
+GRPC_TOOLS_PROTO_PATH = files("grpc_tools").joinpath("_proto")
 
 
 class ProtobufDataTypes(Enum):
@@ -74,15 +81,12 @@ class ProtobufParserConfig(BaseModel):
     Protobuf Parser Config class
     :param schema_name: Name of protobuf schema
     :param schema_text: Protobuf schema definition in text format
-    :param base_file_path: A temporary directory will be created under this path for
-      generating the files required for protobuf parsing and compiling. By default
-      the directory will be created under "/tmp/protobuf_openmetadata" unless it is
-      specified in the parameter.
+    :param base_file_path: Optional parent directory for temporary parser files.
     """
 
     schema_name: str
     schema_text: str
-    base_file_path: str | None = "/tmp/protobuf_openmetadata"
+    base_file_path: str | None = Field(default=None)
 
 
 class ProtobufParser:
@@ -92,143 +96,134 @@ class ProtobufParser:
 
     config: ProtobufParserConfig
 
-    def __init__(self, config):
+    def __init__(self, config: ProtobufParserConfig):
         self.config = config
-        self.proto_interface_dir = f"{self.config.base_file_path}/interfaces"
-        self.generated_src_dir = f"{self.config.base_file_path}/generated/"
 
-    def load_module(self, module):
-        """
-        Get the python module from path
-        """
-        module_path = module
-        return __import__(module_path, fromlist=[module])
+    def _compile_descriptor_set(self, working_directory: Path) -> descriptor_pb2.FileDescriptorSet:
+        """Compile the configured schema into a descriptor set."""
+        interface_directory = working_directory / "interfaces"
+        interface_directory.mkdir()
+        proto_file = interface_directory / PROTO_FILE_NAME
+        proto_file.write_text(self.config.schema_text, encoding="UTF-8")
+        descriptor_set_file = working_directory / DESCRIPTOR_SET_FILE_NAME
 
-    def _get_proto_file_path(self) -> Path:
-        """Resolve the schema file path and keep it inside the interface directory."""
-        schema_name = self.config.schema_name
-        windows_schema_path = PureWindowsPath(schema_name)
-        if windows_schema_path.is_absolute() or len(windows_schema_path.parts) != 1:
-            raise ValueError(f"Invalid protobuf schema name: {schema_name}")
+        exit_code = grpc_tools.protoc.main(
+            [
+                "protoc",
+                f"--proto_path={interface_directory}",
+                f"--proto_path={GRPC_TOOLS_PROTO_PATH}",
+                f"--descriptor_set_out={descriptor_set_file}",
+                "--include_imports",
+                str(proto_file),
+            ]
+        )
+        if exit_code:
+            raise RuntimeError(f"protoc exited with code {exit_code}")
 
-        interface_dir = Path(self.proto_interface_dir).resolve()
-        file_path = (interface_dir / f"{schema_name}.proto").resolve()
-        if file_path.parent != interface_dir:
-            raise ValueError(f"Protobuf schema path escapes the interface directory: {schema_name}")
-        return file_path
+        descriptor_set = descriptor_pb2.FileDescriptorSet()
+        descriptor_set.ParseFromString(descriptor_set_file.read_bytes())
+        return descriptor_set
 
-    def create_proto_files(self):
-        """
-        Method to generate the protobuf directory and file structure
-        """
-        try:
-            file_path = self._get_proto_file_path()
+    @staticmethod
+    def _get_file_descriptor(descriptor_set: descriptor_pb2.FileDescriptorSet) -> FileDescriptor:
+        """Load the compiled schema into an isolated descriptor pool."""
+        descriptor_protos = {descriptor.name: descriptor for descriptor in descriptor_set.file}
+        descriptor_pool_ = descriptor_pool.DescriptorPool()
+        added_descriptors = set()
 
-            # Create a temporary directory for saving all the files if not already present
-            generated_src_dir_path = Path(self.generated_src_dir)
-            generated_src_dir_path.mkdir(parents=True, exist_ok=True)
-            proto_interface_dir_path = Path(self.proto_interface_dir)
-            proto_interface_dir_path.mkdir(parents=True, exist_ok=True)
+        def add_descriptor(descriptor_name: str) -> None:
+            if descriptor_name in added_descriptors:
+                return
+            descriptor = descriptor_protos.get(descriptor_name)
+            if descriptor is None:
+                raise ValueError(f"Missing Protobuf dependency: {descriptor_name}")
+            for dependency_name in descriptor.dependency:
+                add_descriptor(dependency_name)
+            descriptor_pool_.Add(descriptor)
+            added_descriptors.add(descriptor_name)
 
-            # Create a .proto file under the interfaces directory with schema text
-            with file_path.open("w", encoding="UTF-8") as file:
-                file.write(self.config.schema_text)
-            proto_path = "generated=" + self.proto_interface_dir
-            return proto_path, str(file_path)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
-        return None
+        add_descriptor(PROTO_FILE_NAME)
+        return descriptor_pool_.FindFileByName(PROTO_FILE_NAME)
 
-    def get_protobuf_python_object(self, proto_path: str, file_path: str):
-        """
-        Method to create protobuf python module and get object
-        """
-        try:
-            # compile the .proto file and create python class
-            grpc_tools.protoc.main(
-                [
-                    "protoc",
-                    file_path,
-                    f"--proto_path={proto_path}",
-                    f"--python_out={self.config.base_file_path}",
-                ]
+    def _get_message_descriptor(self, file_descriptor: FileDescriptor) -> Descriptor | None:
+        """Select the root message represented by the topic schema."""
+        message_types = file_descriptor.message_types_by_name
+        message_descriptor = message_types.get(snake_to_camel(self.config.schema_name))
+        if message_descriptor is None and len(message_types) == 1:
+            message_descriptor = next(iter(message_types.values()))
+        if message_descriptor is None:
+            logger.warning(
+                "Unable to determine the Protobuf message for %s. Available messages: %s",
+                self.config.schema_name,
+                ", ".join(message_types),
             )
+        return message_descriptor
 
-            # import the python file
-            sys.path.append(self.generated_src_dir)
-            generated_src_dir_path = Path(self.generated_src_dir)
-            py_file = glob.glob(str(generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")))[0]  # noqa: PTH207
-            module_name = Path(py_file).stem
-            message = importlib.import_module(module_name)
-
-            # get the class and create a object instance
-            class_ = getattr(message, snake_to_camel(self.config.schema_name))
-            instance = class_()
-            return instance  # noqa: RET504, TRY300
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
-        return None
-
-    def parse_protobuf_schema(self, cls: type[BaseModel] = FieldModel) -> list[FieldModel | Column] | None:
+    def parse_protobuf_schema(self, cls: type[ProtobufField] = FieldModel) -> list[ProtobufField] | None:
         """
         Method to parse the protobuf schema
         """
 
         try:
-            proto_path, file_path = self.create_proto_files()
-            instance = self.get_protobuf_python_object(proto_path=proto_path, file_path=file_path)
+            base_file_path = self.config.base_file_path
+            temporary_parent = Path(base_file_path).expanduser() if base_file_path and base_file_path.strip() else None
+            if temporary_parent:
+                temporary_parent.mkdir(parents=True, exist_ok=True)
 
-            field_models = [
-                cls(
-                    name=instance.DESCRIPTOR.name,
-                    dataType="RECORD",
-                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields, cls=cls),
-                )
-            ]
+            with tempfile.TemporaryDirectory(prefix="protobuf_om_", dir=temporary_parent) as temporary_directory:
+                descriptor_set = self._compile_descriptor_set(Path(temporary_directory))
+                file_descriptor = self._get_file_descriptor(descriptor_set)
+                message_descriptor = self._get_message_descriptor(file_descriptor)
+                if message_descriptor is None:
+                    return None
 
-            # Clean up the tmp folder
-            if Path(self.config.base_file_path).exists():
-                shutil.rmtree(self.config.base_file_path)
-
-            return field_models  # noqa: TRY300
+                return [
+                    cls.model_validate(
+                        {
+                            "name": message_descriptor.name,
+                            "dataType": "RECORD",
+                            "children": self.get_protobuf_fields(message_descriptor.fields, cls=cls),
+                        }
+                    )
+                ]
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
+            logger.warning("Unable to parse protobuf schema for %s: %s", self.config.schema_name, exc)
         return None
 
-    def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:
+    def _get_field_type(self, type_: int, cls: type[ProtobufField] = FieldModel) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
-        if cls == Column and data_type == DataTypeTopic.FIXED.value:
+        if cls is Column and data_type == DataTypeTopic.FIXED.value:
             return DataType.INT.value
         return data_type
 
     def get_protobuf_fields(
         self,
         fields,
-        cls: type[BaseModel] = FieldModel,
-    ) -> list[FieldModel | Column] | None:
+        cls: type[ProtobufField] = FieldModel,
+    ) -> list[ProtobufField]:
         """
         Recursively convert the parsed schema into required models
         """
-        field_models = []
+        field_models: list[ProtobufField] = []
 
         for field in fields:
             try:
                 field_models.append(
-                    cls(
-                        name=field.name,
-                        dataType=self._get_field_type(field.type, cls=cls),
-                        children=self.get_protobuf_fields(field.message_type.fields, cls=cls)
-                        if field.type == 11
-                        else None,
+                    cls.model_validate(
+                        {
+                            "name": field.name,
+                            "dataType": self._get_field_type(field.type, cls=cls),
+                            "children": self.get_protobuf_fields(field.message_type.fields, cls=cls)
+                            if field.type == 11
+                            else None,
+                        }
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
+                logger.warning("Unable to parse the protobuf schema into models: %s", exc)
 
         return field_models

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -20,13 +20,22 @@ import { performUserLogin } from '../../utils/user';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const userClassification = new ClassificationClass();
-const systemClassification = new ClassificationClass({ provider: 'system' });
-const userTag = new TagClass({ classification: userClassification.data.name });
-const exportUser = new UserClass(undefined, true);
+let userClassification = new ClassificationClass();
+let systemClassification = new ClassificationClass({ provider: 'system' });
+let userTag = new TagClass({ classification: userClassification.data.name });
+let exportUser = new UserClass(undefined, true);
 
 test.describe('Classification Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('Setup classifications and a tag', async ({ browser }) => {
+    // beforeAll runs once per worker, and a worker restart re-enters it with the
+    // module scope still warm — so the second pass POSTs the names the first
+    // pass already created and every create 409s. Rebuilding the fixtures here
+    // means each pass owns a fresh set of names.
+    userClassification = new ClassificationClass();
+    systemClassification = new ClassificationClass({ provider: 'system' });
+    userTag = new TagClass({ classification: userClassification.data.name });
+    exportUser = new UserClass(undefined, true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
     await userClassification.create(apiContext);
     await systemClassification.create(apiContext);
@@ -113,4 +122,45 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
       page.getByText('Drag & Drop or Browse CSV file here')
     ).toBeVisible();
   });
+
+  // Without this the spec leaked two classifications, a tag and a user into the
+  // shard on every run; they then show up in every other spec's listings.
+  // Deletes are individually tolerant so a fixture that never got created (a
+  // failed beforeAll) cannot turn the run red from teardown.
+  test.afterAll(
+    'Remove the classifications, tag and user',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      const remove = async (
+        created: boolean,
+        deletion: () => Promise<unknown>
+      ) => {
+        if (!created) {
+          return;
+        }
+
+        try {
+          await deletion();
+        } catch {
+          // Teardown must not turn a green run red.
+        }
+      };
+
+      await remove(Boolean(userTag.responseData?.id), () =>
+        userTag.delete(apiContext)
+      );
+      await remove(Boolean(userClassification.responseData?.id), () =>
+        userClassification.delete(apiContext)
+      );
+      await remove(Boolean(systemClassification.responseData?.id), () =>
+        systemClassification.delete(apiContext)
+      );
+      await remove(Boolean(exportUser.responseData?.id), () =>
+        exportUser.delete(apiContext)
+      );
+
+      await afterAction();
+    }
+  );
 });

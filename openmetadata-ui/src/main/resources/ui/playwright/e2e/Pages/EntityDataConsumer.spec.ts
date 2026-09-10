@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -29,6 +29,7 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
@@ -110,6 +111,9 @@ entities.forEach((EntityClass) => {
       await entity.tier(page, COMMON_TIER_TAG[0].name, COMMON_TIER_TAG[3].name);
     });
 
+    // Only the Table variant is flaky (3 of 11 sampled merge_group runs); the
+    // other 15 entity types are clean, so the tag is scoped rather than
+    // quarantining the whole generated set. See playwright/QUARANTINE.md.
     test('Update description', async ({ page }) => {
       await entity.descriptionUpdate(page);
     });

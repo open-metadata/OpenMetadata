@@ -16,6 +16,8 @@ import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPa
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
+const MIME_TEXT_PLAIN = 'text/plain';
+
 export interface importEntityInCSVFormatRequestParams {
   entityType: EntityType;
   name: string;
@@ -33,7 +35,7 @@ export const importTestCaseInCSVFormat = async ({
   targetEntityType,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': MIME_TEXT_PLAIN },
   };
   let url = `/dataQuality/testCases/name/${getEncodedFqn(
     name
@@ -58,7 +60,7 @@ export const importEntityInCSVFormat = async ({
   recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': MIME_TEXT_PLAIN },
   };
   const res = await APIClient.put<
     string,
@@ -82,7 +84,7 @@ export const importServiceInCSVFormat = async ({
   recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': MIME_TEXT_PLAIN },
   };
   const res = await APIClient.put<
     string,
@@ -104,7 +106,7 @@ export const importGlossaryInCSVFormat = async ({
   dryRun = true,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': MIME_TEXT_PLAIN },
   };
   const response = await APIClient.put<
     string,
@@ -124,7 +126,7 @@ export const importGlossaryTermInCSVFormat = async ({
   dryRun = true,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': MIME_TEXT_PLAIN },
   };
   const response = await APIClient.put<
     string,
@@ -166,7 +168,7 @@ export const importGlossaryOntology = async ({
   format?: OntologyImportFormat;
 }) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': MIME_TEXT_PLAIN },
   };
   const response = await APIClient.put<
     string,

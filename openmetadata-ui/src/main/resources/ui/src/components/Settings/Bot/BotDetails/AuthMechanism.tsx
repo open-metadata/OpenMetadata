@@ -65,6 +65,94 @@ const AuthMechanism: FC<Props> = ({
 
   const { tokenExpiryDate, isTokenExpired } = getTokenExpiry(JWTTokenExpiresAt);
 
+  const renderExpiryText = () => {
+    if (!JWTTokenExpiresAt) {
+      return (
+        <>
+          <Icon
+            alt="warning"
+            className="align-middle"
+            component={IconError}
+            style={{ fontSize: '16px' }}
+          />
+          <span className="align-middle">
+            {t('message.token-has-no-expiry')}
+          </span>
+        </>
+      );
+    }
+
+    return isTokenExpired
+      ? `Expired on ${tokenExpiryDate}.`
+      : `Expires on ${tokenExpiryDate}.`;
+  };
+
+  const renderTokenSection = () =>
+    JWTToken ? (
+      <>
+        <Space
+          className={classNames(
+            'w-full justify-between ant-space-authMechanism',
+            isSCIMBot && 'm-t-xs'
+          )}>
+          <Input.Password
+            readOnly
+            autoComplete="off"
+            data-testid="token"
+            placeholder="Generate new token..."
+            value={JWTToken}
+          />
+          {!isSCIMBot ? (
+            <CopyToClipboardButton copyText={JWTToken} />
+          ) : (
+            <CopyIcon
+              className="m-t-xs cursor-pointer"
+              onClick={() => navigator.clipboard.writeText(JWTToken)}
+            />
+          )}
+        </Space>
+        {!isSCIMBot && (
+          <p className="text-grey-muted" data-testid="token-expiry">
+            {renderExpiryText()}
+          </p>
+        )}
+      </>
+    ) : (
+      <div className="text-grey-muted text-sm" data-testid="no-token">
+        {t('message.no-token-available')}
+      </div>
+    );
+
+  const renderScimFooter = () =>
+    isSCIMBot && (
+      <div className="flex justify-between mt-4">
+        <div className="flex  gap-8">
+          <div className="flex flex-col gap-2">
+            <Typography.Text className="created-by-label">
+              {t('label.created-by')}
+            </Typography.Text>
+            <div className="flex items-center gap-2 mt-1">
+              <UserPopOverCard
+                showUserName
+                key={botData?.updatedBy}
+                profileWidth={20}
+                userName={botData?.updatedBy ?? ''}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Typography.Text className="created-on-label">
+              {t('label.created-on')}
+            </Typography.Text>
+
+            <Typography.Text className="created-on-value">
+              {new Date(botData?.updatedAt ?? '').toLocaleString()}
+            </Typography.Text>
+          </div>
+        </div>
+      </div>
+    );
+
   return (
     <>
       <Space className="w-full justify-between">
@@ -122,86 +210,8 @@ const AuthMechanism: FC<Props> = ({
         </Typography.Text>
       )}
 
-      {JWTToken ? (
-        <>
-          <Space
-            className={classNames(
-              'w-full justify-between ant-space-authMechanism',
-              isSCIMBot && 'm-t-xs'
-            )}>
-            <Input.Password
-              readOnly
-              autoComplete="off"
-              data-testid="token"
-              placeholder="Generate new token..."
-              value={JWTToken}
-            />
-            {!isSCIMBot ? (
-              <CopyToClipboardButton copyText={JWTToken} />
-            ) : (
-              <CopyIcon
-                className="m-t-xs cursor-pointer"
-                onClick={() => navigator.clipboard.writeText(JWTToken)}
-              />
-            )}
-          </Space>
-          {!isSCIMBot && (
-            <p className="text-grey-muted" data-testid="token-expiry">
-              {JWTTokenExpiresAt ? (
-                isTokenExpired ? (
-                  `Expired on ${tokenExpiryDate}.`
-                ) : (
-                  `Expires on ${tokenExpiryDate}.`
-                )
-              ) : (
-                <>
-                  <Icon
-                    alt="warning"
-                    className="align-middle"
-                    component={IconError}
-                    style={{ fontSize: '16px' }}
-                  />
-                  <span className="align-middle">
-                    {t('message.token-has-no-expiry')}
-                  </span>
-                </>
-              )}
-            </p>
-          )}
-        </>
-      ) : (
-        <div className="text-grey-muted text-sm" data-testid="no-token">
-          {t('message.no-token-available')}
-        </div>
-      )}
-      {isSCIMBot && (
-        <div className="flex justify-between mt-4">
-          <div className="flex  gap-8">
-            <div className="flex flex-col gap-2">
-              <Typography.Text className="created-by-label">
-                {t('label.created-by')}
-              </Typography.Text>
-              <div className="flex items-center gap-2 mt-1">
-                <UserPopOverCard
-                  showUserName
-                  key={botData?.updatedBy}
-                  profileWidth={20}
-                  userName={botData?.updatedBy ?? ''}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Typography.Text className="created-on-label">
-                {t('label.created-on')}
-              </Typography.Text>
-
-              <Typography.Text className="created-on-value">
-                {new Date(botData?.updatedAt ?? '').toLocaleString()}
-              </Typography.Text>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderTokenSection()}
+      {renderScimFooter()}
     </>
   );
 };

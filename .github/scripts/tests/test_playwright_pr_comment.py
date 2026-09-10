@@ -24,7 +24,9 @@ def test_comment_workflow_uses_a_small_trusted_helper_wrapper():
     )
 
 
-def render_comment(tmp_path: Path, payload: dict) -> subprocess.CompletedProcess[str]:
+def render_comment(
+    tmp_path: Path, payload: dict, conclusion: str = "success"
+) -> subprocess.CompletedProcess[str]:
     payload_path = tmp_path / "summary.json"
     payload_path.write_text(json.dumps(payload), encoding="utf-8")
     harness = f"""
@@ -43,7 +45,7 @@ const context = {{
       id: 123456,
       run_attempt: 1,
       event: 'pull_request',
-      conclusion: 'success',
+      conclusion: {json.dumps(conclusion)},
       head_sha: sourceSha,
       repository: {{ id: 1 }},
       pull_requests: [{{ number: pull.number, base: {{ repo: {{ id: 1 }} }} }}],
@@ -238,3 +240,67 @@ def test_v2_rejects_inconsistent_lifecycle_total(tmp_path: Path):
 
     assert result.returncode != 0
     assert "sum of shard lifecycleFlaky counts" in result.stderr
+
+
+LEAKED_JWT = (
+    "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiJ9"
+    ".eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImFkbWluIn0"
+    ".dkLypt-7l9jR74XoUkNjjThCSylew4igwwBp89sfuAB0QDn9eHWjj"
+)
+
+CALL_LOG_WITH_TOKEN = (
+    "TimeoutError: apiRequestContext.get: Timeout 30000ms exceeded.\n"
+    "Call log:\n"
+    "  - → GET http://localhost:8585/api/v1/apps/name/SearchIndexingApplication\n"
+    "    - accept: */*\n"
+    f"    - Authorization: Bearer {LEAKED_JWT}\n"
+    "    - Connection: keep-alive\n"
+)
+
+
+def failing_payload_with_leaked_token() -> dict:
+    payload = current_payload()
+    payload["totals"]["passed"] = 10
+    payload["totals"]["failed"] = 1
+    payload["shards"][0]["failed"] = 1
+    payload["failures"] = [
+        {
+            "shard": "chromium-01",
+            "file": "playwright/e2e/Pages/SearchSettings.spec.ts",
+            "title": "Update global search settings",
+            "error": CALL_LOG_WITH_TOKEN,
+        }
+    ]
+    payload["performance"]["blockingTargetsMet"] = True
+    return payload
+
+
+def test_failure_error_never_publishes_authorization_headers(tmp_path: Path):
+    result = render_comment(
+        tmp_path, failing_payload_with_leaked_token(), conclusion="failure"
+    )
+
+    assert result.returncode == 0, result.stderr
+    body = json.loads(result.stdout)["body"]
+    assert LEAKED_JWT not in body
+    assert "Bearer" not in body
+    assert "Authorization: &lt;redacted&gt;" in body
+    # The surrounding call log still has to be readable, or the comment stops
+    # being useful for triage.
+    assert "Timeout 30000ms exceeded" in body
+    assert "accept: */*" in body
+
+
+def test_infrastructure_issues_are_redacted(tmp_path: Path):
+    payload = current_payload()
+    payload["infrastructureIssueCount"] = 1
+    payload["infrastructureIssues"] = [
+        f"Shard 1 uploaded invalid results JSON: cookie=jwtToken={LEAKED_JWT}"
+    ]
+
+    result = render_comment(tmp_path, payload, conclusion="failure")
+
+    assert result.returncode == 0, result.stderr
+    body = json.loads(result.stdout)["body"]
+    assert LEAKED_JWT not in body
+    assert "Shard 1 uploaded invalid results JSON" in body

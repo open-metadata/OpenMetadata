@@ -53,7 +53,23 @@ import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { parseBucketsData } from './SearchPureUtils';
+
+const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
+
+// Custom-property types whose sub-field needs an async fetch (select/multiselect).
+const ASYNC_CUSTOM_PROPERTY_TYPES: string[] = [
+  'array<entityReference>',
+  'entityReference',
+  'enum',
+];
+
+// Custom-property types that expand into multiple sub-fields.
+const MULTI_VALUE_CUSTOM_PROPERTY_TYPES: string[] = [
+  'timeInterval',
+  'hyperlink-cp',
+  'table-cp',
+];
 
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
@@ -224,6 +240,9 @@ class AdvancedSearchClassBase {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
     const debouncedFetch = debounce((search: string) => {
+      // An in-flight response must settle its own search, even if a newer search is queued.
+      const resolve = pendingResolve;
+      pendingResolve = null;
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -241,28 +260,19 @@ class AdvancedSearchClassBase {
             sourceFieldOptionType
           );
 
-          if (pendingResolve) {
-            pendingResolve({
-              values: bucketsData as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({
+            values: bucketsData as ListItem[],
+            hasMore: false,
+          });
         })
         .catch(() => {
-          if (pendingResolve) {
-            pendingResolve({
-              values: [] as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({ values: [] as ListItem[], hasMore: false });
         });
     }, 300);
 
     return (search) => {
       return new Promise((resolve) => {
-        // Resolve previous promise to prevent hanging
+        // Settle searches cancelled before their debounced request starts.
         if (pendingResolve) {
           pendingResolve({ values: [] as ListItem[], hasMore: false });
         }
@@ -946,20 +956,16 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            sourceFields: 'displayName,name,fullyQualifiedName',
-            sourceFieldOptionType: {
-              label: 'displayName',
-              value: 'fullyQualifiedName',
-            },
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               [
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'tier',
                   negate: true,
                 },
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'certification',
                   negate: true,
                 },
@@ -979,6 +985,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
           }),
           useAsyncSearch: true,
         },
@@ -992,14 +999,10 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            sourceFields: 'displayName,name,fullyQualifiedName',
-            sourceFieldOptionType: {
-              label: 'displayName',
-              value: 'fullyQualifiedName',
-            },
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'certification',
               },
               true
@@ -1017,14 +1020,10 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            sourceFields: 'displayName,name,fullyQualifiedName',
-            sourceFieldOptionType: {
-              label: 'displayName',
-              value: 'fullyQualifiedName',
-            },
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'tier',
               },
               true
@@ -1177,6 +1176,7 @@ class AdvancedSearchClassBase {
               asyncFetch: this.autocomplete({
                 searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
                 entityField: EntityFields.FULLY_QUALIFIED_NAME,
+                sourceFields: 'fullyQualifiedName',
               }),
               useAsyncSearch: true,
             },
@@ -1378,73 +1378,80 @@ class AdvancedSearchClassBase {
     return Array.isArray(result) ? result.map(attachType) : attachType(result);
   }
 
-  private buildCustomPropertiesSubFields(
+  private resolveCustomPropertySubfieldsKey(
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType
-  ):
-    | { subfieldsKey: string; dataObject: Field }
-    | Array<{ subfieldsKey: string; dataObject: Field }> {
-    const label = getEntityName(field);
-
-    let subfieldsKey: string;
+  ): string {
     const isEntityReferenceType =
       field.type === 'array<entityReference>' ||
       field.type === 'entityReference';
 
     if (isEntityReferenceType) {
-      subfieldsKey =
-        searchOutputType === SearchOutputType.ElasticSearch
-          ? field.name + '.displayName.keyword'
-          : field.name + '.displayName';
-    } else if (searchOutputType === SearchOutputType.ElasticSearch) {
-      subfieldsKey = CP_TYPE_WITHOUT_KEYWORD_FIELD.includes(field.type)
-        ? field.name
-        : field.name + '.keyword';
-    } else {
-      subfieldsKey = field.name;
+      return searchOutputType === SearchOutputType.ElasticSearch
+        ? field.name + '.displayName.keyword'
+        : field.name + '.displayName';
     }
 
+    if (searchOutputType === SearchOutputType.ElasticSearch) {
+      return CP_TYPE_WITHOUT_KEYWORD_FIELD.includes(field.type)
+        ? field.name
+        : field.name + '.keyword';
+    }
+
+    return field.name;
+  }
+
+  private buildAsyncCustomPropertySubField(
+    field: CustomPropertySummary,
+    subfieldsKey: string,
+    label: string
+  ): { subfieldsKey: string; dataObject: Field } {
+    if (field.type === 'enum') {
+      const enumValues =
+        (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
+          .values ?? [];
+
+      return {
+        subfieldsKey,
+        dataObject: {
+          type: 'multiselect',
+          label,
+          operators: MULTISELECT_FIELD_OPERATORS,
+          fieldSettings: {
+            asyncFetch: this.buildEnumAsyncFetch(enumValues),
+            showSearch: true,
+            useAsyncSearch: true,
+            useLoadMore: true,
+          },
+        },
+      };
+    }
+
+    // array<entityReference> | entityReference
+    return {
+      subfieldsKey,
+      dataObject: {
+        type: 'select',
+        label,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: (
+              (field.customPropertyConfig?.config ?? []) as string[]
+            ).join(',') as SearchIndex,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+    };
+  }
+
+  private buildScalarCustomPropertySubField(
+    field: CustomPropertySummary,
+    subfieldsKey: string,
+    label: string
+  ): { subfieldsKey: string; dataObject: Field } {
     switch (field.type) {
-      case 'array<entityReference>':
-      case 'entityReference':
-        return {
-          subfieldsKey,
-          dataObject: {
-            type: 'select',
-            label,
-            fieldSettings: {
-              asyncFetch: this.autocomplete({
-                searchIndex: (
-                  (field.customPropertyConfig?.config ?? []) as string[]
-                ).join(',') as SearchIndex,
-                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-              }),
-              useAsyncSearch: true,
-            },
-          },
-        };
-
-      case 'enum': {
-        const enumValues =
-          (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
-            .values ?? [];
-
-        return {
-          subfieldsKey,
-          dataObject: {
-            type: 'multiselect',
-            label,
-            operators: MULTISELECT_FIELD_OPERATORS,
-            fieldSettings: {
-              asyncFetch: this.buildEnumAsyncFetch(enumValues),
-              showSearch: true,
-              useAsyncSearch: true,
-              useLoadMore: true,
-            },
-          },
-        };
-      }
-
       case 'date-cp':
       case 'dateTime-cp': {
         const dateFormat = getCustomPropertyMomentFormat(
@@ -1468,7 +1475,7 @@ class AdvancedSearchClassBase {
 
       case 'timestamp':
       case 'integer':
-      case 'number': {
+      case 'number':
         return {
           subfieldsKey,
           dataObject: {
@@ -1477,9 +1484,26 @@ class AdvancedSearchClassBase {
             operators: NUMBER_FIELD_OPERATORS,
           },
         };
-      }
 
-      case 'timeInterval': {
+      default:
+        return {
+          subfieldsKey,
+          dataObject: {
+            type: 'text',
+            label,
+            valueSources: ['value'],
+            operators: TEXT_FIELD_OPERATORS,
+          },
+        };
+    }
+  }
+
+  private buildMultiValueCustomPropertySubFields(
+    field: CustomPropertySummary,
+    label: string
+  ): Array<{ subfieldsKey: string; dataObject: Field }> {
+    switch (field.type) {
+      case 'timeInterval':
         return [
           {
             subfieldsKey: `${field.name}.start`,
@@ -1504,9 +1528,8 @@ class AdvancedSearchClassBase {
             },
           },
         ];
-      }
 
-      case 'hyperlink-cp': {
+      case 'hyperlink-cp':
         return [
           {
             subfieldsKey: `${field.name}.url`,
@@ -1525,7 +1548,6 @@ class AdvancedSearchClassBase {
             },
           },
         ];
-      }
 
       case 'table-cp': {
         const config = field.customPropertyConfig?.config as Config | undefined;
@@ -1547,16 +1569,31 @@ class AdvancedSearchClassBase {
       }
 
       default:
-        return {
-          subfieldsKey,
-          dataObject: {
-            type: 'text',
-            label,
-            valueSources: ['value'],
-            operators: TEXT_FIELD_OPERATORS,
-          },
-        };
+        return [];
     }
+  }
+
+  private buildCustomPropertiesSubFields(
+    field: CustomPropertySummary,
+    searchOutputType: SearchOutputType
+  ):
+    | { subfieldsKey: string; dataObject: Field }
+    | Array<{ subfieldsKey: string; dataObject: Field }> {
+    const label = getEntityName(field);
+    const subfieldsKey = this.resolveCustomPropertySubfieldsKey(
+      field,
+      searchOutputType
+    );
+
+    if (ASYNC_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
+      return this.buildAsyncCustomPropertySubField(field, subfieldsKey, label);
+    }
+
+    if (MULTI_VALUE_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
+      return this.buildMultiValueCustomPropertySubFields(field, label);
+    }
+
+    return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);
   }
 }
 

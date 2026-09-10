@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,10 +17,12 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.security.Principal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +34,10 @@ import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -260,30 +266,66 @@ class CompanyContextToolTest {
   }
 
   @Test
-  void sharedFilePillIsProjected() throws Exception {
+  void sharedFilePillIsProjectedToAPrincipalItIsSharedWith() throws Exception {
     stubMemory(
         "pill-fqn",
-        memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED));
+        sharedWith(
+            memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED),
+            "bob"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
 
     Map<String, Object> result =
-        tool.execute(
-            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "pill-fqn"));
+        withSubject(
+            securityContext,
+            "bob",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", "pill-fqn")));
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
+  }
+
+  /**
+   * Shared means shared with someone: the pill's own shareConfig names the principals, and the
+   * search half of this tool already filters on them. Reading by name must answer the same
+   * question, or one lookup exposes what the other hides.
+   */
+  @Test
+  void sharedFilePillIsWithheldFromAPrincipalItIsNotSharedWith() throws Exception {
+    stubMemory(
+        "pill-fqn",
+        sharedWith(
+            memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED),
+            "alice"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "bob",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", "pill-fqn")));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+    assertFalse(result.containsKey("answer"), "the pill body must not be returned: " + result);
   }
 
   @Test
   void unquotedDottedFqnResolvesToQuotedPill() throws Exception {
     stubMemory(
         "\"report.md_hash\"",
-        memory("report.md_hash", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED));
+        sharedWith(
+            memory(
+                "report.md_hash", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED),
+            "bob"));
 
+    CatalogSecurityContext securityContext = securityContextFor("bob");
     Map<String, Object> result =
-        tool.execute(
-            mock(Authorizer.class),
-            mock(CatalogSecurityContext.class),
-            Map.of("fqn", "report.md_hash"));
+        withSubject(
+            securityContext,
+            "bob",
+            () ->
+                tool.execute(
+                    mock(Authorizer.class), securityContext, Map.of("fqn", "report.md_hash")));
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
@@ -340,6 +382,38 @@ class CompanyContextToolTest {
         .when(
             () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), isNull()))
         .thenReturn(memory);
+  }
+
+  private ContextMemory sharedWith(ContextMemory memory, String userName) {
+    memory
+        .getShareConfig()
+        .withSharedWith(
+            List.of(
+                new MemorySharedPrincipal()
+                    .withPrincipal(
+                        new EntityReference()
+                            .withType(Entity.USER)
+                            .withName(userName)
+                            .withFullyQualifiedName(userName))));
+    return memory;
+  }
+
+  private CatalogSecurityContext securityContextFor(String userName) {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn(userName);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    return securityContext;
+  }
+
+  private <T> T withSubject(
+      CatalogSecurityContext securityContext, String userName, Callable<T> body) throws Exception {
+    try (MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName(userName), null, null));
+      return body.call();
+    }
   }
 
   private ContextMemory memory(

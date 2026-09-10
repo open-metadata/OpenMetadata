@@ -16,7 +16,9 @@ import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge, {
+  DestinationFormFieldRegistrar,
+} from '../../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -43,6 +45,10 @@ function ObservabilityAlertFormFields({
   templates,
 }: Readonly<ObservabilityAlertFormFieldsProps>) {
   const { t } = useTranslation();
+  const resources = Form.useWatch('resources', form);
+  const destinations = Form.useWatch('destinations', form);
+  const timeout = Form.useWatch('timeout', form);
+  const readTimeout = Form.useWatch('readTimeout', form);
 
   return (
     <>
@@ -101,7 +107,25 @@ function ObservabilityAlertFormFields({
             <Divider dashed type="vertical" />
           </Col>
           <Col span={24}>
-            <DestinationFormItem />
+            <DestinationFormItemFormBridge
+              renderValidationField={(validate) => (
+                <Form.Item
+                  hidden
+                  name="destinations"
+                  rules={[{ validator: validate }]}>
+                  <DestinationFormFieldRegistrar />
+                </Form.Item>
+              )}
+              values={{ destinations, readTimeout, resources, timeout }}
+              onChange={(values) => {
+                // Each shared field must be replaced at its root. Ant's bulk
+                // setter deep-merges destination array entries and would restore
+                // config removed by a type change.
+                Object.entries(values).forEach(([name, value]) =>
+                  form.setFieldValue(name, value)
+                );
+              }}
+            />
           </Col>
 
           {!isEmpty(extraFormWidgets) && (

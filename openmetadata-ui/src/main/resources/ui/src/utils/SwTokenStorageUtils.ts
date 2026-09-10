@@ -27,19 +27,99 @@ export const isServiceWorkerAvailable = (): boolean => {
   return 'serviceWorker' in navigator && 'indexedDB' in window;
 };
 
+// The service worker API being present does not guarantee a worker can be
+// registered or reached: a reverse proxy may rewrite/404 /app-worker.js, a CSP
+// may block workers, or the origin may be insecure. In that state every
+// swTokenStorage call rejects; without a fallback the tokens returned by a
+// successful login are silently dropped and the user can never sign in (#32063).
+//
+// Once a call fails, the app state is kept in this in-memory store for the
+// lifetime of the tab and the service worker is not retried, so requests stop
+// paying the controller-wait timeout.
+// SECURITY: The fallback is deliberately in-memory rather than localStorage,
+// so tokens cannot be restored from persistent storage after logout.
+let swStorageBroken = false;
+let inMemoryState: AppState = {};
+
+export const resetSwTokenStorageState = (): void => {
+  swStorageBroken = false;
+  inMemoryState = {};
+};
+
+// Mirrors DB_NAME / STORE_NAME in public/app-worker.js — the service worker's
+// persistence layer. Used only as a logout fallback when the worker itself
+// cannot be reached, so stale tokens cannot outlive the session in IndexedDB.
+const SW_DB_NAME = 'AppDataStore';
+const SW_STORE_NAME = 'keyValueStore';
+
+const deleteFromIndexedDb = async (key: string): Promise<void> => {
+  // indexedDB.open without a version implicitly creates an empty database
+  // when the worker never persisted one; skip when we can prove it does not
+  // exist. indexedDB.databases() is not supported everywhere, hence the
+  // feature-detect — where unsupported, the empty phantom DB is harmless.
+  if (typeof window.indexedDB.databases === 'function') {
+    const databases = await window.indexedDB.databases();
+    if (!databases.some((database) => database.name === SW_DB_NAME)) {
+      return;
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(SW_DB_NAME);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SW_STORE_NAME)) {
+        db.close();
+        resolve();
+
+        return;
+      }
+      const transaction = db.transaction([SW_STORE_NAME], 'readwrite');
+      transaction.objectStore(SW_STORE_NAME).delete(key);
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      transaction.onerror = () => {
+        db.close();
+        reject(transaction.error);
+      };
+    };
+  });
+};
+
+const markSwStorageBroken = (error: unknown): void => {
+  if (!swStorageBroken) {
+    swStorageBroken = true;
+    // eslint-disable-next-line no-console
+    console.error(
+      'Token storage service worker is unreachable; keeping auth tokens in memory for this tab. ' +
+        'Check that /app-worker.js is served correctly and service workers are allowed.',
+      error
+    );
+  }
+};
+
 const getAppState = async (): Promise<AppState> => {
   try {
-    if (isServiceWorkerAvailable()) {
+    if (isServiceWorkerAvailable() && !swStorageBroken) {
+      let stateStr: string | null;
       try {
-        const stateStr = await swTokenStorage.getItem(APP_STATE_KEY);
-
-        return stateStr ? JSON.parse(stateStr) : {};
-      } catch {
-        // Service worker not ready - return empty instead of localStorage fallback.
+        stateStr = await swTokenStorage.getItem(APP_STATE_KEY);
+      } catch (error) {
+        // Service worker present but unusable - fall back to the in-memory
+        // state instead of localStorage.
         // SECURITY: This prevents restoration of tokens from localStorage after logout,
         // ensuring that tokens deleted during logout cannot be inadvertently restored.
-        return {};
+        markSwStorageBroken(error);
+
+        return { ...inMemoryState };
       }
+
+      return stateStr ? JSON.parse(stateStr) : {};
+    } else if (swStorageBroken) {
+      return { ...inMemoryState };
     } else {
       // Browser doesn't support SW/IndexedDB, use localStorage fallback
       const stateStr = localStorage.getItem(APP_STATE_KEY);
@@ -54,8 +134,15 @@ const getAppState = async (): Promise<AppState> => {
 const setAppState = async (state: AppState): Promise<void> => {
   try {
     const stateStr = JSON.stringify(state);
-    if (isServiceWorkerAvailable()) {
-      await swTokenStorage.setItem(APP_STATE_KEY, stateStr);
+    if (isServiceWorkerAvailable() && !swStorageBroken) {
+      try {
+        await swTokenStorage.setItem(APP_STATE_KEY, stateStr);
+      } catch (error) {
+        markSwStorageBroken(error);
+        inMemoryState = { ...state };
+      }
+    } else if (swStorageBroken) {
+      inMemoryState = { ...state };
     } else {
       // Fallback for browsers that don't support SW/IndexedDB
       localStorage.setItem(APP_STATE_KEY, stateStr);
@@ -68,9 +155,25 @@ const setAppState = async (state: AppState): Promise<void> => {
 };
 
 const clearAppState = async (): Promise<void> => {
+  inMemoryState = {};
   try {
     if (isServiceWorkerAvailable()) {
-      await swTokenStorage.removeItem(APP_STATE_KEY);
+      // Persisted state must always be cleared on logout, even when the
+      // service worker was marked broken: tokens written before a transient
+      // failure must not survive logout, or a reload (which resets the
+      // verdict) could restore the logged-out session from IndexedDB. When
+      // the verdict is already broken, skip the doomed SW call (it would
+      // block logout on the controller-wait timeout) and delete directly.
+      if (swStorageBroken) {
+        await deleteFromIndexedDb(APP_STATE_KEY);
+      } else {
+        try {
+          await swTokenStorage.removeItem(APP_STATE_KEY);
+        } catch (error) {
+          markSwStorageBroken(error);
+          await deleteFromIndexedDb(APP_STATE_KEY);
+        }
+      }
     } else {
       // Fallback for browsers that don't support SW/IndexedDB
       localStorage.removeItem(APP_STATE_KEY);

@@ -31,13 +31,11 @@ import {
 } from 'recharts';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
   ROUTES,
 } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
@@ -47,6 +45,7 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../generated/dataInsight/kpi/kpi';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import {
   ChartFilter,
   UIKpiResult,
@@ -80,6 +79,8 @@ const KPIChart: FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { axis, dataInsightSeries, grid, inactive } =
+    useDataInsightChartColors();
 
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
@@ -249,10 +250,7 @@ const KPIChart: FC<Props> = ({
                   height={GRAPH_HEIGHT}
                   id="kpi-chart">
                   <LineChart margin={BAR_CHART_MARGIN}>
-                    <CartesianGrid
-                      stroke={GRAPH_BACKGROUND_COLOR}
-                      vertical={false}
-                    />
+                    <CartesianGrid stroke={grid} vertical={false} />
                     <Tooltip
                       content={
                         <CustomTooltip
@@ -264,14 +262,20 @@ const KPIChart: FC<Props> = ({
                     <XAxis
                       allowDuplicatedCategory={false}
                       dataKey="day"
+                      tick={{ fill: axis }}
                       tickFormatter={(value) => formatDate(value)}
                       type="category"
                     />
-                    <YAxis dataKey="count" />
+                    <YAxis dataKey="count" tick={{ fill: axis }} />
                     <Legend
                       align="left"
                       content={(props) =>
-                        renderLegend(props as LegendProps, activeKeys)
+                        renderLegend(
+                          props as LegendProps,
+                          activeKeys,
+                          undefined,
+                          inactive
+                        )
                       }
                       key="name"
                       layout="horizontal"
@@ -293,7 +297,7 @@ const KPIChart: FC<Props> = ({
                         }
                         key={key}
                         name={key}
-                        stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
+                        stroke={dataInsightSeries[i % dataInsightSeries.length]}
                         strokeOpacity={
                           isEmpty(activeMouseHoverKey) ||
                           key === activeMouseHoverKey

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { TeamClass } from '../../support/team/TeamClass';

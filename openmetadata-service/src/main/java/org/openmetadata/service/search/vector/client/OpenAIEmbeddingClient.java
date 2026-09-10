@@ -18,6 +18,8 @@ import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
 @Slf4j
 public final class OpenAIEmbeddingClient extends EmbeddingClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String FIELD_USAGE = "usage";
+  private static final String FIELD_PROMPT_TOKENS = "prompt_tokens";
 
   private final HttpClient httpClient;
   private final String apiKey;
@@ -122,6 +124,16 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
 
   @Override
   protected float[] doEmbed(String text) {
+    return invokeEmbedding(text).vector();
+  }
+
+  /** OpenAI embeddings do not distinguish query from document input, so {@code query} is unused. */
+  @Override
+  protected EmbeddingResult doEmbedWithUsage(String text, boolean query) {
+    return invokeEmbedding(text);
+  }
+
+  private EmbeddingResult invokeEmbedding(String text) {
     if (text == null || text.isBlank()) {
       throw new IllegalArgumentException("Input text must not be null or blank");
     }
@@ -155,7 +167,7 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
             "OpenAI API returned status " + response.statusCode() + ": " + errorMsg);
       }
 
-      return parseEmbeddingResponse(response.body());
+      return parseEmbeddingResult(response.body());
     } catch (IOException e) {
       LOG.error("IO error calling OpenAI API: {}", e.getMessage(), e);
       throw new RuntimeException("OpenAI embedding generation failed due to IO error", e);
@@ -175,7 +187,7 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
     return modelId;
   }
 
-  private float[] parseEmbeddingResponse(String responseBody) {
+  private EmbeddingResult parseEmbeddingResult(String responseBody) {
     try {
       JsonNode root = MAPPER.readTree(responseBody);
       JsonNode data = root.get("data");
@@ -190,10 +202,19 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
       for (int i = 0; i < embeddingNode.size(); i++) {
         embedding[i] = (float) embeddingNode.get(i).asDouble();
       }
-      return embedding;
+      return new EmbeddingResult(embedding, extractUsage(root));
     } catch (IOException e) {
       throw new RuntimeException("Failed to parse OpenAI embedding response", e);
     }
+  }
+
+  /** Input tokens from the response's {@code usage} block, or {@code null} if absent. */
+  private static EmbeddingUsage extractUsage(JsonNode root) {
+    JsonNode usage = root.get(FIELD_USAGE);
+    JsonNode promptTokens = usage != null ? usage.get(FIELD_PROMPT_TOKENS) : null;
+    return promptTokens != null && promptTokens.isNumber()
+        ? new EmbeddingUsage(promptTokens.asLong())
+        : null;
   }
 
   private String extractErrorMessage(String responseBody) {

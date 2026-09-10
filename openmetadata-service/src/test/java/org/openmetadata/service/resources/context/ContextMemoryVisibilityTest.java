@@ -22,6 +22,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -29,13 +31,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Tests user-isolation semantics enforced by {@link ContextMemoryVisibility}. These rules back
@@ -197,6 +203,104 @@ class ContextMemoryVisibilityTest {
     ContextMemory memory = new ContextMemory().withOwners(List.of());
 
     assertFalse(ContextMemoryVisibility.isOwnedBy(memory, ALICE));
+  }
+
+  /**
+   * The type-blind overload the entity read paths call: a read tool holds an {@link
+   * EntityInterface} and does not know which types carry visibility rules, so it must be able to
+   * ask without naming contextMemory.
+   */
+  @Test
+  void testEnforceVisibility_onEntityInterface_deniesAnotherUsersPrivateMemory() {
+    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    SecurityContext bob = securityContextFor(BOB);
+
+    withSubject(
+        bob,
+        BOB,
+        () ->
+            assertThrows(
+                ForbiddenException.class,
+                () -> ContextMemoryVisibility.enforceVisibility(privateOwnedByAlice, bob)));
+  }
+
+  @Test
+  void testEnforceVisibility_onEntityInterface_allowsTheOwnersOwnPrivateMemory() {
+    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    SecurityContext alice = securityContextFor(ALICE);
+
+    withSubject(
+        alice,
+        ALICE,
+        () ->
+            assertDoesNotThrow(
+                () -> ContextMemoryVisibility.enforceVisibility(privateOwnedByAlice, alice)));
+  }
+
+  @Test
+  void testEnforceVisibility_onEntityInterface_ignoresTypesWithoutVisibilityRules() {
+    EntityInterface table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
+
+    assertDoesNotThrow(
+        () -> ContextMemoryVisibility.enforceVisibility(table, securityContextFor(BOB)));
+  }
+
+  @Test
+  void testEnforceVisibility_onEntityInterface_letsAnAdminReadEveryMemory() {
+    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    SecurityContext admin = securityContextFor(BOB);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(admin))
+          .thenReturn(new SubjectContext(new User().withName(BOB).withIsAdmin(true), null, null));
+
+      assertDoesNotThrow(
+          () -> ContextMemoryVisibility.enforceVisibility(privateOwnedByAlice, admin));
+    }
+  }
+
+  @Test
+  void testHasVisibilityRules_onlyForContextMemory() {
+    assertTrue(ContextMemoryVisibility.hasVisibilityRules(Entity.CONTEXT_MEMORY));
+    assertFalse(ContextMemoryVisibility.hasVisibilityRules(Entity.TABLE));
+    assertFalse(ContextMemoryVisibility.hasVisibilityRules(null));
+  }
+
+  /**
+   * Owners is a relationship field, null unless the fetch asked for it. A read path that fetches a
+   * memory without owners hands the guard an ownerless memory and denies the owner their own
+   * private memory - so the guard states the fields its own decision reads.
+   */
+  @Test
+  void testGuardFields_addsOwnersForMemoriesOnly() {
+    assertEquals(
+        Entity.FIELD_OWNERS, ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""));
+    assertEquals(
+        Entity.FIELD_OWNERS, ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, null));
+    assertEquals("tags,owners", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "tags"));
+    assertEquals(
+        "sourceFile,owners",
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "sourceFile,owners"));
+    assertEquals("*", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "*"));
+    assertEquals("", ContextMemoryVisibility.guardFields(Entity.TABLE, ""));
+  }
+
+  private SecurityContext securityContextFor(String userName) {
+    Principal principal = Mockito.mock(Principal.class);
+    Mockito.when(principal.getName()).thenReturn(userName);
+    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+    Mockito.when(securityContext.getUserPrincipal()).thenReturn(principal);
+    return securityContext;
+  }
+
+  private void withSubject(SecurityContext securityContext, String userName, Runnable assertions) {
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName(userName), null, null));
+      assertions.run();
+    }
   }
 
   private ContextMemory memoryOwnedBy(String userName, MemoryVisibility visibility) {

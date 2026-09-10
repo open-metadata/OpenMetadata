@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
 import { ADVANCED_SEARCH_SUGGESTION_FIELDS } from '../../constant/advancedSearch';
 import { SidebarItem } from '../../constant/sidebar';
@@ -21,11 +22,8 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -63,7 +61,11 @@ test.describe('Advanced Search Suggestions', () => {
         true
       );
 
-      await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), '==');
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-operator-select'),
+        '=='
+      );
 
       const dropdownInput = ruleLocator.locator(
         '[data-testid=advanced-search-value] input[role="combobox"]'
@@ -73,31 +75,40 @@ test.describe('Advanced Search Suggestions', () => {
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );
 
-      const aggregateRes2 = page.waitForResponse(
-        `/api/v1/search/aggregate?*${getEncodedFqn(
-          escapeESReservedCharacters(searchText)
-        )}*`
-      );
-
-      await dropdownInput.fill(searchText);
-
-      await aggregateRes2;
-
-      // Assert on the option's value, not its label. Tag-like fields (Tags,
-      // Certification, Tier) render the display name — `Tier1` — while the
-      // search text is the FQN `Tier.Tier1`. react-aria exposes the value on
-      // `data-key`, which does not move when the label presentation does.
+      // Match the option by its value as well as its label. Tag-like fields
+      // (Tags, Certification, Tier) render the display name -- `Tier1` --
+      // while the search text is the FQN `Tier.Tier1`. react-aria exposes the
+      // value on `data-key`, which does not move when the label does.
       const listbox = page.locator('[role="listbox"]:visible');
-      const byValue = listbox.locator(
-        `[role="option"][data-key="${searchText}" i]`
-      );
-      const byText = listbox
-        .locator('[role="option"]')
-        .filter({ hasText: searchText });
+      const suggestionOption = listbox
+        .locator(`[role="option"][data-key="${searchText}" i]`)
+        .or(listbox.locator('[role="option"]').filter({ hasText: searchText }));
 
-      await test
-        .expect((await byValue.count()) > 0 ? byValue : byText)
-        .not.toHaveCount(0);
+      // The ComboBox popover re-mounts under load and the isMounting gate can
+      // drop the aggregate request — the listbox then opens empty. Retry the
+      // fill until at least one matching option renders; each attempt re-arms
+      // waitForAggregation so we don't block forever on a dropped request, and
+      // the helper matches the typed-value aggregate specifically so the wait
+      // cannot resolve early on the dropdown-open request.
+      await expect(async () => {
+        // .catch at construction: the exact dropped-aggregate case this fix
+        // targets leaves the underlying waitForResponse pending, so it will
+        // reject with a Playwright timeout ~30s later once the 5s fallback
+        // timer has already won the race. Without the catch, every toPass
+        // attempt orphans a fresh promise and Playwright surfaces them as
+        // unhandled rejections that can fail the test.
+        const aggregateResponse = waitForAggregation(page, {
+          field: field.fieldName,
+          value: searchText,
+        }).catch(() => undefined);
+        await dropdownInput.fill('');
+        await dropdownInput.fill(searchText);
+        await Promise.race([
+          aggregateResponse,
+          new Promise((resolve) => setTimeout(resolve, 5_000)),
+        ]);
+        await expect(suggestionOption).not.toHaveCount(0, { timeout: 5_000 });
+      }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     });
   });
 });

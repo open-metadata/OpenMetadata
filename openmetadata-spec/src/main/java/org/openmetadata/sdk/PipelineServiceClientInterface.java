@@ -166,5 +166,15 @@ public interface PipelineServiceClientInterface {
     return new PipelineServiceClientResponse().withCode(200).withPlatform(getPlatform());
   }
 
+  /* Whether deployPipeline captures the bot credentials into an artifact that runPipeline does not
+   * rebuild, so a caller has to re-deploy for a rotated token to reach an already deployed pipeline.
+   * Airflow does: DagDeployer writes openMetadataServerConnection into the generated DAG config at
+   * deploy time and runPipeline posts only the dag_id (issue #24806). Runners that rebuild the whole
+   * run spec from the IngestionPipeline on every run carry the current token by construction, so the
+   * default is false and re-deploying them to refresh a token is pure churn. */
+  default boolean pinsCredentialsAtDeployTime() {
+    return false;
+  }
+
   String getPlatform();
 }

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -252,6 +252,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: 'rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
@@ -593,6 +594,7 @@ test.describe('Task Resolution - Close by Creator', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: '',
+            comment: 'Rejecting via automated test',
           },
         }
       );

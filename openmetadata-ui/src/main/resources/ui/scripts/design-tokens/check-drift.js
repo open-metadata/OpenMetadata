@@ -27,6 +27,7 @@ const path = require('path');
 const STEPS = [
   ['gen-tokens.js', ['--check'], 'tokens.css generated block'],
   ['gen-token-reference.js', ['--check'], 'token-reference.md'],
+  ['gen-token-reference.test.js', [], 'token-reference completeness'],
   ['validate-tokens.js', [], 'token reference integrity'],
   ['check-coverage.js', [], 'spec links & coverage'],
 ];

@@ -120,10 +120,12 @@ export const DeferredWidget = ({
   // and treating all automation as eager rendering bypasses the production lazy path that
   // this wrapper exists to measure and protect.
   // Cheap one-time check.
-  const ioUnsupported = useRef(
+  const isNonBrowserEnv =
     typeof window === 'undefined' ||
-      typeof window.IntersectionObserver === 'undefined' ||
-      process.env.NODE_ENV === 'test' ||
+    typeof window.IntersectionObserver === 'undefined' ||
+    process.env.NODE_ENV === 'test';
+  const ioUnsupported = useRef(
+    isNonBrowserEnv ||
       (typeof navigator !== 'undefined' &&
         navigator.userAgent.includes('jsdom'))
   );

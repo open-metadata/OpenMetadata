@@ -197,11 +197,13 @@ async function parseApplicationSchemas() {
 
 // Execute the parsing for connection and ingestion schemas
 async function runParsers() {
-  // For connection schemas
+  // For connection schemas — written to public/ so Vite ships them as static
+  // assets (fetched at runtime via loadConnectionSchema) instead of pulling
+  // them through the Rollup module graph.
   await main(
     'connTemp',
     'schema/entity/services/connections',
-    'src/jsons/connectionSchemas/connections',
+    'public/jsons/connectionSchemas/connections',
     true
   );
 

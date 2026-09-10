@@ -315,7 +315,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
             entityType: deleteTarget.name,
           })}
           onCancel={() => setDeleteTarget(null)}
-          onDelete={() => void confirmDelete()}
+          onDelete={() => confirmDelete()}
         />
       )}
     </div>

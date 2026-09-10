@@ -58,8 +58,6 @@ const S3_SERVICE_CONFIG = {
   },
 };
 
-test.slow(true);
-
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
@@ -531,8 +529,6 @@ test.describe('Deeply nested container navigation', () => {
 //   3. Search and the Deleted Switch compose — a deleted child is reachable
 //      via search only when the toggle is on.
 test.describe('Children tab search + Deleted toggle', () => {
-  test.slow(true);
-
   const serviceName = `pw-storage-service-search-${uuid()}`;
   const parentName = `pw-search-parent-${uuid()}`;
   const siblingParentName = `pw-search-other-parent-${uuid()}`;
@@ -822,8 +818,6 @@ test.describe('Children tab search + Deleted toggle', () => {
 // dropping the depth predicate while keeping the deleted filter would silently
 // start surfacing deleted descendants from any depth.
 test.describe('Children tab Deleted toggle is scoped per-level', () => {
-  test.slow(true);
-
   const serviceName = `pw-storage-service-scope-${uuid()}`;
   const grandparentName = `pw-scope-grandparent-${uuid()}`;
   const parentName = `pw-scope-parent-${uuid()}`;

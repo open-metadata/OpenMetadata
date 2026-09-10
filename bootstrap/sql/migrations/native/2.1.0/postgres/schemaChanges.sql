@@ -42,6 +42,12 @@ CREATE INDEX IF NOT EXISTS idx_test_case_id ON test_case (id);
 -- index and full-scanned the timeline at scale.
 CREATE INDEX IF NOT EXISTS idx_test_case_resolution_status_assignee ON test_case_resolution_status_time_series (assignee, timestamp);
 
+-- Column extension keys hash every FQN segment separately and join the hashes with dots.
+-- A fourth-level nested table column has eight segments and needs 263 characters.
+-- Keep the width aligned with MySQL: 512 supports eleven column levels after the four-part
+-- table FQN.
+ALTER TABLE entity_extension ALTER COLUMN extension TYPE VARCHAR(512);
+
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
 -- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.
@@ -273,3 +279,15 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt BIGINT NOT NULL,
   PRIMARY KEY (name)
 );
+
+-- Restore the audit log full-text index where it is missing (see the MySQL counterpart).
+CREATE INDEX IF NOT EXISTS idx_audit_log_search_text
+  ON audit_log_event USING GIN (to_tsvector('english', coalesce(search_text, '')));
+
+-- event_type and entity_type are filterable on their own and pair with the event_ts ordering every
+-- list query uses; without them a filtered page scans every row in the time window.
+CREATE INDEX IF NOT EXISTS idx_audit_log_event_type_ts
+  ON audit_log_event (event_type, event_ts DESC);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_entity_type_ts
+  ON audit_log_event (entity_type, event_ts DESC);

@@ -195,6 +195,29 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   }
 
   @Test
+  void get_entityListIncludesRequiredBotUser_200_OK(TestNamespace ns) {
+    User botUser = createBotUser(ns);
+    Bot created =
+        createEntity(
+            new CreateBot()
+                .withName(ns.prefix("listed_bot"))
+                .withDescription("Bot returned by the list endpoint")
+                .withBotUser(botUser.getName()));
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("*");
+    Bot listed =
+        listEntities(params).getData().stream()
+            .filter(bot -> bot.getId().equals(created.getId()))
+            .findFirst()
+            .orElseThrow();
+
+    assertNotNull(listed.getBotUser(), "Listed bot must include its required bot user");
+    assertEquals(botUser.getId(), listed.getBotUser().getId());
+  }
+
+  @Test
   void put_botDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     User botUser = createBotUser(ns);

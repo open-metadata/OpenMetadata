@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
@@ -25,7 +24,55 @@ public abstract class EmbeddingClient {
     HALF_OPEN
   }
 
+  /**
+   * Token usage the provider reported for a single embedding call. An embedding call has no output
+   * tokens — it returns a vector, not generated text — so the input count is the whole of it.
+   */
+  public record EmbeddingUsage(long inputTokens) {}
+
+  /**
+   * A vector plus the usage of the call that produced it. {@code usage} is {@code null} when the
+   * provider does not report token counts (Google's {@code :embedContent} and Cohere on Bedrock
+   * never do), so consumers that need a number must estimate one from the submitted text.
+   *
+   * <p>{@code submittedText} is what actually went to the provider, which is not always what the
+   * caller passed in: providers with a hard input limit truncate first (Cohere on Bedrock at 2048
+   * chars, well under a normal chunk). Estimating from the caller's string would then overstate
+   * every truncated call — and Cohere is precisely the family that reports no usage, so estimation
+   * is the only option there. {@code null} means the input went through unchanged.
+   *
+   * <p>A carrier only: the generated {@code equals}/{@code hashCode} compare {@code vector} by
+   * identity, so do not use this record as a map key or in equality assertions.
+   */
+  public record EmbeddingResult(float[] vector, EmbeddingUsage usage, String submittedText) {
+
+    /** For providers that submit the caller's input unchanged. */
+    public EmbeddingResult(float[] vector, EmbeddingUsage usage) {
+      this(vector, usage, null);
+    }
+  }
+
+  /**
+   * Notified after each successful embedding call, so a deployment can meter its own embedding
+   * traffic without this class knowing anything about how that metering works.
+   *
+   * <p>Called off the concurrency permit and after the circuit breaker has settled, and any
+   * exception it throws is logged and swallowed — a listener is observability and must never fail
+   * an embedding or open the circuit.
+   *
+   * <p>Runs synchronously on the calling thread, once per embedded chunk on the indexing path, so
+   * an implementation must not block. Accumulate and report out of band.
+   *
+   * @param text what the provider received, after any provider-side truncation — not necessarily
+   *     what the caller passed in. Estimating a token count from anything else overstates a
+   *     truncated call.
+   */
+  public interface UsageListener {
+    void onUsage(String modelId, String text, EmbeddingUsage usage, boolean query);
+  }
+
   private final Semaphore concurrencyLimiter;
+  private volatile UsageListener usageListener;
   private final Object circuitLock = new Object();
   private CircuitState circuitState = CircuitState.CLOSED;
   private int consecutiveFailures = 0;
@@ -70,23 +117,50 @@ public abstract class EmbeddingClient {
     return doEmbed(text);
   }
 
+  /**
+   * Embed {@code text} and report whatever token usage the provider returned alongside the vector.
+   *
+   * <p>Defaults to the plain {@link #doEmbed}/{@link #doEmbedQuery} pair with no usage, so a client
+   * that overrides only those keeps working unchanged. Providers whose response carries a token
+   * count (Bedrock Titan's {@code inputTextTokenCount}, OpenAI's {@code usage.prompt_tokens})
+   * override this to surface it instead of discarding it.
+   */
+  protected EmbeddingResult doEmbedWithUsage(String text, boolean query) {
+    float[] vector = query ? doEmbedQuery(text) : doEmbed(text);
+    return new EmbeddingResult(vector, null);
+  }
+
+  /** Register the listener notified after each successful call. {@code null} disables reporting. */
+  public void setUsageListener(UsageListener usageListener) {
+    this.usageListener = usageListener;
+  }
+
   public final float[] embed(String text) {
-    return embedWithLimit(() -> doEmbed(text));
+    return embedWithLimit(text, false);
   }
 
   public final float[] embedQuery(String text) {
-    return embedWithLimit(() -> doEmbedQuery(text));
+    return embedWithLimit(text, true);
   }
 
-  private float[] embedWithLimit(Supplier<float[]> embedder) {
+  private float[] embedWithLimit(String text, boolean query) {
     guardCircuit();
+    EmbeddingResult result = invokeProvider(text, query);
+    // Deliberately outside invokeProvider: the permit is released and the circuit has settled by
+    // now, so a slow listener cannot starve other callers and a throwing one cannot open the
+    // circuit.
+    notifyUsage(submittedOr(result, text), result.usage(), query);
+    return result.vector();
+  }
+
+  private EmbeddingResult invokeProvider(String text, boolean query) {
     boolean permitAcquired = false;
     try {
       acquirePermit();
       permitAcquired = true;
-      float[] embedding = embedder.get();
+      EmbeddingResult result = doEmbedWithUsage(text, query);
       recordSuccess();
-      return embedding;
+      return result;
     } catch (RuntimeException failure) {
       // Record even a permit-acquisition failure so a promoted HALF_OPEN probe always resolves
       // (success -> closed, failure -> reopened) and never wedges the circuit half-open forever.
@@ -95,6 +169,23 @@ public abstract class EmbeddingClient {
     } finally {
       if (permitAcquired) {
         concurrencyLimiter.release();
+      }
+    }
+  }
+
+  /** What the provider received: the truncated form when one was reported, else the input. */
+  private static String submittedOr(EmbeddingResult result, String text) {
+    return result.submittedText() != null ? result.submittedText() : text;
+  }
+
+  private void notifyUsage(String text, EmbeddingUsage usage, boolean query) {
+    UsageListener listener = usageListener;
+    if (listener != null) {
+      try {
+        listener.onUsage(getModelId(), text, usage, query);
+      } catch (RuntimeException e) {
+        LOG.warn(
+            "Embedding usage listener failed for model {}: {}", getModelId(), e.getMessage(), e);
       }
     }
   }

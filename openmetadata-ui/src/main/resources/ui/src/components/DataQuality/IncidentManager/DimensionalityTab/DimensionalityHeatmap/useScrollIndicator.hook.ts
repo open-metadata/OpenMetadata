@@ -14,6 +14,8 @@
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { HEATMAP_CONSTANTS } from './DimensionalityHeatmap.constants';
 
+const IS_SCROLLING_CLASS = 'is-scrolling';
+
 export const useScrollIndicator = (
   containerRef: RefObject<HTMLDivElement>,
   dependencies: unknown[]
@@ -65,7 +67,7 @@ export const useScrollIndicator = (
 
     const handleScroll = () => {
       if (container) {
-        container.classList.add('is-scrolling');
+        container.classList.add(IS_SCROLLING_CLASS);
       }
       checkScroll();
 
@@ -75,7 +77,7 @@ export const useScrollIndicator = (
 
       scrollTimeoutRef.current = setTimeout(() => {
         if (container) {
-          container.classList.remove('is-scrolling');
+          container.classList.remove(IS_SCROLLING_CLASS);
         }
       }, 200);
     };
@@ -92,7 +94,7 @@ export const useScrollIndicator = (
       }
       if (container) {
         container.removeEventListener('scroll', handleScroll);
-        container.classList.remove('is-scrolling');
+        container.classList.remove(IS_SCROLLING_CLASS);
       }
       window.removeEventListener('resize', checkScroll);
     };

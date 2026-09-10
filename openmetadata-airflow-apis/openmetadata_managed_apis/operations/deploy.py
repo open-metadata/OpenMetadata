@@ -165,7 +165,7 @@ class DagDeployer:
                 msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
                 logger.debug(traceback.format_exc())
                 logger.error(msg)
-                return ApiResponse.server_error({f"message": msg})  # noqa: F541
+                return ApiResponse.server_error()
 
         scan_dags_job_background()
 

@@ -73,14 +73,12 @@ export const formatServerContent = (htmlString: string) => {
 
     // Validate href to only allow safe protocols before embedding into entity link string.
     // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
-    const href =
-      rawHref &&
-      (rawHref.startsWith('http://') ||
-        rawHref.startsWith('https://') ||
-        rawHref.startsWith('/') ||
-        rawHref.startsWith('#'))
-        ? rawHref
-        : '';
+    const hasSafeProtocol =
+      rawHref?.startsWith('http://') ||
+      rawHref?.startsWith('https://') ||
+      rawHref?.startsWith('/') ||
+      rawHref?.startsWith('#');
+    const href = rawHref && hasSafeProtocol ? rawHref : '';
 
     const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
     const safeFqn = sanitizeEntityLinkField(fqn ?? '');

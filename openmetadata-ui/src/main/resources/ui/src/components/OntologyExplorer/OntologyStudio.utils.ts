@@ -119,15 +119,19 @@ export function buildOntologyQuerySuggestions(
       toNode: nodesById.get(edge.to),
       relationDefinition: relationTypeByName.get(edge.relationType),
     }))
-    .filter(
-      (candidate) =>
+    .filter((candidate) => {
+      const isConnectedCandidate =
         candidate.edge.relationType !== 'parentOf' &&
         candidate.fromNode !== undefined &&
-        candidate.toNode?.fullyQualifiedName !== undefined &&
+        candidate.toNode?.fullyQualifiedName !== undefined;
+
+      return (
+        isConnectedCandidate &&
         (selectedGlossaries.size === 0 ||
-          (candidate.fromNode.glossaryId !== undefined &&
+          (candidate.fromNode?.glossaryId !== undefined &&
             selectedGlossaries.has(candidate.fromNode.glossaryId)))
-    )
+      );
+    })
     .sort((left, right) => {
       const leftRelation =
         left.relationDefinition?.displayName ?? left.edge.label;

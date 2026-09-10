@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   getApiContext,

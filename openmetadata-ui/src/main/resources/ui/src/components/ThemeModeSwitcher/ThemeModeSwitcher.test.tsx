@@ -27,7 +27,7 @@ describe('ThemeModeSwitcher', () => {
 
   it('shows and updates the active theme', () => {
     render(
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider>
         <ThemeModeSwitcher />
       </ThemeProvider>
     );
@@ -51,7 +51,7 @@ describe('ThemeModeSwitcher', () => {
 
   it('uses the full row with the label separated from the toggle', () => {
     render(
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider>
         <ThemeModeSwitcher />
       </ThemeProvider>
     );

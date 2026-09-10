@@ -45,6 +45,7 @@ interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   inputRef: RefObject<HTMLInputElement>;
+  isDisabled?: boolean;
   triggerRef: RefObject<HTMLDivElement>;
   showSearchIcon: boolean;
   shortcut: boolean;
@@ -56,6 +57,7 @@ const ComboBoxValue = ({
   size,
   fontSize,
   inputRef,
+  isDisabled = false,
   triggerRef,
   showSearchIcon,
   shortcut,
@@ -80,7 +82,7 @@ const ComboBoxValue = ({
   const handlePointerDown: AriaGroupProps['onPointerDown'] = (event) => {
     onPointerDown?.(event);
 
-    if (event.defaultPrevented) {
+    if (isDisabled || event.defaultPrevented) {
       return;
     }
 
@@ -156,9 +158,12 @@ const ComboBoxValue = ({
             )}
           </div>
 
+          {/* The visual layer above owns selected-value rendering so icons and
+              supporting text remain aligned; the native input only supplies
+              interaction and must stay transparent in every state. */}
           <AriaInput
             className={cx(
-              'tw:absolute tw:inset-0 tw:z-10 tw:size-full tw:appearance-none tw:rounded-[inherit] tw:bg-transparent tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled',
+              'tw:absolute tw:inset-0 tw:z-10 tw:size-full tw:appearance-none tw:rounded-[inherit] tw:bg-transparent tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:placeholder:text-disabled',
               inputPadding,
               fontSizeClass[fontSize]
             )}
@@ -248,6 +253,7 @@ export const ComboBox = ({
             <ComboBoxValue
               fontSize={fontSize}
               inputRef={inputRef}
+              isDisabled={otherProps.isDisabled}
               placeholder={placeholder}
               shortcut={shortcut}
               shortcutClassName={shortcutClassName}

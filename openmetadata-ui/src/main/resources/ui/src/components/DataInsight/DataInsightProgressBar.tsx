@@ -16,6 +16,7 @@ import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import CustomStatistic from './CustomStatistic';
 
 interface DataInsightProgressBarProps {
@@ -57,6 +58,8 @@ const DataInsightProgressBar = ({
   duration,
   showProgress = true,
 }: DataInsightProgressBarProps) => {
+  const { progress: progressColor } = useDataInsightChartColors();
+
   return (
     <div
       className={classNames(className)}
@@ -75,7 +78,7 @@ const DataInsightProgressBar = ({
             className="data-insight-progress-bar"
             format={() => renderProgressTarget(target, suffix)}
             percent={progress}
-            strokeColor="#B3D4F4"
+            strokeColor={progressColor}
           />
           {showSuccessInfo && progress >= 100 && (
             <Icon

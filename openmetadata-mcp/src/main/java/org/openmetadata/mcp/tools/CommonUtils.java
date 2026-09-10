@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -27,6 +29,38 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public class CommonUtils {
+
+  /**
+   * Reads an entity for a caller and applies that entity's own visibility rule before handing it
+   * back. Rules like a context memory's {@code shareConfig} sit outside the policy model, so the
+   * {@code authorizer.authorize(...)} a tool makes cannot see them - binding the check to the fetch
+   * is what stops a read path from holding an entity it is not allowed to answer with. The rule is
+   * a no-op for entity types that have none, so callers need no per-type knowledge.
+   */
+  public static EntityInterface readEntityForCaller(
+      String entityType,
+      String fqn,
+      String fields,
+      Include include,
+      SecurityContext securityContext) {
+    EntityInterface entity =
+        Entity.getEntityByName(
+            entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
+    ContextMemoryVisibility.enforceVisibility(entity, securityContext);
+    return entity;
+  }
+
+  /**
+   * The same guard for a write whose response carries the entity back, which makes it a read too.
+   * Reads the entity only when its type has visibility rules, so an ordinary patch keeps its single
+   * repository fetch.
+   */
+  public static void enforceEntityVisibility(
+      String entityType, String fqn, SecurityContext securityContext) {
+    if (ContextMemoryVisibility.hasVisibilityRules(entityType)) {
+      readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
+    }
+  }
 
   public static <T extends CreateEntity> void setOwners(T entity, Map<String, Object> params) {
 

@@ -166,32 +166,6 @@ const escapeRegex = (value: string) =>
 
 const SEARCH_RESPONSE_TIMEOUT = 60_000;
 
-/**
- * Waits for the search the Apply button dispatches, matching the criteria
- * case-insensitively.
- *
- * Tag-like fields (Tags, Tier, Certification) put the FQN in the query with its
- * own capitalisation — `PersonalData.Personal` — because their options carry
- * `fullyQualifiedName` as the value and the display name as the label. Other
- * fields carry a lowercased aggregation key. `tags.tagFQN` is a normalised
- * keyword, so both forms select the same documents and case is irrelevant to
- * what these assertions are about.
- */
-const waitForAppliedSearch = (page: Page, ...criteria: string[]) =>
-  page.waitForResponse(
-    (response) => {
-      const url = response.url().toLowerCase();
-
-      return (
-        url.includes('index=dataasset&from=0&size=15') &&
-        criteria.every((criterion) =>
-          url.includes(getEncodedFqn(criterion.toLowerCase(), true))
-        )
-      );
-    },
-    { timeout: SEARCH_RESPONSE_TIMEOUT }
-  );
-
 export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
@@ -437,6 +411,25 @@ export const fillRule = async (
   }
 };
 
+// Tag-like fields (tags, tier, certification, glossary) now apply the
+// original-cased value while other fields still apply the lowercased
+// aggregation key, so URL and chip expectations must be case-insensitive.
+const waitForSearchQueryWithValues = (page: Page, values: string[]) =>
+  page.waitForResponse(
+    (response) => {
+      const url = response.url().toLowerCase();
+
+      return (
+        url.includes('/api/v1/search/query') &&
+        url.includes('index=dataasset&from=0&size=15') &&
+        values.every((value) =>
+          url.includes(getEncodedFqn(value, true).toLowerCase())
+        )
+      );
+    },
+    { timeout: SEARCH_RESPONSE_TIMEOUT }
+  );
+
 export const checkMustPaths = async (
   page: Page,
   {
@@ -460,13 +453,13 @@ export const checkMustPaths = async (
     index,
   });
 
-  const searchRes = waitForAppliedSearch(page, searchCriteria);
+  const searchRes = waitForSearchQueryWithValues(page, [searchData]);
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
 
   expect(res.request().url().toLowerCase()).toContain(
-    getEncodedFqn(searchData, true)
+    getEncodedFqn(searchData, true).toLowerCase()
   );
 
   const json = await res.json();
@@ -478,7 +471,7 @@ export const checkMustPaths = async (
   // aggregation key, so match without regard to case.
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(new RegExp(escapeRegex(searchData), 'i'));
+  ).toContainText(searchData, { ignoreCase: true });
 };
 
 export const checkMustNotPaths = async (
@@ -504,12 +497,12 @@ export const checkMustNotPaths = async (
     index,
   });
 
-  const searchRes = waitForAppliedSearch(page, searchCriteria);
+  const searchRes = waitForSearchQueryWithValues(page, [searchData]);
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
 
   expect(res.request().url().toLowerCase()).toContain(
-    getEncodedFqn(searchData, true)
+    getEncodedFqn(searchData, true).toLowerCase()
   );
 
   if (!['columns.name.keyword'].includes(field.name)) {
@@ -523,7 +516,7 @@ export const checkMustNotPaths = async (
   // aggregation key, so match without regard to case.
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(new RegExp(escapeRegex(searchData), 'i'));
+  ).toContainText(searchData, { ignoreCase: true });
 };
 
 export const checkNullPaths = async (
@@ -716,11 +709,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id === 'Column') {
     await page.getByTestId('apply-btn').click();
   } else {
-    const searchRes = waitForAppliedSearch(
-      page,
+    const searchRes = waitForSearchQueryWithValues(page, [
       searchCriteria1,
-      searchCriteria2
-    );
+      searchCriteria2,
+    ]);
     await page.getByTestId('apply-btn').click();
     const res = await searchRes;
     const json = await res.json();

@@ -182,7 +182,8 @@ public class ElasticSearchClient implements SearchClient {
       // Create transport - the Rest5ClientTransport handles content-type headers automatically
       Rest5ClientTransport transport =
           new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
-      ElasticsearchClient newClient = new ElasticsearchClient(transport);
+      ElasticsearchClient newClient =
+          new ShardFailureAwareElasticsearchClient(new MeteredElasticsearchTransport(transport));
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
       return newClient;
@@ -1047,6 +1048,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
     entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
+    entityManager.reconcileColumnsInUpstreamLineage(indexName, renamedColumns, deletedColumns);
   }
 
   @Override

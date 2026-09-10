@@ -24,6 +24,11 @@ export interface EventSubscriptionOffset {
      */
     startingOffset: number;
     /**
+     * Point in time from which this subscription started alerting. Executions that finished
+     * before it are treated as historical and are not delivered.
+     */
+    startingTimestamp?: number;
+    /**
      * Update time of the job status.
      */
     timestamp?: number;

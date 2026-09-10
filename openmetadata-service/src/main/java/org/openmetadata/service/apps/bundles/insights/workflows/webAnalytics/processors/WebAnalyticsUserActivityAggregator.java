@@ -67,7 +67,7 @@ public class WebAnalyticsUserActivityAggregator
     Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData =
         (HashMap<UUID, WebAnalyticUserActivityReportData>)
             contextData.get(USER_ACTIVITY_REPORT_DATA_KEY);
-    int totalSessionDurationSeconds = 0;
+    long totalSessionDurationSeconds = 0;
 
     for (List<Long> timestampList : userActivityData.sessions().values()) {
       totalSessionDurationSeconds +=
@@ -80,7 +80,7 @@ public class WebAnalyticsUserActivityAggregator
             .withUserName(userActivityData.userName())
             .withTeam(userActivityData.team())
             .withTotalSessions(userActivityData.totalSessions())
-            .withTotalSessionDuration(totalSessionDurationSeconds)
+            .withTotalSessionDuration(Math.toIntExact(totalSessionDurationSeconds))
             .withTotalPageView(userActivityData.totalPageView())
             .withLastSession(userActivityData.lastSession());
 

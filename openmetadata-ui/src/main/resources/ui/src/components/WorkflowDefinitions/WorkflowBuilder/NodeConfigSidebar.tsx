@@ -49,6 +49,40 @@ import {
 } from '../../../utils/WorkflowSerializationUtils';
 import { FormActionButtons, WorkflowConfigFormV1 } from './forms';
 
+const computeStartNodeConfig = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition'],
+  workflowMetadata: NodeConfigSidebarProps['workflowMetadata'],
+  localName: string | null,
+  localDescription: string | null
+): NodeConfig => {
+  const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
+
+  if (workflowMetadata) {
+    const configWithMetadata = {
+      ...baseConfig,
+      name: workflowMetadata.displayName || baseConfig.name,
+      description: workflowMetadata.description || baseConfig.description,
+    };
+
+    return {
+      ...configWithMetadata,
+      name: localName !== null ? localName : configWithMetadata.name,
+      description:
+        localDescription !== null
+          ? localDescription
+          : configWithMetadata.description,
+    };
+  }
+
+  return {
+    ...baseConfig,
+    name: localName !== null ? localName : baseConfig.name,
+    description:
+      localDescription !== null ? localDescription : baseConfig.description,
+  };
+};
+
 const getBackendConfig = (node: Node | null): BackendNodeConfig => {
   const nodeConfig = node?.data?.config || {};
 
@@ -89,31 +123,13 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const config = useMemo(() => {
     if (isStartNode(node) && node) {
-      const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
-
-      if (workflowMetadata) {
-        const configWithMetadata = {
-          ...baseConfig,
-          name: workflowMetadata.displayName || baseConfig.name,
-          description: workflowMetadata.description || baseConfig.description,
-        };
-
-        return {
-          ...configWithMetadata,
-          name: localName !== null ? localName : configWithMetadata.name,
-          description:
-            localDescription !== null
-              ? localDescription
-              : configWithMetadata.description,
-        };
-      }
-
-      return {
-        ...baseConfig,
-        name: localName !== null ? localName : baseConfig.name,
-        description:
-          localDescription !== null ? localDescription : baseConfig.description,
-      };
+      return computeStartNodeConfig(
+        node,
+        workflowDefinition,
+        workflowMetadata,
+        localName,
+        localDescription
+      );
     }
 
     return node

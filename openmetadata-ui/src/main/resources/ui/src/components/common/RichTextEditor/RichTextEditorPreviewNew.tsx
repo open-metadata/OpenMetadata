@@ -21,6 +21,10 @@ import {
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+
+const WEBKIT_LINE_CLAMP = '-webkit-line-clamp';
+const WEBKIT_BOX_ORIENT = '-webkit-box-orient';
+
 const BlockEditor = withSuspenseFallback(
   lazy(() => import('../../BlockEditor/BlockEditor'))
 );
@@ -89,20 +93,15 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         const originalMaxHeight = el.style.maxHeight;
         const originalOverflow = el.style.overflow;
         const originalDisplay = el.style.display;
-        const originalLineClamp =
-          el.style.getPropertyValue('-webkit-line-clamp');
-        const originalBoxOrient =
-          el.style.getPropertyValue('-webkit-box-orient');
+        const originalLineClamp = el.style.getPropertyValue(WEBKIT_LINE_CLAMP);
+        const originalBoxOrient = el.style.getPropertyValue(WEBKIT_BOX_ORIENT);
 
         // Measure overflow with the same clamp the view uses, so the
         // view-more toggle appears exactly when content exceeds the clamp.
         if (clampByLines) {
           el.style.display = '-webkit-box';
-          el.style.setProperty('-webkit-box-orient', 'vertical');
-          el.style.setProperty(
-            '-webkit-line-clamp',
-            `${Number(maxLineLength)}`
-          );
+          el.style.setProperty(WEBKIT_BOX_ORIENT, 'vertical');
+          el.style.setProperty(WEBKIT_LINE_CLAMP, `${Number(maxLineLength)}`);
           el.style.overflow = 'hidden';
         } else {
           el.style.maxHeight = `${Number(maxLineLength) * 2}em`;
@@ -115,8 +114,8 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         el.style.maxHeight = originalMaxHeight;
         el.style.overflow = originalOverflow;
         el.style.display = originalDisplay;
-        el.style.setProperty('-webkit-line-clamp', originalLineClamp);
-        el.style.setProperty('-webkit-box-orient', originalBoxOrient);
+        el.style.setProperty(WEBKIT_LINE_CLAMP, originalLineClamp);
+        el.style.setProperty(WEBKIT_BOX_ORIENT, originalBoxOrient);
 
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);

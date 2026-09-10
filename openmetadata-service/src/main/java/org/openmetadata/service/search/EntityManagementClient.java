@@ -273,6 +273,13 @@ public interface EntityManagementClient {
   void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 
   /**
+   * Applies a column diff in one search write per matching document, so a rename cannot invalidate
+   * the snapshot used to delete another column in the same diff.
+   */
+  void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns);
+
+  /**
    * Updates glossary term tags by FQN prefix in the specified index.
    * This method finds all documents matching the prefix condition and updates glossary term tags
    * that start with the old FQN prefix to use the new FQN prefix.

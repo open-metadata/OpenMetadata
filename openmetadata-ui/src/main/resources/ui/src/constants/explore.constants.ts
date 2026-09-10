@@ -16,8 +16,10 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 
+const DISPLAY_NAME_KEYWORD_FIELD = 'displayName.keyword';
+
 export const INITIAL_SORT_FIELD = 'totalVotes';
-export const TAGS_INITIAL_SORT_FIELD = 'displayName.keyword';
+export const TAGS_INITIAL_SORT_FIELD = DISPLAY_NAME_KEYWORD_FIELD;
 export const TAGS_INITIAL_SORT_ORDER = SORT_ORDER.ASC;
 export const TIER_FQN_KEY = 'tier.tagFQN';
 export const TAG_FQN_KEY = 'tags.tagFQN';
@@ -44,7 +46,7 @@ export const tableSortingFields: SortingField[] = [
   },
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   {
     name: 'label.weekly-usage',
@@ -64,7 +66,7 @@ export const entitySortingFields = [
   },
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   { name: 'label.relevance', value: '_score' },
   {
@@ -76,7 +78,7 @@ export const entitySortingFields = [
 export const tagSortingFields = [
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   { name: 'label.relevance', value: '_score' },
   {
@@ -96,7 +98,7 @@ export const columnSortingFields: SortingField[] = [
   },
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   { name: 'label.relevance', value: '_score' },
   {

@@ -32,7 +32,6 @@ import {
   CHART_WIDGET_DAYS_DURATION,
   ROUTES,
 } from '../../../../constants/constants';
-import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import {
@@ -40,6 +39,7 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../../../generated/dataInsight/kpi/kpi';
+import { useDataInsightChartColors } from '../../../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
@@ -62,6 +62,23 @@ import './kpi-widget.less';
 import KPILegend from './KPILegend/KPILegend';
 import { KPIWidgetProps } from './KPIWidget.interface';
 
+const buildKpiDataPoint = (
+  day: number,
+  kpiNames: string[],
+  kpiResults: Record<string, DataInsightCustomChartResult['results']>
+) => {
+  const dataPoint: Record<string, number> = { day };
+
+  kpiNames.forEach((kpiName) => {
+    const kpiData = kpiResults[kpiName];
+    const dayData = kpiData?.find((d) => d.day === day);
+
+    dataPoint[kpiName] = dayData?.count || 0;
+  });
+
+  return dataPoint;
+};
+
 const KPIWidget = ({
   isEditView = false,
   selectedDays = CHART_WIDGET_DAYS_DURATION,
@@ -71,6 +88,8 @@ const KPIWidget = ({
   handleLayoutUpdate,
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
+  const { activeDotBorder, axis, grid, kpiSeries } =
+    useDataInsightChartColors();
   const navigate = useNavigate();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(true);
@@ -267,18 +286,7 @@ const KPIWidget = ({
 
     return Array.from(allDays)
       .sort()
-      .map((day) => {
-        const dataPoint: Record<string, number> = { day };
-
-        kpiNames.forEach((kpiName) => {
-          const kpiData = kpiResults[kpiName];
-          const dayData = kpiData?.find((d) => d.day === day);
-
-          dataPoint[kpiName] = dayData?.count || 0;
-        });
-
-        return dataPoint;
-      });
+      .map((day) => buildKpiDataPoint(day, kpiNames, kpiResults));
   }, [kpiResults, kpiNames]);
 
   const kpiChartData = useMemo(() => {
@@ -305,12 +313,12 @@ const KPIWidget = ({
                     y2="1">
                     <stop
                       offset="0%"
-                      stopColor={KPI_WIDGET_GRAPH_COLORS[i]}
+                      stopColor={kpiSeries[i % kpiSeries.length]}
                       stopOpacity={0.4}
                     />
                     <stop
                       offset="100%"
-                      stopColor={KPI_WIDGET_GRAPH_COLORS[i]}
+                      stopColor={kpiSeries[i % kpiSeries.length]}
                       stopOpacity={0.05}
                     />
                   </linearGradient>
@@ -328,7 +336,7 @@ const KPIWidget = ({
               />
 
               <CartesianGrid
-                stroke="#E4E6EB"
+                stroke={grid}
                 strokeDasharray="3 3"
                 vertical={false}
               />
@@ -338,7 +346,7 @@ const KPIWidget = ({
                 axisLine={false}
                 dataKey="day"
                 interval="preserveStartEnd"
-                tick={{ fill: '#888', fontSize: 12 }}
+                tick={{ fill: axis, fontSize: 12 }}
                 tickFormatter={(value: number) =>
                   customFormatDateTime(value, 'd MMM, yy')
                 }
@@ -349,15 +357,15 @@ const KPIWidget = ({
 
               <YAxis
                 axisLine={{
-                  stroke: '#E4E6EB',
+                  stroke: grid,
                   strokeWidth: 1,
                   strokeDasharray: '3 3',
                 }}
                 domain={domain}
                 padding={{ top: 0, bottom: 0 }}
-                tick={{ fill: '#888', fontSize: 12 }}
+                tick={{ fill: axis, fontSize: 12 }}
                 tickLine={{
-                  stroke: '#E4E6EB',
+                  stroke: grid,
                   strokeWidth: 1,
                   strokeDasharray: '3 3',
                 }}
@@ -368,20 +376,20 @@ const KPIWidget = ({
                 <Area
                   activeDot={{
                     r: 5,
-                    fill: KPI_WIDGET_GRAPH_COLORS[i],
-                    stroke: '#fff',
+                    fill: kpiSeries[i % kpiSeries.length],
+                    stroke: activeDotBorder,
                     strokeWidth: 2,
                   }}
                   dataKey={key}
                   dot={{
-                    stroke: KPI_WIDGET_GRAPH_COLORS[i],
+                    stroke: kpiSeries[i % kpiSeries.length],
                     strokeWidth: 2,
-                    fill: KPI_WIDGET_GRAPH_COLORS[i],
+                    fill: kpiSeries[i % kpiSeries.length],
                     r: 4,
                   }}
                   fill={`url(#gradient-${key})`}
                   key={key}
-                  stroke={KPI_WIDGET_GRAPH_COLORS[i]}
+                  stroke={kpiSeries[i % kpiSeries.length]}
                   strokeWidth={2}
                   type="monotone"
                 />
@@ -407,6 +415,10 @@ const KPIWidget = ({
     ticks,
     kpiLatestResults,
     kpiTooltipValueFormatter,
+    activeDotBorder,
+    axis,
+    grid,
+    kpiSeries,
   ]);
 
   useEffect(() => {

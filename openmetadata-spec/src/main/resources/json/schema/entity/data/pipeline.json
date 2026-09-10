@@ -172,7 +172,7 @@
       "type": "object",
       "properties": {
         "timestamp": {
-          "description": "Timestamp where the job was executed.",
+          "description": "Unique key identifying this execution within the pipeline's status history. Connector defined and NOT a reliable wall clock: sources fill it with whatever is stable per run, from a scheduler's logical date to the ingestion time. For when the execution actually ran, use `endTime` or the per-task `startTime`/`endTime`.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "executionStatus": {
@@ -192,7 +192,7 @@
           "type": "string"
         },
         "endTime": {
-          "description": "Execution end time",
+          "description": "Wall clock time the execution finished. With the per-task `startTime`/`endTime` this is what alerting reads to decide whether an execution predates a subscription.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "version": {

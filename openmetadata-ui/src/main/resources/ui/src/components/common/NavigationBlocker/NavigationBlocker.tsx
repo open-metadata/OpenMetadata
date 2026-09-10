@@ -130,11 +130,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
         const linkTarget = link.getAttribute('target');
         const download = link.getAttribute('download');
 
+        const isInternalOrHttpLink =
+          href?.startsWith('/') || href?.startsWith('http');
+        const isSelfTarget = !linkTarget || linkTarget === '_self';
         const shouldBlock =
-          href &&
-          (href.startsWith('/') || href.startsWith('http')) &&
-          !download &&
-          (!linkTarget || linkTarget === '_self');
+          href && isInternalOrHttpLink && !download && isSelfTarget;
 
         if (shouldBlock) {
           event.preventDefault();
@@ -146,12 +146,10 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        !isNavigatingRef.current &&
-        (event.key === 'F5' ||
-          (event.ctrlKey && event.key === 'r') ||
-          (event.metaKey && event.key === 'r'))
-      ) {
+      const isReloadShortcut =
+        (event.ctrlKey || event.metaKey) && event.key === 'r';
+      const isReloadKey = event.key === 'F5' || isReloadShortcut;
+      if (!isNavigatingRef.current && isReloadKey) {
         event.preventDefault();
         setIsModalVisible(true);
         pendingNavigationRef.current = 'reload';

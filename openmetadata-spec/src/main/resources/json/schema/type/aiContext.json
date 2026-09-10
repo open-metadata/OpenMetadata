@@ -37,6 +37,18 @@
                     "description": "True when content is a lead excerpt or has been omitted to fit the context budget; fetch the full body via the get_knowledge_content tool using this item's fullyQualifiedName.",
                     "type": "boolean",
                     "default": false
+                },
+                "stale": {
+                    "description": "True when read-time trust signals indicate this item may no longer reflect the asset it is attached to (e.g. the asset changed after the knowledge was last updated, or the asset's data-quality tests are failing). Absent means no staleness signal.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "staleReasons": {
+                    "description": "Machine-readable reasons for the stale flag (e.g. assetUpdated, dataQualityFailing).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             },
             "additionalProperties": false
@@ -156,6 +168,10 @@
                 "dataModel": {
                     "description": "The dbt/DDL model that produces this table (type, path, and defining SQL), when available.",
                     "$ref": "#/definitions/tableDataModel"
+                },
+                "sampleData": {
+                    "description": "A permission-filtered preview of stored sample data, masked when the caller lacks PII access. The AI context returns at most 10 rows.",
+                    "$ref": "../entity/data/table.json#/definitions/tableData"
                 }
             },
             "additionalProperties": false

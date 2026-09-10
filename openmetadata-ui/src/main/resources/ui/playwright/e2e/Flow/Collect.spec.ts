@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
+import { allowAnalyticsCollection } from '../../support/fixtures/serverLoad';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -55,6 +56,9 @@ test.describe(
     };
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
+      // This is the one spec that asserts on the collect payload, so it needs
+      // the real endpoint rather than the stub the shared fixture installs.
+      await allowAnalyticsCollection(page.context());
       await redirectToHomePage(page);
     });
 

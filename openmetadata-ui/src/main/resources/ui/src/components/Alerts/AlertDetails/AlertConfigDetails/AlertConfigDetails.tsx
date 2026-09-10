@@ -41,7 +41,9 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge, {
+  DestinationFormFieldRegistrar,
+} from '../../DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './alert-config-details.less';
@@ -56,6 +58,10 @@ function AlertConfigDetails({
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
+  const resources = Form.useWatch('resources', form);
+  const destinations = Form.useWatch('destinations', form);
+  const timeout = Form.useWatch('timeout', form);
+  const readTimeout = Form.useWatch('readTimeout', form);
   const { getResourcePermission } = usePermissionProvider();
   const modifiedAlertData =
     alertsClassBase.getModifiedAlertDataForForm(alertDetails);
@@ -200,7 +206,25 @@ function AlertConfigDetails({
           <Divider dashed type="vertical" />
         </Col>
         <Col span={24}>
-          <DestinationFormItem isViewMode />
+          <DestinationFormItemFormBridge
+            isViewMode
+            renderValidationField={(validate) => (
+              <Form.Item
+                hidden
+                name="destinations"
+                rules={[{ validator: validate }]}>
+                <DestinationFormFieldRegistrar />
+              </Form.Item>
+            )}
+            values={{ destinations, readTimeout, resources, timeout }}
+            onChange={(values) => {
+              // Keep this adapter replacement-based even in view mode so the
+              // core form cannot be rehydrated with stale nested config.
+              Object.entries(values).forEach(([name, value]) =>
+                form.setFieldValue(name, value)
+              );
+            }}
+          />
         </Col>
         {!isEmpty(extraFormWidgets) && (
           <>

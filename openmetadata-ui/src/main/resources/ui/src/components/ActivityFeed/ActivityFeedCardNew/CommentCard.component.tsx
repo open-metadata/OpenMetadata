@@ -62,6 +62,7 @@ const CommentCard = ({
   const [postMessage, setPostMessage] = useState<string>('');
   const seperator = '.';
   const editorRef = useRef<HTMLDivElement>(null);
+  const authorName = reply.author.name ?? reply.author.fullyQualifiedName ?? '';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -83,7 +84,7 @@ const CommentCard = ({
 
   const [, , user] = useUserProfile({
     permission: true,
-    name: reply.author.name ?? reply.author.fullyQualifiedName ?? '',
+    name: authorName,
   });
 
   const onEditPost = () => {
@@ -141,29 +142,19 @@ const CommentCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture">
-        <UserPopOverCard
-          userName={reply.author.name ?? reply.author.fullyQualifiedName ?? ''}>
+        <UserPopOverCard userName={authorName}>
           <div className="d-flex items-center">
-            <ProfilePicture
-              key={reply.id}
-              name={reply.author.name ?? reply.author.fullyQualifiedName ?? ''}
-              width="32"
-            />
+            <ProfilePicture key={reply.id} name={authorName} width="32" />
           </div>
         </UserPopOverCard>
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            <UserPopOverCard
-              userName={
-                reply.author.name ?? reply.author.fullyQualifiedName ?? ''
-              }>
+            <UserPopOverCard userName={authorName}>
               <Link
                 className="reply-card-user-name"
-                to={getUserPath(
-                  reply.author.name ?? reply.author.fullyQualifiedName ?? ''
-                )}>
+                to={getUserPath(authorName)}>
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>

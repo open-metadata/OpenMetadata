@@ -63,6 +63,52 @@ const DATA_MODE_RING_SAFETY_PAD = 60;
 // compresses the same way G6's Dagre does at high node counts.
 const adaptiveCircleSpacing = adaptiveSpacing;
 
+const computeStepSizes = (
+  layoutType: LayoutEngineType,
+  nodeSpacingH?: number,
+  nodeSpacingV?: number
+): { H_STEP: number; V_STEP: number } => {
+  const isDagre = layoutType === LayoutEngine.Dagre;
+  const H_STEP =
+    nodeSpacingH ??
+    (isDagre ? NODE_WIDTH + DAGRE_NODE_SEP : NODE_WIDTH + MIN_NODE_SPACING);
+  const V_STEP =
+    nodeSpacingV ??
+    nodeSpacingH ??
+    (isDagre ? NODE_HEIGHT + DAGRE_RANK_SEP : NODE_HEIGHT + MIN_NODE_SPACING);
+
+  return { H_STEP, V_STEP };
+};
+
+const computeCircularSpacing = (
+  isCircular: boolean,
+  totalTerms: number
+): { circleArcSpacing: number; outerComboGap: number } => {
+  // For Circular: arc spacing must be wide enough that asset rings from
+  // adjacent terms don't overlap at low node counts.  At high node counts,
+  // apply the same adaptive compression that Dagre uses so layouts stay usable
+  // (some overlap is acceptable and mirrors Dagre's behaviour at scale).
+  const circleArcSpacing = isCircular
+    ? adaptiveCircleSpacing(DATA_MODE_CIRCLE_ARC_SPACING, totalTerms)
+    : CIRCLE_NODE_SPACING;
+
+  // Inter-combo outer gap: reduce proportionally at high node counts so the
+  // overall layout width stays comparable to the Dagre layout.
+  const firstAssetRingRadius =
+    DATA_MODE_TERM_TO_FIRST_RING_GAP + DATA_MODE_ASSET_CIRCLE_SIZE;
+  const baseOuterGap = firstAssetRingRadius * 2 + 60;
+  const outerComboGap = isCircular
+    ? Math.max(HULL_GAP, adaptiveCircleSpacing(baseOuterGap, totalTerms))
+    : HULL_GAP;
+
+  return { circleArcSpacing, outerComboGap };
+};
+
+const computeMacroCols = (isCircular: boolean, numGroups: number): number =>
+  isCircular
+    ? Math.max(1, Math.ceil(Math.sqrt(numGroups * 2)))
+    : getMacroCols(numGroups);
+
 export function computeGlossaryGroupPositions(
   inputNodes: OntologyNode[],
   layoutType: LayoutEngineType,
@@ -85,34 +131,19 @@ export function computeGlossaryGroupPositions(
   const nodesPerRow = (count: number): number =>
     Math.max(1, Math.ceil(Math.sqrt(count)));
 
-  const isDagre = layoutType === LayoutEngine.Dagre;
   const isCircular = layoutType === LayoutEngine.Circular;
-  const H_STEP =
-    nodeSpacingH ??
-    (isDagre ? NODE_WIDTH + DAGRE_NODE_SEP : NODE_WIDTH + MIN_NODE_SPACING);
-  const V_STEP =
-    nodeSpacingV ??
-    nodeSpacingH ??
-    (isDagre ? NODE_HEIGHT + DAGRE_RANK_SEP : NODE_HEIGHT + MIN_NODE_SPACING);
+  const { H_STEP, V_STEP } = computeStepSizes(
+    layoutType,
+    nodeSpacingH,
+    nodeSpacingV
+  );
 
   const totalTerms = inputNodes.length;
 
-  // For Circular: arc spacing must be wide enough that asset rings from
-  // adjacent terms don't overlap at low node counts.  At high node counts,
-  // apply the same adaptive compression that Dagre uses so layouts stay usable
-  // (some overlap is acceptable and mirrors Dagre's behaviour at scale).
-  const circleArcSpacing = isCircular
-    ? adaptiveCircleSpacing(DATA_MODE_CIRCLE_ARC_SPACING, totalTerms)
-    : CIRCLE_NODE_SPACING;
-
-  // Inter-combo outer gap: reduce proportionally at high node counts so the
-  // overall layout width stays comparable to the Dagre layout.
-  const firstAssetRingRadius =
-    DATA_MODE_TERM_TO_FIRST_RING_GAP + DATA_MODE_ASSET_CIRCLE_SIZE;
-  const baseOuterGap = firstAssetRingRadius * 2 + 60;
-  const outerComboGap = isCircular
-    ? Math.max(HULL_GAP, adaptiveCircleSpacing(baseOuterGap, totalTerms))
-    : HULL_GAP;
+  const { circleArcSpacing, outerComboGap } = computeCircularSpacing(
+    isCircular,
+    totalTerms
+  );
 
   interface GroupBox {
     nodes: OntologyNode[];
@@ -193,9 +224,7 @@ export function computeGlossaryGroupPositions(
   }
 
   const numGroups = groupBoxes.length;
-  const macroCols = isCircular
-    ? Math.max(1, Math.ceil(Math.sqrt(numGroups * 2)))
-    : getMacroCols(numGroups);
+  const macroCols = computeMacroCols(isCircular, numGroups);
 
   // Uniform column width based on the widest group.
   const maxW =
@@ -204,7 +233,9 @@ export function computeGlossaryGroupPositions(
 
   // Per-row heights: each macro row uses the actual max height of its groups,
   // so short glossary groups don't create large empty gaps below them.
-  const numMacroRows = numGroups > 0 ? Math.ceil(numGroups / macroCols) : 0;
+  // numGroups === 0 already yields Math.ceil(0 / macroCols) === 0, so no
+  // separate zero-case branch is needed.
+  const numMacroRows = Math.ceil(numGroups / macroCols);
   const rowMaxH = new Array(numMacroRows).fill(0) as number[];
   groupBoxes.forEach((box, gi) => {
     const macroRow = Math.floor(gi / macroCols);

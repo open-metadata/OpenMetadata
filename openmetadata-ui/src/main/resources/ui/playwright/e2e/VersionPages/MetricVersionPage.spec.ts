@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   DOMAIN_TAGS,
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
 } from '../../constant/config';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -26,10 +27,23 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const metric = new MetricClass();
 
 const CUSTOM_UNIT = 'Leads';
+const CHANGED_UNIT = 'DOLLARS';
 
 // The error boundary renders this title when a render throws. Asserting on the
 // text the user actually sees keeps the check off brittle CSS classes.
 const ERROR_BOUNDARY_TITLE = 'Something went wrong';
+
+// Versions are read back from the API rather than hardcoded. The backend
+// consolidates successive PATCHes by the same user inside the 10 minute session
+// window (EntityRepository.consolidateChanges), so a second patch here would
+// fold into the first version instead of creating a new one. The fixture below
+// therefore needs exactly one patch, and still reads the numbers back so a
+// change in version numbering cannot silently break these tests.
+let initialVersion: string;
+let unitChangedVersion: string;
+
+const toVersionLabel = (version: unknown) =>
+  `v${Number.parseFloat(String(version)).toFixed(1)}`;
 
 /**
  * Opens the version history panel and selects the given version.
@@ -40,7 +54,7 @@ const ERROR_BOUNDARY_TITLE = 'Something went wrong';
  * `ReferenceError: UnitOfMeasurement is not defined`, collapsing the whole
  * version page into the error boundary.
  */
-const openMetricVersion = async (page: Page, version: string) => {
+const openMetricVersion = async (page: Page, versionLabel: string) => {
   const versionButton = page.getByTestId('version-button');
 
   await expect(versionButton).toBeVisible();
@@ -56,7 +70,7 @@ const openMetricVersion = async (page: Page, version: string) => {
 
   expect((await versionResponse).status()).toBe(200);
 
-  const versionSelector = page.getByTestId(`version-selector-v${version}`);
+  const versionSelector = page.getByTestId(`version-selector-${versionLabel}`);
 
   await expect(versionSelector).toBeVisible();
   await versionSelector.click();
@@ -71,31 +85,29 @@ test.describe(
     test.beforeAll('Setup metric versions', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      // Created already carrying the custom unit, so the initial version has no
+      // change description and the header falls back to the entity values. That
+      // is the version shape from the issue report, and the one where the
+      // customUnitOfMeasurement substitution branch actually evaluates.
+      metric.entity.unitOfMeasurement = 'OTHER';
+      metric.entity.customUnitOfMeasurement = CUSTOM_UNIT;
+
       await metric.create(apiContext);
+      initialVersion = toVersionLabel(metric.entityResponseData.version);
 
-      // v0.2 — switches the unit to OTHER and supplies the custom unit. This is
-      // the version whose diff touches unitOfMeasurement/customUnitOfMeasurement.
+      // The single patch this fixture can rely on: moves the unit off OTHER so
+      // the next version renders a unitOfMeasurement diff.
       await metric.patch({
         apiContext,
         patchData: [
-          { op: 'replace', path: '/unitOfMeasurement', value: 'OTHER' },
-          { op: 'add', path: '/customUnitOfMeasurement', value: CUSTOM_UNIT },
+          { op: 'replace', path: '/unitOfMeasurement', value: CHANGED_UNIT },
         ],
       });
+      unitChangedVersion = toVersionLabel(metric.entityResponseData.version);
 
-      // v0.3 — an unrelated change, so the unit fields are carried over rather
-      // than diffed. This is the version shape from the issue report, where the
-      // custom-unit substitution branch is the one that actually evaluates.
-      await metric.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'replace',
-            path: '/description',
-            value: 'Updated description for the metric version page test',
-          },
-        ],
-      });
+      // Fail loudly if consolidation ever folds the patch into the initial
+      // version — otherwise both tests would silently target the same version.
+      expect(unitChangedVersion).not.toBe(initialVersion);
 
       await afterAction();
     });
@@ -114,13 +126,11 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('should show the custom unit on a version that carries it over', async ({
+    test('should show the custom unit on the version that carries it', async ({
       page,
     }) => {
-      test.slow();
-
-      await test.step('Open version 0.3', async () => {
-        await openMetricVersion(page, '0.3');
+      await test.step('Open the initial version', async () => {
+        await openMetricVersion(page, initialVersion);
       });
 
       await test.step('Version header renders instead of the error boundary', async () => {
@@ -143,10 +153,8 @@ test.describe(
     test('should show both sides of the diff on the version that changes the unit', async ({
       page,
     }) => {
-      test.slow();
-
-      await test.step('Open version 0.2', async () => {
-        await openMetricVersion(page, '0.2');
+      await test.step('Open the version that changed the unit', async () => {
+        await openMetricVersion(page, unitChangedVersion);
       });
 
       await test.step('Unit of measurement shows the old and new value', async () => {
@@ -156,26 +164,8 @@ test.describe(
         // rather than the custom unit, so assert on both sides of the diff.
         const unitInfo = page.getByTestId('unit-of-measurement-version-info');
 
-        await expect(unitInfo).toContainText(metric.entity.unitOfMeasurement);
         await expect(unitInfo).toContainText('OTHER');
-      });
-    });
-
-    test('should show the standard unit on the initial version', async ({
-      page,
-    }) => {
-      test.slow();
-
-      await test.step('Open version 0.1', async () => {
-        await openMetricVersion(page, '0.1');
-      });
-
-      await test.step('Unit of measurement falls back to the entity value', async () => {
-        await expect(page.getByText(ERROR_BOUNDARY_TITLE)).toBeHidden();
-
-        await expect(
-          page.getByTestId('unit-of-measurement-version-info')
-        ).toContainText(metric.entity.unitOfMeasurement);
+        await expect(unitInfo).toContainText(CHANGED_UNIT);
       });
     });
   }

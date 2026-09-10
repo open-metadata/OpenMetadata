@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { OntologyImportResult } from '../../../src/generated/api/data/ontologyImportResult';
+import { expect, test } from '../../support/fixtures/base';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';

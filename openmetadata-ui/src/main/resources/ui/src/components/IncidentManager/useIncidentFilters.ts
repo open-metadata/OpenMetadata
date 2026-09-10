@@ -291,12 +291,12 @@ export const useIncidentFilters = ({
     ]
   );
 
-  const hasActiveFilters = Boolean(
+  const hasTestCaseOrAssigneeFilter =
     filters.testCaseFQN ||
-      filters.testCaseResolutionStatusType ||
-      filters.assignee ||
-      filters.startTs ||
-      filters.endTs
+    filters.testCaseResolutionStatusType ||
+    filters.assignee;
+  const hasActiveFilters = Boolean(
+    hasTestCaseOrAssigneeFilter || filters.startTs || filters.endTs
   );
 
   const clearAllFilters = useCallback(() => {

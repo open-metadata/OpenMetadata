@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { OntologyStudioPageData as PageData } from '../../support/entity/OntologyStudioDataClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   applyGlossaryFilter,
   clickGraphNode,
