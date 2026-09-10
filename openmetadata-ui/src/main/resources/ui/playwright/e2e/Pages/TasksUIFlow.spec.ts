@@ -17,11 +17,12 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
 import {
-  authenticateAdminPage,
-  createAdminApiContext,
-} from '../../utils/admin';
-import { fillDescriptionBox, getDescriptionBox } from '../../utils/common';
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -218,7 +219,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   for (let i = 0; i < ENTITY_CONFIGS.length; i++) {
@@ -331,7 +332,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   test('Create description task for table column via UI', async ({ page }) => {
@@ -461,7 +462,7 @@ test.describe('Task Activity Feed Integration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   test('Verify task lifecycle in activity feed', async ({ page }) => {

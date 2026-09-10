@@ -756,6 +756,75 @@ export const verifyWidgetHeaderNavigation = async (
   );
 };
 
+// Read a landing-page widget's rendered count once, or null if the widget isn't
+// ready yet (slot not revealed, still showing its skeleton, or the target card
+// not painted). Never throws — a detached node during a remount resolves to null
+// so the caller's poll rides it out instead of aborting.
+const readLandingWidgetCount = async (
+  page: Page,
+  widgetKey: string,
+  cardSelector: string
+): Promise<string | null> => {
+  if (!(await isLandingPageWidgetVisible(page, widgetKey))) {
+    return null;
+  }
+
+  const widget = page.getByTestId(widgetKey);
+  if (await isLandingPageWidgetLoading(widget)) {
+    return null;
+  }
+
+  const card = widget.locator(cardSelector).first();
+  if (!(await card.isVisible().catch(() => false))) {
+    return null;
+  }
+
+  return (await card.textContent().catch(() => null))?.trim() ?? null;
+};
+
+// Poll a landing-page widget's asset count until it equals `expectedCount`.
+//
+// The Domains and Data Products widgets fetch their asset-count map exactly once
+// per page load and never refetch in the background. Asset add/remove mutations
+// also return before Elasticsearch is refreshed, so the *first* page load after a
+// mutation can snapshot a stale count — and because the widget never refetches, a
+// plain DOM poll would then re-read that same stale value until it times out
+// (passing only on the next run once the index caught up: the flake). Reloading
+// the landing page whenever the rendered count doesn't match yet forces a fresh
+// fetch, so the assertion self-heals as soon as the index propagates instead of
+// depending on the read landing after propagation.
+const pollLandingWidgetCount = async (
+  page: Page,
+  widgetKey: string,
+  cardSelector: string,
+  expectedCount: number
+) => {
+  const expected = expectedCount.toString();
+
+  await expect
+    .poll(
+      async () => {
+        const value = await readLandingWidgetCount(
+          page,
+          widgetKey,
+          cardSelector
+        );
+
+        // A settled-but-wrong read means the widget already loaded a stale count;
+        // reload so the next iteration reads a freshly fetched value. A null read
+        // (still loading) needs no reload — just wait it out.
+        if (value !== null && value !== expected) {
+          await redirectToHomePage(page, false);
+          await waitForAllLoadersToDisappear(page).catch(() => undefined);
+        }
+
+        return value;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(expected);
+};
+
 export const verifyDomainCountInDomainWidget = async (
   page: Page,
   domainId: string,
@@ -768,34 +837,12 @@ export const verifyDomainCountInDomainWidget = async (
 
   await redirectToHomePage(page, false);
 
-  await expect
-    .poll(
-      async () => {
-        if (
-          !(await isLandingPageWidgetVisible(page, 'KnowledgePanel.Domains'))
-        ) {
-          return null;
-        }
-
-        const domainWidget = page.getByTestId('KnowledgePanel.Domains');
-        if (await isLandingPageWidgetLoading(domainWidget)) {
-          return null;
-        }
-
-        const card = domainWidget.locator(widgetCardSelector).first();
-        const isCardVisible = await card.isVisible().catch(() => false);
-
-        if (!isCardVisible) {
-          return null;
-        }
-
-        const text = await card.textContent();
-
-        return text?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
+  await pollLandingWidgetCount(
+    page,
+    'KnowledgePanel.Domains',
+    widgetCardSelector,
+    expectedCount
+  );
 };
 
 export const verifyDataProductCountInDataProductWidget = async (
@@ -807,39 +854,12 @@ export const verifyDataProductCountInDataProductWidget = async (
 
   await redirectToHomePage(page, false);
 
-  await expect
-    .poll(
-      async () => {
-        if (
-          !(await isLandingPageWidgetVisible(
-            page,
-            'KnowledgePanel.DataProducts'
-          ))
-        ) {
-          return null;
-        }
-
-        const dataProductWidget = page.getByTestId(
-          'KnowledgePanel.DataProducts'
-        );
-        if (await isLandingPageWidgetLoading(dataProductWidget)) {
-          return null;
-        }
-
-        const card = dataProductWidget.locator(widgetCardSelector).first();
-        const isCardVisible = await card.isVisible().catch(() => false);
-
-        if (!isCardVisible) {
-          return null;
-        }
-
-        const text = await card.textContent();
-
-        return text?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
+  await pollLandingWidgetCount(
+    page,
+    'KnowledgePanel.DataProducts',
+    widgetCardSelector,
+    expectedCount
+  );
 };
 
 export const verifyWidgetCountOnCurrentPage = async (
@@ -848,25 +868,5 @@ export const verifyWidgetCountOnCurrentPage = async (
   selector: string,
   expectedCount: number
 ) => {
-  const widget = await waitForLandingPageWidget(page, widgetKey);
-
-  await expect
-    .poll(
-      async () => {
-        if (await isLandingPageWidgetLoading(widget)) {
-          return null;
-        }
-
-        const element = widget.locator(selector).first();
-        const isVisible = await element.isVisible().catch(() => false);
-
-        if (!isVisible) {
-          return null;
-        }
-
-        return (await element.textContent())?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
+  await pollLandingWidgetCount(page, widgetKey, selector, expectedCount);
 };
