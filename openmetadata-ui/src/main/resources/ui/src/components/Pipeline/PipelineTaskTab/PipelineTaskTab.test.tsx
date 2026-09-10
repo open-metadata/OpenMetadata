@@ -82,7 +82,7 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
     </div>
   ))
 );
-jest.mock('../../common/Table/Table', () =>
+jest.mock('../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource }) => (
     <div data-testid="task-table">
       <div data-testid="table-rows-count">{dataSource?.length ?? 0}</div>
@@ -169,7 +169,7 @@ describe('PipelineTaskTab', () => {
   // the `columns` prop the component actually passed to <Table> and invoke each column's
   // `render` directly (APIEndpointSchema.test.tsx / WorksheetColumnsTable.test.tsx
   // precedent).
-  const MockedTable = jest.requireMock('../../common/Table/Table');
+  const MockedTable = jest.requireMock('../../common/Table/TableV2');
   const getRenderedProps = (columnKey: string, task: Task) => {
     const { columns } =
       MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];

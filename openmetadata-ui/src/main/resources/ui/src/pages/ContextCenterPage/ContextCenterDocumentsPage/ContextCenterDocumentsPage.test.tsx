@@ -99,6 +99,14 @@ jest.mock(
   })
 );
 
+// react-markdown ships ESM and is not in jest's transformIgnorePatterns allowlist, so the
+// CreateMemoryModal this page now pulls in transitively fails to parse. Same stub the
+// CreateMemoryModal suite uses.
+jest.mock('react-markdown', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('react-reflex', () => ({
   ReflexContainer: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>

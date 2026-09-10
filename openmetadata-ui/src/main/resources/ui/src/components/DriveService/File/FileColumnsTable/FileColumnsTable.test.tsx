@@ -54,7 +54,7 @@ jest.mock(
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No columns available</div>)
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource, expandable }) => (
     <div data-testid="file-columns-table">
       <div data-testid="table-columns-count">{columns?.length || 0}</div>
@@ -334,7 +334,7 @@ describe('FileColumnsTable', () => {
   // <Table> and invoke each column's `render` directly to inspect the permission prop it
   // wires into TableDescription/TableTags, rather than reworking the Table mock (which
   // renders dataSource directly, bypassing antd-style column render callbacks).
-  const MockedTable = jest.requireMock('../../../common/Table/Table');
+  const MockedTable = jest.requireMock('../../../common/Table/TableV2');
   const getRenderedProps = (columnKey: string, columnData: Column) => {
     const { columns } =
       MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];

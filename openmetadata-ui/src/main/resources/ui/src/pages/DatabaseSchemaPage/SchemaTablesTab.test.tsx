@@ -20,7 +20,7 @@ import SchemaTablesTab from './SchemaTablesTab';
 // old raw `permissions.table.EditAll && !databaseSchemaDetails.deleted` read gates the
 // bulk-edit-table button (getBulkEditButton). No prior test coverage existed for this file.
 
-jest.mock('../../components/common/Table/Table', () =>
+jest.mock('../../components/common/Table/TableV2', () =>
   jest
     .fn()
     .mockImplementation(({ extraTableFilters }) => (

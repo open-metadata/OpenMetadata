@@ -56,7 +56,7 @@ jest.mock('../../../../../rest/dataModelsAPI', () => ({
 
 let capturedColumns: ColumnsType<Record<string, unknown>> = [];
 
-jest.mock('../../../../common/Table/Table', () =>
+jest.mock('../../../../common/Table/TableV2', () =>
   jest.fn().mockImplementation((props: { columns: unknown }) => {
     capturedColumns = props.columns as typeof capturedColumns;
 

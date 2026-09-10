@@ -106,7 +106,7 @@ jest.mock('../../common/CopyLinkButton/CopyLinkButton', () =>
 jest.mock('../../common/ToggleExpandButton/ToggleExpandButton', () =>
   jest.fn(() => <div data-testid="toggle-expand-button" />)
 );
-jest.mock('../../common/Table/Table', () =>
+jest.mock('../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource }) => (
     <div data-testid="schema-fields-table">
       <div data-testid="table-rows-count">{dataSource?.length ?? 0}</div>
@@ -205,7 +205,7 @@ describe('APIEndpointSchema', () => {
   // column `render` callbacks), read the `columns` prop the component actually passed to
   // <Table> and invoke each column's `render` directly to inspect the permission prop it
   // wires into TableDescription/TableTags (WorksheetColumnsTable.test.tsx precedent).
-  const MockedTable = jest.requireMock('../../common/Table/Table');
+  const MockedTable = jest.requireMock('../../common/Table/TableV2');
   const getRenderedProps = (columnKey: string, field: Field) => {
     const { columns } =
       MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];

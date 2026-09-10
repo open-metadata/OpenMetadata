@@ -580,7 +580,7 @@ describe('WorksheetColumnsTable', () => {
   // directly, bypassing antd-style column `render` callbacks), read the `columns` prop
   // the component actually passed to <Table> and invoke each column's `render` directly
   // to inspect the permission prop it wires into TableDescription/TableTags.
-  const MockedTable = jest.requireMock('../../../common/Table/Table');
+  const MockedTable = jest.requireMock('../../../common/Table/TableV2');
   const getRenderedProps = (columnKey: string, columnData: Column) => {
     const { columns } =
       MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
