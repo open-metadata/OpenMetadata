@@ -139,7 +139,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
       await waitForConnectionForm(page);
 
-      await expect(page.locator(String.raw`#root\/saslPassword`)).toHaveValue('');
+      await expect(page.locator(String.raw`#root\/saslPassword`)).toHaveValue(
+        ''
+      );
     });
 
     test('after save, re-opening the form shows the empty password field', async ({
