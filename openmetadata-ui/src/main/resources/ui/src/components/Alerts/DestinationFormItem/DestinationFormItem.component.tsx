@@ -48,10 +48,9 @@ import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem
 
 function DestinationFormItem({
   isViewMode = false,
-  isRequired = false,
 }: Readonly<DestinationFormItemProps>) {
   const { t } = useTranslation();
-  const { control, setError, clearErrors, formState } = useFormContext();
+  const { control, clearErrors, formState } = useFormContext();
 
   const { fields, append, remove } = useFieldArray({
     name: 'destinations',
@@ -76,19 +75,13 @@ function DestinationFormItem({
 
   const selectedSource = selectedResources[0];
 
+  // Submit owns required validation; this only removes its stale error after
+  // the user adds a destination, avoiding an error on untouched create forms.
   useEffect(() => {
-    if (fields.length === 0 && isRequired) {
-      setError('destinations', {
-        type: 'manual',
-        message: t('message.minimum-count-error', {
-          field: t('label.destination'),
-          count: 1,
-        }),
-      });
-    } else {
+    if (fields.length > 0) {
       clearErrors('destinations');
     }
-  }, [fields.length, setError, clearErrors, t, isRequired]);
+  }, [fields.length, clearErrors]);
 
   const isExternalDestinationSelected = useMemo(
     () => hasExternalDestination(destinations),

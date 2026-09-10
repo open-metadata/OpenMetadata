@@ -15,7 +15,7 @@ Check incremental extraction
 
 import random
 from datetime import datetime
-from unittest.mock import create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 from sqlalchemy.engine import Connection
 
@@ -143,6 +143,22 @@ VALID_COMMENT_STATEMENT_TEMPLATES = [
 
 class TestRedshiftIncrementalTableProcessor:
     """Validate RedshiftIncrementalTableProcessor logic"""
+
+    def test_query_for_changes_binds_database_name_and_start_date(self):
+        connection = MagicMock(spec=Connection)
+        connection.execute.return_value = []
+        processor = RedshiftIncrementalTableProcessor.create(
+            connection,
+            "public",
+        )
+        database = "analytics' OR 1=1 --"
+        start_date = datetime(2025, 1, 1)
+
+        assert list(processor._query_for_changes(database, start_date)) == []
+
+        statement, parameters = connection.execute.call_args.args
+        assert database not in str(statement)
+        assert parameters == {"database": database, "start_date": start_date}
 
     def test_create_table_regex_works_as_expected(self):
         """Check if the CREATE_TABLE regex works as expected."""

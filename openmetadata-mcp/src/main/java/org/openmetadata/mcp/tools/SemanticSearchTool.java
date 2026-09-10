@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -66,6 +68,16 @@ public class SemanticSearchTool implements McpTool {
   private static final int MAX_METRIC_CODE_CHARS = 1000;
 
   private static final int MAX_COLUMN_NAMES = 60;
+  private final PersonaSearchScope.Provider personaSearchScopeProvider;
+
+  public SemanticSearchTool() {
+    this(PersonaSearchScope::resolve);
+  }
+
+  @VisibleForTesting
+  SemanticSearchTool(PersonaSearchScope.Provider personaSearchScopeProvider) {
+    this.personaSearchScopeProvider = personaSearchScopeProvider;
+  }
 
   @Override
   public Map<String, Object> execute(
@@ -103,15 +115,52 @@ public class SemanticSearchTool implements McpTool {
     threshold = Math.min(Math.max(threshold, 0.0), 1.0);
 
     Map<String, List<String>> filters = parseFilters(params);
+    Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
+    VectorSearchParameters searchParameters =
+        new VectorSearchParameters(
+            query,
+            filters,
+            size,
+            from,
+            k,
+            threshold,
+            null,
+            null,
+            personaScope.map(PersonaSearchScope::queryFilter).orElse(null));
 
     try {
       VectorSearchResponse response =
-          vectorService.search(query, filters, size, from, k, threshold);
-      return buildResponse(query, response, size, from);
+          search(vectorService, searchParameters, personaScope.isPresent());
+      Map<String, Object> result = buildResponse(query, response, size, from);
+      personaScope.ifPresent(scope -> scope.annotate(result));
+      return result;
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
       return errorResponse(failureMessage(e));
     }
+  }
+
+  private Optional<PersonaSearchScope> personaSearchScope(
+      CatalogSecurityContext securityContext, Map<String, Object> params) {
+    return McpParams.getBoolean(params, "ignorePersonaScope", false)
+        ? Optional.empty()
+        : personaSearchScopeProvider.resolve(securityContext);
+  }
+
+  private static VectorSearchResponse search(
+      VectorIndexService vectorService,
+      VectorSearchParameters parameters,
+      boolean personaScopeApplied) {
+    if (!personaScopeApplied) {
+      return vectorService.search(
+          parameters.query(),
+          parameters.filters(),
+          parameters.size(),
+          parameters.from(),
+          parameters.k(),
+          parameters.threshold());
+    }
+    return vectorService.search(parameters);
   }
 
   /**
