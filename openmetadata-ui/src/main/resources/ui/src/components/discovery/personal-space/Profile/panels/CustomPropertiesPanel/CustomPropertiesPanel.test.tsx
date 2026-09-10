@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import CustomPropertiesPanel from './CustomPropertiesPanel';
 
 const mockEntityType = {
@@ -30,70 +30,110 @@ const mockProperty = {
 
 jest.mock('./CustomPropertiesLandingPage', () => ({
   __esModule: true,
-  default: jest.fn(({ onSelectEntityType }: any) => (
-    <div data-testid="landing-page">
-      <button
-        data-testid="select-entity-btn"
-        onClick={() => onSelectEntityType(mockEntityType)}>
-        Select Table
-      </button>
-    </div>
-  )),
+  default: jest.fn(
+    ({
+      onSelectEntityType,
+    }: {
+      onSelectEntityType: (entityType: unknown) => void;
+    }) => (
+      <div data-testid="landing-page">
+        <button
+          data-testid="select-entity-btn"
+          onClick={() => onSelectEntityType(mockEntityType)}>
+          Select Table
+        </button>
+      </div>
+    )
+  ),
 }));
 
 jest.mock('./CustomPropertiesDetailPage', () => ({
   __esModule: true,
-  default: jest.fn(({ onAddProperty, onEditProperty }: any) => (
-    <div data-testid="detail-page">
-      <button data-testid="add-prop-btn" onClick={onAddProperty}>
-        Add
-      </button>
-      <button
-        data-testid="edit-prop-btn"
-        onClick={() => onEditProperty(mockProperty)}>
-        Edit
-      </button>
-    </div>
-  )),
+  default: jest.fn(
+    ({
+      onAddProperty,
+      onEditProperty,
+    }: {
+      onAddProperty: () => void;
+      onEditProperty: (property: unknown) => void;
+    }) => (
+      <div data-testid="detail-page">
+        <button data-testid="add-prop-btn" onClick={onAddProperty}>
+          Add
+        </button>
+        <button
+          data-testid="edit-prop-btn"
+          onClick={() => onEditProperty(mockProperty)}>
+          Edit
+        </button>
+      </div>
+    )
+  ),
 }));
 
 jest.mock('./CustomPropertiesAddPage', () => ({
   __esModule: true,
-  default: jest.fn(({ onSuccess, onCancel }: any) => (
-    <div data-testid="add-page">
-      <button data-testid="add-success-btn" onClick={onSuccess}>
-        Success
-      </button>
-      <button data-testid="add-cancel-btn" onClick={onCancel}>
-        Cancel
-      </button>
-    </div>
-  )),
+  default: jest.fn(
+    ({
+      onSuccess,
+      onCancel,
+    }: {
+      onSuccess: () => void;
+      onCancel: () => void;
+    }) => (
+      <div data-testid="add-page">
+        <button data-testid="add-success-btn" onClick={onSuccess}>
+          Success
+        </button>
+        <button data-testid="add-cancel-btn" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    )
+  ),
 }));
 
 jest.mock('./CustomPropertiesEditPage', () => ({
   __esModule: true,
-  default: jest.fn(({ onSuccess, onCancel }: any) => (
-    <div data-testid="edit-page">
-      <button data-testid="edit-success-btn" onClick={onSuccess}>
-        Success
-      </button>
-      <button data-testid="edit-cancel-btn" onClick={onCancel}>
-        Cancel
-      </button>
-    </div>
-  )),
+  default: jest.fn(
+    ({
+      onSuccess,
+      onCancel,
+    }: {
+      onSuccess: () => void;
+      onCancel: () => void;
+    }) => (
+      <div data-testid="edit-page">
+        <button data-testid="edit-success-btn" onClick={onSuccess}>
+          Success
+        </button>
+        <button data-testid="edit-cancel-btn" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    )
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children, 'data-testid': testId }: any) => (
-    <div data-testid={testId}>{children}</div>
-  ),
+  Box: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{children}</div>,
   FeaturedIcon: () => <span data-testid="featured-icon" />,
-  Toggle: ({ onChange }: any) => (
-    <button data-testid="hint-toggle" onClick={() => onChange(true)} />
+  Toggle: ({ onChange }: { onChange: (value: boolean) => void }) => (
+    <button
+      aria-label="toggle"
+      data-testid="hint-toggle"
+      onClick={() => onChange(true)}
+    />
   ),
-  Typography: ({ children }: any) => <span>{children}</span>,
+  Typography: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
@@ -104,9 +144,12 @@ jest.mock('@untitledui/icons', () => ({
   Settings02: () => <span data-testid="settings-icon" />,
 }));
 
-jest.mock('../../../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
-}));
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
+  })
+);
 
 jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: false }),
@@ -142,7 +185,6 @@ jest.mock('./CustomPropertiesPanel.utils', () => ({
 }));
 
 describe('CustomPropertiesPanel', () => {
-
   const mockOnHeaderChange = jest.fn();
 
   beforeEach(() => {
@@ -177,7 +219,9 @@ describe('CustomPropertiesPanel', () => {
 
     fireEvent.click(screen.getByTestId('select-entity-btn'));
 
-    expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(callCountAfterMount);
+    expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(
+      callCountAfterMount
+    );
   });
 
   it('transitions to add page when onAddProperty is triggered from detail', () => {
@@ -282,7 +326,8 @@ describe('CustomPropertiesPanel', () => {
     fireEvent.click(screen.getByTestId('select-entity-btn'));
     fireEvent.click(screen.getByTestId('add-prop-btn'));
 
-    expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(mountCallCount);
+    expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(
+      mountCallCount
+    );
   });
-
 });

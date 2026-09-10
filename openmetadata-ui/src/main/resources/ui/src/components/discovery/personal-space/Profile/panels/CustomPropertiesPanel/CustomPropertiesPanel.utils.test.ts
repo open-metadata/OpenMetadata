@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
+import type { Type } from '../../../../../../generated/entity/type';
+import type { CustomProperty } from '../../../../../../generated/type/customProperty';
+import type { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { CRUMB } from './CustomPropertiesPanel.constants';
-import { AddCustomPropertyFormValues, FormSelectItem } from './CustomPropertiesPanel.types';
+import {
+  AddCustomPropertyFormValues,
+  FormSelectItem,
+} from './CustomPropertiesPanel.types';
 import {
   buildCustomPropertyConfig,
   getBreadcrumbItems,
@@ -27,25 +34,23 @@ jest.mock('../../../../../../utils/EntityNameUtils', () => ({
 
 jest.mock('../../../../../../utils/GlobalSettingsUtils', () => ({}));
 
-const t = (key: string) => key;
+const t = ((key: string): string => key) as unknown as TFunction;
 
 const mockEntityType = {
   id: 'type-1',
   name: 'table',
   displayName: 'Table',
   fullyQualifiedName: 'table',
-};
+} as unknown as Type;
 
 const mockProperty = {
   name: 'myProp',
   displayName: 'My Property',
   propertyType: { id: 'string-type', name: 'string' },
-};
+} as unknown as CustomProperty;
 
 describe('CustomPropertiesPanel utils', () => {
-
   describe('toId', () => {
-
     it('returns empty string for undefined', () => {
       expect(toId(undefined)).toBe('');
     });
@@ -69,11 +74,9 @@ describe('CustomPropertiesPanel utils', () => {
 
       expect(toId(item)).toBe('bare-id');
     });
-
   });
 
   describe('buildCustomPropertyConfig', () => {
-
     const baseData: AddCustomPropertyFormValues = {
       name: 'testProp',
       displayName: '',
@@ -108,14 +111,23 @@ describe('CustomPropertiesPanel utils', () => {
     });
 
     it('returns format config when hasFormatConfig is true', () => {
-      const data = { ...baseData, formatConfig: { id: 'date-format' } as FormSelectItem };
+      const data = {
+        ...baseData,
+        formatConfig: { id: 'date-format' } as FormSelectItem,
+      };
       const result = buildCustomPropertyConfig(data, false, true, false, false);
 
       expect(result).toEqual({ config: 'date-format' });
     });
 
     it('returns undefined for format config when formatConfig is not set', () => {
-      const result = buildCustomPropertyConfig(baseData, false, true, false, false);
+      const result = buildCustomPropertyConfig(
+        baseData,
+        false,
+        true,
+        false,
+        false
+      );
 
       expect(result).toBeUndefined();
     });
@@ -123,7 +135,10 @@ describe('CustomPropertiesPanel utils', () => {
     it('returns entity reference config when hasEntityReferenceConfig is true', () => {
       const data = {
         ...baseData,
-        entityReferenceConfig: [{ id: 'table' }, { id: 'pipeline' }] as FormSelectItem[],
+        entityReferenceConfig: [
+          { id: 'table' },
+          { id: 'pipeline' },
+        ] as FormSelectItem[],
       };
       const result = buildCustomPropertyConfig(data, false, false, true, false);
 
@@ -141,7 +156,13 @@ describe('CustomPropertiesPanel utils', () => {
     });
 
     it('returns undefined when no config flags are set', () => {
-      const result = buildCustomPropertyConfig(baseData, false, false, false, false);
+      const result = buildCustomPropertyConfig(
+        baseData,
+        false,
+        false,
+        false,
+        false
+      );
 
       expect(result).toBeUndefined();
     });
@@ -156,13 +177,11 @@ describe('CustomPropertiesPanel utils', () => {
 
       expect(result?.config).toMatchObject({ values: ['val1'] });
     });
-
   });
 
   describe('getBreadcrumbItems', () => {
-
     it('returns 2 items for landing subview', () => {
-      const result = getBreadcrumbItems({ type: 'landing' }, t as any, undefined);
+      const result = getBreadcrumbItems({ type: 'landing' }, t, undefined);
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe(CRUMB.WORKSPACE);
@@ -171,8 +190,8 @@ describe('CustomPropertiesPanel utils', () => {
 
     it('returns 3 items for detail subview', () => {
       const result = getBreadcrumbItems(
-        { type: 'detail', entityType: mockEntityType as any },
-        t as any,
+        { type: 'detail', entityType: mockEntityType },
+        t,
         undefined
       );
 
@@ -182,10 +201,12 @@ describe('CustomPropertiesPanel utils', () => {
     });
 
     it('uses matchingSettingsItem.label for entity label when provided', () => {
-      const matchingItem = { label: 'Custom Label' } as any;
+      const matchingItem = {
+        label: 'Custom Label',
+      } as unknown as SettingMenuItem;
       const result = getBreadcrumbItems(
-        { type: 'detail', entityType: mockEntityType as any },
-        t as any,
+        { type: 'detail', entityType: mockEntityType },
+        t,
         matchingItem
       );
 
@@ -194,8 +215,8 @@ describe('CustomPropertiesPanel utils', () => {
 
     it('falls back to getEntityName when matchingSettingsItem is undefined', () => {
       const result = getBreadcrumbItems(
-        { type: 'detail', entityType: mockEntityType as any },
-        t as any,
+        { type: 'detail', entityType: mockEntityType },
+        t,
         undefined
       );
 
@@ -204,8 +225,8 @@ describe('CustomPropertiesPanel utils', () => {
 
     it('returns 4 items for add subview', () => {
       const result = getBreadcrumbItems(
-        { type: 'add', entityType: mockEntityType as any },
-        t as any,
+        { type: 'add', entityType: mockEntityType },
+        t,
         undefined
       );
 
@@ -216,8 +237,8 @@ describe('CustomPropertiesPanel utils', () => {
 
     it('returns 4 items for edit subview with property name', () => {
       const result = getBreadcrumbItems(
-        { type: 'edit', entityType: mockEntityType as any, property: mockProperty as any },
-        t as any,
+        { type: 'edit', entityType: mockEntityType, property: mockProperty },
+        t,
         undefined
       );
 
@@ -225,21 +246,19 @@ describe('CustomPropertiesPanel utils', () => {
       expect(result[3].id).toBe(CRUMB.ACTION);
       expect(result[3].label).toBe('My Property');
     });
-
   });
 
   describe('getPageTitle', () => {
-
     it('returns custom-property-plural key for landing', () => {
-      const result = getPageTitle({ type: 'landing' }, t as any, undefined);
+      const result = getPageTitle({ type: 'landing' }, t, undefined);
 
       expect(result).toBe('label.custom-property-plural');
     });
 
     it('returns entity displayName for detail', () => {
       const result = getPageTitle(
-        { type: 'detail', entityType: mockEntityType as any },
-        t as any,
+        { type: 'detail', entityType: mockEntityType },
+        t,
         undefined
       );
 
@@ -247,10 +266,12 @@ describe('CustomPropertiesPanel utils', () => {
     });
 
     it('uses matchingSettingsItem.label for detail when provided', () => {
-      const matchingItem = { label: 'Custom Settings Label' } as any;
+      const matchingItem = {
+        label: 'Custom Settings Label',
+      } as unknown as SettingMenuItem;
       const result = getPageTitle(
-        { type: 'detail', entityType: mockEntityType as any },
-        t as any,
+        { type: 'detail', entityType: mockEntityType },
+        t,
         matchingItem
       );
 
@@ -259,8 +280,8 @@ describe('CustomPropertiesPanel utils', () => {
 
     it('returns add-entity key for add subview', () => {
       const result = getPageTitle(
-        { type: 'add', entityType: mockEntityType as any },
-        t as any,
+        { type: 'add', entityType: mockEntityType },
+        t,
         undefined
       );
 
@@ -269,14 +290,12 @@ describe('CustomPropertiesPanel utils', () => {
 
     it('returns property displayName for edit subview', () => {
       const result = getPageTitle(
-        { type: 'edit', entityType: mockEntityType as any, property: mockProperty as any },
-        t as any,
+        { type: 'edit', entityType: mockEntityType, property: mockProperty },
+        t,
         undefined
       );
 
       expect(result).toBe('My Property');
     });
-
   });
-
 });

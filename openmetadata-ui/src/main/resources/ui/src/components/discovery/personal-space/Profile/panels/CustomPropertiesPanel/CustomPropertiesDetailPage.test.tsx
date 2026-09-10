@@ -12,7 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import type { ReactNode } from 'react';
+import type { Type } from '../../../../../../generated/entity/type';
+import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 
@@ -50,15 +52,18 @@ const mockGetEntityPermission = jest.fn().mockResolvedValue({
 });
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (...args: any[]) => mockGetTypeByFQN(...args),
-  updateType: (...args: any[]) => mockUpdateType(...args),
+  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
+  updateType: (id: string, patches: unknown) => mockUpdateType(id, patches),
 }));
 
-jest.mock('../../../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: () => ({
-    getEntityPermission: mockGetEntityPermission,
-  }),
-}));
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: () => ({
+      getEntityPermission: mockGetEntityPermission,
+    }),
+  })
+);
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {
@@ -92,9 +97,12 @@ jest.mock('../../../../../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('../../../../../../context/PermissionProvider/PermissionProvider.interface', () => ({
-  ResourceEntity: { TYPE: 'type' },
-}));
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider.interface',
+  () => ({
+    ResourceEntity: { TYPE: 'type' },
+  })
+);
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { displayName?: string; name?: string }) =>
@@ -107,7 +115,17 @@ jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
 
 jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
-  default: ({ open, onDelete, onCancel, entityTitle }: any) =>
+  default: ({
+    open,
+    onDelete,
+    onCancel,
+    entityTitle,
+  }: {
+    open: boolean;
+    onDelete: () => void;
+    onCancel: () => void;
+    entityTitle?: string;
+  }) =>
     open ? (
       <div data-testid="delete-modal">
         <span>{entityTitle}</span>
@@ -122,22 +140,44 @@ jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const Table = ({ children, 'data-testid': testId, 'aria-label': ariaLabel }: any) => (
+  const Table = ({
+    children,
+    'data-testid': testId,
+    'aria-label': ariaLabel,
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+    'aria-label'?: string;
+  }) => (
     <table aria-label={ariaLabel} data-testid={testId}>
       {children}
     </table>
   );
-  Table.Header = ({ children, columns }: any) => (
+  Table.Header = ({
+    children,
+    columns,
+  }: {
+    children?: ((col: { id: string; label: string }) => ReactNode) | ReactNode;
+    columns?: { id: string; label: string }[];
+  }) => (
     <thead>
       <tr>
         {typeof children === 'function'
-          ? columns?.map((col: any) => children(col))
+          ? columns?.map((col) => children(col))
           : children}
       </tr>
     </thead>
   );
-  Table.Head = ({ label }: any) => <th>{label}</th>;
-  Table.Body = ({ children, items, renderEmptyState }: any) => {
+  Table.Head = ({ label }: { label?: ReactNode }) => <th>{label}</th>;
+  Table.Body = ({
+    children,
+    items,
+    renderEmptyState,
+  }: {
+    children: (item: CustomProperty) => ReactNode;
+    items?: CustomProperty[];
+    renderEmptyState?: () => ReactNode;
+  }) => {
     if (!items || items.length === 0) {
       return (
         <tbody>
@@ -148,34 +188,64 @@ jest.mock('@openmetadata/ui-core-components', () => {
       );
     }
 
-    return <tbody>{items.map((item: any) => children(item))}</tbody>;
+    return <tbody>{items.map((item) => children(item))}</tbody>;
   };
-  Table.Row = ({ children, id }: any) => (
+  Table.Row = ({ children, id }: { children?: ReactNode; id?: string }) => (
     <tr data-testid={`row-${id}`}>{children}</tr>
   );
-  Table.Cell = ({ children }: any) => <td>{children}</td>;
+  Table.Cell = ({ children }: { children?: ReactNode }) => <td>{children}</td>;
 
-  const TableCard = ({ children, className }: any) => (
-    <div className={className}>{children}</div>
-  );
-  TableCard.Root = ({ children, className }: any) => (
-    <div className={className}>{children}</div>
-  );
+  const TableCard = ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>;
+  TableCard.Root = ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>;
 
-  const Tabs = ({ children }: any) => <div data-testid="tabs">{children}</div>;
-  Tabs.List = ({ children }: any) => <div role="tablist">{children}</div>;
-  Tabs.Item = ({ label, id, badge }: any) => (
+  const Tabs = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="tabs">{children}</div>
+  );
+  Tabs.List = ({ children }: { children?: ReactNode }) => (
+    <div role="tablist">{children}</div>
+  );
+  Tabs.Item = ({
+    label,
+    id,
+    badge,
+  }: {
+    label?: ReactNode;
+    id?: string;
+    badge?: ReactNode;
+  }) => (
     <button id={id} role="tab">
       {label}
       {badge ? ` (${badge})` : ''}
     </button>
   );
-  Tabs.Panel = ({ children, id }: any) => (
+  Tabs.Panel = ({ children, id }: { children?: ReactNode; id?: string }) => (
     <div data-testid={`tab-panel-${id}`}>{children}</div>
   );
 
   return {
-    Box: ({ children, 'data-testid': testId, direction, ...rest }: any) => (
+    Box: ({
+      children,
+      'data-testid': testId,
+      direction: _direction,
+      ...rest
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+      direction?: string;
+      [key: string]: unknown;
+    }) => (
       <div data-testid={testId} {...rest}>
         {children}
       </div>
@@ -186,7 +256,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       'data-testid': testId,
       'aria-label': ariaLabel,
       isDisabled,
-    }: any) => (
+    }: {
+      children?: ReactNode;
+      onPress?: () => void;
+      'data-testid'?: string;
+      'aria-label'?: string;
+      isDisabled?: boolean;
+    }) => (
       <button
         aria-label={ariaLabel}
         data-testid={testId}
@@ -195,12 +271,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    Typography: ({ children }: any) => <span>{children}</span>,
-    EmptyPlaceholder: ({ title, description, actions }: any) => (
+    Typography: ({ children }: { children?: ReactNode }) => (
+      <span>{children}</span>
+    ),
+    EmptyPlaceholder: ({
+      title,
+      description,
+      actions,
+    }: {
+      title?: ReactNode;
+      description?: ReactNode;
+      actions?: { key: string; label: ReactNode; onPress?: () => void }[];
+    }) => (
       <div data-testid="empty-placeholder">
         <p>{title}</p>
         <p>{description}</p>
-        {actions?.map((action: any) => (
+        {actions?.map((action) => (
           <button key={action.key} onClick={() => action.onPress?.()}>
             {action.label}
           </button>
@@ -224,7 +310,7 @@ describe('CustomPropertiesDetailPage', () => {
   const mockOnEditProperty = jest.fn();
 
   const defaultProps = {
-    entityType: mockEntityType as any,
+    entityType: mockEntityType as unknown as Type,
     onAddProperty: mockOnAddProperty,
     onEditProperty: mockOnEditProperty,
   };
@@ -265,9 +351,7 @@ describe('CustomPropertiesDetailPage', () => {
     render(<CustomPropertiesDetailPage {...defaultProps} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('add-custom-property-btn')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('add-custom-property-btn')).toBeInTheDocument();
     });
   });
 
@@ -277,7 +361,9 @@ describe('CustomPropertiesDetailPage', () => {
     render(<CustomPropertiesDetailPage {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('add-custom-property-btn')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('add-custom-property-btn')
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -348,6 +434,7 @@ describe('CustomPropertiesDetailPage', () => {
     fireEvent.click(deleteButtons[0]);
 
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+
     fireEvent.click(screen.getByTestId('cancel-delete-btn'));
 
     expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
@@ -389,7 +476,7 @@ describe('CustomPropertiesDetailPage', () => {
 
     render(
       <CustomPropertiesDetailPage
-        entityType={emptyEntityType as any}
+        entityType={emptyEntityType as unknown as Type}
         onAddProperty={mockOnAddProperty}
         onEditProperty={mockOnEditProperty}
       />
@@ -399,5 +486,4 @@ describe('CustomPropertiesDetailPage', () => {
       expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     });
   });
-
 });

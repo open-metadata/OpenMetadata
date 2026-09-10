@@ -12,7 +12,8 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import type { ReactNode } from 'react';
+import type { Type } from '../../../../../../generated/entity/type';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 
@@ -66,8 +67,9 @@ jest.mock('../../../../../../constants/regex.constants', () => ({
 
 jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () => ({
   __esModule: true,
-  default: ({ onTextChange }: any) => (
+  default: ({ onTextChange }: { onTextChange?: (value: string) => void }) => (
     <textarea
+      aria-label="description"
       data-testid="rich-text-editor"
       onChange={(e) => onTextChange?.(e.target.value)}
     />
@@ -75,27 +77,64 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const formData: Record<string, any> = {};
+  const formData: Record<string, unknown> = {};
 
-  const FormField = ({ children, name, control, rules }: any) => {
+  const FormField = ({
+    children,
+    name,
+  }: {
+    children: (args: {
+      field: { onChange: (val: unknown) => void; value: unknown; name: string };
+      fieldState: { invalid: boolean; error: undefined };
+    }) => ReactNode;
+    name: string;
+    control?: unknown;
+    rules?: unknown;
+  }) => {
     const field = {
-      onChange: (val: any) => { formData[name] = val; },
+      onChange: (val: unknown) => {
+        formData[name] = val;
+      },
       value: formData[name],
       name,
     };
     const fieldState = { invalid: false, error: undefined };
 
-    return <div data-testid={`form-field-${name}`}>{children({ field, fieldState })}</div>;
+    return (
+      <div data-testid={`form-field-${name}`}>
+        {children({ field, fieldState })}
+      </div>
+    );
   };
 
-  const HookForm = ({ children, onSubmit, 'data-testid': testId, id }: any) => (
+  const HookForm = ({
+    children,
+    onSubmit,
+    'data-testid': testId,
+    id,
+  }: {
+    children?: ReactNode;
+    onSubmit?: (e: { preventDefault: () => void }) => void;
+    'data-testid'?: string;
+    id?: string;
+  }) => (
     <form data-testid={testId} id={id} onSubmit={onSubmit}>
       {children}
     </form>
   );
 
   return {
-    Box: ({ children, 'data-testid': testId, direction, ...rest }: any) => (
+    Box: ({
+      children,
+      'data-testid': testId,
+      direction: _direction,
+      ...rest
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+      direction?: string;
+      [key: string]: unknown;
+    }) => (
       <div data-testid={testId} {...rest}>
         {children}
       </div>
@@ -108,22 +147,34 @@ jest.mock('@openmetadata/ui-core-components', () => {
       type,
       form,
       isLoading,
-    }: any) => (
+    }: {
+      children?: ReactNode;
+      onPress?: () => void;
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      type?: 'button' | 'submit' | 'reset';
+      form?: string;
+      isLoading?: boolean;
+    }) => (
       <button
         data-testid={testId}
-        disabled={isDisabled || isLoading}
+        disabled={isDisabled ?? isLoading}
         form={form}
         type={type ?? 'button'}
         onClick={type !== 'submit' ? () => onPress?.() : undefined}>
         {children}
       </button>
     ),
-    Typography: ({ children }: any) => <span>{children}</span>,
+    Typography: ({ children }: { children?: ReactNode }) => (
+      <span>{children}</span>
+    ),
     HookForm,
     FormField,
-    FormItemLabel: ({ label }: any) => <label>{label}</label>,
-    HintText: ({ children }: any) => <span data-testid="hint-text">{children}</span>,
-    getField: ({ props }: any) => (
+    FormItemLabel: ({ label }: { label?: ReactNode }) => <span>{label}</span>,
+    HintText: ({ children }: { children?: ReactNode }) => (
+      <span data-testid="hint-text">{children}</span>
+    ),
+    getField: ({ props }: { props?: { 'data-testid'?: string } }) => (
       <div data-testid={props?.['data-testid'] ?? 'field'} />
     ),
     FieldTypes: {
@@ -145,7 +196,7 @@ describe('CustomPropertiesAddPage', () => {
   const mockOnCancel = jest.fn();
 
   const defaultProps = {
-    entityType: mockEntityType as any,
+    entityType: mockEntityType as unknown as Type,
     onSuccess: mockOnSuccess,
     onCancel: mockOnCancel,
   };
@@ -155,13 +206,17 @@ describe('CustomPropertiesAddPage', () => {
     const { getTypeListByCategory } = jest.requireMock(
       '../../../../../../rest/metadataTypeAPI'
     );
-    getTypeListByCategory.mockResolvedValue({ data: [mockStringType, mockEnumType] });
+    getTypeListByCategory.mockResolvedValue({
+      data: [mockStringType, mockEnumType],
+    });
   });
 
   it('renders the add page container', async () => {
     render(<CustomPropertiesAddPage {...defaultProps} />);
 
-    expect(screen.getByTestId('custom-properties-add-page')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-properties-add-page')
+    ).toBeInTheDocument();
   });
 
   it('renders the form', async () => {
@@ -175,7 +230,9 @@ describe('CustomPropertiesAddPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('custom-property-name')).toBeInTheDocument();
-      expect(screen.getByTestId('custom-property-display-name')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('custom-property-display-name')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('custom-property-type')).toBeInTheDocument();
     });
   });
@@ -231,8 +288,12 @@ describe('CustomPropertiesAddPage', () => {
   it('does not render enum-specific fields by default', () => {
     render(<CustomPropertiesAddPage {...defaultProps} />);
 
-    expect(screen.queryByTestId('custom-property-enum-config')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('custom-property-multi-select')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('custom-property-enum-config')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('custom-property-multi-select')
+    ).not.toBeInTheDocument();
   });
 
   it('does not render entity-reference config field by default', () => {
@@ -250,5 +311,4 @@ describe('CustomPropertiesAddPage', () => {
       screen.queryByTestId('custom-property-format-config')
     ).not.toBeInTheDocument();
   });
-
 });

@@ -12,7 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import type { ReactNode } from 'react';
+import type { Type } from '../../../../../../generated/entity/type';
+import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
 
@@ -53,15 +55,19 @@ const mockEntityRefProperty = {
 
 const mockTypeDetail = {
   ...mockEntityType,
-  customProperties: [mockStringProperty, mockEnumProperty, mockEntityRefProperty],
+  customProperties: [
+    mockStringProperty,
+    mockEnumProperty,
+    mockEntityRefProperty,
+  ],
 };
 
 const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockTypeDetail);
 const mockUpdateType = jest.fn().mockResolvedValue(mockTypeDetail);
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (...args: any[]) => mockGetTypeByFQN(...args),
-  updateType: (...args: any[]) => mockUpdateType(...args),
+  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
+  updateType: (id: string, patches: unknown) => mockUpdateType(id, patches),
 }));
 
 jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
@@ -74,8 +80,15 @@ jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
 
 jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () => ({
   __esModule: true,
-  default: ({ onTextChange, initialValue }: any) => (
+  default: ({
+    onTextChange,
+    initialValue,
+  }: {
+    onTextChange?: (value: string) => void;
+    initialValue?: string;
+  }) => (
     <textarea
+      aria-label="description"
       data-testid="rich-text-editor"
       defaultValue={initialValue}
       onChange={(e) => onTextChange?.(e.target.value)}
@@ -84,21 +97,54 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const HookForm = ({ children, onSubmit, 'data-testid': testId, id }: any) => (
+  const HookForm = ({
+    children,
+    onSubmit,
+    'data-testid': testId,
+    id,
+  }: {
+    children?: ReactNode;
+    onSubmit?: (e: { preventDefault: () => void }) => void;
+    'data-testid'?: string;
+    id?: string;
+  }) => (
     <form data-testid={testId} id={id} onSubmit={onSubmit}>
       {children}
     </form>
   );
 
-  const FormField = ({ children, name }: any) => {
+  const FormField = ({
+    children,
+    name,
+  }: {
+    children: (args: {
+      field: { onChange: () => void; value: string; name: string };
+      fieldState: { invalid: boolean; error: undefined };
+    }) => ReactNode;
+    name: string;
+  }) => {
     const field = { onChange: jest.fn(), value: '', name };
     const fieldState = { invalid: false, error: undefined };
 
-    return <div data-testid={`form-field-${name}`}>{children({ field, fieldState })}</div>;
+    return (
+      <div data-testid={`form-field-${name}`}>
+        {children({ field, fieldState })}
+      </div>
+    );
   };
 
   return {
-    Box: ({ children, 'data-testid': testId, direction, ...rest }: any) => (
+    Box: ({
+      children,
+      'data-testid': testId,
+      direction: _direction,
+      ...rest
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+      direction?: string;
+      [key: string]: unknown;
+    }) => (
       <div data-testid={testId} {...rest}>
         {children}
       </div>
@@ -111,22 +157,34 @@ jest.mock('@openmetadata/ui-core-components', () => {
       type,
       form,
       isLoading,
-    }: any) => (
+    }: {
+      children?: ReactNode;
+      onPress?: () => void;
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      type?: 'button' | 'submit' | 'reset';
+      form?: string;
+      isLoading?: boolean;
+    }) => (
       <button
         data-testid={testId}
-        disabled={isDisabled || isLoading}
+        disabled={isDisabled ?? isLoading}
         form={form}
         type={type ?? 'button'}
         onClick={type !== 'submit' ? () => onPress?.() : undefined}>
         {children}
       </button>
     ),
-    Typography: ({ children }: any) => <span>{children}</span>,
+    Typography: ({ children }: { children?: ReactNode }) => (
+      <span>{children}</span>
+    ),
     HookForm,
     FormField,
-    FormItemLabel: ({ label }: any) => <label>{label}</label>,
-    HintText: ({ children }: any) => <span data-testid="hint-text">{children}</span>,
-    getField: ({ props }: any) => (
+    FormItemLabel: ({ label }: { label?: ReactNode }) => <span>{label}</span>,
+    HintText: ({ children }: { children?: ReactNode }) => (
+      <span data-testid="hint-text">{children}</span>
+    ),
+    getField: ({ props }: { props?: { 'data-testid'?: string } }) => (
       <div data-testid={props?.['data-testid'] ?? 'field'} />
     ),
     FieldTypes: {
@@ -152,21 +210,23 @@ describe('CustomPropertiesEditPage', () => {
   it('renders the edit page container', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    expect(screen.getByTestId('custom-properties-edit-page')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-properties-edit-page')
+    ).toBeInTheDocument();
   });
 
   it('renders the edit form', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -178,22 +238,24 @@ describe('CustomPropertiesEditPage', () => {
   it('renders cancel and save buttons', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    expect(screen.getByTestId('edit-custom-property-cancel')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('edit-custom-property-cancel')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('edit-custom-property-save')).toBeInTheDocument();
   });
 
   it('calls onCancel when cancel button is clicked', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -207,21 +269,23 @@ describe('CustomPropertiesEditPage', () => {
   it('renders display name field', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    expect(screen.getByTestId('edit-custom-property-display-name')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('edit-custom-property-display-name')
+    ).toBeInTheDocument();
   });
 
   it('renders description field (RichTextEditor) with existing description', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -236,22 +300,26 @@ describe('CustomPropertiesEditPage', () => {
   it('renders enum config fields for enum property type', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockEnumProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockEnumProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
-    expect(screen.getByTestId('edit-custom-property-enum-config')).toBeInTheDocument();
-    expect(screen.getByTestId('edit-custom-property-multi-select')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('edit-custom-property-enum-config')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('edit-custom-property-multi-select')
+    ).toBeInTheDocument();
   });
 
   it('does not render enum config fields for non-enum property type', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -268,8 +336,8 @@ describe('CustomPropertiesEditPage', () => {
   it('renders entity reference config field for entity-reference-list property', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockEntityRefProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockEntityRefProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -283,8 +351,8 @@ describe('CustomPropertiesEditPage', () => {
   it('does not render entity reference config field for non-ref property', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -298,15 +366,17 @@ describe('CustomPropertiesEditPage', () => {
   it('calls getTypeByFQN on mount', async () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
     );
 
     await waitFor(() => {
-      expect(mockGetTypeByFQN).toHaveBeenCalledWith(mockEntityType.fullyQualifiedName);
+      expect(mockGetTypeByFQN).toHaveBeenCalledWith(
+        mockEntityType.fullyQualifiedName
+      );
     });
   });
 
@@ -316,8 +386,8 @@ describe('CustomPropertiesEditPage', () => {
 
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -331,8 +401,8 @@ describe('CustomPropertiesEditPage', () => {
   it('does not call onCancel when save button is clicked without submit', () => {
     render(
       <CustomPropertiesEditPage
-        entityType={mockEntityType as any}
-        property={mockStringProperty as any}
+        entityType={mockEntityType as unknown as Type}
+        property={mockStringProperty as unknown as CustomProperty}
         onCancel={mockOnCancel}
         onSuccess={mockOnSuccess}
       />
@@ -341,5 +411,4 @@ describe('CustomPropertiesEditPage', () => {
     // Save is a submit button — clicking it without form interaction should not call onCancel
     expect(mockOnCancel).not.toHaveBeenCalled();
   });
-
 });

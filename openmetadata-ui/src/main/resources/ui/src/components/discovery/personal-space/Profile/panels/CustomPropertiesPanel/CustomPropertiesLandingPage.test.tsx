@@ -12,7 +12,8 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import type { ReactNode } from 'react';
+import type { Type } from '../../../../../../generated/entity/type';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
 
@@ -21,7 +22,7 @@ const mockTableType = {
   name: 'table',
   displayName: 'Table',
   fullyQualifiedName: 'table',
-};
+} as unknown as Type;
 
 const mockTableItem = {
   key: 'customProperties.table',
@@ -47,9 +48,12 @@ jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn(),
 }));
 
-jest.mock('../../../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
-}));
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
+  })
+);
 
 jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
@@ -81,20 +85,54 @@ jest.mock('../../../../../../constants/GlobalSettings.constants', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const Card = ({ children, onClick, 'data-testid': testId, 'aria-busy': ariaBusy }: any) => (
-    <div aria-busy={ariaBusy} data-testid={testId} role="button" onClick={onClick}>
+  const Card = ({
+    children,
+    onClick,
+    'data-testid': testId,
+    'aria-busy': ariaBusy,
+  }: {
+    children?: ReactNode;
+    onClick?: () => void;
+    'data-testid'?: string;
+    'aria-busy'?: boolean | string;
+  }) => (
+    <div
+      aria-busy={ariaBusy}
+      data-testid={testId}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.();
+        }
+      }}>
       {children}
     </div>
   );
-  Card.Content = ({ children }: any) => <div>{children}</div>;
+  Card.Content = ({ children }: { children?: ReactNode }) => (
+    <div>{children}</div>
+  );
 
   return {
-    Box: ({ children, 'data-testid': testId }: any) => (
-      <div data-testid={testId}>{children}</div>
-    ),
+    Box: ({
+      children,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>,
     Card,
-    Typography: ({ children }: any) => <span>{children}</span>,
-    EmptyPlaceholder: ({ title, description }: any) => (
+    Typography: ({ children }: { children?: ReactNode }) => (
+      <span>{children}</span>
+    ),
+    EmptyPlaceholder: ({
+      title,
+      description,
+    }: {
+      title?: ReactNode;
+      description?: ReactNode;
+    }) => (
       <div data-testid="empty-placeholder">
         <p>{title}</p>
         <p>{description}</p>
@@ -108,23 +146,29 @@ describe('CustomPropertiesLandingPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    const { getTypeByFQN } = jest.requireMock('../../../../../../rest/metadataTypeAPI');
+    const { getTypeByFQN } = jest.requireMock(
+      '../../../../../../rest/metadataTypeAPI'
+    );
     getTypeByFQN.mockResolvedValue(mockTableType);
 
     const globalSettingsClassBase = jest.requireMock(
       '../../../../../../utils/GlobalSettingsClassBase'
     ).default;
-    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValue([
-      {
-        key: 'customProperties',
-        items: [mockTableItem, mockPipelineItem, mockUnprotectedItem],
-      },
-    ]);
+    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValue(
+      [
+        {
+          key: 'customProperties',
+          items: [mockTableItem, mockPipelineItem, mockUnprotectedItem],
+        },
+      ]
+    );
   });
 
   it('renders entity type cards for protected items', () => {
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     expect(screen.getByTestId('entity-type-card-table')).toBeInTheDocument();
@@ -133,15 +177,21 @@ describe('CustomPropertiesLandingPage', () => {
 
   it('does not render cards for unprotected items', () => {
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
-    expect(screen.queryByTestId('entity-type-card-dashboard')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('entity-type-card-dashboard')
+    ).not.toBeInTheDocument();
   });
 
   it('renders the entity label for each card', () => {
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     expect(screen.getByText('Tables')).toBeInTheDocument();
@@ -150,16 +200,24 @@ describe('CustomPropertiesLandingPage', () => {
 
   it('renders description when present', () => {
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
-    expect(screen.getByText('Manage custom properties for Tables')).toBeInTheDocument();
+    expect(
+      screen.getByText('Manage custom properties for Tables')
+    ).toBeInTheDocument();
   });
 
   it('calls getTypeByFQN and then onSelectEntityType when a card is clicked', async () => {
-    const { getTypeByFQN } = jest.requireMock('../../../../../../rest/metadataTypeAPI');
+    const { getTypeByFQN } = jest.requireMock(
+      '../../../../../../rest/metadataTypeAPI'
+    );
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     fireEvent.click(screen.getByTestId('entity-type-card-table'));
@@ -172,11 +230,15 @@ describe('CustomPropertiesLandingPage', () => {
 
   it('shows error toast when getTypeByFQN fails', async () => {
     const mockError = new Error('API Error');
-    const { getTypeByFQN } = jest.requireMock('../../../../../../rest/metadataTypeAPI');
+    const { getTypeByFQN } = jest.requireMock(
+      '../../../../../../rest/metadataTypeAPI'
+    );
     getTypeByFQN.mockRejectedValueOnce(mockError);
 
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     fireEvent.click(screen.getByTestId('entity-type-card-table'));
@@ -184,6 +246,7 @@ describe('CustomPropertiesLandingPage', () => {
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+
     expect(mockOnSelectEntityType).not.toHaveBeenCalled();
   });
 
@@ -191,12 +254,14 @@ describe('CustomPropertiesLandingPage', () => {
     const { default: globalSettingsClassBase } = jest.requireMock(
       '../../../../../../utils/GlobalSettingsClassBase'
     );
-    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValueOnce([
-      { key: 'customProperties', items: [mockUnprotectedItem] },
-    ]);
+    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValueOnce(
+      [{ key: 'customProperties', items: [mockUnprotectedItem] }]
+    );
 
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
@@ -206,37 +271,53 @@ describe('CustomPropertiesLandingPage', () => {
     const { default: globalSettingsClassBase } = jest.requireMock(
       '../../../../../../utils/GlobalSettingsClassBase'
     );
-    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValueOnce([]);
+    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValueOnce(
+      []
+    );
 
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
   it('sets aria-busy on the card while loading', async () => {
-    const { getTypeByFQN } = jest.requireMock('../../../../../../rest/metadataTypeAPI');
-    let resolvePromise: (value: typeof mockTableType) => void;
+    const { getTypeByFQN } = jest.requireMock(
+      '../../../../../../rest/metadataTypeAPI'
+    );
+    const deferred = { resolve: (_value: Type) => {} };
     getTypeByFQN.mockImplementationOnce(
-      () => new Promise((res) => { resolvePromise = res; })
+      () =>
+        new Promise((res) => {
+          deferred.resolve = res;
+        })
     );
 
     render(
-      <CustomPropertiesLandingPage onSelectEntityType={mockOnSelectEntityType} />
+      <CustomPropertiesLandingPage
+        onSelectEntityType={mockOnSelectEntityType}
+      />
     );
 
     fireEvent.click(screen.getByTestId('entity-type-card-table'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('entity-type-card-table')).toHaveAttribute('aria-busy', 'true');
+      expect(screen.getByTestId('entity-type-card-table')).toHaveAttribute(
+        'aria-busy',
+        'true'
+      );
     });
 
-    resolvePromise!(mockTableType);
+    deferred.resolve(mockTableType);
 
     await waitFor(() => {
-      expect(screen.getByTestId('entity-type-card-table')).not.toHaveAttribute('aria-busy', 'true');
+      expect(screen.getByTestId('entity-type-card-table')).not.toHaveAttribute(
+        'aria-busy',
+        'true'
+      );
     });
   });
-
 });
