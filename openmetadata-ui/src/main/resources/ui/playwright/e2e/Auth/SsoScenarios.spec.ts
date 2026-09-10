@@ -13,7 +13,7 @@
 import { expect, Response, test } from '@playwright/test';
 import { performAdminLogin } from '../../utils/admin';
 import { getAuthContext } from '../../utils/common';
-import { auth0MockProviderFixture } from '../../utils/sso-providers/auth0-mock';
+import { auth0ProviderFixture } from '../../utils/sso-providers/auth0';
 import { basicProviderFixture } from '../../utils/sso-providers/basic';
 import type { SsoProviderFixture } from '../../utils/sso-providers/fixture';
 import { keycloakOidcConfidentialProviderFixture } from '../../utils/sso-providers/keycloak-oidc';
@@ -42,7 +42,7 @@ const FIXTURES: SsoProviderFixture[] = [
   keycloakOidcPublicProviderFixture,
   oktaProviderFixture,
   msalMockProviderFixture,
-  auth0MockProviderFixture,
+  auth0ProviderFixture,
 ];
 
 const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
