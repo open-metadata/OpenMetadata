@@ -993,61 +993,22 @@ export const migrateJsonLogic = (
     );
   };
 
-  // A `table-cp` value keeps its cells in a `rows` array, so a rule on a column
-  // has to iterate it with `some`. Rules saved before that fix used a flat
-  // `extension.<prop>.rows.<column>` var, which cannot resolve against an array.
-  const TABLE_ROWS_VAR = /^(extension\..+\.rows)\.([^.]+)$/;
-
-  const migrateTableRowsRule = (node: JsonLogic): JsonLogic | undefined => {
-    const operators = Object.keys(node);
-    const args = operators.length === 1 ? node[operators[0]] : undefined;
-    if (!Array.isArray(args)) {
-      return undefined;
-    }
-
-    const argIndex = args.findIndex(
-      (arg) => isVarObject(arg) && TABLE_ROWS_VAR.test(arg.var)
-    );
-    if (argIndex === -1) {
-      return undefined;
-    }
-
-    const [, rowsVar, column] = TABLE_ROWS_VAR.exec(
-      (args[argIndex] as { var: string }).var
-    ) as RegExpExecArray;
-    const relativeArgs = args.map((arg, index) =>
-      index === argIndex ? { var: column } : arg
-    );
-
-    return { some: [{ var: rowsVar }, { [operators[0]]: relativeArgs }] };
-  };
-
-  const migrateNotNullRule = (node: JsonLogic): JsonLogic | undefined => {
-    if (!('!!' in node) || !isVarObject(node['!!'])) {
-      return undefined;
-    }
-
-    const varName = node['!!'].var;
-    const mappedField = FIELD_MAPPING[varName];
-
-    return mappedField
-      ? { some: [{ var: varName }, { '!=': [{ var: mappedField }, null] }] }
-      : undefined;
-  };
-
   const migrateNode = (node: JsonLogic): JsonLogic => {
     if (node === null || typeof node !== 'object') {
       return node;
     }
+    if (!Array.isArray(node) && '!!' in node && isVarObject(node['!!'])) {
+      const varName = node['!!'].var;
+      const mappedField = FIELD_MAPPING[varName];
+      if (mappedField) {
+        return {
+          some: [{ var: varName }, { '!=': [{ var: mappedField }, null] }],
+        };
+      }
+    }
     if (Array.isArray(node)) {
       return node.map(migrateNode) as unknown as JsonLogic;
     }
-
-    const migrated = migrateTableRowsRule(node) ?? migrateNotNullRule(node);
-    if (migrated) {
-      return migrated;
-    }
-
     const result: Record<string, JsonLogic> = {};
     for (const key in node) {
       result[key] = migrateNode(node[key] as JsonLogic);

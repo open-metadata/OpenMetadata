@@ -1528,41 +1528,6 @@ describe('table-cp custom property sub-fields', () => {
     ]);
   });
 
-  // migrateJsonLogic has to find the flat var wherever the operator puts it -
-  // `like` exports as `{in: [value, {var}]}`, so it is not always argument 0.
-  it.each([
-    [
-      'equal',
-      { '==': [{ var: `${ROWS_VAR}.name` }, 'karan'] },
-      { '==': [{ var: 'name' }, 'karan'] },
-    ],
-    [
-      'like',
-      { in: ['kar', { var: `${ROWS_VAR}.name` }] },
-      { in: ['kar', { var: 'name' }] },
-    ],
-    [
-      'is_not_null',
-      { '!=': [{ var: `${ROWS_VAR}.name` }, null] },
-      { '!=': [{ var: 'name' }, null] },
-    ],
-  ])(
-    'should rewrite a legacy flat %s rule into a some group',
-    (_name, legacyRule, expectedCondition) => {
-      expect(roundTrip({ and: [legacyRule] }, buildJsonLogicConfig())).toEqual({
-        and: [{ some: [{ var: ROWS_VAR }, expectedCondition] }],
-      });
-    }
-  );
-
-  it('should leave an already-migrated rule alone', () => {
-    const logic = {
-      and: [{ some: [{ var: ROWS_VAR }, { in: ['kar', { var: 'name' }] }] }],
-    };
-
-    expect(roundTrip(logic, buildJsonLogicConfig())).toEqual(logic);
-  });
-
   it('should keep a scalar custom property usable alongside the rows group', () => {
     const logic = {
       and: [

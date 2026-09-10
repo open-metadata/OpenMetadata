@@ -1490,45 +1490,6 @@ class AdvancedSearchClassBase {
     }
   }
 
-  // `rows` is an array of objects, so it needs a `some` group - a flat
-  // `<prop>.rows.<column>` var never resolves against it. Rules saved in the flat
-  // shape are rewritten by `migrateJsonLogic` when the builder loads them.
-  private buildTableCustomPropertyGroup(
-    field: CustomPropertySummary,
-    label: string,
-    columns: string[]
-  ): { subfieldsKey: string; dataObject: OMFieldOrGroup } {
-    // A cell is free text, so there is no list to offer - `allowCustomValues`
-    // keeps the select widget while letting the value be typed.
-    const columnSubfields: Fields = Object.fromEntries(
-      columns.map((columnName) => [
-        columnName,
-        {
-          type: 'select',
-          label: columnName,
-          operators: SELECT_TEXT_FIELD_OPERATORS,
-          valueSources: ['value'],
-          fieldSettings: {
-            allowCustomValues: true,
-            showSearch: true,
-            useAsyncSearch: false,
-          },
-        },
-      ])
-    );
-
-    return {
-      subfieldsKey: `${field.name}.rows`,
-      dataObject: {
-        label: `${label} - ${t('label.row-plural')}`,
-        type: '!group',
-        mode: 'some',
-        defaultField: columns[0],
-        subfields: columnSubfields,
-      },
-    };
-  }
-
   private buildMultiValueCustomPropertySubFields(
     field: CustomPropertySummary,
     label: string,
@@ -1589,8 +1550,37 @@ class AdvancedSearchClassBase {
           return [];
         }
 
+        // `rows` is an array of objects, so a JsonLogic rule has to iterate it
+        // with `some` - a flat `<prop>.rows.<column>` var never resolves against
+        // an array. A cell is free text, hence `allowCustomValues` over a list.
         if (searchOutputType === SearchOutputType.JSONLogic) {
-          return [this.buildTableCustomPropertyGroup(field, label, columns)];
+          return [
+            {
+              subfieldsKey: `${field.name}.rows`,
+              dataObject: {
+                label: `${label} - ${t('label.row-plural')}`,
+                type: '!group',
+                mode: 'some',
+                defaultField: columns[0],
+                subfields: Object.fromEntries(
+                  columns.map((columnName) => [
+                    columnName,
+                    {
+                      type: 'select',
+                      label: columnName,
+                      operators: SELECT_TEXT_FIELD_OPERATORS,
+                      valueSources: ['value'],
+                      fieldSettings: {
+                        allowCustomValues: true,
+                        showSearch: true,
+                        useAsyncSearch: false,
+                      },
+                    },
+                  ])
+                ),
+              },
+            },
+          ];
         }
 
         return columns.map((columnName) => ({
