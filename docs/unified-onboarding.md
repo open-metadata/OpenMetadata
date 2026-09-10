@@ -103,7 +103,13 @@ new enrollments. Disabling onboarding pauses active transitions; re-enabling res
 Backfill cursors and failures survive restart, and a database lease prevents concurrent workers
 from processing the same page. The worker also recovers outstanding task starts after restart.
 
-Integration coverage lives in `OnboardingResourceIT` and `IntakeFormResourceIT`. Browser journeys
+Board reads batch current entities, assignments, tasks, and workflow evidence while reusing the
+pinned instances. Domain and assignee filters use live values, including inherited domains.
+Sparse filters scan bounded batches until the requested page is full or the catalog is exhausted;
+`after` identifies the last returned instance and is omitted when no further matching row exists.
+Very selective filters can therefore require scanning the eligible catalog.
+
+Integration coverage lives in `OnboardingResourceIT`, `OnboardingBoardResourceIT`, and `IntakeFormResourceIT`. Browser journeys
 live in `playwright/e2e/Pages/Onboarding*.spec.ts` and the existing `IntakeForm.spec.ts`. The four
 main journeys configure and create each entity through the UI, delegate metadata work, resume
 saved progress, complete real workflow approvals, and monitor the board. Focused specifications

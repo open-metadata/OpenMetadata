@@ -14,8 +14,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.onboarding.OnboardingAssignment;
 import org.openmetadata.schema.governance.onboarding.OnboardingBackfill;
+import org.openmetadata.schema.governance.onboarding.OnboardingBoard;
 import org.openmetadata.schema.governance.onboarding.OnboardingCondition;
 import org.openmetadata.schema.governance.onboarding.OnboardingConfiguration;
 import org.openmetadata.schema.governance.onboarding.OnboardingGate;
@@ -97,6 +100,16 @@ class OnboardingResourceIT {
     var consumer = delegatedConsumer();
     createConfiguration(type, namespace);
     var asset = createAsset(type, namespace);
+    var board =
+        consumer
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/governance/onboarding?entityType=" + type + "&limit=100",
+                null,
+                OnboardingBoard.class);
+    assertTrue(
+        board.getData().stream().anyMatch(row -> asset.getId().equals(row.getEntity().getId())));
     String path = "/v1/" + collection(type) + "/" + asset.getId();
     var options =
         RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
@@ -129,6 +142,7 @@ class OnboardingResourceIT {
     var asset = createAsset(type, namespace);
     patch(type, asset.getId(), "displayName", "Ready for review");
     var draft = progress(type, asset.getId());
+    assertBoardProgress(type, asset.getId());
     transition(type, asset.getId(), draft.getEntityVersion(), EntityStatus.IN_REVIEW);
     var pending =
         await()
@@ -143,6 +157,16 @@ class OnboardingResourceIT {
                                 step.getTaskId() != null && step.getWorkflowInstanceId() != null));
     UUID first = step(pending, "first-review").getTaskId();
     UUID second = step(pending, "second-review").getTaskId();
+    assertBoardProgress(type, asset.getId());
+    var workflowHandler =
+        org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    Set.of(first, second),
+                    workflowHandler.activeRuntimeTasks(List.of(first, second, UUID.randomUUID()))));
     assertNotEquals(first, second);
     var submissions =
         List.of(
@@ -154,6 +178,8 @@ class OnboardingResourceIT {
     }
     decide(first, true);
     assertFalse(progress(type, asset.getId()).getCompleted());
+    assertBoardProgress(type, asset.getId());
+    assertEquals(Set.of(second), workflowHandler.activeRuntimeTasks(List.of(first, second)));
     assertThrows(
         InvalidRequestException.class,
         () -> patch(type, asset.getId(), "entityStatus", "Approved"));
@@ -161,6 +187,7 @@ class OnboardingResourceIT {
     assertEquals(
         OnboardingStepResult.State.REJECTED,
         step(progress(type, asset.getId()), "second-review").getState());
+    assertBoardProgress(type, asset.getId());
     var resubmission = retry(type, asset.getId());
     UUID replacement = step(resubmission, "second-review").getTaskId();
     assertNotEquals(second, replacement);
@@ -173,18 +200,21 @@ class OnboardingResourceIT {
         "Changed reviewed metadata");
     assertFalse(progress(type, asset.getId()).getCanAdvance());
     var revised = retry(type, asset.getId());
+    assertBoardProgress(type, asset.getId());
     UUID revisedFirst = step(revised, "first-review").getTaskId();
     assertNotEquals(first, revisedFirst);
     decide(revisedFirst, true);
     decide(step(revised, "second-review").getTaskId(), true);
     var ready = progress(type, asset.getId());
     assertTrue(ready.getCanAdvance());
+    assertBoardProgress(type, asset.getId());
     assertNotNull(step(ready, "first-review").getWorkflowInstanceId());
     assertTrue(
         transition(type, asset.getId(), ready.getEntityVersion(), EntityStatus.APPROVED)
             .getCompleted());
     patch(type, asset.getId(), "displayName", "Maintained after approval");
     var maintained = progress(type, asset.getId());
+    assertBoardProgress(type, asset.getId());
     assertEquals(OnboardingStepResult.State.COMPLETE, step(maintained, "first-review").getState());
     assertEquals(
         OnboardingStage.DEPRECATED,
@@ -360,9 +390,11 @@ class OnboardingResourceIT {
     var initial = progress(type, asset.getId());
     assertEquals(OnboardingStepResult.State.BLOCKED, step(initial, "display-name").getState());
     assertEquals(OnboardingStepResult.State.NOT_APPLICABLE, step(initial, "owners").getState());
+    assertBoardProgress(type, asset.getId());
     patch(type, asset.getId(), "displayName", "Restricted");
     var required = retry(type, asset.getId());
     assertEquals(List.of("owners"), required.getBlockingSteps());
+    assertBoardProgress(type, asset.getId());
     var assignedTask =
         SdkClients.adminClient().tasks().get(step(required, "owners").getTaskId().toString());
     assertEquals(
@@ -376,9 +408,67 @@ class OnboardingResourceIT {
     patch(type, asset.getId(), "owners", List.of(user1, user2));
     var ready = progress(type, asset.getId());
     assertTrue(ready.getCanAdvance());
+    assertBoardProgress(type, asset.getId());
     transition(type, asset.getId(), ready.getEntityVersion(), EntityStatus.IN_REVIEW);
     assertThrows(
         InvalidRequestException.class, () -> patch(type, asset.getId(), "owners", List.of(user1)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"dataProduct", "domain", "glossaryTerm", "metric"})
+  void boardResolvesCurrentDomainOwners(String type, TestNamespace namespace) throws Exception {
+    var client = SdkClients.adminClient();
+    var first = client.users().getByName("shared_user1").getEntityReference();
+    var second = client.users().getByName("shared_user2").getEntityReference();
+    var form = createConfiguration(type, namespace);
+    form.getOnboarding()
+        .getGates()
+        .getFirst()
+        .getSteps()
+        .getFirst()
+        .setAssignment(
+            new OnboardingAssignment().withRole(OnboardingAssignment.Role.DOMAIN_OWNERS));
+    publish(form);
+    var asset = createAsset(type, namespace);
+    UUID domainId;
+    if (Entity.DOMAIN.equals(type)) {
+      domainId = asset.getId();
+    } else {
+      var domain =
+          client
+              .domains()
+              .create(
+                  new CreateDomain()
+                      .withName(namespace.prefix("responsible-domain-" + type))
+                      .withDescription("Domain responsibilities")
+                      .withDomainType(CreateDomain.DomainType.AGGREGATE));
+      domainId = domain.getId();
+      patch(type, asset.getId(), "domains", List.of(domain.getEntityReference()));
+    }
+    for (var owner : List.of(first, second)) {
+      patch(Entity.DOMAIN, domainId, "owners", List.of(owner));
+      assertEquals(
+          List.of(owner.getId()),
+          step(progress(type, asset.getId()), "display-name").getAssignees().stream()
+              .map(ref -> ref.getId())
+              .toList());
+      assertBoardProgress(type, asset.getId());
+      var board =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  "/v1/governance/onboarding?entityType="
+                      + type
+                      + "&domain="
+                      + domainId
+                      + "&assignee="
+                      + owner.getId(),
+                  null,
+                  OnboardingBoard.class);
+      assertTrue(
+          board.getData().stream().anyMatch(row -> asset.getId().equals(row.getEntity().getId())));
+    }
   }
 
   @Test
@@ -405,6 +495,7 @@ class OnboardingResourceIT {
     assertEquals(OnboardingStepResult.State.FAILED, step(suspended, "review").getState());
     assertFalse(suspended.getCanAdvance());
     assertNotNull(step(suspended, "review").getMessage());
+    assertBoardProgress("metric", asset.getId());
     http.execute(HttpMethod.PUT, workflowPath + "/resume", Map.of(), Void.class);
     assertEquals(task, step(retry("metric", asset.getId()), "review").getTaskId());
     http.execute(
@@ -416,6 +507,7 @@ class OnboardingResourceIT {
     var deleted = retry("metric", asset.getId());
     assertEquals(OnboardingStepResult.State.FAILED, step(deleted, "review").getState());
     assertFalse(deleted.getCanAdvance());
+    assertBoardProgress("metric", asset.getId());
   }
 
   @Test
@@ -957,6 +1049,65 @@ class OnboardingResourceIT {
                         null,
                         OnboardingProgress.class),
             value -> value != null);
+  }
+
+  private void assertBoardProgress(String type, UUID id) {
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              var expected = progress(type, id);
+              String after = null;
+              OnboardingProgress actual = null;
+              do {
+                var board =
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .execute(
+                            HttpMethod.GET,
+                            "/v1/governance/onboarding?entityType="
+                                + type
+                                + "&limit=100"
+                                + (after == null ? "" : "&after=" + after),
+                            null,
+                            OnboardingBoard.class);
+                actual =
+                    board.getData().stream()
+                        .filter(row -> id.equals(row.getEntity().getId()))
+                        .findFirst()
+                        .orElse(null);
+                after = board.getAfter();
+              } while (actual == null && after != null);
+              assertNotNull(actual);
+              assertEquals(expected.getEntityVersion(), actual.getEntityVersion());
+              assertEquals(expected.getConfigurationId(), actual.getConfigurationId());
+              assertEquals(expected.getConfigurationVersion(), actual.getConfigurationVersion());
+              assertEquals(
+                  expected.getDomains().stream()
+                      .map(ref -> ref.getId())
+                      .collect(Collectors.toSet()),
+                  actual.getDomains().stream().map(ref -> ref.getId()).collect(Collectors.toSet()));
+              assertEquals(expected.getStage(), actual.getStage());
+              assertEquals(expected.getBlockingSteps(), actual.getBlockingSteps());
+              assertEquals(expected.getCanAdvance(), actual.getCanAdvance());
+              assertEquals(expected.getCompleted(), actual.getCompleted());
+              assertEquals(expected.getPaused(), actual.getPaused());
+              assertEquals(expected.getSteps().size(), actual.getSteps().size());
+              for (var expectedStep : expected.getSteps()) {
+                var actualStep = step(actual, expectedStep.getStep().getId());
+                assertEquals(expectedStep.getState(), actualStep.getState());
+                assertEquals(expectedStep.getTaskId(), actualStep.getTaskId());
+                assertEquals(
+                    expectedStep.getWorkflowInstanceId(), actualStep.getWorkflowInstanceId());
+                assertEquals(
+                    expectedStep.getAssignees().stream()
+                        .map(ref -> ref.getId())
+                        .collect(Collectors.toSet()),
+                    actualStep.getAssignees().stream()
+                        .map(ref -> ref.getId())
+                        .collect(Collectors.toSet()));
+              }
+            });
   }
 
   private OnboardingProgress transition(String type, UUID id, Double version, EntityStatus status)

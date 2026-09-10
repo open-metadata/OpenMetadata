@@ -28,14 +28,14 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.TaskRepository;
-import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.TaskWorkflowBinding;
 import org.openmetadata.service.util.IntakeFormUtil;
 
 public final class OnboardingTasks {
+  private record BoundTask(OnboardingTaskBinding binding, Task task) {}
+
   private OnboardingTasks() {}
 
   private static TaskRepository repository() {
@@ -136,25 +136,35 @@ public final class OnboardingTasks {
   }
 
   private static boolean hasCompletedExecution(Task task) {
+    return hasCompletedExecution(task, OnboardingReadContext.DIRECT);
+  }
+
+  private static boolean hasCompletedExecution(Task task, OnboardingReadContext reads) {
     if (task.getWorkflowInstanceId() == null) return false;
-    var repository =
-        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-    WorkflowInstance execution = repository.getById(task.getWorkflowInstanceId());
+    WorkflowInstance execution = reads.execution(task.getWorkflowInstanceId());
     return execution != null
         && execution.getStatus() == WorkflowInstance.WorkflowStatus.FINISHED
         && Objects.equals(execution.getWorkflowDefinitionId(), task.getWorkflowDefinitionId())
-        && !WorkflowHandler.getInstance().hasActiveRuntimeTask(task.getId());
+        && !reads.activeRuntimeTask(task.getId());
   }
 
   public static void hydrate(
       OnboardingStepResult result, OnboardingInstance instance, EntityInterface entity) {
+    hydrate(result, instance, entity, OnboardingReadContext.DIRECT);
+  }
+
+  static void hydrate(
+      OnboardingStepResult result,
+      OnboardingInstance instance,
+      EntityInterface entity,
+      OnboardingReadContext reads) {
     if (result.getState() == State.NOT_APPLICABLE) return;
     var binding = binding(instance, result.getStep().getId());
-    Task task = binding == null ? null : repository().findCommittedTask(binding.getTaskId());
+    Task task = binding == null ? null : reads.task(binding.getTaskId());
     if (task != null)
       result.withTaskId(task.getId()).withWorkflowInstanceId(task.getWorkflowInstanceId());
     if (result.getStep().getType() == OnboardingStep.Type.FIELD) {
-      result.setAssignees(OnboardingAssignments.resolve(result.getStep(), entity, instance));
+      result.setAssignees(OnboardingAssignments.resolve(result.getStep(), entity, instance, reads));
       if (!OnboardingEvaluator.isSatisfied(result)
           && task != null
           && TaskRepository.isTerminalStatus(task.getStatus())) {
@@ -165,16 +175,18 @@ public final class OnboardingTasks {
       if (!OnboardingEvaluator.isSatisfied(result) && result.getAssignees().isEmpty())
         result.withState(State.BLOCKED).withMessage("Assign a responsible user or team");
     } else {
-      hydrateApproval(result, binding, task, instance, entity);
+      hydrateApproval(result, new BoundTask(binding, task), instance, entity, reads);
     }
   }
 
   private static void hydrateApproval(
       OnboardingStepResult result,
-      OnboardingTaskBinding binding,
-      Task task,
+      BoundTask bound,
       OnboardingInstance instance,
-      EntityInterface entity) {
+      EntityInterface entity,
+      OnboardingReadContext reads) {
+    var binding = bound.binding();
+    var task = bound.task();
     if (instance.getStage().ordinal() >= OnboardingStage.APPROVED.ordinal()
         && binding != null
         && Boolean.TRUE.equals(binding.getApproved())
@@ -187,7 +199,7 @@ public final class OnboardingTasks {
       return;
     }
     try {
-      OnboardingConfigurationValidator.workflow(result.getStep());
+      OnboardingConfigurationValidator.workflow(result.getStep(), reads);
     } catch (RuntimeException exception) {
       result.withState(State.FAILED).withMessage(exception.getMessage());
       return;
@@ -199,13 +211,13 @@ public final class OnboardingTasks {
     } else if (task.getStatus() == TaskEntityStatus.Approved
         && Boolean.TRUE.equals(binding.getApproved())
         && Objects.equals(binding.getWorkflowInstanceId(), task.getWorkflowInstanceId())
-        && hasCompletedExecution(task)) {
+        && hasCompletedExecution(task, reads)) {
       result.withState(State.COMPLETE).withMessage(null);
     } else if (task.getStatus() == TaskEntityStatus.Rejected) {
       result.withState(State.REJECTED).withMessage("Approval rejected; revise and resubmit");
     } else if ("workflow-start-failed".equals(task.getWorkflowStageId())
         || TaskRepository.isTerminalStatus(task.getStatus())
-        || failedExecution(task)) {
+        || failedExecution(task, reads)) {
       result
           .withState(State.FAILED)
           .withMessage("Workflow failed; retry after resolving the error");
@@ -214,14 +226,11 @@ public final class OnboardingTasks {
     }
   }
 
-  private static boolean failedExecution(Task task) {
+  private static boolean failedExecution(Task task, OnboardingReadContext reads) {
     if (task.getWorkflowInstanceId() == null)
       return task.getUpdatedAt() < System.currentTimeMillis() - 60_000;
     try {
-      var repository =
-          (WorkflowInstanceRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-      var execution = repository.getById(task.getWorkflowInstanceId());
+      var execution = reads.execution(task.getWorkflowInstanceId());
       return execution == null
           || execution.getStatus() != WorkflowInstance.WorkflowStatus.RUNNING
               && execution.getStatus() != WorkflowInstance.WorkflowStatus.FINISHED;
@@ -395,7 +404,7 @@ public final class OnboardingTasks {
     }
   }
 
-  private static OnboardingTaskBinding binding(OnboardingInstance instance, String stepId) {
+  static OnboardingTaskBinding binding(OnboardingInstance instance, String stepId) {
     return instance.getBindings().stream()
         .filter(binding -> binding.getStepId().equals(stepId))
         .max(Comparator.comparingInt(OnboardingTaskBinding::getAttempt))

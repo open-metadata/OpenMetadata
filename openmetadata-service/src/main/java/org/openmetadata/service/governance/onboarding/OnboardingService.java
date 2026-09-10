@@ -203,11 +203,16 @@ public final class OnboardingService {
   }
 
   public static OnboardingProgress progress(OnboardingInstance instance, EntityInterface entity) {
+    return progress(instance, entity, OnboardingReadContext.DIRECT);
+  }
+
+  static OnboardingProgress progress(
+      OnboardingInstance instance, EntityInterface entity, OnboardingReadContext reads) {
     List<OnboardingStepResult> results =
         new ArrayList<>(
             OnboardingEvaluator.evaluateThrough(
                 instance.getConfiguration(), entity, instance.getStage()));
-    for (var result : results) OnboardingTasks.hydrate(result, instance, entity);
+    for (var result : results) OnboardingTasks.hydrate(result, instance, entity, reads);
     List<String> blockers =
         results.stream()
             .filter(result -> result.getRequired() && !OnboardingEvaluator.isSatisfied(result))
@@ -216,8 +221,7 @@ public final class OnboardingService {
     boolean completed =
         entity.getEntityStatus() == EntityStatus.APPROVED
             || entity.getEntityStatus() == EntityStatus.DEPRECATED;
-    boolean paused =
-        !completed && !OnboardingEvaluator.isEnabled(configured(instance.getEntity().getType()));
+    boolean paused = !completed && !reads.enabled(instance.getEntity().getType());
     return new OnboardingProgress()
         .withEntity(entity.getEntityReference())
         .withEntityVersion(entity.getVersion())
@@ -254,7 +258,7 @@ public final class OnboardingService {
     return get(type, id);
   }
 
-  private static List<EntityReference> boardDomains(EntityInterface entity) {
+  static List<EntityReference> boardDomains(EntityInterface entity) {
     if (Entity.DOMAIN.equals(entity.getEntityReference().getType()))
       return List.of(entity.getEntityReference());
     return entity.getDomains() == null ? List.of() : entity.getDomains();

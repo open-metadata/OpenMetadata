@@ -10,7 +10,7 @@ import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.governance.onboarding.OnboardingStage;
 import org.openmetadata.schema.governance.onboarding.OnboardingStep;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.IntakeFormUtil;
@@ -180,15 +180,17 @@ public final class OnboardingConfigurationValidator {
   }
 
   public static WorkflowDefinition workflow(OnboardingStep step) {
-    org.openmetadata.service.util.RequestEntityCache.invalidate(
-        Entity.WORKFLOW_DEFINITION, step.getWorkflow().getId(), null);
+    return workflow(step, OnboardingReadContext.DIRECT);
+  }
+
+  static WorkflowDefinition workflow(OnboardingStep step, OnboardingReadContext reads) {
     WorkflowDefinition workflow =
-        Entity.getEntity(
-            Entity.WORKFLOW_DEFINITION,
-            step.getWorkflow().getId(),
-            "*",
-            Include.NON_DELETED,
-            false);
+        (WorkflowDefinition)
+            reads.entity(
+                new EntityReference()
+                    .withType(Entity.WORKFLOW_DEFINITION)
+                    .withId(step.getWorkflow().getId()),
+                "*");
     require(
         Boolean.TRUE.equals(workflow.getDeployed())
             && !Boolean.TRUE.equals(workflow.getSuspended()),

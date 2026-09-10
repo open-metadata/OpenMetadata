@@ -17,17 +17,19 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.UUID;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.governance.EvaluateOnboarding;
 import org.openmetadata.schema.api.governance.TransitionOnboarding;
 import org.openmetadata.schema.governance.onboarding.OnboardingBackfill;
 import org.openmetadata.schema.governance.onboarding.OnboardingBoard;
 import org.openmetadata.schema.governance.onboarding.OnboardingProgress;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.onboarding.OnboardingBackfillService;
 import org.openmetadata.service.governance.onboarding.OnboardingBoardService;
 import org.openmetadata.service.governance.onboarding.OnboardingEvaluator;
 import org.openmetadata.service.governance.onboarding.OnboardingService;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -104,7 +106,11 @@ public class OnboardingResource {
         new OnboardingBoardService.Filter(type, stage, domain, assignee),
         after,
         limit,
-        entity -> canView(context, entity));
+        entity ->
+            canView(
+                context,
+                entity,
+                Entity.getEntityRepository(entity.getEntityReference().getType())));
   }
 
   @GET
@@ -130,9 +136,14 @@ public class OnboardingResource {
         context, new OperationContext(type, operation), new ResourceContext<>(type, id, null));
   }
 
-  private boolean canView(SecurityContext context, EntityReference entity) {
+  private <T extends EntityInterface> boolean canView(
+      SecurityContext context, EntityInterface entity, EntityRepository<T> repository) {
     try {
-      authorize(context, entity.getType(), entity.getId(), MetadataOperation.VIEW_ALL);
+      String type = repository.getEntityType();
+      authorizer.authorize(
+          context,
+          new OperationContext(type, MetadataOperation.VIEW_ALL),
+          new ResourceContext<>(type, repository.getEntityClass().cast(entity), repository));
       return true;
     } catch (AuthorizationException denied) {
       return false;
