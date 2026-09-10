@@ -1106,6 +1106,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
+    entityManager.reconcileColumnsInUpstreamLineage(indexName, renamedColumns, deletedColumns);
+  }
+
+  @Override
   public SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
     int upstreamDepth = entityRelationshipRequest.getUpstreamDepth();
