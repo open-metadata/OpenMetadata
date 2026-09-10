@@ -171,7 +171,6 @@ export const Avatar = ({
   return (
     <div
       data-avatar
-      data-testid={dataTestId}
       className={cx(
         'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-transparent',
         // Focus styles
@@ -181,6 +180,7 @@ export const Avatar = ({
         styles[size].root,
         className
       )}
+      data-testid={dataTestId}
       style={style}>
       {renderMainContent()}
       {renderBadgeContent()}
