@@ -3445,6 +3445,7 @@
     "create-or-update-email-account-for-bot": "खाते ईमेल बदलल्याने नवीन बॉट वापरकर्ता अद्यतनित किंवा तयार होईल.",
     "created-this-task-lowercase": "हे कार्य तयार केले",
     "created-time-ago-by": "{{by}} ने {{time}} पूर्वी तयार केले",
+    "credential-already-saved": "सुरक्षेसाठी लपवलेले. नवीन अपलोड करण्यासाठी किंवा पेस्ट करण्यासाठी ते काढा.",
     "credential-file-not-text": "ही फाइल UTF-8 मजकूर नाही. क्रेडेन्शियल PEM किंवा JSON मजकूर स्वरूपात अपलोड करा.",
     "credential-file-unreadable": "ही फाइल वाचता आली नाही. ती पुन्हा निवडून पहा.",
     "cron-dow-validation-failure": "DOW भाग >= 0 आणि <= 6 असणे आवश्यक आहे",

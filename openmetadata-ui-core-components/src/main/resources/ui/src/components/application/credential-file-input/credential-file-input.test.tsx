@@ -93,10 +93,13 @@ describe('CredentialFileInput', () => {
       expect(onChange).toHaveBeenCalledTimes(1);
     });
 
-    it('shows a chip for a credential already stored server-side', () => {
+    it('stands for an unnamed stored value without inventing a file name', () => {
       render(<CredentialFileInput value="*********" />);
 
-      expect(screen.getByTestId('credential-file-chip')).toBeInTheDocument();
+      expect(screen.getByTestId('credential-stored-value')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('credential-file-chip')
+      ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('credential-file-dropzone')
       ).not.toBeInTheDocument();
@@ -115,19 +118,34 @@ describe('CredentialFileInput', () => {
   describe('a credential already stored server-side', () => {
     // The API returns a mask, so the widget withholds the value and flags it
     // instead. Without the chip the field would claim nothing is set.
-    it('stands for it with a chip rather than an empty drop zone', () => {
+    it('stands for it with its own row rather than an empty drop zone', () => {
       render(<CredentialFileInput hasStoredValue />);
 
-      expect(screen.getByTestId('credential-file-chip')).toBeInTheDocument();
+      expect(screen.getByTestId('credential-stored-value')).toBeInTheDocument();
       expect(
         screen.queryByTestId('credential-file-dropzone')
       ).not.toBeInTheDocument();
     });
 
+    it('is not dressed up as an attached file', () => {
+      // The API returns a mask, so there is no file name to show — a file chip
+      // reading "Saved credential" would claim an upload that never happened.
+      render(<CredentialFileInput hasStoredValue />);
+
+      expect(
+        screen.queryByTestId('credential-file-chip')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('credential-file-name')
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('Saved credential')).toBeInTheDocument();
+      expect(screen.getByText(/Hidden for security/)).toBeInTheDocument();
+    });
+
     it('hides the manual input too, so the choice reappears only after removal', () => {
       render(<CredentialFileInput allowManualInput hasStoredValue />);
 
-      expect(screen.getByTestId('credential-file-chip')).toBeInTheDocument();
+      expect(screen.getByTestId('credential-stored-value')).toBeInTheDocument();
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     });
 

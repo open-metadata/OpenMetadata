@@ -3445,6 +3445,7 @@
     "create-or-update-email-account-for-bot": "שינוי כתובת האימייל של החשבון יעדכן או ייצור משתמש בוט חדש.",
     "created-this-task-lowercase": "יצר משימה זו",
     "created-time-ago-by": "נוצר לפני {{time}} על ידי {{by}}",
+    "credential-already-saved": "מוסתר מטעמי אבטחה. הסר אותו כדי להעלות או להדביק חדש.",
     "credential-file-not-text": "הקובץ אינו טקסט UTF-8. העלה את פרטי הגישה בפורמט טקסט PEM או JSON.",
     "credential-file-unreadable": "לא ניתן היה לקרוא את הקובץ. נסה לבחור אותו שוב.",
     "cron-dow-validation-failure": "חלק DOW חייב להיות >= 0 ו-<= 6",

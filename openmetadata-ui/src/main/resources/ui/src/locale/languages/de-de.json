@@ -3445,6 +3445,7 @@
     "create-or-update-email-account-for-bot": "Die Änderung der Kontaktemail aktualisiert oder erstellt einen neuen Bot-Benutzer.",
     "created-this-task-lowercase": "hat diese Aufgabe erstellt",
     "created-time-ago-by": "Vor {{time}} erstellt von {{by}}",
+    "credential-already-saved": "Aus Sicherheitsgründen ausgeblendet. Entfernen Sie sie, um neue hochzuladen oder einzufügen.",
     "credential-file-not-text": "Diese Datei ist kein UTF-8-Text. Laden Sie die Anmeldedaten im PEM- oder JSON-Textformat hoch.",
     "credential-file-unreadable": "Diese Datei konnte nicht gelesen werden. Versuchen Sie, sie erneut auszuwählen.",
     "cron-dow-validation-failure": "Der DOW-Teil muss >= 0 und <= 6 sein",

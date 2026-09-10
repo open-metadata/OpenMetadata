@@ -51,6 +51,7 @@ export const getCredentialFileLabels = (
   orDragAndDrop: t('label.or-drag-and-drop'),
   remove: t('label.remove'),
   savedValue: t('label.saved-credential'),
+  savedValueHint: t('message.credential-already-saved'),
 });
 
 export const getCredentialFileValidationMessages = (

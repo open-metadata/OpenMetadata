@@ -3445,6 +3445,7 @@
     "create-or-update-email-account-for-bot": "Cambiar el correo electrónico de la cuenta actualizará o creará un nuevo bot.",
     "created-this-task-lowercase": "creó esta tarea",
     "created-time-ago-by": "Creado hace {{time}} por {{by}}",
+    "credential-already-saved": "Oculta por seguridad. Elimínala para subir o pegar una nueva.",
     "credential-file-not-text": "Este archivo no es texto UTF-8. Sube la credencial en formato de texto PEM o JSON.",
     "credential-file-unreadable": "No se pudo leer este archivo. Intenta seleccionarlo de nuevo.",
     "cron-dow-validation-failure": "La parte DOW debe ser >= 0 y <= 6",

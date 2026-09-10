@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Trash01 } from '@untitledui/icons';
+import { Key01, Trash01 } from '@untitledui/icons';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Box } from '@/components/base/box/box';
@@ -53,8 +53,10 @@ export interface CredentialFileInputLabels {
   /** Accessible name of the manual-input textarea. */
   manualInput?: string;
   remove?: string;
-  /** Chip name for a credential that is already stored server-side. */
+  /** Title of the row standing for a credential already stored server-side. */
   savedValue?: string;
+  /** Secondary line on that row, explaining why no file name is shown. */
+  savedValueHint?: string;
   /** Drop-zone hint. Receives the accepted extensions and the readable size cap. */
   formatHint?: (acceptedTypes: string, maxSize: string) => string;
 }
@@ -70,6 +72,8 @@ const DEFAULT_LABELS: Required<CredentialFileInputLabels> = {
   manualInput: 'Enter file content',
   remove: 'Remove',
   savedValue: 'Saved credential',
+  savedValueHint:
+    'Hidden for security. Remove it to upload or paste a new one.',
   formatHint: (acceptedTypes, maxSize) =>
     acceptedTypes ? `${acceptedTypes} (max. ${maxSize})` : `max. ${maxSize}`,
 };
@@ -188,6 +192,59 @@ const readCredentialText = (file: File): Promise<string> =>
     reader.readAsArrayBuffer(file);
   });
 
+const CREDENTIAL_ROW_CLASS = cx(
+  // Border drawn with outline, not a ring: WebKit does not pixel-snap
+  // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
+  'tw:w-full tw:rounded-xl tw:bg-primary tw:p-4',
+  'tw:outline-1 tw:-outline-offset-1 tw:outline-secondary'
+);
+
+/**
+ * Stands for a credential the form cannot read — the API returns a mask, so
+ * there is no file name and no size to show.
+ *
+ * Deliberately not the file chip: a file icon above an invented name reads as
+ * "you attached a file called Saved credential", which is not what happened.
+ */
+const StoredCredentialRow = ({
+  isDisabled,
+  removeLabel,
+  title,
+  hint,
+  onRemove,
+}: {
+  isDisabled?: boolean;
+  removeLabel: string;
+  title: string;
+  hint: string;
+  onRemove: () => void;
+}) => (
+  <Box
+    align="center"
+    className={CREDENTIAL_ROW_CLASS}
+    data-testid="credential-stored-value"
+    gap={3}>
+    <Key01 className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+
+    <div className="tw:min-w-0 tw:flex-1">
+      <p className="tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
+        {title}
+      </p>
+      <p className="tw:text-sm tw:text-tertiary">{hint}</p>
+    </div>
+
+    <ButtonUtility
+      color="tertiary"
+      data-testid="credential-file-remove"
+      icon={Trash01}
+      isDisabled={isDisabled}
+      size="xs"
+      tooltip={removeLabel}
+      onClick={onRemove}
+    />
+  </Box>
+);
+
 const SelectedFileChip = ({
   file,
   isDisabled,
@@ -201,12 +258,7 @@ const SelectedFileChip = ({
 }) => (
   <Box
     align="center"
-    className={cx(
-      // Border drawn with outline, not a ring: WebKit does not pixel-snap
-      // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
-      'tw:w-full tw:rounded-xl tw:bg-primary tw:p-4',
-      'tw:outline-1 tw:-outline-offset-1 tw:outline-secondary'
-    )}
+    className={CREDENTIAL_ROW_CLASS}
     data-testid="credential-file-chip"
     gap={3}>
     <FileIcon
@@ -298,13 +350,12 @@ export const CredentialFileInput = ({
     }
   }, [hasValue]);
 
-  // A stored credential is shown by its chip in both modes: `hasValue` covers a
-  // value this form already holds, `hasStoredValue` the masked one it cannot read.
+  // Only a file attached in this session has a name to show. A masked value, or
+  // one restored into an upload-only field, is a credential without provenance —
+  // it gets the stored row instead of a chip wearing an invented file name.
   const standsForStoredCredential =
-    hasStoredValue || (hasValue && !allowManualInput);
-  const selectedFile: SelectedFile | null =
-    fileMeta ??
-    (standsForStoredCredential ? { name: mergedLabels.savedValue } : null);
+    !fileMeta && (hasStoredValue || (hasValue && !allowManualInput));
+  const hasCredential = Boolean(fileMeta) || standsForStoredCredential;
 
   const reject = (kind: CredentialFileErrorKind) => {
     setErrorKind(kind);
@@ -355,14 +406,26 @@ export const CredentialFileInput = ({
       gap={2}>
       {label && <Label isRequired={isRequired}>{label}</Label>}
 
-      {selectedFile ? (
+      {fileMeta && (
         <SelectedFileChip
-          file={selectedFile}
+          file={fileMeta}
           isDisabled={isInteractionDisabled}
           removeLabel={mergedLabels.remove}
           onRemove={handleRemove}
         />
-      ) : (
+      )}
+
+      {standsForStoredCredential && (
+        <StoredCredentialRow
+          hint={mergedLabels.savedValueHint}
+          isDisabled={isInteractionDisabled}
+          removeLabel={mergedLabels.remove}
+          title={mergedLabels.savedValue}
+          onRemove={handleRemove}
+        />
+      )}
+
+      {!hasCredential && (
         <FileUploadDropZone
           accept={acceptedFileTypes?.join(',')}
           allowsMultiple={false}
@@ -391,7 +454,7 @@ export const CredentialFileInput = ({
         with an "or" between them, implying a choice that no longer exists.
         Removing the chip brings the choice back.
       */}
-      {allowManualInput && !selectedFile && (
+      {allowManualInput && !hasCredential && (
         <>
           <Divider label={mergedLabels.or} labelAlign="center" />
           <PasswordInput
