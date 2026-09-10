@@ -360,7 +360,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
         dataSource={slicedRows}
         pagination={false}
         rowKey={ROW_KEY}
-        scroll={{ y: 'calc(100vh - 160px)' }}
+        // Each column is a fixed 250px; give the table an explicit horizontal
+        // extent so TableV2 keeps those widths and lets the wrapper scroll,
+        // instead of collapsing every column into a share of the viewport.
+        scroll={{
+          x: (sampleData?.columns?.length ?? 0) * 250,
+          y: 'calc(100vh - 160px)',
+        }}
         size="small"
       />
 
