@@ -80,7 +80,7 @@ export const getTagImageSrc = (iconURL: string): string => {
     return iconURL;
   }
 
-  return `${window.location.origin}/${iconURL.replace(/^\/+/, '')}`;
+  return `${window.location.origin}/${iconURL}`;
 };
 
 // Map of icon names to their components
