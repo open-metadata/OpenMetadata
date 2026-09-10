@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
@@ -59,7 +60,11 @@ public final class AIContextMarkdown {
 
   private static final int MAX_CONTENT_CHARS = 2000;
   private static final int MAX_SUMMARY_CHARS = 150;
+  private static final int MAX_SAMPLE_CELL_CHARS = 120;
   private static final String ABSENT_CONSTRAINT_CELL = "--";
+  private static final String SAMPLE_DATA_CAVEAT =
+      "\n_Representative stored sample rows — not the full table; never count or aggregate over "
+          + "them._\n";
   private static final String COLUMN_MAPPING_CAP_NOTE =
       "\n_Column mappings are capped at %d per edge — fetch the full lineage graph with "
           + "get_entity_lineage(entityType=`%s`, fqn=`%s`)._\n";
@@ -382,6 +387,7 @@ public final class AIContextMarkdown {
     if (sections.contains(ContextSection.SCHEMA)) {
       appendSchemaTable(markdown, table.getColumns(), headingPrefix);
       appendDataModel(markdown, table.getDataModel(), headingPrefix);
+      appendSampleData(markdown, table.getSampleData(), headingPrefix);
     }
     if (sections.contains(ContextSection.CONSTRAINTS)) {
       appendPrimaryKey(markdown, table);
@@ -434,6 +440,56 @@ public final class AIContextMarkdown {
           .append(cell(PromptText.forPrompt(column.getDescription())))
           .append(" |\n");
     }
+  }
+
+  /**
+   * Renders the permission-filtered, PII-masked sample rows the builder attached. Markdown — not the
+   * structured JSON — is what the MCP {@code get_entity} tool and {@code /context} return by
+   * default, so without this section the stored samples were only reachable through
+   * {@code ?format=json}.
+   */
+  private static void appendSampleData(
+      StringBuilder markdown, TableData sampleData, String headingPrefix) {
+    List<String> columns = sampleData == null ? null : sampleData.getColumns();
+    List<List<Object>> rows = sampleData == null ? null : sampleData.getRows();
+    if (nullOrEmpty(columns) || nullOrEmpty(rows)) {
+      return;
+    }
+    appendHeading(markdown, headingPrefix, "Sample Data");
+    markdown.append(SAMPLE_DATA_CAVEAT).append('\n');
+    appendSampleRow(markdown, columns, columns.size());
+    markdown.append("|---".repeat(columns.size())).append("|\n");
+    for (List<Object> row : rows) {
+      appendSampleRow(markdown, row, columns.size());
+    }
+  }
+
+  /**
+   * Pads every row out to the declared column count and drops anything beyond it: a stored payload
+   * whose rows disagree with its header would otherwise render a misaligned table, and one ragged
+   * row silently shifts every value under the wrong column name.
+   */
+  private static void appendSampleRow(StringBuilder markdown, List<?> row, int width) {
+    List<?> values = listOrEmpty(row);
+    for (int i = 0; i < width; i++) {
+      markdown
+          .append("| ")
+          .append(sampleCell(i < values.size() ? values.get(i) : null))
+          .append(' ');
+    }
+    markdown.append("|\n");
+  }
+
+  /**
+   * A stored sample value can be a nested object, a long text blob, or carry the pipes and line
+   * breaks that delimit a markdown table. Values are flattened to one line and capped so a single
+   * blob column cannot crowd the rest of the context out of the model's window.
+   */
+  private static String sampleCell(Object value) {
+    String text = value == null ? "" : cell(Objects.toString(value).replaceAll("\\R+", " "));
+    return text.length() > MAX_SAMPLE_CELL_CHARS
+        ? text.substring(0, MAX_SAMPLE_CELL_CHARS) + "…"
+        : text;
   }
 
   private static void appendDataModel(
