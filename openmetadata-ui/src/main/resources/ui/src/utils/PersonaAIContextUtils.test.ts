@@ -194,23 +194,58 @@ describe('PersonaAIContextUtils', () => {
     // The backend drops disabled rules from the served scope, so counting them here would tell the
     // admin more of their search is narrowed than actually is.
     expect(
-      getScopedRuleCount([
-        { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
-        { entityType: EntityType.TABLE, filteredInSearch: false, name: 'Two' },
-        { entityType: EntityType.TABLE, name: 'Three' },
-        {
-          enabled: false,
-          entityType: EntityType.TABLE,
-          filteredInSearch: true,
-          name: 'Disabled',
-        },
-        {
-          entityType: EntityType.GLOSSARY_TERM,
-          filteredInSearch: true,
-          name: 'Knowledge',
-        },
-      ])
+      getScopedRuleCount({
+        rules: [
+          { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+          {
+            entityType: EntityType.TABLE,
+            filteredInSearch: false,
+            name: 'Two',
+          },
+          { entityType: EntityType.TABLE, name: 'Three' },
+          {
+            enabled: false,
+            entityType: EntityType.TABLE,
+            filteredInSearch: true,
+            name: 'Disabled',
+          },
+          {
+            entityType: EntityType.GLOSSARY_TERM,
+            filteredInSearch: true,
+            name: 'Knowledge',
+          },
+        ],
+      })
     ).toBe(1);
+  });
+
+  it('counts no scoped rule when the definition itself is disabled', () => {
+    // searchScope() returns an empty scope before it ever looks at the rules, so a switched-off
+    // definition narrows nothing however its rules are flagged.
+    expect(
+      getScopedRuleCount({
+        enabled: false,
+        rules: [
+          {
+            enabled: true,
+            entityType: EntityType.TABLE,
+            filteredInSearch: true,
+            name: 'One',
+          },
+        ],
+      })
+    ).toBe(0);
+  });
+
+  it('counts scoped rules when enabled is left unset, matching the schema default', () => {
+    expect(
+      getScopedRuleCount({
+        rules: [
+          { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+        ],
+      })
+    ).toBe(1);
+    expect(getScopedRuleCount(undefined)).toBe(0);
   });
 
   describe('buildPersonaContextVersionHistory', () => {
