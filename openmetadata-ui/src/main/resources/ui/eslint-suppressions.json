@@ -387,7 +387,7 @@
   },
   "playwright/e2e/Features/PersonaAIContextRules.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 8
     }
   },
   "playwright/e2e/Features/QueryEntity.spec.ts": {
@@ -752,7 +752,7 @@
   },
   "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/LiveIndexingTab.spec.ts": {
