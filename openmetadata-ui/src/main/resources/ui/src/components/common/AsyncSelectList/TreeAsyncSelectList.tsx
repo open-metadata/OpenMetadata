@@ -204,14 +204,13 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
 
   const normalizedValue = useMemo(() => {
-    if (formValue === undefined) {
+    if (isUndefined(formValue)) {
       return undefined;
     }
-    if (!isMultiSelect && Array.isArray(formValue)) {
-      return formValue[0];
-    }
 
-    return formValue;
+    return !isMultiSelect && Array.isArray(formValue)
+      ? formValue[0]
+      : formValue;
   }, [formValue, isMultiSelect]);
 
   const form = Form.useFormInstance();
@@ -608,7 +607,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
-      {...(formValue !== undefined ? { value: normalizedValue } : {})}
+      {...(!isUndefined(formValue) ? { value: normalizedValue } : {})}
       onKeyDown={handleKeyDown}
     />
   );
