@@ -31,6 +31,7 @@ logger = test_suite_logger()
 RESERVED_PARAMS = {"column_name", "table_name"}
 
 DATABASES_WITHOUT_DATABASE_CONCEPT = {
+    DatabaseServiceType.Athena.value,
     DatabaseServiceType.Mysql.value,
     DatabaseServiceType.MariaDB.value,
     DatabaseServiceType.SQLite.value,

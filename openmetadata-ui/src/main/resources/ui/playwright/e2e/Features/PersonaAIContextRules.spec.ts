@@ -35,7 +35,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { toastNotification } from '../../utils/common';
+import { selectOptionWithRetry, toastNotification } from '../../utils/common';
 import {
   enablePersonaRulePreloading,
   openPersonaAIContext,
@@ -337,12 +337,18 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       });
 
       await test.step('switch entity type — filter must reset and unblock save', async () => {
-        await page.getByTestId('context-rule-entity-type').click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: /metric/i })
-          .first()
-          .click();
+        // react-aria can close the listbox mid-click and detach the option,
+        // dropping the selection so the filter is never reset and the save stays
+        // blocked — the source of this test's flakiness. selectOptionWithRetry
+        // re-resolves the trigger's expanded state and reopens the popover before
+        // retrying the option click.
+        await selectOptionWithRetry(
+          page.getByTestId('context-rule-entity-type'),
+          page
+            .getByRole('listbox')
+            .getByRole('option', { name: /metric/i })
+            .first()
+        );
         await saveRule(page);
         await toastNotification(page, /AI context rule saved\./);
       });

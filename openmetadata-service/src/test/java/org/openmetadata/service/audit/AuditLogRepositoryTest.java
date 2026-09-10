@@ -14,8 +14,10 @@
 package org.openmetadata.service.audit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.slf4j.LoggerFactory;
@@ -124,6 +127,117 @@ class AuditLogRepositoryTest {
               assertEquals("lineage", record.getEntityType());
               assertEquals(lineageFqn, record.getEntityFQN());
             });
+  }
+
+  @Test
+  void listEmitsPredicatesOnlyForFiltersThatAreSet() {
+    stubList();
+
+    repository.list("alice", null, null, null, null, null, null, null, null, 25, null, null);
+
+    String condition = capturedListCondition();
+    assertTrue(condition.contains("user_name = :userName"), condition);
+    assertFalse(condition.contains("service_name"), condition);
+    assertFalse(condition.contains("entity_type"), condition);
+    assertFalse(condition.contains("IS NULL OR"), condition);
+    // No cursor was supplied, so the keyset predicate must not be planned either.
+    assertFalse(condition.contains("event_ts <"), condition);
+  }
+
+  @Test
+  void listFiltersEntityFqnThroughItsIndexedHash() {
+    stubList();
+
+    repository.list(
+        null, null, null, null, "svc.db.schema.table", null, null, null, null, 25, null, null);
+
+    String condition = capturedListCondition();
+    assertTrue(condition.contains("entity_fqn_hash = :entityFQNHASH"), condition);
+    assertFalse(condition.contains("entity_fqn = :entityFQN"), condition);
+  }
+
+  @Test
+  void listBoundsTheTotalCount() {
+    stubList();
+
+    repository.list(null, null, null, null, null, null, null, null, null, 25, null, null);
+
+    ArgumentCaptor<Integer> countLimit = ArgumentCaptor.forClass(Integer.class);
+    verify(auditLogDAO)
+        .count(
+            any(),
+            countLimit.capture(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
+    assertEquals(10_000, countLimit.getValue());
+  }
+
+  @Test
+  void listResolvesAuthEventFqnWithoutAPerRowLookup() {
+    when(auditLogDAO.list(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any(), any(), any(), anyInt()))
+        .thenReturn(
+            List.of(
+                AuditLogRecord.builder()
+                    .id(1L)
+                    .eventTs(1L)
+                    .eventType(EventType.USER_LOGIN.value())
+                    .userName("alice")
+                    .entityType(Entity.USER)
+                    .entityId(UUID.randomUUID().toString())
+                    .build()));
+    stubCount();
+
+    ResultList<AuditLogEntry> result =
+        repository.list(null, null, null, null, null, null, null, null, null, 25, null, null);
+
+    assertEquals("alice", result.getData().getFirst().getEntityFQN());
+  }
+
+  private void stubList() {
+    when(auditLogDAO.list(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any(), any(), any(), anyInt()))
+        .thenReturn(List.of());
+    stubCount();
+  }
+
+  private void stubCount() {
+    when(auditLogDAO.count(
+            any(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(0);
+  }
+
+  private String capturedListCondition() {
+    ArgumentCaptor<String> condition = ArgumentCaptor.forClass(String.class);
+    verify(auditLogDAO)
+        .list(
+            condition.capture(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt());
+    return condition.getValue();
   }
 
   private List<ILoggingEvent> auditEvents() {

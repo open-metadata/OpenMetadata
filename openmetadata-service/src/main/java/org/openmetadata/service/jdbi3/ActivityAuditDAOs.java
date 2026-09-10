@@ -536,9 +536,16 @@ public interface ActivityAuditDAOs {
         @Bind("afterId") Long afterId,
         @Bind("limit") int limit);
 
-    @SqlQuery("SELECT COUNT(id) FROM audit_log_event <condition>")
+    /**
+     * Bounded count: stops scanning once {@code countLimit} matching rows are seen. An exact count
+     * has to visit every matching row, which on a multi-million row audit table is a full scan on
+     * every page load — for a paging control that only needs "how many pages, roughly".
+     */
+    @SqlQuery(
+        "SELECT COUNT(*) FROM (SELECT 1 FROM audit_log_event <condition> LIMIT :countLimit) bounded")
     int count(
         @Define("condition") String condition,
+        @Bind("countLimit") int countLimit,
         @Bind("userName") String userName,
         @Bind("actorType") String actorType,
         @Bind("serviceName") String serviceName,

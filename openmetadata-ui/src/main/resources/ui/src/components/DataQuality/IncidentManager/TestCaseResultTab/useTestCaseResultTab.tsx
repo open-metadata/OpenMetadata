@@ -88,6 +88,7 @@ export interface UseTestCaseResultTabResult {
   isTabExpanded: boolean;
   AlertComponent: FC | null;
   additionalComponents: AdditionalComponentInterface[];
+  shouldRenderDefaultGraph: boolean;
 }
 
 /**
@@ -114,6 +115,8 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
 
   const additionalComponents =
     testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
+  const shouldRenderDefaultGraph =
+    testCaseResultTabClassBase.shouldRenderDefaultGraph(testCaseData);
 
   // The test-case page mounts no GenericProvider, so the description
   // attribution must be fetched directly instead of read from context.
@@ -416,5 +419,6 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     isTabExpanded,
     AlertComponent,
     additionalComponents,
+    shouldRenderDefaultGraph,
   };
 };
