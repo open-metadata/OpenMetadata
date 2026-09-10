@@ -31,7 +31,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
@@ -68,14 +67,13 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.constants';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
-import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
@@ -191,21 +189,25 @@ const GlossaryHeader = ({
       );
     }
 
+    if (selectedData.style?.iconURL) {
+      return (
+        <img
+          className="align-middle object-contain"
+          data-testid="icon"
+          height={36}
+          src={selectedData.style?.iconURL}
+          width={32}
+        />
+      );
+    }
+
     return (
-      <EntityStyleIcon
+      <IconTerm
         className="align-middle"
-        fallback={
-          <IconTerm
-            className="align-middle"
-            color={DE_ACTIVE_COLOR}
-            height={36}
-            name="doc"
-            width={32}
-          />
-        }
-        iconValue={selectedData.style?.iconURL}
-        imageClassName="align-middle object-contain"
-        size={36}
+        color={DE_ACTIVE_COLOR}
+        height={36}
+        name="doc"
+        width={32}
       />
     );
   }, [selectedData, isGlossary]);
@@ -671,8 +673,7 @@ const GlossaryHeader = ({
         onSave={onNameSave}
       />
 
-      <IconColorModal
-        defaultIcon={DEFAULT_GLOSSARY_TERM_ICON}
+      <StyleModal
         open={isStyleEditing}
         style={selectedData.style}
         onCancel={() => setIsStyleEditing(false)}

@@ -52,8 +52,6 @@ import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
@@ -69,7 +67,6 @@ import {
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
@@ -114,6 +111,10 @@ import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import {
+  NoFilteredResultsPlaceholder,
+  NoSearchResultsPlaceholder,
+} from '../../common/EmptyPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -766,13 +767,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
           return (
             <div className="tw:flex tw:min-w-0 tw:items-center">
-              <EntityStyleIcon
-                alt={record.name}
-                className="m-r-xs tw:shrink-0"
-                iconValue={record.style?.iconURL}
-                imageClassName="tw:block"
-                size={18}
-              />
+              {record.style?.iconURL && (
+                <img
+                  alt={record.name}
+                  className="m-r-xss"
+                  data-testid="tag-icon"
+                  height={12}
+                  src={record.style.iconURL}
+                />
+              )}
               <Link
                 className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
                 data-testid={name}
@@ -1649,7 +1652,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   // Check if this is due to search or filter returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
-  const isStatusFilterActive = !selectedStatus.includes('all');
   const hasNoTerms = isEmpty(glossaryTerms);
 
   const showPagination = glossaryTerms.length > 0;
@@ -1682,17 +1684,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       cursorType === CursorType.BEFORE ? { before: cursor } : { after: cursor }
     );
   };
-
-  const glossaryPlaceholderText = useMemo(() => {
-    if (isSearchActive && searchTerm) {
-      return `No Glossary Term found for "${searchTerm}"`;
-    }
-    if (isSearchActive || isStatusFilterActive) {
-      return 'No Glossary Term found';
-    }
-
-    return 'No Glossary Terms';
-  }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
   if (
     hasNoTerms &&
@@ -1732,6 +1723,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       </div>
     );
   }
+
+
 
   return (
     <Row className={className} gutter={[0, 16]}>
@@ -1821,11 +1814,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 loading={isTableLoading}
                 locale={{
                   emptyText: (
-                    <ErrorPlaceHolder
-                      className="p-md"
-                      placeholderText={glossaryPlaceholderText}
-                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-                    />
+                    <div
+                      className="tw:relative tw:min-h-[220px]"
+                      data-testid={
+                        isSearchActive
+                          ? 'no-search-results-placeholder'
+                          : 'no-filtered-results-placeholder'
+                      }>
+                      {isSearchActive ? (
+                        <NoSearchResultsPlaceholder />
+                      ) : (
+                        <NoFilteredResultsPlaceholder
+                          description={t('message.filter-no-matching-terms')}
+                        />
+                      )}
+                    </div>
                   ),
                 }}
                 pagination={false}
