@@ -246,6 +246,8 @@ const TierCard = ({
       showArrow={false}
       trigger="click"
       {...popoverProps}
+      // Intentionally overrides popoverProps.onOpenChange — handleOpenChange
+      // wraps it and delegates to popoverProps?.onOpenChange internally (line 146).
       onOpenChange={handleOpenChange}>
       {children}
     </Popover>

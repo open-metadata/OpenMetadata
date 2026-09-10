@@ -19,10 +19,11 @@ import { closeTierDropdown } from '../../utils/tier';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
+let table: TableClass;
 
 test.describe('TierWidget stale state regression', () => {
   test.beforeAll(async ({ browser }) => {
+    table = new TableClass();
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
     await afterAction();
