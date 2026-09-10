@@ -35,8 +35,8 @@
 #   - java-ui-it: the required status check. Aggregates the jobs above under `always()`.
 #
 # Both suites are serial *within* a runner — they mutate cluster-global search state — so the
-# shard matrix plus ShardFilter (a ServiceLoader PostDiscoveryFilter keyed on
-# -Djpw.shard.total/-Djpw.shard.index) is the only parallelism available. Shard counts live in
+# shard matrix is the only parallelism available. Each job deals itself a slice with
+# `find | sort | awk 'NR % total == index'` and passes it as -Dit.test. Shard counts live in
 # `env` and MUST match the matrix list lengths.
 
 name: JavaUIIT Integration Tests Running on PRs
@@ -107,9 +107,9 @@ concurrency:
 
 env:
   SERVER_IMAGE_TAG: openmetadata-server:jpw-snapshot
-  # Must equal the length of the corresponding job's `shard:` matrix list — ShardFilter drops
-  # every class hashing outside [0, total), so a mismatch silently skips tests. Kept here rather
-  # than derived because a matrix list cannot reference `env`.
+  # Must equal the length of the corresponding job's `shard:` matrix list — the round-robin
+  # deal below uses `NR % <count>`, so a mismatch silently drops classes. Kept here rather than
+  # derived because a matrix list cannot reference `env`.
   UI_IT_SHARDS: 2
   SEARCH_IT_SHARDS: 3
 
@@ -214,23 +214,21 @@ jobs:
         # consistent across actors.
         run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
 
-      - name: Build dependencies for integration-tests
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
-
       - name: Restore openmetadata-ui dist cache
-        # Only the next step (openmetadata-dist -am) transitively builds UI.
+        # openmetadata-dist transitively builds UI; integration-tests does not.
         uses: ./.github/actions/cache-ui-dist
 
-      - name: Build openmetadata-dist tarball
+      - name: Build integration-tests and dist
         # ContainerizedServer.buildLocalImageContainer needs
-        # openmetadata-dist/target/openmetadata-*.tar.gz to bake the local image.
-        # Dist is NOT a transitive dep of integration-tests, so the previous step
-        # doesn't produce it — build it explicitly here.
+        # openmetadata-dist/target/openmetadata-*.tar.gz to bake the local image, and dist is
+        # NOT a transitive dep of integration-tests — both have to be asked for by name.
+        #
+        # One reactor pass, not two: as separate invocations Maven walked the shared upstream
+        # modules (spec, common, sdk, service) twice, which measured 146s + 321s. `-T 1C`
+        # parallelises independent branches of that graph across the runner's cores.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests install -pl :openmetadata-dist -am
+        run: mvn -T 1C -DskipTests install -pl :openmetadata-integration-tests,:openmetadata-dist -am
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -315,11 +313,26 @@ jobs:
           else
             SSO_PROPS=""
           fi
-          # ShardFilter (PostDiscoveryFilter, ServiceLoader-registered) keeps only the classes
-          # hashing to this shard. These suites are serial by construction — they mutate
-          # cluster-global search state — so splitting across runners is the only parallelism
-          # available to them.
-          SHARD_PROPS="-Djpw.shard.total=${{ env.UI_IT_SHARDS }} -Djpw.shard.index=${{ matrix.shard }}"
+          # These suites are serial within a runner — they mutate cluster-global search state —
+          # so splitting classes across runners is the only parallelism available.
+          #
+          # Sorted round-robin over the discovered files. Measured alternatives: hash(name) % N
+          # put 8 of 9 classes on one shard (no speedup at all), and N=3 round-robin was worse
+          # than N=2 because the slow Search*/Long* classes sort adjacent. Balance here is luck —
+          # with 11 classes spanning 0s to 206s nothing name-derived can balance reliably, and a
+          # checked-in duration table would need hand-maintenance to stay honest. It is good
+          # enough because per-shard fixed cost (image build + OM stack start) dominates the
+          # tests; cut that before adding shards. `find | sort` is stable, so a new test file
+          # joins a shard on its own.
+          SHARD_CLASSES=$(find openmetadata-integration-tests/src/test/java -name '*UIIT.java' \
+            | sort | awk -v t=${{ env.UI_IT_SHARDS }} -v i=${{ matrix.shard }} 'NR % t == i' \
+            | sed 's|.*/||;s|\.java$||' | paste -sd, -)
+          if [ -z "$SHARD_CLASSES" ]; then
+            echo "Shard ${{ matrix.shard }} matched no UIIT classes — check UI_IT_SHARDS." >&2
+            exit 1
+          fi
+          echo "shard ${{ matrix.shard }}: $SHARD_CLASSES"
+          SHARD_PROPS="-Dit.test=$SHARD_CLASSES -Dfailsafe.failIfNoSpecifiedTests=false"
           if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
             mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $SSO_PROPS $SHARD_PROPS \
               -DsearchType=elasticsearch \
@@ -433,16 +446,26 @@ jobs:
       - name: Build dependencies for integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+        run: mvn -T 1C -DskipTests install -pl :openmetadata-integration-tests -am
 
       - name: Run isolated search ITs (postgres + opensearch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Embedded bootstrap = fresh stack each run; these search ITs create their cohorts on the
         # fly (jpw.data.mode=ingest). Static/ensure reuse is for the external cluster only.
-        # ShardFilter splits the classes across runners; the profile keeps them serial within a
-        # shard because they mutate cluster-global state.
-        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch -Djpw.data.mode=ingest -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} -Djpw.shard.total=${{ env.SEARCH_IT_SHARDS }} -Djpw.shard.index=${{ matrix.shard }}
+        # Sorted round-robin across runners (see the ui-it job for why not a hash). The
+        # profile's own excludes still apply on top of -Dit.test, so the scale/seed/purge
+        # classes stay out.
+        run: |
+          SHARD_CLASSES=$(find openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/search -maxdepth 1 -name '*IT.java' \
+            | sort | awk -v t=${{ env.SEARCH_IT_SHARDS }} -v i=${{ matrix.shard }} 'NR % t == i' \
+            | sed 's|.*/||;s|\.java$||' | grep -vE '^(StaticDatasetSeedIT|ClusterPurgeIT)$' | paste -sd, -)
+          if [ -z "$SHARD_CLASSES" ]; then
+            echo "Shard ${{ matrix.shard }} matched no search IT classes — check SEARCH_IT_SHARDS." >&2
+            exit 1
+          fi
+          echo "shard ${{ matrix.shard }}: $SHARD_CLASSES"
+          mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch -Djpw.data.mode=ingest -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} -Dit.test="$SHARD_CLASSES" -Dfailsafe.failIfNoSpecifiedTests=false
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
