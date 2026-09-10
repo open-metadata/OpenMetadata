@@ -317,7 +317,7 @@ export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
   [PartitionIntervalTypes.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
   [PartitionIntervalTypes.IntegerRange]: [DataType.Int, DataType.Bigint],
   [PartitionIntervalTypes.ColumnValue]: [DataType.Varchar, DataType.String],
-} as Record<PartitionIntervalTypes, DataType[]>;
+} as Partial<Record<PartitionIntervalTypes, DataType[]>>;
 
 export const INTERVAL_TYPE_OPTIONS = Object.keys(
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL

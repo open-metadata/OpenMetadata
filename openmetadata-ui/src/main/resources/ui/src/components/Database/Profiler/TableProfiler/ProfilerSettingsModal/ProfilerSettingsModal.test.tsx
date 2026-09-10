@@ -181,6 +181,27 @@ describe('Test ProfilerSettingsModal component', () => {
     });
   });
 
+  it('should not crash when the stored partitionIntervalType has no entry in SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: {
+        ...mockTableProfilerConfig,
+        partitioning: {
+          ...mockTableProfilerConfig.partitioning,
+          partitionIntervalType: 'ENUM',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profiler-settings-modal')).toBeInTheDocument();
+    });
+  });
+
   it('should handle sample data count change', async () => {
     await act(async () => {
       render(<ProfilerSettingsModal {...mockProps} />);

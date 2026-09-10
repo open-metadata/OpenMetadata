@@ -158,7 +158,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const partitionColumnOptions = useMemo(() => {
     const partitionColumnOptions = columns.reduce((result, column) => {
       const filter = partitionIntervalType
-        ? SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[partitionIntervalType]
+        ? SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[partitionIntervalType] ?? []
         : [];
       if (filter.includes(column.dataType)) {
         return [
@@ -617,7 +617,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             id="profiler-setting-form"
             initialValues={{
               includeColumns: state?.includeCol,
-              partitionData: [''],
+              partitionValues: [''],
               ...state?.data?.partitioning,
             }}
             layout="vertical"
