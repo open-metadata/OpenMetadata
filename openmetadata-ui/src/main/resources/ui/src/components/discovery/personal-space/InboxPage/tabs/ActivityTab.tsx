@@ -69,57 +69,62 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   const selectedId = selected?.activity?.id ?? selected?.feed?.id;
 
+  const emptyPlaceholder = isFiltered ? (
+    <EmptyPlaceholder
+      data-testid="inbox-activity-no-results"
+      description={t('message.activity-feed-no-results-description')}
+      icon={
+        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
+      }
+      title={t('label.no-activity-in-period')}
+      variant="blank"
+    />
+  ) : (
+    <EmptyPlaceholder
+      data-testid="inbox-activity-empty"
+      description={t('message.activity-feed-empty-description')}
+      icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
+      title={t('label.activity-feed-starts-here')}
+      variant="blank"
+    />
+  );
+
+  let activityContent: React.ReactNode;
+  if (isLoading) {
+    activityContent = <ActivitySkeleton />;
+  } else if (items.length === 0) {
+    activityContent = emptyPlaceholder;
+  } else {
+    activityContent = (
+      <Box
+        className="inbox-activity-timeline tw:relative"
+        direction="col"
+        gap={2}>
+        <span className="tw:pointer-events-none tw:absolute tw:-top-5 tw:bottom-2 tw:left-[23px] tw:z-[2] tw:w-px tw:bg-utility-gray-blue-100" />
+        {items.map((item) => {
+          const itemId = item.activity?.id ?? item.feed?.id;
+
+          return (
+            <ActivityFeedItem
+              activity={item.activity}
+              feed={item.feed}
+              isActive={isDrawerOpen && selectedId === itemId}
+              key={itemId}
+              onClick={handleSelect}
+            />
+          );
+        })}
+      </Box>
+    );
+  }
+
   return (
     <>
       <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
         <div
           className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-4 tw:pr-1"
           data-testid="inbox-activity-tab">
-          {isLoading ? (
-            <ActivitySkeleton />
-          ) : items.length === 0 ? (
-            isFiltered ? (
-              <EmptyPlaceholder
-                data-testid="inbox-activity-no-results"
-                description={t('message.activity-feed-no-results-description')}
-                icon={
-                  <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-                }
-                title={t('label.no-activity-in-period')}
-                variant="blank"
-              />
-            ) : (
-              <EmptyPlaceholder
-                data-testid="inbox-activity-empty"
-                description={t('message.activity-feed-empty-description')}
-                icon={
-                  <Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />
-                }
-                title={t('label.activity-feed-starts-here')}
-                variant="blank"
-              />
-            )
-          ) : (
-            <Box
-              className="inbox-activity-timeline tw:relative"
-              direction="col"
-              gap={2}>
-              <span className="tw:pointer-events-none tw:absolute tw:-top-5 tw:bottom-2 tw:left-[23px] tw:z-[2] tw:w-px tw:bg-utility-gray-blue-100" />
-              {items.map((item) => {
-                const itemId = item.activity?.id ?? item.feed?.id;
-
-                return (
-                  <ActivityFeedItem
-                    activity={item.activity}
-                    feed={item.feed}
-                    isActive={isDrawerOpen && selectedId === itemId}
-                    key={itemId}
-                    onClick={handleSelect}
-                  />
-                );
-              })}
-            </Box>
-          )}
+          {activityContent}
         </div>
       </Box>
 

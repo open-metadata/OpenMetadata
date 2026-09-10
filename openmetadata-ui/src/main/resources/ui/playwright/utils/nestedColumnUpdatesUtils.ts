@@ -136,22 +136,27 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
 const DUPLICATE_NAME = `name-${uuid()}`;
 
+// check-click-confirm inside toPass: skips the click when the row is already in
+// the desired state (some entities auto-expand, so a blind click would toggle it
+// the wrong way), and a click that lands wrong fails the confirm so the retry
+// corrects it. Also absorbs the row remount and below-the-fold scroll.
 const expandNestedColumn = async (
   page: Page,
   rowKey: string,
   childKey: string
 ) => {
+  const childRow = page.locator(`[data-row-key="${childKey}"]`);
   const expandIcon = page.locator(
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
-  await expect(expandIcon).toBeVisible();
-  const childRow = page.locator(`[data-row-key="${childKey}"]`);
-  if (await childRow.isVisible()) {
-    return;
-  }
-  await page.waitForLoadState('domcontentloaded');
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
+  await expect(async () => {
+    if (await childRow.isVisible()) {
+      return;
+    }
+    await expandIcon.scrollIntoViewIfNeeded();
+    await expandIcon.click({ timeout: 10_000 });
+    await expect(childRow).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
 };
 
 const collapseNestedColumn = async (
@@ -159,17 +164,18 @@ const collapseNestedColumn = async (
   rowKey: string,
   childKey: string
 ) => {
+  const childRow = page.locator(`[data-row-key="${childKey}"]`);
   const expandIcon = page.locator(
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
-  await expect(expandIcon).toBeVisible();
-  const childRow = page.locator(`[data-row-key="${childKey}"]`);
-  if (!(await childRow.isVisible())) {
-    return;
-  }
-  await page.waitForLoadState('domcontentloaded');
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
+  await expect(async () => {
+    if (!(await childRow.isVisible())) {
+      return;
+    }
+    await expandIcon.scrollIntoViewIfNeeded();
+    await expandIcon.click({ timeout: 10_000 });
+    await expect(childRow).toBeHidden({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
 };
 
 export const verifyExpandCollapseForSummaryPanel = async (page: Page) => {

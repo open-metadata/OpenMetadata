@@ -34,7 +34,8 @@
       "accessToken": {
         "title": "Access Token",
         "description": "Access token to connect to DOMO",
-        "type": "string"
+        "type": "string",
+        "format": "password"
       },
       "apiHost": {
         "expose": true,
@@ -63,4 +64,3 @@
     "additionalProperties": false,
     "required": ["clientId","secretToken","instanceDomain"]
   }
-  

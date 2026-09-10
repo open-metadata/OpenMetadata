@@ -23,9 +23,11 @@ from metadata.generated.schema.entity.services.connections.mcp.mcpConnection imp
     McpType,
     TransportType,
 )
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.mcp.client import McpProtocolError, McpServerInfo
 from metadata.ingestion.source.mcp.connection import (
     McpConnectionManager,
+    _test_connect_to_servers,
     get_connection,
 )
 
@@ -175,7 +177,8 @@ class TestMcpConnectionManager:
         mock_client_class.return_value = mock_client
 
         manager = McpConnectionManager(direct_connection)
-        server = McpServerInfo(name="test", command="echo")
+        # Only HTTP transports can connect; Stdio is not supported.
+        server = McpServerInfo(name="test", transport="StreamableHTTP", url="http://localhost:8080")
 
         result = manager.test_server_connection(server)
 
@@ -201,12 +204,69 @@ class TestMcpConnectionManager:
         mock_client_class.return_value = mock_client
 
         manager = McpConnectionManager(direct_connection)
-        server = McpServerInfo(name="test", command="echo")
+        # Only HTTP transports can connect; Stdio is not supported.
+        server = McpServerInfo(name="test", transport="StreamableHTTP", url="http://localhost:8080")
 
         result = manager.test_server_connection(server)
 
         assert result is True
         mock_client.close.assert_called_once()
+
+
+class TestConnectToServersStep:
+    """Tests for the ConnectToServers test-connection step.
+
+    Stdio servers are cataloging-only (the transport is not supported), so
+    an all-Stdio config must pass this mandatory step (and go on to be cataloged),
+    while an unreachable HTTP server must still fail it.
+    """
+
+    @staticmethod
+    def _direct(*servers: McpServerConfig) -> McpConnection:
+        return McpConnection(
+            type=McpType.Mcp,
+            discoveryMethod=DiscoveryMethod.DirectConnection,
+            servers=list(servers),
+        )
+
+    def test_all_stdio_passes_without_connecting(self):
+        """All-Stdio config: nothing to connect to, step passes, no McpClient built."""
+        connection = self._direct(
+            McpServerConfig(name="a", transport=TransportType.Stdio, command="npx", args=["x"]),
+            McpServerConfig(name="b", transport=TransportType.Stdio, command="uvx", args=["y"]),
+        )
+        manager = McpConnectionManager(connection)
+        manager.test_server_connection = MagicMock()
+
+        _test_connect_to_servers(manager)  # must not raise
+
+        manager.test_server_connection.assert_not_called()
+
+    def test_unreachable_http_still_fails(self):
+        """A non-Stdio (HTTP) server that cannot connect must fail the step."""
+        connection = self._direct(
+            McpServerConfig(name="http", transport=TransportType.StreamableHTTP, url="http://localhost:9"),
+        )
+        manager = McpConnectionManager(connection)
+        manager.test_server_connection = MagicMock(return_value=False)
+
+        with pytest.raises(SourceConnectionException):
+            _test_connect_to_servers(manager)
+
+    def test_mixed_passes_when_http_connects(self):
+        """Stdio servers are skipped; a reachable HTTP server satisfies the step."""
+        connection = self._direct(
+            McpServerConfig(name="stdio", transport=TransportType.Stdio, command="npx", args=["x"]),
+            McpServerConfig(name="http", transport=TransportType.SSE, url="http://localhost:8080"),
+        )
+        manager = McpConnectionManager(connection)
+        manager.test_server_connection = MagicMock(return_value=True)
+
+        _test_connect_to_servers(manager)  # must not raise
+
+        # Only the connectable (HTTP) server is tested, never the Stdio one.
+        tested = [call.args[0].name for call in manager.test_server_connection.call_args_list]
+        assert tested == ["http"]
 
 
 class TestGetConnection:

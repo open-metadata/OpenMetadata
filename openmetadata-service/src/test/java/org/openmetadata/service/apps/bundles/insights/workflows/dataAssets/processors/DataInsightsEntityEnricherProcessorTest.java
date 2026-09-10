@@ -35,7 +35,9 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.ColumnCoverage;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
@@ -71,6 +73,23 @@ class DataInsightsEntityEnricherProcessorTest {
   @BeforeEach
   void setUp() {
     processor = new DataInsightsEntityEnricherProcessor(100);
+  }
+
+  @Test
+  void recursiveCoverageIsCapturedBeforeTheColumnProjectionDropsChildren() throws Exception {
+    Column parent =
+        createColumn("payload", "Documented parent")
+            .withChildren(
+                List.of(createColumn("documented", "A child"), createColumn("missing", null)));
+    Map<String, Object> result =
+        enrichEntity(new MockColumnsEntity(List.of(parent), "table"), "table");
+    assertEquals(new ColumnCoverage(3, 2, 0, 0), result.get("columnCoverage"));
+    assertEquals(1, result.get("numberOfColumns"));
+    Map<String, Object> projection = JsonUtils.getMap(result);
+    invokeStripNestedColumnChildren(projection);
+    var projected = (List<Map<String, Object>>) projection.get("columns");
+    assertFalse(projected.getFirst().containsKey("children"));
+    assertEquals(2, parent.getChildren().size());
   }
 
   @Test

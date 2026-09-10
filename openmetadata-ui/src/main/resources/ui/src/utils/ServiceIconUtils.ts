@@ -19,6 +19,7 @@ import cassandra from '../assets/img/service-icon-cassandra.webp';
 import clickhouse from '../assets/img/service-icon-clickhouse.webp';
 import cockroach from '../assets/img/service-icon-cockroach.webp';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
+import data360 from '../assets/img/service-icon-data360.png';
 import databrick from '../assets/img/service-icon-databrick.webp';
 import datalake from '../assets/img/service-icon-datalake.webp';
 import deltalake from '../assets/img/service-icon-delta-lake.webp';
@@ -167,6 +168,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   dynamodb: dynamodb,
   singlestore: singlestore,
   salesforce: salesforce,
+  data360: data360,
   saphana: saphana,
   saperp: saperp,
   deltalake: deltalake,
@@ -228,6 +230,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   openlineage: openlineage,
   prefect: prefect,
   domopipeline: domo,
+  data360pipeline: data360,
   kafkaconnect: kafka,
   databrickspipeline: databrick,
   gluepipeline: glue,

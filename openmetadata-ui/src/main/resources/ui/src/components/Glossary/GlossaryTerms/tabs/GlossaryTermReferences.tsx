@@ -164,16 +164,15 @@ const GlossaryTermReferences = () => {
         }}
         dataTestId="references-container"
         isExpandDisabled={isEmpty(references)}>
-        {isVersionView ? (
-          getVersionReferenceElements()
-        ) : !permissions.EditAll || !isEmpty(references) ? (
+        {isVersionView && getVersionReferenceElements()}
+        {!isVersionView && (!permissions.EditAll || !isEmpty(references)) && (
           <div className="d-flex flex-wrap">
             {references.map((ref) => renderReferenceElement(ref))}
             {!permissions.EditAll && references.length === 0 && (
               <div>{NO_DATA_PLACEHOLDER}</div>
             )}
           </div>
-        ) : null}
+        )}
       </ExpandableCard>
 
       <GlossaryTermReferencesModal

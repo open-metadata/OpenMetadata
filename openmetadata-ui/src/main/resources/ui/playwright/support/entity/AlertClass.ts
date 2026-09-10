@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 interface AlertConfig {
@@ -88,11 +88,12 @@ export class AlertClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/events/subscriptions', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'AlertClass.create',
+      createPath: '/api/v1/events/subscriptions',
+      fqnSegments: [this.alertData.name],
       data: this.alertData,
     });
-
-    this.responseData = await okJson(response, 'AlertClass.create');
 
     return this.responseData;
   }
