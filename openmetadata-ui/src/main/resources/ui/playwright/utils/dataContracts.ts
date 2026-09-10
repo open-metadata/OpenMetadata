@@ -31,6 +31,25 @@ const TERMINAL_CONTRACT_STATUSES = new Set([
 ]);
 
 /**
+ * Distinguishes a "the contract really failed" throw from a "we could not
+ * observe the result in time" throw. `waitForContractExecutionWithFallback`
+ * routes only the latter to the bundle-suite fallback; the former surfaces
+ * immediately so a genuine failure lands at its cause instead of being
+ * papered over by a broader match downstream.
+ */
+export class ContractExecutionFailedError extends Error {
+  readonly terminalStatus: string;
+
+  constructor(contractId: string, terminalStatus: string) {
+    super(
+      `Data contract ${contractId} execution ended in "${terminalStatus}" instead of "${CONTRACT_SUCCESS_STATUS}" — the contract check actually failed; inspect the contract's latestResult in the backend for the failing rule.`
+    );
+    this.name = 'ContractExecutionFailedError';
+    this.terminalStatus = terminalStatus;
+  }
+}
+
+/**
  * Wait for the data-contract validation to reach a terminal state, then
  * assert that state is `Success`.
  *
@@ -73,10 +92,9 @@ const pollContractStatus = async (
     )
     .toBe(true);
 
-  expect(
-    terminalStatus,
-    `Data contract ${contractId} validation ended in "${terminalStatus}" instead of "${CONTRACT_SUCCESS_STATUS}" — the contract check actually failed; inspect the contract's latestResult in the backend for the failing rule.`
-  ).toBe(CONTRACT_SUCCESS_STATUS);
+  if (terminalStatus !== CONTRACT_SUCCESS_STATUS) {
+    throw new ContractExecutionFailedError(contractId, terminalStatus ?? '');
+  }
 };
 
 export const saveAndTriggerDataContractValidation = async (
@@ -228,10 +246,9 @@ export const waitForDataContractExecution = async (
     )
     .toBe(true);
 
-  expect(
-    terminalStatus,
-    `Data contract ${contractId} execution ended in "${terminalStatus}" instead of "${CONTRACT_SUCCESS_STATUS}" — the contract check actually failed; inspect the contract's latestResult in the backend for the failing rule.`
-  ).toBe(CONTRACT_SUCCESS_STATUS);
+  if (terminalStatus !== CONTRACT_SUCCESS_STATUS) {
+    throw new ContractExecutionFailedError(contractId, terminalStatus ?? '');
+  }
 };
 
 /**
@@ -251,9 +268,18 @@ export const waitForContractExecutionWithFallback = async (
     await waitForDataContractExecution(page, contractId);
 
     return true;
-  } catch {
-    // The test suite has results but the contract's latestResult was not updated in time.
-    // Verify execution status directly from the DataQuality Bundle Suites page.
+  } catch (error) {
+    // A genuine non-success terminal state is not "propagation lag" — the
+    // contract actually failed. Rethrow so the assertion lands at its cause
+    // instead of getting rerouted into the bundle-suite fallback (whose own
+    // status assertion previously accepted the same failure values).
+    if (error instanceof ContractExecutionFailedError) {
+      throw error;
+    }
+
+    // Anything else (poll timeout, transport error) means we could not observe
+    // the result in time. Fall back to the DataQuality Bundle Suites page to
+    // verify execution status directly.
     await validateDataContractInsideBundleTestSuites(page, contractName);
 
     const suiteNameCell = page
@@ -296,10 +322,15 @@ export const waitForContractExecutionWithFallback = async (
       suiteStatus = 'Success';
     }
 
-    const terminalStatusPattern =
-      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+    // Defence in depth against the same anti-pattern the primary poll fixed:
+    // the fallback verifies via the bundle-suite test cases, so its assertion
+    // must also require Success rather than merely "reached a terminal state".
+    // The previous broad match hid genuine `Failed`/`Aborted`/`PartialSuccess`
+    // suites on the fallback path even after the primary path was tightened.
+    expect(
+      suiteStatus,
+      `Data contract "${contractName}" bundle-suite ended in "${suiteStatus}" instead of "${CONTRACT_SUCCESS_STATUS}" — the test suite actually failed; open the suite in the DataQuality UI for the failing test cases.`
+    ).toBe(CONTRACT_SUCCESS_STATUS);
 
     return false;
   }
