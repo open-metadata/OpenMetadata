@@ -73,7 +73,9 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     <EmptyPlaceholder
       data-testid="inbox-activity-no-results"
       description={t('message.activity-feed-no-results-description')}
-      icon={<FilterFunnel01 className="tw:size-7 tw:text-fg-tertiary" />}
+      icon={
+        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
+      }
       title={t('label.no-activity-in-period')}
       variant="blank"
     />
@@ -98,7 +100,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
         className="inbox-activity-timeline tw:relative"
         direction="col"
         gap={2}>
-        <span className="tw:pointer-events-none tw:absolute tw:-top-5 tw:bottom-2 tw:left-[23px] tw:z-[2] tw:w-px tw:bg-(--color-border-secondary)" />
+        <span className="tw:pointer-events-none tw:absolute tw:-top-5 tw:bottom-2 tw:left-[23px] tw:z-[2] tw:w-px tw:bg-utility-gray-blue-100" />
         {items.map((item) => {
           const itemId = item.activity?.id ?? item.feed?.id;
 

@@ -1156,7 +1156,7 @@
     /* BORDER COLORS */
     --color-border-primary: theme(--color-gray-700);
     --color-border-secondary: theme(--color-gray-800);
-    --color-border-secondary_alt: theme(--color-gray-800);
+    --color-border-secondary_alt: rgb(255 255 255 / 0.08);
     --color-border-tertiary: theme(--color-gray-800);
     --color-border-brand: theme(--color-brand-400);
     --color-border-brand_alt: theme(--color-gray-700);

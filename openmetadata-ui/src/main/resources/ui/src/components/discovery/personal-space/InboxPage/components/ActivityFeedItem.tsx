@@ -193,7 +193,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   return (
     <Box
       className={`tw:group tw:relative tw:cursor-pointer tw:rounded-xl tw:px-2 tw:py-3 tw:transition ${
-        isActive ? 'tw:bg-utility-brand-50' : 'hover:tw:bg-primary_hover'
+        isActive ? 'tw:bg-utility-brand-50' : 'tw:hover:bg-utility-gray-blue-50'
       }`}
       data-testid="activity-feed-item"
       direction="col"
@@ -253,10 +253,9 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
       <Card
         className={classNames(
-          'tw:ml-10 tw:border-secondary tw:border-[0.6px] tw:px-4 tw:py-3 tw:transition-colors',
+          'tw:ml-10 tw:bg-utility-gray-blue-50 tw:border-utility-gray-blue-100 tw:border-[0.6px] tw:px-4 tw:py-3 tw:transition-colors tw:group-hover:bg-white',
           {
             'tw:bg-active': isActive,
-            'tw:bg-secondary group-hover:tw:bg-secondary_hover': !isActive,
           }
         )}>
         <RichTextEditorPreviewerV1
