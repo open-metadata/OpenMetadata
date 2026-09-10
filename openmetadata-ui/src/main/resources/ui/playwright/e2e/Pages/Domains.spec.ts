@@ -1177,6 +1177,7 @@ test.describe('Domains', () => {
     const domain = new Domain();
     try {
       await domain.create(apiContext);
+      await page.reload();
       await sidebarClick(page, SidebarItem.DOMAIN);
       await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain.data);
