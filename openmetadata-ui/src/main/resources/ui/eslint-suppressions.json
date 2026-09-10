@@ -237,11 +237,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Features/GlobalPageSize.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -897,7 +892,7 @@
   },
   "playwright/support/entity/ingestion/ServiceBaseClass.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/support/team/TeamClass.ts": {
@@ -1105,11 +1100,6 @@
   "playwright/utils/service.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/utils/serviceFormUtils.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/utils/sidebar.ts": {

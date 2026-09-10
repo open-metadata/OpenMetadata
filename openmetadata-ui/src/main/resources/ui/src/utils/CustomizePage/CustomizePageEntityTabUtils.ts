@@ -108,6 +108,7 @@ const EXPAND_VIEW_SUPPORTED_TAB: Partial<Record<PageType, EntityTabs>> = {
   [PageType.File]: EntityTabs.OVERVIEW,
   [PageType.Worksheet]: EntityTabs.OVERVIEW,
   [PageType.Dashboard]: EntityTabs.DETAILS,
+  [PageType.Chart]: EntityTabs.DETAILS,
   [PageType.DashboardDataModel]: EntityTabs.MODEL,
   [PageType.Container]: EntityTabs.CHILDREN,
   [PageType.Directory]: EntityTabs.CHILDREN,

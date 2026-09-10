@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.function.BooleanSupplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
@@ -39,7 +40,7 @@ public interface DataInsightsExtension {
 
     public void requireActive() {
       if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) {
-        throw new IllegalStateException(
+        throw new CancellationException(
             "Data Insights run was cancelled or lost its execution lease");
       }
     }

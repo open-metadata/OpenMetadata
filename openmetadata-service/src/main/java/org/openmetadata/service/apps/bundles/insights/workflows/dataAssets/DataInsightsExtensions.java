@@ -28,7 +28,15 @@ public final class DataInsightsExtensions implements AutoCloseable {
       RunContext context, Iterable<DataInsightsExtension> extensions) {
     DataInsightsExtensions run = new DataInsightsExtensions(context);
     try {
-      extensions.forEach(extension -> run.sessions.add(extension.open(context)));
+      for (DataInsightsExtension extension : extensions) {
+        Session session = extension.open(context);
+        if (session == null) {
+          throw new IllegalStateException(
+              "Data Insights extension %s returned a null session"
+                  .formatted(extension.getClass().getName()));
+        }
+        run.sessions.add(session);
+      }
     } catch (RuntimeException | Error failure) {
       try {
         run.close();

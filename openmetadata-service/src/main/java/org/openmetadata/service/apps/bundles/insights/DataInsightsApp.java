@@ -2,13 +2,13 @@ package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -149,11 +149,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
 
-    try {
-      for (String dataAssetType : getDataAssetTypes()) {
-        IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
-        String dataStreamName =
-            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
+    for (String dataAssetType : getDataAssetTypes()) {
+      IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
+      String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
+      try {
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
@@ -165,9 +164,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
           searchInterface.updateDataAssetsDataStream(
               dataStreamName, dataAssetType, dataAssetIndex, language);
         }
+      } catch (IOException ex) {
+        LOG.error(
+            "Could not prepare Data Insights snapshot index for asset type {} (data stream {}).",
+            dataAssetType,
+            dataStreamName,
+            ex);
       }
-    } catch (IOException ex) {
-      throw new UncheckedIOException("Could not prepare Data Insights snapshot indexes", ex);
     }
   }
 
@@ -248,7 +251,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
       String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
 
       if (!runType.equals(ON_DEMAND_JOB)) {
         backfill = Optional.empty();

@@ -48,6 +48,10 @@ public class JsonLdTranslator {
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
   private final String baseUri;
+  // One mapper for the translator's lifetime. A per-entity mapper made the
+  // FQN→UUID and merged-context caches die with each entity — structurally
+  // zero cross-entity hits, i.e. one DB round trip per tag FQN per entity
+  // during reindexing.
   private final RdfPropertyMapper propertyMapper;
   private final Function<EntityInterface, String> entityTypeResolver;
 
@@ -257,77 +261,7 @@ public class JsonLdTranslator {
   }
 
   private Object selectContext(String entityType) {
-    return switch (entityType.toLowerCase()) {
-      case "table",
-          "database",
-          "databaseschema",
-          "storedprocedure",
-          "query",
-          "dashboard",
-          "chart",
-          "report",
-          "pipeline",
-          "topic",
-          "mlmodel",
-          "container",
-          "metric",
-          "searchindex",
-          "apicollection",
-          "apiendpoint",
-          "directory",
-          "file",
-          "spreadsheet",
-          "worksheet" -> contextCache.get("dataAsset-complete");
-      case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice",
-          "searchservice",
-          "metadataservice",
-          "apiservice",
-          "reportingservice",
-          "qualityservice",
-          "observabilityservice",
-          "driveservice" -> contextCache.get("service");
-      case "user", "team", "role", "bot", "policy" -> contextCache.get("team");
-      case "thread", "post" -> contextCache.get("thread");
-      case "glossary",
-          "glossaryterm",
-          "classification",
-          "tag",
-          "datacontract",
-          "dataproduct",
-          "domain",
-          "persona" -> contextCache.get("governance");
-      case "testdefinition",
-          "testsuite",
-          "testcase",
-          "testcaseresult",
-          "testcaseresolutionstatus" -> contextCache.get("quality");
-      case "ingestionpipeline",
-          "eventsubscription",
-          "kpi",
-          "datainsightchart",
-          "webanalyticevent",
-          "app",
-          "appmarketplacedefinition",
-          "document",
-          "page" -> contextCache.get("operations");
-      case "llmmodel",
-          "aiapplication",
-          "mcpserver",
-          "mcpexecution",
-          "agentexecution",
-          "prompttemplate" -> contextCache.get("ai");
-      case "workflow",
-          "workflowdefinition",
-          "workflowinstance",
-          "workflowinstancestate",
-          "automation" -> contextCache.get("automation");
-      default -> contextCache.get("base");
-    };
+    return contextCache.get(RdfContextRegistry.contextNameFor(entityType));
   }
 
   private String resolveEntityType(EntityInterface entity) {
