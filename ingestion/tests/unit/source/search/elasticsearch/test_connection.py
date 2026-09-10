@@ -55,6 +55,48 @@ def test_test_connection_runs_steps():
 
     assert result is mock_steps.return_value
 
+def test_elasticsearch_client_verify_ssl_cases():
+    from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+    
+    with patch(f"{CONNECTION_MODULE}.Elasticsearch") as mock_es:
+        # Ignore
+        config = MagicMock()
+        config.verifySSL = VerifySSL.ignore
+        config.connectionArguments.root = {}
+        config.sslConfig = None
+        ElasticsearchConnection(config)._get_client()
+        mock_es.assert_called_with(
+            str(config.hostPort),
+            basic_auth=None,
+            api_key=None,
+            ssl_context=None,
+            verify_certs=False,
+            ssl_show_warn=True,
+        )
+        
+        mock_es.reset_mock()
+        # Validate
+        config.verifySSL = VerifySSL.validate
+        ElasticsearchConnection(config)._get_client()
+        mock_es.assert_called_with(
+            str(config.hostPort),
+            basic_auth=None,
+            api_key=None,
+            ssl_context=None,
+            verify_certs=True,
+            ssl_show_warn=False,
+        )
+        
+        mock_es.reset_mock()
+        # No-SSL
+        config.verifySSL = VerifySSL.no_ssl
+        ElasticsearchConnection(config)._get_client()
+        mock_es.assert_called_with(
+            str(config.hostPort),
+            basic_auth=None,
+            api_key=None,
+            ssl_context=None,
+        )
 
 def test_empty_certificate_configuration_uses_default_server_verification(
     tmp_path: Path,
