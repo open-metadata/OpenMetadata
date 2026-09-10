@@ -13,6 +13,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  captureGitInfo: { commit: false, diff: false },
   testDir: './browser-tests',
   retries: 0,
   workers: 3,

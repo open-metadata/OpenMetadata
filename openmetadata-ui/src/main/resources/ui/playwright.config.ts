@@ -297,9 +297,19 @@ export default defineConfig({
       ],
     },
     {
+      name: 'visual-regression-setup',
+      testMatch: '**/visual-regression.setup.ts',
+      dependencies: ['setup', 'entity-data-setup'],
+      teardown: 'visual-regression-teardown',
+    },
+    {
+      name: 'visual-regression-teardown',
+      testMatch: '**/visual-regression.teardown.ts',
+    },
+    {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['visual-regression-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },

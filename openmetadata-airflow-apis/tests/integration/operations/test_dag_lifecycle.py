@@ -9,11 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Run against an initialized Airflow database (``airflow db migrate``)."""
+"""Exercise DAG lifecycle operations against the shared test Airflow database."""
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
+from threading import Event
 from uuid import uuid4
 
 import pytest
@@ -24,8 +26,10 @@ from airflow.models import DagModel, DagRun, TaskInstance
 from airflow.utils import timezone
 from airflow.utils.state import DagRunState, TaskInstanceState
 from airflow.utils.types import DagRunType
+from filelock import FileLock
 from flask import Flask
 
+from openmetadata_managed_apis.api.utils import scan_dags_job_background
 from openmetadata_managed_apis.operations import delete, deploy, trigger
 
 
@@ -174,6 +178,49 @@ def deployable_dag():
             if session.query(DagModel).filter_by(dag_id=name).count():
                 airflow_delete_dag(name, session=session)
                 session.commit()
+
+
+def test_background_scan_during_file_lock_acquisition(deployable_dag, tmp_path, monkeypatch):
+    deployer, _ = deployable_dag
+    lock_path = tmp_path / "concurrent-deploy.lock"
+    acquiring_lock = Event()
+    finish_acquiring = Event()
+    open_file = os.open
+
+    def pause_lock_open(path, *args, **kwargs):
+        if os.fspath(path) == str(lock_path):
+            acquiring_lock.set()
+            assert finish_acquiring.wait(10), "scanner startup blocked on the other thread's file lock"
+        return open_file(path, *args, **kwargs)
+
+    def acquire_lock():
+        with FileLock(lock_path, timeout=10):
+            pass
+
+    monkeypatch.setattr(os, "open", pause_lock_open)
+    process = None
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            lock_task = pool.submit(acquire_lock)
+            try:
+                assert acquiring_lock.wait(10), "file-lock acquisition did not start"
+                process = scan_dags_job_background()
+            finally:
+                finish_acquiring.set()
+            lock_task.result(timeout=10)
+
+        process.join(timeout=60)
+        assert not process.is_alive(), "DAG scanner did not finish"
+        assert process.exitcode == 0
+    finally:
+        if process is not None and process.is_alive():
+            process.terminate()
+            process.join(timeout=10)
+    with settings.Session() as session:
+        model = session.get(DagModel, deployer.dag_id)
+        assert model is not None
+        assert model.last_parsed_time is not None
+        assert not model.has_import_errors
 
 
 @pytest.mark.parametrize("api_clock_offset", [timedelta(0), timedelta(hours=1)], ids=["aligned", "api-ahead"])

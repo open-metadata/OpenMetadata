@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { defineConfig } from '@playwright/test';
+import { test as teardown } from '@playwright/test';
+import { deleteFixtureEntity } from '../utils/apiResponse';
+import { getDefaultAdminAPIContext } from '../utils/common';
+import { VISUAL_GLOSSARY_NAME } from '../utils/visualRegression';
 
-export default defineConfig({
-  captureGitInfo: { commit: false, diff: false },
-  testDir: './utils',
-  testMatch: '**/*.test.ts',
-  retries: 0,
-  workers: 3,
-  fullyParallel: true,
-  reporter: 'list',
+teardown('remove visual regression data', async ({ browser }) => {
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+
+  try {
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/glossaries/name/${VISUAL_GLOSSARY_NAME}?recursive=true&hardDelete=true`
+    );
+  } finally {
+    await afterAction();
+  }
 });

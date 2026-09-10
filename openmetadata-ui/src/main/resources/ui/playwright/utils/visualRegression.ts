@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { waitForPageLoaded } from './polling';
 
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
+export const VISUAL_GLOSSARY_NAME = 'pw_visual_regression_glossary';
+export const VISUAL_GLOSSARY_DISPLAY_NAME = 'Visual regression glossary';
+export const VISUAL_GLOSSARY_TERM_NAME = 'Account number';
 
 /** Shared options for every toHaveScreenshot assertion in the visual suite. */
 export const SCREENSHOT_OPTS = {
@@ -41,4 +44,12 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
     content: 'html { scroll-behavior: auto !important; }',
   });
   await page.evaluate(() => window.scrollTo(0, 0));
+};
+
+export const gotoVisualGlossary = async (page: Page) => {
+  await gotoForScreenshot(page, `/glossary/${VISUAL_GLOSSARY_NAME}`);
+  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    VISUAL_GLOSSARY_DISPLAY_NAME
+  );
+  await expect(page.getByTestId(VISUAL_GLOSSARY_TERM_NAME)).toBeVisible();
 };
