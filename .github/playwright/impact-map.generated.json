@@ -2387,6 +2387,7 @@
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts"
       ]
     },
@@ -2735,6 +2736,7 @@
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
@@ -4092,6 +4094,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
+        "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -4324,7 +4327,8 @@
         "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
     {
