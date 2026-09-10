@@ -285,10 +285,11 @@ export const waitForContractExecutionWithFallback = async (
     // Permissive terminal-state match here too: the fallback is shared
     // between positive- and negative-path tests, so callers are responsible
     // for asserting on `Success` themselves after this returns.
-    const terminalStatusPattern =
-      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+    // Anchored to the exact values the compute above can produce — the prior
+    // regex also listed `Queued` (not terminal, see the top-level comment)
+    // and `PartialSuccess` (this branch never sets it), which contradicted
+    // the terminal-state definition without changing behaviour.
+    expect(suiteStatus).toMatch(/^(Aborted|Success|Failed)$/);
 
     return false;
   }
