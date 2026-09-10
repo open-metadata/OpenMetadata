@@ -65,6 +65,15 @@ export const UserTeamSelectableList = ({
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
+  // react-aria's Popover cannot position (and therefore keeps hidden) an
+  // overlay whose isOpen is already true on the very first render, because
+  // triggerRef is not attached yet and there is no later state change to
+  // re-run positioning. Consumers that force the popover open on mount (the
+  // bulk-edit grid cell editor passes popoverProps={{ open: true }}) hit this.
+  // Gate isOpen behind a mounted flag so it is always a false -> true
+  // transition after the trigger ref is attached. Click-to-open consumers are
+  // unaffected (they start closed anyway).
+  const [isMounted, setIsMounted] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
@@ -277,7 +286,11 @@ export const UserTeamSelectableList = ({
     init();
   }, [popupVisible]);
 
-  const isOpen = popoverProps?.open ?? popupVisible;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isOpen = isMounted && (popoverProps?.open ?? popupVisible);
 
   const handleOpenChange = (open: boolean) => {
     setPopupVisible(open);
