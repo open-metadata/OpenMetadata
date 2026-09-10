@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
-  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
   // Streaming constants
@@ -775,9 +774,19 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return getPreviewData(chart, startTimestamp, endTimestamp);
   }
 
+  /**
+   * Resolved per call rather than held in a static field: the search repository is not wired up
+   * when this class is loaded, so a class-initializer lookup fails with an NPE in any context that
+   * touches the class before the application is up (start-up hooks, unit tests reading {@link
+   * #DATA_ASSET_FILTER}).
+   */
+  private static SearchClient searchClient() {
+    return Entity.getSearchRepository().getSearchClient();
+  }
+
   public DataInsightCustomChartResultList getPreviewData(
       DataInsightCustomChart chart, long startTimestamp, long endTimestamp) throws IOException {
-    return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
+    return searchClient().buildDIChart(chart, startTimestamp, endTimestamp);
   }
 
   public Map<String, DataInsightCustomChartResultList> listChartData(
@@ -813,7 +822,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
         DataInsightCustomChartResultList data =
-            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
+            searchClient().buildDIChart(chart, startTimestamp, endTimestamp, live);
         result.put(chartName, data);
       }
     }
