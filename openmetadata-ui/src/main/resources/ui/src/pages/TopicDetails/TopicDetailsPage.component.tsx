@@ -94,8 +94,14 @@ const TopicDetailsPage: FunctionComponent = () => {
     enabled: isTopicQueryEnabled,
   });
 
-  const isError = useMemo(
+  const isMissing = useMemo(
     () => (topicError as AxiosError | undefined)?.response?.status === 404,
+    [topicError]
+  );
+  const isError = useMemo(
+    () =>
+      Boolean(topicError) &&
+      (topicError as AxiosError)?.response?.status !== 404,
     [topicError]
   );
 
@@ -103,7 +109,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     const status = (topicError as AxiosError | undefined)?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
-    } else if (status && status !== 404) {
+    } else if (topicError && status !== 404) {
       showErrorToast(
         topicError as AxiosError,
         t('server.entity-details-fetch-error', {
@@ -310,11 +316,21 @@ const TopicDetailsPage: FunctionComponent = () => {
   if (isPermissionsLoading || topicLoading) {
     return <PageLoader />;
   }
-  if (isError) {
+  if (isMissing) {
     return (
       <ErrorPlaceHolder>
         {getEntityMissingError('topic', topicFQN)}
       </ErrorPlaceHolder>
+    );
+  }
+  if (isError) {
+    return (
+      <ErrorPlaceHolder
+        placeholderText={t('server.entity-details-fetch-error', {
+          entityType: t('label.topic'),
+          entityName: topicFQN,
+        })}
+      />
     );
   }
   if (!hasViewAccess) {
