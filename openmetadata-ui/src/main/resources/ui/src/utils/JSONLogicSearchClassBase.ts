@@ -24,6 +24,7 @@ import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
   RANGE_FIELD_OPERATORS,
+  SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
@@ -728,6 +729,16 @@ class JSONLogicSearchClassBase {
 
     for (const index of entitySearchIndex) {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
+    }
+
+    const shouldAddColumnTag = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+    if (shouldAddColumnTag) {
+      configs = {
+        ...configs,
+        ...getFieldsByKeys([EntityReferenceFields.COLUMN_TAG], this.mapFields),
+      };
     }
 
     return configs;
