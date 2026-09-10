@@ -37,7 +37,10 @@ import {
   selectDomain,
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForEntitySearchable } from '../../../utils/search';
+import {
+  waitForDomainAssetCount,
+  waitForEntitySearchable,
+} from '../../../utils/search';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -203,6 +206,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are removed', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -234,6 +238,16 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       .getByTestId('save-button')
       .click();
     await removeRes;
+
+    // The remove mutation returns before Elasticsearch is refreshed, and both
+    // the assets-tab badge and the landing-page widget read the count exactly
+    // once per page load. Wait for the search index to reflect the removal
+    // before reloading so those single-shot reads snapshot the updated count.
+    await waitForDomainAssetCount(
+      page,
+      domain.responseData.fullyQualifiedName ?? domain.data.name,
+      1
+    );
 
     await page.reload();
     await checkAssetsCount(page, 1);

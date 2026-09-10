@@ -76,16 +76,6 @@ public interface OAuthAuthorizationServerProvider {
       OAuthClientInformation client, AuthorizationCode authorizationCode) throws TokenException;
 
   /**
-   * Loads a RefreshToken by its token string.
-   * @param client The client that is requesting to load the refresh token.
-   * @param refreshToken The refresh token string to load.
-   * @return A CompletableFuture that resolves to the RefreshToken object if found, or
-   * null if not found.
-   */
-  CompletableFuture<RefreshToken> loadRefreshToken(
-      OAuthClientInformation client, String refreshToken);
-
-  /**
    * Exchanges a refresh token for an access token and refresh token.
    * @param client The client exchanging the refresh token.
    * @param refreshToken The refresh token to exchange.
@@ -97,14 +87,6 @@ public interface OAuthAuthorizationServerProvider {
   CompletableFuture<OAuthToken> exchangeRefreshToken(
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException;
-
-  /**
-   * Loads an access token by its token.
-   * @param token The access token to verify.
-   * @return A CompletableFuture that resolves to the AccessToken, or null if the token
-   * is invalid.
-   */
-  CompletableFuture<AccessToken> loadAccessToken(String token);
 
   /**
    * Revokes an access or refresh token.

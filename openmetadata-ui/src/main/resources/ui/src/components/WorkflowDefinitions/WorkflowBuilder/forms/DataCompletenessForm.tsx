@@ -76,6 +76,33 @@ const convertQualityBandsToScoringLevels = (
   }));
 };
 
+const DEFAULT_SCORING_LEVELS: ScoringLevel[] = [
+  { threshold: 100, levelName: 'Gold' },
+  { threshold: 75, levelName: 'Silver' },
+];
+
+const resolveFieldsToCheck = (nodeData: Node['data']): string[] =>
+  nodeData.config?.fieldsToCheck || nodeData.fields || [];
+
+const resolveScoringLevelsFromNodeData = (
+  nodeData: Node['data']
+): ScoringLevel[] => {
+  if (
+    nodeData.config?.qualityBands &&
+    Array.isArray(nodeData.config.qualityBands)
+  ) {
+    return convertQualityBandsToScoringLevels(nodeData.config.qualityBands);
+  }
+  if (nodeData.qualityBands && Array.isArray(nodeData.qualityBands)) {
+    return convertQualityBandsToScoringLevels(nodeData.qualityBands);
+  }
+  if (nodeData.scoringLevels) {
+    return nodeData.scoringLevels;
+  }
+
+  return DEFAULT_SCORING_LEVELS;
+};
+
 export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
   node,
   onSave,
@@ -99,41 +126,23 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
   const initDoneRef = useRef(false);
 
   useEffect(() => {
-    if (node?.data) {
-      setDisplayName(node.data.displayName || node.data.label || '');
-      setDescription(node.data.description || '');
-      const fields: string[] =
-        node.data.config?.fieldsToCheck || node.data.fields || [];
-      setSelectedFields(fields);
-      // Sync useListData with loaded fields
-      if (!initDoneRef.current) {
-        fields.forEach((f) => selectedFieldItems.append({ id: f, label: f }));
-        initDoneRef.current = true;
-      }
-      setCheckForNull(node.data.checkForNull || false);
-      if (
-        node.data.config?.qualityBands &&
-        Array.isArray(node.data.config.qualityBands)
-      ) {
-        setScoringLevels(
-          convertQualityBandsToScoringLevels(node.data.config.qualityBands)
-        );
-      } else if (
-        node.data.qualityBands &&
-        Array.isArray(node.data.qualityBands)
-      ) {
-        setScoringLevels(
-          convertQualityBandsToScoringLevels(node.data.qualityBands)
-        );
-      } else if (node.data.scoringLevels) {
-        setScoringLevels(node.data.scoringLevels);
-      } else {
-        setScoringLevels([
-          { threshold: 100, levelName: 'Gold' },
-          { threshold: 75, levelName: 'Silver' },
-        ]);
-      }
+    if (!node?.data) {
+      return;
     }
+
+    const nodeData = node.data;
+    setDisplayName(nodeData.displayName || nodeData.label || '');
+    setDescription(nodeData.description || '');
+
+    const fields = resolveFieldsToCheck(nodeData);
+    setSelectedFields(fields);
+    // Sync useListData with loaded fields
+    if (!initDoneRef.current) {
+      fields.forEach((f) => selectedFieldItems.append({ id: f, label: f }));
+      initDoneRef.current = true;
+    }
+    setCheckForNull(nodeData.checkForNull || false);
+    setScoringLevels(resolveScoringLevelsFromNodeData(nodeData));
   }, [node]);
 
   const handleScoringLevelChange = (

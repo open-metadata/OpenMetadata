@@ -67,12 +67,14 @@ jest.mock('../../../utils/DomainUtils', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) =>
-      key === 'label.domain'
-        ? 'Domain'
-        : key === 'label.domain-plural'
-        ? 'Domains'
-        : key,
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'label.domain': 'Domain',
+        'label.domain-plural': 'Domains',
+      };
+
+      return translations[key] ?? key;
+    },
   }),
 }));
 

@@ -16,7 +16,9 @@ To be used by OpenMetadata class
 
 import hashlib
 import json
+from collections.abc import Callable
 from functools import lru_cache
+from typing import Any
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createQueryCostRecord import (
@@ -30,7 +32,7 @@ from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableUsageCount import QueryCostWrapper
 from metadata.ingestion.lineage.masker import mask_query
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import model_str
 
 
@@ -42,20 +44,35 @@ class OMetaQueryMixin:
     """
 
     client: REST
+    get_by_name: Callable[..., Any]
+    get_suffix: Callable[..., str]
 
     def _get_query_hash(self, query: str) -> str:
         result = hashlib.md5(query.encode())
         return str(result.hexdigest())
 
+    def _qualified_query_fqn(self, service_name: str, query_hash: str) -> str:
+        return f"{model_str(service_name)}.{query_hash}"
+
     def _get_or_create_query(self, query: CreateQueryRequest) -> Query | None:
         if query.query.root is None:
             return None
-        query_hash = self._get_query_hash(query=query.query.root)
-        query_entity = self.get_by_name(entity=Query, fqn=query_hash)
+        fqn = self._qualified_query_fqn(
+            model_str(query.service),
+            self._get_query_hash(query=query.query.root),
+        )
+        query_entity = self.get_by_name(entity=Query, fqn=fqn)
         if query_entity is None:
-            resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
-            if resp and resp.get("id"):
-                query_entity = Query(**resp)
+            try:
+                resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
+                if resp and resp.get("id"):  # pyright: ignore[reportAttributeAccessIssue]
+                    query_entity = Query(**resp)  # pyright: ignore[reportCallIssue]
+            except APIError as err:
+                # Same SQL created by another table in this run — fetch it so usage still attaches.
+                if err.status_code == 409:
+                    query_entity = self.get_by_name(entity=Query, fqn=fqn)
+                else:
+                    raise
         return query_entity
 
     def ingest_entity_queries_data(self, entity: Table | Dashboard, queries: list[CreateQueryRequest]) -> None:
@@ -118,7 +135,7 @@ class OMetaQueryMixin:
 
     @lru_cache(maxsize=5000)  # noqa: B019
     def __get_query_by_hash(self, query_hash: str, service_name: str) -> Query | None:
-        return self.get_by_name(entity=Query, fqn=f"{service_name}.{query_hash}")
+        return self.get_by_name(entity=Query, fqn=self._qualified_query_fqn(service_name, query_hash))
 
     def publish_query_cost(self, query_cost_data: QueryCostWrapper, service_name: str):
         """

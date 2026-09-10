@@ -24,7 +24,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
-import { ScheduleIntervalHandle } from './ScheduleInterval.interface';
+import { ScheduleIntervalHandle } from './ScheduleInterval.types';
 import ScheduleIntervalStep from './ScheduleIntervalStep';
 
 const mockOnDeploy = jest.fn();

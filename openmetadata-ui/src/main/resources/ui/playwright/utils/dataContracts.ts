@@ -86,7 +86,11 @@ export const saveAndTriggerDataContractValidation = async (
   // reloading the page. Without this, the UI status check immediately after
   // the reload is racy: the backend may still be processing the result.
   if (responseData?.id) {
-    await pollContractStatus(page, responseData.id);
+    await waitForContractExecutionWithFallback(
+      page,
+      responseData.id,
+      responseData.name
+    );
   }
 
   await page.reload();
