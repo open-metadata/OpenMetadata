@@ -167,9 +167,11 @@ jobs:
         id: git-check
         continue-on-error: true
         run: |
-          git add openmetadata-ui/src/main/resources/ui/src/generated/ \
-                  openmetadata-ui/src/main/resources/ui/src/jsons/ \
-                  openmetadata-ui/src/main/resources/ui/public/jsons/
+          for dir in openmetadata-ui/src/main/resources/ui/src/generated/ \
+                     openmetadata-ui/src/main/resources/ui/src/jsons/ \
+                     openmetadata-ui/src/main/resources/ui/public/jsons/; do
+            [ -d "$dir" ] && git add "$dir"
+          done
           git diff --cached --quiet
 
       - name: Configure Git

@@ -18,7 +18,7 @@ import {
   TextArea,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,7 @@ import {
 import { AlertAiFormFieldsProps } from './AlertAiFormFields.interface';
 import {
   getAlertAiResources,
+  getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
@@ -80,8 +81,6 @@ function AlertAiFormFields({
   }, []);
 
   const [selectedSource] = getAlertAiResources(value, alert);
-  const selectedFilters = value.input?.filters ?? [];
-  const selectedTriggers = value.input?.actions ?? [];
   const sourceItems = useMemo(
     () => getAlertAiSourceItems(filterResources, selectedSource),
     [filterResources, selectedSource]
@@ -90,16 +89,22 @@ function AlertAiFormFields({
     () => filterResources.find((resource) => resource.name === selectedSource),
     [filterResources, selectedSource]
   );
-  const selectedSupportedFilters =
-    selectedFilterResource?.supportedFilters ?? supportedFilters;
-  const selectedSupportedTriggers =
-    selectedFilterResource?.supportedActions ?? supportedTriggers;
-  const shouldDisplayFiltersSection = selectedSource
-    ? !isEmpty(selectedSupportedFilters)
-    : shouldShowFiltersSection;
-  const shouldDisplayActionsSection = selectedSource
-    ? !isEmpty(selectedSupportedTriggers)
-    : shouldShowActionsSection;
+  const {
+    selectedFilters,
+    selectedTriggers,
+    selectedSupportedFilters,
+    selectedSupportedTriggers,
+    shouldDisplayFiltersSection,
+    shouldDisplayActionsSection,
+  } = getAlertAiSectionInputs({
+    value,
+    selectedSource,
+    selectedFilterResource,
+    supportedFilters,
+    supportedTriggers,
+    shouldShowActionsSection,
+    shouldShowFiltersSection,
+  });
   const {
     shouldRenderActionsSection,
     shouldRenderFiltersSection,

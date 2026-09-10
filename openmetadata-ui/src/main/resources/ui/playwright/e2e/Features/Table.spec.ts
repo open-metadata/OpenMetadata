@@ -600,10 +600,16 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
+    const editButton = page.locator(
+      `${rowSelector} [data-testid="edit-button"]`
+    );
+
+    await expect(addButton.or(editButton)).toBeVisible({ timeout: 15000 });
+
     if (await addButton.isVisible()) {
       await addButton.click();
     } else {
-      await page.click(`${rowSelector} [data-testid="edit-button"]`);
+      await editButton.click();
     }
 
     await page

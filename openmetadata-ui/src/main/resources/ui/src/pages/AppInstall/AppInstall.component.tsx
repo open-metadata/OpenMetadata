@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -28,11 +36,9 @@ import {
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import { AppPlugin } from '../../components/Settings/Applications/plugins/AppPlugin';
 import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
-import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { SCHEDULAR_OPTIONS } from '../../constants/Schedular.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../enums/entity.enum';
 import {
@@ -48,7 +54,10 @@ import { EntityReference } from '../../generated/entity/type';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
-import { getCronDefaultValue } from '../../utils/CronExpressionUtils';
+import {
+  getCronDefaultValue,
+  getDefaultScheduleValue,
+} from '../../utils/CronExpressionUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
@@ -66,6 +75,10 @@ const AppInstall = () => {
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingLoading, setIsSavingLoading] = useState(false);
+  const [scheduleValue, setScheduleValue] = useState<string>();
+  // `undefined` is a valid on-demand selection, so initialization needs its own flag.
+  const isScheduleInitialized = useRef(false);
+  const [isScheduleValid, setIsScheduleValid] = useState(true);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
@@ -115,15 +128,20 @@ const AppInstall = () => {
     };
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
-  const translatedSchedularOptions = useMemo(
-    () =>
-      SCHEDULAR_OPTIONS.map((option) => ({
-        ...option,
-        title: t(option.title),
-        description: t(option.description),
-      })),
-    [t]
-  );
+  const openScheduleStep = useCallback(() => {
+    if (!isScheduleInitialized.current) {
+      setScheduleValue(
+        getDefaultScheduleValue({
+          defaultSchedule: defaultValue,
+          includePeriodOptions: initialOptions,
+          allowNoSchedule: true,
+        })
+      );
+      isScheduleInitialized.current = true;
+    }
+    setIsScheduleValid(true);
+    setActiveServiceStep(3);
+  }, [defaultValue, initialOptions]);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -184,8 +202,8 @@ const AppInstall = () => {
     }
   };
 
-  const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
-    const { cron } = updatedValue;
+  const onSubmit = async () => {
+    const cron = scheduleValue;
     const data: CreateAppRequest = {
       appConfiguration: appConfiguration ?? appData?.appConfiguration,
       appSchedule: {
@@ -222,7 +240,7 @@ const AppInstall = () => {
     setSelectedIngestionRunner(ingestionRunnerRef);
 
     if (appData?.scheduleType !== ScheduleType.NoSchedule) {
-      setActiveServiceStep(3);
+      openScheduleStep();
     } else {
       const requestData: CreateAppRequest = {
         appConfiguration: updatedFormData,
@@ -254,9 +272,13 @@ const AppInstall = () => {
                 : t('label.schedule')
             }
             onCancel={onCancel}
-            onSave={() =>
-              setActiveServiceStep(appData?.allowConfiguration ? 2 : 3)
-            }
+            onSave={() => {
+              if (appData?.allowConfiguration) {
+                setActiveServiceStep(2);
+              } else {
+                openScheduleStep();
+              }
+            }}
           />
         );
 
@@ -277,13 +299,32 @@ const AppInstall = () => {
             <ScheduleInterval
               defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
-              schedularOptions={translatedSchedularOptions}
-              status={isSavingLoading ? 'waiting' : 'initial'}
-              onBack={() =>
-                setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
-              }
-              onDeploy={onSubmit}
+              value={scheduleValue}
+              onChange={setScheduleValue}
+              onValidityChange={setIsScheduleValid}
             />
+            <div className="tw:mt-4 tw:flex tw:justify-end tw:gap-3">
+              <Button
+                color="secondary"
+                data-testid="back-button"
+                size="sm"
+                type="button"
+                onPress={() =>
+                  setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
+                }>
+                {t('label.back')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="deploy-button"
+                isDisabled={!isScheduleValid}
+                isLoading={isSavingLoading}
+                size="sm"
+                type="button"
+                onPress={onSubmit}>
+                {t('label.create')}
+              </Button>
+            </div>
           </div>
         );
       default:
@@ -296,6 +337,9 @@ const AppInstall = () => {
     initialOptions,
     defaultValue,
     isSavingLoading,
+    isScheduleValid,
+    openScheduleStep,
+    scheduleValue,
   ]);
 
   useEffect(() => {

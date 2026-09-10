@@ -306,24 +306,21 @@ export const OntologyConceptRealization: React.FC<
       ) : (
         realizations.map(renderRealization)
       )}
-      {canAuthor ? (
-        isAdding ? (
-          renderAddForm()
-        ) : (
-          <Button
-            noTextPadding
-            className={classNames(
-              'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-lg tw:border tw:border-dashed',
-              'tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary tw:*:data-icon:size-3'
-            )}
-            color="tertiary"
-            data-testid="add-realization"
-            iconLeading={Plus}
-            onClick={() => setIsAdding(true)}>
-            {t('label.add-entity', { entity: t('label.realized-in') })}
-          </Button>
-        )
-      ) : null}
+      {canAuthor && isAdding && renderAddForm()}
+      {canAuthor && !isAdding && (
+        <Button
+          noTextPadding
+          className={classNames(
+            'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-lg tw:border tw:border-dashed',
+            'tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary tw:*:data-icon:size-3'
+          )}
+          color="tertiary"
+          data-testid="add-realization"
+          iconLeading={Plus}
+          onClick={() => setIsAdding(true)}>
+          {t('label.add-entity', { entity: t('label.realized-in') })}
+        </Button>
+      )}
     </div>
   );
 };

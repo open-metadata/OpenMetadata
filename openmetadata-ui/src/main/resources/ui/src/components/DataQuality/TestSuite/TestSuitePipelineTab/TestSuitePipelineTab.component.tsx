@@ -541,11 +541,11 @@ const TestSuitePipelineTab = ({
                     </Table.Cell>
 
                     <Table.Cell className="tw:align-middle tw:w-60">
-                      {isFetchingStatus ? (
-                        <ButtonSkeleton size="default" />
-                      ) : isPlatformDisabled ? (
-                        NO_DATA_PLACEHOLDER
-                      ) : (
+                      {isFetchingStatus && <ButtonSkeleton size="default" />}
+                      {!isFetchingStatus &&
+                        isPlatformDisabled &&
+                        NO_DATA_PLACEHOLDER}
+                      {!isFetchingStatus && !isPlatformDisabled && (
                         <PipelineActions
                           deployIngestion={handleDeployIngestion}
                           handleDeleteSelection={(row) =>

@@ -35,47 +35,44 @@ import { ReactComponent as StarIcon } from '../assets/svg/ic_star.svg';
 import { ReactComponent as StartIcon } from '../assets/svg/ic_start-node.svg';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 
+type SvgIcon = React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
+
+const CANVAS_NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
+  [NodeSubType.StartEvent]: CanvasStartIcon,
+  [NodeSubType.EndEvent]: CanvasEndIcon,
+  [NodeSubType.SetEntityAttributeTask]: CanvasActionIcon,
+  [NodeSubType.CheckEntityAttributesTask]: CanvasCheckIcon,
+  [NodeSubType.CheckChangeDescriptionTask]: CanvasCheckChangeDescriptionIcon,
+  [NodeSubType.UserApprovalTask]: CanvasUserIcon,
+  [NodeSubType.DataCompletenessTask]: CanvasCompletenessIcon,
+  [NodeSubType.RollbackEntityTask]: CanvasRevertIcon,
+  [NodeSubType.PolicyAgentTask]: CanvasActionIcon,
+  [NodeSubType.SinkTask]: CanvasGitSyncIcon,
+};
+
+const NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
+  [NodeSubType.StartEvent]: StartIcon,
+  [NodeSubType.EndEvent]: EndIcon,
+  [NodeSubType.SetEntityAttributeTask]: ActionIcon,
+  [NodeSubType.SetEntityCertificationTask]: ActionIcon,
+  [NodeSubType.CheckEntityAttributesTask]: CheckIcon,
+  [NodeSubType.CheckChangeDescriptionTask]: CheckChangeDescriptionIcon,
+  [NodeSubType.UserApprovalTask]: UserIcon,
+  [NodeSubType.DataCompletenessTask]: CompletenessIcon,
+  [NodeSubType.RollbackEntityTask]: RevertIcon,
+  [NodeSubType.PolicyAgentTask]: ActionIcon,
+  [NodeSubType.SinkTask]: GitSyncIcon,
+};
+
 export const getCanvasNodeIcon = (
   subType: NodeSubType | undefined,
   props?: React.SVGProps<SVGSVGElement>
 ): React.ReactElement => {
   const defaultProps = { style: { width: '32px', height: '32px' }, ...props };
+  // Fallback to legacy icon if canvas icon doesn't exist
+  const Icon = (subType && CANVAS_NODE_ICON_MAP[subType]) ?? StarIcon;
 
-  switch (subType) {
-    case NodeSubType.StartEvent:
-      return <CanvasStartIcon {...defaultProps} />;
-
-    case NodeSubType.EndEvent:
-      return <CanvasEndIcon {...defaultProps} />;
-
-    case NodeSubType.SetEntityAttributeTask:
-      return <CanvasActionIcon {...defaultProps} />;
-
-    case NodeSubType.CheckEntityAttributesTask:
-      return <CanvasCheckIcon {...defaultProps} />;
-
-    case NodeSubType.CheckChangeDescriptionTask:
-      return <CanvasCheckChangeDescriptionIcon {...defaultProps} />;
-
-    case NodeSubType.UserApprovalTask:
-      return <CanvasUserIcon {...defaultProps} />;
-
-    case NodeSubType.DataCompletenessTask:
-      return <CanvasCompletenessIcon {...defaultProps} />;
-
-    case NodeSubType.RollbackEntityTask:
-      return <CanvasRevertIcon {...defaultProps} />;
-
-    case NodeSubType.PolicyAgentTask:
-      return <CanvasActionIcon {...defaultProps} />;
-
-    case NodeSubType.SinkTask:
-      return <CanvasGitSyncIcon {...defaultProps} />;
-
-    default:
-      // Fallback to legacy icon if canvas icon doesn't exist
-      return <StarIcon {...defaultProps} />;
-  }
+  return <Icon {...defaultProps} />;
 };
 
 export const getNodeIcon = (
@@ -83,40 +80,7 @@ export const getNodeIcon = (
   props?: React.SVGProps<SVGSVGElement>
 ): React.ReactElement => {
   const defaultProps = { style: { width: '32px', height: '32px' }, ...props };
+  const Icon = (subType && NODE_ICON_MAP[subType]) ?? StarIcon;
 
-  switch (subType) {
-    case NodeSubType.StartEvent:
-      return <StartIcon {...defaultProps} />;
-
-    case NodeSubType.EndEvent:
-      return <EndIcon {...defaultProps} />;
-
-    case NodeSubType.SetEntityAttributeTask:
-    case NodeSubType.SetEntityCertificationTask:
-      return <ActionIcon {...defaultProps} />;
-
-    case NodeSubType.CheckEntityAttributesTask:
-      return <CheckIcon {...defaultProps} />;
-
-    case NodeSubType.CheckChangeDescriptionTask:
-      return <CheckChangeDescriptionIcon {...defaultProps} />;
-
-    case NodeSubType.UserApprovalTask:
-      return <UserIcon {...defaultProps} />;
-
-    case NodeSubType.DataCompletenessTask:
-      return <CompletenessIcon {...defaultProps} />;
-
-    case NodeSubType.RollbackEntityTask:
-      return <RevertIcon {...defaultProps} />;
-
-    case NodeSubType.PolicyAgentTask:
-      return <ActionIcon {...defaultProps} />;
-
-    case NodeSubType.SinkTask:
-      return <GitSyncIcon {...defaultProps} />;
-
-    default:
-      return <StarIcon {...defaultProps} />;
-  }
+  return <Icon {...defaultProps} />;
 };
