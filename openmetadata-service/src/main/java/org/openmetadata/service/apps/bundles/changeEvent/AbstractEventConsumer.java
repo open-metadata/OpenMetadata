@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -254,7 +255,7 @@ public abstract class AbstractEventConsumer
       return;
     }
     Map<ChangeEvent, Set<UUID>> filteredEvents =
-        getFilteredEvents(eventSubscription, events, startingTimestamp);
+        getFilteredEvents(eventSubscription, events, startingTimestamp, this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -271,6 +272,20 @@ public abstract class AbstractEventConsumer
     }
     alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
     alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
+  }
+
+  /** An event we could not even filter is a publisher-side failure, so record it as one. */
+  private void deadLetterEvent(ChangeEvent event, Exception error) {
+    LOG.error(
+        "Event Subscription: {} could not evaluate filters for change event {}",
+        eventSubscription.getName(),
+        event.getId(),
+        error);
+    handleFailedEvent(
+        new EventPublisherException(
+            String.format("Failed to evaluate alert filters: %s", error.getMessage()),
+            Pair.of(eventSubscription.getId(), event)),
+        false);
   }
 
   private EventDeliveryResult publishEvent(
