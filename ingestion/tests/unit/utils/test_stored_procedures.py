@@ -12,6 +12,8 @@
 Test Stored Procedures Utils
 """
 
+import time
+
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 
 
@@ -55,3 +57,183 @@ class TestStoredProcedures:
             get_procedure_name_from_call(query_text="BEGIN SCHEMA.PROC(TO_DATE('2024-01-01'), NVL(x, 0)); END;")
             == "proc"
         )
+
+    def test_get_procedure_name_from_multiline_call(self):
+        """Multi-line CALL statements (keyword and name on different lines, as captured
+        by query-log SQL) must still be parsed. Regression test for a name span that
+        could not cross newlines."""
+        assert get_procedure_name_from_call(query_text="CALL\n  proc_name()") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL\n  my_db.my_schema.my_proc()") == "my_proc"
+
+        assert get_procedure_name_from_call(query_text="CALL\n  schema.procedure_name(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="CALL\n\n  procedure_name\n  ()") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="  call  \n  proc_name  ()") == "proc_name"
+
+    def test_get_procedure_name_from_multiline_begin_end(self):
+        """Multi-line BEGIN ... END; blocks (the common Oracle PL/SQL invocation form,
+        where gv$sql.sql_text preserves the original multi-line text) must be parsed.
+        Regression test for the begin alternations added for Oracle SP lineage."""
+        assert (
+            get_procedure_name_from_call(query_text="BEGIN\n  SALES.INSERT_NUMBER(TO_NUMBER(:1));\nEND;")
+            == "insert_number"
+        )
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  schema.proc_name;\nEND;") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  procedure_name();\nEND;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="begin\n  proc_name();\nend;") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  DB.SCHEMA.PROCEDURE_NAME;\nEND;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  schema.proc_name\n;\nEND;") == "proc_name"
+
+    def test_get_procedure_name_from_multiline_preserves_single_line_behavior(self):
+        """Letting the name span cross newlines must not change any previously-working
+        single-line result."""
+        assert get_procedure_name_from_call(query_text="CALL db.schema.procedure_name(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="CALL procedure_name(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME; END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN procedure_name(...); END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="something very random") is None
+
+        assert get_procedure_name_from_call(query_text="-- this is a recall\nof an event") is None
+
+    def test_get_procedure_name_sensitive_match_is_case_sensitive_but_spans_newlines(self):
+        """sensitive_match=True drops re.IGNORECASE (so the call/begin keyword must be
+        lowercase) while multi-line text is still parsed, because the name span matches
+        whitespace directly rather than relying on re.DOTALL."""
+        assert get_procedure_name_from_call(query_text="call\n  proc_name()", sensitive_match=True) == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="begin\n  schema.proc;\nend;", sensitive_match=True) == "proc"
+
+        assert get_procedure_name_from_call(query_text="CALL\n  proc_name()", sensitive_match=True) is None
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  proc();\nEND;", sensitive_match=True) is None
+
+    def test_get_procedure_name_ignores_non_procedure_sql(self):
+        """Oracle's stored-procedure query filters on `UPPER(sql_text) LIKE '%CALL%' OR LIKE
+        '%BEGIN%'`, an unanchored substring match, so ordinary multi-line SQL reaches this
+        parser as procedure_text. None of it names a procedure and none of it may parse as one."""
+        assert (
+            get_procedure_name_from_call(
+                query_text="SELECT\n  begin_date,\n  end_date\nFROM sales\nWHERE id IN (1, 2, 3)"
+            )
+            is None
+        )
+
+        assert (
+            get_procedure_name_from_call(
+                query_text="INSERT INTO ledger\nSELECT beginning_balance\nFROM accounts\nWHERE dt > TRUNC(SYSDATE)"
+            )
+            is None
+        )
+
+        assert (
+            get_procedure_name_from_call(
+                query_text="UPDATE call_center\nSET x = 1\nWHERE id IN (SELECT id FROM staging)"
+            )
+            is None
+        )
+
+        assert (
+            get_procedure_name_from_call(
+                query_text="-- recall the prior run\nMERGE INTO tgt USING (SELECT 1 FROM dual) s ON (1=1)"
+            )
+            is None
+        )
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  UPDATE t SET a = 1;\n  COMMIT;\nEND;") is None
+
+    def test_get_procedure_name_does_not_fabricate_a_procedure_from_a_function_call(self):
+        """The worst failure mode is not a bogus name, it is a plausible one. A package or
+        function call on a line after a `call`/`begin` substring must not reduce to a bare
+        identifier, or it would match a real StoredProcedure entity and fabricate lineage."""
+        assert get_procedure_name_from_call(query_text="UPDATE call_log\nSET x = pkg.refresh_stats(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT begin_dt\nFROM t\nWHERE y = SALES.LOAD_DIM(1)") is None
+
+    def test_get_procedure_name_ignores_identifiers_that_start_with_the_keyword(self):
+        """A word boundary before the keyword is not enough. `call_center` and `begin_date` both
+        start on a boundary, so `\\bcall` and `\\bbegin` match their prefix, and the rest of the
+        identifier is made of characters the name span accepts. Where such an identifier is
+        immediately followed by an argument list the whole thing looks like an invocation, which
+        is why the keyword also needs a boundary after it."""
+        assert get_procedure_name_from_call(query_text="SELECT call_center(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT begin_date(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT call_log(1) FROM t") is None
+
+        assert get_procedure_name_from_call(query_text="UPDATE t SET x = begin_dt(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT recall_fn(1)") is None
+
+    def test_get_procedure_name_stays_linear_on_large_non_procedure_sql(self):
+        """The name span must stay bounded. An unbounded `.*?` (as re.DOTALL allows) turns this
+        into a quadratic scan, because every `call`/`begin` substring walks to the end of the
+        text looking for a paren that never arrives.
+
+        Measured on this input: a bounded span takes ~6ms, an unbounded one ~2.5s. The 500ms
+        budget therefore leaves ~85x headroom on the correct implementation while still failing
+        a return to quadratic behaviour by ~5x, so it does not flake on a loaded CI runner."""
+        line = "begin_date, end_date, beginning_balance, call_center,\n"
+        query_text = "SELECT\n" + line * (64 * 1024 // len(line)) + "FROM t"
+
+        start = time.perf_counter()
+        result = get_procedure_name_from_call(query_text=query_text)
+        elapsed = time.perf_counter() - start
+
+        assert result is None
+        assert elapsed < 0.5, f"parsing {len(query_text)} bytes took {elapsed:.2f}s, expected well under 0.5s"
+
+    def test_get_procedure_name_parses_every_form_the_call_grammar_allows(self):
+        """Oracle's CALL grammar is `CALL [schema.][package|type][@dblink] name(args)`, so the
+        text between the keyword and the argument list can carry a database link and identifiers
+        containing `$` or `#`, both of which are legal in an Oracle identifier.
+
+        https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/CALL.html
+        """
+        assert get_procedure_name_from_call(query_text="CALL schema.pkg@dblink.proc_name(1)") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL pkg@dblink.proc_name(1)") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL\n  pkg@dblink.proc_name(1)") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL my$proc(1)") == "my$proc"
+
+        assert get_procedure_name_from_call(query_text="CALL my#proc(1)") == "my#proc"
+
+        assert get_procedure_name_from_call(query_text="CALL emp_mgmt.remove_dept(162)") == "remove_dept"
+
+    def test_get_procedure_name_parses_quoted_identifiers(self):
+        """A delimited identifier may contain any character, so the name span has to consume a
+        quoted segment whole rather than character by character. BigQuery needs this for a
+        hyphenated project id, which its unquoted rules (letters, digits, underscore) forbid,
+        and Snowflake for a double-quoted name. Widening the span to allow a bare hyphen instead
+        is not an option, because `SELECT begin_dt - 1 ... WHERE id IN (` would then parse as a
+        call and resolve to a procedure named after a fragment of the WHERE clause.
+
+        https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+        https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+        """
+        assert get_procedure_name_from_call(query_text="CALL `my-project.my_dataset.my_proc`()") == "my_proc"
+
+        assert get_procedure_name_from_call(query_text="CALL `my-project-123.ds.proc`(1)") == "proc"
+
+        assert get_procedure_name_from_call(query_text="CALL my_dataset.my_proc()") == "my_proc"
+
+        assert get_procedure_name_from_call(query_text='CALL "My-Proc"(1)') == "my-proc"
+
+        assert get_procedure_name_from_call(query_text='CALL db."My Schema"."My Proc"(1)') == "my proc"
+
+        assert get_procedure_name_from_call(query_text="SELECT begin_dt - 1\nFROM t\nWHERE id IN (1,2)") is None
+
+        assert get_procedure_name_from_call(query_text='SELECT begin_dt, "Some Col"\nFROM t\nWHERE x IN (1)') is None

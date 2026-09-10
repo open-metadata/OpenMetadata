@@ -1159,7 +1159,11 @@ public class OpenSearchVectorService implements VectorIndexService {
         }
       }
     } catch (Exception e) {
-      LOG.debug("Failed to fetch existing chunk vectors for {}: {}", parentId, e.getMessage());
+      LOG.warn(
+          "Failed to fetch existing chunk vectors for {}; will re-embed: {}",
+          parentId,
+          e.getMessage(),
+          e);
     }
     return vectors;
   }

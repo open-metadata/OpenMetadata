@@ -76,6 +76,134 @@ const TotalDataAssetsWidget = withSuspenseFallback(
   TotalDataAssetsWidgetLazy
 ) as React.ComponentType<TotalAssetsWidgetProps>;
 
+type ServiceInsightsPlaceholderConfig = {
+  Icon: typeof NoDataPlaceholderIcon;
+  localizationKey: string;
+  getDocsLink: () => string;
+};
+
+const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
+  Array<SystemChartType | ServiceInsightsWidgetType>,
+  ServiceInsightsPlaceholderConfig
+][] = [
+  [
+    [
+      ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
+      SystemChartType.TotalDataAssetsLive,
+    ],
+    {
+      Icon: NoDataPlaceholderIcon,
+      localizationKey: 'message.total-data-assets-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS,
+    },
+  ],
+  [
+    [
+      SystemChartType.DescriptionCoverage,
+      SystemChartType.AssetsWithDescriptionLive,
+    ],
+    {
+      Icon: DescriptionPlaceholderIcon,
+      localizationKey: 'message.description-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS()
+          .DESCRIPTION_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.OwnersCoverage, SystemChartType.AssetsWithOwnerLive],
+    {
+      Icon: OwnersPlaceholderIcon,
+      localizationKey: 'message.owners-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS()
+          .OWNERSHIP_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.PIICoverage, SystemChartType.AssetsWithPIILive],
+    {
+      Icon: PiiPlaceholderIcon,
+      localizationKey: 'message.pii-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.PIIDistribution],
+    {
+      Icon: PiiPlaceholderIcon,
+      localizationKey: 'message.pii-distribution-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.TierCoverage],
+    {
+      Icon: TierPlaceholderIcon,
+      localizationKey: 'message.tier-coverage-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS,
+    },
+  ],
+  [
+    [SystemChartType.TierDistribution],
+    {
+      Icon: TierPlaceholderIcon,
+      localizationKey: 'message.tier-distribution-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS,
+    },
+  ],
+  [
+    [ServiceInsightsWidgetType.COLLATE_AI],
+    {
+      Icon: TablePlaceholderIcon,
+      localizationKey: 'message.collate-ai-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS,
+    },
+  ],
+  [
+    [ServiceInsightsWidgetType.MOST_USED_ASSETS],
+    {
+      Icon: TablePlaceholderIcon,
+      localizationKey: 'message.most-used-assets-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS,
+    },
+  ],
+  [
+    [ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES],
+    {
+      Icon: TablePlaceholderIcon,
+      localizationKey: 'message.most-expensive-queries-widget-description',
+      getDocsLink: () =>
+        documentationLinksClassBase.getDocsURLS()
+          .MOST_EXPENSIVE_QUERIES_WIDGET_DOCS,
+    },
+  ],
+];
+
+const DEFAULT_SERVICE_INSIGHTS_PLACEHOLDER_CONFIG: ServiceInsightsPlaceholderConfig =
+  {
+    Icon: NoDataPlaceholderIcon,
+    localizationKey: 'server.no-records-found',
+    getDocsLink: () => documentationLinksClassBase.getDocsBaseURL(),
+  };
+
+const getServiceInsightsPlaceholderConfig = (
+  chartType?: SystemChartType | ServiceInsightsWidgetType
+): ServiceInsightsPlaceholderConfig => {
+  const match = SERVICE_INSIGHTS_PLACEHOLDER_GROUPS.find(
+    ([types]) => !!chartType && types.includes(chartType)
+  );
+
+  return match?.[1] ?? DEFAULT_SERVICE_INSIGHTS_PLACEHOLDER_CONFIG;
+};
+
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,
   iconClassName = 'text-grey-14',
@@ -91,89 +219,9 @@ export const getServiceInsightsWidgetPlaceholder = ({
   width?: number;
   theme: ThemeConfiguration;
 }) => {
-  let Icon = NoDataPlaceholderIcon;
-  let localizationKey = `server.no-records-found`;
-  let docsLink = documentationLinksClassBase.getDocsBaseURL();
-
-  switch (chartType) {
-    case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
-    case SystemChartType.TotalDataAssetsLive:
-      Icon = NoDataPlaceholderIcon;
-      localizationKey = 'message.total-data-assets-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.DescriptionCoverage:
-    case SystemChartType.AssetsWithDescriptionLive:
-      Icon = DescriptionPlaceholderIcon;
-      localizationKey = 'message.description-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS()
-          .DESCRIPTION_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.OwnersCoverage:
-    case SystemChartType.AssetsWithOwnerLive:
-      Icon = OwnersPlaceholderIcon;
-      localizationKey = 'message.owners-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS()
-          .OWNERSHIP_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.PIICoverage:
-    case SystemChartType.AssetsWithPIILive:
-      Icon = PiiPlaceholderIcon;
-      localizationKey = 'message.pii-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.PIIDistribution:
-      Icon = PiiPlaceholderIcon;
-      localizationKey = 'message.pii-distribution-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.TierCoverage:
-      Icon = TierPlaceholderIcon;
-      localizationKey = 'message.tier-coverage-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS;
-
-      break;
-    case SystemChartType.TierDistribution:
-      Icon = TierPlaceholderIcon;
-      localizationKey = 'message.tier-distribution-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS;
-
-      break;
-    case ServiceInsightsWidgetType.COLLATE_AI:
-      Icon = TablePlaceholderIcon;
-      localizationKey = 'message.collate-ai-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS;
-
-      break;
-    case ServiceInsightsWidgetType.MOST_USED_ASSETS:
-      Icon = TablePlaceholderIcon;
-      localizationKey = 'message.most-used-assets-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS;
-
-      break;
-    case ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES:
-      Icon = TablePlaceholderIcon;
-      localizationKey = 'message.most-expensive-queries-widget-description';
-      docsLink =
-        documentationLinksClassBase.getDocsURLS()
-          .MOST_EXPENSIVE_QUERIES_WIDGET_DOCS;
-
-      break;
-  }
+  const { Icon, localizationKey, getDocsLink } =
+    getServiceInsightsPlaceholderConfig(chartType);
+  const docsLink = getDocsLink();
 
   return (
     <ErrorPlaceHolder

@@ -26,7 +26,7 @@ import hashlib
 import json
 import re
 import traceback
-from typing import Any
+from typing import Any, cast
 
 from metadata.ingestion.ometa.ometa_api import C
 from metadata.utils.logger import utils_logger
@@ -133,10 +133,14 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     2. Sorts tags by tagFQN
     3. Sorts tableConstraints by type and columns
     4. Sorts owners by FQN/name/id
-    5. Removes volatile EntityReference fields (href, deleted, inherited)
-    6. Normalizes schemaDefinition whitespace
+    5. Sorts aliases lexicographically
+    6. Removes volatile EntityReference fields (href, deleted, inherited)
+    7. Normalizes schemaDefinition whitespace
     """
-    result = _remove_volatile_fields(data)
+    # _remove_volatile_fields is `dict | list | Any` because it recurses into nested
+    # lists, but called here on a top-level create-request dict it always returns a dict
+    # (see its `isinstance(obj, dict)` branch); cast narrows for the string-keyed lookups below.
+    result = cast("dict[str, Any]", _remove_volatile_fields(data))
 
     if "columns" in result and isinstance(result["columns"], list):
         result["columns"] = _sort_columns(result["columns"])
@@ -150,6 +154,9 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     if "owners" in result and isinstance(result["owners"], list):
         result["owners"] = sorted(result["owners"], key=_get_entity_reference_sort_key)
 
+    if "aliases" in result and isinstance(result["aliases"], list):
+        result["aliases"] = sorted(result["aliases"], key=str)
+
     if "schemaDefinition" in result and result["schemaDefinition"]:  # noqa: RUF019
         result["schemaDefinition"] = _normalize_whitespace(result["schemaDefinition"])
 
@@ -162,7 +169,7 @@ def generate_source_hash(create_request: C, exclude_fields: dict | None = None) 
     and generate a stable hash value.
 
     The normalization process ensures hash stability by:
-    - Sorting lists (columns, tags, constraints, owners) by deterministic keys
+    - Sorting lists (columns, tags, constraints, owners, aliases) by deterministic keys
     - Removing volatile fields (href, deleted, inherited) from entity references
     - Normalizing whitespace in DDL/SQL definitions
     """

@@ -427,7 +427,7 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """
@@ -474,3 +474,15 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")
+
+MSSQL_GET_SYNONYMS = textwrap.dedent(
+    """
+SELECT
+    sch.name AS synonym_schema,
+    syn.name AS synonym_name,
+    syn.base_object_name AS base_object_name
+FROM [{database_name}].sys.synonyms syn
+JOIN [{database_name}].sys.schemas sch
+    ON syn.schema_id = sch.schema_id
+"""
+)

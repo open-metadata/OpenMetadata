@@ -48,6 +48,22 @@ const getStoredTheme = (storageKey: string): Theme | null => {
   return null;
 };
 
+const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
+  if (typeof globalThis.document === 'undefined') {
+    return;
+  }
+
+  const root = globalThis.document.documentElement;
+  const shouldUseDarkMode = theme === 'dark';
+
+  if (root.classList.contains(darkModeClass) !== shouldUseDarkMode) {
+    root.classList.toggle(darkModeClass, shouldUseDarkMode);
+  }
+  if (root.style.colorScheme !== theme) {
+    root.style.colorScheme = theme;
+  }
+};
+
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
 
@@ -242,13 +258,14 @@ const BRAND_CSS_VAR_KEYWORDS = [
 
 const clearBrandCssVars = (root: HTMLElement) => {
   const allSet = Array.from(root.style);
+
   allSet
     .filter(
       (p) =>
         p.startsWith('--tw-') &&
         BRAND_CSS_VAR_KEYWORDS.some((keyword) => p.includes(keyword))
     )
-    .forEach((p) => root.style.removeProperty(p));
+    .forEach((property) => root.style.removeProperty(property));
 };
 
 export const ThemeProvider = ({
@@ -257,9 +274,24 @@ export const ThemeProvider = ({
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setThemeState] = useState<Theme>(
-    () => getStoredTheme(storageKey) ?? DEFAULT_THEME
-  );
+  const {
+    primaryColor,
+    hoverColor,
+    selectedColor,
+    errorColor,
+    successColor,
+    warningColor,
+    infoColor,
+  } = brandColors ?? {};
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const initialTheme = getStoredTheme(storageKey) ?? DEFAULT_THEME;
+
+    // This render-phase write is deliberate: canvas consumers resolve CSS tokens
+    // before effects run, and applyThemeToRoot skips DOM writes when already synced.
+    applyThemeToRoot(initialTheme, darkModeClass);
+
+    return initialTheme;
+  });
 
   const setTheme = useCallback(
     (nextTheme: Theme) => {
@@ -270,33 +302,42 @@ export const ThemeProvider = ({
       } catch {
         // Persistence failure must not block theme changes for the current session.
       }
+      // Canvas consumers resolve CSS tokens during the context update, so the
+      // cascade must already represent the next theme when they render.
+      applyThemeToRoot(nextTheme, darkModeClass);
       setThemeState(nextTheme);
     },
-    [storageKey]
+    [darkModeClass, storageKey]
   );
 
   useEffect(() => {
-    const root = globalThis.document.documentElement;
-
-    root.classList.toggle(darkModeClass, theme === 'dark');
-    root.style.colorScheme = theme;
+    applyThemeToRoot(theme, darkModeClass);
   }, [theme, darkModeClass]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
+    const activeBrandColors = {
+      primaryColor,
+      hoverColor,
+      selectedColor,
+      errorColor,
+      successColor,
+      warningColor,
+      infoColor,
+    };
 
     clearBrandCssVars(root);
-    if (brandColors && Object.values(brandColors).some(Boolean)) {
-      applyBrandCssVars(brandColors, root);
+    if (Object.values(activeBrandColors).some(Boolean)) {
+      applyBrandCssVars(activeBrandColors, root);
     }
   }, [
-    brandColors?.primaryColor,
-    brandColors?.hoverColor,
-    brandColors?.selectedColor,
-    brandColors?.errorColor,
-    brandColors?.successColor,
-    brandColors?.warningColor,
-    brandColors?.infoColor,
+    primaryColor,
+    hoverColor,
+    selectedColor,
+    errorColor,
+    successColor,
+    warningColor,
+    infoColor,
   ]);
 
   const values = useMemo(

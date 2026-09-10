@@ -26,7 +26,6 @@ import {
 import {
   ChevronDown,
   Download02,
-  Flag04,
   PlayCircle,
   Plus,
   Trash01,
@@ -67,6 +66,7 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -292,6 +292,20 @@ const ContractDetail: React.FC<{
     setMode(e.target.value);
   }, []);
 
+  const statusBadge = useMemo(() => {
+    const { color, icon } = getEntityStatusBadgeConfig(contract?.entityStatus);
+
+    return (
+      <BadgeWithIcon
+        color={color}
+        iconLeading={icon}
+        size="sm"
+        type="pill-color">
+        {contract?.entityStatus ?? t('label.approved')}
+      </BadgeWithIcon>
+    );
+  }, [contract?.entityStatus, t]);
+
   const renderDataContractHeader = useMemo(() => {
     if (!contract) {
       return null;
@@ -505,13 +519,7 @@ const ContractDetail: React.FC<{
                 {`${t('label.status')} : `}
               </Typography>
 
-              <BadgeWithIcon
-                color="success"
-                iconLeading={Flag04}
-                size="sm"
-                type="pill-color">
-                {contract.entityStatus ?? t('label.approved')}
-              </BadgeWithIcon>
+              {statusBadge}
             </Box>
 
             <Divider
@@ -545,6 +553,7 @@ const ContractDetail: React.FC<{
     hasEditPermission,
     isInheritedContract,
     handleContractAction,
+    statusBadge,
     t,
   ]);
 
@@ -651,6 +660,75 @@ const ContractDetail: React.FC<{
     );
   }
 
+  const renderDescriptionSection = (contractData: DataContract) =>
+    !isDescriptionContentEmpty(contractData.description ?? '') && (
+      <div className="contract-card-items">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.description')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant
+          markdown={contractData.description ?? ''}
+        />
+      </div>
+    );
+
+  const renderSchemaSection = () =>
+    !isEmpty(schemaDetail) && (
+      <div className="contract-card-items" data-testid="schema-table-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.schema')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractSchemaTable
+          contractStatus={constraintStatus['schema']}
+          latestSchemaValidationResult={latestContractResults?.schemaValidation}
+          schemaDetail={schemaDetail}
+        />
+      </div>
+    );
+
+  const renderSemanticsSection = (contractData: DataContract) =>
+    contractData?.semantics &&
+    contractData?.semantics.length > 0 && (
+      <div className="contract-card-items" data-testid="semantics-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.semantic-plural')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractSemantics
+          contractStatus={constraintStatus['semantic']}
+          latestContractResults={latestContractResults}
+          semantics={contractData?.semantics}
+        />
+      </div>
+    );
+
+  const renderExecutionHistorySection = (contractData: DataContract) =>
+    contractData.id &&
+    contractData.latestResult?.resultId && (
+      <div className="contract-card-items" data-testid="schema-table-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.execution-history')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractExecutionChart contract={contractData} />
+      </div>
+    );
+
   return (
     <>
       <ContractImportModal
@@ -681,21 +759,7 @@ const ContractDetail: React.FC<{
                 </div>
               )}
 
-              {!isDescriptionContentEmpty(contract.description ?? '') && (
-                <div className="contract-card-items">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.description')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <RichTextEditorPreviewerV1
-                    enableSeeMoreVariant
-                    markdown={contract.description ?? ''}
-                  />
-                </div>
-              )}
+              {renderDescriptionSection(contract)}
 
               {(() => {
                 const contractWithInheritance =
@@ -754,26 +818,7 @@ const ContractDetail: React.FC<{
 
               <ContractSLA contract={contract} />
 
-              {!isEmpty(schemaDetail) && (
-                <div
-                  className="contract-card-items"
-                  data-testid="schema-table-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.schema')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractSchemaTable
-                    contractStatus={constraintStatus['schema']}
-                    latestSchemaValidationResult={
-                      latestContractResults?.schemaValidation
-                    }
-                    schemaDetail={schemaDetail}
-                  />
-                </div>
-              )}
+              {renderSchemaSection()}
 
               {!isEmpty(contract.security) &&
                 (() => {
@@ -818,24 +863,7 @@ const ContractDetail: React.FC<{
                   );
                 })()}
 
-              {contract?.semantics && contract?.semantics.length > 0 && (
-                <div
-                  className="contract-card-items"
-                  data-testid="semantics-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.semantic-plural')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractSemantics
-                    contractStatus={constraintStatus['semantic']}
-                    latestContractResults={latestContractResults}
-                    semantics={contract?.semantics}
-                  />
-                </div>
-              )}
+              {renderSemanticsSection(contract)}
 
               {contract?.testSuite?.id && (
                 <div
@@ -855,20 +883,7 @@ const ContractDetail: React.FC<{
                 </div>
               )}
 
-              {contract.id && contract.latestResult?.resultId && (
-                <div
-                  className="contract-card-items"
-                  data-testid="schema-table-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.execution-history')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractExecutionChart contract={contract} />
-                </div>
-              )}
+              {renderExecutionHistorySection(contract)}
             </div>
           )}
         </Card.Content>

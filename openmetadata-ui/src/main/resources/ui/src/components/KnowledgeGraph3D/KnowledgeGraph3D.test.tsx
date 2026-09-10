@@ -21,6 +21,7 @@ import {
   ReactElement,
 } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityType } from '../../enums/entity.enum';
 import { getEntityGraphData } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -256,20 +257,36 @@ const GRAPH_DATA = {
   ],
   edges: [{ from: 'entity-1', to: 'con-1', label: 'mappedTo' }],
 };
+const TEST_THEME_STORAGE_KEY = 'knowledge-graph-3d-component-test';
+
+const renderInAppContext = (
+  element: ReactElement,
+  initialEntries: string[] = ['/']
+): void => {
+  render(
+    <ThemeProvider defaultTheme="light" storageKey={TEST_THEME_STORAGE_KEY}>
+      <MemoryRouter initialEntries={initialEntries}>{element}</MemoryRouter>
+    </ThemeProvider>
+  );
+};
 
 const renderGraph = (initialEntries: string[] = ['/']): void => {
-  render(
-    <MemoryRouter
-      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
-      initialEntries={initialEntries}>
-      <KnowledgeGraph3D entity={ENTITY} entityType={EntityType.TABLE} />
-    </MemoryRouter>
+  renderInAppContext(
+    <KnowledgeGraph3D entity={ENTITY} entityType={EntityType.TABLE} />,
+    initialEntries
   );
 };
 
 describe('KnowledgeGraph3D', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.setItem(TEST_THEME_STORAGE_KEY, 'light');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(TEST_THEME_STORAGE_KEY);
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.removeProperty('color-scheme');
   });
 
   it('should render the controls and the 3D scene once data loads', async () => {
@@ -300,12 +317,7 @@ describe('KnowledgeGraph3D', () => {
   });
 
   it('should render the no-entity placeholder and skip fetching when entity is missing', () => {
-    render(
-      <MemoryRouter
-        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-        <KnowledgeGraph3D entityType={EntityType.TABLE} />
-      </MemoryRouter>
-    );
+    renderInAppContext(<KnowledgeGraph3D entityType={EntityType.TABLE} />);
 
     expect(screen.getByText('label.no-entity-selected')).toBeInTheDocument();
     expect(mockGetEntityGraphData).not.toHaveBeenCalled();
@@ -372,17 +384,14 @@ describe('KnowledgeGraph3D', () => {
   it('should add column-derived nodes when "Show columns" is toggled on', async () => {
     mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
 
-    render(
-      <MemoryRouter
-        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-        <KnowledgeGraph3D
-          entity={{
-            ...ENTITY,
-            columns: [{ name: 'id' }, { name: 'email' }],
-          }}
-          entityType={EntityType.TABLE}
-        />
-      </MemoryRouter>
+    renderInAppContext(
+      <KnowledgeGraph3D
+        entity={{
+          ...ENTITY,
+          columns: [{ name: 'id' }, { name: 'email' }],
+        }}
+        entityType={EntityType.TABLE}
+      />
     );
 
     await screen.findByTestId('kg3d-scene');

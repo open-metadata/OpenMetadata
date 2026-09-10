@@ -94,87 +94,154 @@ import { getServiceCategoryFromEntityType } from '../../utils/ServicePureUtils';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchPureUtils';
 
+type PatchAPIFn = (
+  id: string,
+  jsonPatch: Operation[]
+) => Promise<MapPatchAPIResponse[keyof MapPatchAPIResponse]>;
+
+type GetEntityAPIFn = (
+  fqn: string,
+  params?: ListParams
+) => Promise<MapPatchAPIResponse[keyof MapPatchAPIResponse]>;
+
+const SERVICE_ENTITY_TYPES: (keyof MapPatchAPIResponse)[] = [
+  EntityType.MESSAGING_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.DATABASE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.DRIVE_SERVICE,
+];
+
+const PATCH_API_MAP: Partial<Record<keyof MapPatchAPIResponse, PatchAPIFn>> = {
+  [EntityType.TABLE]: patchTableDetails,
+  [EntityType.DASHBOARD]: patchDashboardDetails,
+  [EntityType.CHART]: patchChartDetails,
+  [EntityType.MLMODEL]: patchMlModelDetails,
+  [EntityType.PIPELINE]: patchPipelineDetails,
+  [EntityType.TOPIC]: patchTopicDetails,
+  [EntityType.CONTAINER]: patchContainerDetails,
+  [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
+  [EntityType.STORED_PROCEDURE]: patchStoredProceduresDetails,
+  [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
+  [EntityType.GLOSSARY_TERM]: patchGlossaryTerm,
+  [EntityType.GLOSSARY]: patchGlossaries,
+  [EntityType.TAG]: patchTag,
+  [EntityType.CLASSIFICATION]: patchClassification,
+  [EntityType.DATABASE_SCHEMA]: patchDatabaseSchemaDetails,
+  [EntityType.DATABASE]: patchDatabaseDetails,
+  [EntityType.TEAM]: patchTeamDetail,
+  [EntityType.USER]: updateUserDetail,
+  [EntityType.API_COLLECTION]: patchApiCollection,
+  [EntityType.API_ENDPOINT]: patchApiEndPoint,
+  [EntityType.METRIC]: patchMetric,
+  [EntityType.DOMAIN]: patchDomains,
+  [EntityType.DIRECTORY]: (id: string, data: Operation[]) =>
+    patchDriveAssetDetails<Directory>(id, data, EntityType.DIRECTORY),
+  [EntityType.FILE]: (id: string, data: Operation[]) =>
+    patchDriveAssetDetails<File>(id, data, EntityType.FILE),
+  [EntityType.SPREADSHEET]: (id: string, data: Operation[]) =>
+    patchDriveAssetDetails<Spreadsheet>(id, data, EntityType.SPREADSHEET),
+  [EntityType.WORKSHEET]: (id: string, data: Operation[]) =>
+    patchDriveAssetDetails<Worksheet>(id, data, EntityType.WORKSHEET),
+  [EntityType.KNOWLEDGE_PAGE]: patchKnowledgePage,
+};
+
+const GET_ENTITY_API_MAP: Partial<
+  Record<keyof MapPatchAPIResponse, GetEntityAPIFn>
+> = {
+  [EntityType.TABLE]: getTableDetailsByFQN,
+  [EntityType.DASHBOARD]: getDashboardByFqn,
+  [EntityType.CHART]: getChartByFqn,
+  [EntityType.MLMODEL]: getMlModelByFQN,
+  [EntityType.PIPELINE]: getPipelineByFqn,
+  [EntityType.TOPIC]: getTopicByFqn,
+  [EntityType.CONTAINER]: getContainerByName,
+  [EntityType.STORED_PROCEDURE]: getStoredProceduresByFqn,
+  [EntityType.DASHBOARD_DATA_MODEL]: getDataModelByFqn,
+  [EntityType.GLOSSARY_TERM]: getGlossaryTermByFQN,
+  [EntityType.GLOSSARY]: getGlossariesByName,
+  [EntityType.CLASSIFICATION]: getClassificationByName,
+  [EntityType.TAG]: getTagByFqn,
+  [EntityType.DATABASE_SCHEMA]: getDatabaseSchemaDetailsByFQN,
+  [EntityType.DATABASE]: getDatabaseDetailsByFQN,
+  [EntityType.SEARCH_INDEX]: getSearchIndexDetailsByFQN,
+  [EntityType.TEAM]: getTeamByName,
+  [EntityType.USER]: getUserByName,
+  [EntityType.API_COLLECTION]: getApiCollectionByFQN,
+  [EntityType.API_ENDPOINT]: getApiEndPointByFQN,
+  [EntityType.METRIC]: getMetricByFqn,
+  [EntityType.DOMAIN]: getDomainByName,
+  [EntityType.DIRECTORY]: (fqn: string, params?: ListParams) =>
+    getDriveAssetByFqn<Directory>(
+      fqn,
+      EntityType.DIRECTORY,
+      params?.fields,
+      params?.include
+    ),
+  [EntityType.FILE]: (fqn: string, params?: ListParams) =>
+    getDriveAssetByFqn<File>(
+      fqn,
+      EntityType.FILE,
+      params?.fields,
+      params?.include
+    ),
+  [EntityType.SPREADSHEET]: (fqn: string, params?: ListParams) =>
+    getDriveAssetByFqn<Spreadsheet>(
+      fqn,
+      EntityType.SPREADSHEET,
+      params?.fields,
+      params?.include
+    ),
+  [EntityType.WORKSHEET]: (fqn: string, params?: ListParams) =>
+    getDriveAssetByFqn<Worksheet>(
+      fqn,
+      EntityType.WORKSHEET,
+      params?.fields,
+      params?.include
+    ),
+  [EntityType.KNOWLEDGE_PAGE]: getKnowledgePageByFqn,
+};
+
+const getServicePatchAPI = (
+  source: keyof MapPatchAPIResponse
+): PatchAPIFn | undefined => {
+  if (!SERVICE_ENTITY_TYPES.includes(source)) {
+    return undefined;
+  }
+
+  return (id, queryFields) => {
+    const serviceCat = getServiceCategoryFromEntityType(source);
+
+    return patchDomainSupportedService(serviceCat, id, queryFields);
+  };
+};
+
+const getServiceEntityAPI = (
+  source: keyof MapPatchAPIResponse
+): GetEntityAPIFn | undefined => {
+  if (!SERVICE_ENTITY_TYPES.includes(source)) {
+    return undefined;
+  }
+
+  return (id, queryFields) => {
+    const serviceCat = getServiceCategoryFromEntityType(source);
+
+    return getDomainSupportedServiceByFQN(serviceCat, id, queryFields);
+  };
+};
+
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
 ): ((
   id: string,
   jsonPatch: Operation[]
 ) => Promise<MapPatchAPIResponse[typeof source]>) => {
-  switch (source) {
-    case EntityType.TABLE:
-      return patchTableDetails;
-    case EntityType.DASHBOARD:
-      return patchDashboardDetails;
-    case EntityType.CHART:
-      return patchChartDetails;
-    case EntityType.MLMODEL:
-      return patchMlModelDetails;
-    case EntityType.PIPELINE:
-      return patchPipelineDetails;
-    case EntityType.TOPIC:
-      return patchTopicDetails;
-    case EntityType.CONTAINER:
-      return patchContainerDetails;
-    case EntityType.SEARCH_INDEX:
-      return patchSearchIndexDetails;
-    case EntityType.STORED_PROCEDURE:
-      return patchStoredProceduresDetails;
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return patchDataModelDetails;
-    case EntityType.GLOSSARY_TERM:
-      return patchGlossaryTerm;
-    case EntityType.GLOSSARY:
-      return patchGlossaries;
-    case EntityType.TAG:
-      return patchTag;
-    case EntityType.CLASSIFICATION:
-      return patchClassification;
-    case EntityType.DATABASE_SCHEMA:
-      return patchDatabaseSchemaDetails;
-    case EntityType.DATABASE:
-      return patchDatabaseDetails;
-    case EntityType.TEAM:
-      return patchTeamDetail;
-    case EntityType.USER:
-      return updateUserDetail;
-    case EntityType.API_COLLECTION:
-      return patchApiCollection;
-    case EntityType.API_ENDPOINT:
-      return patchApiEndPoint;
-    case EntityType.METRIC:
-      return patchMetric;
-    case EntityType.DOMAIN:
-      return patchDomains;
-    case EntityType.DIRECTORY:
-      return (id: string, data: Operation[]) =>
-        patchDriveAssetDetails<Directory>(id, data, EntityType.DIRECTORY);
-    case EntityType.FILE:
-      return (id: string, data: Operation[]) =>
-        patchDriveAssetDetails<File>(id, data, EntityType.FILE);
-    case EntityType.SPREADSHEET:
-      return (id: string, data: Operation[]) =>
-        patchDriveAssetDetails<Spreadsheet>(id, data, EntityType.SPREADSHEET);
-    case EntityType.WORKSHEET:
-      return (id: string, data: Operation[]) =>
-        patchDriveAssetDetails<Worksheet>(id, data, EntityType.WORKSHEET);
-    case EntityType.KNOWLEDGE_PAGE:
-      return patchKnowledgePage;
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.API_SERVICE:
-    case EntityType.SECURITY_SERVICE:
-    case EntityType.DRIVE_SERVICE:
-      return (id, queryFields) => {
-        const serviceCat = getServiceCategoryFromEntityType(source);
-
-        return patchDomainSupportedService(serviceCat, id, queryFields);
-      };
-  }
+  return (PATCH_API_MAP[source] ?? getServicePatchAPI(source)) as PatchAPIFn;
 };
 
 export const getEntityAPIfromSource = (
@@ -183,101 +250,8 @@ export const getEntityAPIfromSource = (
   fqn: string,
   params?: ListParams
 ) => Promise<MapPatchAPIResponse[typeof source]>) => {
-  switch (source) {
-    case EntityType.TABLE:
-      return getTableDetailsByFQN;
-    case EntityType.DASHBOARD:
-      return getDashboardByFqn;
-    case EntityType.CHART:
-      return getChartByFqn;
-    case EntityType.MLMODEL:
-      return getMlModelByFQN;
-    case EntityType.PIPELINE:
-      return getPipelineByFqn;
-    case EntityType.TOPIC:
-      return getTopicByFqn;
-    case EntityType.CONTAINER:
-      return getContainerByName;
-    case EntityType.STORED_PROCEDURE:
-      return getStoredProceduresByFqn;
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelByFqn;
-    case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermByFQN;
-    case EntityType.GLOSSARY:
-      return getGlossariesByName;
-    case EntityType.CLASSIFICATION:
-      return getClassificationByName;
-    case EntityType.TAG:
-      return getTagByFqn;
-    case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsByFQN;
-    case EntityType.DATABASE:
-      return getDatabaseDetailsByFQN;
-    case EntityType.SEARCH_INDEX:
-      return getSearchIndexDetailsByFQN;
-    case EntityType.TEAM:
-      return getTeamByName;
-    case EntityType.USER:
-      return getUserByName;
-    case EntityType.API_COLLECTION:
-      return getApiCollectionByFQN;
-    case EntityType.API_ENDPOINT:
-      return getApiEndPointByFQN;
-    case EntityType.METRIC:
-      return getMetricByFqn;
-    case EntityType.DOMAIN:
-      return getDomainByName;
-    case EntityType.DIRECTORY:
-      return (fqn: string, params?: ListParams) =>
-        getDriveAssetByFqn<Directory>(
-          fqn,
-          EntityType.DIRECTORY,
-          params?.fields,
-          params?.include
-        );
-    case EntityType.FILE:
-      return (fqn: string, params?: ListParams) =>
-        getDriveAssetByFqn<File>(
-          fqn,
-          EntityType.FILE,
-          params?.fields,
-          params?.include
-        );
-    case EntityType.SPREADSHEET:
-      return (fqn: string, params?: ListParams) =>
-        getDriveAssetByFqn<Spreadsheet>(
-          fqn,
-          EntityType.SPREADSHEET,
-          params?.fields,
-          params?.include
-        );
-    case EntityType.WORKSHEET:
-      return (fqn: string, params?: ListParams) =>
-        getDriveAssetByFqn<Worksheet>(
-          fqn,
-          EntityType.WORKSHEET,
-          params?.fields,
-          params?.include
-        );
-    case EntityType.KNOWLEDGE_PAGE:
-      return getKnowledgePageByFqn;
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.API_SERVICE:
-    case EntityType.SECURITY_SERVICE:
-    case EntityType.DRIVE_SERVICE:
-      return (id, queryFields) => {
-        const serviceCat = getServiceCategoryFromEntityType(source);
-
-        return getDomainSupportedServiceByFQN(serviceCat, id, queryFields);
-      };
-  }
+  return (GET_ENTITY_API_MAP[source] ??
+    getServiceEntityAPI(source)) as GetEntityAPIFn;
 };
 
 export const getAssetsFields = (source: AssetsOfEntity) => {

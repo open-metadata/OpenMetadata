@@ -35,6 +35,7 @@ import {
   clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
+  selectOptionWithRetry,
   toastNotification,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -173,9 +174,21 @@ export const deleteEdge = async (
   fromNode: EntityClass,
   toNode: EntityClass
 ) => {
-  await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+  const addPipeline = page.getByTestId('add-pipeline');
 
-  await page.getByTestId('add-pipeline').dispatchEvent('click');
+  // `clickEdgeBetweenNodes` dispatches a synthetic click on a react-flow edge
+  // label. `dispatchEvent` takes no actionability wait, so if the graph re-lays
+  // out between resolving the label and firing the event — which it does while
+  // nodes are still settling — the click lands on a node that is no longer wired
+  // up, the toolbar never opens, and the wait for `add-pipeline` below burns the
+  // whole test timeout on an action that silently did nothing. Retry the pair
+  // until the toolbar is actually there.
+  await expect(async () => {
+    await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+    await expect(addPipeline).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
+
+  await addPipeline.dispatchEvent('click');
 
   await expect(page.getByRole('dialog').first()).toBeVisible();
 
@@ -872,8 +885,10 @@ export const verifyExportLineagePNG = async (
     });
 
   if (!isPNGSelected) {
-    await page.getByTestId('export-type-select').click();
-    await page.getByRole('option', { name: 'PNG' }).click();
+    await selectOptionWithRetry(
+      page.getByTestId('export-type-select'),
+      page.getByRole('option', { name: 'PNG' })
+    );
   }
 
   await expect(page.getByTestId('export-type-select')).toContainText('PNG');
