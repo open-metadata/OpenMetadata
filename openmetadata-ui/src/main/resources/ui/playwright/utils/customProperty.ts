@@ -1150,6 +1150,7 @@ export const validateColumnCustomProperty = async (
         .getByRole('row')
         .filter({ hasText: testValue })
         .filter({ hasText: 'row1col2' })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'entityReference') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
