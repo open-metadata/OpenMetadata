@@ -238,12 +238,25 @@ export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
 export const isSearchScopedRule = (rule: ContextRule): boolean =>
   Boolean(rule.filteredInSearch) && !isKnowledgeContextRule(rule);
 
-// Adds the enabled check on top: searchScope() skips disabled rules, so counting them would
-// overstate how much of the persona's search is actually narrowed. Deliberately not part of
-// isSearchScopedRule — a disabled rule still *is* in scoping mode, which is what the card displays.
-export const getScopedRuleCount = (rules: ContextRule[]): number =>
-  rules.filter((rule) => isSearchScopedRule(rule) && rule.enabled !== false)
-    .length;
+/**
+ * Mirrors both of searchScope()'s gates, in the order the backend applies them: a definition that is
+ * switched off serves an empty scope, so none of its rules narrow search however they are flagged,
+ * and within an enabled definition a disabled rule is dropped too. Takes the definition rather than
+ * its rules so that the top-level gate cannot be forgotten at a call site — counting rules alone
+ * tells the admin more of their search is narrowed than actually is. Deliberately not folded into
+ * isSearchScopedRule — a disabled rule still *is* in scoping mode, which is what the editor displays.
+ */
+export const getScopedRuleCount = (
+  definition?: PersonaContextDefinition
+): number => {
+  if (definition?.enabled === false) {
+    return 0;
+  }
+
+  return (definition?.rules ?? []).filter(
+    (rule) => isSearchScopedRule(rule) && rule.enabled !== false
+  ).length;
+};
 
 export interface PersonaContextVersionChange {
   key: string;
