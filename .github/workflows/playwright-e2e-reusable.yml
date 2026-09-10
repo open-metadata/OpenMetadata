@@ -760,16 +760,30 @@ jobs:
         if: ${{ !inputs.ref }}
         run: |
           core_dir="openmetadata-ui-core-components/src/main/resources/ui"
-          yarn --cwd "$core_dir" --ignore-scripts --frozen-lockfile
-          mkdir -p "$core_dir/dist" "$core_dir/node_modules/.vite-temp"
-          # Only generated build output is writable by the checked-out code.
+          core_output="$RUNNER_TEMP/playwright-core"
+          mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
+          # Dependency installation can execute repository-controlled package-manager
+          # configuration even with lifecycle scripts disabled. Keep it off the runner.
+          docker run --rm --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=4g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
+            --workdir "/workspace/$core_dir" \
+            node:22.22.2-bookworm-slim \
+            yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache
+
+          # Only temporary build output is writable; dependencies and source stay read-only.
+          mkdir -p "$core_output/node_modules/.vite-temp"
           docker run --rm --network none --read-only \
             --cap-drop ALL --security-opt no-new-privileges \
             --user "$(id -u):$(id -g)" \
             --tmpfs /tmp:rw,nosuid,size=1g \
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
-            --mount "type=bind,source=$GITHUB_WORKSPACE/$core_dir/dist,target=/workspace/$core_dir/dist" \
-            --mount "type=bind,source=$GITHUB_WORKSPACE/$core_dir/node_modules/.vite-temp,target=/workspace/$core_dir/node_modules/.vite-temp" \
+            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
+            --mount "type=bind,source=$core_output/dist,target=/workspace/$core_dir/dist" \
+            --mount "type=bind,source=$core_output/vite-temp,target=/workspace/$core_dir/node_modules/.vite-temp" \
             --workdir "/workspace/$core_dir" \
             node:22.22.2-bookworm-slim \
             ./node_modules/.bin/vite build
@@ -780,11 +794,14 @@ jobs:
         # Shared helper behavior is independent of shard data. Gate planning
         # once, before fan-out, with the real compiled components and browser.
         run: |
+          core_dir="openmetadata-ui-core-components/src/main/resources/ui"
           docker run --rm --network none --read-only --shm-size=1g \
             --cap-drop ALL --security-opt no-new-privileges \
             --user "$(id -u):$(id -g)" \
             --tmpfs /tmp:rw,nosuid,size=1g \
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/playwright-core/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/playwright-core/dist,target=/workspace/$core_dir/dist,readonly" \
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
