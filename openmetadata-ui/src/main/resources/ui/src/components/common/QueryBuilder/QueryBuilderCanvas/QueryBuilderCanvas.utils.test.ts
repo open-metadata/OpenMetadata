@@ -15,75 +15,51 @@ import {
   countRules,
   getSurfaceForDepth,
   toFieldNodes,
-  toGroupFieldNodes,
 } from './QueryBuilderCanvas.utils';
 
 const FIELDS = {
   name: { label: 'Name' },
+  // a `!group`: carries subfields but is selectable itself
   tags: {
     label: 'Tags',
-    subfields: {
-      tagFQN: { label: 'Tag' },
-      nested: { label: 'Nested', subfields: { leaf: { label: 'Leaf' } } },
-    },
+    type: '!group',
+    subfields: { tagFQN: { label: 'Tag' } },
+  },
+  // a `!struct`: only groups its subfields
+  extension: {
+    label: 'Custom Properties',
+    type: '!struct',
+    subfields: { size: { label: 'Size' } },
   },
 };
 
 describe('toFieldNodes', () => {
-  it('should address every field by the dotted path RAQB uses', () => {
+  it('should keep a `!group` selectable rather than folding it into its subfields', () => {
+    // The regression this guards: `OMFieldSelect` renders only leaves, so a
+    // field turned into a parent disappears from the picker — which is how
+    // Tags, Tier and Glossary Term went missing.
     const [name, tags] = toFieldNodes(FIELDS);
 
     expect(name).toEqual({ key: 'name', label: 'Name', path: 'name' });
-    expect(tags.path).toBe('tags');
-    expect(tags.items?.map((item) => item.path)).toEqual([
-      'tags.tagFQN',
-      'tags.nested',
-    ]);
-    expect(tags.items?.[1].items?.[0].path).toBe('tags.nested.leaf');
+    expect(tags).toEqual({ key: 'tags', label: 'Tags', path: 'tags' });
+    expect(tags.items).toBeUndefined();
+  });
+
+  it('should group a `!struct` around its subfields, as RAQB does', () => {
+    const struct = toFieldNodes(FIELDS)[2];
+
+    expect(struct.path).toBe('extension');
+    expect(struct.items?.map((item) => item.path)).toEqual(['extension.size']);
   });
 
   it('should fall back to the key when a field carries no label', () => {
-    expect(toFieldNodes({ owners: {} })).toEqual([
-      { key: 'owners', label: 'owners', path: 'owners' },
+    expect(toFieldNodes({ raw: {} })).toEqual([
+      { key: 'raw', label: 'raw', path: 'raw' },
     ]);
   });
 
   it('should tolerate a missing field map', () => {
     expect(toFieldNodes(undefined)).toEqual([]);
-  });
-});
-
-describe('toGroupFieldNodes', () => {
-  it('should offer the top level whether or not a field owns subfields', () => {
-    // A semantic rule is as often built on a plain field (Description) as on
-    // one with subfields (Owners); RAQB switches the node type to match.
-    expect(toGroupFieldNodes(FIELDS).map((item) => item.path)).toEqual(
-      Object.keys(FIELDS)
-    );
-  });
-
-  it('should offer a plain field with no subfields', () => {
-    expect(toGroupFieldNodes({ name: { label: 'Name' } })).toEqual([
-      { key: 'name', label: 'Name', path: 'name' },
-    ]);
-  });
-
-  it('should not offer subfields, which belong to the rules inside', () => {
-    expect(
-      toGroupFieldNodes({
-        tags: { label: 'Tags', subfields: { tagFQN: {} } },
-      }).map((item) => item.path)
-    ).toEqual(['tags']);
-  });
-
-  it('should fall back to the key when a groupable field carries no label', () => {
-    expect(toGroupFieldNodes({ tags: { subfields: { tagFQN: {} } } })).toEqual([
-      { key: 'tags', label: 'tags', path: 'tags' },
-    ]);
-  });
-
-  it('should tolerate a missing field map', () => {
-    expect(toGroupFieldNodes(undefined)).toEqual([]);
   });
 });
 

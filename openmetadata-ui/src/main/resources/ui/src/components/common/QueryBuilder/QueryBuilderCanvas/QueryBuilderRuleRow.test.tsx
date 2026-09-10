@@ -26,12 +26,31 @@ import QueryBuilderRuleRow from './QueryBuilderRuleRow';
 jest.mock('./QueryBuilderCanvas.utils', () => ({
   ...jest.requireActual('./QueryBuilderCanvas.utils'),
   configUtils: {
-    getFieldConfig: () => ({ fieldSettings: { placeholder: 'Search' } }),
+    getFieldConfig: () => ({
+      fieldSettings: {
+        asyncFetch: ASYNC_FETCH,
+        placeholder: 'Search',
+        useAsyncSearch: true,
+      },
+      type: 'text',
+    }),
+    // RAQB's merged widget config; the date widget reads its formats from here.
+    getFieldWidgetConfig: () => ({
+      dateFormat: 'DD-MM-YYYY',
+      valueFormat: 'YYYY-MM-DDTHH:mm:ssZ',
+      valuePlaceholder: 'Enter value',
+    }),
     getOperatorsForField: () => ['==', 'between', 'unwidgeted'],
     getWidgetForFieldOp: (_config: unknown, _field: string, operator: string) =>
       operator === 'unwidgeted' ? undefined : 'text',
   },
 }));
+
+/** Stands in for a field's async option loader. */
+const ASYNC_FETCH = jest.fn();
+
+/** Every prop set the config's widget factory was called with. */
+const widgetProps: Record<string, unknown>[] = [];
 
 const actions = {
   removeRule: jest.fn(),
@@ -71,14 +90,18 @@ const config = {
   },
   widgets: {
     text: {
-      factory: (props: { value?: unknown; setValue: (v: string) => void }) => (
-        <input
-          aria-label="value"
-          data-testid="value-widget"
-          value={String(props.value ?? '')}
-          onChange={(event) => props.setValue(event.target.value)}
-        />
-      ),
+      factory: (props: { value?: unknown; setValue: (v: string) => void }) => {
+        widgetProps.push(props as unknown as Record<string, unknown>);
+
+        return (
+          <input
+            aria-label="value"
+            data-testid="value-widget"
+            value={String(props.value ?? '')}
+            onChange={(event) => props.setValue(event.target.value)}
+          />
+        );
+      },
     },
   },
 } as unknown as Config;
@@ -100,6 +123,7 @@ const realConfigUtils = { ...utils.configUtils };
 
 afterEach(() => {
   Object.assign(utils.configUtils, realConfigUtils);
+  widgetProps.length = 0;
 });
 
 const renderRow = (rule = {}, overrides = {}) =>
@@ -171,6 +195,24 @@ describe('QueryBuilderRuleRow', () => {
       'typed',
       'text'
     );
+  });
+
+  it('should tell each widget which value slot it owns', () => {
+    // The regression this guards: widgets name themselves with `delta`
+    // (`query-date-value-0`), so omitting it leaves them unaddressable and
+    // makes the two widgets of a between-operator indistinguishable.
+    renderRow({ properties: { field: 'name', operator: '==', value: ['x'] } });
+
+    expect(widgetProps.at(-1)).toMatchObject({
+      // `fieldSettings` carries the async option loader; a value widget that
+      // never receives it renders an empty "No data" dropdown.
+      asyncFetch: ASYNC_FETCH,
+      delta: 0,
+      field: 'name',
+      operator: '==',
+      placeholder: 'Search',
+      useAsyncSearch: true,
+    });
   });
 
   it('should give a two-valued operator a widget per value', () => {

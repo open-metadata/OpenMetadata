@@ -663,7 +663,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       );
 
       const inputElement = ruleLocator.locator(
-        '[data-testid=advanced-search-value] input[type="text"]'
+        '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
       );
       await inputElement.fill('description');
 
@@ -749,7 +749,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_contains
       );
       const inputElement = ruleLocator.locator(
-        '[data-testid=advanced-search-value] input[type="text"]'
+        '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
       );
       await inputElement.fill('description');
 

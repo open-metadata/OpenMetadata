@@ -967,7 +967,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           const inputElement = ruleLocator.locator(
-            '[data-testid=advanced-search-value] input[type="text"]'
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
           );
           await inputElement.fill(durationPropertyValue);
 
@@ -1263,7 +1263,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             );
 
             await ruleLocator
-              .locator('[data-testid=advanced-search-value] input[type="text"]')
+              .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
               .fill('updated value');
 
             await advanceSearchSaveFilter(page, 'updated value');

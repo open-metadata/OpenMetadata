@@ -860,7 +860,7 @@ test.describe('Curated Assets – Description filter', () => {
         'Contains'
       );
       await rule0
-        .locator('[data-testid=advanced-search-value] input[type="text"]')
+        .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
         .fill(WORD_TO_SEARCH.toLowerCase());
     });
 

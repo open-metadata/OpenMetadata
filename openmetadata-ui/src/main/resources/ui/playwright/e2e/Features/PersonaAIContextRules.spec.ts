@@ -300,7 +300,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
 
       await test.step('type a value in the text widget', async () => {
         const textInput = page
-          .locator('[data-testid=advanced-search-value] input[type="text"]')
+          .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
           .first();
         await textInput.waitFor({ state: 'visible' });
         await textInput.fill('important data asset');

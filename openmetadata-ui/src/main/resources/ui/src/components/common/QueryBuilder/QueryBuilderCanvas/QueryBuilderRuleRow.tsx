@@ -16,11 +16,7 @@ import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QUERY_BUILDER_COLUMN_RATIOS } from './QueryBuilderCanvas.constants';
 import type { QueryBuilderRuleRowProps } from './QueryBuilderCanvas.types';
-import {
-  configUtils,
-  toFieldNodes,
-  toGroupFieldNodes,
-} from './QueryBuilderCanvas.utils';
+import { configUtils, toFieldNodes } from './QueryBuilderCanvas.utils';
 import QueryBuilderControl from './QueryBuilderControl';
 
 const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
@@ -35,15 +31,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
   const field = rule.properties?.field ?? null;
   const operator = rule.properties?.operator ?? null;
 
-  // A row inside a `rule_group` edits the group's field, so it offers the
-  // fields a group can be built on rather than every leaf.
-  const fieldItems = useMemo(
-    () =>
-      groupField
-        ? toGroupFieldNodes(config.fields)
-        : toFieldNodes(config.fields),
-    [config, groupField]
-  );
+  const fieldItems = useMemo(() => toFieldNodes(config.fields), [config]);
 
   const operatorItems = useMemo(() => {
     if (!field) {
@@ -77,25 +65,34 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       operator,
       'value'
     );
-    const factory = widgetName
-      ? (config.widgets?.[widgetName] as { factory?: FC<never> } | undefined)
-          ?.factory
+    const widgetDef = widgetName
+      ? (config.widgets?.[widgetName] as
+          | { factory?: FC<never>; type?: string }
+          | undefined)
       : undefined;
+    const factory = widgetDef?.factory;
 
     if (!factory || slots < 1) {
       return [];
     }
 
-    const fieldSettings = configUtils.getFieldConfig(
-      config,
-      field
-    )?.fieldSettings;
+    const fieldConfig = configUtils.getFieldConfig(config, field);
+    // What kind of value RAQB is storing. A rule being built for the first
+    // time records none, and calling everything `text` makes a date or a
+    // number serialise as a string — the filter still saves, it just no
+    // longer means what the user picked.
+    const valueType =
+      widgetDef?.type ?? (fieldConfig?.type as string | undefined) ?? 'text';
 
     return Array.from({ length: slots }, (_, delta) => ({
       id: `${field}:${operator}:${delta}`,
       node: factory({
-        ...(fieldSettings ?? {}),
+        ...(fieldConfig?.fieldSettings ?? {}),
         config,
+        // Which value slot this widget owns. Widgets name themselves with it
+        // (`query-date-value-0`), so a widget without it cannot be addressed
+        // — and a two-valued operator renders two identical ones.
+        delta,
         field,
         operator,
         readonly,
@@ -105,7 +102,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
             path,
             delta,
             next as never,
-            (rule.properties?.valueType?.[delta] ?? 'text') as never
+            (rule.properties?.valueType?.[delta] ?? valueType) as never
           ),
       } as never),
     }));

@@ -333,8 +333,12 @@ export const fillRule = async (
   await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), condition);
 
   if (searchCriteria) {
+    // A react-aria combobox input is also `type="text"`, so the plain-text
+    // widget has to be told apart by the absent combobox role. Without that,
+    // a select-valued rule takes this branch: the text is typed, no option is
+    // ever chosen, and the rule is applied with a null value.
     const inputElement = ruleLocator.locator(
-      '[data-testid=advanced-search-value] input[type="text"]'
+      '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
     );
     const searchData = searchCriteria.toLowerCase();
 
@@ -659,7 +663,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (isGroupTest) {
+    // Adding a group asks how it joins the existing ones; these tests want
+    // the default.
     await page.getByTestId('advanced-search-add-group').first().click();
+    await page.getByTestId('advanced-search-add-group-and').click();
   } else {
     await page.getByTestId('advanced-search-add-rule').nth(1).click();
   }

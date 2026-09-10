@@ -1667,7 +1667,7 @@ test.describe.serial('Persona AI Context', () => {
       await firstOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, firstOp, 'Contains', false);
       const alphaInput = drawer
-        .locator('[data-testid=advanced-search-value] input[type="text"]')
+        .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
         .first();
       await alphaInput.fill('alpha');
       // Blur to commit the value to the RAQB immutable tree before adding the
@@ -1696,7 +1696,7 @@ test.describe.serial('Persona AI Context', () => {
       await secondOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, secondOp, 'Contains', false);
       const betaInput = drawer
-        .locator('[data-testid=advanced-search-value] input[type="text"]')
+        .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
         .last();
       await betaInput.fill('beta');
       // Blur to commit before the conjunction change fires.

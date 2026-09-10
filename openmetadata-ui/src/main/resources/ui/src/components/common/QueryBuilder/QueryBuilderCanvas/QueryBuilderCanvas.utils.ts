@@ -40,15 +40,28 @@ export const configUtils = QbUtils.ConfigUtils as unknown as {
   getFieldConfig: (
     config: unknown,
     field: string
-  ) => { fieldSettings?: Record<string, unknown> } | null;
+  ) => { type?: string; fieldSettings?: Record<string, unknown> } | null;
+  /** The merged widget config RAQB hands its own widgets. */
+  getFieldWidgetConfig: (
+    config: unknown,
+    field: string,
+    operator: string,
+    widget?: string | null,
+    valueSrc?: string | null
+  ) => Record<string, unknown> | null;
 };
 
 type RawFields = Record<string, Record<string, unknown>> | undefined;
 
 /**
- * `config.fields` as the field tree RAQB's renderers expect. Kept a tree
- * rather than flattened here: `OMFieldSelect` does its own leaf-walking, and
- * handing it the same shape RAQB does keeps the two paths identical.
+ * `config.fields` as the field tree RAQB's own renderers expect.
+ *
+ * Only a `!struct` groups its subfields in the picker. Every other field —
+ * including a `!group` such as Owners, Tags or Glossary Term — is selectable
+ * in its own right even though it carries subfields, which is exactly what
+ * `Field.buildOptions` does. Treating any field with subfields as a parent
+ * hides it: `OMFieldSelect` keeps only the leaves, so those fields vanish from
+ * the picker and no rule can be built on them.
  */
 export const toFieldNodes = (
   fields: unknown,
@@ -59,28 +72,10 @@ export const toFieldNodes = (
     const label = String(def?.label ?? key);
     const subfields = def?.subfields as RawFields;
 
-    return subfields
+    return def?.type === '!struct' && subfields
       ? { key, label, path, items: toFieldNodes(subfields, path) }
       : { key, label, path };
   });
-
-/**
- * What a `rule_group` can group on: the top level of the config, whether or
- * not an entry owns subfields.
- *
- * Not "parents only" — a semantic rule is just as often built on a plain field
- * like Description as on one with subfields like Owners, and RAQB switches the
- * node between `rule_group` and `rule` accordingly. Subfields are not offered
- * here either; they belong to the rules inside the group.
- */
-export const toGroupFieldNodes = (fields: unknown): QueryBuilderFieldNode[] =>
-  Object.entries((fields ?? {}) as NonNullable<RawFields>).map(
-    ([key, def]) => ({
-      key,
-      label: String(def?.label ?? key),
-      path: key,
-    })
-  );
 
 /** Rules at any depth. Root children would count a seeded wrapper as one. */
 export const countRules = (node?: QueryBuilderNode): number => {
