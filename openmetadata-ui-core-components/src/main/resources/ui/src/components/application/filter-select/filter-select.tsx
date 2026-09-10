@@ -120,7 +120,7 @@ const TriggerButton = ({
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}>
-          {hasSelection ? text : (placeholder ?? text)}
+          {hasSelection ? text : placeholder ?? text}
         </span>
         {countBadge}
         <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
@@ -233,9 +233,7 @@ const OptionRow = ({
       // Selection is conveyed by the checkbox alone — suppress the default
       // selected background, keeping the hover/focus tint.
       className={(state) =>
-        state.isSelected && !state.isFocused
-          ? 'tw:[&>div]:bg-transparent!'
-          : ''
+        state.isSelected && !state.isFocused ? 'tw:[&>div]:bg-transparent!' : ''
       }
       icon={iconComponent}
       id={option.value}
