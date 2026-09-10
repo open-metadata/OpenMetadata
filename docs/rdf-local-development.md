@@ -172,6 +172,7 @@ rdf:
 | `RDF_REMOTE_ENDPOINT` | Deprecated fallback when `RDF_ENDPOINT` is unset | unset |
 | `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
 | `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | In-flight live writes (automatically clamped to one for Fuseki) | `8` |
 | `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |
 | `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | Relationship sources per bulk write | `100` |
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | Detailed lineage edges per bulk write | `50` |

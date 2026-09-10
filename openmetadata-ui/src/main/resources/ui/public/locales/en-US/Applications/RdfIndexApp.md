@@ -57,3 +57,24 @@ $$section
 Number of entities per partition for distributed RDF indexing.
 
 $$
+
+$$section
+### Blue/Green Rebuild $(id="blueGreenRebuild")
+
+Build the rebuild into an idle dataset and switch to it only after the run succeeds, so queries keep seeing the previous graph instead of a partially-rebuilt one. Requires roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+
+$$
+
+$$section
+### Minimum Success Ratio $(id="minSuccessRatio")
+
+Fraction of records that must index successfully before a blue/green rebuild is allowed to become the served dataset. Below this the previous dataset keeps serving and the run is marked failed.
+
+$$
+
+$$section
+### Relationship Isolation Failure Limit $(id="relationshipIsolationMaxFailures")
+
+Maximum failed per-source writes during isolation of a failed RDF relationship batch. Once this limit is reached, remaining sources are recorded as failures. Successful writes do not consume the budget; zero disables per-source isolation. This is separate from HTTP request retries.
+
+$$

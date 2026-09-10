@@ -49,7 +49,25 @@ class AirbyteConnectionModel(BaseModel):
     name: str | None = None
     sourceId: str | None = None  # noqa: N815
     destinationId: str | None = None  # noqa: N815
+    # Internal API (`api/v1`) returns a full `syncCatalog`; the public API
+    # (`api/public/v1`) returns the stream list under `configurations.streams`.
     syncCatalog: AirbyteSyncCatalog | None = None  # noqa: N815
+    configurations: dict | None = None
+
+    @property
+    def resolved_streams(self) -> list[AirbyteStream]:
+        """Streams from whichever API responded (cf. resolved_type/resolved_configuration).
+
+        A database source's public-API entries carry `name` + `namespace`;
+        schemaless sources omit `namespace`. Issue #26993.
+        """
+        if self.syncCatalog and self.syncCatalog.streams:
+            return [entry.stream for entry in self.syncCatalog.streams if entry.stream]
+        return [
+            AirbyteStream(name=s["name"], namespace=s.get("namespace"))
+            for s in (self.configurations or {}).get("streams") or []
+            if isinstance(s, dict) and s.get("name")
+        ]
 
 
 class AirbyteJobAttempt(BaseModel):

@@ -12,6 +12,7 @@ from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -443,11 +444,13 @@ class OpenLineageUnitTest(unittest.TestCase):
             result["arn:aws:glue:us-east-1:1/table/db/users_raw"],
         )
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn):
+    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached):
         """Test with valid input and output lists."""
         # Setup
+        mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "s3a://project-db/src_test1": "database.schema.input_table_1",
@@ -507,14 +510,40 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
+    @staticmethod
+    def _mock_table_with_columns(*column_names):
+        """Build a lightweight stand-in for a Table entity with the given real column names."""
+        table = Mock()
+        columns = []
+        for column_name in column_names:
+            column = Mock()
+            column.name.root = column_name
+            columns.append(column)
+        table.columns = columns
+        return table
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(self, mock_build_map, mock_get_table_fqn):
-        """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
+    def test_get_column_lineage_matches_stored_column_case(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """OL field names are matched case-insensitively against the resolved Table
+        entity's real stored column names, instead of being force-lowercased.
+
+        Regression test: a destination whose real stored columns are uppercase
+        (e.g. Snowflake) previously got column FQNs built with a lowercased OL
+        field name that matched no real column, so the server silently dropped
+        the columnsLineage entry."""
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
+        source_table = self._mock_table_with_columns("first_name", "last_name")
+        target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
+            target_table if fqn_str == "database.schema.case_test_target" else source_table
+        )
 
         inputs = [
             {
@@ -558,17 +587,137 @@ class OpenLineageUnitTest(unittest.TestCase):
             "database.schema.case_test_target": {
                 "database.schema.case_test_source": [
                     ColumnLineage(
-                        toColumn="database.schema.case_test_target.first_name",
+                        toColumn="database.schema.case_test_target.FIRST_NAME",
                         fromColumns=["database.schema.case_test_source.first_name"],
                     ),
                     ColumnLineage(
-                        toColumn="database.schema.case_test_target.last_name",
+                        toColumn="database.schema.case_test_target.LAST_NAME",
                         fromColumns=["database.schema.case_test_source.last_name"],
                     ),
                 ],
             }
         }
         self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_falls_back_to_lowercase_when_table_entity_unavailable(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """When the Table entity can't be fetched (e.g. cache miss), column FQNs
+        fall back to the lowercased OL field name, preserving prior behavior."""
+        mock_get_by_name_cached.return_value = None
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {
+            "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
+        }
+
+        inputs = [
+            {
+                "name": "hk_schema.CASE_TEST_SOURCE",
+                "facets": {},
+                "namespace": "sqlserver://host:1433",
+            },
+        ]
+        outputs = [
+            {
+                "name": "hk_schema.CASE_TEST_TARGET",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "FIRST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "FIRST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        expected = {
+            "database.schema.case_test_target": {
+                "database.schema.case_test_source": [
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.first_name",
+                        fromColumns=["database.schema.case_test_source.first_name"],
+                    ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_requests_columns_field(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """_match_column_name only works if the fetched Table entity actually
+        has its columns populated. Table lookups must explicitly request the
+        'columns' field rather than relying on whatever the default response
+        happens to include."""
+        mock_get_by_name_cached.return_value = None
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {
+            "hive://schema.input_table": "database.schema.input_table",
+        }
+        inputs = [{"name": "schema.input_table", "facets": {}, "namespace": "hive://"}]
+        outputs = [
+            {
+                "name": "schema.output_table",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "col": {
+                                "inputFields": [
+                                    {
+                                        "field": "col",
+                                        "namespace": "hive://",
+                                        "name": "schema.input_table",
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        ]
+        self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        mock_get_by_name_cached.assert_any_call(Table, "database.schema.output_table", fields=["columns"])
+        mock_get_by_name_cached.assert_any_call(Table, "database.schema.input_table", fields=["columns"])
+
+    def test_get_by_name_cached_keys_cache_by_requested_fields(self):
+        """A cache entry fetched without 'columns' must not shadow a later
+        lookup for the same entity that explicitly asks for 'columns' - and
+        vice versa. Regression test for a bug where the shared per-event
+        entity cache ignored the requested fields, so a first cache miss for
+        an unfielded call could silently starve a later, differently-fielded
+        call of the data it asked for."""
+        self.open_lineage_source._entity_cache = LRUCache(maxsize=10)
+        bare_table = Mock()
+        full_table = Mock()
+        full_table.columns = [Mock()]
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = lambda entity, fqn_str, **kwargs: (
+                full_table if kwargs.get("fields") == ["columns"] else bare_table
+            )
+
+            first = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t")
+            second = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t", fields=["columns"])
+
+            self.assertIs(first, bare_table)
+            self.assertIs(second, full_table)
+            self.assertEqual(mock_metadata.get_by_name.call_count, 2)
 
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Datasets with no resolvable identity are skipped, not fatal.
@@ -581,12 +730,16 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
         self.assertEqual(result, {})
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_skips_when_input_unresolved(self, mock_build_map, mock_get_table_fqn):
+    def test_get_column_lineage_skips_when_input_unresolved(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
         """When the input table is not in OpenMetadata, the column entry must
         be skipped instead of being emitted with a literal 'None.column' FQN
         on the input side."""
+        mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"svc.schema.{table_details.name}"
         # Only the output resolves; the input is intentionally absent from the map.
         mock_build_map.return_value = {"hive:///schema.output_table": "svc.schema.output_table"}
@@ -643,7 +796,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
+        with (
+            patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved),
+            patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None),
+        ):
             for outputs in (
                 outputs_null_facets,
                 outputs_null_column_lineage,
@@ -679,7 +835,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
+        with (
+            patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved),
+            patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None),
+        ):
             for outputs in (
                 outputs_facets_list,
                 outputs_column_lineage_list,
@@ -1051,13 +1210,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 # dst of table lineage
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             else:
                 # pipeline
                 z = Mock()
@@ -1130,7 +1289,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"glueService.{table_details.schema}.{table_details.name}"
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             ids = {
                 "glueService.store_of_value.src_table": src_uuid,
                 "glueService.store_of_value.gsheet_recon_stats_notes": dst_uuid,
@@ -1193,7 +1352,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             "glueService.silver-stagingdb.recon_stats": dst_uuid,
         }
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             # Any FQN still carrying the backticks resolves to this sentinel id,
             # so a leaked quote shows up as a wrong edge rather than no edge.
             return Mock(id=Mock(root=catalogued.get(fqn, "33333333-3333-3333-3333-333333333333")))
@@ -1337,11 +1496,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         from_table_id = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
         to_table_id = "59fc8906-4a4a-45ab-9a54-9cc2d399e10e"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root=from_table_id))
+                return Mock(id=Mock(root=from_table_id), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root=to_table_id))
+                return Mock(id=Mock(root=to_table_id), columns=[])
             elif "openlineage_source" in fqn:  # Pipeline entity
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             return None
@@ -1536,11 +1695,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             else:
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
 
