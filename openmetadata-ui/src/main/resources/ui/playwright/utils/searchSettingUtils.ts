@@ -92,7 +92,11 @@ export async function setSliderValue(
   const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
   const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
 
-  // Get slider track dimensions
+  // Hover scrolls the handle into view and waits for it to become stable. Do
+  // this before reading viewport-relative coordinates so a scroll does not
+  // make the track's bounding box stale before the drag starts.
+  await sliderHandle.hover();
+
   const box = await sliderTrack.boundingBox();
   if (!box) {
     throw new Error('Slider track not found');
@@ -103,11 +107,11 @@ export async function setSliderValue(
   // Calculate the exact x-position for the value
   const valuePosition = x + ((value - min) / (max - min)) * width;
 
-  // Move the slider handle to the calculated position
-  await sliderHandle.hover(); // Ensure visibility
   await page.mouse.down();
-  await page.mouse.move(valuePosition, box.y);
+  await page.mouse.move(valuePosition, box.y + box.height / 2);
   await page.mouse.up();
+
+  await expect(sliderHandle).toHaveAttribute('aria-valuenow', String(value));
 }
 
 // The entity search settings page opens with the "Ranking Details" accordion
