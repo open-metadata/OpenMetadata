@@ -52,6 +52,10 @@ describe('ChipTrigger', () => {
   it('should expose the untruncated label on hover when bounded', () => {
     renderChip({ maxChipWidth: 'tw:max-w-44' });
 
+    // The full label is surfaced via the Tooltip on hover (a react-aria overlay
+    // that jsdom does not lay out); what is verifiable here is that the whole
+    // label stays in the DOM as the trigger's content. Hover rendering is
+    // covered by IncidentManagerLocaleLayout.spec.ts.
     expect(screen.getByTestId('severity-chip-label')).toHaveTextContent(
       LONG_LABEL
     );
@@ -72,12 +76,14 @@ describe('ChipTrigger', () => {
     expect(screen.queryByTestId('icon-chevron-down')).not.toBeInTheDocument();
   });
 
-  it('should not set a tooltip on an unbounded chip', () => {
+  it('should not truncate (and so needs no tooltip) an unbounded chip', () => {
     renderChip();
 
-    expect(screen.getByTestId('severity-chip-label')).not.toHaveAttribute(
-      'title'
-    );
+    // An unbounded chip cannot clip, so it does not get the truncation class
+    // that gates the tooltip — the full label is always visible.
+    const label = screen.getByTestId('severity-chip-label');
+
+    expect(label).not.toHaveClass('tw:truncate');
     expect(screen.getByTestId('severity-chip')).toHaveTextContent(LONG_LABEL);
   });
 });

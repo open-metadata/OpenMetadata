@@ -441,10 +441,15 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Owners').click();
 
     await expect(
-      page.getByTitle(EntityDataClass.user1.responseData.name)
+      page
+        .getByTestId('drop-down-menu')
+        .getByLabel(EntityDataClass.user1.responseData.name)
     ).toBeVisible();
 
-    await page.getByTitle(EntityDataClass.user1.responseData.name).click();
+    await page
+      .getByTestId('drop-down-menu')
+      .getByLabel(EntityDataClass.user1.responseData.name)
+      .click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
@@ -468,11 +473,14 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Domains').click();
 
     await expect(
-      page.getByTitle(EntityDataClass.domain1.responseData.displayName)
+      page
+        .getByTestId('drop-down-menu')
+        .getByLabel(EntityDataClass.domain1.responseData.displayName)
     ).toBeVisible();
 
     await page
-      .getByTitle(EntityDataClass.domain1.responseData.displayName)
+      .getByTestId('drop-down-menu')
+      .getByLabel(EntityDataClass.domain1.responseData.displayName)
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
@@ -497,11 +505,14 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Tier').click();
 
     await expect(
-      page.getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+      page
+        .getByTestId('drop-down-menu')
+        .getByLabel(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
     ).toBeVisible();
 
     await page
-      .getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+      .getByTestId('drop-down-menu')
+      .getByLabel(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
@@ -881,7 +892,9 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Service Type').click();
 
-    const serviceTypeOption = page.getByTitle('mlflow', { exact: true });
+    const serviceTypeOption = page
+      .getByTestId('drop-down-menu')
+      .getByLabel('mlflow', { exact: true });
     await expect(serviceTypeOption).toBeVisible();
 
     await serviceTypeOption.click();
@@ -986,7 +999,8 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Tier').click();
 
     await page
-      .getByTitle(
+      .getByTestId('drop-down-menu')
+      .getByLabel(
         EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
       )
       .click();

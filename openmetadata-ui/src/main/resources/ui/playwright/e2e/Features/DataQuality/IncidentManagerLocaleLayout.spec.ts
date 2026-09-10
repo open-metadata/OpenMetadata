@@ -276,8 +276,8 @@ test.describe('Incident Manager table in a long-string locale', () => {
     );
 
     expect(labelOverflow).toBeGreaterThan(0);
-    // The full text is surfaced by the Tooltip component on hover — no native
-    // title attribute, the component renders a react-aria overlay instead.
+    // The full text is surfaced on hover by the design-system Tooltip (a
+    // react-aria overlay with role="tooltip"), not a native title attribute.
     await severityLabel.hover();
     await expect(page.getByRole('tooltip')).toContainText(RU_NO_SEVERITY);
 

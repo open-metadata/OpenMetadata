@@ -23,6 +23,7 @@ import { Plus, Trash01, X } from '@untitledui/icons';
 import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { isArray, isEmpty } from 'lodash';
+import { Focusable } from 'react-aria-components';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -135,14 +136,25 @@ export const generateSearchDropdownLabel = (
           </div>
         )}
         <div>
+          {/* These labels live inside an Ant `Menu` item whose selection is
+              wired on the item's click. Tooltip's default trigger is an
+              AriaButton whose press handling would swallow that click, so the
+              option could no longer be selected by clicking its text. Wrapping
+              the label in <Focusable> instead makes it consume the tooltip's
+              hover context (so the full label still surfaces on hover) without
+              adding any press handler, so the click bubbles to the menu item.
+              excludeFromTabOrder keeps the label out of the tab order — the
+              menu owns keyboard navigation. */}
           <Tooltip title={option.label}>
-            <span className="dropdown-option-label tw:truncate tw:block">
-              <span>
-                {parse(
-                  DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
-                )}
+            <Focusable excludeFromTabOrder>
+              <span className="dropdown-option-label tw:truncate tw:block">
+                <span>
+                  {parse(
+                    DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
+                  )}
+                </span>
               </span>
-            </span>
+            </Focusable>
           </Tooltip>
           {option.description && (
             <span
