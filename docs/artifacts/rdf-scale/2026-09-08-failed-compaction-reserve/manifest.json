@@ -1,0 +1,46 @@
+{
+  "productionCommit": "bfc7e6d9a021b41b27a47eade1d8165aa79726a3",
+  "outcome": "failed-disk-reserve-during-compaction",
+  "workload": {
+    "tables": 200000,
+    "edges": 2000000,
+    "wideEvery": 100,
+    "wideColumns": 500,
+    "detailedEvery": 100
+  },
+  "compression": "JSONL files use gzip with mtime=0; JSON files are unchanged",
+  "files": [
+    {
+      "source": "report.json",
+      "published": "report.json",
+      "sourceBytes": 1117,
+      "sourceSha256": "f07f83d094182fc28df54a004c5539018456b2ce70a02806cd279d167bc9bb4b",
+      "publishedBytes": 1117,
+      "publishedSha256": "f07f83d094182fc28df54a004c5539018456b2ce70a02806cd279d167bc9bb4b"
+    },
+    {
+      "source": "resources.jsonl",
+      "published": "resources.jsonl.gz",
+      "sourceBytes": 276801,
+      "sourceSha256": "f4f09fc43a2ef20c889c1698c98dc2ee3d2de4ebf3494539b9c156c0adb4e9e6",
+      "publishedBytes": 43139,
+      "publishedSha256": "0268c31994eaea245c8b0d674f9195e5e20d0f475d8603efc24dfb0c27a57a3c"
+    },
+    {
+      "source": "failure-attempt.json",
+      "published": "failure-attempt.json",
+      "sourceBytes": 1988,
+      "sourceSha256": "8a87c8645bc5f9185992a349f095f6aebd7e47efcec23807e6295dda8c158a45",
+      "publishedBytes": 1988,
+      "publishedSha256": "8a87c8645bc5f9185992a349f095f6aebd7e47efcec23807e6295dda8c158a45"
+    },
+    {
+      "source": "progress.jsonl",
+      "published": "progress.jsonl.gz",
+      "sourceBytes": 5882,
+      "sourceSha256": "abcf5549e860b8f30654792319fd7b1ad8f9743a4b0c5b381716170980d1dcf9",
+      "publishedBytes": 657,
+      "publishedSha256": "63c160fa026d52f02ff822add498e8855e13e0baf18c29639ef370d0ffc5cc47"
+    }
+  ]
+}

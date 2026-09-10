@@ -42,8 +42,10 @@ export const mockEntitySearchConfig = {
     { field: 'columns.name.keyword', boost: 2, matchType: 'exact' },
     { field: 'columns.displayName.keyword', boost: 2, matchType: 'exact' },
     { field: 'columnNamesFuzzy', boost: 1.5, matchType: 'standard' },
+    { field: 'aliases', boost: 5, matchType: 'standard' },
+    { field: 'aliases.keyword', boost: 10, matchType: 'exact' },
   ],
-  highlightFields: ['name', 'description', 'displayName'],
+  highlightFields: ['name', 'description', 'displayName', 'aliases'],
   matchTypeBoostMultipliers: {
     exactMatchMultiplier: 2,
     fuzzyMatchMultiplier: 1,

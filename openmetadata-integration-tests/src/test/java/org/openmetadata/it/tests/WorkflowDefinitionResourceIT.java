@@ -1905,6 +1905,348 @@ public class WorkflowDefinitionResourceIT {
         operationName);
   }
 
+  /**
+   * #28433: Verify the checkEntityAttributesTask evaluates {@code assetsCount > 0} as true for a
+   * DataProduct that has at least one asset.
+   */
+  @Test
+  void test_CheckEntityAttributes_DataProductAssetCount(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    // Create domain and a data product
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("dpac_domain"))
+                    .withDescription("Domain for asset count test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    org.openmetadata.schema.entity.domains.DataProduct dpWithAssets =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_with_assets"))
+                    .withDescription("DP with assets")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    // Create a table in the same domain and add it as an asset
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpac_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dpac_db"))
+                    .withDescription("DB")
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dpac_schema"))
+                    .withDescription("Schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("dpac_table"))
+                    .withDescription("Table for asset")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Primary key"))));
+    client
+        .dataProducts()
+        .bulkAddAssets(
+            dpWithAssets.getFullyQualifiedName(),
+            new org.openmetadata.schema.type.api.BulkAssets()
+                .withAssets(List.of(table.getEntityReference())));
+
+    // Build workflow: checkEntityAttributes with assetsCount > 0. The workflow is created AFTER
+    // the DP has its asset so the Updated event fired below evaluates against assetsCount = 1.
+    String workflowName = "dpAssetWF_" + ns.uniqueShortId();
+    String workflowJson =
+        String.format(
+            """
+        {
+          "name": "%s",
+          "displayName": "DP Asset Count Check",
+          "description": "Tests assetsCount enrichment on DataProduct",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataProduct"],
+              "events": ["Updated"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "start"},
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "checkAssets",
+              "displayName": "Check Assets > 0",
+              "config": {"rules": "{\\">\\":[{\\"var\\":\\"assetsCount\\"},0]}"},
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {"type": "endEvent", "subType": "endEvent", "name": "endTrue"},
+            {"type": "endEvent", "subType": "endEvent", "name": "endFalse"}
+          ],
+          "edges": [
+            {"from": "start", "to": "checkAssets"},
+            {"from": "checkAssets", "to": "endTrue", "condition": "true"},
+            {"from": "checkAssets", "to": "endFalse", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """,
+            workflowName);
+
+    Map<String, Object> workflowRequest = MAPPER.readValue(workflowJson, Map.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+    assertNotNull(response);
+    LOG.debug("Created DP asset count workflow: {}", workflowName);
+
+    try {
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Fire the Updated event on the DP (which already has an asset) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with assets - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithAssets.getId(), dpPatch);
+
+      // Wait for the workflow run and verify the checkAssets node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkAssets_result");
+    } finally {
+      safeDeleteWorkflow(client, workflowName);
+    }
+  }
+
+  /**
+   * #28433: Verify the checkEntityAttributesTask evaluates {@code outputPortsCount > 0} as true for
+   * a DataProduct that has output ports.
+   */
+  @Test
+  void test_CheckEntityAttributes_DataProductOutputPortCount(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("dpop_domain"))
+                    .withDescription("Domain for output port count test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    org.openmetadata.schema.entity.domains.DataProduct dpWithPorts =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_with_ports"))
+                    .withDescription("DP with output ports")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    // Create a table in the same domain, add as asset first, then as output port
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpop_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dpop_db"))
+                    .withDescription("DB")
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dpop_schema"))
+                    .withDescription("Schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("dpop_table"))
+                    .withDescription("Table for output port")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Primary key"))));
+    org.openmetadata.schema.type.api.BulkAssets bulkAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client.dataProducts().bulkAddAssets(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+    client.dataProducts().bulkAddOutputPorts(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+
+    // The workflow is created AFTER the DP has its output port so the Updated event fired
+    // below evaluates against outputPortsCount = 1.
+    String workflowName = "dpOpWF_" + ns.uniqueShortId();
+    String workflowJson =
+        String.format(
+            """
+        {
+          "name": "%s",
+          "displayName": "DP Output Port Count Check",
+          "description": "Tests outputPortsCount enrichment on DataProduct",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataProduct"],
+              "events": ["Updated"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "start"},
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "checkOutputPorts",
+              "displayName": "Check Output Ports > 0",
+              "config": {"rules": "{\\">\\":[{\\"var\\":\\"outputPortsCount\\"},0]}"},
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {"type": "endEvent", "subType": "endEvent", "name": "endTrue"},
+            {"type": "endEvent", "subType": "endEvent", "name": "endFalse"}
+          ],
+          "edges": [
+            {"from": "start", "to": "checkOutputPorts"},
+            {"from": "checkOutputPorts", "to": "endTrue", "condition": "true"},
+            {"from": "checkOutputPorts", "to": "endFalse", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """,
+            workflowName);
+
+    Map<String, Object> workflowRequest = MAPPER.readValue(workflowJson, Map.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+    assertNotNull(response);
+    LOG.debug("Created DP output port count workflow: {}", workflowName);
+
+    try {
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Fire the Updated event on the DP (which already has an output port) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with output ports - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithPorts.getId(), dpPatch);
+
+      // Wait for the workflow run and verify the checkOutputPorts node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkOutputPorts_result");
+    } finally {
+      safeDeleteWorkflow(client, workflowName);
+    }
+  }
+
+  /**
+   * Polls until the given workflow has at least one instance whose recorded stage carries {@code
+   * <nodeName>_result = true} (written by the node's stage listeners when storeStageStatus=true).
+   */
+  private void awaitStageResultTrue(
+      OpenMetadataClient client, String workflowDefinitionName, String resultKey) {
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(3))
+        .untilAsserted(
+            () -> {
+              String instancesPath =
+                  "/v1/governance/workflowInstances?workflowDefinitionName="
+                      + workflowDefinitionName
+                      + "&startTs=0&endTs="
+                      + System.currentTimeMillis()
+                      + "&limit=100";
+              String instancesJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
+              JsonNode instances = MAPPER.readTree(instancesJson).path("data");
+              assertTrue(instances.size() > 0, "Workflow should have at least one instance");
+              assertTrue(
+                  anyInstanceStageHasTrueResult(
+                      client, workflowDefinitionName, instances, resultKey),
+                  "At least one workflow instance should have a stage with " + resultKey + "=true");
+            });
+  }
+
+  private boolean anyInstanceStageHasTrueResult(
+      OpenMetadataClient client,
+      String workflowDefinitionName,
+      JsonNode instances,
+      String resultKey)
+      throws Exception {
+    boolean found = false;
+    for (JsonNode instance : instances) {
+      String instanceId = instance.path("id").asText(null);
+      if (instanceId == null) {
+        continue;
+      }
+      String statesPath =
+          "/v1/governance/workflowInstanceStates/"
+              + workflowDefinitionName
+              + "/"
+              + instanceId
+              + "?startTs=0&endTs="
+              + System.currentTimeMillis()
+              + "&limit=100";
+      String statesJson =
+          client
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, statesPath, null, RequestOptions.builder().build());
+      for (JsonNode state : MAPPER.readTree(statesJson).path("data")) {
+        if (state.path("stage").path("variables").path(resultKey).asBoolean(false)) {
+          found = true;
+        }
+      }
+    }
+    return found;
+  }
+
   private void safeDeleteWorkflow(OpenMetadataClient client, String workflowName) {
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);

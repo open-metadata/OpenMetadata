@@ -39,6 +39,7 @@ public class RdfDistributedJobParticipant implements Managed {
 
   private volatile Thread pollThread;
   private volatile Thread participantThread;
+  private volatile RdfOrphanJobMonitor orphanJobMonitor;
 
   public RdfDistributedJobParticipant(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
@@ -73,6 +74,8 @@ public class RdfDistributedJobParticipant implements Managed {
                       }
                     }
                   });
+      orphanJobMonitor = new RdfOrphanJobMonitor(coordinator);
+      orphanJobMonitor.start();
       LOG.info("Started RDF distributed job participant on server {}", serverId);
     }
   }
@@ -80,6 +83,10 @@ public class RdfDistributedJobParticipant implements Managed {
   @Override
   public void stop() {
     if (running.compareAndSet(true, false)) {
+      RdfOrphanJobMonitor monitor = orphanJobMonitor;
+      if (monitor != null) {
+        monitor.shutdown();
+      }
       interruptThread(pollThread);
       interruptThread(participantThread);
       LOG.info("Stopped RDF distributed job participant on server {}", serverId);

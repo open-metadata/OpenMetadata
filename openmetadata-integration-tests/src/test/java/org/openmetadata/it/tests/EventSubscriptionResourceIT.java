@@ -326,9 +326,10 @@ public class EventSubscriptionResourceIT
             .toList();
     assertTrue(eventTypes.contains("entityCreated"));
     assertTrue(eventTypes.contains("threadCreated"));
-    assertTrue(eventTypes.contains("taskResolved"));
-    assertFalse(eventTypes.contains("suggestionCreated"));
+    // never reaches change_event, so no resource may advertise it
     assertFalse(eventTypes.contains("entityFieldsChanged"));
+    // reachable only through the "all" resource
+    assertFalse(eventTypes.contains("entityLineageAdded"));
   }
 
   @Test

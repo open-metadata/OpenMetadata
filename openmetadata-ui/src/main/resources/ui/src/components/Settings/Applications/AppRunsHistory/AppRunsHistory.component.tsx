@@ -60,8 +60,8 @@ import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.compon
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';

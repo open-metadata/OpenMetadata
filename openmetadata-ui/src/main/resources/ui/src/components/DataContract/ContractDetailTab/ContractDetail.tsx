@@ -26,7 +26,6 @@ import {
 import {
   ChevronDown,
   Download02,
-  Flag04,
   PlayCircle,
   Plus,
   Trash01,
@@ -67,6 +66,7 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -292,6 +292,20 @@ const ContractDetail: React.FC<{
     setMode(e.target.value);
   }, []);
 
+  const statusBadge = useMemo(() => {
+    const { color, icon } = getEntityStatusBadgeConfig(contract?.entityStatus);
+
+    return (
+      <BadgeWithIcon
+        color={color}
+        iconLeading={icon}
+        size="sm"
+        type="pill-color">
+        {contract?.entityStatus ?? t('label.approved')}
+      </BadgeWithIcon>
+    );
+  }, [contract?.entityStatus, t]);
+
   const renderDataContractHeader = useMemo(() => {
     if (!contract) {
       return null;
@@ -505,13 +519,7 @@ const ContractDetail: React.FC<{
                 {`${t('label.status')} : `}
               </Typography>
 
-              <BadgeWithIcon
-                color="success"
-                iconLeading={Flag04}
-                size="sm"
-                type="pill-color">
-                {contract.entityStatus ?? t('label.approved')}
-              </BadgeWithIcon>
+              {statusBadge}
             </Box>
 
             <Divider
@@ -545,6 +553,7 @@ const ContractDetail: React.FC<{
     hasEditPermission,
     isInheritedContract,
     handleContractAction,
+    statusBadge,
     t,
   ]);
 
