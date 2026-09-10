@@ -279,3 +279,28 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt BIGINT NOT NULL,
   PRIMARY KEY (name)
 );
+
+CREATE TABLE IF NOT EXISTS onboarding_instance (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  entityId VARCHAR(36) NOT NULL UNIQUE,
+  entityType VARCHAR(64) NOT NULL,
+  configurationId VARCHAR(36) NOT NULL,
+  stage VARCHAR(32) NOT NULL,
+  revision BIGINT NOT NULL DEFAULT 0,
+  json JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS onboarding_board_stage ON onboarding_instance (entityType, stage, id);
+CREATE INDEX IF NOT EXISTS onboarding_configuration ON onboarding_instance (configurationId, id);
+CREATE TABLE IF NOT EXISTS onboarding_task (
+  taskId VARCHAR(36) NOT NULL PRIMARY KEY,
+  instanceId VARCHAR(36) NOT NULL,
+  stepId VARCHAR(64) NOT NULL,
+  attempt INT NOT NULL,
+  UNIQUE (instanceId, stepId, attempt)
+);
+CREATE TABLE IF NOT EXISTS onboarding_backfill (
+  configurationId VARCHAR(36) NOT NULL PRIMARY KEY,
+  leaseOwner VARCHAR(36),
+  leaseUntil BIGINT NOT NULL DEFAULT 0,
+  json JSONB NOT NULL
+);

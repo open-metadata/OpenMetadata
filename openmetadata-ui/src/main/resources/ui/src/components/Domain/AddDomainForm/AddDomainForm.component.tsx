@@ -79,7 +79,7 @@ import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { getCreationIntakeFields } from '../../../utils/governance/onboarding/Onboarding.utils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -92,6 +92,7 @@ import {
   DEFAULT_DOMAIN_ICON,
 } from '../../common/IconPicker';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { OnboardingCreationChecklist } from '../../governance/onboarding/OnboardingCreationChecklist';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import {
@@ -188,8 +189,7 @@ const applyDataProductFields = (
     dataProduct.portfolioPriority = formData.portfolioPriority
       .value as PortfolioPriority;
   }
-  // Collate-only: no field means the property is never sent.
-  if (domainClassBase.getReviewersField()) {
+  if (domainClassBase.getReviewersField() || formData.reviewers.length > 0) {
     dataProduct.reviewers = formData.reviewers.map(
       (item) => item.value as EntityReference
     );
@@ -343,6 +343,11 @@ const AddDomainForm = ({
   >([]);
   const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
   const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const onboardingWatchedValues = useWatch({ control: form.control });
+  const onboardingValues = useMemo(
+    () => transformDomainFormData(form.getValues(), type, parentDomain),
+    [form, type, parentDomain, onboardingWatchedValues]
+  );
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
@@ -445,7 +450,7 @@ const AddDomainForm = ({
   // message needs the per-field metadata from the intake form.
   const nativeRequiredFieldsByPath = useMemo(() => {
     const map = new Map<string, IntakeFormField>();
-    getIntakeFormFields(intakeForm).forEach((field) => {
+    getCreationIntakeFields(intakeForm, onboardingValues).forEach((field) => {
       const isCustom =
         field.fieldKind === FieldKind.CustomProperty ||
         field.fieldPath.startsWith('extension.');
@@ -455,15 +460,15 @@ const AddDomainForm = ({
     });
 
     return map;
-  }, [intakeForm]);
+  }, [intakeForm, onboardingValues]);
 
   const extensionFormFields = useMemo<IntakeFormField[]>(() => {
-    return getIntakeFormFields(intakeForm).filter(
+    return getCreationIntakeFields(intakeForm, onboardingValues).filter(
       (field) =>
         field.fieldKind === FieldKind.CustomProperty ||
         field.fieldPath.startsWith('extension.')
     );
-  }, [intakeForm]);
+  }, [intakeForm, onboardingValues]);
 
   const dataProductTypeOptions = useMemo<DomainFormSelectItem[]>(
     () =>
@@ -956,7 +961,18 @@ const AddDomainForm = ({
     type: FieldTypes.USER_TEAM_SELECT,
   });
 
-  const baseReviewersField = domainClassBase.getReviewersField();
+  const baseReviewersField: FieldProp | null =
+    domainClassBase.getReviewersField() ??
+    (getCreationIntakeFields(intakeForm, onboardingValues).some(
+      (field) => field.fieldPath === 'reviewers'
+    )
+      ? {
+          id: 'root/reviewers',
+          name: 'reviewers',
+          label: t('label.reviewer-plural'),
+          type: FieldTypes.USER_TEAM_SELECT_INPUT,
+        }
+      : null);
   const reviewersField: FieldProp | null = baseReviewersField
     ? applyIntakeFormRequired({
         ...baseReviewersField,
@@ -1090,6 +1106,10 @@ const AddDomainForm = ({
       data-testid="add-domain-form"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>
+      <OnboardingCreationChecklist
+        form={intakeForm}
+        values={onboardingValues}
+      />
       {coverImageField && <div>{getField(coverImageField)}</div>}
 
       <Box align="start" gap={4}>

@@ -23,6 +23,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -58,6 +59,7 @@ import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { OnboardingChecklist } from '../../governance/onboarding/OnboardingChecklist';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './metric.less';
@@ -328,6 +330,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             onTierUpdate={onTierUpdate}
             onUpdateVote={onUpdateVote}
             onVersionClick={onVersionChange}
+          />
+        </Col>
+        <Col span={24}>
+          <OnboardingChecklist
+            asset={metricDetails}
+            entityType={TargetEntityType.Metric}
+            permissions={metricPermissions}
+            onRefresh={fetchMetricDetails}
           />
         </Col>
         <GenericProvider<Metric>

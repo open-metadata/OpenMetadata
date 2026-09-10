@@ -52,6 +52,7 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -78,6 +79,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
+import { OnboardingChecklist } from '../../governance/onboarding/OnboardingChecklist';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -841,6 +843,14 @@ const GlossaryHeader = ({
           votes={selectedData.votes}
         />
       </div>
+      {!isGlossary && !isVersionView && (
+        <OnboardingChecklist
+          asset={selectedData}
+          entityType={TargetEntityType.GlossaryTerm}
+          permissions={permissions}
+          onRefresh={refreshGlossaryTerms}
+        />
+      )}
       <GlossaryHeaderModals
         handleDelete={handleDelete}
         isDelete={isDelete}

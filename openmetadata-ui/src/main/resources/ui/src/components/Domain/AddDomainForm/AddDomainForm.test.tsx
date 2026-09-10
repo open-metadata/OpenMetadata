@@ -478,6 +478,25 @@ describe('AddDomainForm', () => {
     expect(screen.getByTestId('root/reviewers')).toBeInTheDocument();
   });
 
+  it('renders reviewers required by an intake form without a class override', async () => {
+    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
+      id: 'intake-form-id',
+      name: 'dataProductIntake',
+      entityType: TargetEntityType.DataProduct,
+      formFields: [
+        {
+          fieldPath: 'reviewers',
+          fieldKind: FieldKind.Native,
+          fieldLabel: 'Reviewers',
+          required: true,
+        },
+      ],
+    } as IntakeForm);
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
+
+    expect(await screen.findByTestId('root/reviewers')).toBeInTheDocument();
+  });
+
   it('wires the configured entity-reference and hyperlink intake fields', async () => {
     const formFields = [
       {
@@ -827,7 +846,7 @@ describe('transformDomainFormData', () => {
     expect(result).toHaveProperty('domains', ['Finance']);
   });
 
-  it('omits reviewers from the DATA_PRODUCT payload when the field is hidden', () => {
+  it('preserves intake reviewers in the DATA_PRODUCT payload without a class override', () => {
     const result = transformDomainFormData(
       {
         ...baseForm,
@@ -836,7 +855,7 @@ describe('transformDomainFormData', () => {
       DomainFormType.DATA_PRODUCT
     );
 
-    expect(result).not.toHaveProperty('reviewers');
+    expect(result).toHaveProperty('reviewers', [expertRef]);
   });
 
   it('includes reviewers in the DATA_PRODUCT payload when the field is shown', () => {

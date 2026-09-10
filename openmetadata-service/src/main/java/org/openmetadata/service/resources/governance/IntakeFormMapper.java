@@ -27,6 +27,7 @@ public class IntakeFormMapper implements EntityMapper<IntakeForm, CreateIntakeFo
             .withEnabled(create.getEnabled() == null ? Boolean.TRUE : create.getEnabled())
             .withFormFields(create.getFormFields())
             .withRequiredFields(create.getRequiredFields())
+            .withOnboarding(create.getOnboarding())
             .withFullyQualifiedName(create.getName());
     IntakeFormUtil.synchronizeFields(intakeForm);
     return intakeForm;

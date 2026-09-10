@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingAssignment.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingAssignment",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingAssignment",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "creator",
+        "owners",
+        "experts",
+        "domainOwners",
+        "explicit"
+      ],
+      "default": "creator"
+    },
+    "assignees": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

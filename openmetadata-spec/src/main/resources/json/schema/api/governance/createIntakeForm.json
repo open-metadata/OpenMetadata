@@ -5,7 +5,9 @@
   "description": "Create IntakeForm API request.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.governance.CreateIntakeForm",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "Unique name of the IntakeForm.",
@@ -50,8 +52,14 @@
       "description": "Owners of this IntakeForm configuration.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
+    },
+    "onboarding": {
+      "$ref": "../../governance/onboarding/onboardingConfiguration.json"
     }
   },
-  "required": ["name", "entityType"],
+  "required": [
+    "name",
+    "entityType"
+  ],
   "additionalProperties": false
 }

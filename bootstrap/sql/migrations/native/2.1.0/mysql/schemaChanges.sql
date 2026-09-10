@@ -267,3 +267,29 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt bigint unsigned NOT NULL,
   PRIMARY KEY (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS onboarding_instance (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  entityId VARCHAR(36) NOT NULL,
+  entityType VARCHAR(64) NOT NULL,
+  configurationId VARCHAR(36) NOT NULL,
+  stage VARCHAR(32) NOT NULL,
+  revision BIGINT NOT NULL DEFAULT 0,
+  json JSON NOT NULL,
+  UNIQUE KEY onboarding_entity_unique (entityId),
+  KEY onboarding_board_stage (entityType, stage, id),
+  KEY onboarding_configuration (configurationId, id)
+);
+CREATE TABLE IF NOT EXISTS onboarding_task (
+  taskId VARCHAR(36) NOT NULL PRIMARY KEY,
+  instanceId VARCHAR(36) NOT NULL,
+  stepId VARCHAR(64) NOT NULL,
+  attempt INT NOT NULL,
+  UNIQUE KEY onboarding_task_attempt (instanceId, stepId, attempt)
+);
+CREATE TABLE IF NOT EXISTS onboarding_backfill (
+  configurationId VARCHAR(36) NOT NULL PRIMARY KEY,
+  leaseOwner VARCHAR(36),
+  leaseUntil BIGINT NOT NULL DEFAULT 0,
+  json JSON NOT NULL
+);

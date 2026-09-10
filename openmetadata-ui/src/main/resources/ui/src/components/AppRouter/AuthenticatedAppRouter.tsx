@@ -28,6 +28,16 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
+const OnboardingBoardPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/governance/onboarding/OnboardingBoardPage')
+  )
+);
+
+const TaskDetailsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/governance/tasks/TaskDetailsPage'))
+);
+
 const AddCustomMetricPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
@@ -366,6 +376,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Routes>
+      <Route element={<OnboardingBoardPage />} path="/onboarding" />
+      <Route element={<TaskDetailsPage />} path={ROUTES.TASK_DETAIL} />
       <Route
         element={<ForbiddenPage pageTitle={t('label.no-access')} />}
         path={ROUTES.FORBIDDEN}

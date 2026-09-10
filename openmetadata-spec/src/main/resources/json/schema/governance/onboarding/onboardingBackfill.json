@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingBackfill.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingBackfill",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingBackfill",
+  "type": "object",
+  "properties": {
+    "configurationId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "configurationVersion": {
+      "type": "number"
+    },
+    "cursor": {
+      "type": "string"
+    },
+    "complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "scanned": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 0
+    },
+    "enrolled": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 0
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "$ref": "../../type/entityReference.json"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "configurationId",
+    "complete"
+  ],
+  "additionalProperties": false
+}

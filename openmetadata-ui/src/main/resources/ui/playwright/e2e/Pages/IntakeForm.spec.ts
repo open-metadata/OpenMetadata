@@ -25,6 +25,21 @@ const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
 const DP_INTAKE_NAME = 'dataProduct';
 const DOMAIN_INTAKE_NAME = 'domain';
 const GLOSSARY_TERM_INTAKE_NAME = 'glossaryTerm';
+const customFields = (fields: Array<{ fieldPath: string }>) =>
+  fields.filter((field) => field.fieldPath.startsWith('extension.'));
+const setRequirement = async (
+  page: Page,
+  property: string,
+  requirement: 'Required' | 'Optional'
+) => {
+  const check = page.getByTestId(`onboarding-field-extension.${property}`);
+  await check.getByRole('button').filter({ hasText: property }).click();
+  await page
+    .getByTestId('onboarding-check-settings')
+    .getByRole('button', { name: / Requirement$/ })
+    .click();
+  await page.getByRole('option', { name: requirement, exact: true }).click();
+};
 
 // -----------------------------------------------------------------------------
 // API helpers — set up / tear down IntakeForms and custom properties directly,
@@ -323,7 +338,7 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('heading', { name: 'Intake Forms' })
+        page.getByRole('heading', { name: 'Onboarding & Intake Forms' })
       ).toBeVisible();
       await expect(page.getByTestId('add-intake-form')).toBeVisible();
     });
@@ -351,17 +366,28 @@ test.describe(
             page.getByTestId('intake-form-designer-modal')
           ).toBeVisible();
           await expect(
-            page.getByRole('alert').filter({ hasText: /only one intake form/i })
+            page.getByTestId('onboarding-stage-Creation')
           ).toBeVisible();
         });
 
         await test.step('Include three custom properties and require one; save', async () => {
           for (const propertyName of scenario.customPropertyNames) {
-            await page.getByTestId(`include-extension.${propertyName}`).click();
+            await page
+              .getByTestId('intake-form-designer-modal')
+              .getByRole('button', { name: / Field$/ })
+              .click();
+            await page
+              .getByRole('option', { name: propertyName, exact: true })
+              .click();
+            await page
+              .getByRole('button', { name: 'Add field', exact: true })
+              .click();
           }
-          await page
-            .getByTestId(`require-extension.${scenario.customPropertyNames[0]}`)
-            .click();
+          await setRequirement(
+            page,
+            scenario.customPropertyNames[0],
+            'Required'
+          );
 
           const createResponse = page.waitForResponse(
             (response) =>
@@ -383,14 +409,16 @@ test.describe(
               )
             )
           );
-          expect(body.formFields).toHaveLength(3);
-          expect(body.requiredFields).toHaveLength(1);
+          expect(customFields(body.formFields)).toHaveLength(3);
+          expect(customFields(body.requiredFields)).toHaveLength(1);
 
           await waitForAllLoadersToDisappear(page);
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label).first()).toBeVisible();
+          await expect(
+            page.getByTestId(`edit-${scenario.entityType}`)
+          ).toBeVisible();
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)
@@ -439,7 +467,7 @@ test.describe(
           await page.getByTestId(`edit-${scenario.entityType}`).click();
           await expect(
             page.getByTestId(
-              `include-extension.${scenario.customPropertyNames[0]}`
+              `onboarding-field-extension.${scenario.customPropertyNames[0]}`
             )
           ).toBeVisible();
         };
@@ -466,11 +494,14 @@ test.describe(
         await test.step('Removing an included optional field preserves the required field', async () => {
           await openDesigner();
           await page
-            .getByTestId(`include-extension.${scenario.customPropertyNames[1]}`)
+            .getByTestId(
+              `onboarding-field-extension.${scenario.customPropertyNames[1]}`
+            )
+            .getByRole('button', { name: 'Remove', exact: true })
             .click();
           const body = await submitUpdate();
-          expect(body.formFields).toHaveLength(2);
-          expect(body.requiredFields).toHaveLength(1);
+          expect(customFields(body.formFields)).toHaveLength(2);
+          expect(customFields(body.requiredFields)).toHaveLength(1);
           expect(body.formFields).not.toEqual(
             expect.arrayContaining([
               expect.objectContaining({
@@ -482,9 +513,11 @@ test.describe(
 
         await test.step('Clearing Required keeps the field included and makes it optional', async () => {
           await openDesigner();
-          await page
-            .getByTestId(`require-extension.${scenario.customPropertyNames[0]}`)
-            .click();
+          await setRequirement(
+            page,
+            scenario.customPropertyNames[0],
+            'Optional'
+          );
           const body = await submitUpdate();
           expect(body.formFields).toEqual(
             expect.arrayContaining([
@@ -494,26 +527,31 @@ test.describe(
               }),
             ])
           );
-          expect(body.formFields).toHaveLength(2);
-          expect(body.requiredFields).toHaveLength(0);
+          expect(customFields(body.formFields)).toHaveLength(2);
+          expect(customFields(body.requiredFields)).toHaveLength(0);
         });
 
         await test.step('Removing an included required field clears both states', async () => {
           await openDesigner();
+          await setRequirement(
+            page,
+            scenario.customPropertyNames[0],
+            'Required'
+          );
           await page
-            .getByTestId(`require-extension.${scenario.customPropertyNames[0]}`)
-            .click();
-          await page
-            .getByTestId(`include-extension.${scenario.customPropertyNames[0]}`)
+            .getByTestId(
+              `onboarding-field-extension.${scenario.customPropertyNames[0]}`
+            )
+            .getByRole('button', { name: 'Remove', exact: true })
             .click();
           const body = await submitUpdate();
-          expect(body.formFields).toEqual([
+          expect(customFields(body.formFields)).toEqual([
             expect.objectContaining({
               fieldPath: `extension.${scenario.customPropertyNames[2]}`,
               required: false,
             }),
           ]);
-          expect(body.requiredFields).toHaveLength(0);
+          expect(customFields(body.requiredFields)).toHaveLength(0);
         });
       });
     }
@@ -623,29 +661,27 @@ test.describe(
           .first()
           .fill('Playwright product without a Type — client-side should block');
 
-        // Save should not fire a POST because Antd form validation fails on
-        // the required `dataProductType` field. We verify by racing a POST
-        // listener against a short grace window via page.waitForResponse
-        // with a timeout — no POST within the window = client blocked.
-        let postFired = false;
-        const postListener = (r: import('@playwright/test').Response) => {
+        const requests: string[] = [];
+        const recordCreate = (request: import('@playwright/test').Request) => {
           if (
-            r.url().endsWith('/api/v1/dataProducts') &&
-            r.request().method() === 'POST'
-          ) {
-            postFired = true;
-          }
+            request.url().endsWith('/api/v1/dataProducts') &&
+            request.method() === 'POST'
+          )
+            requests.push(request.url());
         };
-        page.on('response', postListener);
-        await clickDrawerSave(page);
-
-        // Poll for up to 3s and confirm no POST ever fires. We intentionally
-        // avoid `page.waitForTimeout` (linted as flaky) and instead use
-        // toPass, which re-runs until it succeeds or times out.
-        await expect(async () => {
-          expect(postFired).toBe(false);
-        }).toPass({ timeout: 3000, intervals: [300] });
-        page.off('response', postListener);
+        page.on('request', recordCreate);
+        try {
+          await clickDrawerSave(page);
+          await expect(
+            page
+              .getByTestId('add-domain-form')
+              .getByText('Data Product Type is required', { exact: true })
+          ).toBeVisible();
+          await expect(page.getByTestId('add-domain-form')).toBeVisible();
+          expect(requests).toEqual([]);
+        } finally {
+          page.off('request', recordCreate);
+        }
       });
 
       await test.step('Backend also rejects with 400 when called directly', async () => {
@@ -862,7 +898,9 @@ test.describe(
       await expect(disabledItem).toHaveAttribute('aria-disabled', 'true');
     });
 
-    test('designer does not list schema-required fields', async ({ page }) => {
+    test('designer keeps schema-required fields fixed at Creation', async ({
+      page,
+    }) => {
       await redirectToHomePage(page);
       await page.goto(INTAKE_FORMS_URL);
       await waitForAllLoadersToDisappear(page);
@@ -877,16 +915,35 @@ test.describe(
         page.getByTestId('intake-form-designer-modal')
       ).toBeVisible();
 
-      // Schema-required fields must NOT be toggleable from the intake form
-      // designer — they are intrinsic and always enforced.
-      await expect(page.getByTestId('require-name')).toHaveCount(0);
-      await expect(page.getByTestId('require-description')).toHaveCount(0);
-      await expect(page.getByTestId('require-domains')).toHaveCount(0);
-
-      // Some optional native fields SHOULD be offered
-      await expect(page.getByTestId('require-dataProductType')).toBeVisible();
-      await expect(page.getByTestId('require-displayName')).toBeVisible();
-      await expect(page.getByTestId('require-visibility')).toBeVisible();
+      for (const field of ['name', 'description', 'domains']) {
+        const row = page.getByTestId(`onboarding-field-${field}`);
+        await expect(row).toBeVisible();
+        await expect(
+          row.getByRole('button', { name: 'Remove', exact: true })
+        ).toBeDisabled();
+      }
+      await page
+        .getByTestId('onboarding-field-name')
+        .getByRole('button', { name: /^\d+\. Name$/ })
+        .click();
+      await expect(
+        page
+          .getByTestId('onboarding-check-settings')
+          .getByRole('button', { name: / Requirement$/ })
+      ).toBeDisabled();
+      await page
+        .getByTestId('intake-form-designer-modal')
+        .getByRole('button', { name: / Field$/ })
+        .click();
+      await expect(
+        page.getByRole('option', { name: 'Data Product Type', exact: true })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('option', { name: 'Display Name', exact: true })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('option', { name: 'Visibility', exact: true })
+      ).toBeVisible();
     });
 
     for (const scenario of designerScenarios) {
@@ -1303,7 +1360,10 @@ test.describe(
           response.request().method() === 'GET'
       );
       await page.getByTestId('domain-details-add-button').click();
-      await page.getByRole('menuitem', { name: 'Data Products' }).click();
+      await page
+        .locator('.ant-dropdown-menu')
+        .getByRole('menuitem', { name: 'Data Products', exact: true })
+        .click();
       await intakeFetch;
       await expect(page.getByTestId('add-domain-form')).toBeVisible();
 

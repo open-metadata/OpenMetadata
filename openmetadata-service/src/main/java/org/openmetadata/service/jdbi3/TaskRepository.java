@@ -61,6 +61,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.onboarding.OnboardingTasks;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -354,7 +355,7 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     if (!update) {
-      setDefaultAssigneesFromEntityOwners(task);
+      if (!OnboardingTasks.isManaged(task.getId())) setDefaultAssigneesFromEntityOwners(task);
     }
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
@@ -1242,7 +1243,11 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setUpdatedBy(updatedBy);
     task.setUpdatedAt(System.currentTimeMillis());
 
-    storeEntity(task, true);
+    daoCollection.useTransaction(
+        dao -> {
+          storeEntity(task, true);
+          OnboardingTasks.recordDecision(task, newStatus == TaskEntityStatus.Approved);
+        });
 
     // storeEntity is the raw persistence path and deliberately skips the full
     // update pipeline. Invoke postUpdate explicitly so lifecycle hooks fire

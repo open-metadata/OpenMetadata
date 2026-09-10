@@ -206,6 +206,7 @@
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -4036,6 +4037,7 @@
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -4629,6 +4631,72 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/onboarding/OnboardingCheckSettings.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/IntakeForm.spec.ts",
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/onboarding/OnboardingChecklist.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/onboarding/OnboardingCreationChecklist.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/onboarding/OnboardingJourney.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/onboarding/OnboardingPreview.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts"
       ]
     },
     {
@@ -5355,6 +5423,14 @@
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts",
         "playwright/e2e/Pages/PipelineExecution.spec.ts",
         "playwright/e2e/Pages/PipelineValidation.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
@@ -5500,6 +5576,14 @@
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -5583,6 +5667,36 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/governance/intakeForm.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/governance/onboarding/onboardingProgress.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/search/aggregationRequest.ts"
       ],
       "specs": [
@@ -5611,6 +5725,21 @@
       ],
       "specs": [
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/type/entityReference.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
       ]
     },
     {
@@ -5909,7 +6038,9 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/IntakeForms/IntakeFormDesignerModal.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/IntakeForm.spec.ts"
+        "playwright/e2e/Pages/IntakeForm.spec.ts",
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts"
       ]
     },
     {
@@ -5917,7 +6048,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/IntakeForms/IntakeFormsPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/IntakeForm.spec.ts"
+        "playwright/e2e/Pages/IntakeForm.spec.ts",
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts"
       ]
     },
     {
@@ -6445,6 +6579,15 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/governance/onboarding/OnboardingBoardPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts"
       ]
     },
     {

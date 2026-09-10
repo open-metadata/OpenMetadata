@@ -13,7 +13,15 @@
 import { Button, Col, Form, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
-import { FocusEvent, lazy, useCallback, useMemo, useState } from 'react';
+import {
+  FocusEvent,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
@@ -21,6 +29,11 @@ import CustomUnitSelect from '../../../components/common/CustomUnitSelect/Custom
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { OnboardingCreationChecklist } from '../../../components/governance/onboarding/OnboardingCreationChecklist';
+import {
+  OnboardingSupplementalFields,
+  OnboardingSupplementalHandle,
+} from '../../../components/governance/onboarding/OnboardingSupplementalFields';
 import { ROUTES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { OPEN_METADATA } from '../../../constants/service-guide.constant';
@@ -33,10 +46,18 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
+import { CustomProperty } from '../../../generated/entity/type';
+import {
+  IntakeForm,
+  TargetEntityType,
+} from '../../../generated/governance/intakeForm';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
+import { getCreationIntakeFields } from '../../../utils/governance/onboarding/Onboarding.utils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -50,6 +71,37 @@ const AddMetricPage = () => {
   const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
+  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const [properties, setProperties] = useState<CustomProperty[]>([]);
+  const supplementalRef = useRef<OnboardingSupplementalHandle>(null);
+  const onboardingValues = Form.useWatch([], form);
+  const [supplementalValues, setSupplementalValues] = useState<
+    Record<string, unknown>
+  >({});
+  const draftValues = {
+    ...onboardingValues,
+    ...supplementalValues,
+    metricExpression: { code: onboardingValues?.code },
+  };
+  const intakeFields = getCreationIntakeFields(intakeForm, draftValues);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      getIntakeFormByEntityType(TargetEntityType.Metric),
+      getCustomPropertiesByEntityType(TargetEntityType.Metric),
+    ])
+      .then(([config, custom]) => {
+        if (active) {
+          setIntakeForm(config);
+          setProperties(custom ?? []);
+        }
+      })
+      .catch((error) => showErrorToast(error as AxiosError));
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const { breadcrumb, title } = useMemo(() => {
     const title = t('label.add-new-entity', {
@@ -226,10 +278,14 @@ const AddMetricPage = () => {
       customUnitOfMeasurement?: string;
     }
   ) => {
+    if (!(await (supplementalRef.current?.validate() ?? true))) {
+      return;
+    }
     setIsCreating(true);
     try {
       const createMetricPayload: CreateMetric = {
         ...omit(values, ['code', 'language']),
+        ...supplementalRef.current?.getValues(),
         metricExpression: {
           code: values.code,
           language: values.language,
@@ -281,15 +337,79 @@ const AddMetricPage = () => {
                 </Typography.Title>
               </Col>
               <Col span={24}>
+                <OnboardingCreationChecklist
+                  form={intakeForm}
+                  values={draftValues}
+                />
+                <OnboardingSupplementalFields
+                  fields={intakeFields.filter(
+                    (field) =>
+                      ![
+                        'name',
+                        'displayName',
+                        'description',
+                        'granularity',
+                        'metricType',
+                        'metricExpression.code',
+                        'unitOfMeasurement',
+                        'language',
+                      ].includes(field.fieldPath)
+                  )}
+                  properties={properties}
+                  ref={supplementalRef}
+                  onValuesChange={setSupplementalValues}
+                />
+              </Col>
+              <Col span={24}>
                 <Form
                   form={form}
                   layout="vertical"
                   onFinish={handleSubmit}
                   onFocus={handleFieldFocus}>
-                  {generateFormFields(formFields)}
+                  {generateFormFields(
+                    formFields.map((field) => {
+                      const intake = intakeFields.find(
+                        (item) => item.fieldPath === field.name
+                      );
+
+                      return intake?.required
+                        ? {
+                            ...field,
+                            required: true,
+                            rules: [
+                              ...(field.rules ?? []),
+                              {
+                                required: true,
+                                message:
+                                  intake.errorMessage ??
+                                  t('label.field-required', {
+                                    field: intake.fieldLabel,
+                                  }),
+                              },
+                            ],
+                          }
+                        : field;
+                    })
+                  )}
                   <Form.Item
                     label={t('label.unit-of-measurement')}
-                    name="unitOfMeasurement">
+                    name="unitOfMeasurement"
+                    rules={
+                      intakeFields.some(
+                        (field) =>
+                          field.fieldPath === 'unitOfMeasurement' &&
+                          field.required
+                      )
+                        ? [
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.unit-of-measurement'),
+                              }),
+                            },
+                          ]
+                        : []
+                    }>
                     <CustomUnitSelect
                       customValue={form.getFieldValue(
                         'customUnitOfMeasurement'
@@ -308,6 +428,22 @@ const AddMetricPage = () => {
                     data-testid="expression-code-container"
                     label={t('label.code')}
                     name="code"
+                    rules={
+                      intakeFields.some(
+                        (field) =>
+                          field.fieldPath === 'metricExpression.code' &&
+                          field.required
+                      )
+                        ? [
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.code'),
+                              }),
+                            },
+                          ]
+                        : []
+                    }
                     trigger="onChange">
                     <SchemaEditor
                       className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"

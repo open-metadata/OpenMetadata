@@ -36,7 +36,11 @@ export const NavigationGuardModal = ({
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onStay()}>
       <Modal>
-        <Dialog showCloseButton width={480} onClose={onStay}>
+        <Dialog
+          showCloseButton
+          aria-label={t('message.unsaved-changes')}
+          width={480}
+          onClose={onStay}>
           <Dialog.Header>
             <div className="tw:relative tw:w-max">
               <FeaturedIcon

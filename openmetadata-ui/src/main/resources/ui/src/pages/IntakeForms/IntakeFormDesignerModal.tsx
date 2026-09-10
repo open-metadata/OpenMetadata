@@ -10,32 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   Alert,
-  Badge,
   Box,
   Button,
-  Checkbox,
-  Divider,
-  Input,
+  Select,
   SlideoutMenu,
   TextArea,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/common/Loader/Loader';
-import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
+import { useInRouterContext } from 'react-router-dom';
+import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
+import { OnboardingBuilderCheck } from '../../components/governance/onboarding/OnboardingBuilderCheck';
+import { OnboardingCheckSettings } from '../../components/governance/onboarding/OnboardingCheckSettings';
+import { OnboardingNavigationGuard } from '../../components/governance/onboarding/OnboardingNavigationGuard';
+import { OnboardingPreview } from '../../components/governance/onboarding/OnboardingPreview';
 import { CustomProperty } from '../../generated/entity/type';
 import {
   FieldKind,
+  IntakeForm,
   IntakeFormField,
+  OnboardingGate,
+  OnboardingStage,
+  OnboardingStep,
   TargetEntityType,
+  Type,
 } from '../../generated/governance/intakeForm';
+import { WorkflowDefinition } from '../../generated/governance/workflows/workflowDefinition';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { getOnboardingWorkflow } from '../../rest/governance/onboarding/Onboarding.api';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
+import { getWorkflowDefinitions } from '../../rest/workflowDefinitionsAPI';
+import {
+  CREATION_FIELDS,
+  isRecord,
+  ONBOARDING_STAGES,
+  STAGE_LABELS,
+  stepsAtStage,
+} from '../../utils/governance/onboarding/Onboarding.utils';
+import {
+  onboardingRequiredCount,
+  onboardingValueKind,
+} from '../../utils/governance/onboarding/OnboardingBuilder.utils';
 import {
   getIntakeFormFields,
   toLegacyRequiredFields,
@@ -43,28 +64,77 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
-import { IntakeFormNativeField } from './intakeFormFields';
 
-interface FieldRow {
-  path: string;
-  label: string;
-  kind: FieldKind;
-  included: boolean;
-  required: boolean;
-  errorMessage?: string;
-  // True when this row corresponds to a previously-included custom property
-  // whose definition is no longer in the current metadata-type lookup —
-  // shown so the admin can deselect it deliberately instead of losing the
-  // constraint silently on save.
-  isOrphan?: boolean;
-}
-
-const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
-  [TargetEntityType.DataProduct]: 'label.data-product',
-  [TargetEntityType.Domain]: 'label.domain',
-  [TargetEntityType.GlossaryTerm]: 'label.glossary-term',
+const FIELD_LABELS: Record<string, string> = {
+  domainType: 'domain-type',
+  domains: 'domain-plural',
 };
+const ENTITY_LABELS: Record<TargetEntityType, string> = {
+  dataProduct: 'data-product',
+  glossaryTerm: 'glossary-term',
+  domain: 'domain',
+  metric: 'metric',
+};
+const compatibleWorkflow = (workflow: WorkflowDefinition) => {
+  if (workflow.deployed === false || workflow.suspended) {
+    return false;
+  }
+  if (!isRecord(workflow.trigger) || workflow.trigger.type !== 'noOp') {
+    return false;
+  }
 
+  return (
+    Boolean(
+      workflow.nodes?.some((node) => node.subType === 'userApprovalTask')
+    ) &&
+    !workflow.nodes?.some((node) => node.subType === 'setEntityAttributeTask')
+  );
+};
+const loadWorkflows = async () => {
+  const workflows: WorkflowDefinition[] = [];
+  let after: string | undefined;
+  do {
+    const response = await getWorkflowDefinitions({
+      limit: 100,
+      after,
+      fields: 'deployed,suspended',
+    });
+    const candidates = response.data.flatMap((workflow) =>
+      workflow.id && compatibleWorkflow(workflow)
+        ? [getOnboardingWorkflow(workflow.id)]
+        : []
+    );
+    const deployed = await Promise.all(candidates);
+    workflows.push(
+      ...deployed.filter(
+        (workflow) => workflow.deployed && compatibleWorkflow(workflow)
+      )
+    );
+    after = response.paging.after;
+  } while (after);
+
+  return workflows;
+};
+const replaceStep = (gates: OnboardingGate[], step: OnboardingStep) =>
+  gates.map((gate) => ({
+    ...gate,
+    steps: gate.steps.map((existing) =>
+      existing.id === step.id ? step : existing
+    ),
+  }));
+const withoutStep = (gates: OnboardingGate[], id: string) =>
+  gates.map((gate) => ({
+    ...gate,
+    steps: gate.steps.filter((step) => step.id !== id),
+  }));
+const movedStep = (
+  gates: OnboardingGate[],
+  step: OnboardingStep,
+  stage: OnboardingStage
+) =>
+  withoutStep(gates, step.id).map((gate) =>
+    gate.stage === stage ? { ...gate, steps: [...gate.steps, step] } : gate
+  );
 const IntakeFormDesignerModal = ({
   open,
   entityType,
@@ -73,422 +143,475 @@ const IntakeFormDesignerModal = ({
   onSubmit,
 }: IntakeFormDesignerModalProps) => {
   const { t } = useTranslation();
-  const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
-    []
+  const [fields, setFields] = useState<IntakeFormField[]>([]);
+  const [gates, setGates] = useState<OnboardingGate[]>([]);
+  const [stage, setStage] = useState(OnboardingStage.Creation);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [newField, setNewField] = useState<string>();
+  const [description, setDescription] = useState(
+    initialValue?.description ?? ''
   );
-  const [rows, setRows] = useState<FieldRow[]>([]);
-  const [description, setDescription] = useState<string>('');
-  const [enabled, setEnabled] = useState<boolean>(true);
-  const [loadingProps, setLoadingProps] = useState(false);
-
-  // Sync local UI state from the initialValue each time the modal opens
+  const [enabled, setEnabled] = useState(initialValue?.enabled ?? true);
+  const [staged, setStaged] = useState(
+    initialValue?.onboarding?.enabled ?? !initialValue
+  );
+  const [preview, setPreview] = useState(false);
+  const currentUser = useApplicationStore((state) => state.currentUser);
+  const [saving, setSaving] = useState(false);
+  const [properties, setProperties] = useState<CustomProperty[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const controlsDisabled = loading || loadError;
+  const initialConfig = useRef('');
+  const [confirmClose, setConfirmClose] = useState(false);
+  const inRouter = useInRouterContext();
+  const dirty =
+    Boolean(initialConfig.current) &&
+    initialConfig.current !==
+      JSON.stringify({ fields, gates, description, enabled, staged });
+  const close = () => (dirty ? setConfirmClose(true) : onCancel());
   useEffect(() => {
-    if (!open) {
+    if (!dirty) {
       return;
     }
-    setDescription(initialValue?.description ?? '');
-    setEnabled(initialValue?.enabled ?? true);
-  }, [open, initialValue]);
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', preventUnload);
 
-  // Fetch custom properties defined on the target entity type
+    return () => window.removeEventListener('beforeunload', preventUnload);
+  }, [dirty]);
+
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-    let cancelled = false;
-    setLoadingProps(true);
-    getCustomPropertiesByEntityType(
-      intakeFormClassBase.getEntityTypeApiName(entityType)
-    )
-      .then((props) => {
-        if (!cancelled) {
-          setCustomProperties(props ?? []);
+    const configured = getIntakeFormFields(initialValue);
+    const intrinsic = CREATION_FIELDS[entityType]
+      .filter((path) => !configured.some((field) => field.fieldPath === path))
+      .map((path) => ({
+        fieldPath: path,
+        fieldLabel: t(`label.${FIELD_LABELS[path] ?? path}`),
+        fieldKind: FieldKind.Native,
+        required: true,
+      }));
+    const formFields = [...configured, ...intrinsic];
+    setFields(formFields);
+    const initialGates = ONBOARDING_STAGES.map((item) => ({
+      stage: item,
+      steps: stepsAtStage({ ...initialValue, formFields }, item),
+    }));
+    setGates(initialGates);
+    initialConfig.current = JSON.stringify({
+      fields: formFields,
+      gates: initialGates,
+      description: initialValue?.description ?? '',
+      enabled: initialValue?.enabled ?? true,
+      staged: initialValue?.onboarding?.enabled ?? !initialValue,
+    });
+  }, [entityType, initialValue, t]);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    Promise.all([getCustomPropertiesByEntityType(entityType), loadWorkflows()])
+      .then(([custom, response]) => {
+        if (!active) {
+          return;
         }
+        setProperties(custom ?? []);
+        setWorkflows(response);
       })
-      .catch((err) => {
-        if (!cancelled) {
-          setCustomProperties([]);
-          showErrorToast(err as AxiosError);
+      .catch((error) => {
+        if (active) {
+          setLoadError(true);
+          showErrorToast(error as AxiosError);
         }
       })
       .finally(() => {
-        if (!cancelled) {
-          setLoadingProps(false);
+        if (active) {
+          setLoading(false);
         }
       });
 
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [open, entityType]);
+  }, [entityType]);
 
-  // Rebuild rows whenever the data backing them changes
-  useEffect(() => {
-    const natives: IntakeFormNativeField[] =
-      intakeFormClassBase.getNativeFields(entityType);
-    const existingSelections = new Map<string, IntakeFormField>(
-      getIntakeFormFields(initialValue).map((field) => [field.fieldPath, field])
-    );
-
-    const nativeRows: FieldRow[] = natives.map((nf) => {
-      const existing = existingSelections.get(nf.path);
-
-      return {
-        path: nf.path,
-        label: t(nf.labelKey),
-        kind: FieldKind.Native,
-        included: true,
-        required: Boolean(existing?.required),
-        errorMessage: existing?.errorMessage,
-      };
-    });
-
-    const customPropertyPaths = new Set(
-      customProperties.map((cp) => `extension.${cp.name}`)
-    );
-    const customRows: FieldRow[] = customProperties.map((cp) => {
-      const path = `extension.${cp.name}`;
-      const existing = existingSelections.get(path);
-
-      return {
-        path,
-        label: cp.displayName ?? cp.name ?? path,
-        kind: FieldKind.CustomProperty,
-        included: Boolean(existing),
-        required: Boolean(existing?.required),
-        errorMessage: existing?.errorMessage,
-      };
-    });
-
-    // Preserve previously-included custom-property fields whose definition is
-    // missing from the current metadata-type lookup. Without this, rebuilding
-    // rows when the custom-property fetch returns an empty list (real empty,
-    // or after a transient error followed by an empty cache) silently drops
-    // any extension.* form field on save. We surface them as an orphan
-    // row so the admin can deselect them deliberately.
-    const orphanCustomRows: FieldRow[] = Array.from(existingSelections.values())
-      .filter(
-        (rf) =>
-          rf.fieldKind === FieldKind.CustomProperty &&
-          !customPropertyPaths.has(rf.fieldPath)
+  const catalog = useMemo(
+    () => [
+      ...intakeFormClassBase.getNativeFields(entityType).map((field) => ({
+        fieldPath: field.path,
+        fieldLabel: t(field.labelKey),
+        fieldKind: FieldKind.Native,
+      })),
+      ...properties.map((property) => ({
+        fieldPath: `extension.${property.name}`,
+        fieldLabel: property.displayName ?? property.name,
+        fieldKind: FieldKind.CustomProperty,
+      })),
+    ],
+    [entityType, properties, t]
+  );
+  const steps = gates.find((gate) => gate.stage === stage)?.steps ?? [];
+  const isCompletedStage =
+    stage === OnboardingStage.Approved || stage === OnboardingStage.Deprecated;
+  const selected = steps.find((step) => step.id === selectedId);
+  const selectedField = fields.find(
+    (field) => field.fieldPath === selected?.fieldPath
+  );
+  const fixed = Boolean(
+    selected?.fieldPath &&
+      CREATION_FIELDS[entityType].includes(selected.fieldPath)
+  );
+  const updateStep = (step: OnboardingStep) =>
+    setGates((current) => replaceStep(current, step));
+  const updateField = (field: IntakeFormField) =>
+    setFields((current) =>
+      current.map((existing) =>
+        existing.fieldPath === field.fieldPath ? field : existing
       )
-      .map((rf) => ({
-        path: rf.fieldPath,
-        label: rf.fieldLabel,
-        kind: FieldKind.CustomProperty,
-        included: true,
-        required: Boolean(rf.required),
-        errorMessage: rf.errorMessage,
-        isOrphan: true,
-      }));
-
-    setRows([...nativeRows, ...customRows, ...orphanCustomRows]);
-  }, [entityType, customProperties, initialValue, t]);
-
-  const updateRow = useCallback((path: string, patch: Partial<FieldRow>) => {
-    setRows((prev) =>
-      prev.map((row) => (row.path === path ? { ...row, ...patch } : row))
     );
-  }, []);
-
-  const handleOk = async () => {
-    const formFields: IntakeFormField[] = rows
-      .filter((row) =>
-        row.kind === FieldKind.Native ? row.required : row.included
+  const moveStep = (target: OnboardingStage) => {
+    if (!selected) {
+      return;
+    }
+    setGates((current) => movedStep(current, selected, target));
+    setStage(target);
+  };
+  const addStep = (type: Type) => {
+    const field = catalog.find((item) => item.fieldPath === newField);
+    if (type === Type.Field && !field) {
+      return;
+    }
+    const step: OnboardingStep = {
+      id: `step_${crypto.randomUUID()}`,
+      type,
+      title: type === Type.Approval ? t('label.approval') : field?.fieldLabel,
+      fieldPath: type === Type.Field ? field?.fieldPath : undefined,
+    };
+    if (field && type === Type.Field) {
+      setFields((current) => [
+        ...current.filter((item) => item.fieldPath !== field.fieldPath),
+        { ...field, required: false },
+      ]);
+    }
+    setGates((current) =>
+      current.map((gate) => ({
+        ...gate,
+        steps: gate.stage === stage ? [...gate.steps, step] : gate.steps,
+      }))
+    );
+    setSelectedId(step.id);
+    setNewField(undefined);
+  };
+  const removeStep = (step: OnboardingStep) => {
+    setGates((current) => withoutStep(current, step.id));
+    if (step.fieldPath) {
+      setFields((current) =>
+        current.filter((field) => field.fieldPath !== step.fieldPath)
+      );
+    }
+    setSelectedId(undefined);
+  };
+  const reorder = (index: number, offset: number) => {
+    const reordered = [...steps];
+    [reordered[index], reordered[index + offset]] = [
+      reordered[index + offset],
+      reordered[index],
+    ];
+    setGates((current) =>
+      current.map((gate) =>
+        gate.stage === stage ? { ...gate, steps: reordered } : gate
       )
-      .map((row) => ({
-        fieldPath: row.path,
-        fieldLabel: row.label,
-        fieldKind: row.kind,
-        required: row.required,
-        errorMessage: row.required ? row.errorMessage || undefined : undefined,
-      }));
-
-    // One intake form per entity type — name is deterministically derived.
-    // On edit, keep whatever displayName the form already has (users may
-    // have renamed it via API). On create, fall back to a localized default
-    // of "<Entity> <IntakeForm>" so the listing shows a meaningful label
-    // without forcing the user to type one.
-    const name = intakeFormClassBase.getEntityTypeApiName(entityType);
-    const defaultDisplayName = t('label.entity-intake-form', {
-      entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-    });
-    const displayName = initialValue?.displayName ?? defaultDisplayName;
-    const payload: CreateIntakeForm = {
-      name,
-      displayName,
-      description: description || undefined,
+    );
+  };
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSubmit({
+        name: initialValue?.name ?? `${entityType}IntakeForm`,
+        displayName: initialValue?.displayName,
+        description,
+        enabled,
+        entityType,
+        owners: initialValue?.owners,
+        formFields: fields,
+        requiredFields: toLegacyRequiredFields(fields),
+        onboarding: { enabled: staged, gates },
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const previewCreator = useMemo(
+    () => ({
+      id: currentUser?.id ?? 'preview-creator',
+      type: 'user',
+      name: currentUser?.name ?? t('label.onboarding-role-creator'),
+      displayName: currentUser?.displayName,
+    }),
+    [currentUser, t]
+  );
+  const previewForm: IntakeForm = useMemo(
+    () => ({
+      ...initialValue,
+      id: initialValue?.id ?? 'preview',
+      name: initialValue?.name ?? entityType,
       entityType,
       enabled,
-      formFields,
-      requiredFields: toLegacyRequiredFields(formFields),
-      // Carry forward server-managed fields on edit. The designer UI doesn't
-      // expose an owners picker today, but `createOrUpdateIntakeForm` PUTs
-      // the whole entity — without this, any previously configured owners
-      // would be silently wiped. If/when the designer grows an owners widget,
-      // it can overwrite this value before submit.
-      ...(initialValue?.owners ? { owners: initialValue.owners } : {}),
-    };
-    await onSubmit(payload);
-  };
-
-  const nativeRows = useMemo(
-    () => rows.filter((r) => r.kind === FieldKind.Native),
-    [rows]
+      formFields: fields,
+      onboarding: { enabled: staged, gates },
+    }),
+    [initialValue, entityType, enabled, fields, staged, gates]
   );
-  const customRows = useMemo(
-    () => rows.filter((r) => r.kind === FieldKind.CustomProperty),
-    [rows]
+  const missingWorkflow = gates.some((gate) =>
+    gate.steps.some((step) => step.type === Type.Approval && !step.workflow)
   );
 
-  const renderFieldRow = (record: FieldRow, allowOptional: boolean) => (
-    <Box
-      align="center"
-      className="tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
-      key={record.path}>
-      {allowOptional && (
-        <div className="tw:w-20">
-          <Checkbox
-            aria-label={`${t('label.include')} ${record.label}`}
-            data-testid={`include-${record.path}`}
-            isSelected={record.included}
-            onChange={(included) =>
-              updateRow(
-                record.path,
-                included
-                  ? { included }
-                  : {
-                      included,
-                      required: false,
-                      errorMessage: undefined,
-                    }
-              )
-            }
-          />
-        </div>
-      )}
-      <div className="tw:w-20">
-        <Checkbox
-          aria-label={record.label}
-          data-testid={`require-${record.path}`}
-          isDisabled={allowOptional && !record.included}
-          isSelected={record.required}
-          onChange={(required) =>
-            updateRow(record.path, {
-              required,
-              errorMessage: required ? record.errorMessage : undefined,
-            })
-          }
-        />
-      </div>
-      <Box className="tw:flex-1" direction="col">
-        <Typography size="text-sm" weight="semibold">
-          {record.label}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {record.path}
-        </Typography>
-      </Box>
-      <div className="tw:flex-1">
-        <Input
-          aria-label={t('label.custom-error-message')}
-          data-testid={`error-${record.path}`}
-          isDisabled={!record.required}
-          placeholder={t('message.optional-custom-error')}
-          value={record.errorMessage ?? ''}
-          onChange={(value) => updateRow(record.path, { errorMessage: value })}
-        />
-      </div>
-    </Box>
+  const publishState = useMemo(
+    () => ({
+      disabled: controlsDisabled || missingWorkflow,
+      loading: saving || loading,
+      label: t(staged ? 'label.onboarding-publish' : 'label.save'),
+    }),
+    [controlsDisabled, missingWorkflow, saving, loading, staged, t]
   );
-
-  const renderFieldTable = (
-    fieldRows: FieldRow[],
-    emptyMessage: string,
-    isLoading: boolean,
-    allowOptional = false
-  ) => (
-    <Box
-      className="tw:overflow-hidden tw:rounded-lg tw:outline-1 tw:outline-secondary"
-      direction="col">
-      <Box align="center" className="tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2">
-        {allowOptional && (
-          <Typography
-            className="tw:w-20 tw:text-tertiary"
-            size="text-xs"
-            weight="semibold">
-            {t('label.include')}
-          </Typography>
-        )}
-        <Typography
-          className="tw:w-20 tw:text-tertiary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.required')}
-        </Typography>
-        <Typography
-          className="tw:flex-1 tw:text-tertiary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.field')}
-        </Typography>
-        <Typography
-          className="tw:flex-1 tw:text-tertiary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.custom-error-message')}
-        </Typography>
-      </Box>
-      {isLoading && (
-        <Box className="tw:justify-center tw:py-6">
-          <Loader size="small" />
-        </Box>
-      )}
-      {!isLoading && fieldRows.length === 0 && (
-        <Box className="tw:justify-center tw:py-6">
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {emptyMessage}
-          </Typography>
-        </Box>
-      )}
-      {!isLoading &&
-        fieldRows.map((field) => renderFieldRow(field, allowOptional))}
-    </Box>
-  );
-
-  const title = initialValue
-    ? t('label.edit-entity', {
-        entity: t('label.entity-intake-form', {
-          entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-        }),
-      })
-    : t('label.add-entity', {
-        entity: t('label.entity-intake-form', {
-          entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-        }),
-      });
 
   return (
-    <SlideoutMenu
-      isDismissable
-      dialogClassName="tw:overflow-hidden!"
-      isOpen={open}
-      width="75%"
-      onOpenChange={(isOpenState) => {
-        if (!isOpenState) {
-          onCancel();
-        }
-      }}>
-      {() => (
-        <>
-          <SlideoutMenu.Header onClose={onCancel}>
-            <Typography size="text-lg" weight="semibold">
-              {title}
-            </Typography>
-          </SlideoutMenu.Header>
-
-          <SlideoutMenu.Content
-            className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-hidden! tw:p-0!"
-            data-testid="intake-form-designer-modal">
-            <div className="tw:absolute tw:inset-0 tw:flex tw:flex-col tw:gap-6 tw:overflow-y-auto tw:px-4 tw:py-6 tw:pt-0 tw:md:px-6">
-              <Alert
-                title={t('message.intake-form-one-per-type-help', {
-                  entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-                })}
-                variant="brand"
-              />
-
-              <Box className="tw:gap-1.5" direction="col">
-                <Typography size="text-sm" weight="semibold">
-                  {t('label.description')}
+    <>
+      <NavigationGuardModal
+        isOpen={confirmClose}
+        onLeave={onCancel}
+        onStay={() => setConfirmClose(false)}
+      />
+      {inRouter && <OnboardingNavigationGuard dirty={dirty} />}
+      <SlideoutMenu
+        isDismissable
+        isOpen={open}
+        width="90%"
+        onOpenChange={(isOpen) => !isOpen && close()}>
+        {() => (
+          <>
+            <SlideoutMenu.Header onClose={close}>
+              <Box className="tw:gap-2" direction="col">
+                <Typography size="text-lg" weight="semibold">
+                  {t('label.onboarding-intake-forms')}
                 </Typography>
+                <Typography className="tw:text-tertiary" size="text-sm">
+                  {t(`label.${ENTITY_LABELS[entityType]}`)}
+                </Typography>
+              </Box>
+            </SlideoutMenu.Header>
+            <SlideoutMenu.Content data-testid="intake-form-designer-modal">
+              <Box className="tw:gap-6" direction="col">
+                <Box className="tw:gap-6" wrap="wrap">
+                  <Toggle
+                    isSelected={enabled}
+                    label={t('label.enabled')}
+                    onChange={setEnabled}
+                  />
+                  <Toggle
+                    data-testid="onboarding-enabled"
+                    isSelected={staged}
+                    label={t('label.staged-onboarding')}
+                    onChange={setStaged}
+                  />
+                  <Button
+                    color="secondary"
+                    data-testid="onboarding-preview-toggle"
+                    onPress={() => {
+                      setPreview((value) => !value);
+                      if (!preview) {
+                        setStage(OnboardingStage.Creation);
+                      }
+                    }}>
+                    {t(preview ? 'label.edit' : 'label.producer-preview')}
+                  </Button>
+                </Box>
+                {loadError && (
+                  <Alert
+                    title={t('message.onboarding-configuration-load-error')}
+                    variant="error"
+                  />
+                )}
                 <TextArea
-                  aria-label={t('label.description')}
-                  data-testid="intake-form-description"
-                  placeholder={t('message.intake-form-description-placeholder')}
+                  label={t('label.description')}
                   value={description}
                   onChange={setDescription}
                 />
-              </Box>
-
-              <Box align="center" className="tw:gap-3">
-                <Typography size="text-sm" weight="semibold">
-                  {t('label.enabled')}
-                </Typography>
-                <Toggle
-                  aria-label={t('label.enabled')}
-                  data-testid="intake-form-enabled"
-                  isSelected={enabled}
-                  onChange={setEnabled}
-                />
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('message.intake-form-enabled-help')}
-                </Typography>
-              </Box>
-
-              <Divider />
-
-              <Box className="tw:gap-3" direction="col">
-                <Box className="tw:gap-1" direction="col">
-                  <Typography size="text-md" weight="semibold">
-                    {t('label.native-field-plural')}
-                  </Typography>
-                  <Typography className="tw:text-tertiary" size="text-sm">
-                    {t('message.intake-form-native-fields-help')}
-                  </Typography>
-                </Box>
-                {renderFieldTable(
-                  nativeRows,
-                  t('message.no-native-fields'),
-                  false
+                <nav aria-label={t('label.stage')}>
+                  <Box gap={2} wrap="wrap">
+                    {ONBOARDING_STAGES.map((item) => (
+                      <Button
+                        aria-current={stage === item ? 'step' : undefined}
+                        className="tw:h-auto tw:min-w-32 tw:flex-1 tw:py-3"
+                        color={stage === item ? 'primary' : 'secondary'}
+                        data-testid={`onboarding-stage-${item}`}
+                        key={item}
+                        onPress={() => {
+                          setStage(item);
+                          setSelectedId(undefined);
+                        }}>
+                        <Box direction="col" gap={1}>
+                          <Typography size="text-sm" weight="semibold">
+                            {t(STAGE_LABELS[item])}
+                          </Typography>
+                          <Typography size="text-xs">
+                            {t('message.onboarding-stage-checks', {
+                              count:
+                                gates.find((gate) => gate.stage === item)?.steps
+                                  .length ?? 0,
+                            })}
+                          </Typography>
+                          <Typography size="text-xs">
+                            {t('label.required')}:{' '}
+                            {onboardingRequiredCount(gates, fields, item)}
+                          </Typography>
+                        </Box>
+                      </Button>
+                    ))}
+                  </Box>
+                </nav>
+                {preview ? (
+                  <OnboardingPreview
+                    creator={previewCreator}
+                    form={previewForm}
+                    properties={properties}
+                    stage={stage}
+                    workflows={workflows}
+                    onStageChange={setStage}
+                  />
+                ) : (
+                  <Box
+                    align="start"
+                    className="tw:gap-6 tw:flex-col tw:lg:flex-row">
+                    <Box
+                      className="tw:gap-3 tw:w-full tw:lg:w-1/2"
+                      direction="col">
+                      {!isCompletedStage && (
+                        <Typography className="tw:text-tertiary" size="text-sm">
+                          {t('message.onboarding-gate-exit')}
+                        </Typography>
+                      )}
+                      {isCompletedStage && (
+                        <Alert
+                          title={t('message.onboarding-approved-complete')}
+                          variant="success"
+                        />
+                      )}
+                      {steps.map((step, index) => (
+                        <OnboardingBuilderCheck
+                          field={fields.find(
+                            (field) => field.fieldPath === step.fieldPath
+                          )}
+                          fixed={Boolean(
+                            step.fieldPath &&
+                              CREATION_FIELDS[entityType].includes(
+                                step.fieldPath
+                              )
+                          )}
+                          index={index}
+                          key={step.id}
+                          selected={selectedId === step.id}
+                          step={step}
+                          total={steps.length}
+                          onMove={(offset) => reorder(index, offset)}
+                          onRemove={() => removeStep(step)}
+                          onSelect={() => setSelectedId(step.id)}
+                        />
+                      ))}
+                      {!isCompletedStage && (
+                        <>
+                          <Select
+                            isDisabled={controlsDisabled}
+                            label={t('label.field')}
+                            selectedKey={newField}
+                            onSelectionChange={(key) =>
+                              setNewField(String(key))
+                            }>
+                            {catalog
+                              .filter(
+                                (field) =>
+                                  !fields.some(
+                                    (existing) =>
+                                      existing.fieldPath === field.fieldPath
+                                  )
+                              )
+                              .map((field) => (
+                                <Select.Item
+                                  id={field.fieldPath}
+                                  key={field.fieldPath}
+                                  label={field.fieldLabel}
+                                />
+                              ))}
+                          </Select>
+                          <Button
+                            color="secondary"
+                            iconLeading={Plus}
+                            isDisabled={!newField}
+                            onPress={() => addStep(Type.Field)}>
+                            {t('label.add-field')}
+                          </Button>
+                          {stage !== OnboardingStage.Creation && (
+                            <Button
+                              color="secondary"
+                              iconLeading={Plus}
+                              isDisabled={controlsDisabled}
+                              onPress={() => addStep(Type.Approval)}>
+                              {t('label.add-approval')}
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </Box>
+                    <Box className="tw:w-full tw:lg:w-1/2" direction="col">
+                      {selected ? (
+                        <OnboardingCheckSettings
+                          field={selectedField}
+                          fields={catalog}
+                          fixed={fixed}
+                          stage={stage}
+                          step={selected}
+                          valueKind={onboardingValueKind(
+                            selectedField,
+                            properties
+                          )}
+                          workflows={workflows}
+                          onChange={updateStep}
+                          onFieldChange={updateField}
+                          onMove={moveStep}
+                        />
+                      ) : (
+                        <Typography className="tw:text-tertiary" size="text-sm">
+                          {t('message.onboarding-select-check')}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
                 )}
               </Box>
-
-              <Divider />
-
-              <Box className="tw:gap-3" direction="col">
-                <Box align="center" className="tw:gap-2">
-                  <Typography size="text-md" weight="semibold">
-                    {t('label.custom-property-plural')}
-                  </Typography>
-                  <Badge color="gray" size="sm" type="pill-color">
-                    {customRows.length}
-                  </Badge>
-                </Box>
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('message.intake-form-custom-properties-help')}
-                </Typography>
-                {renderFieldTable(
-                  customRows,
-                  t('message.no-custom-properties-defined'),
-                  loadingProps,
-                  true
-                )}
+            </SlideoutMenu.Content>
+            <SlideoutMenu.Footer>
+              <Box className="tw:justify-end tw:gap-3">
+                <Button color="tertiary" onPress={close}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="intake-form-submit"
+                  isDisabled={publishState.disabled}
+                  isLoading={publishState.loading}
+                  onPress={handleSave}>
+                  {publishState.label}
+                </Button>
               </Box>
-            </div>
-          </SlideoutMenu.Content>
-
-          <SlideoutMenu.Footer>
-            <Box className="tw:justify-end tw:gap-3">
-              <Button
-                color="tertiary"
-                data-testid="intake-form-cancel"
-                size="sm"
-                onClick={onCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="intake-form-submit"
-                size="sm"
-                onClick={handleOk}>
-                {initialValue ? t('label.save') : t('label.create')}
-              </Button>
-            </Box>
-          </SlideoutMenu.Footer>
-        </>
-      )}
-    </SlideoutMenu>
+            </SlideoutMenu.Footer>
+          </>
+        )}
+      </SlideoutMenu>
+    </>
   );
 };
 

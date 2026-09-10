@@ -20,6 +20,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import App from './App';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
+import { NavigationGuardProvider } from './components/common/NavigationGuardModal/NavigationGuardProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
@@ -86,20 +87,22 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter
-          basename={getBasePath()}
-          useTransitions={!isPlaywrightEnv()}>
-          <I18nextProvider i18n={i18n}>
-            <AntDConfigProvider>
-              <HelmetProvider>
-                <ErrorBoundary>
-                  <App />
-                  <ToastProvider />
-                </ErrorBoundary>
-              </HelmetProvider>
-            </AntDConfigProvider>
-          </I18nextProvider>
-        </BrowserRouter>
+        <NavigationGuardProvider>
+          <BrowserRouter
+            basename={getBasePath()}
+            useTransitions={!isPlaywrightEnv()}>
+            <I18nextProvider i18n={i18n}>
+              <AntDConfigProvider>
+                <HelmetProvider>
+                  <ErrorBoundary>
+                    <App />
+                    <ToastProvider />
+                  </ErrorBoundary>
+                </HelmetProvider>
+              </AntDConfigProvider>
+            </I18nextProvider>
+          </BrowserRouter>
+        </NavigationGuardProvider>
       </div>
     </div>
   );
