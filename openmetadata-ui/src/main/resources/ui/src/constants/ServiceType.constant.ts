@@ -190,8 +190,6 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
-  DatabaseServiceType.MicrosoftFabric,
-  PipelineServiceType.MicrosoftFabricPipeline,
   DatabaseServiceType.BurstIQ,
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
