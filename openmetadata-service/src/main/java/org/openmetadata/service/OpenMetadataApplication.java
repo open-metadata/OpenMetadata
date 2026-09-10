@@ -142,6 +142,7 @@ import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
+import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -300,6 +301,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Metrics initialization now handled by MicrometerBundle
 
     AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
+    environment.lifecycle().manage(RdfBackgroundScheduler.getInstance());
 
     jdbi =
         startupTimer.time(
@@ -1317,9 +1319,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EntityCacheRepair.shutdown();
       EventSubscriptionScheduler.shutDown();
+      RdfUpdater.stop();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
+      RdfUpdater.disable();
       LOG.info("Stopping the application");
     }
   }

@@ -237,11 +237,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Features/GlobalPageSize.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
