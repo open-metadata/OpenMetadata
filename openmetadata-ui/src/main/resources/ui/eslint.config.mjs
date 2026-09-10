@@ -23,6 +23,7 @@ import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
@@ -100,6 +101,7 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'openmetadata-ui-patterns': openMetadataUiPatterns,
     },
 
     rules: {
@@ -214,6 +216,7 @@ export default [
             'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
         },
       ],
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
     },
   },
 
