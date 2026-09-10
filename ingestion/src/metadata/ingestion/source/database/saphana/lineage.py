@@ -68,18 +68,23 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
     # CREATE TABLE ... AS SELECT is absent by necessity, not oversight: the plan cache
     # holds no DDL, so there is nothing for a pattern to match.
+    # Single %, not the %% some connectors use. hdbcli is a qmark/named paramstyle
+    # driver, so nothing unescapes percent signs on the way to HANA.
     filters = """
         AND (
-            UPPER(STATEMENT_STRING) LIKE 'INSERT INTO%%SELECT%%'
-            OR UPPER(STATEMENT_STRING) LIKE 'UPSERT%%SELECT%%'
-            OR UPPER(STATEMENT_STRING) LIKE 'REPLACE%%SELECT%%'
-            OR UPPER(STATEMENT_STRING) LIKE 'MERGE INTO%%'
-            OR UPPER(STATEMENT_STRING) LIKE 'UPDATE%%SET%%'
+            UPPER(STATEMENT_STRING) LIKE 'INSERT INTO%SELECT%'
+            OR UPPER(STATEMENT_STRING) LIKE 'UPSERT%SELECT%'
+            OR UPPER(STATEMENT_STRING) LIKE 'REPLACE%SELECT%'
+            OR UPPER(STATEMENT_STRING) LIKE 'MERGE INTO%'
+            OR UPPER(STATEMENT_STRING) LIKE 'UPDATE%SET%'
         )
         """
 
     def close(self) -> None:
-        # The base class leaves engine as None when built with get_engine=False.
+        # The base clears the shared masked_query_cache, which would otherwise carry
+        # queries across workflows.
+        super().close()
+        # The base leaves engine as None when built with get_engine=False.
         if self.engine is not None:
             self.engine.dispose()
 
@@ -95,24 +100,40 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         # hide a run that parsed queries but resolved none of them into lineage.
         sql_edges = 0
         sql_queries = 0
-        for either in super()._iter():
-            if isinstance(either.right, AddLineageRequest):
-                sql_edges += 1
-            elif isinstance(either.right, CreateQueryRequest):
-                sql_queries += 1
-            yield either
-        logger.info(
-            "SAP HANA SQL lineage produced %d edges from view definitions and query history, "
-            "alongside %d query records",
-            sql_edges,
-            sql_queries,
-        )
+        try:
+            for either in super()._iter():
+                if isinstance(either.right, AddLineageRequest):
+                    sql_edges += 1
+                elif isinstance(either.right, CreateQueryRequest):
+                    sql_queries += 1
+                yield either
+        except Exception as exc:
+            # yield_table_query does not guard its own execute, so an unreadable
+            # SYS.M_SQL_PLAN_CACHE raises here. Without this the repository pass below
+            # never runs, and an on-prem instance would lose lineage it used to have.
+            logger.warning(
+                "SAP HANA SQL lineage pass failed and produced %d edges before stopping. The repository "
+                "pass still runs. Cause: %s",
+                sql_edges,
+                exc,
+            )
+            logger.debug(traceback.format_exc())
+        else:
+            logger.info(
+                "SAP HANA SQL lineage produced %d edges from view definitions and query history, "
+                "alongside %d query records",
+                sql_edges,
+                sql_queries,
+            )
 
         cdata_edges = 0
-        for either in self.yield_cdata_lineage():
-            cdata_edges += 1 if isinstance(either.right, AddLineageRequest) else 0
-            yield either
-        logger.info("SAP HANA repository lineage produced %d edges from _SYS_REPO models", cdata_edges)
+        # Calculation, Analytic and Attribute Views are views, so the same flag that
+        # governs the shared view pass governs this one.
+        if self.source_config.processViewLineage:  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+            for either in self.yield_cdata_lineage():
+                cdata_edges += 1 if isinstance(either.right, AddLineageRequest) else 0
+                yield either
+            logger.info("SAP HANA repository lineage produced %d edges from _SYS_REPO models", cdata_edges)
 
         if sql_edges or cdata_edges:
             return

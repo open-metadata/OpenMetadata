@@ -33,6 +33,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -1481,7 +1484,7 @@ def test_lineage_source_uses_the_shared_framework() -> None:
 def test_query_history_statement_formats_into_valid_sql() -> None:
     """The statement must survive .format() with the values the framework passes."""
     sql = SAPHANA_QUERY_HISTORY_STATEMENT.format(
-        filters=SaphanaLineageSource.filters.replace("%%", "%"),
+        filters=SaphanaLineageSource.filters,
         start_time="2026-09-09 00:00:00",
         end_time="2026-09-10 00:00:00",
         result_limit=100,
@@ -1512,7 +1515,7 @@ def test_query_filters_select_only_data_movement() -> None:
     HANA's plan cache holds no DDL at all, so CREATE TABLE AS SELECT is absent by
     construction and is deliberately not matched here.
     """
-    filters = SaphanaLineageSource.filters.replace("%%", "%")
+    filters = SaphanaLineageSource.filters
 
     assert "INSERT INTO%SELECT%" in filters
     assert "MERGE INTO%" in filters
@@ -1527,11 +1530,17 @@ def test_iter_runs_both_passes() -> None:
     """
     calls = []
 
+    def record_sql(*_, **__):
+        calls.append("sql")
+        return iter([])
+
+    def record_cdata():
+        calls.append("cdata")
+        return iter([])
+
     with (
-        patch.object(LineageSource, "_iter", side_effect=lambda *a, **k: iter([]) or calls.append("sql") or iter([])),
-        patch.object(
-            SaphanaLineageSource, "yield_cdata_lineage", side_effect=lambda: calls.append("cdata") or iter([])
-        ),
+        patch.object(LineageSource, "_iter", side_effect=record_sql),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", side_effect=record_cdata),
         patch.object(SaphanaLineageSource, "test_connection"),
         patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection"),
     ):
@@ -1544,10 +1553,69 @@ def test_iter_runs_both_passes() -> None:
                         connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
                     )
                 ),
-                sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
+                sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
             ),
             metadata=create_autospec(OpenMetadata),
         )
         list(source._iter())
 
-    assert "cdata" in calls
+    assert calls == ["sql", "cdata"]
+
+
+def _lineage_source_with(source_config: DatabaseServiceQueryLineagePipeline) -> SaphanaLineageSource:
+    """Build the source without touching a real engine"""
+    with (
+        patch.object(SaphanaLineageSource, "test_connection"),
+        patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection"),
+    ):
+        return SaphanaLineageSource(
+            config=WorkflowSource(
+                type="saphana-lineage",
+                serviceName="test_sap_hana",
+                serviceConnection=DatabaseConnection(
+                    config=SapHanaConnection(
+                        connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
+                    )
+                ),
+                sourceConfig=SourceConfig(config=source_config),
+            ),
+            metadata=create_autospec(OpenMetadata),
+        )
+
+
+def test_sql_pass_failure_does_not_stop_the_repository_pass() -> None:
+    """A failing SQL pass must not take the _SYS_REPO pass down with it.
+
+    LineageSource.yield_table_query does not guard its own execute, so an unreadable
+    SYS.M_SQL_PLAN_CACHE raises. On an on-premise instance that would otherwise cost
+    the calculation-view lineage that already worked.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    def explode(*_, **__):
+        raise RuntimeError("insufficient privilege: SYS.M_SQL_PLAN_CACHE")
+
+    with (
+        patch.object(LineageSource, "_iter", side_effect=explode),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([])) as cdata,
+    ):
+        list(source._iter())
+
+    cdata.assert_called_once()
+
+
+def test_cdata_pass_honours_process_view_lineage() -> None:
+    """Disabling view lineage must disable the repository pass too.
+
+    Calculation, Analytic and Attribute Views are views, so leaving this pass on
+    would keep emitting view edges for a user who turned view lineage off.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    with (
+        patch.object(LineageSource, "_iter", return_value=iter([])),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([])) as cdata,
+    ):
+        list(source._iter())
+
+    cdata.assert_not_called()
