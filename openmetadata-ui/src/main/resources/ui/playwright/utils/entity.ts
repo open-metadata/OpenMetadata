@@ -863,22 +863,26 @@ export const assignTag = async (
 
   const tagInput = page.locator('#tagsForm_tags');
   await expect(tagInput).toBeVisible();
+  await tagInput.click();
 
   const tagOption = page
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
     .first();
 
-  // The Antd Select dropdown races the search response: the option may render
-  // stale from the previous open, then re-render when the ES query returns
-  // (or the click may lose its target when the list re-renders). Retry the
-  // fill → wait-for-option-visible → click loop so a detached click or missed
-  // render does not fail the whole test.
-  await expect(async () => {
-    await tagInput.fill('');
-    await tagInput.fill(tag);
-    await expect(tagOption).toBeVisible({ timeout: 10000 });
-    await tagOption.click({ timeout: 5000 });
-  }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
+  // Wait for the tag search response as a deterministic signal that the
+  // dropdown has settled with its final options, then click. The response
+  // listener must be registered before fill so a response fired between the
+  // two cannot slip past the wait.
+  const tagSearchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('tag_search_index'),
+    { timeout: 15_000 }
+  );
+  await tagInput.fill(tag);
+  await tagSearchResponse;
+  await expect(tagOption).toBeVisible({ timeout: 15_000 });
+  await tagOption.click();
 
   await page
     .locator('.ant-select-dropdown')
@@ -928,17 +932,22 @@ export const assignTagToChildren = async ({
     .click();
 
   const tagInput = page.locator('#tagsForm_tags');
+  await expect(tagInput).toBeVisible();
+  await tagInput.click();
   const tagOption = page.getByTestId(`tag-${tag}`);
 
-  // Antd Select dropdown races the search response; retry the fill →
-  // wait-for-option-visible → click loop so a detached option or missed
-  // render does not fail the whole test.
-  await expect(async () => {
-    await tagInput.fill('');
-    await tagInput.fill(tag);
-    await expect(tagOption).toBeVisible({ timeout: 10000 });
-    await tagOption.click({ timeout: 5000 });
-  }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
+  // Wait for the tag search response as a deterministic signal that the
+  // dropdown has settled with its final options, then click.
+  const tagSearchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('tag_search_index'),
+    { timeout: 15_000 }
+  );
+  await tagInput.fill(tag);
+  await tagSearchResponse;
+  await expect(tagOption).toBeVisible({ timeout: 15_000 });
+  await tagOption.click();
   const patchRequest =
     entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
@@ -1561,29 +1570,61 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
-  let followingWidget = await loadFollowingWidget(page);
+  if (entity) {
+    // The widget fetches followers on mount via a search-query filter on
+    // `followers: <userId>`. Poll the same API to ensure the entity's
+    // followers array in ES has caught up with the follow/unfollow action
+    // before we reload the widget, so the fetch on mount returns the
+    // authoritative state and the assertion below is deterministic.
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      const meResponse = await apiContext.get('/api/v1/users/loggedInUser');
+      const me = await meResponse.json();
+      const userId = me?.id;
+      if (userId) {
+        const start = Date.now();
+        const timeout = 30_000;
+        while (Date.now() - start < timeout) {
+          const params = new URLSearchParams({
+            q: `followers:${userId} AND (name:"${entity}" OR displayName:"${entity}")`,
+            index: 'all',
+            from: '0',
+            size: '5',
+          });
+          const searchResponse = await apiContext.get(
+            `/api/v1/search/query?${params.toString()}`
+          );
+          if (searchResponse.ok()) {
+            const searchBody = await searchResponse.json();
+            const hitCount = searchBody?.hits?.hits?.length ?? 0;
+            if (isFollowing ? hitCount > 0 : hitCount === 0) {
+              break;
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1_000));
+        }
+      }
+    } finally {
+      await afterAction();
+    }
+  }
+
+  const followingWidget = await loadFollowingWidget(page);
 
   if (!entity) {
     return followingWidget;
   }
 
-  // The widget loads its list on mount and does not refetch when the
-  // followed set changes elsewhere, so a stale panel from before the follow
-  // API returned can outlast the assertion. Reload the homepage between
-  // iterations to force a fresh fetch.
-  await expect(async () => {
-    followingWidget = await loadFollowingWidget(page);
-    await expect(followingWidget).toBeVisible();
-    if (isFollowing) {
-      await expect(
-        followingWidget.getByTestId(`Following-${entity}`)
-      ).toBeVisible({ timeout: 5_000 });
-    } else {
-      await expect(
-        followingWidget.getByTestId(`Following-${entity}`)
-      ).toBeHidden({ timeout: 5_000 });
-    }
-  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000, 10_000] });
+  await expect(followingWidget).toBeVisible();
+  if (isFollowing) {
+    await expect(
+      followingWidget.getByTestId(`Following-${entity}`)
+    ).toBeVisible({ timeout: 15_000 });
+  } else {
+    await expect(followingWidget.getByTestId(`Following-${entity}`)).toBeHidden(
+      { timeout: 15_000 }
+    );
+  }
 
   return followingWidget;
 };

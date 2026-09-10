@@ -1849,37 +1849,34 @@ export const testTableSearch = async (
   const searchbar = page.getByTestId('searchbar');
   await expect(searchbar).toBeVisible();
 
-  // Wrap the fill → response → visibility sequence in a bounded retry so a
-  // slow first render, a debounced input, or a swallowed request does not
-  // burn the whole 60s test budget on a single-shot wait.
-  await expect(async () => {
-    const responsePromise = page.waitForResponse(
-      (response) => {
-        const url = new URL(response.url());
-        const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
+  // Wait on the search response for the entered term as a deterministic
+  // signal that the results grid has settled. The predicate accepts any
+  // request whose `q` param contains the search term (with or without Lucene
+  // wildcard/escape decoration) so a slight URL-encoding variation between
+  // entity types does not cause the wait to miss.
+  const responsePromise = page.waitForResponse(
+    (response) => {
+      const url = new URL(response.url());
+      const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
 
-        return (
-          response.request().method() === 'GET' &&
-          url.pathname === '/api/v1/search/query' &&
-          url.searchParams.get('index') === searchIndex &&
-          (query === searchTerm ||
-            query.startsWith(`*${searchTerm}*`) ||
-            query.includes(searchTerm))
-        );
-      },
-      { timeout: 10_000 }
-    );
-    await searchbar.fill('');
-    await searchbar.fill(searchTerm);
-    expect((await responsePromise).status()).toBe(200);
-    await waitForAllLoadersToDisappear(page);
-    await expect(
-      page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i'))
-    ).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden({
-      timeout: 5_000,
-    });
-  }).toPass({ timeout: 40_000, intervals: [2_000, 5_000] });
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/v1/search/query' &&
+        url.searchParams.get('index') === searchIndex &&
+        query.includes(searchTerm)
+      );
+    },
+    { timeout: 20_000 }
+  );
+  await searchbar.fill(searchTerm);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i'))
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden({
+    timeout: 10_000,
+  });
 };
 
 export const chooseSelectOption = async (trigger: Locator, option: Locator) => {

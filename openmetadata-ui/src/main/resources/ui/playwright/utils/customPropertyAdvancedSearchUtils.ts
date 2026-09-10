@@ -21,6 +21,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { getApiContext, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForAggregation } from './searchAggregation';
 
 export interface CustomPropertyDetails {
   name: string;
@@ -464,8 +465,12 @@ const handlePropertyValueInput = async (
     // Convert object values to JSON strings
     const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
+    // The click on the entity-reference input fires the open aggregate query
+    // (`value=.*`). Use waitForAggregation so the wait distinguishes the
+    // open request from later per-keystroke queries and does not silently
+    // miss when the URL encoding of the wildcard varies.
     const apiResponsePromise = isEntityRefProperty
-      ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
+      ? waitForAggregation(page, { value: null })
       : undefined;
 
     await inputElement.click();

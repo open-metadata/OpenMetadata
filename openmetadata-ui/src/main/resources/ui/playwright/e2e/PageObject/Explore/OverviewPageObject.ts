@@ -236,20 +236,22 @@ export class OverviewPageObject extends RightPanelBase {
     // carries the 'active' CSS class when the tag is already selected.
     const tagItem = this.selectableList.getByTitle(tagName);
 
-    // Retry the search fill until the tag row renders. Elasticsearch indexing
-    // is eventually consistent — a newly created tag may not show up on the
-    // first search and needs a second fetch after a short delay.
-    await expect(async () => {
-      await this.tagSearchBar.fill('');
-      await this.tagSearchBar.fill(tagName);
-      // Scope loader to the selectable-list to avoid strict-mode violations
-      // when multiple [data-testid="loader"] elements coexist on the page
-      // during parallel test runs.
-      await this.selectableList
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
-      await expect(tagItem).toBeVisible();
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    // Wait for the ES search response as a deterministic signal that the
+    // list has settled with its final options.
+    const tagSearchResponse = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('tag_search_index'),
+      { timeout: 20_000 }
+    );
+    await this.tagSearchBar.fill(tagName);
+    await tagSearchResponse;
+    // Scope loader to the selectable-list to avoid strict-mode violations when
+    // multiple [data-testid="loader"] elements coexist on the page.
+    await this.selectableList
+      .getByTestId('loader')
+      .waitFor({ state: 'hidden' });
+    await expect(tagItem).toBeVisible({ timeout: 15_000 });
 
     // Only click if not already active — in parallel test runs another test may have added
     // this tag already. Clicking an already-active item would deselect (remove) it.
@@ -288,20 +290,23 @@ export class OverviewPageObject extends RightPanelBase {
     // carries the 'active' CSS class when the term is already selected.
     const termItem = this.selectableList.getByTitle(termName);
 
-    // Retry the search fill until the term row renders. Elasticsearch indexing
-    // is eventually consistent — a newly created term may not show up on the
-    // first search and needs a second fetch after a short delay.
-    await expect(async () => {
-      await this.glossaryTermSearchBar.fill('');
-      await this.glossaryTermSearchBar.fill(termName);
-      // Scope loader to selectableList to avoid strict-mode violations when a
-      // parallel test has a lineage or other section loader visible at the
-      // same time.
-      await this.selectableList
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
-      await expect(termItem).toBeVisible();
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    // Wait for the ES search response as a deterministic signal that the
+    // list has settled with its final options.
+    const termSearchResponse = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('glossary_term_search_index'),
+      { timeout: 20_000 }
+    );
+    await this.glossaryTermSearchBar.fill(termName);
+    await termSearchResponse;
+    // Scope loader to selectableList to avoid strict-mode violations when a
+    // parallel test has a lineage or other section loader visible at the
+    // same time.
+    await this.selectableList
+      .getByTestId('loader')
+      .waitFor({ state: 'hidden' });
+    await expect(termItem).toBeVisible({ timeout: 15_000 });
     await termItem.scrollIntoViewIfNeeded();
 
     // Only click if not already active — parallel tests may have added this term already.

@@ -222,12 +222,9 @@ export const selectOption = async (
   if (await control.count()) {
     await control.blur();
   }
-  // The react-aria listbox hide is animated and can remain visible for a
-  // frame after blur; press Escape as a fallback if it does not clear on its
-  // own before the assertion times out.
-  if (!(await listbox.isHidden().catch(() => true))) {
-    await page.keyboard.press('Escape');
-  }
+  // Escape closes the react-aria listbox synchronously, so we do not rely on
+  // the blur → animated-hide race to settle before the assertion.
+  await page.keyboard.press('Escape');
   await expect(listbox).toBeHidden({ timeout: 10_000 });
 };
 

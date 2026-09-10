@@ -1190,10 +1190,11 @@ export const addTagsAndGlossaryToDomain = async (
     // Click add button
     await page.locator(`${container} [data-testid="add-tag"]`).click();
 
-    // Fill and select tag/term. The Antd Select dropdown races the search
-    // response; retry the fill → wait-for-response → option-click loop so a
-    // detached option or missed search reply does not fail the whole test.
+    // Fill and select tag/term. Wait for the ES search response as a
+    // deterministic signal that the dropdown has settled with its final
+    // options, then click.
     const input = page.locator(`${container} #tagsForm_tags`);
+    await expect(input).toBeVisible();
     await input.click();
     const tag = page.getByTestId(`tag-${value}`);
     const clickTarget =
@@ -1201,12 +1202,20 @@ export const addTagsAndGlossaryToDomain = async (
         ? tag.locator('.ant-select-tree-checkbox')
         : tag;
 
-    await expect(async () => {
-      await input.fill('');
-      await input.fill(value);
-      await expect(clickTarget).toBeVisible({ timeout: 10000 });
-      await clickTarget.click({ timeout: 5000 });
-    }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
+    const searchIndexToken =
+      containerType === 'glossary'
+        ? 'glossary_term_search_index'
+        : 'tag_search_index';
+    const searchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(searchIndexToken),
+      { timeout: 15_000 }
+    );
+    await input.fill(value);
+    await searchResponse;
+    await expect(clickTarget).toBeVisible({ timeout: 15_000 });
+    await clickTarget.click();
 
     // Save and wait for response
     const updateResponse = page.waitForResponse(
