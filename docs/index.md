@@ -63,6 +63,7 @@ verdict cites an artifact that was checked to still exist):
 | `docs/golden-principles.md` | 8 candidate repo-wide invariants (DRAFT for ratification), each with a measured adherence number + reproducing command | Cite/enforce an invariant (acyclic modules, ServiceSpec contract, generated-as-sink, no bare `except:`, …) | 2026-07-24 | CURRENT |
 | `docs/tech-debt.md` | Prioritized (impact÷size, 3 tiers) ledger of 21 audit findings, each with location, size, and agent-fixability | Pick up a bounded cleanup, or understand a known structural debt before working near it | 2026-07-24 | CURRENT |
 | `docs/quality.md` | One evidence-cited quality grade (A–C / Not assessed) per Maven module | Gauge a module's structural health / known debt before a large change | 2026-07-24 | CURRENT |
+| [Playwright component migration audit](testing/playwright-migration/README.md) | Complete source/queue classification, queue analysis, and migration follow-up | Moving UI assertions from full-stack browser tests into component integration tests | 2026-09-10 | Historical snapshot at `44823acd`; implementation status recorded separately |
 
 ## Assets (`docs/assets/`)
 
