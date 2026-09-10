@@ -261,9 +261,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(pageSizeDropdown).toBeEnabled();
 
     // NextPrevious wraps the button in an Ant Dropdown with the default hover
-    // trigger, so a bare click only fires preventDefault. Hover + click-fallback
-    // + retry — a re-render that nudges the footer out from under the pointer
-    // otherwise leaves the menu closed for good.
+    // trigger, so a bare click only fires preventDefault. Open and pick inside
+    // one retry: the menu can close between a visibility check and the click,
+    // and a click left outside the loop then waits on a hidden option for the
+    // rest of the test. Asserting the trigger's new label retries the whole
+    // open-and-pick when it did not take.
     const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
     await expect(async () => {
       await pageSizeDropdown.hover();
@@ -271,9 +273,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
         await pageSizeDropdown.click();
       }
       await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+      await pageSizeOption.click({ timeout: 5_000 });
 
-    await pageSizeOption.click();
+      await expect(pageSizeDropdown).toContainText('15 / Page');
+    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
