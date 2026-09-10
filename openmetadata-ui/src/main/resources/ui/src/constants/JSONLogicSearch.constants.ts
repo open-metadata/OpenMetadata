@@ -42,6 +42,11 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.ENTITY_STATUS,
 ];
 
+export const DATA_PRODUCT_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.ASSETS_COUNT,
+  EntityReferenceFields.OUTPUT_PORTS_COUNT,
+];
+
 export const KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.REVIEWERS,
   EntityReferenceFields.UPDATED_BY,

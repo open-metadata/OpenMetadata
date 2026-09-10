@@ -23,7 +23,7 @@ import {
   StatusIndicator,
 } from '../../../../utils/executionUtils';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../common/Table/Table';
+import Table from '../../../common/Table/TableV2';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;

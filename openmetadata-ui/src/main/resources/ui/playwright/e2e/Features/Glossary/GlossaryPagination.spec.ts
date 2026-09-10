@@ -257,8 +257,11 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchInput.fill('NonExistentTermXYZ12345');
     await noResultsRes;
 
-    // Verify empty state message is shown (uses ErrorPlaceHolder component)
-    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+    // Verify empty state message is shown (uses NoSearchResultsPlaceholder,
+    // since a real search term is active)
+    await expect(
+      page.getByTestId('no-search-results-placeholder')
+    ).toBeVisible();
 
     // Clear search and verify terms return
     const clearRes = page.waitForResponse('**/api/v1/glossaryTerms?*');
@@ -266,7 +269,9 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await clearRes;
 
     // Verify terms are visible again after clearing search
-    await expect(page.getByTestId('no-data-placeholder')).not.toBeVisible();
+    await expect(
+      page.getByTestId('no-search-results-placeholder')
+    ).not.toBeVisible();
     await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
   });
 

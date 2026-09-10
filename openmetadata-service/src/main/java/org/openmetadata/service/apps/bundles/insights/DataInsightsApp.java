@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
@@ -250,7 +251,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
       String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
 
       if (!runType.equals(ON_DEMAND_JOB)) {
         backfill = Optional.empty();

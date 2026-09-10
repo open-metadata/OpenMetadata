@@ -171,7 +171,7 @@ public class OpenSearchClient implements SearchClient {
         return null;
       }
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
-          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+          new ShardFailureAwareOpenSearchClient(transport);
 
       LOG.info(
           "Successfully initialized OpenSearch Java API client with transport: {}",
@@ -1103,6 +1103,12 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
     entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
+    entityManager.reconcileColumnsInUpstreamLineage(indexName, renamedColumns, deletedColumns);
   }
 
   @Override
