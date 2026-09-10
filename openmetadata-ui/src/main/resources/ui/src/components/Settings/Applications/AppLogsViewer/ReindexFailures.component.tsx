@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
+import { Drawer, Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Table from '../../../common/Table/TableV2';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import {
   ReindexFailureRecord,
@@ -203,6 +204,11 @@ const ReindexFailures = ({
             ))}
           </Select>
         </Space>
+        {total > 0 && (
+          <Typography.Text className="text-grey-muted">
+            {t('label.showing-total-failure-plural', { total })}
+          </Typography.Text>
+        )}
       </Space>
 
       <Table
@@ -212,15 +218,13 @@ const ReindexFailures = ({
         pagination={{
           current: currentPage,
           pageSize: PAGE_SIZE,
-          total,
           showSizeChanger: false,
-          showTotal: (total) =>
-            t('label.showing-total-failure-plural', { total }),
-          onChange: handlePageChange,
+          total,
         }}
         rowKey="id"
         scroll={{ y: 'calc(100vh - 280px)' }}
         size="small"
+        onChange={({ current }) => handlePageChange(current ?? 1)}
       />
     </Drawer>
   );

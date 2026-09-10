@@ -13,7 +13,7 @@
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import Table from '../../../components/common/Table/Table';
+import Table from '../../../components/common/Table/TableV2';
 import { TableComponentProps } from '../../../components/common/Table/Table.interface';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';

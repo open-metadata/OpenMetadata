@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Table } from 'antd';
+import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -21,6 +21,7 @@ import {
   fieldValueBoostBaseColumns,
 } from '../../../constants/SearchSettings.constant';
 import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
+import Table from '../../common/Table/TableV2';
 import './field-value-boost-list.less';
 
 interface FieldValueBoostListProps {
@@ -58,7 +59,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               title: t('label.greater-than'),
               key: 'gt',
               width: 120,
-              render: (record: FieldValueBoost) => (
+              render: (_: unknown, record: FieldValueBoost) => (
                 <span>{record.condition?.range?.gt ?? '-'}</span>
               ),
             },
@@ -66,7 +67,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               title: t('label.greater-than-or-equal-to'),
               key: 'gte',
               width: 120,
-              render: (record: FieldValueBoost) => (
+              render: (_: unknown, record: FieldValueBoost) => (
                 <span>{record.condition?.range?.gte ?? '-'}</span>
               ),
             },
@@ -74,7 +75,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               title: t('label.less-than'),
               key: 'lt',
               width: 120,
-              render: (record: FieldValueBoost) => (
+              render: (_: unknown, record: FieldValueBoost) => (
                 <span>{record.condition?.range?.lt ?? '-'}</span>
               ),
             },
@@ -82,7 +83,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               title: t('label.less-than-or-equal-to'),
               key: 'lte',
               width: 120,
-              render: (record: FieldValueBoost) => (
+              render: (_: unknown, record: FieldValueBoost) => (
                 <span>{record.condition?.range?.lte ?? '-'}</span>
               ),
             },
@@ -92,7 +93,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         title: t('label.action-plural'),
         key: 'actions',
         width: 100,
-        render: (record: FieldValueBoost) => (
+        render: (_: unknown, record: FieldValueBoost) => (
           <div className="d-flex items-center gap-2">
             <Button
               className="edit-field-value-boost-btn"
