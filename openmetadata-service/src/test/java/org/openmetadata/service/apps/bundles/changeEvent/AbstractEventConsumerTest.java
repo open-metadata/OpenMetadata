@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -676,6 +677,90 @@ class AbstractEventConsumerTest {
         "alertMetrics",
         new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
     return consumer;
+  }
+
+  // A consumer that makes its own deliveries has no change_event offset to move, so the tick used
+  // to skip commit() and its metrics stayed at zero for the life of the subscription.
+  @Test
+  void testRecordDeliveryCountsTowardsTheAlertMetrics() throws Exception {
+    CommitCountingConsumer consumer = new CommitCountingConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+
+    consumer.recordDelivery(2, 1);
+
+    AlertMetrics metrics = (AlertMetrics) getField(consumer, "alertMetrics");
+    assertEquals(3, metrics.getTotalEvents(), "total counts every attempt");
+    assertEquals(2, metrics.getSuccessEvents());
+    assertEquals(1, metrics.getFailedEvents());
+  }
+
+  @Test
+  void testATickThatPolledNothingStillCommitsARecordedDelivery() throws Exception {
+    CommitCountingConsumer consumer = newCommitCountingConsumer();
+
+    consumer.recordDelivery(1, 0);
+    persistTick(consumer);
+
+    assertEquals(1, consumer.commits, "a recorded delivery has to reach the subscription");
+    assertEquals(
+        Boolean.FALSE, getField(consumer, "metricsChanged"), "the flag is cleared by the commit");
+
+    persistTick(consumer);
+    assertEquals(1, consumer.commits, "and it must not commit again on the next idle tick");
+  }
+
+  @Test
+  void testAnIdleTickWithNothingRecordedDoesNotCommit() throws Exception {
+    CommitCountingConsumer consumer = newCommitCountingConsumer();
+
+    persistTick(consumer);
+
+    assertEquals(0, consumer.commits);
+  }
+
+  private CommitCountingConsumer newCommitCountingConsumer() throws Exception {
+    CommitCountingConsumer consumer = new CommitCountingConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+    return consumer;
+  }
+
+  private static void persistTick(AbstractEventConsumer consumer) throws Exception {
+    Method method =
+        AbstractEventConsumer.class.getDeclaredMethod("persistTick", JobExecutionContext.class);
+    method.setAccessible(true);
+    method.invoke(consumer, (JobExecutionContext) null);
+  }
+
+  /** Counts commits unconditionally, which is what the offset-versus-metrics branch decides. */
+  static class CommitCountingConsumer extends AbstractEventConsumer {
+    int commits;
+
+    CommitCountingConsumer(DIContainer dependencies) {
+      super(dependencies);
+    }
+
+    @Override
+    public void commit(JobExecutionContext jobExecutionContext) {
+      commits++;
+    }
+
+    @Override
+    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
+      return true;
+    }
+
+    @Override
+    public boolean getEnabled() {
+      return true;
+    }
   }
 
   private static void setField(Object target, String name, Object value) throws Exception {

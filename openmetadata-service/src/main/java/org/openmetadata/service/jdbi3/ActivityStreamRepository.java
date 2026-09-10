@@ -713,7 +713,17 @@ public class ActivityStreamRepository {
     return requestedDomains;
   }
 
-  private List<UUID> getEffectiveDomainsByFqn(SecurityContext securityContext, String domainFqn) {
+  /**
+   * Resolves the domain scope a caller's activity read is held to, from a single domain FQN.
+   *
+   * <p>Public because the scope is an authorization decision, not a detail of this repository: a
+   * caller who has to answer a question about the same rows the activity endpoints returned has to
+   * ask it under the same scope, and re-deriving that scope is how the two drift apart. Note the
+   * empty case is deliberately not an empty list: a domain-restricted caller whose allowed domains
+   * come out empty is scoped to {@code NO_DOMAIN_ACCESS}, which matches nothing, rather than left
+   * unscoped.
+   */
+  public List<UUID> getEffectiveDomainsByFqn(SecurityContext securityContext, String domainFqn) {
     if (nullOrEmpty(domainFqn)) {
       return getEffectiveDomains(securityContext, null);
     }
