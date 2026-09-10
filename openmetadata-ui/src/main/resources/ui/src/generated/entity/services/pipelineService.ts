@@ -273,7 +273,11 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude pipelines that matches the pattern.
      */
-    pipelineFilterPattern?:      FilterPattern;
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -1408,6 +1412,11 @@ export interface DatabaseConnectionClass {
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
