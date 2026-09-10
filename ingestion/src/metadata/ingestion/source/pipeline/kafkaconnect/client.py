@@ -14,7 +14,6 @@ Client to interact with Kafka Connect REST APIs
 
 import re
 import traceback
-from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional
 from urllib.parse import urlparse
 
@@ -25,6 +24,7 @@ from pydantic import ValidationError
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
+from metadata.ingestion.source.pipeline.kafkaconnect import telemetry
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     ConnectorConfigKeys,
 )
@@ -141,43 +141,6 @@ INTERNAL_TOPIC_CONFIG_KEYS = (
     "database.history.kafka.topic",
     "errors.deadletterqueue.topic.name",
 )
-
-# Confluent Cloud answers KIP-558 with 404, so a connector whose destination topic is
-# chosen from a row value resolves nothing from its configuration. The telemetry Data Flow
-# dataset reports which topic a producer client wrote to, and a managed connector produces
-# under a client id carrying its own connector id, which is what ties the two together.
-CONFLUENT_TELEMETRY_URL = "https://api.telemetry.confluent.cloud/v2/metrics/dataflow/query"
-
-# Named from the CLUSTER's perspective, not the client's: received_records counts records
-# the cluster received, which is what a producer wrote. The mirrored sent_records counts
-# what the cluster sent to consumers and returns no producer clients at all, so it is the
-# wrong end of the pipe for a source connector. The value itself is unused, only the
-# topic-to-client pairing matters.
-CONFLUENT_TELEMETRY_METRIC = "received_records"
-
-# Confluent retains metrics for seven days. A shorter window keeps the response small and
-# reduces how far back a since-deleted connector can appear.
-CONFLUENT_TELEMETRY_WINDOW_HOURS = 24
-
-CONFLUENT_TELEMETRY_TIMEOUT_SECONDS = 60
-
-# The documented maximum number of groups per response. Higher values are currently
-# tolerated by the service but are out of spec, and the response is paginated regardless,
-# so there is nothing to gain by asking for more than the contract allows.
-CONFLUENT_TELEMETRY_PAGE_LIMIT = 1000
-
-# A cluster busy enough to need more pages than this is not one we can usefully enumerate,
-# and an unbounded follow-the-cursor loop would hang ingestion on a malformed response.
-CONFLUENT_TELEMETRY_MAX_PAGES = 50
-
-# A managed connector's producer client is named connector-producer-<connector-id>-<task>.
-# The convention is not documented, so it is matched rather than constructed, and a client
-# id that does not match yields no attribution instead of a guess.
-CONFLUENT_PRODUCER_CLIENT_PATTERN = re.compile(r"connector-producer-(?P<connector_id>lcc-[a-z0-9]+)-\d+$")
-
-# Confluent Cloud Connect URLs end in /clusters/<kafka-cluster-id>, which is the id the
-# telemetry query filters on.
-CONFLUENT_CLUSTER_ID_PATTERN = re.compile(r"/clusters/(?P<cluster_id>lkc-[a-z0-9]+)")
 
 
 def extract_internal_topic_names(connector_config: Optional[dict]) -> set[str]:  # noqa: UP045
@@ -330,6 +293,10 @@ class KafkaConnectClient:
         # lives for a single ingestion run. None means not yet fetched.
         self._connector_ids: dict[str, str] | None = None
         self._telemetry_topics_by_connector_id: dict[str, set[str]] | None = None
+        # Whether the Connect API accepted this credential, which an empty connector list
+        # cannot tell us: a cluster with no connectors and a cluster we cannot authenticate
+        # to both yield nothing. None until the call has been made.
+        self._connect_authenticated: bool | None = None
         # The telemetry API takes the same Confluent Cloud key as the Connect API, so no
         # separate credential is needed. Held as a tuple because that call is made with
         # requests directly rather than through the Connect client. Both halves have to be
@@ -347,8 +314,7 @@ class KafkaConnectClient:
         """The Kafka cluster id the Connect URL points at, which scopes the telemetry query."""
         if not self.is_confluent_cloud:
             return None
-        match = CONFLUENT_CLUSTER_ID_PATTERN.search(self._host_port)
-        return match.group("cluster_id") if match else None
+        return telemetry.cluster_id_from_connect_url(self._host_port)
 
     def _connector_id_by_name(self) -> dict[str, str]:
         """
@@ -365,11 +331,13 @@ class KafkaConnectClient:
         result: dict[str, str] = {}
         try:
             response = self.get_connectors_list(expand="id")
+            self._connect_authenticated = True
             for name, block in (response or {}).items():
                 connector_id = ((block or {}).get("id") or {}).get("id")
                 if connector_id:
                     result[name] = connector_id
         except Exception as exc:
+            self._connect_authenticated = False
             logger.debug(traceback.format_exc())
             logger.debug("Unable to list Confluent connector ids: %s", exc)
 
@@ -377,7 +345,7 @@ class KafkaConnectClient:
         return result
 
     def _query_dataflow_topics_by_client(
-        self, cluster_id: str, max_pages: int = CONFLUENT_TELEMETRY_MAX_PAGES
+        self, cluster_id: str, max_pages: int = telemetry.MAX_PAGES
     ) -> dict[str, set[str]]:
         """
         Topics each connector producer wrote to on this cluster, from the telemetry API.
@@ -394,30 +362,17 @@ class KafkaConnectClient:
         them all would spend a request per page against an endpoint that rate limits by the
         hour, for an answer the first response already gave.
         """
-        now = datetime.now(timezone.utc).replace(microsecond=0)
-        start = now - timedelta(hours=CONFLUENT_TELEMETRY_WINDOW_HOURS)
-        interval = f"{start.isoformat().replace('+00:00', 'Z')}/{now.isoformat().replace('+00:00', 'Z')}"
-        payload = {
-            "aggregations": [{"metric": CONFLUENT_TELEMETRY_METRIC, "aggregations": ["SUM"]}],
-            "filter": {
-                "op": "AND",
-                "filters": [{"field": "resource.kafka.id", "op": "EQ", "value": cluster_id}],
-            },
-            "granularity": "ALL",
-            "group_by": ["metric.topic", "metric.client_id"],
-            "intervals": [interval],
-            "limit": CONFLUENT_TELEMETRY_PAGE_LIMIT,
-        }
+        payload = telemetry.build_dataflow_query(cluster_id)
 
         by_client: dict[str, set[str]] = {}
         page_token = None
         for _ in range(max_pages):
             response = requests.post(
-                CONFLUENT_TELEMETRY_URL,
+                telemetry.DATAFLOW_QUERY_URL,
                 json=payload,
                 params={"page_token": page_token} if page_token else None,
                 auth=self._telemetry_auth,
-                timeout=CONFLUENT_TELEMETRY_TIMEOUT_SECONDS,
+                timeout=telemetry.TIMEOUT_SECONDS,
                 verify=self._verify_ssl,
             )
             response.raise_for_status()
@@ -437,7 +392,7 @@ class KafkaConnectClient:
                 # Discarded here rather than after the loop, because this map is held
                 # across every page: on a busy cluster the applications producing to it
                 # far outnumber the connectors, and none of them can ever be attributed.
-                if not CONFLUENT_PRODUCER_CLIENT_PATTERN.match(entry.client_id):
+                if not telemetry.connector_id_from_client_id(entry.client_id):
                     continue
                 by_client.setdefault(entry.client_id, set()).add(entry.topic)
 
@@ -459,7 +414,7 @@ class KafkaConnectClient:
             # Only when the full budget was asked for. A caller that deliberately reads one
             # page has not lost anything it wanted, and warning there would report a problem
             # during a test connection that ran exactly as intended.
-            if max_pages == CONFLUENT_TELEMETRY_MAX_PAGES:
+            if max_pages == telemetry.MAX_PAGES:
                 logger.warning(
                     "Stopped reading Confluent telemetry after %s pages for cluster %s, topic resolution may be incomplete",
                     max_pages,
@@ -486,14 +441,25 @@ class KafkaConnectClient:
         by_connector: dict[str, set[str]] = {}
         try:
             for client_id, client_topics in self._query_dataflow_topics_by_client(cluster_id).items():
-                match = CONFLUENT_PRODUCER_CLIENT_PATTERN.match(client_id)
-                if match and match.group("connector_id") in live_connector_ids:
-                    by_connector.setdefault(match.group("connector_id"), set()).update(client_topics)
+                connector_id = telemetry.connector_id_from_client_id(client_id)
+                if connector_id in live_connector_ids:
+                    by_connector.setdefault(connector_id, set()).update(client_topics)
         except Exception as exc:
             # Recorded as empty rather than left unset, so one failure does not become one
             # failed call per connector. The API is rate limited per hour, and a large
             # estate would spend that budget retrying a call that already failed.
-            logger.warning("Confluent telemetry unavailable for cluster %s, topics not enriched: %s", cluster_id, exc)
+            #
+            # The key id and whether Connect accepted the same credential are both stated,
+            # because neither can be recovered from the log afterwards and together they
+            # identify which credential to look at and which half of Confluent rejected it.
+            # The secret is never logged, only the key id, which is not a secret.
+            logger.warning(
+                "Confluent telemetry unavailable for cluster %s using key %s, topics not enriched: %s%s",
+                cluster_id,
+                self._telemetry_auth[0] if self._telemetry_auth else "none",
+                exc,
+                telemetry.failure_hint(exc, connect_authenticated=self._connect_authenticated),
+            )
             logger.debug(traceback.format_exc())
 
         self._telemetry_topics_by_connector_id = by_connector

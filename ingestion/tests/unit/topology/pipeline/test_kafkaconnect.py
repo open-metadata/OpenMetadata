@@ -19,12 +19,15 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+import requests
 
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.source.pipeline.kafkaconnect import client as client_module
+from metadata.ingestion.source.pipeline.kafkaconnect import telemetry
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
@@ -3127,3 +3130,231 @@ class TestConfluentTelemetryTopics:
             pytest.raises(Exception, match="401"),
         ):
             client.check_confluent_telemetry()
+
+
+class TestTelemetryFailureHint:
+    """
+    A failed telemetry lookup has to say which of the two fixes applies.
+
+    Confluent answers 401 when the credential is not a Cloud API key at all and 403 when it
+    is valid but unauthorized for metrics. The fixes are opposite, a different key versus a
+    role grant, and the raised HTTPError renders only the status line, so without this the
+    log said the same thing for both.
+    """
+
+    @staticmethod
+    def _error(status, body=None, text=""):
+        response = MagicMock()
+        response.status_code = status
+        response.text = text
+        if body is None:
+            response.json = MagicMock(side_effect=ValueError("not json"))
+        else:
+            response.json = MagicMock(return_value=body)
+        exc = requests.exceptions.HTTPError(f"{status} Client Error")
+        exc.response = response
+        return exc
+
+    def test_unauthorized_names_the_key_as_the_problem(self):
+        """401 is unauthenticated, so no role grant can fix it. The key itself is wrong."""
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"status": "401", "detail": "Invalid credentials"}]})
+        )
+
+        assert "Invalid credentials" in hint, "Confluent's own wording must survive"
+        assert "Cloud API key" in hint
+        assert "MetricsViewer" not in hint, "a role grant cannot fix an unauthenticated key"
+
+    def test_forbidden_names_the_role_as_the_problem(self):
+        """403 authenticated fine, so the key is right and only the role is missing."""
+        hint = telemetry.failure_hint(
+            self._error(
+                403,
+                {
+                    "errors": [
+                        {
+                            "status": "403",
+                            "detail": "Query must filter by at least one of your authorized resources",
+                        }
+                    ]
+                },
+            )
+        )
+
+        assert "authorized resources" in hint, "Confluent's own wording must survive"
+        assert "MetricsViewer" in hint
+        assert "Cloud API key" not in hint, "the key authenticated, so it is not the problem"
+
+    def test_other_failures_report_the_response_but_prescribe_no_fix(self):
+        """
+        A timeout or a 500 is not an auth problem, so naming a fix would send the reader
+        after the wrong thing. What Confluent returned is still reported, because an
+        unexpected shape is worth seeing and a body we declined to print is lost for good.
+        """
+        hint = telemetry.failure_hint(self._error(500, {"errors": []}))
+
+        assert "MetricsViewer" not in hint and "Cloud API key" not in hint, (
+            "a non-auth failure must not prescribe an auth fix"
+        )
+        assert "errors" in hint, "the response itself is still worth reporting"
+
+    def test_no_response_at_all_adds_nothing(self):
+        """A connection error never reached Confluent, so there is no response to report."""
+        assert telemetry.failure_hint(requests.exceptions.ConnectionError("no route")) == ""
+
+    def test_non_json_body_falls_back_to_text(self):
+        """A proxy in front of the API answers HTML, which must not crash the handler."""
+        hint = telemetry.failure_hint(self._error(401, body=None, text="<html>gateway</html>"))
+
+        assert "gateway" in hint
+        assert "Cloud API key" in hint
+
+    def test_remote_text_is_capped(self):
+        """The body is remote input going into a log line, so it cannot be unbounded."""
+        hint = telemetry.failure_hint(self._error(403, {"errors": [{"detail": "x" * 5000}]}))
+
+        assert len(hint) < 1000, "an unbounded remote string must not reach the log"
+
+    def test_hint_reaches_the_warning(self):
+        """The hint is worthless unless it lands in the line an operator actually reads."""
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("k", "s")
+        client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._connect_authenticated = True
+        client._telemetry_topics_by_connector_id = None
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(403, {"errors": [{"detail": "not authorized"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "MetricsViewer" in rendered
+        assert "not authorized" in rendered
+
+    def test_remote_text_cannot_forge_log_lines(self):
+        """
+        The body is whatever answered the request, which on a failure may be a proxy
+        returning HTML rather than Confluent returning JSON. Newlines in it would split one
+        warning into several that each read as their own record, so a crafted body could
+        forge log entries and any body at all could break line-oriented parsing.
+        """
+        forged = "denied\n2026-01-01 00:00:00 INFO  everything is fine\nmore"
+        hint = telemetry.failure_hint(self._error(401, {"errors": [{"detail": forged}]}))
+
+        assert "\n" not in hint and "\r" not in hint, "remote text must not span log lines"
+        assert "everything is fine" in hint, "the content is kept, only the newlines go"
+
+    def test_html_error_body_is_flattened(self):
+        """A proxy's HTML page is multi-line by nature and must collapse to one line."""
+        hint = telemetry.failure_hint(
+            self._error(403, body=None, text="<html>\n  <body>\n    Forbidden\n  </body>\n</html>")
+        )
+
+        assert "\n" not in hint
+        assert "Forbidden" in hint
+
+    def test_401_when_connect_works_does_not_blame_the_key_type(self):
+        """
+        A credential Connect accepts is not a cluster-scoped key, since those fail Connect
+        too. Telling the reader to swap the key type would send them after the wrong thing,
+        so the message reports what was observed and names both levers to check.
+        """
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": "Invalid credentials"}]}),
+            connect_authenticated=True,
+        )
+
+        assert "authenticates to the Connect API" in hint, "the observed split must be stated"
+        assert "MetricsViewer" in hint and "scope" in hint, "both levers are named"
+
+    def test_401_when_connect_also_failed_blames_the_key(self):
+        """Failing both is the ordinary case: the credential is not a Cloud API key."""
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": "Invalid credentials"}]}),
+            connect_authenticated=False,
+        )
+
+        assert "not accepted by the Telemetry API" in hint
+        assert "authenticates to the Connect API" not in hint
+
+    def test_warning_names_the_key_but_never_the_secret(self):
+        """
+        The key id is what identifies which credential to go and look at, and it is not a
+        secret. The secret sits beside it in the same tuple and must never reach a log.
+        """
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("KEYID123", "SUPERSECRET")
+        client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._connect_authenticated = True
+        client._telemetry_topics_by_connector_id = None
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "KEYID123" in rendered, "the key id identifies which credential to check"
+        assert "SUPERSECRET" not in rendered, "the secret must never be logged"
+        assert "authenticates to the Connect API" in rendered, "Connect worked, so say so"
+
+    def test_empty_cluster_is_not_mistaken_for_a_rejected_credential(self):
+        """
+        A cluster with no connectors and a cluster we cannot authenticate to both yield an
+        empty connector list. Inferring the credential from that list would tell an operator
+        with a working key and an empty cluster to go and replace the key.
+        """
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("KEYID123", "SECRET")
+        client._telemetry_topics_by_connector_id = None
+        client._connector_ids = None
+        client._connect_authenticated = None
+        # Connect answers, the cluster simply has no connectors.
+        client.get_connectors_list = MagicMock(return_value={})
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "authenticates to the Connect API" in rendered, (
+            "an empty connector list still means Connect authenticated"
+        )
+        assert "cannot authenticate here" not in rendered
+
+    def test_large_body_is_capped_before_normalizing(self):
+        """
+        A proxy error page can be megabytes. Collapsing whitespace across the whole body
+        would build a token list the size of the response before all but a few hundred
+        characters are discarded, so the input is capped first.
+
+        Asserted by putting a marker past the cap: it cannot appear in the output, which is
+        only true if the body was truncated before being split.
+        """
+        cap = telemetry.MAX_ERROR_CHARS * telemetry.INPUT_CAP_FACTOR
+        body = ("x " * cap) + "MARKER_PAST_THE_CAP"
+
+        out = telemetry.single_log_line(body)
+
+        assert "MARKER_PAST_THE_CAP" not in out, "input must be capped before normalizing"
+        assert len(out) <= telemetry.MAX_ERROR_CHARS
+
+    def test_whitespace_heavy_body_still_yields_full_line(self):
+        """
+        The cap is a multiple of the output so an indented page still gives a usable line.
+        Capping at exactly the output length would leave almost nothing after collapsing.
+        """
+        body = "\n".join("    " + w for w in ["Forbidden"] * 200)
+
+        out = telemetry.single_log_line(body)
+
+        assert len(out) == telemetry.MAX_ERROR_CHARS, "a real line of content must survive"
+        assert "\n" not in out

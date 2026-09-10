@@ -126,6 +126,7 @@ def test_connection(
         "GetViews": client.test_get_workbook_views,
         "GetOwners": client.test_get_owners,
         "GetDataModels": client.test_get_datamodels,
+        "GetSourceTables": client.test_get_source_tables,
     }
 
     return test_connection_steps(
