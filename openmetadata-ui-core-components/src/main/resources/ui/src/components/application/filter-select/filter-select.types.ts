@@ -30,6 +30,13 @@ export interface FilterSelectOption {
 
 export type FilterSelectTriggerVariant = 'button' | 'chip' | 'input';
 
+/**
+ * How the input-variant trigger echoes a multi selection: 'count' (default)
+ * renders a count badge; 'chips' renders each value as a removable chip in
+ * the field. Removing a chip commits through onChange immediately.
+ */
+export type FilterSelectTriggerDisplay = 'count' | 'chips';
+
 export type FilterSelectSelectionMode = 'single' | 'multiple';
 
 /**
@@ -64,6 +71,8 @@ export interface FilterSelectProps {
    * same row component as value rows, so it cannot drift visually.
    */
   nullOption?: FilterSelectOption;
+  /** Input-variant text when nothing is selected; defaults to `label`. */
+  placeholder?: string;
   popoverClassName?: string;
   /**
    * Label for a selected value missing from `options` (e.g. restored from a
@@ -78,6 +87,13 @@ export interface FilterSelectProps {
    * included.
    */
   showSelectAll?: boolean;
+  /**
+   * Trigger label font weight: 'medium' (default) or 'regular'. Menu rows
+   * always render regular.
+   */
+  typography?: 'regular' | 'medium';
+  /** Multi-selection echo on the input-variant trigger; default 'count'. */
+  triggerDisplay?: FilterSelectTriggerDisplay;
   /** Leading icon on the button-variant trigger. */
   triggerIcon?: FC<{ className?: string }>;
   triggerVariant?: FilterSelectTriggerVariant;
