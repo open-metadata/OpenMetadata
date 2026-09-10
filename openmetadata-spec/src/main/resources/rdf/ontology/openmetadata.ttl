@@ -2143,6 +2143,10 @@ om:agentType a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "agentType" .
 
+om:aliases a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "aliases" .
+
 om:allowBotImpersonation a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "allowBotImpersonation" .
