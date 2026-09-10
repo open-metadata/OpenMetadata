@@ -54,7 +54,7 @@ jest.mock(
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No columns available</div>)
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource, expandable }) => (
     <div data-testid="worksheet-data-model-table">
       <div data-testid="table-columns-count">{columns?.length || 0}</div>

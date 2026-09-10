@@ -278,13 +278,55 @@ jobs:
         run: ./scripts/docker_smoke_test.sh
 
   # Single required-check gate for branch protection.
-  # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
-  # Runs and exits 1 only when a test job fails or is cancelled.
+  # `always()` so the context reports on every PR: when the workflow is legitimately
+  # skipped (draft PR / missing `safe to test` label / no relevant paths changed) this
+  # exits 0; otherwise every triggered job must have succeeded.
   # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
   openmetadata-service-unit-tests-status:
     name: openmetadata-service-unit-tests-status
     needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests, docker-image-smoke-test]
-    if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() }}
     steps:
-      - run: exit 1
+      - name: Verify unit test suite
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          JAVA_CHANGED: ${{ needs.changes.outputs.java }}
+          K8S_CHANGED: ${{ needs.changes.outputs.k8s_operator }}
+          DOCKER_CHANGED: ${{ needs.changes.outputs.docker }}
+          SERVICE_RESULT: ${{ needs.openmetadata-service-unit-tests.result }}
+          K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
+          DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
+        run: |
+          # `changes` is skipped by its own `if:` on draft PRs and on fork PRs that
+          # lack the `safe to test` label. Nothing downstream can have run, so the
+          # required check is legitimately green.
+          if [[ "$CHANGES_RESULT" == "skipped" ]]; then
+            echo "Detect Changes was skipped (draft PR or missing 'safe to test' label); nothing to gate."
+            exit 0
+          fi
+
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::Detect Changes did not succeed: ${CHANGES_RESULT}"
+            exit 1
+          fi
+
+          fail=0
+          check() {
+            local name="$1" changed="$2" result="$3"
+            if [[ "$changed" != "true" ]]; then
+              echo "${name}: no relevant paths changed, skipped."
+              return
+            fi
+            if [[ "$result" != "success" ]]; then
+              echo "::error::${name} did not succeed (result=${result})"
+              fail=1
+            else
+              echo "${name}: success"
+            fi
+          }
+          check "openmetadata-service-unit-tests" "$JAVA_CHANGED"   "$SERVICE_RESULT"
+          check "k8s_operator-unit-tests"         "$K8S_CHANGED"    "$K8S_RESULT"
+          check "docker-image-smoke-test"         "$DOCKER_CHANGED" "$DOCKER_RESULT"
+          exit $fail

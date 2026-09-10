@@ -9,8 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -29,6 +31,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
@@ -38,6 +41,11 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
@@ -50,6 +58,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -7119,5 +7128,100 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         contract.getId(),
         testSuite.getDataContract().getId(),
         "TestSuite.dataContract must point back at the owning contract");
+  }
+
+  /**
+   * Regression guard for the NaN qualityScore bug. When every test case referenced by a contract's
+   * qualityExpectations is soft-deleted (without pruning qualityExpectations), the auto-created DQ
+   * pipeline completion fires {@code onTestSuiteExecutionComplete -> updateContractDQResults ->
+   * validateDQ}. There {@code testSuite.getTests()} is empty (Include.NON_DELETED) but
+   * {@code testSuite.getTestCaseResultSummary()} still carries stale result rows (no
+   * tc.deleted filter in the SQL), producing an empty post-filter testSummary — a 0/0.0
+   * division that previously stored/broadcast "NaN". The fix short-circuits before the division
+   * and keeps qualityScore null, matching the existing empty-suite baseline.
+   */
+  @Test
+  void testDataContractDQNoNaNWhenAllReferencedTestsSoftDeleted(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+
+    // Create a test case referenced by the contract's qualityExpectations.
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("dq_nan_guard_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Record a passing result so a row exists in data_quality_data_time_series. After the
+    // soft-delete this stale row still surfaces from listLastTestCaseResultsForTestSuite (no
+    // tc.deleted filter) while testSuite.getTests() excludes it (Include.NON_DELETED).
+    client.testCaseResults().forTestCase(tc.getFullyQualifiedName()).passed().create();
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dq_nan_guard"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(tc.getEntityReference()))
+            .withDescription(
+                "Guard: qualityScore must not be NaN when all referenced tests are soft-deleted");
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+
+    // Validate to create a Running/initial DataContractResult. Deploy is best-effort; an Airflow
+    // outage must not prevent the latest result from existing (updateContractDQResults calls
+    // getLatestResult which throws otherwise).
+    try {
+      client.dataContracts().validate(contract.getId());
+    } catch (Exception e) {
+      // deployAndTriggerDQValidation may fail without Airflow — the latest result still exists
+    }
+
+    // Fetch the contract's test suite + pipeline (created in postCreateOrUpdate)
+    TestSuite testSuite =
+        client.testSuites().get(contract.getTestSuite().getId().toString(), "pipelines");
+    assertNotNull(testSuite.getPipelines(), "Contract test suite must have a pipeline");
+    assertFalse(testSuite.getPipelines().isEmpty(), "Contract test suite must have a pipeline");
+
+    IngestionPipeline pipeline =
+        client.ingestionPipelines().get(testSuite.getPipelines().get(0).getId().toString());
+
+    // Soft-delete EVERY referenced test case without touching qualityExpectations.
+    client.testCases().delete(tc.getId().toString());
+
+    // Trigger pipeline completion — fires onTestSuiteExecutionComplete -> updateContractDQResults
+    // -> validateDQ (the buggy method).
+    putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
+
+    // Wait for the async DQ update.
+    Awaitility.await("contract result reflects DQ validation with all tests soft-deleted")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              DataContractResult result =
+                  SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
+              assertNotNull(result, "Contract must have a latest result after DQ validation");
+              QualityValidation qv = result.getQualityValidation();
+              assertNotNull(qv, "Quality validation must be populated after DQ update");
+              assertNull(
+                  qv.getQualityScore(),
+                  "qualityScore must be null (not NaN) when all referenced test cases are soft-deleted");
+            });
+  }
+
+  private void putPipelineStatus(
+      OpenMetadataClient client, IngestionPipeline pipeline, PipelineStatusType statusType) {
+    PipelineStatus status =
+        new PipelineStatus()
+            .withPipelineState(statusType)
+            .withRunId(UUID.randomUUID().toString())
+            .withTimestamp(System.currentTimeMillis());
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
   }
 }

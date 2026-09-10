@@ -55,6 +55,7 @@ import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
@@ -401,8 +402,10 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp)
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
                   ? event
                   : null;
             })
@@ -505,8 +508,10 @@ public class EventSubscriptionScheduler {
         .parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp)
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
                   ? event
                   : null;
             })
@@ -525,7 +530,8 @@ public class EventSubscriptionScheduler {
         .changeEventDAO()
         .listUnprocessedEvents(offset, limit, paginationOffset)
         .parallelStream()
-        .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
+        .map(eventJson -> ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -593,7 +599,8 @@ public class EventSubscriptionScheduler {
             .getSuccessfulChangeEventBySubscriptionId(id.toString(), limit, paginationOffset);
 
     return successfullySentChangeEvents.stream()
-        .map(e -> JsonUtils.readValue(e, ChangeEvent.class))
+        .map(e -> ChangeEventJsonUtils.readOrNull(e, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 

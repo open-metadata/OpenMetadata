@@ -24,12 +24,14 @@ import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
   RANGE_FIELD_OPERATORS,
+  SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
+  DATA_PRODUCT_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
   KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
   TABLE_ENTITY_FIELDS_KEYS,
@@ -576,6 +578,32 @@ class JSONLogicSearchClassBase {
           'greater_or_equal',
         ],
       },
+      [EntityReferenceFields.ASSETS_COUNT]: {
+        label: t('label.asset-count'),
+        type: 'number',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
+      [EntityReferenceFields.OUTPUT_PORTS_COUNT]: {
+        label: t('label.output-port-count'),
+        type: 'number',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
       [EntityReferenceFields.VERSION]: {
         label: t('label.version'),
         type: 'number',
@@ -693,10 +721,24 @@ class JSONLogicSearchClassBase {
         GLOSSARY_ENTITY_FIELDS_KEYS,
         this.mapFields
       ),
+      [SearchIndex.DATA_PRODUCT]: getFieldsByKeys(
+        DATA_PRODUCT_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
     };
 
     for (const index of entitySearchIndex) {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
+    }
+
+    const shouldAddColumnTag = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+    if (shouldAddColumnTag) {
+      configs = {
+        ...configs,
+        ...getFieldsByKeys([EntityReferenceFields.COLUMN_TAG], this.mapFields),
+      };
     }
 
     return configs;
