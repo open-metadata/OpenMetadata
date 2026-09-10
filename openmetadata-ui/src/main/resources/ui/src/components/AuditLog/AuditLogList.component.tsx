@@ -671,7 +671,7 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
   }
 
   return (
-    <div className="audit-log-list-container" data-testid="audit-log-list">
+    <div className="audit-log-list-container tw:w-full" data-testid="audit-log-list">
       <div className="audit-log-list">
         {logs.map((log, index) => (
           <AuditLogListItem

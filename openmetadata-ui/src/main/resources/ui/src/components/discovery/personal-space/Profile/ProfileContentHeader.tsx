@@ -17,6 +17,7 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import React, { FC, useMemo } from 'react';
 
 interface ProfileContentHeaderProps {
@@ -25,26 +26,36 @@ interface ProfileContentHeaderProps {
   description: string;
   /** Breadcrumb root crumb — the current item's group label (Account / Credentials). */
   breadcrumbRoot: string;
+  /**
+   * When provided, replaces the auto-computed two-level breadcrumb.
+   * Use for panels with deeper internal navigation (e.g. Access Control).
+   */
+  breadcrumbs?: BreadcrumbItemType[];
+  /** Called when the user clicks an interactive breadcrumb item. */
+  onBreadcrumbAction?: (id: string | number) => void;
 }
 
 /**
  * The header shown at the top of the right content panel for the selected
- * nav item: a "<group> / <item>" breadcrumb, a featured icon, and the item
- * title + description.
+ * nav item: a breadcrumb, a featured icon, and the item title + description.
  */
 const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   icon,
   title,
   description,
   breadcrumbRoot,
+  breadcrumbs,
+  onBreadcrumbAction,
 }) => {
-  const breadcrumbItems = useMemo(
+  const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
       { id: 'root', label: breadcrumbRoot },
       { id: 'current', label: title },
     ],
     [breadcrumbRoot, title]
   );
+
+  const resolvedBreadcrumbs = breadcrumbs ?? defaultBreadcrumbs;
 
   return (
     <Box
@@ -54,9 +65,14 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       gap={3}>
       <Breadcrumbs
         divider="chevron"
-        items={breadcrumbItems}
+        items={resolvedBreadcrumbs}
         size="xs"
         type="text"
+        onAction={
+          onBreadcrumbAction
+            ? (id) => onBreadcrumbAction(id as string | number)
+            : undefined
+        }
       />
       <Box align="center" direction="row" gap={3}>
         <FeaturedIcon

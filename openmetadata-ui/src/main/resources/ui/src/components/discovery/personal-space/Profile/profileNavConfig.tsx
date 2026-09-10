@@ -11,20 +11,24 @@
  *  limitations under the License.
  */
 
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Key01, ShieldTick, User01 } from '@untitledui/icons';
 import React, { FC } from 'react';
+import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-components/icons';
 import { User } from '../../../../generated/entity/teams/user';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
+import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
 export type ProfileNavId =
   | 'profile'
   | 'permissions'
   | 'access-token'
-  | 'my-connections';
+  | 'my-connections'
+  | 'access-control';
 
-/** The two sidebar groups. Each maps to an uppercase header + breadcrumb root. */
+/** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup = 'account' | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
@@ -39,6 +43,14 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'credentials',
 ];
 
+export interface ProfileHeaderOverride {
+  breadcrumbs: BreadcrumbItemType[];
+  title: string;
+  description: string;
+  icon: FC<{ className?: string }>;
+  onBreadcrumbAction?: (id: string | number) => void;
+}
+
 /**
  * Context handed to each nav item's `render`. Mirrors the data ProfilePage
  * already fetches so the individual row / tab components keep their existing
@@ -48,6 +60,8 @@ export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
+  onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
 export interface ProfileNavItem {
@@ -99,6 +113,16 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     description: 'message.access-token-page-description',
     icon: Key01,
     render: () => <AccessTokenPanel />,
+  },
+  {
+    id: 'access-control',
+    group: 'credentials',
+    label: 'label.access-control',
+    description: 'message.access-control-description',
+    icon: AccessControlIcon,
+    render: ({ onHeaderChange }) => (
+      <AccessControlPanel onHeaderChange={onHeaderChange} />
+    ),
   },
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode

@@ -16,7 +16,7 @@ import { Link01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -35,6 +35,7 @@ import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
+  ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
   ProfileNavItem,
@@ -60,6 +61,10 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
+  // Allows panels (e.g. Access Control) to override the header breadcrumbs
+  // and title without needing a separate route.
+  const [headerOverride, setHeaderOverride] =
+    useState<ProfileHeaderOverride | null>(null);
 
   const fetchUser = useCallback(async () => {
     if (!currentUser?.name) {
@@ -153,7 +158,7 @@ const ProfilePage: React.FC = () => {
           group: 'credentials' as ProfileNavGroup,
           label: typeof tab.label === 'string' ? tab.label : tab.key,
           description: tab.description ?? '',
-          icon: tab.icon ?? Link01,
+          icon: (tab.icon ?? Link01) as FC<{ className?: string }>,
           render: () => <TabComponent {...context} />,
         };
       });
@@ -161,8 +166,23 @@ const ProfilePage: React.FC = () => {
     return [...PROFILE_NAV_ITEMS, ...contributed];
   }, [extensionRegistry, userData]);
 
+  // Clear header override whenever the user switches nav items.
+  const handleNavSelect = useCallback((id: ProfileNavId) => {
+    setSelectedId(id);
+    setHeaderOverride(null);
+  }, []);
+
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
+
+  // Resolve header props — prefer panel-supplied override, fall back to defaults.
+  const headerIcon = headerOverride?.icon ?? activeItem.icon;
+  const headerTitle = headerOverride?.title ?? t(activeItem.label);
+  const headerDescription =
+    headerOverride?.description ?? t(activeItem.description);
+  const headerBreadcrumbs = headerOverride?.breadcrumbs;
+  const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
+  const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
 
   return (
     <Box
@@ -176,24 +196,31 @@ const ProfilePage: React.FC = () => {
           <ProfileSideNav
             items={navItems}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleNavSelect}
           />
           <Box
             className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
             direction="col">
             <ProfileContentHeader
-              breadcrumbRoot={t(PROFILE_NAV_GROUP_LABEL[activeItem.group])}
-              description={t(activeItem.description)}
-              icon={activeItem.icon}
-              title={t(activeItem.label)}
+              breadcrumbRoot={headerBreadcrumbRoot}
+              breadcrumbs={headerBreadcrumbs}
+              description={headerDescription}
+              icon={headerIcon}
+              title={headerTitle}
+              onBreadcrumbAction={headerBreadcrumbAction}
             />
             <div
-              className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0 "
+              className={
+                selectedId === 'access-control'
+                  ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden tw:flex tw:flex-col'
+                  : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0'
+              }
               data-testid="profile-content-body">
               {activeItem.render({
                 userData,
                 isProfileLoading,
                 updateUserDetails,
+                onHeaderChange: setHeaderOverride,
               })}
             </div>
           </Box>
