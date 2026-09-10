@@ -74,3 +74,39 @@ class SapHanaStoredProcedure(BaseModel):
     schema_name: str = Field(...)
     definition: str | None = Field(None)
     procedure_type: str = Field(default=StoredProcedureType.Function.value)
+
+
+class SapHanaObjectDependency(BaseModel):
+    """One direct dependency row from SYS.OBJECT_DEPENDENCIES.
+
+    Unlike SapHanaLineageModel, which describes a repository artifact parsed out of
+    CDATA XML, this is a plain object-to-object edge that HANA itself recorded. Both
+    endpoints are TABLE or VIEW, which map to the same OpenMetadata Table entity.
+    """
+
+    base_schema_name: Annotated[str, Field(..., description="Schema of the upstream object")]
+    base_object_name: Annotated[str, Field(..., description="Name of the upstream object")]
+    base_object_type: Annotated[str, Field(..., description="TABLE or VIEW")]
+    dependent_schema_name: Annotated[str, Field(..., description="Schema of the downstream object")]
+    dependent_object_name: Annotated[str, Field(..., description="Name of the downstream object")]
+    dependent_object_type: Annotated[str, Field(..., description="TABLE or VIEW")]
+
+    def get_base_fqn(self, metadata: OpenMetadata, service_name: str) -> str | None:
+        """FQN of the upstream object"""
+        return self._build_fqn(metadata, service_name, self.base_schema_name, self.base_object_name)
+
+    def get_dependent_fqn(self, metadata: OpenMetadata, service_name: str) -> str | None:
+        """FQN of the downstream object"""
+        return self._build_fqn(metadata, service_name, self.dependent_schema_name, self.dependent_object_name)
+
+    @staticmethod
+    def _build_fqn(metadata: OpenMetadata, service_name: str, schema_name: str, object_name: str) -> str | None:
+        """Resolve the database via ES, since OBJECT_DEPENDENCIES only reports schema and name"""
+        return fqn.build(
+            metadata,
+            entity_type=Table,
+            service_name=service_name,
+            database_name=None,
+            schema_name=schema_name,
+            table_name=object_name,
+        )

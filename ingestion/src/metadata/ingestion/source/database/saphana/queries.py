@@ -38,3 +38,29 @@ FROM SYS.FUNCTIONS
 WHERE FUNCTION_USAGE_TYPE = 'TABLE'
   AND UPPER(SCHEMA_NAME) = UPPER(:schema_name)
 """
+
+# SYS.OBJECT_DEPENDENCIES is HANA's own dependency catalog, written when objects are
+# created, and exists on both on-prem and Cloud. It is the only lineage source on
+# Cloud, which has no _SYS_REPO and therefore no calculation views to parse.
+#
+# DEPENDENCY_TYPE 1 is a direct reference. 2 is transitive and would emit edges that
+# bypass the real intermediate object, and 5 is foreign-key referential rather than
+# data flow. Only 1 is lineage.
+SAPHANA_OBJECT_DEPENDENCIES = """
+SELECT
+  BASE_SCHEMA_NAME,
+  BASE_OBJECT_NAME,
+  BASE_OBJECT_TYPE,
+  DEPENDENT_SCHEMA_NAME,
+  DEPENDENT_OBJECT_NAME,
+  DEPENDENT_OBJECT_TYPE
+FROM SYS.OBJECT_DEPENDENCIES
+WHERE DEPENDENCY_TYPE = 1
+  AND BASE_OBJECT_TYPE IN ('TABLE', 'VIEW')
+  AND DEPENDENT_OBJECT_TYPE IN ('TABLE', 'VIEW')
+  AND BASE_SCHEMA_NAME IS NOT NULL
+  AND DEPENDENT_SCHEMA_NAME IS NOT NULL
+  AND BASE_SCHEMA_NAME NOT LIKE '\\_SYS%' ESCAPE '\\'
+  AND DEPENDENT_SCHEMA_NAME NOT LIKE '\\_SYS%' ESCAPE '\\'
+  AND NOT (BASE_SCHEMA_NAME = DEPENDENT_SCHEMA_NAME AND BASE_OBJECT_NAME = DEPENDENT_OBJECT_NAME)
+"""

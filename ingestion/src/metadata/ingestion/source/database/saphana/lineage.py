@@ -29,6 +29,14 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import (
+    EntitiesEdge,
+    LineageDetails,
+)
+from metadata.generated.schema.type.entityLineage import (
+    Source as LineageSourceType,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -37,8 +45,15 @@ from metadata.ingestion.source.database.saphana.cdata_parser import (
     ParsedLineage,
     parse_registry,
 )
-from metadata.ingestion.source.database.saphana.models import SapHanaLineageModel
-from metadata.ingestion.source.database.saphana.queries import SAPHANA_LINEAGE
+from metadata.ingestion.source.database.saphana.models import (
+    SapHanaLineageModel,
+    SapHanaObjectDependency,
+)
+from metadata.ingestion.source.database.saphana.queries import (
+    SAPHANA_LINEAGE,
+    SAPHANA_OBJECT_DEPENDENCIES,
+)
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -93,9 +108,19 @@ class SaphanaLineageSource(Source):
         self.engine.dispose()
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
+        """Run every lineage pass this source supports and send the results to the sink.
+
+        The two passes are independent and cover different deployments. On-prem HANA
+        answers the repository pass, HANA Cloud answers only the dependency pass.
         """
-        Based on the query logs, prepare the lineage
-        and send it to the sink
+        yield from self.yield_cdata_lineage()
+        yield from self.yield_object_dependency_lineage()
+
+    def yield_cdata_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """Lineage for calculation, analytic and attribute views, from _SYS_REPO.
+
+        On-prem and HXE only. HANA Cloud has no classic repository, so this yields
+        nothing there.
         """
         with self.engine.connect() as conn:
             try:
@@ -109,7 +134,7 @@ class SaphanaLineageSource(Source):
                 error_code = getattr(getattr(exc, "orig", None), "errorcode", None)
                 if error_code not in (362, 259):
                     raise
-                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")
+                logger.warning("_SYS_REPO not available for calc/analytic/attribute view lineage: %s", exc)
                 result = []
             for row in result:
                 try:
@@ -125,7 +150,7 @@ class SaphanaLineageSource(Source):
                         )
                         continue
 
-                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
+                    logger.debug("Processing lineage for view: %s", lineage_model.name)
                     yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
                 except Exception as exc:
                     self.status.failed(
@@ -170,6 +195,78 @@ class SaphanaLineageSource(Source):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def yield_object_dependency_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """Lineage from HANA's own dependency catalog, SYS.OBJECT_DEPENDENCIES.
+
+        Independent of _SYS_REPO, so this is the only path that produces lineage on
+        SAP HANA Cloud, where the classic repository and the calculation, analytic
+        and attribute views it holds do not exist at all.
+        """
+        with self.engine.connect() as conn:
+            try:
+                result = conn.execution_options(stream_results=True, max_row_buffer=100).execute(
+                    text(SAPHANA_OBJECT_DEPENDENCIES)
+                )
+            except Exception as exc:
+                # A deployment may restrict SYS views. Degrade to no lineage rather than
+                # failing the workflow, the same way the _SYS_REPO path does.
+                logger.warning("Could not read SYS.OBJECT_DEPENDENCIES for lineage: %s", exc)
+                return
+
+            for row in result:
+                try:
+                    dependency = SapHanaObjectDependency.model_validate(row._asdict())
+
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        dependency.dependent_object_name,
+                    ):
+                        self.status.filter(dependency.dependent_object_name, "View Object Filtered Out")
+                        continue
+
+                    yield from self.build_dependency_lineage(dependency)
+                except Exception as exc:
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=str(row),
+                            error=f"Error processing object dependency due to [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+    def build_dependency_lineage(self, dependency: SapHanaObjectDependency) -> Iterable[Either[AddLineageRequest]]:
+        """Resolve both endpoints of a dependency and emit the edge"""
+        from_entity = self.metadata.get_by_name(
+            entity=Table,
+            fqn=dependency.get_base_fqn(metadata=self.metadata, service_name=self.config.serviceName),
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=Table,
+            fqn=dependency.get_dependent_fqn(metadata=self.metadata, service_name=self.config.serviceName),
+        )
+
+        # Depending on an object OpenMetadata never ingested is expected, not an error.
+        if not from_entity or not to_entity:
+            missing = dependency.base_object_name if not from_entity else dependency.dependent_object_name
+            self.status.filter(missing, "Object not found in OpenMetadata")
+            return
+
+        yield Either(
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=from_entity.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__],
+                    ),
+                    toEntity=EntityReference(
+                        id=to_entity.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__],
+                    ),
+                    lineageDetails=LineageDetails(source=LineageSourceType.ViewLineage),
+                )
+            )
+        )
 
     def test_connection(self) -> None:
         test_connection_common(self.metadata, self.engine, self.service_connection)
