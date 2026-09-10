@@ -21,6 +21,7 @@ import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/Ad
 import {
   MULTISELECT_FIELD_OPERATORS,
   NUMBER_FIELD_OPERATORS,
+  SELECT_TEXT_FIELD_OPERATORS,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
@@ -1491,16 +1492,24 @@ describe('table-cp custom property sub-fields', () => {
           defaultField: 'name',
           subfields: {
             name: {
-              type: 'text',
+              type: 'select',
               label: 'tableType - name',
-              operators: TEXT_FIELD_OPERATORS,
+              operators: SELECT_TEXT_FIELD_OPERATORS,
               valueSources: ['value'],
+              fieldSettings: {
+                allowCustomValues: true,
+                useAsyncSearch: false,
+              },
             },
             age: {
-              type: 'text',
+              type: 'select',
               label: 'tableType - age',
-              operators: TEXT_FIELD_OPERATORS,
+              operators: SELECT_TEXT_FIELD_OPERATORS,
               valueSources: ['value'],
+              fieldSettings: {
+                allowCustomValues: true,
+                useAsyncSearch: false,
+              },
             },
           },
         },

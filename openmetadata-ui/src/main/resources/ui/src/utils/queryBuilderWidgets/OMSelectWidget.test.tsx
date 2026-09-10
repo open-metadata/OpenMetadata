@@ -31,13 +31,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
       items?: { id: string; label: string }[];
       onOpenChange?: (isOpen: boolean) => void;
       onInputChange?: (value: string) => void;
+      allowsCustomValue?: boolean;
+      inputValue?: string;
     }) => JSX.Element;
   } = ({ isDisabled }) =>
     ReactModule.createElement('button', { disabled: isDisabled }, 'select');
-  Select.ComboBox = ({ isDisabled, items, onOpenChange, onInputChange }) =>
+  Select.ComboBox = ({
+    isDisabled,
+    items,
+    onOpenChange,
+    onInputChange,
+    allowsCustomValue,
+    inputValue,
+  }) =>
     ReactModule.createElement(
       'div',
-      null,
+      { 'data-allows-custom-value': String(Boolean(allowsCustomValue)) },
       ReactModule.createElement(
         'button',
         {
@@ -49,6 +58,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ),
       ReactModule.createElement('input', {
         role: 'combobox',
+        value: inputValue,
         onChange: (event: { target: { value: string } }) =>
           onInputChange?.(event.target.value),
       }),
@@ -146,5 +156,61 @@ describe('OMSelectWidget', () => {
     expect(screen.getByTestId('options').children).toHaveLength(2);
     expect(asyncFetch).toHaveBeenCalledTimes(callsBeforeReopen);
     expect(asyncFetch).toHaveBeenLastCalledWith('Option 1');
+  });
+
+  describe('allowCustomValues', () => {
+    const customValueProps = {
+      ...baseProps,
+      listValues: undefined,
+      allowCustomValues: true,
+    } as unknown as SelectWidgetProps;
+
+    it('should accept a typed value when there is no list to pick from', () => {
+      const setValue = jest.fn();
+      render(<OMSelectWidget {...customValueProps} setValue={setValue} />);
+
+      const input = screen.getByRole('combobox');
+
+      expect(input).toBeInTheDocument();
+      expect(
+        screen.getByRole('combobox').closest('[data-allows-custom-value]')
+      ).toHaveAttribute('data-allows-custom-value', 'true');
+
+      fireEvent.change(input, { target: { value: 'john' } });
+
+      expect(setValue).toHaveBeenCalledWith('john');
+    });
+
+    it('should clear the value when the input is emptied', () => {
+      const setValue = jest.fn();
+      render(
+        <OMSelectWidget
+          {...customValueProps}
+          setValue={setValue}
+          value="john"
+        />
+      );
+
+      expect(screen.getByRole('combobox')).toHaveValue('john');
+
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } });
+
+      expect(setValue).toHaveBeenCalledWith(null);
+    });
+
+    it('should defer to the async branch when an asyncFetch is supplied', async () => {
+      const asyncFetch = jest
+        .fn()
+        .mockResolvedValue({ values: [{ value: 'opt1', title: 'Option 1' }] });
+      render(
+        <OMSelectWidget
+          {...customValueProps}
+          useAsyncSearch
+          asyncFetch={asyncFetch}
+        />
+      );
+
+      await waitFor(() => expect(asyncFetch).toHaveBeenCalledWith(''));
+    });
   });
 });

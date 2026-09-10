@@ -45,9 +45,12 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   listValues,
   asyncFetch,
   useAsyncSearch,
+  allowCustomValues,
   field,
 }) => {
   const staticItems = toSelectItems(listValues);
+  const selectedValue =
+    value === null || value === undefined ? undefined : String(value);
   // Seed with the current value as a placeholder so the widget shows
   // something while the async fetch is in-flight. The real items replace
   // this when loadAsync completes.
@@ -55,8 +58,8 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     if (staticItems.length > 0) {
       return staticItems;
     }
-    if (value !== null && value !== undefined) {
-      return [{ id: String(value), label: String(value) }];
+    if (selectedValue !== undefined) {
+      return [{ id: selectedValue, label: selectedValue }];
     }
 
     return [];
@@ -94,6 +97,31 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     }
   }, [fieldKey, useAsyncSearch]);
 
+  // Free-text values: there is no list to pick from, so the value has to be
+  // typed. Without this the widget falls through to a plain Select whose
+  // collection is empty, and the value can never be set.
+  if (allowCustomValues && !asyncFetch) {
+    return (
+      <Select.ComboBox
+        allowsCustomValue
+        allowsEmptyCollection
+        inputValue={selectedValue ?? ''}
+        isDisabled={readonly}
+        items={items}
+        placeholder={placeholder}
+        shortcut={false}
+        showSearchIcon={false}
+        size="sm"
+        onInputChange={(input) => setValue(input || null)}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select.ComboBox>
+    );
+  }
+
   if (useAsyncSearch && asyncFetch) {
     return (
       <Select.ComboBox
@@ -105,9 +133,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
         isDisabled={readonly}
         items={items}
         placeholder={placeholder}
-        selectedKey={
-          value !== null && value !== undefined ? String(value) : undefined
-        }
+        selectedKey={selectedValue}
         shortcut={false}
         showSearchIcon={false}
         size="sm"
@@ -144,7 +170,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
       isDisabled={readonly}
       items={items}
       placeholder={placeholder}
-      selectedKey={value !== null && value !== undefined ? String(value) : null}
+      selectedKey={selectedValue ?? null}
       size="sm"
       onSelectionChange={(key) => setValue(key !== null ? String(key) : null)}>
       {(item) => (
