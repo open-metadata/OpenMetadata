@@ -324,10 +324,12 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
-      // Downgraded to warn: rule flags pre-existing inherited title= (incl.
-      // false positives on member-expression components and required iframe
-      // titles); tracked for follow-up rather than blocking.
-      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
+      // Error: production has zero raw native title= (PR #32916 migrated them to
+      // <Tooltip>), and the rule no longer false-positives on member-expression
+      // components or required <iframe> titles. Locked at error so new raw titles
+      // fail CI. Test/mock files are exempted below — their Tooltip mocks render
+      // <div title={title}> on purpose so tests can read the tooltip text.
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -644,6 +646,24 @@ export default [
     rules: {
       'i18next/no-literal-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
+  // no-raw-title-attribute targets shipped UI (use <Tooltip>, not a raw DOM
+  // title). Test files legitimately render a native `title` — the standard jest
+  // mock of <Tooltip> is `({ title, children }) => <div title={title}>{children}
+  // </div>` so a test can read the tooltip text off the DOM — so exempt them.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/**/__mocks__/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
     },
   },
 
