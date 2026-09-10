@@ -373,9 +373,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should show no results for non-matching query', async ({ page }) => {
       await performSearch(page, 'NonExistentTermXYZ123');
 
-      // Check for the "No Glossary Term found" message in the table
-      const noResultsMessage = page.locator('text=/No Glossary Term found/');
-      await expect(noResultsMessage).toBeVisible();
+      // The search box is driven directly, so this lands on the isSearchActive
+      // branch, which renders NoSearchResultsPlaceholder.
+      await expect(
+        page.getByTestId('no-search-results-placeholder')
+      ).toBeVisible();
     });
 
     test('should restore all terms when search is cleared', async ({

@@ -38,6 +38,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TypeRepository;
 
 /**
  * Integration tests for Type entity operations.
@@ -190,6 +192,17 @@ public class TypeResourceIT {
     assertEquals(propertyName, addedProperty.getName());
     assertEquals("Custom property for integration testing", addedProperty.getDescription());
     assertEquals(INT_TYPE.getId(), addedProperty.getPropertyType().getId());
+
+    final TypeRepository repository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+    final Type batch = repository.getDao().findEntityById(topicType.getId());
+    repository.setFieldsInBulk(repository.getFields("customProperties"), List.of(batch));
+    assertNotNull(batch.getCustomProperties());
+    final CustomProperty indexedProperty =
+        batch.getCustomProperties().stream()
+            .filter(property -> propertyName.equals(property.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(INT_TYPE.getId(), indexedProperty.getPropertyType().getId());
   }
 
   @Test

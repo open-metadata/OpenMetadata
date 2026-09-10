@@ -83,8 +83,8 @@ class RdfGraphServiceTest {
             "https://metadata.example/api");
 
     assertTrue(query.contains("<https://metadata.example/api/entity/table/" + entityId + ">"));
-    assertTrue(query.contains("(prov:wasDerivedFrom|^om:UPSTREAM)+"));
-    assertTrue(query.contains("(om:UPSTREAM|^prov:wasDerivedFrom)+"));
+    assertTrue(query.contains("(om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+"));
+    assertTrue(query.contains("(om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+"));
   }
 
   @Test
