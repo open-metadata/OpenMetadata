@@ -502,6 +502,10 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    return getCatalogSecurityContext(token, null);
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
     String email =
@@ -513,7 +517,9 @@ public class JwtFilter implements ContainerRequestFilter {
         "https",
         SecurityContext.DIGEST_AUTH,
         getUserRolesFromClaims(claims, isBotUser),
-        isBotUser);
+        isBotUser,
+        null,
+        activePersona);
   }
 
   private Algorithm createAlgorithmFromJwk(
