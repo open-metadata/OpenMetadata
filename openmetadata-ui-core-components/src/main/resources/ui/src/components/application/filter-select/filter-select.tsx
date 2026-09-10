@@ -145,10 +145,14 @@ const TriggerButton = ({
 };
 
 /**
- * Input-variant trigger that echoes the selection as removable chips. The
- * remove buttons are siblings of the menu trigger (never nested inside it),
- * so each stays independently pressable and valid ARIA; the popover anchors
- * to the whole field via `fieldRef`.
+ * Input-variant trigger that echoes the selection as removable chips.
+ *
+ * The remove buttons are native buttons on purpose: `MenuTrigger` publishes
+ * its press-to-open props through `ButtonContext`, which every react-aria
+ * `Button` descendant consumes, so an aria button here would both remove the
+ * chip and toggle the popover — and would fight the trailing button over the
+ * trigger ref. The single aria button stays the sole menu trigger, and the
+ * popover anchors to the whole field via `fieldRef`.
  */
 const ChipsField = ({
   chips,
@@ -180,16 +184,17 @@ const ChipsField = ({
           data-testid="filter-chip"
           key={chip.value}>
           <span className="tw:truncate">{chip.label}</span>
-          <AriaButton
+          <button
             aria-label={t('label.remove-filter')}
-            className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary"
-            onPress={() => onRemove(chip.value)}>
+            className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
+            type="button"
+            onClick={() => onRemove(chip.value)}>
             <XClose
               aria-hidden="true"
               className="tw:size-3"
               strokeWidth={2.5}
             />
-          </AriaButton>
+          </button>
         </span>
       ))}
       <AriaButton
