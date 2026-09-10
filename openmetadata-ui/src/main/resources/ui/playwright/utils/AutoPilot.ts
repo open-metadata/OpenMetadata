@@ -20,11 +20,31 @@ import {
   makeRetryRequest,
 } from './serviceIngestion';
 
+const AUTOPILOT_SUCCESS_STATUS = 'FINISHED';
+const AUTOPILOT_TERMINAL_STATUSES = new Set([
+  AUTOPILOT_SUCCESS_STATUS,
+  'EXCEPTION',
+  'FAILURE',
+]);
+
+/**
+ * Wait for the AutoPilot workflow for `service` to reach a terminal state,
+ * then assert that state is `FINISHED`.
+ *
+ * The previous implementation matched any terminal state (`FINISHED`,
+ * `EXCEPTION`, `FAILURE`) as satisfying the poll, so a failed AutoPilot run
+ * passed this helper and only surfaced further down when the "run completed"
+ * banner failed to appear — blaming the assertion, not the underlying
+ * ingestion failure. Splitting the wait (reach terminal) from the assertion
+ * (terminal was success) makes the failure land at the actual cause with
+ * the actual state name in the message.
+ */
 export const checkAutoPilotStatus = async (
   page: Page,
   service: ServiceBaseClass
 ) => {
   let consecutiveErrors = 0;
+  let terminalStatus: string | undefined;
 
   await expect
     .poll(
@@ -40,24 +60,38 @@ export const checkAutoPilotStatus = async (
           });
           consecutiveErrors = 0; // Reset error counter on success
 
-          return response.data[0]?.status;
+          const status = response.data[0]?.status;
+          if (status && AUTOPILOT_TERMINAL_STATUSES.has(status)) {
+            terminalStatus = status;
+
+            return true;
+          }
+
+          return false;
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
             throw new Error(
-              `Failed to get pipeline status after ${MAX_CONSECUTIVE_ERRORS} consecutive attempts`
+              `Failed to get AutoPilot workflow status after ${MAX_CONSECUTIVE_ERRORS} consecutive attempts`
             );
           }
 
-          return 'RUNNING';
+          return false;
         }
       },
       {
-        // Custom expect message for reporting, optional.
-        message: 'Wait for workflow to be successful',
+        message: `Wait for AutoPilot workflow for "${service.getServiceName()}" to reach a terminal state`,
         timeout: 750_000,
         intervals: [5_000, 15_000, 30_000],
       }
     )
-    .toMatch(/FINISHED|EXCEPTION|FAILURE/);
+    .toBe(true);
+
+  // Fail fast — a non-success terminal state is the actual defect, and
+  // pointing the report at it beats surfacing a downstream banner-visibility
+  // timeout that reads as though the UI is broken.
+  expect(
+    terminalStatus,
+    `AutoPilot workflow for "${service.getServiceName()}" ended in "${terminalStatus}" instead of "${AUTOPILOT_SUCCESS_STATUS}" — the ingestion failed; check the workflow instance in the backend for the underlying error.`
+  ).toBe(AUTOPILOT_SUCCESS_STATUS);
 };

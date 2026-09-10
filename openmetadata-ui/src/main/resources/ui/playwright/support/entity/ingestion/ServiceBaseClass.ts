@@ -350,7 +350,18 @@ class ServiceBaseClass {
     ingestionType: string
   ) => {
     let consecutiveErrors = 0;
+    let terminalState: string | undefined;
+    const PIPELINE_SUCCESS_STATE = 'success';
+    const TERMINAL_PIPELINE_STATES = new Set([
+      PIPELINE_SUCCESS_STATE,
+      'failed',
+      'partialSuccess',
+    ]);
 
+    // Poll until the pipeline reaches a terminal state, then assert success.
+    // Matching any terminal state as poll-satisfying let a failed pipeline
+    // pass this loop and only surface at the downstream `toContainText('Success')`
+    // check — reading as though the UI was broken. Fail fast on the real cause.
     await expect
       .poll(
         async () => {
@@ -363,7 +374,14 @@ class ServiceBaseClass {
             });
             consecutiveErrors = 0; // Reset error counter on success
 
-            return response.data[0]?.pipelineState;
+            const state = response.data[0]?.pipelineState;
+            if (state && TERMINAL_PIPELINE_STATES.has(state)) {
+              terminalState = state;
+
+              return true;
+            }
+
+            return false;
           } catch (error) {
             consecutiveErrors++;
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
@@ -372,18 +390,21 @@ class ServiceBaseClass {
               );
             }
 
-            return 'running';
+            return false;
           }
         },
         {
-          // Custom expect message for reporting, optional.
-          message: 'Wait for pipeline to be successful',
+          message: `Wait for pipeline "${workflowData.name}" (${ingestionType}) to reach a terminal state`,
           timeout: 750_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
-      // Move ahead if we do not have running or queued status
-      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
+      .toBe(true);
+
+    expect(
+      terminalState,
+      `Ingestion pipeline "${workflowData.name}" (${ingestionType}) ended in "${terminalState}" instead of "${PIPELINE_SUCCESS_STATE}" — the ingestion actually failed; check the pipeline's logs in the backend for the underlying error.`
+    ).toBe(PIPELINE_SUCCESS_STATE);
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`

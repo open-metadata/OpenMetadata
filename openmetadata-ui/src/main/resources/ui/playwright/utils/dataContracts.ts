@@ -22,14 +22,32 @@ import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
+const CONTRACT_SUCCESS_STATUS = 'Success';
+const TERMINAL_CONTRACT_STATUSES = new Set([
+  CONTRACT_SUCCESS_STATUS,
+  'Aborted',
+  'Failed',
+  'PartialSuccess',
+]);
 
+/**
+ * Wait for the data-contract validation to reach a terminal state, then
+ * assert that state is `Success`.
+ *
+ * Matching any terminal state as poll-satisfying (the previous behaviour)
+ * meant a `Failed` / `Aborted` / `PartialSuccess` validation passed this
+ * helper and only surfaced later as an unrelated UI assertion — the report
+ * blamed the wrong thing. Splitting the wait (reach terminal) from the
+ * assertion (terminal was `Success`) puts the failure on the actual cause.
+ */
 const pollContractStatus = async (
   page: Page,
   contractId: string,
   timeoutMs = 180_000
 ): Promise<void> => {
   const { apiContext } = await getApiContext(page);
+  let terminalStatus: string | undefined;
+
   await expect
     .poll(
       async () => {
@@ -38,15 +56,27 @@ const pollContractStatus = async (
           .then((r) => (r.ok() ? r.json() : null))
           .catch(() => null);
 
-        return contract?.latestResult?.status ?? 'Running';
+        const status = contract?.latestResult?.status;
+        if (status && TERMINAL_CONTRACT_STATUSES.has(status)) {
+          terminalStatus = status;
+
+          return true;
+        }
+
+        return false;
       },
       {
-        message: 'Wait for contract validation to reach terminal state',
+        message: `Wait for contract ${contractId} validation to reach a terminal state`,
         timeout: timeoutMs,
         intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
       }
     )
-    .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
+    .toBe(true);
+
+  expect(
+    terminalStatus,
+    `Data contract ${contractId} validation ended in "${terminalStatus}" instead of "${CONTRACT_SUCCESS_STATUS}" — the contract check actually failed; inspect the contract's latestResult in the backend for the failing rule.`
+  ).toBe(CONTRACT_SUCCESS_STATUS);
 };
 
 export const saveAndTriggerDataContractValidation = async (
@@ -153,8 +183,10 @@ export const waitForDataContractExecution = async (
 ) => {
   const { apiContext } = await getApiContext(page);
   let consecutiveErrors = 0;
-  const terminalStatusPattern =
-    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
+  let terminalStatus: string | undefined;
+  // Note: `Queued` was in the prior terminal-status pattern; it is NOT
+  // terminal (the run has not started), so treating it as such let a not-yet-
+  // executed contract pass this helper. Removed from the terminal set.
 
   await expect
     .poll(
@@ -170,8 +202,13 @@ export const waitForDataContractExecution = async (
           consecutiveErrors = 0;
 
           const status = contractResponse?.latestResult?.status;
+          if (status && TERMINAL_CONTRACT_STATUSES.has(status)) {
+            terminalStatus = status;
 
-          return status ?? 'Running';
+            return true;
+          }
+
+          return false;
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -184,12 +221,17 @@ export const waitForDataContractExecution = async (
         }
       },
       {
-        message: 'Wait for data contract execution to complete',
+        message: `Wait for data contract ${contractId} execution to reach a terminal state`,
         timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
-    .toEqual(expect.stringMatching(terminalStatusPattern));
+    .toBe(true);
+
+  expect(
+    terminalStatus,
+    `Data contract ${contractId} execution ended in "${terminalStatus}" instead of "${CONTRACT_SUCCESS_STATUS}" — the contract check actually failed; inspect the contract's latestResult in the backend for the failing rule.`
+  ).toBe(CONTRACT_SUCCESS_STATUS);
 };
 
 /**
