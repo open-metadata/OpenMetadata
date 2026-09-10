@@ -257,6 +257,11 @@ test.describe('Glossary Hierarchy', () => {
 
   // H-M06: Cancel move operation
   test('should cancel move operation', async ({ page }) => {
+    // API create + sidebar + glossary navigation + modal open/close +
+    // redirect + re-navigate for verification. 6+ heavy operations exceed
+    // the 60 s default under merge-queue load.
+    test.slow();
+
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const term = new GlossaryTerm(glossary);

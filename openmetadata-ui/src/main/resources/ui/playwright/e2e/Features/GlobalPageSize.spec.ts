@@ -21,13 +21,22 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('Page size should persist across different pages', async ({
     dataConsumerPage: page,
   }) => {
+    // Under merge-queue load (many parallel shards on shared ES/DB) this
+    // test's three page loads + two dropdown hand-offs can each drift 5–10 s.
+    // Triple the budget so a slow shard finishes instead of failing at 60 s.
+    test.slow();
+
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
 
     await waitForAllLoadersToDisappear(page);
 
-    // Change page size to 25
+    // Change page size to 25.
+    // The Antd Dropdown behind `page-size-selection-dropdown` opens on hover,
+    // but under load the mouseenter can miss the transition and the menu
+    // never renders. Same toPass pattern as playwright/utils/common.ts —
+    // hover, fall back to click, and retry until the option is visible.
     const tablePageSizeDropdown = page.getByTestId(
       'page-size-selection-dropdown'
     );

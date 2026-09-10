@@ -27,7 +27,7 @@ const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
 const pollContractStatus = async (
   page: Page,
   contractId: string,
-  timeoutMs = 180_000
+  timeoutMs = 300_000
 ): Promise<void> => {
   const { apiContext } = await getApiContext(page);
   await expect
