@@ -31,6 +31,7 @@ const ControlledFilter = (props: Partial<FilterSelectProps>) => {
       label="Service"
       options={SERVICE_OPTIONS}
       selectedValues={selected}
+      triggerVariant="button"
       onChange={setSelected}
       {...props}
     />
