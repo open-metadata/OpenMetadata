@@ -26,8 +26,8 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { AppLiveIndexingProps } from './AppLiveIndexing.interface';
 
 const STATUS_TYPE_MAP: Record<string, StatusType> = {

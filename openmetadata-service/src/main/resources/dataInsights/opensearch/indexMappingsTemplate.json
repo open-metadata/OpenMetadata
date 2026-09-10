@@ -6,7 +6,31 @@
       }
     },
     "mappings": {
+      "dynamic_templates": [
+        {
+          "completeness_facts": {
+            "path_match": "completenessFacts.*",
+            "mapping": { "type": "double" }
+          }
+        }
+      ],
       "properties": {
+        "diRunId": { "type": "keyword" },
+        "diCapturedAt": { "type": "long" },
+        "updatedAt": { "type": "long" },
+        "completenessDownstreamCount": { "type": "long" },
+        "completenessFactVersion": { "type": "integer" },
+        "completenessFactsAsOf": { "type": "long" },
+        "completenessUnavailableSources": { "type": "keyword" },
+        "completenessFacts": { "type": "object", "dynamic": true },
+        "columnCoverage": {
+          "properties": {
+            "total": { "type": "long" },
+            "described": { "type": "long" },
+            "glossaryLinked": { "type": "long" },
+            "piiClassified": { "type": "long" }
+          }
+        },
         "@timestamp": {
           "type": "date"
         },
