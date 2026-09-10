@@ -21,6 +21,7 @@ import {
   LIVE_CHARTS_LIST,
   PLATFORM_INSIGHTS_CHARTS,
   PLATFORM_INSIGHTS_LIVE_CHARTS,
+  TERMINAL_CHART_STREAM_STATUSES,
 } from '../../constants/ServiceInsightsTab.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
@@ -270,17 +271,24 @@ const ServiceInsightsTab = ({
       if (newActivity) {
         const data = JSON.parse(newActivity);
 
+        // A frame that closes the stream carries no payload at all, so applying it would blank
+        // every widget — killing a run ends the stream, and the agents stayed off the list until
+        // the page was reloaded. An empty list on a live frame is a real answer and still applies,
+        // so an agent that was deleted or disabled does leave the widget.
+        if (TERMINAL_CHART_STREAM_STATUSES.includes(data.status)) {
+          return;
+        }
+
         // Only update the data if the service name is the same as the service details
         if (data.serviceName === serviceDetails.name) {
           const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
             getPlatformInsightsChartDataFormattingMethod(data.data)
           );
 
-          setAgentsInfo((prev) =>
+          setAgentsInfo(
             getFormattedAgentsListFromAgentsLiveInfo(
               data.ingestionPipelineStatus,
-              data.appStatus,
-              prev.filter((agent) => agent.isCollateAgent)
+              data.appStatus
             )
           );
 

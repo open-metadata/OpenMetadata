@@ -13,7 +13,14 @@
 
 import { Tabs } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { ComponentType, Key, useCallback, useMemo } from 'react';
+import {
+  ComponentType,
+  Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
@@ -88,9 +95,24 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const { platform } = useMemo(() => airflowInformation, [airflowInformation]);
 
+  // The group's skeletons stand in for "we do not know yet whether this service has any agents",
+  // which stops being true once the first response lands — including when it lands empty. A ref,
+  // not state: it is only ever read alongside `isLoading`, whose change already re-renders.
+  const hasLoadedOnceRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      hasLoadedOnceRef.current = true;
+    }
+  }, [isLoading]);
+
   // Only the pipeline fetch. The airflow status is deliberately not folded in — it gates the
   // actions on the agents, not whether the agents can be listed.
-  const isAgentsLoading = Boolean(isLoading);
+  //
+  // `isLoading` is true for *every* pipeline fetch, so feeding it in unqualified blanks a list that
+  // is already on screen: killing a run refetches, and every agent disappeared until the request
+  // came back. `isRefreshing` is the prop that reports a refetch, and it leaves the cards alone.
+  const isAgentsLoading = Boolean(isLoading) && !hasLoadedOnceRef.current;
 
   const showAddAgent = useMemo(
     () =>
