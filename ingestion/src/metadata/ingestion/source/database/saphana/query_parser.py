@@ -23,9 +23,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
 class SapHanaQueryParserSource(QueryParserSource, ABC):
@@ -34,9 +31,6 @@ class SapHanaQueryParserSource(QueryParserSource, ABC):
     """
 
     filters: str
-
-    database_field = "database_name"
-    schema_field = "schema_name"
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):  # pyright: ignore[reportMissingTypeArgument]

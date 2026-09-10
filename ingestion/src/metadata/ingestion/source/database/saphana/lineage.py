@@ -70,15 +70,11 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
     sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
 
-    # CREATE TABLE ... AS SELECT is absent by necessity, not oversight: the plan cache
-    # holds no DDL, so there is nothing for a pattern to match.
-    # Cached statements keep whatever leading whitespace they were submitted with, so
-    # the keyword is matched after trimming rather than at character one. Anchoring is
-    # kept, because a leading wildcard also matches a SELECT that merely quotes the
-    # keyword, and a false edge is harder to notice than a missing one.
+    # Matched against the trimmed statement, because cached statements keep the
+    # whitespace they were submitted with. Still anchored, since a leading wildcard
+    # also matches a SELECT that merely quotes the keyword.
     #
-    # Single %, not the %% some connectors use. hdbcli is a qmark/named paramstyle
-    # driver, so nothing unescapes percent signs on the way to HANA.
+    # CREATE TABLE ... AS SELECT is missing by necessity: the plan cache holds no DDL.
     filters = f"""
         AND (
             {_STATEMENT} LIKE 'INSERT INTO%SELECT%'
@@ -90,23 +86,19 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         """
 
     def close(self) -> None:
-        # The base clears the shared masked_query_cache, which would otherwise carry
-        # queries across workflows.
+        # The base clears masked_query_cache, which is shared across workflows.
         super().close()
-        # The base leaves engine as None when built with get_engine=False.
+        # engine is None when the source was built with get_engine=False.
         if self.engine is not None:
             self.engine.dispose()
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
-        """Run the SQL-based passes, then the repository pass for calculation views.
+        """Run the SQL passes, then the repository pass.
 
-        Both passes report their own edge count, because "the run succeeded and
-        produced nothing" is the failure mode users actually hit, and it is
-        indistinguishable from success unless the counts are stated.
+        Each pass reports its own edge count, because a run that succeeds and produces
+        nothing is otherwise indistinguishable from one that worked. Edges and query
+        records are counted apart, since the shared passes emit both.
         """
-        # The shared passes emit CreateQueryRequest alongside lineage, so count the
-        # two apart. Folding them together would report query records as edges and
-        # hide a run that parsed queries but resolved none of them into lineage.
         sql_edges = 0
         sql_queries = 0
         try:
@@ -117,9 +109,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                     sql_queries += 1
                 yield either
         except Exception as exc:
-            # yield_table_query does not guard its own execute, so an unreadable
-            # SYS.M_SQL_PLAN_CACHE raises here. Without this the repository pass below
-            # never runs, and an on-prem instance would lose lineage it used to have.
+            # yield_table_query does not guard its own execute, so an unreadable plan
+            # cache raises here and would otherwise take the repository pass with it.
             logger.warning(
                 "SAP HANA SQL lineage pass failed and produced %d edges before stopping. The repository "
                 "pass still runs. Cause: %s",
@@ -136,8 +127,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
             )
 
         cdata_edges = 0
-        # Calculation, Analytic and Attribute Views are views, so the same flag that
-        # governs the shared view pass governs this one.
+        # Repository models are views, so the flag that governs the shared view pass
+        # governs this one too.
         if self.source_config.processViewLineage:  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
             for either in self.yield_cdata_lineage():
                 cdata_edges += 1 if isinstance(either.right, AddLineageRequest) else 0
