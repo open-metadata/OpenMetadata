@@ -53,6 +53,43 @@ describe('toFieldNodes', () => {
     expect(struct.items?.map((item) => item.path)).toEqual(['extension.size']);
   });
 
+  it('should not offer a field that groups nothing', () => {
+    expect(
+      toFieldNodes({
+        empty: { label: 'Custom Properties', subfields: {}, type: '!group' },
+        name: { label: 'Name' },
+      })
+    ).toEqual([{ key: 'name', label: 'Name', path: 'name' }]);
+  });
+
+  it('should keep offering a group once it has subfields', () => {
+    expect(
+      toFieldNodes({
+        extension: {
+          label: 'Custom Properties',
+          subfields: { table: { label: 'Table' } },
+          type: '!group',
+        },
+      })
+    ).toEqual([
+      { key: 'extension', label: 'Custom Properties', path: 'extension' },
+    ]);
+  });
+
+  it('should not offer a struct whose subfields all drop out', () => {
+    expect(
+      toFieldNodes({
+        outer: {
+          label: 'Outer',
+          subfields: {
+            inner: { label: 'Inner', subfields: {}, type: '!group' },
+          },
+          type: '!struct',
+        },
+      })
+    ).toEqual([]);
+  });
+
   it('should fall back to the key when a field carries no label', () => {
     expect(toFieldNodes({ raw: {} })).toEqual([
       { key: 'raw', label: 'raw', path: 'raw' },
@@ -101,6 +138,10 @@ describe('getRuleRowModel', () => {
       // several subfields: a level the user picks within
       extension: {
         subfields: { table: { label: 'Table' }, topic: { label: 'Topic' } },
+      },
+      // one subfield that opens onto more: still a level to walk through
+      lone: {
+        subfields: { table: { subfields: { prop: { label: 'Prop' } } } },
       },
       // one subfield: RAQB fills it in, so it is not a choice
       owners: { subfields: { name: { label: 'Name' } } },
@@ -217,5 +258,26 @@ describe('getRuleRowModel', () => {
     expect(model?.cells).toEqual([
       { field: null, fields: undefined, path: ['root', 'g1'], prefix: '' },
     ]);
+  });
+
+  it('should still walk a level whose only subfield opens onto more', () => {
+    const model = getRuleRowModel(
+      CONFIG,
+      {
+        children1: [rule('r1')],
+        id: 'drill',
+        properties: { field: 'lone' },
+        type: 'rule_group',
+      },
+      ['root', 'drill']
+    );
+
+    expect(model?.cells).toHaveLength(2);
+    expect(model?.cells[1]).toEqual({
+      field: null,
+      fields: CONFIG.fields.lone.subfields,
+      path: ['root', 'drill', 'r1'],
+      prefix: 'lone',
+    });
   });
 });

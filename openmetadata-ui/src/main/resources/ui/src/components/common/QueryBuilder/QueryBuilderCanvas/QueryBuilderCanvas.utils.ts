@@ -80,22 +80,30 @@ export const toFieldNodes = (
   fields: unknown,
   prefix = ''
 ): QueryBuilderFieldNode[] =>
-  Object.entries((fields ?? {}) as NonNullable<RawFields>).map(([key, def]) => {
-    const path = prefix ? `${prefix}.${key}` : key;
-    const label = String(def?.label ?? key);
-    const subfields = def?.subfields as RawFields;
+  Object.entries((fields ?? {}) as NonNullable<RawFields>).flatMap(
+    ([key, def]) => {
+      const path = prefix ? `${prefix}.${key}` : key;
+      const label = String(def?.label ?? key);
+      const subfields = def?.subfields as RawFields;
 
-    return def?.type === '!struct' && subfields
-      ? { key, label, path, items: toFieldNodes(subfields, path) }
-      : { key, label, path };
-  });
+      if (def?.type === '!struct' && subfields) {
+        const items = toFieldNodes(subfields, path);
 
-/**
- * Whether a `rule_group` is a level to drill into: its field owns several
- * subfields, so the row shows a further Field control to pick among them
- * (Custom Properties -> Table -> the property). A group owning a single
- * subfield offers no choice, and the row keeps editing the group's own field.
- */
+        return items.length > 0 ? [{ items, key, label, path }] : [];
+      }
+
+      if (subfields && Object.keys(subfields).length === 0) {
+        return [];
+      }
+
+      return [{ key, label, path }];
+    }
+  );
+
+const hasSubfields = (def: unknown): boolean =>
+  Object.keys((def as { subfields?: Record<string, unknown> })?.subfields ?? {})
+    .length > 0;
+
 export const getGroupDrillFields = (
   config: unknown,
   field: string | undefined
@@ -109,8 +117,15 @@ export const getGroupDrillFields = (
       subfields?: Record<string, unknown>;
     } | null
   )?.subfields;
+  const keys = Object.keys(subfields ?? {});
 
-  return subfields && Object.keys(subfields).length > 1 ? subfields : undefined;
+  if (!subfields || keys.length === 0) {
+    return undefined;
+  }
+
+  return keys.length > 1 || hasSubfields(subfields[keys[0]])
+    ? subfields
+    : undefined;
 };
 
 /**

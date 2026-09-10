@@ -187,7 +187,7 @@ describe('OMFieldSelect – what may narrow the list', () => {
           items: [{ key: 'ghost', path: 'ghost', label: 'Ghost' }],
           readonly: false,
           setField,
-        } as FieldProps)}
+        } as unknown as FieldProps)}
       />
     );
 
