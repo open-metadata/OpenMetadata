@@ -1,0 +1,58 @@
+{
+  "recordedAt": "2026-09-08T20:28:59.322568+00:00",
+  "outcome": "failed-disk-reserve-during-compaction",
+  "reason": "The harness reached its 12 GiB host free-disk reserve during pre-promotion compaction. This is not a completed scale result.",
+  "failure": "java.lang.IllegalStateException: Scale run reached the 12 GiB free-disk reserve",
+  "diagnosticWrapper": "java.lang.IllegalArgumentException: Self-suppression not permitted",
+  "localRebuildStartedAt": "2026-09-08T19:59:21.940Z",
+  "postLoadCompactionStartedAt": "2026-09-08T20:23:04.840Z",
+  "lastObservedProgress": {
+    "observedAt": "2026-09-08T20:23:49.642504+00:00",
+    "startTime": "1788897561940",
+    "status": "running",
+    "stats": {
+      "sinkTimeMs": 1619513,
+      "totalTimeMs": 1634451,
+      "readerTimeMs": 0,
+      "totalRecords": 200555,
+      "vectorTimeMs": 0,
+      "failedRecords": 0,
+      "processTimeMs": 14938,
+      "successRecords": 200441,
+      "warningRecords": 0,
+      "vectorFailedRecords": 0,
+      "vectorSuccessRecords": 0
+    }
+  },
+  "lastResourceSample": {
+    "time": "2026-09-08T20:24:16.782136Z",
+    "phase": "local",
+    "appHeapBytes": 1149063872,
+    "appRssBytes": 2343911424,
+    "fusekiRssBytes": 16057024512,
+    "fusekiContainerBytes": 17176317952,
+    "fusekiDiskBytes": 61571616768,
+    "databaseContainerBytes": 4554629120,
+    "databaseDiskBytes": 4603600896,
+    "hostFreeDiskBytes": 13332504576,
+    "hostFreeMemoryBytes": 2276327424,
+    "hostSwapUsedBytes": 20981022720,
+    "hostLoadAverage": 43.16748046875
+  },
+  "sampledPeaks": {
+    "appHeapBytes": 1699901952,
+    "appRssBytes": 2600075264,
+    "fusekiRssBytes": 16708665344,
+    "fusekiContainerBytes": 17179869184,
+    "fusekiDiskBytes": 61571616768,
+    "databaseContainerBytes": 4561489920,
+    "databaseDiskBytes": 4637106176
+  },
+  "completedPhases": [],
+  "unmeasuredPhases": [
+    "local promotion and integrity queries",
+    "cancellation",
+    "distributed recovery",
+    "Fuseki restart"
+  ]
+}

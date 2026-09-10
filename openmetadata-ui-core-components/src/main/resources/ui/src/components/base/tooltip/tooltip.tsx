@@ -2,6 +2,7 @@ import { cx } from '@/utils/cx';
 import type { ReactNode } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
+  PressEvent,
   TooltipProps as AriaTooltipProps,
   TooltipTriggerComponentProps as AriaTooltipTriggerComponentProps,
 } from 'react-aria-components';
@@ -40,6 +41,23 @@ interface TooltipProps
    * Use this to override the default dark background, e.g. for a white tooltip.
    */
   containerClassName?: string;
+  /**
+   * className forwarded to the auto-generated focusable wrapper that Tooltip
+   * creates when its child is a non-focusable element. Providing this prop
+   * forces wrapping even for React component children.
+   */
+  triggerClassName?: string;
+  /**
+   * Press handler forwarded to the auto-generated focusable wrapper. Providing
+   * this prop forces wrapping (same as triggerClassName).
+   */
+  onTriggerPress?: (e: PressEvent) => void;
+  /**
+   * Passed as `isDisabled` to the auto-generated focusable wrapper.
+   *
+   * @default false
+   */
+  triggerIsDisabled?: boolean;
 }
 
 export const Tooltip = ({
@@ -58,8 +76,25 @@ export const Tooltip = ({
   placement = 'top',
   onOpenChange,
   containerClassName,
+  triggerClassName,
+  onTriggerPress,
+  triggerIsDisabled = false,
   ...tooltipProps
 }: TooltipProps) => {
+  const shouldWrap =
+    triggerClassName !== undefined || onTriggerPress !== undefined;
+
+  const trigger_ = shouldWrap ? (
+    <AriaButton
+      className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
+      isDisabled={triggerIsDisabled}
+      onPress={onTriggerPress}>
+      {children}
+    </AriaButton>
+  ) : (
+    children
+  );
+
   const isTopOrBottomLeft = [
     'top left',
     'top end',
@@ -90,7 +125,7 @@ export const Tooltip = ({
         defaultOpen,
         onOpenChange,
       }}>
-      {children}
+      {trigger_}
 
       <AriaTooltip
         {...tooltipProps}
