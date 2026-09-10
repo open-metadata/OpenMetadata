@@ -60,6 +60,22 @@ if (!container) {
 
 recordPlaywrightAppBoot();
 
+// Playwright silent-callback real-OIDC scenario needs to trigger the
+// oidc-client `signinSilent()` iframe flow deterministically — the axios
+// 401 interceptor is the only production trigger of the coordinator's
+// refresh path, but making an on-purpose 401 to drive that is racier than
+// exposing a direct hook. Import the singleton at top-level (already loaded
+// as part of the app graph via AuthProvider) and pin it on `window` when
+// PW_E2E_BUILD is set. Vite folds this whole block away in production
+// bundles.
+if (import.meta.env.PW_E2E_BUILD) {
+  void import('./utils/Auth/AuthCoordinator').then(({ authCoordinator }) => {
+    (
+      window as unknown as { __omTestAuthCoordinator: typeof authCoordinator }
+    ).__omTestAuthCoordinator = authCoordinator;
+  });
+}
+
 // The SSO "Test Login" popup returns to the configured callback URL. When this
 // document is that isolated popup, handle the OIDC handshake separately and
 // NEVER mount the app, so the test can't touch the admin's real session. A real

@@ -478,6 +478,136 @@ for (const fixture of FIXTURES) {
 
           expect(largeChunks).toEqual([]);
         });
+
+        // Scenario 10 — real /silent-callback iframe protocol end-to-end.
+        // Scenario 7 above proves the iframe route is small (no full-app
+        // shell). This scenario proves the iframe actually WORKS: after
+        // login, force-expire the stored token, then drive the coordinator's
+        // Renewer via the PW_E2E-only `__omTestAuthCoordinator` hook. The
+        // Renewer for OIDC-public is `userManager.signinSilent()` (see
+        // OidcAuthenticator.getRenewer) which mounts a hidden iframe at
+        // `/silent-callback`; `silentCallbackEntry.ts` runs
+        // `new UserManager({}).signinSilentCallback()` inside it, which
+        // decodes the code+state from `window.location` and posts the
+        // resulting user back over oidc-client's IFrameWindow protocol.
+        // Success = the parent's promise resolves with a fresh id_token AND
+        // storage carries that token in `app_state.primary`. This is the
+        // real evidence for Copilot review #1 that the default UserManager
+        // in silentCallbackEntry works end-to-end against a live IdP.
+        test('silent refresh routes through the /silent-callback iframe and writes a fresh token', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const priorToken = await page.evaluate(async () => {
+            const controller = navigator.serviceWorker?.controller;
+            if (!controller) {
+              return null;
+            }
+            return new Promise<string | null>((resolve) => {
+              const mc = new MessageChannel();
+              const timer = setTimeout(() => resolve(null), 5000);
+              mc.port1.onmessage = (e) => {
+                clearTimeout(timer);
+                const stateStr = e.data?.result as string | undefined;
+                if (!stateStr) {
+                  resolve(null);
+                  return;
+                }
+                try {
+                  const state = JSON.parse(stateStr) as { primary?: string };
+                  resolve(state.primary ?? null);
+                } catch {
+                  resolve(null);
+                }
+              };
+              controller.postMessage(
+                { type: 'get', key: 'app_state', requestId: `pre_${Date.now()}` },
+                [mc.port2]
+              );
+            });
+          });
+          expect(priorToken, 'login must have written a token').toBeTruthy();
+
+          // Force-expire the stored token so the coordinator's fast-path
+          // sees it as inside the pre-expiry buffer and falls through to
+          // the Renewer (which for OIDC-public is signinSilent → iframe).
+          await fixture.forceTokenExpiry(page);
+
+          // Observe iframe traffic: at minimum the mock/IdP's /authorize
+          // endpoint must be hit from the hidden iframe context (prompt=none
+          // + response_mode=fragment is oidc-client's silent-refresh
+          // signature), and the /silent-callback HTML must be served.
+          const iframeAuthorizeSeen = page.waitForResponse(
+            (resp) =>
+              /\/(auth|authorize|protocol\/openid-connect\/auth)/.test(
+                resp.url()
+              ) && resp.request().url().includes('prompt=none'),
+            { timeout: 30_000 }
+          );
+          const silentCallbackServed = page.waitForResponse(
+            (resp) =>
+              resp.url().includes('/silent-callback') && resp.status() < 400,
+            { timeout: 30_000 }
+          );
+
+          const renewedToken = await page.evaluate(async () => {
+            const coord = (
+              window as unknown as {
+                __omTestAuthCoordinator?: {
+                  ensureFreshToken: () => Promise<string>;
+                };
+              }
+            ).__omTestAuthCoordinator;
+            if (!coord) {
+              throw new Error(
+                '__omTestAuthCoordinator missing — PW_E2E_BUILD gate never fired'
+              );
+            }
+            return coord.ensureFreshToken();
+          });
+
+          await iframeAuthorizeSeen;
+          await silentCallbackServed;
+
+          expect(renewedToken).toBeTruthy();
+          expect(renewedToken).not.toBe(priorToken);
+
+          // Storage must now carry the renewed token — proves the coordinator
+          // actually persisted the signinSilent result (not just resolved a
+          // promise into the void).
+          const storedAfter = await page.evaluate(async () => {
+            const controller = navigator.serviceWorker?.controller;
+            if (!controller) {
+              return null;
+            }
+            return new Promise<string | null>((resolve) => {
+              const mc = new MessageChannel();
+              const timer = setTimeout(() => resolve(null), 5000);
+              mc.port1.onmessage = (e) => {
+                clearTimeout(timer);
+                const stateStr = e.data?.result as string | undefined;
+                if (!stateStr) {
+                  resolve(null);
+                  return;
+                }
+                try {
+                  const state = JSON.parse(stateStr) as { primary?: string };
+                  resolve(state.primary ?? null);
+                } catch {
+                  resolve(null);
+                }
+              };
+              controller.postMessage(
+                { type: 'get', key: 'app_state', requestId: `post_${Date.now()}` },
+                [mc.port2]
+              );
+            });
+          });
+          expect(storedAfter).toBe(renewedToken);
+        });
       }
 
       // Scenarios 8 & 9 previously asserted a ConfigErrorPage short-circuit

@@ -171,7 +171,13 @@ describe('AuthCoordinator', () => {
       const pending = coordinator.ensureFreshToken();
       const expectation = expect(pending).rejects.toThrow(/no renewer/i);
 
-      await jest.advanceTimersByTimeAsync(5_000);
+      // advanceTimersByTimeAsync (Jest 29+) flushes microtasks between ticks —
+// the sync variant leaves the fast-path's `await getOidcToken()` promise
+// unsettled, so awaitRenewer's setTimeout is never armed. Cast because
+// the project's `@types/jest` predates that method's declaration.
+await (jest as unknown as {
+  advanceTimersByTimeAsync: (ms: number) => Promise<void>;
+}).advanceTimersByTimeAsync(5_000);
       await expectation;
     } finally {
       jest.useRealTimers();
@@ -260,7 +266,13 @@ describe('AuthCoordinator', () => {
 
       // Async advance flushes microtasks so the fast-path's storage
       // read resolves before awaitRenewer's setTimeout is armed.
-      await jest.advanceTimersByTimeAsync(5_000);
+      // advanceTimersByTimeAsync (Jest 29+) flushes microtasks between ticks —
+// the sync variant leaves the fast-path's `await getOidcToken()` promise
+// unsettled, so awaitRenewer's setTimeout is never armed. Cast because
+// the project's `@types/jest` predates that method's declaration.
+await (jest as unknown as {
+  advanceTimersByTimeAsync: (ms: number) => Promise<void>;
+}).advanceTimersByTimeAsync(5_000);
       await expectation;
     } finally {
       jest.useRealTimers();
