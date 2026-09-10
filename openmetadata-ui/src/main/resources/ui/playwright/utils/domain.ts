@@ -1190,17 +1190,29 @@ export const addTagsAndGlossaryToDomain = async (
     // Click add button
     await page.locator(`${container} [data-testid="add-tag"]`).click();
 
-    // Fill and select tag/term
+    // Fill and select tag/term. The Antd Select dropdown races the search
+    // response; retry the fill → wait-for-response → option-click loop so a
+    // detached option or missed search reply does not fail the whole test.
     const input = page.locator(`${container} #tagsForm_tags`);
     await input.click();
-    await input.fill(value);
     const tag = page.getByTestId(`tag-${value}`);
-    if (containerType === 'glossary') {
-      // To avoid clicking on white space between checkbox and text
-      await tag.locator('.ant-select-tree-checkbox').click();
-    } else {
-      await tag.click();
-    }
+    const clickTarget =
+      containerType === 'glossary'
+        ? tag.locator('.ant-select-tree-checkbox')
+        : tag;
+
+    await expect(async () => {
+      const searchTags = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(value))
+      );
+      await input.fill('');
+      await input.fill(value);
+      await searchTags;
+      await expect(clickTarget).toBeVisible();
+      await clickTarget.click({ timeout: 5000 });
+    }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
 
     // Save and wait for response
     const updateResponse = page.waitForResponse(

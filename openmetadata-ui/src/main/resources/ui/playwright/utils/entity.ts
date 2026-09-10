@@ -861,20 +861,29 @@ export const assignTag = async (
   await expect(tagButton).toBeVisible();
   await tagButton.click();
 
-  await expect(page.locator('#tagsForm_tags')).toBeVisible();
+  const tagInput = page.locator('#tagsForm_tags');
+  await expect(tagInput).toBeVisible();
 
-  const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
-  );
-
-  await page.locator('#tagsForm_tags').fill(tag);
-
-  await searchTags;
-
-  await page
+  const tagOption = page
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
-    .first()
-    .click();
+    .first();
+
+  // The Antd Select dropdown races the search response: the option may render
+  // stale from the previous open, then re-render when the ES query returns.
+  // Retry the fill → wait-for-response → option click loop so a detached click
+  // or missed search reply does not fail the whole test.
+  await expect(async () => {
+    const searchTags = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(tag))
+    );
+    await tagInput.fill('');
+    await tagInput.fill(tag);
+    await searchTags;
+    await expect(tagOption).toBeVisible();
+    await tagOption.click({ timeout: 5000 });
+  }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
 
   await page
     .locator('.ant-select-dropdown')
@@ -923,15 +932,24 @@ export const assignTagToChildren = async ({
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
-  );
+  const tagInput = page.locator('#tagsForm_tags');
+  const tagOption = page.getByTestId(`tag-${tag}`);
 
-  await page.locator('#tagsForm_tags').fill(tag);
-
-  await searchTags;
-
-  await page.getByTestId(`tag-${tag}`).click();
+  // Antd Select dropdown races the search response; retry the fill →
+  // wait-for-response → option-click loop so a detached option or missed
+  // search reply does not fail the whole test.
+  await expect(async () => {
+    const searchTags = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(tag))
+    );
+    await tagInput.fill('');
+    await tagInput.fill(tag);
+    await searchTags;
+    await expect(tagOption).toBeVisible();
+    await tagOption.click({ timeout: 5000 });
+  }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
   const patchRequest =
     entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
@@ -1562,14 +1580,17 @@ export const validateFollowedEntityToWidget = async (
 
   if (isFollowing) {
     await expect(followingWidget).toBeVisible();
+    // The widget refetches its list asynchronously after the follow API call,
+    // so the entity row may not be present on the first assertion. Retry
+    // reload-and-check so a slow refresh does not fail the test.
     await expect(
       followingWidget.getByTestId(`Following-${entity}`)
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 30_000 });
   } else {
     await expect(followingWidget).toBeVisible();
     await expect(
       followingWidget.getByTestId(`Following-${entity}`)
-    ).not.toBeVisible();
+    ).toBeHidden({ timeout: 30_000 });
   }
 
   return followingWidget;

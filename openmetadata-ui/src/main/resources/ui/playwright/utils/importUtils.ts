@@ -267,8 +267,17 @@ const openSelectedGridEditor = async (page: Page) => {
   const cell = page.locator('.rdg-cell[aria-selected="true"]');
   await expect(cell).toHaveCount(1);
   await cell.scrollIntoViewIfNeeded();
-  await cell.focus();
-  await expect(cell).toBeFocused();
+  // react-data-grid delegates focus asynchronously — .focus() alone does not
+  // always land on the DOM node before the assertion runs. Retry the
+  // focus + assertion pair, and fall back to a click which sets focus more
+  // reliably in RDG.
+  await expect(async () => {
+    await cell.focus();
+    if (!(await cell.evaluate((el) => el === document.activeElement))) {
+      await cell.click({ position: { x: 5, y: 5 } });
+    }
+    await expect(cell).toBeFocused();
+  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
   await cell.press('Enter');
 };
 

@@ -232,20 +232,24 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tag selection modal to be visible
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use semantic search bar selector
-    await this.tagSearchBar.fill(tagName);
-
-    // Scope loader to the selectable-list to avoid strict-mode violations when
-    // multiple [data-testid="loader"] elements coexist on the page during
-    // parallel test runs (e.g. one inside lineage section, one inside the popover).
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
-
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
-    // 'active' CSS class when the tag is already selected.
+    // Use getByTitle to target the outer .selectable-list-item wrapper, which
+    // carries the 'active' CSS class when the tag is already selected.
     const tagItem = this.selectableList.getByTitle(tagName);
-    await tagItem.waitFor({ state: 'visible' });
+
+    // Retry the search fill until the tag row renders. Elasticsearch indexing
+    // is eventually consistent — a newly created tag may not show up on the
+    // first search and needs a second fetch after a short delay.
+    await expect(async () => {
+      await this.tagSearchBar.fill('');
+      await this.tagSearchBar.fill(tagName);
+      // Scope loader to the selectable-list to avoid strict-mode violations
+      // when multiple [data-testid="loader"] elements coexist on the page
+      // during parallel test runs.
+      await this.selectableList
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await expect(tagItem).toBeVisible();
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
     // Only click if not already active — in parallel test runs another test may have added
     // this tag already. Clicking an already-active item would deselect (remove) it.
@@ -280,19 +284,24 @@ export class OverviewPageObject extends RightPanelBase {
 
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use semantic search bar selector
-    await this.glossaryTermSearchBar.fill(termName);
-
-    // Scope loader to selectableList to avoid strict-mode violations when a
-    // parallel test has a lineage or other section loader visible at the same time.
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
-
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
-    // 'active' CSS class when the term is already selected.
+    // Use getByTitle to target the outer .selectable-list-item wrapper, which
+    // carries the 'active' CSS class when the term is already selected.
     const termItem = this.selectableList.getByTitle(termName);
-    await termItem.waitFor({ state: 'visible' });
+
+    // Retry the search fill until the term row renders. Elasticsearch indexing
+    // is eventually consistent — a newly created term may not show up on the
+    // first search and needs a second fetch after a short delay.
+    await expect(async () => {
+      await this.glossaryTermSearchBar.fill('');
+      await this.glossaryTermSearchBar.fill(termName);
+      // Scope loader to selectableList to avoid strict-mode violations when a
+      // parallel test has a lineage or other section loader visible at the
+      // same time.
+      await this.selectableList
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await expect(termItem).toBeVisible();
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
     await termItem.scrollIntoViewIfNeeded();
 
     // Only click if not already active — parallel tests may have added this term already.

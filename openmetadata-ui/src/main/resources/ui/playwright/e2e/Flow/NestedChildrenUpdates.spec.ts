@@ -282,9 +282,14 @@ const expandNestedColumn = async (
   if (childRow && (await childRow.isVisible())) {
     return;
   }
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
-  if (childRow) {
-    await expect(childRow).toBeVisible();
-  }
+  // The nested-column table re-renders on every children fetch, detaching
+  // the row locator between the scroll and the click. Retry the pair so a
+  // mid-render re-resolve does not fail the whole test.
+  await expect(async () => {
+    await expandIcon.scrollIntoViewIfNeeded();
+    await expandIcon.click({ timeout: 5000 });
+    if (childRow) {
+      await expect(childRow).toBeVisible();
+    }
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 };
