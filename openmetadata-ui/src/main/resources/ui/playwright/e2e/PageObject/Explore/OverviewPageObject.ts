@@ -711,7 +711,11 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
-    return this.page
+    // Scope to the owner selection dropdown, not the whole page: a page-wide
+    // match also hits the entity's still-assigned owner chip in the panel, whose
+    // removal after the user hard-delete is eventually consistent and independent
+    // of this search-backed dropdown — the deleted-entity flake.
+    return this.selectOwnerTabs
       .locator('.selectable-list-item')
       .filter({ hasText: ownerName });
   }
@@ -742,6 +746,10 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    // Scope to the tag selection dropdown, not the whole page: a page-wide match
+    // also hits the entity's still-assigned tag chip in the panel, whose removal
+    // after the tag hard-delete is eventually consistent and independent of this
+    // search-backed dropdown — the deleted-entity flake.
     return this.selectableList
       .locator('.selectable-list-item')
       .filter({ hasText: tagName });
@@ -775,6 +783,10 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    // Scope to the glossary-term selection dropdown, not the whole page: a
+    // page-wide match also hits the entity's still-assigned term chip in the
+    // panel, whose removal after the term hard-delete is eventually consistent
+    // and independent of this search-backed dropdown — the deleted-entity flake.
     return this.selectableList
       .locator('.selectable-list-item')
       .filter({ hasText: termName });

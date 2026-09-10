@@ -12,6 +12,9 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
+import traceback
+from typing import NamedTuple
+
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.mssql import information_schema as ischema
@@ -32,7 +35,10 @@ from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 
-from metadata.ingestion.source.database.mssql.models import QueryStoreState
+from metadata.ingestion.source.database.mssql.models import (
+    QUERY_STORE_READONLY_REASON_AG_SECONDARY,
+    QueryStoreState,
+)
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
@@ -486,14 +492,54 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> str | None:
     return  # noqa: RET502
 
 
-def is_query_store_enabled(engine: Engine | None) -> bool:
-    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+class QueryStoreStatus(NamedTuple):
+    """Result of probing `sys.database_query_store_options`."""
+
+    enabled: bool
+    is_ag_secondary: bool
+
+
+def get_query_store_status(engine: Engine | None) -> QueryStoreStatus:
+    """Probe Query Store availability and, when unavailable, why.
+
+    `enabled=False` when:
+    - Query Store is OFF or in ERROR state.
+    - The connected database is a readable AG secondary (readonly_reason has the AG-secondary bit set).
+      On SQL Server < 2025 the replica's Query Store contains only the primary's
+      captured workload; ingesting it would silently replace the secondary's usage
+      and lineage with the primary's. This case is reported via `is_ag_secondary=True`
+      so callers (e.g. the test-connection check) can explain the fallback precisely.
+    """
     enabled = False
+    is_ag_secondary = False
     if engine is not None:
         try:
             with engine.connect() as conn:
-                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
-            enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+                row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
+            if row is not None:
+                actual_state, readonly_reason = row.actual_state, row.readonly_reason
+                is_ag_secondary = bool((readonly_reason or 0) & QUERY_STORE_READONLY_REASON_AG_SECONDARY)
+                enabled = (
+                    actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE) and not is_ag_secondary
+                )
+                if is_ag_secondary:
+                    logger.info(
+                        "MSSQL query history: Query Store is READ-ONLY because this database "
+                        "is a readable AG secondary (readonly_reason AG-secondary bit set). The replica's Query "
+                        "Store contains the primary's workload. Falling back to plan-cache DMVs."
+                    )
         except Exception as exc:
-            logger.debug("Query Store availability probe failed, using plan-cache DMVs: %s", exc, exc_info=True)
-    return enabled
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Query Store availability probe failed, using plan-cache DMVs: %s",
+                exc,
+            )
+    return QueryStoreStatus(enabled=enabled, is_ag_secondary=is_ag_secondary)
+
+
+def is_query_store_enabled(engine: Engine | None) -> bool:
+    """Return True if Query Store holds this database's own workload history.
+
+    See `get_query_store_status` for the full decision logic.
+    """
+    return get_query_store_status(engine).enabled

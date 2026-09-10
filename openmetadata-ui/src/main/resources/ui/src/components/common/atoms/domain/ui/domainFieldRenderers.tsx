@@ -88,6 +88,7 @@ export const renderDomainNameCell = (
     <Box
       align="center"
       className={NAME_CELL_CLIP_CLASS}
+      data-testid="entity-name"
       direction="row"
       gap={3}
       onClick={onClick ? handleNameClick : undefined}>
@@ -116,29 +117,36 @@ export const renderDomainOwnersCell = (
   renderOwnerContent: (
     owner: { name?: string; type?: string },
     chip: ReactNode
-  ) => ReactNode
+  ) => ReactNode,
+  options?: { showDashPlaceholder?: boolean }
 ): ReactNode => (
   <Owner
     isCompactView={false}
     maxVisibleOwners={4}
     owners={toOwnersWithHref(entity.owners)}
     renderOwnerContent={renderOwnerContent}
+    showDashPlaceholder={options?.showDashPlaceholder}
     showLabel={false}
   />
 );
 
 export const renderDomainGlossaryTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize }
+  options?: { size?: TagSize; emptyPlaceholder?: string }
 ): ReactNode => (
-  <TagBadgeList size={options?.size} tags={getGlossaryTags(entity.tags)} />
+  <TagBadgeList
+    emptyPlaceholder={options?.emptyPlaceholder}
+    size={options?.size}
+    tags={getGlossaryTags(entity.tags)}
+  />
 );
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize }
+  options?: { size?: TagSize; emptyPlaceholder?: string }
 ): ReactNode => (
   <TagBadgeList
+    emptyPlaceholder={options?.emptyPlaceholder}
     size={options?.size}
     tags={getClassificationTags(entity.tags)}
   />

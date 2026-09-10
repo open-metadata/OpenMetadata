@@ -124,6 +124,8 @@ export enum EntityReferenceFields {
   VERSION = 'version',
   RELATED_TERMS = 'relatedTerms',
   SYNONYMS = 'synonyms',
+  ASSETS_COUNT = 'assetsCount',
   ENTITY_STATUS = 'entityStatus',
+  OUTPUT_PORTS_COUNT = 'outputPortsCount',
   TEST_SUITE = 'testSuite.name',
 }
