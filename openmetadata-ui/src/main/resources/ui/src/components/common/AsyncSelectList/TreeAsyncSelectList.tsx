@@ -50,10 +50,10 @@ import {
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import Fqn from '../../../utils/Fqn';
 import {
   filterTreeNodeOptions,
   findItemByFqn,
+  injectMissingInitialOptions,
 } from '../../../utils/GlossaryPureUtils';
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
@@ -175,80 +175,6 @@ const filterMutuallyExclusiveSiblings = (
   }
 
   return filteredRawValues;
-};
-
-interface TreeNode {
-  id?: string;
-  value?: string | number;
-  name?: string;
-  title?: React.ReactNode;
-  checkable?: boolean;
-  isLeaf?: boolean;
-  selectable?: boolean;
-  children?: TreeNode[];
-  [key: string]: unknown;
-}
-
-const findTreeNode = (
-  nodes: TreeNode[],
-  targetValue: string
-): TreeNode | null => {
-  for (const node of nodes) {
-    if (node.value === targetValue) {
-      return node;
-    }
-    if (node.children) {
-      const found = findTreeNode(node.children as TreeNode[], targetValue);
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
-// Inject initially-selected terms into the tree so TreeSelect can resolve
-// their display label before the term's glossary children are lazy-loaded.
-const injectMissingInitialOptions = (
-  tree: TreeNode[],
-  options: SelectOption[]
-) => {
-  for (const option of options) {
-    if (findTreeNode(tree, option.value)) {
-      continue;
-    }
-
-    const segments = Fqn.split(option.value);
-    if (segments.length < 2) {
-      continue;
-    }
-
-    const leafName = segments[segments.length - 1];
-    const parentFqn = Fqn.build(...segments.slice(0, -1));
-    const parentNode = findTreeNode(tree, parentFqn);
-
-    if (parentNode) {
-      const displayName = option.data
-        ? getEntityName(option.data as { name?: string; displayName?: string })
-        : leafName;
-
-      const syntheticChild: TreeNode = {
-        id: `initial-${option.value}`,
-        value: option.value,
-        name: leafName,
-        title: displayName,
-        checkable: true,
-        isLeaf: true,
-        selectable: true,
-      };
-
-      if (!parentNode.children) {
-        parentNode.children = [];
-      }
-      (parentNode.children as TreeNode[]).push(syntheticChild);
-    }
-  }
 };
 
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({

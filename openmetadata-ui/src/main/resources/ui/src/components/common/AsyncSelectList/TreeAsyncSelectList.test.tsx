@@ -51,16 +51,9 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
 }));
 
 jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  ...jest.requireActual('../../../utils/GlossaryPureUtils'),
   filterTreeNodeOptions: jest.fn().mockImplementation((data) => data),
   findItemByFqn: jest.fn().mockReturnValue(null),
-}));
-
-jest.mock('../../../utils/Fqn', () => ({
-  __esModule: true,
-  default: {
-    split: jest.fn().mockImplementation((fqn) => fqn.split('.')),
-    build: jest.fn().mockImplementation((...parts) => parts.join('.')),
-  },
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
