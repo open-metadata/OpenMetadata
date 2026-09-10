@@ -71,9 +71,14 @@ const selectTagSuggestion = async ({
   const tagOption = page.getByTestId(tagTestId).first();
   const tagSearchResponse = page
     .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('tag_search_index'),
+      (response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          /[?&]index=tag(&|$)/.test(url)
+        );
+      },
       { timeout: 5000 }
     )
     .catch(() => null);
