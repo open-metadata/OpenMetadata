@@ -13,15 +13,19 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -42,6 +46,53 @@ class DataQualityDimensionSqlMigrationParityTest {
   void dimensionTableExistsInCleanAndUpgradeSchemas(final DialectSql dialect) throws IOException {
     assertGeneratedIdColumn(read(dialect.cleanSchema()), dialect.name() + " clean schema");
     assertGeneratedIdColumn(read(dialect.schemaChanges()), dialect.name() + " 2.1.0 migration");
+  }
+
+  /**
+   * Column types are necessarily dialect specific ({@code jsonb} vs {@code json}, {@code boolean}
+   * vs {@code tinyint(1)}), but the column set and the two properties that change behaviour —
+   * whether a column is generated from the json document and whether it is nullable — must not
+   * diverge, in the clean schema or in the upgrade.
+   */
+  @Test
+  void columnShapeMatchesAcrossDialectsAndSchemas() throws IOException {
+    Map<String, String> reference = null;
+    String referenceDescription = null;
+    for (final DialectSql dialect : dialects().toList()) {
+      for (final Path sql : new Path[] {dialect.cleanSchema(), dialect.schemaChanges()}) {
+        final String description = dialect.name() + " " + sql.getFileName();
+        final Map<String, String> shape = columnShape(createTableStatement(read(sql), description));
+        if (reference == null) {
+          reference = shape;
+          referenceDescription = description;
+        } else {
+          final String reason = referenceDescription + " and " + description + " disagree";
+          assertEquals(reference, shape, reason);
+        }
+      }
+    }
+  }
+
+  /** Column name -&gt; the properties that have to agree, in declaration order. */
+  private static Map<String, String> columnShape(final String createTable) {
+    final Map<String, String> shape = new LinkedHashMap<>();
+    for (final String line : createTable.split("\n")) {
+      final String column = line.trim().replaceAll("^`|`$", "");
+      if (column.isEmpty()
+          || column.startsWith("--")
+          || column.startsWith("primary key")
+          || column.startsWith("constraint")
+          || column.startsWith("unique key")
+          || column.startsWith("key ")) {
+        continue;
+      }
+      final String name = column.split("[\\s`(]+")[0].replace("`", "");
+      shape.put(
+          name,
+          (column.contains("generated always as") ? "generated" : "stored")
+              + (column.contains("not null") ? " not-null" : " nullable"));
+    }
+    return shape;
   }
 
   private static void assertGeneratedIdColumn(final String sql, final String description) {

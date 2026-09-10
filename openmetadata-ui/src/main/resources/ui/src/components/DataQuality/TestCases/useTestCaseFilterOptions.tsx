@@ -20,8 +20,13 @@ import {
   PAGE_SIZE_LARGE,
   TIER_CATEGORY,
 } from '../../../constants/constants';
-import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
+import {
+  TEST_CASE_DIMENSIONS_OPTION,
+  TEST_CASE_FILTERS,
+} from '../../../constants/profiler.constant';
+import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -59,7 +64,41 @@ export const useTestCaseFilterOptions = () => {
   const [dataProductOptions, setDataProductOptions] = useState<FetchedOption[]>(
     []
   );
+  const [dimensionOptions, setDimensionOptions] = useState<FetchedOption[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
+
+  /**
+   * Dimensions are entities now, so the filter has to list whatever is in Settings >
+   * Preferences > Data Quality rather than the shipped eight — otherwise a custom dimension
+   * can be created and assigned to test cases but never filtered on. "No Dimension" stays a
+   * hand-written entry: it is the unset marker and has no dimension entity of its own. Same
+   * fetch the test case and test definition forms already do.
+   */
+  const fetchDimensionOptions = async () => {
+    setIsOptionsLoading(true);
+    try {
+      const { data } = await getDataQualityDimensions({ limit: 1000 });
+      setDimensionOptions([
+        ...TEST_CASE_DIMENSIONS_OPTION.filter(
+          ({ value }) => value === DataQualityDimensions.NoDimension
+        ).map(({ label, value }) => ({
+          label,
+          name: String(label),
+          value,
+        })),
+        ...data.map((dimension) => ({
+          label: getEntityName(dimension),
+          name: getEntityName(dimension),
+          value: dimension.name,
+        })),
+      ]);
+    } catch {
+      // Degrade to the shipped dimensions rather than to an empty dropdown.
+      setDimensionOptions(TEST_CASE_DIMENSIONS_OPTION);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
 
   const fetchTierOptions = async () => {
     try {
@@ -183,6 +222,10 @@ export const useTestCaseFilterOptions = () => {
       options: dataProductOptions,
       fetch: fetchDataProductOptions,
     },
+    [TEST_CASE_FILTERS.dimension]: {
+      options: dimensionOptions,
+      fetch: fetchDimensionOptions,
+    },
   };
 
   const getInitialOptions = (key: string, isLengthCheck = false) => {
@@ -216,8 +259,16 @@ export const useTestCaseFilterOptions = () => {
       [TEST_CASE_FILTERS.tier]: tierOptions,
       [TEST_CASE_FILTERS.service]: serviceOptions,
       [TEST_CASE_FILTERS.dataProduct]: dataProductOptions,
+      [TEST_CASE_FILTERS.dimension]: dimensionOptions,
     }),
-    [tableOptions, tagOptions, tierOptions, serviceOptions, dataProductOptions]
+    [
+      tableOptions,
+      tagOptions,
+      tierOptions,
+      serviceOptions,
+      dataProductOptions,
+      dimensionOptions,
+    ]
   );
 
   const onSearchByKey: Record<string, (search: string) => void> = {
@@ -233,7 +284,9 @@ export const useTestCaseFilterOptions = () => {
     tierOptions,
     serviceOptions,
     dataProductOptions,
+    dimensionOptions,
     isOptionsLoading,
+    fetchDimensionOptions,
     fetchTierOptions,
     fetchTagOptions,
     fetchSearchOptions,

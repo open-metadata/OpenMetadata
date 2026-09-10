@@ -1071,7 +1071,7 @@ CREATE TABLE public.data_quality_dimension (
     fqnhash character varying(768) NOT NULL,
     name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
     provider character varying(32) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
-    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
     deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
     CONSTRAINT data_quality_dimension_pkey PRIMARY KEY (id),
     CONSTRAINT uk_data_quality_dimension_fqn_hash UNIQUE (fqnhash)

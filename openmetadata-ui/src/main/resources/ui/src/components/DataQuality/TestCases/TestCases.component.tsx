@@ -18,7 +18,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
-  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_FILTER_OPTIONS,
@@ -60,6 +59,7 @@ export const TestCases = () => {
     tierOptions,
     serviceOptions,
     dataProductOptions,
+    dimensionOptions,
     debounceFetchTableData,
     debounceFetchTagOptions,
     debounceFetchServiceOptions,
@@ -236,7 +236,8 @@ export const TestCases = () => {
             showSearch
             data-testid="dimension-select-filter"
             getPopupContainer={getPopupContainer}
-            options={TEST_CASE_DIMENSIONS_OPTION}
+            loading={isOptionsLoading}
+            options={dimensionOptions}
             placeholder={t('label.dimension')}
           />
         </Form.Item>

@@ -42,6 +42,19 @@ export const getDataQualityDimensionTestCaseCounts = async () => {
   return response.data;
 };
 
+/**
+ * How many test definitions are classified under each dimension, keyed by dimension id. A test
+ * definition holds its dimension as a name rather than as a relationship, so it is counted
+ * separately from the test cases; the delete confirmation shows both.
+ */
+export const getDataQualityDimensionTestDefinitionCounts = async () => {
+  const response = await APIClient.get<Record<string, number>>(
+    `${dimensionUrl}/testDefinitionCounts`
+  );
+
+  return response.data;
+};
+
 export const createDataQualityDimension = async (
   data: CreateDataQualityDimension
 ) => {

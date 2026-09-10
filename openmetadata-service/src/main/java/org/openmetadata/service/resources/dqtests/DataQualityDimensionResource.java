@@ -60,7 +60,9 @@ import org.openmetadata.service.security.Authorizer;
             + "users can create their own on top of them.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "DataQualityDimensions")
+// Order 0: the shipped test definitions (order 1) reference these dimensions by name and are
+// rejected when the dimension does not exist yet, so the dimensions have to be seeded first.
+@Collection(name = "DataQualityDimensions", order = 0)
 public class DataQualityDimensionResource
     extends EntityResource<DataQualityDimension, DataQualityDimensionRepository> {
   private final DataQualityDimensionMapper mapper = new DataQualityDimensionMapper();
@@ -154,6 +156,35 @@ public class DataQualityDimensionResource
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (DataQualityDimension dimension : dimensions.getData()) {
       counts.put(dimension.getId().toString(), repository.getTestCaseCount(dimension.getId()));
+    }
+    return counts;
+  }
+
+  @GET
+  @Path("/testDefinitionCounts")
+  @Operation(
+      operationId = "getDataQualityDimensionTestDefinitionCounts",
+      summary = "Count the test definitions classified under each dimension",
+      description =
+          "Returns a map of dimension id to the number of test definitions classified under it. A "
+              + "test definition holds its dimension as a name rather than as a relationship, so "
+              + "this is counted separately from the test cases; the delete confirmation shows "
+              + "both, since deleting a dimension leaves those test definitions unclassified.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test definition count per dimension id",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Map<String, Integer> getTestDefinitionCounts(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    ResultList<DataQualityDimension> dimensions =
+        super.listInternal(
+            uriInfo, securityContext, "", new ListFilter(Include.NON_DELETED), 1000000, null, null);
+    Map<String, Integer> countsByName = repository.getTestDefinitionCountsByDimensionName();
+    Map<String, Integer> counts = new LinkedHashMap<>();
+    for (DataQualityDimension dimension : dimensions.getData()) {
+      counts.put(dimension.getId().toString(), countsByName.getOrDefault(dimension.getName(), 0));
     }
     return counts;
   }

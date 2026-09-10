@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -100,6 +101,14 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
       // dimension they were recorded under. That is intentional for this iteration.
       if (testCase.getDataQualityDimension() != null) {
         testDefinitionMap.put("dataQualityDimension", testCase.getDataQualityDimension().getName());
+      }
+      // Mirrors TestCaseIndex: the "No Dimension" filter is a must_not-exists on this field, so an
+      // effective NoDimension must stay unset instead of being indexed by name. Otherwise the same
+      // dataQualityDimension=NoDimension filter answers differently on /testCases/search/list and
+      // /testCases/testCaseResults/search/list.
+      if (DataQualityDimensionRepository.NO_DIMENSION.equals(
+          testDefinitionMap.get("dataQualityDimension"))) {
+        testDefinitionMap.put("dataQualityDimension", null);
       }
       esDoc.put("testDefinition", testDefinitionMap);
     }

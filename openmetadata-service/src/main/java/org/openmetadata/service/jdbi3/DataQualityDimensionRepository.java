@@ -3,11 +3,14 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_QUALITY_DIMENSION;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.DataQualityDimension;
+import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -105,5 +108,29 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
         .relationshipDAO()
         .countFindTo(
             dimensionId, DATA_QUALITY_DIMENSION, List.of(Relationship.RELATED_TO.ordinal()));
+  }
+
+  /**
+   * Number of test definitions classified under each dimension, keyed by dimension name. Unlike
+   * test cases, a test definition holds its dimension as a plain name in its json rather than as a
+   * relationship, so it is invisible to {@link #getTestCaseCount(UUID)} — without this the delete
+   * confirmation reports no impact for a dimension that a dozen test definitions are classified
+   * under. The table holds the shipped definitions plus whatever the user added, so a single pass
+   * in memory is cheaper than a dialect-specific json query.
+   */
+  public Map<String, Integer> getTestDefinitionCountsByDimensionName() {
+    Map<String, Integer> counts = new HashMap<>();
+    TestDefinitionRepository testDefinitionRepository =
+        (TestDefinitionRepository) Entity.getEntityRepository(Entity.TEST_DEFINITION);
+    List<TestDefinition> testDefinitions =
+        testDefinitionRepository.listAll(
+            EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED));
+    for (TestDefinition testDefinition : testDefinitions) {
+      String dimension = testDefinition.getDataQualityDimension();
+      if (dimension != null && !dimension.isBlank() && !NO_DIMENSION.equals(dimension)) {
+        counts.merge(dimension, 1, Integer::sum);
+      }
+    }
+    return counts;
   }
 }

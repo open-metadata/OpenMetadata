@@ -58,15 +58,14 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       entity.setEnabled(true);
     }
 
-    validateDataQualityDimension(entity);
+    TestDefinition existing = update ? find(entity.getId(), Include.ALL) : null;
+
+    validateDataQualityDimension(entity, existing);
 
     // For updates to system test definitions, only allow changes to the enabled field and to the
     // data quality dimension
-    if (update && entity.getProvider() == ProviderType.SYSTEM) {
-      TestDefinition existing = find(entity.getId(), Include.ALL);
-      if (existing != null) {
-        validateSystemTestDefinitionUpdate(existing, entity);
-      }
+    if (update && entity.getProvider() == ProviderType.SYSTEM && existing != null) {
+      validateSystemTestDefinitionUpdate(existing, entity);
     }
   }
 
@@ -75,11 +74,16 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
    * one created in Settings &gt; Preferences &gt; Data Quality — so a name that matches none of them
    * is rejected rather than silently stored. NoDimension is the "unset" marker the shipped test
    * definitions were seeded with and has no entity of its own.
+   *
+   * <p>Only a dimension the caller is actually changing is validated. A dimension that was valid
+   * when it was set and has since been deleted must not turn every other edit — toggling {@code
+   * enabled}, say — into a 404 on a test definition the user cannot otherwise repair.
    */
-  private void validateDataQualityDimension(TestDefinition entity) {
+  private void validateDataQualityDimension(TestDefinition entity, TestDefinition existing) {
     String dimension = entity.getDataQualityDimension();
     if (CommonUtil.nullOrEmpty(dimension)
-        || DataQualityDimensionRepository.NO_DIMENSION.equals(dimension)) {
+        || DataQualityDimensionRepository.NO_DIMENSION.equals(dimension)
+        || (existing != null && dimension.equals(existing.getDataQualityDimension()))) {
       return;
     }
     Entity.getEntityReferenceByName(Entity.DATA_QUALITY_DIMENSION, dimension, Include.NON_DELETED);

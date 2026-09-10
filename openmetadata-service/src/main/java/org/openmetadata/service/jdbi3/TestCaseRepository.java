@@ -1064,22 +1064,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   static void setDataQualityDimension(TestCase test, TestDefinition testDefinition) {
     EntityReference dimension = test.getDataQualityDimension();
-    if (dimension == null) {
-      String defaultDimension = testDefinition.getDataQualityDimension();
-      // NoDimension is the "unset" marker and has no dimension entity seeded for it, so it means
-      // the test case has no dimension rather than a reference to resolve.
-      if (defaultDimension != null
-          && !DataQualityDimensionRepository.NO_DIMENSION.equals(defaultDimension)) {
-        dimension = EntityUtil.getEntityReference(Entity.DATA_QUALITY_DIMENSION, defaultDimension);
-      }
+    if (dimension != null) {
+      // Include.ALL rather than NON_DELETED: setFields resolves the dimension of an existing test
+      // case with ALL, so a soft-deleted dimension comes back on the entity and re-resolving it
+      // strictly here would make that test case permanently un-updatable — nothing ever flips the
+      // relationship row to deleted, so there would be no way out of the state.
+      test.setDataQualityDimension(
+          Entity.getEntityReference(dimension.withType(Entity.DATA_QUALITY_DIMENSION), ALL));
+      return;
     }
-    // Resolves the name/FQN the caller (or the test definition default) supplied into a full
-    // reference, and rejects a dimension that does not exist.
-    test.setDataQualityDimension(
-        dimension == null
-            ? null
-            : Entity.getEntityReference(
-                dimension.withType(Entity.DATA_QUALITY_DIMENSION), NON_DELETED));
+    String defaultDimension = testDefinition.getDataQualityDimension();
+    // NoDimension is the "unset" marker and has no dimension entity seeded for it, so it means the
+    // test case has no dimension rather than a reference to resolve.
+    if (defaultDimension == null
+        || DataQualityDimensionRepository.NO_DIMENSION.equals(defaultDimension)) {
+      test.setDataQualityDimension(null);
+      return;
+    }
+    // A dimension is a label: one that has since been deleted must not make the test type
+    // uncreatable, so a default that no longer resolves degrades to no dimension at all.
+    try {
+      test.setDataQualityDimension(
+          Entity.getEntityReferenceByName(Entity.DATA_QUALITY_DIMENSION, defaultDimension, ALL));
+    } catch (EntityNotFoundException e) {
+      LOG.warn(
+          "Test definition [{}] is classified under data quality dimension [{}], which no longer "
+              + "exists. Test case [{}] is created without a dimension.",
+          testDefinition.getName(),
+          defaultDimension,
+          test.getName());
+      test.setDataQualityDimension(null);
+    }
   }
 
   @Override

@@ -50,6 +50,7 @@ import {
   deleteDataQualityDimension,
   getDataQualityDimensions,
   getDataQualityDimensionTestCaseCounts,
+  getDataQualityDimensionTestDefinitionCounts,
   patchDataQualityDimension,
 } from '../../rest/dataQualityDimensionAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -76,6 +77,12 @@ const DataQualitySettingsPage = () => {
   const [testCaseCounts, setTestCaseCounts] = useState<Record<string, number>>(
     {}
   );
+  // Test definitions reference a dimension by name rather than by relationship, so they are
+  // counted separately — without them the delete confirmation reports no impact for a dimension
+  // a dozen test definitions are classified under.
+  const [testDefinitionCounts, setTestDefinitionCounts] = useState<
+    Record<string, number>
+  >({});
   const [searchTerm, setSearchTerm] = useState('');
   // `undefined` closes the drawer, `null` opens it in create mode.
   const [editing, setEditing] = useState<DataQualityDimension | null>();
@@ -99,13 +106,15 @@ const DataQualitySettingsPage = () => {
   const fetchDimensions = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [{ data }, counts] = await Promise.all([
+      const [{ data }, counts, definitionCounts] = await Promise.all([
         getDataQualityDimensions({ limit: 1000 }),
         // A missing count must not hide the dimension list itself.
         getDataQualityDimensionTestCaseCounts().catch(() => ({})),
+        getDataQualityDimensionTestDefinitionCounts().catch(() => ({})),
       ]);
       setDimensions(data);
       setTestCaseCounts(counts);
+      setTestDefinitionCounts(definitionCounts);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -424,6 +433,8 @@ const DataQualitySettingsPage = () => {
   }
 
   const deletingCount = testCaseCounts[deleting?.id ?? ''] ?? 0;
+  const deletingDefinitionCount =
+    testDefinitionCounts[deleting?.id ?? ''] ?? 0;
 
   return (
     <PageLayoutV1 pageTitle={t('label.data-quality')}>
@@ -511,14 +522,32 @@ const DataQualitySettingsPage = () => {
         <Typography.Paragraph>
           {t('message.delete-dimension-confirmation')}
         </Typography.Paragraph>
-        {deletingCount > 0 && (
+        {(deletingCount > 0 || deletingDefinitionCount > 0) && (
           <div className="dimension-delete-warning">
-            <Typography.Text strong>
-              {t('message.dimension-in-use-count', { count: deletingCount })}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0">
-              {t('message.dimension-delete-fallback')}
-            </Typography.Paragraph>
+            {deletingCount > 0 && (
+              <>
+                <Typography.Text strong>
+                  {t('message.dimension-in-use-count', {
+                    count: deletingCount,
+                  })}
+                </Typography.Text>
+                <Typography.Paragraph className="m-b-0">
+                  {t('message.dimension-delete-fallback')}
+                </Typography.Paragraph>
+              </>
+            )}
+            {deletingDefinitionCount > 0 && (
+              <>
+                <Typography.Text strong>
+                  {t('message.dimension-in-use-test-definition-count', {
+                    count: deletingDefinitionCount,
+                  })}
+                </Typography.Text>
+                <Typography.Paragraph className="m-b-0">
+                  {t('message.dimension-delete-test-definition-fallback')}
+                </Typography.Paragraph>
+              </>
+            )}
           </div>
         )}
       </Modal>

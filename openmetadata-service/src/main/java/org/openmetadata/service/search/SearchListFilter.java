@@ -134,7 +134,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
       return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeDoubleQuotes(domain));
+          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
     }
     return "";
   }
@@ -170,7 +170,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String createdBy = getQueryParam("createdBy");
     if (!nullOrEmpty(createdBy)) {
       return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeDoubleQuotes(createdBy));
+          "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeJsonString(createdBy));
     }
     return "";
   }
@@ -188,7 +188,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           Arrays.stream(assets.split(","))
               .map(String::trim)
               .filter(id -> !id.isEmpty())
-              .map(this::escapeDoubleQuotes)
+              .map(this::escapeJsonString)
               .collect(Collectors.joining("\", \"", "\"", "\""));
       if (!assetIds.isEmpty()) {
         conditions.add(
@@ -256,7 +256,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (tags != null) {
       String tagsList =
           Arrays.stream(tags.split(","))
-              .map(this::escapeDoubleQuotes)
+              .map(this::escapeJsonString)
               .collect(Collectors.joining("\", \"", "\"", "\""));
       conditions.add(
           String.format(
@@ -268,13 +268,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\":{\"tier.tagFQN\":\"%s\"}}",
-              escapeDoubleQuotes(tier.toLowerCase(java.util.Locale.ROOT))));
+              escapeJsonString(tier.toLowerCase(java.util.Locale.ROOT))));
     }
 
     if (serviceName != null) {
       conditions.add(
           String.format(
-              "{\"term\": {\"%s\": \"%s\"}}", FIELD_SERVICE_NAME, escapeDoubleQuotes(serviceName)));
+              "{\"term\": {\"%s\": \"%s\"}}", FIELD_SERVICE_NAME, escapeJsonString(serviceName)));
     }
 
     if (entityFQN != null) {
@@ -282,7 +282,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           includeAllTests
               ? getTestCaseForEntityCondition(entityFQN, "entityFQN")
               : String.format(
-                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
+                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeJsonString(entityFQN)));
     }
 
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
@@ -314,7 +314,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"%s\": \"%s\"}}",
-              FIELD_DATA_PRODUCTS_FQN, escapeDoubleQuotes(dataProductFqn)));
+              FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
     }
 
     if (followedBy != null) {
@@ -326,7 +326,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"wildcard\": {\"entityLink\": \"*::columns::%s>\"}}",
-              escapeDoubleQuotes(columnName)));
+              escapeJsonString(columnName)));
     }
 
     return addCondition(conditions);
@@ -357,7 +357,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
               "{\"bool\":{\"should\": ["
                   + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
                   + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
-              escapeDoubleQuotes(testCaseFQN)));
+              escapeJsonString(testCaseFQN)));
     }
     if (testCaseStatus != null)
       conditions.add(
@@ -391,20 +391,18 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
-              escapeDoubleQuotes(fullyQualifiedName)));
+              escapeJsonString(fullyQualifiedName)));
     }
 
     return addCondition(conditions);
   }
 
-  private String escapeDoubleQuotes(String str) {
-    return str.replace("\"", "\\\"");
-  }
-
   /**
-   * Escapes a value for safe interpolation into a JSON string literal. Unlike {@link
-   * #escapeDoubleQuotes} this also escapes backslashes and control characters, which free-form
-   * user-supplied values may contain and which would otherwise produce malformed filter JSON.
+   * Escapes a value for safe interpolation into a JSON string literal: double quotes, backslashes
+   * and control characters alike. None of the values interpolated by this class is enum-bounded —
+   * they are FQNs, names, owners and dimensions, all free-form user input — so every one of them
+   * goes through this rather than through a quotes-only escape that leaves malformed filter JSON
+   * one backslash away.
    */
   private String escapeJsonString(String str) {
     return new String(JsonStringEncoder.getInstance().quoteAsString(str));
@@ -416,7 +414,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         Arrays.stream(status.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(this::escapeDoubleQuotes)
+            .map(this::escapeJsonString)
             .toList();
     String condition = "";
     if (!statuses.isEmpty()) {
@@ -448,10 +446,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
             + "{\"prefix\": {\"%s\": \"%s%s\"}},"
             + "{\"term\": {\"%s\": \"%s\"}}]}}",
         field,
-        escapeDoubleQuotes(entityFQN),
+        escapeJsonString(entityFQN),
         Entity.SEPARATOR,
         field,
-        escapeDoubleQuotes(entityFQN));
+        escapeJsonString(entityFQN));
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
@@ -485,21 +483,21 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"testCaseResolutionStatusType\": \"%s\"}}",
-              escapeDoubleQuotes(testCaseResolutionStatusType)));
+              escapeJsonString(testCaseResolutionStatusType)));
     }
 
     if (assignee != null) {
       conditions.add(
           String.format(
               "{\"term\": {\"testCaseResolutionStatusDetails.assignee.name\": \"%s\"}}",
-              escapeDoubleQuotes(assignee)));
+              escapeJsonString(assignee)));
     }
 
     if (testCaseFqn != null) {
       conditions.add(
           String.format(
               "{\"term\": {\"testCase.fullyQualifiedName.keyword\": \"%s\"}}",
-              escapeDoubleQuotes(testCaseFqn)));
+              escapeJsonString(testCaseFqn)));
     }
 
     if (originEntityFQN != null) {
