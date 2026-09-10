@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -162,6 +163,8 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(
         fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
+    team.setDescendantTeams(
+        fields.contains("descendantTeams") ? getDescendantTeams(team) : team.getDescendantTeams());
     team.setDomains(fields.contains(FIELD_DOMAINS) ? getDomains(team.getId()) : team.getDomains());
   }
 
@@ -181,6 +184,7 @@ public class TeamRepository extends EntityRepository<Team> {
     if (!fields.contains("userCount")) {
       team.setUserCount(0);
     }
+    team.setDescendantTeams(fields.contains("descendantTeams") ? team.getDescendantTeams() : null);
   }
 
   private void fetchAndSetUsers(List<Team> teams, Fields fields) {
@@ -940,6 +944,50 @@ public class TeamRepository extends EntityRepository<Team> {
     Set<UUID> subtreeTeamIds = discoverSubtreeTeams(List.of(teamId), childrenMap);
     Map<UUID, Set<UUID>> directUsers = batchFetchDirectUsers(subtreeTeamIds);
     return countSubtreeUsers(teamId, childrenMap, directUsers);
+  }
+
+  /**
+   * Team ids to match when listing/exporting the users under {@code teamName}'s umbrella. Group and
+   * Organization teams keep direct membership (empty result &rarr; callers fall back to the plain
+   * {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree (self +
+   * all descendants) so their Users tab and export include the members inherited from their
+   * sub-groups, matching what {@link #getUserCount} already counts.
+   */
+  public List<String> getSubtreeTeamIds(String teamName) {
+    Team team;
+    try {
+      team = getByName(null, teamName, Fields.EMPTY_FIELDS);
+    } catch (EntityNotFoundException e) {
+      // Unknown team name: leave the plain team filter to return an empty page (existing behavior).
+      return Collections.emptyList();
+    }
+    TeamType teamType = team.getTeamType();
+    if (teamType != DEPARTMENT && teamType != DIVISION && teamType != BUSINESS_UNIT) {
+      return Collections.emptyList();
+    }
+    List<String> ids = new ArrayList<>();
+    ids.add(team.getId().toString());
+    for (EntityReference descendant : getDescendantTeams(team)) {
+      ids.add(descendant.getId().toString());
+    }
+    return ids;
+  }
+
+  /**
+   * All teams nested under {@code team} (the subtree, excluding the team itself). Reuses the batched,
+   * cycle-safe {@link #discoverSubtreeTeams} traversal that {@link #getUserCount} uses, so the count,
+   * the Users tab/export member list, and the {@code descendantTeams} field all reflect one identical
+   * subtree. Computed on read like {@code childrenCount}/{@code userCount} — nothing is stored, so it
+   * stays correct across reparents/renames with no reindex.
+   */
+  private List<EntityReference> getDescendantTeams(Team team) {
+    Map<UUID, List<UUID>> childrenMap = new HashMap<>();
+    Set<UUID> subtreeTeamIds = discoverSubtreeTeams(List.of(team.getId()), childrenMap);
+    subtreeTeamIds.remove(team.getId());
+    if (subtreeTeamIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityReferencesByIds(TEAM, new ArrayList<>(subtreeTeamIds), NON_DELETED);
   }
 
   private List<EntityReference> getOwns(Team team) {

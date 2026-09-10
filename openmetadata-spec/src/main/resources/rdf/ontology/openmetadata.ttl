@@ -2519,6 +2519,10 @@ om:deprecated a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "deprecated" .
 
+om:descendantTeams a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "descendantTeams" .
+
 om:derivedEntities a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "derivedEntities" .
