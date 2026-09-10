@@ -120,4 +120,3 @@ export function getPageTitle(
 
   return t('label.custom-property-plural');
 }
-

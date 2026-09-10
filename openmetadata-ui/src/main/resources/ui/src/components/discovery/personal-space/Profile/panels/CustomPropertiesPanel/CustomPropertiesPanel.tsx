@@ -217,9 +217,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     <Box
       className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
       direction="col">
-      <div
-        className={contentClassName}
-        data-testid="custom-properties-content">
+      <div className={contentClassName} data-testid="custom-properties-content">
         {subView.type === 'landing' && (
           <CustomPropertiesLandingPage
             onSelectEntityType={handleSelectEntityType}

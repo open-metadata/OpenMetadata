@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Box,
   Breadcrumbs,
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import type { Key } from 'react';
 import React, { FC, useMemo } from 'react';
 
