@@ -33,18 +33,19 @@ import org.junit.jupiter.params.provider.MethodSource;
  * {@code data_quality_dimension} is an entity table, so {@code EntityDAO.insert} writes only
  * {@code fqnHash} and {@code json} — the {@code id} column has to be generated from the json
  * document or every insert fails ("Field 'id' doesn't have a default value" on MySQL, "null value
- * in column id" on PostgreSQL). This guards both halves of that: the table exists in the clean
- * schema as well as in the 2.1.0 upgrade, and in both its {@code id} is a generated column.
+ * in column id" on PostgreSQL). This guards that the 2.1.0 migration creates the table that way on
+ * both dialects. The {@code bootstrap/sql/schema} dumps are deliberately not checked: nothing runs
+ * them — a fresh install is bootstrapped by the Flyway baseline and then the native migrations —
+ * so the table only has to exist in the migration.
  */
 class DataQualityDimensionSqlMigrationParityTest {
   private static final String TABLE = "data_quality_dimension";
   private static final Pattern ID_COLUMN =
       Pattern.compile("\\bid\\b[^,]*?generated always as", Pattern.DOTALL);
 
-  @ParameterizedTest(name = "{0} clean and 2.1.0 upgrade schemas create the dimension table")
+  @ParameterizedTest(name = "the {0} 2.1.0 migration creates the dimension table")
   @MethodSource("dialects")
-  void dimensionTableExistsInCleanAndUpgradeSchemas(final DialectSql dialect) throws IOException {
-    assertGeneratedIdColumn(read(dialect.cleanSchema()), dialect.name() + " clean schema");
+  void dimensionTableExistsInUpgradeSchema(final DialectSql dialect) throws IOException {
     assertGeneratedIdColumn(read(dialect.schemaChanges()), dialect.name() + " 2.1.0 migration");
   }
 
@@ -52,23 +53,22 @@ class DataQualityDimensionSqlMigrationParityTest {
    * Column types are necessarily dialect specific ({@code jsonb} vs {@code json}, {@code boolean}
    * vs {@code tinyint(1)}), but the column set and the two properties that change behaviour —
    * whether a column is generated from the json document and whether it is nullable — must not
-   * diverge, in the clean schema or in the upgrade.
+   * diverge between the two dialects.
    */
   @Test
-  void columnShapeMatchesAcrossDialectsAndSchemas() throws IOException {
+  void columnShapeMatchesAcrossDialects() throws IOException {
     Map<String, String> reference = null;
     String referenceDescription = null;
     for (final DialectSql dialect : dialects().toList()) {
-      for (final Path sql : new Path[] {dialect.cleanSchema(), dialect.schemaChanges()}) {
-        final String description = dialect.name() + " " + sql.getFileName();
-        final Map<String, String> shape = columnShape(createTableStatement(read(sql), description));
-        if (reference == null) {
-          reference = shape;
-          referenceDescription = description;
-        } else {
-          final String reason = referenceDescription + " and " + description + " disagree";
-          assertEquals(reference, shape, reason);
-        }
+      final Path sql = dialect.schemaChanges();
+      final String description = dialect.name() + " " + sql.getFileName();
+      final Map<String, String> shape = columnShape(createTableStatement(read(sql), description));
+      if (reference == null) {
+        reference = shape;
+        referenceDescription = description;
+      } else {
+        final String reason = referenceDescription + " and " + description + " disagree";
+        assertEquals(reference, shape, reason);
       }
     }
   }
@@ -118,21 +118,17 @@ class DataQualityDimensionSqlMigrationParityTest {
   }
 
   private static Stream<DialectSql> dialects() {
-    final Path root = repositoryRoot();
-    final Path migrations = root.resolve("bootstrap/sql/migrations/native/2.1.0");
-    return Stream.of(dialect(root, migrations, "mysql"), dialect(root, migrations, "postgres"));
+    final Path migrations = repositoryRoot().resolve("bootstrap/sql/migrations/native/2.1.0");
+    return Stream.of(dialect(migrations, "mysql"), dialect(migrations, "postgres"));
   }
 
-  private static DialectSql dialect(final Path root, final Path migrations, final String name) {
-    return new DialectSql(
-        name,
-        root.resolve("bootstrap/sql/schema/" + name + ".sql"),
-        migrations.resolve(name + "/schemaChanges.sql"));
+  private static DialectSql dialect(final Path migrations, final String name) {
+    return new DialectSql(name, migrations.resolve(name + "/schemaChanges.sql"));
   }
 
   private static Path repositoryRoot() {
     Path current = Path.of("").toAbsolutePath();
-    while (current != null && !Files.exists(current.resolve("bootstrap/sql/schema/mysql.sql"))) {
+    while (current != null && !Files.exists(current.resolve("bootstrap/sql/migrations"))) {
       current = current.getParent();
     }
     if (current == null) {
@@ -141,7 +137,7 @@ class DataQualityDimensionSqlMigrationParityTest {
     return current;
   }
 
-  private record DialectSql(String name, Path cleanSchema, Path schemaChanges) {
+  private record DialectSql(String name, Path schemaChanges) {
     @Override
     public String toString() {
       return name;

@@ -144,8 +144,7 @@ class TestCaseRepositoryTest {
 
   @Test
   void testCaseInheritsTheTestDefinitionDimensionWhenNoneIsGiven() {
-    TestDefinition testDefinition =
-        new TestDefinition().withDataQualityDimension("Accuracy");
+    TestDefinition testDefinition = new TestDefinition().withDataQualityDimension("Accuracy");
     EntityReference accuracy =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -166,8 +165,7 @@ class TestCaseRepositoryTest {
 
   @Test
   void testCaseKeepsItsOwnDimension() {
-    TestDefinition testDefinition =
-        new TestDefinition().withDataQualityDimension("Accuracy");
+    TestDefinition testDefinition = new TestDefinition().withDataQualityDimension("Accuracy");
     EntityReference timeliness =
         new EntityReference()
             .withId(UUID.randomUUID())

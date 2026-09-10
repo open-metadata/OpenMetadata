@@ -281,8 +281,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           includeAllTests
               ? getTestCaseForEntityCondition(entityFQN, "entityFQN")
-              : String.format(
-                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeJsonString(entityFQN)));
+              : String.format("{\"term\": {\"entityFQN\": \"%s\"}}", escapeJsonString(entityFQN)));
     }
 
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
@@ -445,11 +444,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         "{\"bool\":{\"should\": ["
             + "{\"prefix\": {\"%s\": \"%s%s\"}},"
             + "{\"term\": {\"%s\": \"%s\"}}]}}",
-        field,
-        escapeJsonString(entityFQN),
-        Entity.SEPARATOR,
-        field,
-        escapeJsonString(entityFQN));
+        field, escapeJsonString(entityFQN), Entity.SEPARATOR, field, escapeJsonString(entityFQN));
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {

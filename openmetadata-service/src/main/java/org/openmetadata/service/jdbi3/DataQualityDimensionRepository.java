@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DATA_QUALITY_DIMENSION;
 
 import jakarta.ws.rs.BadRequestException;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.DataQualityDimension;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -98,22 +100,38 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
   }
 
   /**
-   * Number of test cases that carry this dimension, shown in the Data Quality settings page. Test
-   * cases hold their dimension as a relationship only, so deleting a dimension does not delete or
-   * rewrite them: they simply lose the override and fall back to the dimension of their test
-   * definition.
+   * Number of test cases that carry each of the given dimensions, keyed by dimension id, shown in
+   * the Data Quality settings page. Counted with a single grouped query rather than one count per
+   * dimension, so that the settings page costs two queries no matter how many dimensions are
+   * registered. Dimensions no test case references are absent from the map. Test cases hold their
+   * dimension as a relationship only, so deleting a dimension does not delete or rewrite them: they
+   * simply lose the override and fall back to the dimension of their test definition.
    */
-  public int getTestCaseCount(UUID dimensionId) {
-    return daoCollection
-        .relationshipDAO()
-        .countFindTo(
-            dimensionId, DATA_QUALITY_DIMENSION, List.of(Relationship.RELATED_TO.ordinal()));
+  public Map<UUID, Integer> getTestCaseCounts(List<UUID> dimensionIds) {
+    if (nullOrEmpty(dimensionIds)) {
+      return Map.of();
+    }
+    return EntityDAO.queryInChunks(
+            dimensionIds.stream().map(UUID::toString).toList(),
+            chunk ->
+                daoCollection
+                    .relationshipDAO()
+                    .countFindTo(
+                        chunk,
+                        DATA_QUALITY_DIMENSION,
+                        Relationship.RELATED_TO.ordinal(),
+                        Entity.TEST_CASE))
+        .stream()
+        .collect(
+            Collectors.toMap(
+                CollectionDAO.EntityRelationshipCount::getId,
+                CollectionDAO.EntityRelationshipCount::getCount));
   }
 
   /**
    * Number of test definitions classified under each dimension, keyed by dimension name. Unlike
    * test cases, a test definition holds its dimension as a plain name in its json rather than as a
-   * relationship, so it is invisible to {@link #getTestCaseCount(UUID)} — without this the delete
+   * relationship, so it is invisible to {@link #getTestCaseCounts(List)} — without this the delete
    * confirmation reports no impact for a dimension that a dozen test definitions are classified
    * under. The table holds the shipped definitions plus whatever the user added, so a single pass
    * in memory is cheaper than a dialect-specific json query.

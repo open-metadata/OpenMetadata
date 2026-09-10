@@ -209,6 +209,11 @@ public class MigrationUtil {
         "SELECT json FROM test_definition WHERE JSON_CONTAINS(json -> '$.testPlatforms', '\"OpenMetadata\"')";
     String POSTGRES_TEST_CASE_DIMENSION_QUERY =
         "SELECT json FROM test_definition WHERE json -> 'testPlatforms' @> '\"OpenMetadata\"'";
+    // These were DataQualityDimensions enum constants until dimensions became entities and
+    // TestDefinition.dataQualityDimension became a plain name. The enum is no longer generated —
+    // nothing $refs it — so the constants are spelled out here. Every value is the string the enum
+    // serialized to, so this already-applied migration writes exactly the json it always did; the
+    // edit is what keeps it compiling, not a change to what it does.
     Map<String, String> fqnToDimension =
         Map.ofEntries(
             Map.entry("columnValueMaxToBeBetween", "Accuracy"),
@@ -249,8 +254,7 @@ public class MigrationUtil {
                 try {
                   TestDefinition testCaseDefinition =
                       JsonUtils.readValue(row.get("json").toString(), TestDefinition.class);
-                  String dimension =
-                      fqnToDimension.get(testCaseDefinition.getFullyQualifiedName());
+                  String dimension = fqnToDimension.get(testCaseDefinition.getFullyQualifiedName());
                   if (dimension == null) {
                     LOG.warn(
                         "No dimension found for test case {}",
