@@ -104,7 +104,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       excludeCol: [],
       includeCol: DEFAULT_INCLUDE_PROFILE,
       enablePartition: false,
-      partitionData: undefined,
       selectedProfileSampleType: ProfileSampleType.Percentage,
     }),
     []
@@ -286,13 +285,21 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const handleSave: FormProps['onFinish'] = useCallback(
     async (data: ProfilerForm) => {
-      const {
-        excludeCol,
-        sqlQuery,
-        includeCol,
-        enablePartition,
-        partitionData,
-      } = state;
+      const { excludeCol, sqlQuery, includeCol, enablePartition } = state;
+
+      // Read straight from the form: the loaded config is pushed into the
+      // form with `setFieldsValue`, which never fires `onValuesChange`, so
+      // any state copy is stale until the user edits a partition field.
+      const partitionData = pick(
+        data,
+        'partitionColumnName',
+        'partitionIntegerRangeEnd',
+        'partitionIntegerRangeStart',
+        'partitionInterval',
+        'partitionIntervalType',
+        'partitionIntervalUnit',
+        'partitionValues'
+      );
 
       setIsLoading(true);
       const {
@@ -328,8 +335,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           ? {
               ...partitionData,
               partitionValues:
-                partitionIntervalType === PartitionIntervalTypes.ColumnValue
-                  ? partitionData?.partitionValues?.filter(
+                data.partitionIntervalType ===
+                PartitionIntervalTypes.ColumnValue
+                  ? partitionData.partitionValues?.filter(
                       (value) => !isEmpty(value)
                     )
                   : undefined,
@@ -415,16 +423,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
       handleStateChange({
         includeCol: data.includeColumns,
-        partitionData: pick(
-          data,
-          'partitionColumnName',
-          'partitionIntegerRangeEnd',
-          'partitionIntegerRangeStart',
-          'partitionInterval',
-          'partitionIntervalType',
-          'partitionIntervalUnit',
-          'partitionValues'
-        ),
       });
     },
     []
