@@ -19,9 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ColumnGridItem;
@@ -29,8 +29,8 @@ import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.search.ColumnAggregator.ColumnAggregationRequest;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.ColumnAggregator.ColumnAggregationRequest;
 
 class ColumnAggregatorTest {
 
@@ -245,6 +245,7 @@ class ColumnAggregatorTest {
     assertEquals("col_04", r3.getColumns().get(0).getColumnName());
     assertNull(r3.getCursor(), "cursor is null on the last page");
   }
+
   @Test
   void parseTagLabel_populatesStyleFromSourceJson() {
     JsonNode tagData =
