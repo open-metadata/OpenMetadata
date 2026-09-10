@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const NoSearch: FC<Props> = ({
+export const PermissionDebugger: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
@@ -33,10 +33,10 @@ export const NoSearch: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="m14.445 14.445 3.556 3.556M10 2.051a7.112 7.112 0 1 0 6.168 6.168m.054-6.223L12.81 5.41m3.413 0L12.81 1.996"
+      d="M8.758 8.79a3.395 3.395 0 1 0 0-6.79 3.395 3.395 0 0 0 0 6.79m-6.305 8.73v-1.97c0-1.205.543-2.386 1.639-2.886 1.337-.61 2.94-.965 4.665-.965a12 12 0 0 1 2.496.258m6.292 1.517a2.263 2.263 0 0 1-2.567 2.242c-.163-.022-.245-.033-.297-.025a.3.3 0 0 0-.13.044c-.046.025-.091.07-.181.16l-1.927 1.928a.7.7 0 0 1-.136.12.4.4 0 0 1-.11.046c-.042.01-.089.01-.18.01h-.656c-.211 0-.317 0-.397-.04a.4.4 0 0 1-.165-.165c-.041-.081-.041-.187-.041-.398v-.655c0-.093 0-.139.01-.182a.4.4 0 0 1 .045-.109 1 1 0 0 1 .121-.136l1.928-1.927c.09-.09.134-.135.16-.18a.3.3 0 0 0 .044-.132c.007-.051-.004-.133-.026-.297a2.263 2.263 0 1 1 4.505-.304m-2.264-.001h.004"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-NoSearch.displayName = 'NoSearch';
+PermissionDebugger.displayName = 'PermissionDebugger';

@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const NoSearch: FC<Props> = ({
+export const Policy: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
@@ -33,10 +33,15 @@ export const NoSearch: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="m14.445 14.445 3.556 3.556M10 2.051a7.112 7.112 0 1 0 6.168 6.168m.054-6.223L12.81 5.41m3.413 0L12.81 1.996"
+      d="m13.687 14.527-.445 1.738a.91.91 0 0 0 1.219 1.07.9.9 0 0 1 .676 0c.7.28 1.433-.337 1.267-1.072l-.406-1.785m1.2-2.078a2.4 2.4 0 1 1-4.8 0 2.4 2.4 0 0 1 4.8 0"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M16.4 8.4c0-3.017 0-4.526-.938-5.463S13.017 2 10 2h-.8c-3.016 0-4.525 0-5.462.937S2.801 5.383 2.801 8.4v3.2c0 3.017 0 4.525.937 5.462s2.445.937 5.462.937h1.6M6.402 6.004h6.4m-6.4 4h3.6"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-NoSearch.displayName = 'NoSearch';
+Policy.displayName = 'Policy';
