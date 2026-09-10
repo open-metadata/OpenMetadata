@@ -60,6 +60,7 @@ import {
   getPersonaContextSections,
   getRuleExplorePath,
   isKnowledgeContextRule,
+  isSearchScopedRule,
 } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
@@ -303,7 +304,7 @@ export const ContextRuleEditor = ({
 
         return;
       }
-      const scoped = Boolean(data.filteredInSearch);
+      const scoped = isSearchScopedRule(data);
       await onSubmit({
         ...data,
         alwaysInContext: scoped ? false : data.alwaysInContext,
