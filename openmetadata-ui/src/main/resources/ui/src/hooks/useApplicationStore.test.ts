@@ -43,7 +43,9 @@ const buildFakeJwtWithoutExp = () => {
   const encode = (payload: Record<string, unknown>) =>
     Buffer.from(JSON.stringify(payload)).toString('base64');
 
-  return `${encode({ alg: 'none' })}.${encode({ sub: 'ingestion-bot' })}.signature`;
+  return `${encode({ alg: 'none' })}.${encode({
+    sub: 'ingestion-bot',
+  })}.signature`;
 };
 
 // Focused coverage for `applicationsLoaded` — the gate that downstream
