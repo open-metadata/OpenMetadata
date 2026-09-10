@@ -21,7 +21,7 @@ import {
   authenticateAdminPage,
   createAdminApiContext,
 } from '../../utils/admin';
-import { descriptionBox } from '../../utils/common';
+import { fillDescriptionBox, getDescriptionBox } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -84,8 +84,8 @@ const createDescriptionTaskViaUI = async (
 
   await selectAssignee(page, assigneeName);
 
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(description);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, description);
 
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
@@ -129,11 +129,25 @@ const createTagTaskViaUI = async (
 // task creation navigates it returned false before the card had painted. The
 // click was then skipped and the resolve step ran against whatever panel was
 // open — the source of this spec's intermittent failures. Wait for the card.
+//
+// The remaining race: clicking the card is the ONLY thing that mounts the task
+// detail panel — selectedTask is set solely in ActivityFeedTab's handleTaskClick,
+// there is no auto-selection. A click that lands while the feed list is still
+// re-rendering is dropped, the panel never opens, and the downstream
+// approve/close helpers then wait out their full timeout on buttons that never
+// appear (fails, passes on retry). Retry the click until the detail panel
+// (#task-panel → [data-testid="task-tab"]) is actually mounted before returning.
 const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+  const taskDetailTab = page.locator('[data-testid="task-tab"]');
 
   await expect(taskCard).toBeVisible({ timeout: 30_000 });
-  await taskCard.click();
+
+  await expect(async () => {
+    await taskCard.click();
+    await expect(taskDetailTab).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+
   await waitForPageLoaded(page);
 };
 
@@ -348,8 +362,8 @@ test.describe('Task Workflow - Table Column Tasks', () => {
 
       await selectAssignee(page, userName);
 
-      await page.locator(descriptionBox).clear();
-      await page.locator(descriptionBox).fill('Column description test');
+      await getDescriptionBox(page).clear();
+      await fillDescriptionBox(page, 'Column description test');
 
       const taskResponse = page.waitForResponse('/api/v1/tasks');
       await page.click('button[type="submit"]');

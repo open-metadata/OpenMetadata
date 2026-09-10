@@ -14,16 +14,16 @@ Unit tests for MCP client module
 
 import json
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
 from metadata.ingestion.source.mcp.client import (
+    STDIO_TRANSPORT_REMOVED_MSG,
     HttpTransport,
     McpClient,
     McpProtocolError,
     McpServerInfo,
-    StdioTransport,
     discover_servers_from_config_files,
     parse_claude_desktop_config,
     parse_vscode_config,
@@ -65,41 +65,36 @@ class TestMcpServerInfo:
         assert server.api_key == "test-api-key-00000"  # NOSONAR
 
 
-class TestStdioTransport:
-    """Tests for StdioTransport class"""
+class TestStdioTransportRemoved:
+    """Stdio transport is not supported; connecting to a stdio server is rejected."""
 
-    def test_initialization(self):
-        transport = StdioTransport(
-            command="python",
-            args=["-m", "mcp_server"],
-            env={"DEBUG": "true"},
-            timeout=60,
+    def test_stdio_connect_rejected(self):
+        """A stdio server must fail to connect with a clear migration message."""
+        server = McpServerInfo(
+            name="local-stdio",
+            transport="Stdio",
+            command="npx",
+            args=["-y", "@modelcontextprotocol/server-memory"],
         )
-        assert transport.command == "python"
-        assert transport.args == ["-m", "mcp_server"]
-        assert transport.env == {"DEBUG": "true"}
-        assert transport.timeout == 60
-
-    def test_get_next_id_increments(self):
-        transport = StdioTransport(command="echo")
-        id1 = transport._get_next_id()
-        id2 = transport._get_next_id()
-        id3 = transport._get_next_id()
-        assert id1 == 1
-        assert id2 == 2
-        assert id3 == 3
-
-    def test_connect_command_not_found(self):
-        transport = StdioTransport(command="nonexistent_command_12345")
+        client = McpClient(server_config=server)
         with pytest.raises(McpProtocolError) as exc_info:
-            transport.connect()
-        assert "Command not found" in str(exc_info.value)
+            client.connect()
+        message = str(exc_info.value)
+        assert message == STDIO_TRANSPORT_REMOVED_MSG
+        assert "no longer supported" in message
+        assert "mcp-proxy" in message
 
-    def test_send_request_not_connected(self):
-        transport = StdioTransport(command="echo")
+    def test_stdio_transport_class_gone(self):
+        """StdioTransport must no longer be importable."""
+        import metadata.ingestion.source.mcp.client as client_module
+
+        assert not hasattr(client_module, "StdioTransport")
+
+    def test_unsupported_transport_rejected(self):
+        client = McpClient(server_config=McpServerInfo(name="s", transport="carrier"))
         with pytest.raises(McpProtocolError) as exc_info:
-            transport.send_request("test/method")
-        assert "not connected" in str(exc_info.value).lower()
+            client.connect()
+        assert "Unsupported transport" in str(exc_info.value)
 
 
 class TestHttpTransport:
@@ -128,10 +123,13 @@ class TestHttpTransport:
         assert "Authorization" in transport.session.headers
         assert transport.session.headers["Authorization"] == "Bearer test-api-key-00000"
         assert transport.session.headers["Content-Type"] == "application/json"
+        # StreamableHTTP servers may reply with JSON or an SSE stream.
+        assert "text/event-stream" in transport.session.headers["Accept"]
 
     @patch("requests.Session.post")
     def test_send_request_success(self, mock_post):
         mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
         mock_response.json.return_value = {
             "jsonrpc": "2.0",
             "id": "123",
@@ -145,11 +143,17 @@ class TestHttpTransport:
         result = transport.send_request("tools/list")
 
         assert result == {"tools": []}
-        mock_post.assert_called_once()
+        mock_post.assert_called_once_with(
+            "http://localhost:8080",
+            json=ANY,
+            headers={},
+            timeout=30,
+        )
 
     @patch("requests.Session.post")
     def test_send_request_error_response(self, mock_post):
         mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
         mock_response.json.return_value = {
             "jsonrpc": "2.0",
             "id": "123",
@@ -164,6 +168,94 @@ class TestHttpTransport:
         with pytest.raises(McpProtocolError) as exc_info:
             transport.send_request("invalid/method")
         assert "Invalid Request" in str(exc_info.value)
+
+    @patch("requests.Session.post")
+    def test_send_request_parses_event_stream(self, mock_post):
+        """A StreamableHTTP server may reply with an SSE-framed JSON-RPC message."""
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+        mock_response.text = 'event: message\ndata: {"jsonrpc": "2.0", "id": "1", "result": {"ok": true}}\n\n'
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+
+        transport = HttpTransport(url="http://localhost:8080")
+        transport.connect()
+        result = transport.send_request("initialize")
+
+        assert result == {"ok": True}
+
+    @patch("requests.Session.post")
+    def test_event_stream_skips_leading_notification(self, mock_post):
+        """An SSE stream may emit notifications before the response; skip them."""
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+        mock_response.text = (
+            'data: {"jsonrpc": "2.0", "method": "notifications/progress"}\n\n'
+            'data: {"jsonrpc": "2.0", "id": "1", "result": {"ok": true}}\n\n'
+        )
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+
+        transport = HttpTransport(url="http://localhost:8080")
+        transport.connect()
+        result = transport.send_request("initialize")
+
+        assert result == {"ok": True}
+
+    @patch("requests.Session.post")
+    def test_event_stream_parses_crlf_multiline_data(self, mock_post):
+        """SSE data fields use CRLF framing and preserve newlines between fields."""
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+        mock_response.text = 'data: {"jsonrpc": "2.0",\r\ndata: "id": "1",\r\ndata: "result": {"ok": true}}\r\n\r\n'
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+
+        transport = HttpTransport(url="http://localhost:8080/mcp")
+        transport.connect()
+
+        assert transport.send_request("initialize") == {"ok": True}
+        assert mock_post.call_args.args[0] == "http://localhost:8080/mcp"
+
+    @patch("requests.Session.post")
+    def test_session_id_captured_and_resent(self, mock_post):
+        """The Mcp-Session-Id from the first response is echoed on later requests."""
+        first = MagicMock()
+        first.headers = {"Content-Type": "application/json", "Mcp-Session-Id": "sess-123"}
+        first.json.return_value = {"result": {}}
+        first.raise_for_status = MagicMock()
+        second = MagicMock()
+        second.headers = {"Content-Type": "application/json"}
+        second.json.return_value = {"result": {}}
+        second.raise_for_status = MagicMock()
+        mock_post.side_effect = [first, second]
+
+        transport = HttpTransport(url="http://localhost:8080")
+        transport.connect()
+        transport.send_request("initialize")
+        assert transport._session_id == "sess-123"
+        transport._protocol_version = "2025-03-26"
+
+        transport.send_request("tools/list")
+        sent_headers = mock_post.call_args.kwargs.get("headers")
+        assert sent_headers is not None
+        assert sent_headers.get("Mcp-Session-Id") == "sess-123"
+        assert sent_headers.get("MCP-Protocol-Version") == "2025-03-26"
+
+    def test_client_sends_negotiated_protocol_version_after_initialization(self):
+        transport = MagicMock(spec=HttpTransport)
+        transport.send_request.return_value = {
+            "protocolVersion": "2025-03-26",
+            "serverInfo": {},
+            "capabilities": {},
+        }
+        client = McpClient(McpServerInfo(name="server", transport="StreamableHTTP", url="http://server/mcp"))
+        client._transport = transport
+
+        client.initialize()
+
+        assert transport._protocol_version == "2025-03-26"
+        transport.send_notification.assert_called_once_with("notifications/initialized", {})
 
     @patch("requests.Session.post")
     def test_send_notification_logs_on_failure(self, mock_post):
@@ -263,6 +355,15 @@ class TestParseClaudeDesktopConfig:
 
         assert servers == []
 
+    def test_parse_http_server(self):
+        servers = parse_claude_desktop_config(
+            "unused",
+            {"mcpServers": {"remote": {"type": "http", "url": "https://example.com/mcp"}}},
+        )
+
+        assert servers[0].transport == "StreamableHTTP"
+        assert servers[0].url == "https://example.com/mcp"
+
     def test_parse_nonexistent_file(self):
         servers = parse_claude_desktop_config("/nonexistent/path/config.json")
         assert servers == []
@@ -303,6 +404,15 @@ class TestParseVscodeConfig:
     def test_parse_nonexistent_file(self):
         servers = parse_vscode_config("/nonexistent/settings.json")
         assert servers == []
+
+    def test_parse_http_type(self):
+        servers = parse_vscode_config(
+            "unused",
+            {"mcp.servers": {"remote": {"type": "http", "url": "https://example.com/mcp"}}},
+        )
+
+        assert servers[0].transport == "StreamableHTTP"
+        assert servers[0].url == "https://example.com/mcp"
 
 
 class TestDiscoverServersFromConfigFiles:

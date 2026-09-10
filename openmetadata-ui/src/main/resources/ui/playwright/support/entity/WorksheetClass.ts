@@ -19,7 +19,11 @@ import {
 } from '../../../src/generated/entity/data/worksheet';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -127,55 +131,52 @@ export class WorksheetClass extends EntityClass {
     };
   }
 
+  // createOrFetch, not a bare POST — see FileClass.create for why: the names are
+  // fixed at construction, so a retried beforeAll re-creates them and 409s.
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/driveServices',
-      {
-        data: this.service,
-      }
-    );
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'WorksheetClass.create'
-    );
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'WorksheetClass.create service',
+      createPath: '/api/v1/services/driveServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
 
     // Create spreadsheet
-    const spreadsheetResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.Spreadsheet}`,
-      {
-        data: {
-          name: this.spreadsheetName,
-          service: this.serviceResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.spreadsheetResponseData = await okJson(
-      spreadsheetResponse,
-      'WorksheetClass.create'
-    );
+    this.spreadsheetResponseData = await createOrFetch(apiContext, {
+      label: 'WorksheetClass.create spreadsheet',
+      createPath: `/api/v1/${EntityTypeEndpoint.Spreadsheet}`,
+      fqnSegments: [this.service.name, this.spreadsheetName],
+      data: {
+        name: this.spreadsheetName,
+        service: this.serviceResponseData.fullyQualifiedName,
+      },
+    });
 
-    // Create worksheet in spreadsheet
-    const entityResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.Worksheet}`,
-      {
-        data: {
-          ...this.entity,
-          spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'WorksheetClass.create'
-    );
+    // Create worksheet in spreadsheet. `columns` is in WorksheetResource.FIELDS,
+    // so a by-name lookup omits it unless asked — and childrenSelectorId below
+    // reads columns[0].
+    this.entityResponseData = await createOrFetch<Worksheet>(apiContext, {
+      label: 'WorksheetClass.create worksheet',
+      createPath: `/api/v1/${EntityTypeEndpoint.Worksheet}`,
+      fqnSegments: [
+        this.service.name,
+        this.spreadsheetName,
+        this.worksheetName,
+      ],
+      fields: 'columns',
+      data: {
+        ...this.entity,
+        spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
+      },
+    });
 
     this.childrenSelectorId =
       this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
-      spreadsheet: spreadsheetResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
+      spreadsheet: this.spreadsheetResponseData,
     };
   }
 

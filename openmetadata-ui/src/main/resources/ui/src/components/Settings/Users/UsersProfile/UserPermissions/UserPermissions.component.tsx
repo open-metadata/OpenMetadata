@@ -135,41 +135,38 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     </div>
   );
 
-  const renderPolicy = (policy: PolicyInfo, index: number) => (
-    <Collapse ghost className="policy-collapse" key={index}>
-      <Panel
-        header={
-          <Space>
-            <Link
-              to={getEntityLink(
-                'policy',
-                policy.policy.fullyQualifiedName || ''
-              )}>
-              {getEntityName(policy.policy)}
-            </Link>
-            <Tag
-              color={
-                policy.effect === 'ALLOW'
-                  ? 'success'
-                  : policy.effect === 'DENY'
-                  ? 'error'
-                  : 'warning'
-              }>
-              {policy.effect}
-            </Tag>
-            <Text type="secondary">
-              <span>{policy.rules.length}</span>
-              {t('label.rule-lowercase-plural')}
-            </Text>
-          </Space>
-        }
-        key={index}>
-        <div className="rules-container">
-          {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
-        </div>
-      </Panel>
-    </Collapse>
-  );
+  const renderPolicy = (policy: PolicyInfo, index: number) => {
+    const nonAllowPolicyColor = policy.effect === 'DENY' ? 'error' : 'warning';
+    const policyTagColor =
+      policy.effect === 'ALLOW' ? 'success' : nonAllowPolicyColor;
+
+    return (
+      <Collapse ghost className="policy-collapse" key={index}>
+        <Panel
+          header={
+            <Space>
+              <Link
+                to={getEntityLink(
+                  'policy',
+                  policy.policy.fullyQualifiedName || ''
+                )}>
+                {getEntityName(policy.policy)}
+              </Link>
+              <Tag color={policyTagColor}>{policy.effect}</Tag>
+              <Text type="secondary">
+                <span>{policy.rules.length}</span>
+                {t('label.rule-lowercase-plural')}
+              </Text>
+            </Space>
+          }
+          key={index}>
+          <div className="rules-container">
+            {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
+          </div>
+        </Panel>
+      </Collapse>
+    );
+  };
 
   const renderDirectRoles = () => {
     if (isEmpty(permissionInfo?.directRoles)) {
