@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Config, ConfigContext } from '@react-awesome-query-builder/core';
+import {
+  Config,
+  ConfigContext,
+  CoreConfig,
+  ImmutableTree,
+  Utils,
+} from '@react-awesome-query-builder/core';
 import { AxiosHeaders } from 'axios';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
@@ -1379,5 +1385,122 @@ describe('buildEnumAsyncFetch', () => {
 
     expect(result.values).toHaveLength(2);
     expect(result.values.map((v) => v.value)).toEqual(['Active', 'ACTIVE']);
+  });
+});
+
+describe('table-cp custom property with JSONLogic output', () => {
+  const mockGetEntityName = getEntityName as jest.Mock;
+  const mockField = {
+    name: 'tableType',
+    type: 'table-cp',
+    customPropertyConfig: {
+      config: {
+        columns: ['name', 'age'],
+      },
+    },
+  } as unknown as CustomPropertySummary;
+
+  // The rule shape the workflow rule engine evaluates against
+  // `extension.tableType.rows`, which is an array of `{ <column>: <cell> }`.
+  const expectedLogic = {
+    and: [
+      {
+        some: [
+          { var: 'extension.tableType.rows' },
+          { '==': [{ var: 'name' }, 'karan'] },
+        ],
+      },
+    ],
+  };
+
+  const buildJsonLogicConfig = () => {
+    const result = new AdvancedSearchClassBase().getCustomPropertiesSubFields(
+      mockField,
+      SearchOutputType.JSONLogic
+    );
+    const subfields = Object.fromEntries(
+      (Array.isArray(result) ? result : [result]).map(
+        ({ subfieldsKey, dataObject }) => [subfieldsKey, dataObject]
+      )
+    );
+
+    return {
+      ...CoreConfig,
+      fields: {
+        extension: {
+          label: 'label.custom-property-plural',
+          type: '!struct',
+          subfields,
+        },
+      },
+    } as unknown as Config;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetEntityName.mockReturnValue('tableType');
+  });
+
+  it('should model rows as a some group holding one sub-field per column', () => {
+    const result = new AdvancedSearchClassBase().getCustomPropertiesSubFields(
+      mockField,
+      SearchOutputType.JSONLogic
+    );
+
+    expect(result).toEqual([
+      {
+        subfieldsKey: 'tableType',
+        dataObject: {
+          __omPropertyType: 'table-cp',
+          label: 'tableType',
+          type: '!struct',
+          subfields: {
+            rows: {
+              label: 'label.row-plural',
+              type: '!group',
+              mode: 'some',
+              defaultField: 'name',
+              subfields: {
+                name: {
+                  type: 'text',
+                  label: 'name',
+                  operators: TEXT_FIELD_OPERATORS,
+                  valueSources: ['value'],
+                },
+                age: {
+                  type: 'text',
+                  label: 'age',
+                  operators: TEXT_FIELD_OPERATORS,
+                  valueSources: ['value'],
+                },
+              },
+            },
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should export a rule that iterates the rows array with some', () => {
+    const config = buildJsonLogicConfig();
+    const tree = Utils.loadFromJsonLogic(expectedLogic, config);
+
+    expect(tree).toBeDefined();
+    expect(Utils.jsonLogicFormat(tree as ImmutableTree, config).logic).toEqual(
+      expectedLogic
+    );
+  });
+
+  it('should rewrite a legacy flat rows rule into a some group', () => {
+    const config = buildJsonLogicConfig();
+    const legacyLogic = {
+      and: [{ '==': [{ var: 'extension.tableType.rows.name' }, 'karan'] }],
+    };
+    const tree = Utils.loadFromJsonLogic(legacyLogic, config);
+
+    expect(tree).toBeDefined();
+    expect(Utils.jsonLogicFormat(tree as ImmutableTree, config).logic).toEqual(
+      expectedLogic
+    );
   });
 });

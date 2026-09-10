@@ -15,9 +15,11 @@ import {
   type AsyncFetchListValuesResult,
   type BasicConfig,
   type Field,
+  type FieldPath,
   type Fields,
   type ListItem,
   type ListValues,
+  type RuleGroupMode,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
@@ -71,7 +73,16 @@ const MULTI_VALUE_CUSTOM_PROPERTY_TYPES: string[] = [
   'table-cp',
 ];
 
-type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
+// Sub-field config, plus the `!struct` / `!group` keys used by nested types.
+type OMFieldOrGroup = Field & {
+  subfields?: Fields;
+  mode?: RuleGroupMode;
+  defaultField?: FieldPath;
+};
+
+type OMField = OMFieldOrGroup & {
+  __omPropertyType: CustomPropertySummary['type'];
+};
 
 class AdvancedSearchClassBase {
   baseConfig = OMConfig;
@@ -1355,7 +1366,7 @@ class AdvancedSearchClassBase {
     const result = this.buildCustomPropertiesSubFields(field, searchOutputType);
     const attachType = (entry: {
       subfieldsKey: string;
-      dataObject: Field;
+      dataObject: OMFieldOrGroup;
     }): { subfieldsKey: string; dataObject: OMField } => ({
       subfieldsKey: entry.subfieldsKey,
       dataObject: {
@@ -1487,10 +1498,48 @@ class AdvancedSearchClassBase {
     }
   }
 
+  // `rows` is an array of objects, so it needs a `some` group - a flat
+  // `<prop>.rows.<column>` var never resolves against it and is always false.
+  private buildTableCustomPropertyGroup(
+    field: CustomPropertySummary,
+    label: string,
+    columns: string[]
+  ): { subfieldsKey: string; dataObject: OMFieldOrGroup } {
+    const columnSubfields: Fields = Object.fromEntries(
+      columns.map((columnName) => [
+        columnName,
+        {
+          type: 'text',
+          label: columnName,
+          operators: TEXT_FIELD_OPERATORS,
+          valueSources: ['value'],
+        },
+      ])
+    );
+
+    return {
+      subfieldsKey: field.name,
+      dataObject: {
+        label,
+        type: '!struct',
+        subfields: {
+          rows: {
+            label: t('label.row-plural'),
+            type: '!group',
+            mode: 'some',
+            defaultField: columns[0],
+            subfields: columnSubfields,
+          },
+        },
+      },
+    };
+  }
+
   private buildMultiValueCustomPropertySubFields(
     field: CustomPropertySummary,
-    label: string
-  ): Array<{ subfieldsKey: string; dataObject: Field }> {
+    label: string,
+    searchOutputType: SearchOutputType
+  ): Array<{ subfieldsKey: string; dataObject: OMFieldOrGroup }> {
     switch (field.type) {
       case 'timeInterval':
         return [
@@ -1546,6 +1595,10 @@ class AdvancedSearchClassBase {
           return [];
         }
 
+        if (searchOutputType === SearchOutputType.JSONLogic) {
+          return [this.buildTableCustomPropertyGroup(field, label, columns)];
+        }
+
         return columns.map((columnName) => ({
           subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
@@ -1566,8 +1619,8 @@ class AdvancedSearchClassBase {
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType
   ):
-    | { subfieldsKey: string; dataObject: Field }
-    | Array<{ subfieldsKey: string; dataObject: Field }> {
+    | { subfieldsKey: string; dataObject: OMFieldOrGroup }
+    | Array<{ subfieldsKey: string; dataObject: OMFieldOrGroup }> {
     const label = getEntityName(field);
     const subfieldsKey = this.resolveCustomPropertySubfieldsKey(
       field,
@@ -1579,7 +1632,11 @@ class AdvancedSearchClassBase {
     }
 
     if (MULTI_VALUE_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
-      return this.buildMultiValueCustomPropertySubFields(field, label);
+      return this.buildMultiValueCustomPropertySubFields(
+        field,
+        label,
+        searchOutputType
+      );
     }
 
     return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);
