@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -30,6 +31,7 @@ import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -45,7 +47,7 @@ class SemanticSearchToolTest {
 
   @BeforeEach
   void setUp() {
-    semanticSearchTool = new SemanticSearchTool();
+    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.empty());
     authorizer = mock(Authorizer.class);
     securityContext = mock(CatalogSecurityContext.class);
     searchRepository = mock(SearchRepository.class);
@@ -53,6 +55,11 @@ class SemanticSearchToolTest {
 
     Entity.setSearchRepository(searchRepository);
     lenient().when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+  }
+
+  @Test
+  void testDefaultConstructorCreatesTool() {
+    assertNotNull(new SemanticSearchTool());
   }
 
   @Test
@@ -177,6 +184,52 @@ class SemanticSearchToolTest {
 
     List<?> results = (List<?>) result.get("results");
     assertEquals(2, results.size());
+  }
+
+  @Test
+  void testPersonaScopeIsForwardedToVectorSearchByDefault() throws Exception {
+    PersonaSearchScope scope =
+        new PersonaSearchScope(
+            "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
+    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.of(scope));
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(vectorService.search(any(VectorSearchParameters.class)))
+        .thenReturn(new VectorSearchResponse(10L, Collections.emptyList()));
+
+    Map<String, Object> result =
+        semanticSearchTool.execute(
+            authorizer,
+            securityContext,
+            Map.of("query", "customer data", "filters", Map.of("tier", List.of("Tier.Tier1"))));
+
+    ArgumentCaptor<VectorSearchParameters> captor =
+        ArgumentCaptor.forClass(VectorSearchParameters.class);
+    verify(vectorService).search(captor.capture());
+    assertEquals(scope.queryFilter(), captor.getValue().queryFilter());
+    assertEquals(List.of("Tier.Tier1"), captor.getValue().filters().get("tier"));
+    assertEquals(true, result.get("personaScopeApplied"));
+    assertEquals(List.of("table"), result.get("personaScopeEntityTypes"));
+  }
+
+  @Test
+  void testIgnorePersonaScopeUsesTheExistingUnscopedVectorSearch() throws Exception {
+    PersonaSearchScope scope =
+        new PersonaSearchScope(
+            "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
+    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.of(scope));
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, Collections.emptyList()));
+
+    Map<String, Object> result =
+        semanticSearchTool.execute(
+            authorizer,
+            securityContext,
+            Map.of("query", "customer data", "ignorePersonaScope", true));
+
+    verify(vectorService).search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble());
+    verify(vectorService, never()).search(any(VectorSearchParameters.class));
+    assertFalse(result.containsKey("personaScopeApplied"));
   }
 
   @Test
