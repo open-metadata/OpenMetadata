@@ -48,7 +48,10 @@ const test = base.extend<{
 
 test.describe('Domain Owner Management', () => {
   test('Add owner to domain via UI', async ({ page }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
+    // Same reasoning as `Add expert to domain via UI` — allow room for the
+    // 60 s user_search_index poll on top of UI work.
+    test.setTimeout(180_000);
+    const { apiContext, afterAction } = await getApiContext(page);
     const domain = new Domain();
     const user = new UserClass();
 
@@ -201,6 +204,10 @@ test.describe('Domain Owner Management', () => {
 
 test.describe('Domain Expert Management', () => {
   test('Add expert to domain via UI', async ({ page }) => {
+    // Allow room for waitForSearchIndexed to sit on user_search_index for up
+    // to 60 s under parallel-suite ES pressure without exhausting the
+    // default 60 s test budget on the poll alone.
+    test.setTimeout(180_000);
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const user = new UserClass();
@@ -380,7 +387,10 @@ test.describe('Data Product UI Operations', () => {
   });
 
   test('Add owner to data product via UI', async ({ page }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
+    // Same reasoning as `Add owner to domain via UI` — allow room for the
+    // 60 s user_search_index poll on top of UI work.
+    test.setTimeout(180_000);
+    const { apiContext, afterAction } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
     const user = new UserClass();
