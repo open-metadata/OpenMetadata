@@ -55,10 +55,7 @@ import {
   CustomPropertiesAddPageProps,
   DescriptionFormFieldProps,
 } from './CustomPropertiesPanel.types';
-import {
-  buildCustomPropertyConfig,
-  toId,
-} from './CustomPropertiesPanel.utils';
+import { buildCustomPropertyConfig, toId } from './CustomPropertiesPanel.utils';
 
 const DescriptionFormField: React.FC<
   DescriptionFormFieldProps<AddCustomPropertyFormValues>

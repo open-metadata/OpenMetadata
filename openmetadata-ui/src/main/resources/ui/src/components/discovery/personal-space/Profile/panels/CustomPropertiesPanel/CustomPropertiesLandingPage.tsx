@@ -35,9 +35,7 @@ import {
   GROUP_LABEL_KEYS,
   GROUP_ORDER,
 } from './CustomPropertiesPanel.constants';
-import {
-  CustomPropertiesLandingPageProps,
-} from './CustomPropertiesPanel.types';
+import { CustomPropertiesLandingPageProps } from './CustomPropertiesPanel.types';
 
 const CustomPropertiesLandingPage: React.FC<
   CustomPropertiesLandingPageProps

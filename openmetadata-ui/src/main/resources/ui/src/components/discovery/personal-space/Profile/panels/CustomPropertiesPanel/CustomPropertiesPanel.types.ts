@@ -47,9 +47,7 @@ export interface EditCustomPropertyFormValues {
   entityReferenceConfig?: FormSelectItem[];
 }
 
-export interface DescriptionFormFieldProps<
-  T extends { description: string }
-> {
+export interface DescriptionFormFieldProps<T extends { description: string }> {
   form: UseFormReturn<T>;
   descriptionKey: number;
   initialValue?: string;
