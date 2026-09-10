@@ -836,4 +836,67 @@ public final class SearchUtils {
     }
     return analyzedSubTokenCount(query) > 2 ? 1 : 10;
   }
+
+  /**
+   * Outcome of one column-lineage reconciliation call against a single index selector.
+   *
+   * @param operation human-readable operation name used in the log line
+   * @param indexName index selector the update-by-query targeted
+   * @param requestedFqnCount number of column FQNs the caller asked to rewrite or remove
+   * @param updatedDocuments documents the update-by-query actually modified
+   * @param versionConflicts documents skipped because another write won the version race
+   * @param failureReasons per-shard failure reasons, empty when the call fully succeeded
+   */
+  public record ColumnLineageFlushOutcome(
+      String operation,
+      String indexName,
+      int requestedFqnCount,
+      long updatedDocuments,
+      long versionConflicts,
+      List<String> failureReasons) {}
+
+  /**
+   * Report a column-lineage reconciliation, distinguishing "nothing to do" from "we cannot tell".
+   *
+   * <p>Unresolved conflicts are dropped rewrites and warn. {@code updatedDocuments == 0} for a
+   * non-empty request stays at debug: nothing downstream may reference the columns, which
+   * is most column deletes and renames during ingestion, so warning on it would be noise. It is
+   * also what a missing index (tolerated via {@code ignoreUnavailable}) or a misresolved index
+   * selector looks like, but that failure mode is caught at build time by the test pinning the
+   * selector to the resolver registry rather than by watching production logs.
+   */
+  public static void logColumnLineageFlush(ColumnLineageFlushOutcome outcome) {
+    if (!outcome.failureReasons().isEmpty()) {
+      LOG.error(
+          "{} in upstream lineage failed for index {}: {}",
+          outcome.operation(),
+          outcome.indexName(),
+          String.join(", ", outcome.failureReasons()));
+    } else if (outcome.versionConflicts() > 0) {
+      LOG.warn(
+          "{} in upstream lineage for index {} hit {} version conflict(s); those documents kept "
+              + "their previous column FQNs after reconciliation. {} document(s) updated for {} "
+              + "requested FQN(s).",
+          outcome.operation(),
+          outcome.indexName(),
+          outcome.versionConflicts(),
+          outcome.updatedDocuments(),
+          outcome.requestedFqnCount());
+    } else if (outcome.updatedDocuments() == 0 && outcome.requestedFqnCount() > 0) {
+      LOG.debug(
+          "{} in upstream lineage matched no documents for index {} ({} FQN(s) requested). Expected "
+              + "when nothing downstream references those columns; also what a missing index or an "
+              + "unresolved index selector looks like.",
+          outcome.operation(),
+          outcome.indexName(),
+          outcome.requestedFqnCount());
+    } else {
+      LOG.info(
+          "{} in upstream lineage for index {}: {} document(s) updated for {} requested FQN(s)",
+          outcome.operation(),
+          outcome.indexName(),
+          outcome.updatedDocuments(),
+          outcome.requestedFqnCount());
+    }
+  }
 }

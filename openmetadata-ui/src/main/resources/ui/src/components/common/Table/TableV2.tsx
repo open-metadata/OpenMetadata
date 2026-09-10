@@ -932,10 +932,20 @@ const TableV2 = <T extends object>(
   // the draft here rather than waiting for the state update to flush.
   const filterDraftRef = useRef<Record<string, React.Key[]>>({});
 
+  // A controlled column (filteredValue set) normally shows the parent value,
+  // but while its dropdown is open the user's in-progress draft must win so the
+  // checkboxes reflect each click; confirm still applies the draft either way.
   const effectiveFilterOf = useCallback(
-    (colKey: string): React.Key[] =>
-      controlledFilterState[colKey] ?? filterState[colKey] ?? [],
-    [controlledFilterState, filterState]
+    (colKey: string): React.Key[] => {
+      const draft = filterState[colKey];
+      const controlled = controlledFilterState[colKey];
+      if (openFilterKey === colKey) {
+        return draft ?? controlled ?? [];
+      }
+
+      return controlled ?? draft ?? [];
+    },
+    [openFilterKey, controlledFilterState, filterState]
   );
 
   // AntD's fixed-column scroll shadows. The core table owns the horizontal
@@ -966,6 +976,15 @@ const TableV2 = <T extends object>(
     }
     syncPing();
   });
+
+  // Unmount-only cleanup. The attach effect above deliberately runs every
+  // render (to catch the scroller when the grid re-mounts), so its own return
+  // cannot own removal without stripping the listener between renders.
+  useEffect(
+    () => () =>
+      pingScrollerRef.current?.removeEventListener('scroll', syncPing),
+    [syncPing]
+  );
 
   const {
     preferences: { selectedEntityTableColumns },
@@ -1377,7 +1396,12 @@ const TableV2 = <T extends object>(
       if (typeof rest.rowKey === 'string') {
         const val = (record as Record<string, unknown>)[rest.rowKey];
 
-        return val !== undefined && val !== null ? String(val) : String(index);
+        // An empty string is as missing as undefined: React Aria drops a row
+        // whose id is '' — a CSV import result keys its failure rows on a blank
+        // name, and AntD still rendered them.
+        return val !== undefined && val !== null && String(val) !== ''
+          ? String(val)
+          : String(index);
       }
 
       return String(index);
@@ -1665,11 +1689,29 @@ const TableV2 = <T extends object>(
                 Boolean(entry)
               );
 
-      rest.rowSelection.onChange(
-        selected.map(({ key }) => key),
-        selected.map(({ record }) => record),
-        { type: selectionMode === 'single' ? 'single' : 'multiple' }
-      );
+      let selectedKeys: React.Key[] = selected.map(({ key }) => key);
+      const selectedRecords = selected.map(({ record }) => record);
+
+      // AntD's `preserveSelectedRowKeys` keeps rows selected on other pages.
+      // React Aria's collection is only the current page, so onSelectionChange
+      // reports the current page alone; without merging, selecting on a new page
+      // (or clearing the current one) would silently drop every off-page
+      // selection. Re-attach the previously selected keys that aren't on this
+      // page. Their records aren't loaded here, which matches AntD's own
+      // behavior under preserveSelectedRowKeys.
+      if (rest.rowSelection.preserveSelectedRowKeys) {
+        const currentPageKeys = new Set(
+          rowEntries.map(({ key }) => String(key))
+        );
+        const preservedKeys = (rest.rowSelection.selectedRowKeys ?? []).filter(
+          (key) => !currentPageKeys.has(String(key))
+        );
+        selectedKeys = [...preservedKeys, ...selectedKeys];
+      }
+
+      rest.rowSelection.onChange(selectedKeys, selectedRecords, {
+        type: selectionMode === 'single' ? 'single' : 'multiple',
+      });
     },
     [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
   );
