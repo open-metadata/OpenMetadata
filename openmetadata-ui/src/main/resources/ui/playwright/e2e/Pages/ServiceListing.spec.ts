@@ -36,16 +36,16 @@ const serviceCell = (page: Page, name: string) =>
     .or(page.getByRole('gridcell', { name }))
     .or(page.getByRole('cell', { name }));
 
-// The Type column filter is a TableV2 column filter: the dropdown keeps AntD's
-// `ant-table-filter-dropdown` markup, but its checkboxes are matched by input
-// value (getByLabel is unreliable under CI). Clicking a checkbox toggles it.
+// The Type column filter is a TableV2 column filter: TableV2 wraps the
+// dropdown body in `data-testid="filter-dropdown"` (the `ant-table-filter-dropdown`
+// prefixCls it passes is ignored by ColumnFilter, so that class never renders).
+// The checkbox is matched by its input value (getByLabel is unreliable under CI).
+// Clicking a checkbox calls confirm() → applies the filter and closes the dropdown.
 const toggleServiceTypeFilter = async (page: Page, serviceType: string) => {
   await page.getByTestId('filter-icon').click();
-  await expect(
-    page.locator('.ant-table-filter-dropdown:visible')
-  ).toBeVisible();
-  await page
-    .locator('.ant-table-filter-dropdown:visible')
+  const dropdown = page.getByTestId('filter-dropdown');
+  await expect(dropdown).toBeVisible();
+  await dropdown
     .locator(`.ant-checkbox-wrapper:has(input[value="${serviceType}"])`)
     .click();
 };
