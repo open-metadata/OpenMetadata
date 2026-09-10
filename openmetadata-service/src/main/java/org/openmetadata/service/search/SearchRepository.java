@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.DATA_ASSET_INDEX_PREFIX;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
@@ -1154,7 +1155,8 @@ public class SearchRepository {
    *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
    *       the legacy behavior.
    *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
-   *       internal code paths that hand back a resolved value don't double-prefix.
+   *       internal code paths that hand back a resolved value don't double-prefix. Data Insights
+   *       targets retain their historical {@code <cluster>-di-data-assets-*} separator.
    * </ul>
    *
    * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
@@ -1178,7 +1180,7 @@ public class SearchRepository {
   }
 
   private String resolveSingleAliasToken(String token, String clusterPrefix) {
-    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+    if (hasClusterPrefix(token, clusterPrefix)) {
       return token;
     }
     IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
@@ -1188,7 +1190,22 @@ public class SearchRepository {
     if (mapping != null) {
       return mapping.getIndexName(clusterAlias);
     }
-    return clusterPrefix == null ? token : clusterPrefix + token;
+    return prefixUnknownIndex(token, clusterPrefix);
+  }
+
+  private boolean hasClusterPrefix(String token, String clusterPrefix) {
+    return clusterPrefix != null
+        && (token.startsWith(clusterPrefix)
+            || token.startsWith(clusterAlias + "-" + DATA_ASSET_INDEX_PREFIX));
+  }
+
+  private String prefixUnknownIndex(String token, String clusterPrefix) {
+    if (clusterPrefix == null) {
+      return token;
+    }
+    return token.startsWith(DATA_ASSET_INDEX_PREFIX)
+        ? clusterAlias + "-" + token
+        : clusterPrefix + token;
   }
 
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =

@@ -438,6 +438,14 @@ class SearchRepositoryBehaviorTest {
         "cluster_table_search_index", repository.getIndexOrAliasName("cluster_table_search_index"));
   }
 
+  @Test
+  void getIndexOrAliasNameUsesDataInsightsClusterPrefix() {
+    assertEquals("cluster-di-data-assets-*", repository.getIndexOrAliasName("di-data-assets-*"));
+    assertEquals(
+        "cluster-di-data-assets-table",
+        repository.getIndexOrAliasName("cluster-di-data-assets-table"));
+  }
+
   /**
    * Mixed input: each comma-separated token is resolved independently. Entity-specific aliases
    * resolve to canonical names; compound aliases pass through.
