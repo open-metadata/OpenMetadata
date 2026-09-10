@@ -709,6 +709,18 @@ export const getEntityColumns = (
     return get(entity, 'entityResponseData.mlFeatures', []);
   } else if (entityName === 'searchIndex') {
     return get(entity, 'entityResponseData.fields', []);
+  } else if (entityName === 'metric') {
+    // A metric has no columns -- it is its own column-lineage endpoint.
+    return [
+      {
+        name: get(entity, 'entityResponseData.name', ''),
+        fullyQualifiedName: get(
+          entity,
+          'entityResponseData.fullyQualifiedName',
+          ''
+        ),
+      },
+    ];
   }
 
   return [];

@@ -1191,8 +1191,13 @@ public class LineageRepository {
         return result;
       }
       case METRIC -> {
-        LOG.info("Metric column level lineage is not supported");
-        return new HashSet<>();
+        // A metric has no columns of its own -- it *is* the leaf a column feeds, e.g.
+        // Total Sales = sum(Sales.Amount). So the metric's own FQN is its single valid
+        // column endpoint. Names here are relative to the parent FQN, and stripping
+        // "<metricFqn>." off "<metricFqn>" is a no-op, hence the full FQN.
+        // singleton, not Set.of: tolerates a null FQN instead of throwing, and a
+        // singleton{null} rejects every toColumn, which is the behaviour we want there.
+        return Collections.singleton(entityReference.getFullyQualifiedName());
       }
       case PIPELINE -> {
         LOG.info("Pipeline column level lineage is not supported");
