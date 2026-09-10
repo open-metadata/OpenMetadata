@@ -41,6 +41,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.saphana.cdata_parser import (
@@ -1602,6 +1604,48 @@ def test_sql_pass_failure_does_not_stop_the_repository_pass() -> None:
         list(source._iter())
 
     cdata.assert_called_once()
+
+
+def test_query_filters_match_real_statement_shapes() -> None:
+    """The DML filter must survive the leading whitespace HANA keeps in the plan cache.
+
+    Cached statements retain whatever whitespace they were submitted with, so a filter
+    anchored at character one silently drops real DML. A leading wildcard is not the
+    answer either, because it matches a SELECT that merely quotes the keyword.
+    """
+    filters = SaphanaLineageSource.filters
+
+    # Matching happens on the trimmed statement, not the raw one.
+    assert "LTRIM(UPPER(STATEMENT_STRING)" in filters
+    # Still anchored after trimming, so a quoted keyword mid-statement does not match.
+    assert "LIKE 'INSERT INTO%SELECT%'" in filters
+    assert "LIKE '%INSERT INTO" not in filters
+
+
+def test_real_plan_cache_statement_resolves_to_lineage() -> None:
+    """The statements this connector selects must actually resolve under its dialect.
+
+    SAP HANA has no dialect of its own in the parser, so it runs as ANSI. This pins
+    that pairing against a statement taken verbatim from a live HANA plan cache,
+    which is what the filters above are written to select.
+    """
+    statement = 'INSERT INTO "LT_ORDER_ARCHIVE" SELECT ORDER_ID, CUSTOMER_ID, AMOUNT FROM "LT_ORDER"'
+
+    parser = LineageParser(statement, dialect=Dialect.ANSI)
+
+    assert parser.query_parsing_failure_reason is None
+    assert {str(table).split(".")[-1].lower() for table in parser.source_tables} == {"lt_order"}
+    assert {str(table).split(".")[-1].lower() for table in parser.target_tables} == {"lt_order_archive"}
+    assert len(parser.column_lineage) == 3
+
+
+def test_saphana_maps_to_the_ansi_dialect() -> None:
+    """The parser has no HANA dialect, so the connector depends on the ANSI fallback.
+
+    If that mapping ever changed, every assertion above would still pass while real
+    lineage silently stopped resolving.
+    """
+    assert ConnectionTypeDialectMapper.dialect_of("SapHana") == Dialect.ANSI
 
 
 def test_cdata_pass_honours_process_view_lineage() -> None:

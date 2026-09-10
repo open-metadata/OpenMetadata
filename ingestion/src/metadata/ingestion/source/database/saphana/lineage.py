@@ -45,6 +45,10 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# The cached statement with leading whitespace removed, so a keyword match can stay
+# anchored to the start of the statement.
+_STATEMENT = "LTRIM(UPPER(STATEMENT_STRING), ' ' || CHAR(9) || CHAR(13) || CHAR(10))"
+
 
 class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
     """SAP Hana lineage, from two passes covering disjoint kinds of object.
@@ -68,15 +72,20 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
     # CREATE TABLE ... AS SELECT is absent by necessity, not oversight: the plan cache
     # holds no DDL, so there is nothing for a pattern to match.
+    # Cached statements keep whatever leading whitespace they were submitted with, so
+    # the keyword is matched after trimming rather than at character one. Anchoring is
+    # kept, because a leading wildcard also matches a SELECT that merely quotes the
+    # keyword, and a false edge is harder to notice than a missing one.
+    #
     # Single %, not the %% some connectors use. hdbcli is a qmark/named paramstyle
     # driver, so nothing unescapes percent signs on the way to HANA.
-    filters = """
+    filters = f"""
         AND (
-            UPPER(STATEMENT_STRING) LIKE 'INSERT INTO%SELECT%'
-            OR UPPER(STATEMENT_STRING) LIKE 'UPSERT%SELECT%'
-            OR UPPER(STATEMENT_STRING) LIKE 'REPLACE%SELECT%'
-            OR UPPER(STATEMENT_STRING) LIKE 'MERGE INTO%'
-            OR UPPER(STATEMENT_STRING) LIKE 'UPDATE%SET%'
+            {_STATEMENT} LIKE 'INSERT INTO%SELECT%'
+            OR {_STATEMENT} LIKE 'UPSERT%SELECT%'
+            OR {_STATEMENT} LIKE 'REPLACE%SELECT%'
+            OR {_STATEMENT} LIKE 'MERGE INTO%'
+            OR {_STATEMENT} LIKE 'UPDATE%SET%'
         )
         """
 
@@ -173,8 +182,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                     raise
                 logger.info(
                     "_SYS_REPO is not present, so there are no repository models to read. This is normal on "
-                    "SAP HANA Cloud, where the classic repository was never carried over. View, query and "
-                    "stored-procedure lineage are unaffected. Cause: %s",
+                    "SAP HANA Cloud, where the classic repository was never carried over. View and query "
+                    "lineage are unaffected. Cause: %s",
                     exc,
                 )
                 result = []
