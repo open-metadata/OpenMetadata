@@ -462,7 +462,11 @@ test.describe(
           'Status',
           true
         );
-        await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), '==');
+        await selectOption(
+          page,
+          ruleLocator.getByTestId('advanced-search-operator-select'),
+          '=='
+        );
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
@@ -511,7 +515,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -575,7 +579,7 @@ test.describe(
           ruleIndex: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -616,7 +620,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -740,7 +744,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -783,7 +787,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -825,7 +829,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -867,7 +871,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -911,7 +915,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -954,7 +958,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -1307,7 +1311,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1382,7 +1386,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1457,7 +1461,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1499,7 +1503,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1541,7 +1545,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',

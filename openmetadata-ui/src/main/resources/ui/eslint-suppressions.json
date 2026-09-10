@@ -63,7 +63,7 @@
   },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 17
+      "count": 3
     }
   },
   "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts": {
@@ -1109,7 +1109,7 @@
   },
   "playwright/utils/advancedSearch.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 6
     }
   },
   "playwright/utils/alert.ts": {

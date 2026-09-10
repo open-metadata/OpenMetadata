@@ -327,10 +327,19 @@ export const fillRule = async (
   const ruleLocator = page.getByTestId(`query-builder-rule-${index - 1}`);
 
   // Perform click on rule field
-  await selectOption(page, ruleLocator.getByTestId('advanced-search-field-select'), field.id, true);
+  await selectOption(
+    page,
+    ruleLocator.getByTestId('advanced-search-field-select'),
+    field.id,
+    true
+  );
 
   // Perform click on operator
-  await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), condition);
+  await selectOption(
+    page,
+    ruleLocator.getByTestId('advanced-search-operator-select'),
+    condition
+  );
 
   if (searchCriteria) {
     // A react-aria combobox input is also `type="text"`, so the plain-text
@@ -668,7 +677,10 @@ export const checkAddRuleOrGroupWithOperator = async (
     await page.getByTestId('advanced-search-add-group').first().click();
     await page.getByTestId('advanced-search-add-group-and').click();
   } else {
-    await page.getByTestId('advanced-search-add-rule').nth(1).click();
+    // One button per card, and this branch works within a single card. The
+    // old builder also drew one for the wrapper group RAQB seeds, which is
+    // why this used to be the second button on the page.
+    await page.getByTestId('advanced-search-add-rule').click();
   }
 
   await fillRule(page, {
@@ -679,12 +691,23 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (operator === 'OR') {
-    // Conjunction toggle is a react-aria ToggleButtonGroup (selectionMode
-    // "single"), which exposes role="radio" items — not buttons.
-    await page
-      .getByTestId('advanced-search-modal')
-      .getByTestId('advanced-search-conjunction-or')
-      .click();
+    if (isGroupTest) {
+      // Two groups are combined by the connector between their cards, not by
+      // the toggle inside either one — that only says how the rules within a
+      // single card combine. Addressing the card toggle here would also be
+      // ambiguous, since each card has one.
+      await selectOption(
+        page,
+        page.getByTestId('advanced-search-group-conjunction'),
+        'OR'
+      );
+    } else {
+      // A second rule in the same card: that card's toggle is the one.
+      await page
+        .getByTestId('advanced-search-modal')
+        .getByTestId('advanced-search-conjunction-or')
+        .click();
+    }
   }
 
   // Since the OR operator with must not conditions will result in huge API response
@@ -769,7 +792,11 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
     'Database',
     true
   );
-  await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), '==');
+  await selectOption(
+    page,
+    ruleLocator.getByTestId('advanced-search-operator-select'),
+    '=='
+  );
 
   const inputElement = ruleLocator.locator(
     '[data-testid=advanced-search-value] input[role="combobox"]'
@@ -825,8 +852,16 @@ export const fillStaticListRule = async (
     fieldLabel,
     true
   );
-  await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), condition);
-  await selectOption(page, ruleLocator.getByTestId('advanced-search-value'), value);
+  await selectOption(
+    page,
+    ruleLocator.getByTestId('advanced-search-operator-select'),
+    condition
+  );
+  await selectOption(
+    page,
+    ruleLocator.getByTestId('advanced-search-value'),
+    value
+  );
 };
 
 export const getFieldsSuggestionSearchText = (
