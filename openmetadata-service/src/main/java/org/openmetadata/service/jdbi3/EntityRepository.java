@@ -276,6 +276,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -5100,9 +5101,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean ownsLineageEs;
     private boolean ownsSearchWrite;
     private boolean ownsCache;
+    private boolean ownsPostCommitActions;
     private int rdfCheckpoint;
     private int lineageEsCheckpoint;
     private int searchWriteCheckpoint;
+    private int postCommitActionCheckpoint;
 
     private void reopenForAttempt() {
       if (opened) {
@@ -5118,10 +5121,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       rdfCheckpoint = RdfTagUpdater.checkpoint();
       lineageEsCheckpoint = LineageUtil.checkpoint();
       searchWriteCheckpoint = SearchRepository.searchWriteCheckpoint();
+      postCommitActionCheckpoint = PostCommitActionQueue.checkpoint();
       ownsRdf = RdfTagUpdater.beginDeferral();
       ownsLineageEs = LineageUtil.beginLineageDeferral();
       ownsSearchWrite = SearchRepository.beginSearchWriteDeferral();
       ownsCache = beginCacheInvalidationDeferral();
+      ownsPostCommitActions = PostCommitActionQueue.begin();
     }
 
     /**
@@ -5154,6 +5159,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         clearCacheInvalidations();
         beginCacheInvalidationDeferral();
       }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
+        PostCommitActionQueue.begin();
+      } else {
+        PostCommitActionQueue.rollbackToCheckpoint(postCommitActionCheckpoint);
+      }
     }
 
     private void finish(boolean committed) {
@@ -5179,12 +5190,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
       List<SearchRepository.DeferredSearchWrite> searchClosures =
           ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
+      List<Runnable> postCommitActions =
+          ownsPostCommitActions ? PostCommitActionQueue.drain() : List.of();
       if (ownsCache) {
         runGuarded(EntityRepository::drainCacheInvalidations);
       }
       runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
       runGuarded(() -> runLineageEsClosures(lineageClosures));
       runGuarded(() -> runSearchWriteClosures(searchClosures));
+      runGuarded(() -> PostCommitActionQueue.run(postCommitActions));
     }
 
     private void clear() {
@@ -5199,6 +5213,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (ownsCache) {
         clearCacheInvalidations();
+      }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
       }
     }
   }
@@ -12465,6 +12482,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<UUID> entityListToUUID(List<T> entities) {
     return entities.stream().map(EntityInterface::getId).toList();
+  }
+
+  protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
+    List<UUID> distinctIds = ids.stream().distinct().toList();
+    Map<UUID, EntityReference> refsById = new HashMap<>();
+    if (!distinctIds.isEmpty()) {
+      for (EntityReference ref :
+          Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
+        refsById.put(ref.getId(), ref);
+      }
+      for (UUID id : distinctIds) {
+        if (!refsById.containsKey(id)) {
+          throw EntityNotFoundException.byMessage(
+              CatalogExceptionMessage.entityNotFound(entityType, id));
+        }
+      }
+    }
+    return refsById;
   }
 
   private boolean isEntityNotFoundError(EntityError error) {
