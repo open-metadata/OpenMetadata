@@ -75,8 +75,7 @@ const selectTagSuggestion = async ({
         const url = response.url();
 
         return (
-          url.includes('/api/v1/search/query') &&
-          /[?&]index=tag(&|$)/.test(url)
+          url.includes('/api/v1/search/query') && /[?&]index=tag(&|$)/.test(url)
         );
       },
       { timeout: 5000 }
