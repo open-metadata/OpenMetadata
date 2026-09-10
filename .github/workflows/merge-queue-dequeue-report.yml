@@ -127,16 +127,29 @@ jobs:
 
             : > runs.md
             : > runs.slack
-            cut -f1 failures.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
+            # A check run published through the Checks API rather than by a job
+            # (e.g. "Test Report") has no /job/ segment, so its trailing id is a
+            # check-run id and not a workflow-run id — looking that up under
+            # /actions/runs 404s, and under set -e it fails the whole report.
+            grep -E '/actions/runs/[0-9]+/job/' failures.tsv > actions.tsv || true
+            grep -vE '/actions/runs/[0-9]+/job/' failures.tsv > other.tsv || true
+
+            cut -f1 actions.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
               run_name=$(gh api "repos/$GH_REPO/actions/runs/${run##*/}" --jq '.name')
               # Matrix jobs carry every parameter; the first one is the shard id.
-              jobs=$(grep -F "$run/job/" failures.tsv | cut -f2 \
+              jobs=$(grep -F "$run/job/" actions.tsv | cut -f2 \
                      | sed 's/ (\([^,)]*\)[^)]*)/ (\1)/' \
                      | awk '{ out = out (out ? ", " : "") $0 } END { print out }')
               echo "- [$run_name]($run) — $jobs" >> runs.md
               # Slack mrkdwn has no []() links; it uses <url|text>.
               echo "• <$run|$run_name> — $jobs" >> runs.slack
             done
+
+            # Nothing to group these under, so each is listed on its own.
+            while IFS=$'\t' read -r url name; do
+              echo "- [$name]($url)" >> runs.md
+              echo "• <$url|$name>" >> runs.slack
+            done < other.tsv
 
             if [ -s runs.md ]; then
               if [ -n "$blocked" ]; then

@@ -82,49 +82,58 @@ const hasWindow = (): boolean => !isUndefined(globalThis.window);
 // quota-exceeded on writes; storage disabled by browser policy). Treat any
 // failure as "no persistence available" and degrade to the in-memory store
 // — the app still works, refreshes just don't remember the tab's mode.
+const safeSessionStorageGet = (key: string): string | null => {
+  try {
+    return globalThis.window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const isValidSessionShape = (parsed: unknown): parsed is AppModeSession =>
+  parsed !== null &&
+  typeof parsed === 'object' &&
+  'mode' in parsed &&
+  typeof (parsed as AppModeSession).mode === 'string';
+
+// Preserve `source` when it's one of the known values. Legacy tuples
+// written before this field existed omit it — treat that as "manual" via
+// the resolver's `source !== 'boot'` check.
+const resolveSessionSource = (
+  tuple: AppModeSession
+): AppModeSessionSource | undefined =>
+  tuple.source === 'manual' ||
+  tuple.source === 'resolver' ||
+  tuple.source === 'boot'
+    ? tuple.source
+    : undefined;
+
+const parseSessionTuple = (raw: string): AppModeSession | null => {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isValidSessionShape(parsed)) {
+      return null;
+    }
+    const personaAppMode =
+      typeof parsed.personaAppMode === 'string' ? parsed.personaAppMode : null;
+    const source = resolveSessionSource(parsed);
+
+    return source
+      ? { personaAppMode, mode: parsed.mode, source }
+      : { personaAppMode, mode: parsed.mode };
+  } catch {
+    // malformed payloads are treated as absent
+    return null;
+  }
+};
+
 const readSession = (): AppModeSession | null => {
   if (!hasWindow()) {
     return null;
   }
-  let raw: string | null = null;
-  try {
-    raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
-  } catch {
-    return null;
-  }
-  if (raw === null) {
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      'mode' in parsed &&
-      typeof (parsed as AppModeSession).mode === 'string'
-    ) {
-      const tuple = parsed as AppModeSession;
-      const personaAppMode =
-        typeof tuple.personaAppMode === 'string' ? tuple.personaAppMode : null;
-      // Preserve `source` when it's one of the known values. Legacy
-      // tuples written before this field existed omit it — treat that
-      // as "manual" via the resolver's `source !== 'boot'` check.
-      const source: AppModeSessionSource | undefined =
-        tuple.source === 'manual' ||
-        tuple.source === 'resolver' ||
-        tuple.source === 'boot'
-          ? tuple.source
-          : undefined;
+  const raw = safeSessionStorageGet(APP_MODE_SESSION_KEY);
 
-      return source
-        ? { personaAppMode, mode: tuple.mode, source }
-        : { personaAppMode, mode: tuple.mode };
-    }
-  } catch {
-    // fall through — malformed payloads are treated as absent
-  }
-
-  return null;
+  return raw === null ? null : parseSessionTuple(raw);
 };
 
 const writeSession = (tuple: AppModeSession): void => {

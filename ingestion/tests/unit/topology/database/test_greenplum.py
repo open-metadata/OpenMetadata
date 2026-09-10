@@ -14,8 +14,9 @@ Test Greenplum using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -72,3 +73,37 @@ class greenplumUnitTest(TestCase):  # noqa: N801
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.greenplum_source.close()
+
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """
+        includeViews=True: materialized views are emitted as MaterializedView
+        alongside regular views (#31515).
+        """
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.return_value = ["my_matview"]
+
+        with patch.object(GreenplumSource, "inspector", mock_inspector):
+            results = list(self.greenplum_source.query_view_names_and_types("public"))
+
+        self.assertEqual(
+            {result.name: result.type_ for result in results},
+            {
+                "regular_view": TableType.View,
+                "my_matview": TableType.MaterializedView,
+            },
+        )
+
+    def test_regular_views_survive_matview_lookup_failure(self):
+        """
+        Greenplum versions without materialized-view support must still yield
+        regular views instead of losing the whole schema.
+        """
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.side_effect = Exception("unsupported")
+
+        with patch.object(GreenplumSource, "inspector", mock_inspector):
+            results = list(self.greenplum_source.query_view_names_and_types("public"))
+
+        self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])

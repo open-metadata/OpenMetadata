@@ -39,8 +39,8 @@ import {
 } from '../../utils/assetDrawerQuickFilter';
 import {
   clickOutside,
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -181,7 +181,7 @@ test.describe('Domains', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     const typed = 'hello world ';
 
     await description.click();
@@ -905,6 +905,14 @@ test.describe('Domains', () => {
   test('Verify domain data products count includes subdomain data products', async ({
     page,
   }) => {
+    // Four sequential verification steps, each with its own reload: the domain's
+    // data-product tab, the subdomain's, the tab after deleting the subdomain,
+    // and a deeply nested subdomain. The trace for merge_group run 33955229584
+    // shows those steps summing to ~65s, so it overruns the 60s default and is
+    // cut off mid-way through the last one. Per-test, like the other budgets
+    // #32360 kept — the rest of the describe stays on the default.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainDataProduct = new DataProduct([domain]);
@@ -1164,42 +1172,38 @@ test.describe('Domains', () => {
     }
   });
 
-  test(
-    'Verify domain tags and glossary terms',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      const { afterAction, apiContext } = await getApiContext(page);
-      const domain = new Domain();
-      try {
-        await domain.create(apiContext);
-        await page.reload();
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await waitForAllLoadersToDisappear(page);
-        await selectDomain(page, domain.data);
-        await waitForAllLoadersToDisappear(page);
+  test('Verify domain tags and glossary terms', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, domain.data);
+      await waitForAllLoadersToDisappear(page);
 
-        await addTagsAndGlossaryToDomain(page, {
-          tagFqn: tag.responseData.fullyQualifiedName,
-          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
-        });
+      await addTagsAndGlossaryToDomain(page, {
+        tagFqn: tag.responseData.fullyQualifiedName,
+        glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+      });
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await waitForAllLoadersToDisappear(page);
-        await selectDomain(page, domain.data);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, domain.data);
 
-        // Verify tag is visible
-        await expect(
-          page.locator(
-            `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
-          )
-        ).toBeVisible();
-      } finally {
-        await domain.delete(apiContext);
-        await afterAction();
-      }
+      // Verify tag is visible
+      await expect(
+        page.locator(
+          `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
     }
-  );
+  });
 
   test('Create domain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
@@ -2133,6 +2137,15 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   test('Rename domain with assets (tables, topics, dashboards) preserves associations', async ({
     page,
   }) => {
+    // Seeds three assets, renames the domain twice and re-verifies the
+    // associations after each rename, which does not fit the 60s default. It was
+    // covered by the describe-scope test.slow(true) that #32360 removed; the
+    // per-test measurements that drove that change did not include this describe,
+    // and it has since timed out at exactly 60000ms in every merge_group run,
+    // ejecting four unrelated PRs across six runs. Per-test, not blanket — the
+    // rest of the describe keeps the default budget.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -3700,7 +3713,7 @@ test.describe('Domain description editor popups', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     await description.click();
 
     await test.step('Slash command inserts an image block', async () => {

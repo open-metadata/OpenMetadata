@@ -115,32 +115,20 @@ const getCharacteristicLabel = (
 };
 
 const getPaletteLabel = (palette: PaletteKey, t: TFunction): string => {
-  const label = (() => {
-    switch (palette) {
-      case PaletteKey.Amber:
-        return t('label.color-yellow');
-      case PaletteKey.Blue:
-        return t('label.color-blue');
-      case PaletteKey.Gray:
-        return t('label.color-gray');
-      case PaletteKey.Green:
-        return t('label.color-green');
-      case PaletteKey.Indigo:
-        return t('label.color-dark-blue');
-      case PaletteKey.Pink:
-        return t('label.color-pink');
-      case PaletteKey.Purple:
-        return t('label.color-purple');
-      case PaletteKey.Rose:
-        return t('label.color-rose');
-      case PaletteKey.Teal:
-        return t('label.color-teal');
-      case PaletteKey.Violet:
-        return t('label.color-violet');
-    }
-  })();
+  const paletteLabelKeys: Record<PaletteKey, string> = {
+    [PaletteKey.Amber]: 'label.color-yellow',
+    [PaletteKey.Blue]: 'label.color-blue',
+    [PaletteKey.Gray]: 'label.color-gray',
+    [PaletteKey.Green]: 'label.color-green',
+    [PaletteKey.Indigo]: 'label.color-dark-blue',
+    [PaletteKey.Pink]: 'label.color-pink',
+    [PaletteKey.Purple]: 'label.color-purple',
+    [PaletteKey.Rose]: 'label.color-rose',
+    [PaletteKey.Teal]: 'label.color-teal',
+    [PaletteKey.Violet]: 'label.color-violet',
+  };
 
-  return label;
+  return t(paletteLabelKeys[palette]);
 };
 
 const getDeleteTooltip = (usageCount: number, t: TFunction): string => {

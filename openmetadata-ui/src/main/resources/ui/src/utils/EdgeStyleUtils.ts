@@ -66,6 +66,18 @@ function calculateEdgeStyle(
   };
 }
 
+function isEdgeNodeTraced(edge: Edge, tracedNodes: Set<string>): boolean {
+  const fromEntityId = edge.data?.edge?.fromEntity?.id;
+  const toEntityId = edge.data?.edge?.toEntity?.id;
+
+  return Boolean(
+    fromEntityId &&
+      toEntityId &&
+      tracedNodes.has(fromEntityId) &&
+      tracedNodes.has(toEntityId)
+  );
+}
+
 function getStyleCacheKey(
   edgeId: string,
   isNodeTraced: boolean,
@@ -99,14 +111,7 @@ export function computeEdgeStyle(
     cachedColorSignature = colorSignature;
   }
 
-  const fromEntityId = edge.data?.edge?.fromEntity?.id;
-  const toEntityId = edge.data?.edge?.toEntity?.id;
-
-  const isNodeTraced =
-    fromEntityId &&
-    toEntityId &&
-    tracedNodes.has(fromEntityId) &&
-    tracedNodes.has(toEntityId);
+  const isNodeTraced = isEdgeNodeTraced(edge, tracedNodes);
 
   const isColumnHighlighted =
     isColumnLineage && tracedColumns.size > 0
@@ -167,6 +172,26 @@ export function clearEdgeStyleCache(): void {
 
 export type EdgeVisualState = 'traced' | 'dimmed' | 'hidden' | 'default';
 
+function getColumnLineageEdgeState(
+  edge: Edge,
+  tracedColumns: Set<string>,
+  inColumnMode: boolean,
+  inNodeMode: boolean
+): EdgeVisualState {
+  if (inColumnMode) {
+    const isColumnHighlighted =
+      tracedColumns.has(edge.sourceHandle ?? '') &&
+      tracedColumns.has(edge.targetHandle ?? '');
+
+    return isColumnHighlighted ? 'traced' : 'hidden';
+  }
+  if (inNodeMode) {
+    return 'hidden';
+  }
+
+  return 'default';
+}
+
 // Node-click and column-click are mutually exclusive tracing modes
 // (LineageProvider clears the other set when either fires), so we can key
 // off which set is non-empty to decide the current mode.
@@ -180,34 +205,19 @@ export function computeEdgeVisualState(
   const inNodeMode = tracedNodes.size > 0;
 
   if (isColumnLineage) {
-    if (inColumnMode) {
-      const isColumnHighlighted =
-        tracedColumns.has(edge.sourceHandle ?? '') &&
-        tracedColumns.has(edge.targetHandle ?? '');
-
-      return isColumnHighlighted ? 'traced' : 'hidden';
-    }
-    if (inNodeMode) {
-      return 'hidden';
-    }
-
-    return 'default';
+    return getColumnLineageEdgeState(
+      edge,
+      tracedColumns,
+      inColumnMode,
+      inNodeMode
+    );
   }
 
   if (inColumnMode) {
     return 'dimmed';
   }
   if (inNodeMode) {
-    const fromEntityId = edge.data?.edge?.fromEntity?.id;
-    const toEntityId = edge.data?.edge?.toEntity?.id;
-    const isNodeTraced = Boolean(
-      fromEntityId &&
-        toEntityId &&
-        tracedNodes.has(fromEntityId) &&
-        tracedNodes.has(toEntityId)
-    );
-
-    return isNodeTraced ? 'traced' : 'dimmed';
+    return isEdgeNodeTraced(edge, tracedNodes) ? 'traced' : 'dimmed';
   }
 
   return 'default';

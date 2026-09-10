@@ -43,6 +43,21 @@ interface ActivityFeedActionsProps {
   onEditPost?: () => void;
 }
 
+const getIsAuthor = (
+  isReply: boolean,
+  currentUser: { id?: string; name?: string } | undefined,
+  conversation?: Conversation,
+  reply?: ConversationReply
+): boolean => {
+  const author = isReply
+    ? reply?.author.name ?? reply?.author.fullyQualifiedName
+    : conversation?.createdBy?.name ??
+      conversation?.createdBy?.fullyQualifiedName;
+  const authorId = isReply ? reply?.author.id : conversation?.createdBy?.id;
+
+  return authorId ? authorId === currentUser?.id : author === currentUser?.name;
+};
+
 const ActivityFeedActions = ({
   conversation,
   conversationId,
@@ -53,14 +68,7 @@ const ActivityFeedActions = ({
   const { t, i18n } = useTranslation();
   const dir = i18n.dir();
   const { currentUser } = useApplicationStore();
-  const author = isReply
-    ? reply?.author.name ?? reply?.author.fullyQualifiedName
-    : conversation?.createdBy?.name ??
-      conversation?.createdBy?.fullyQualifiedName;
-  const authorId = isReply ? reply?.author.id : conversation?.createdBy?.id;
-  const isAuthor = authorId
-    ? authorId === currentUser?.id
-    : author === currentUser?.name;
+  const isAuthor = getIsAuthor(isReply, currentUser, conversation, reply);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus, updateFeed } =
     useActivityFeedProvider();

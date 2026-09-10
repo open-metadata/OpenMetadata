@@ -26,6 +26,64 @@ export interface EdgeMidpoint {
   visualState: EdgeVisualState;
 }
 
+const computeEdgeCenter = (
+  edge: Edge,
+  getNode: (id: string) => Node | undefined,
+  columnsInCurrentPages?: Map<string, string[]>
+): { centerX: number; centerY: number } | null => {
+  const computedPath = edge.data?.computedPath;
+
+  if (computedPath) {
+    return {
+      centerX: computedPath.edgeCenterX,
+      centerY: computedPath.edgeCenterY,
+    };
+  }
+
+  const coords = getEdgeCoordinates(
+    edge,
+    getNode(edge.source),
+    getNode(edge.target),
+    columnsInCurrentPages
+  );
+
+  if (!coords) {
+    return null;
+  }
+
+  const pathData = getEdgePathData(edge.source, edge.target, {
+    sourceX: coords.sourceX,
+    sourceY: coords.sourceY,
+    targetX: coords.targetX,
+    targetY: coords.targetY,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+  });
+
+  return { centerX: pathData.edgeCenterX, centerY: pathData.edgeCenterY };
+};
+
+const computeEdgeDataTestId = (edge: Edge): string | undefined => {
+  const {
+    isColumnLineage,
+    edge: edgeDetails,
+    columnFunctionValue,
+    isExpanded,
+  } = edge.data || {};
+
+  const hasPipeline =
+    !isColumnLineage &&
+    edgeDetails?.pipeline &&
+    getEntityName(edgeDetails.pipeline);
+  const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
+
+  if ((hasPipeline || hasFunction) && edgeDetails) {
+    return `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+  }
+
+  return edge.data?.dataTestId;
+};
+
 export const calculateEdgeMidpoints = (
   edges: Edge[],
   getNode: (id: string) => Node | undefined,
@@ -35,61 +93,17 @@ export const calculateEdgeMidpoints = (
 ): EdgeMidpoint[] => {
   return edges
     .map((edge) => {
-      const computedPath = edge.data?.computedPath;
-      let centerX: number, centerY: number;
+      const center = computeEdgeCenter(edge, getNode, columnsInCurrentPages);
 
-      if (computedPath) {
-        centerX = computedPath.edgeCenterX;
-        centerY = computedPath.edgeCenterY;
-      } else {
-        const coords = getEdgeCoordinates(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          columnsInCurrentPages
-        );
-
-        if (!coords) {
-          return null;
-        }
-
-        const pathData = getEdgePathData(edge.source, edge.target, {
-          sourceX: coords.sourceX,
-          sourceY: coords.sourceY,
-          targetX: coords.targetX,
-          targetY: coords.targetY,
-          sourcePosition: Position.Right,
-          targetPosition: Position.Left,
-        });
-
-        centerX = pathData.edgeCenterX;
-        centerY = pathData.edgeCenterY;
-      }
-
-      const {
-        isColumnLineage,
-        edge: edgeDetails,
-        columnFunctionValue,
-        isExpanded,
-      } = edge.data || {};
-
-      const hasPipeline =
-        !isColumnLineage &&
-        edgeDetails?.pipeline &&
-        getEntityName(edgeDetails.pipeline);
-      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
-
-      let dataTestId = edge.data?.dataTestId;
-
-      if ((hasPipeline || hasFunction) && edgeDetails) {
-        dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+      if (!center) {
+        return null;
       }
 
       return {
         id: edge.id,
-        dataTestId,
-        canvasX: centerX,
-        canvasY: centerY,
+        dataTestId: computeEdgeDataTestId(edge),
+        canvasX: center.centerX,
+        canvasY: center.centerY,
         edge,
         visualState: computeEdgeVisualState(edge, tracedNodes, tracedColumns),
       };
