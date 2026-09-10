@@ -1981,9 +1981,28 @@ export interface CollateAIAppConfig {
      */
     warmRelationships?: boolean;
     /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
+    /**
      * Recreate the RDF store before indexing.
      */
     recreateIndex?: boolean;
+    /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
     /**
      * Enable distributed RDF indexing across multiple servers with partition coordination and
      * recovery.
@@ -5326,6 +5345,11 @@ export interface Connection {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
@@ -7795,6 +7819,11 @@ export interface DatabaseConnectionClass {
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */

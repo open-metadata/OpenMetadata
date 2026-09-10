@@ -1799,12 +1799,23 @@ jobs:
           retention-days: 1
           if-no-files-found: ignore
 
+      # The retry uploads to a DIFFERENT name (`-retry` suffix). Reusing the
+      # primary name races an artifact-service failure mode where the first
+      # attempt's blob upload succeeds but `FinalizeArtifact` returns 403
+      # from the intermediary — the name is now a ghost reservation that the
+      # next `CreateArtifact` rejects with `409 Conflict: an artifact with
+      # this name already exists on the workflow run` (run 34244326002:
+      # chromium-09 upload + retry both 403/409 on the same name, results
+      # never landed). `overwrite: true` doesn't help against the ghost.
+      # A unique retry name sidesteps the collision; render_playwright_summary
+      # collapses `<shardId>-retry` back to `<shardId>` and prefers the retry
+      # when both are present.
       - name: Retry upload results JSON for summary
         if: always() && steps.upload-results-json.outcome == 'failure'
         uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
-          name: playwright-results-json-${{ matrix.shardId }}
+          name: playwright-results-json-${{ matrix.shardId }}-retry
           overwrite: true
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json
