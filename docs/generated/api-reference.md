@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1862 endpoints** across 75 resource packages · 1852 carry a summary.
+**1863 endpoints** across 75 resource packages · 1853 carry a summary.
 
 ## (root)
 
@@ -1535,6 +1535,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/search/aggregate` | Get aggregated fields |
 | `POST` | `/v1/search/aggregate` | Get aggregated Search Request |
 | `GET` | `/v1/search/entityTypeCounts` | Get exact entity type counts |
+| `GET` | `/v1/search/entityTypes` | List the entity types that have a search index |
 | `GET` | `/v1/search/export` | Export search results as CSV (streaming) |
 | `GET` | `/v1/search/export/async` | Export search results as a background CSV job |
 | `GET` | `/v1/search/fieldQuery` | Search entities |
