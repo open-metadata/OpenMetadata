@@ -16,6 +16,7 @@ package org.openmetadata.service.security;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
+import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
 import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
@@ -492,16 +493,14 @@ public class JwtFilter implements ContainerRequestFilter {
         claims, tokenKeyId, tokenGenerator.getIssuer(), tokenGenerator.getKid());
   }
 
+  // null and an empty set say different things to the role sync downstream: "the provider told us
+  // nothing about roles" vs "the provider told us this user has none". Collapsing them would let a
+  // deployment that never configured a roles claim wipe every user's roles on login.
   private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
-    Set<String> userRoles = new HashSet<>();
-    // Re-sync user roles from token
-    if (useRolesFromProvider && !isBot && claims.containsKey(ROLES_CLAIM)) {
-      List<String> roles = claims.get(ROLES_CLAIM).asList(String.class);
-      if (!nullOrEmpty(roles)) {
-        userRoles = new HashSet<>(claims.get(ROLES_CLAIM).asList(String.class));
-      }
+    if (!useRolesFromProvider || isBot || !claims.containsKey(ROLES_CLAIM)) {
+      return null;
     }
-    return userRoles;
+    return new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM)));
   }
 
   @SneakyThrows
@@ -673,6 +672,10 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    return getCatalogSecurityContext(token, null);
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     boolean isBotUser = isBot(claims);
     ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
@@ -697,7 +700,9 @@ public class JwtFilter implements ContainerRequestFilter {
         "https",
         SecurityContext.DIGEST_AUTH,
         getUserRolesFromClaims(claims, isBotUser),
-        isBotUser);
+        isBotUser,
+        null,
+        activePersona);
   }
 
   private Algorithm createAlgorithmFromJwk(

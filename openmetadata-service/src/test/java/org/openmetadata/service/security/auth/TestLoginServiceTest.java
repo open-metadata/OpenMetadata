@@ -101,6 +101,31 @@ class TestLoginServiceTest {
   }
 
   @Test
+  void mapsAScalarRolesClaimAsASingleRole() {
+    // The SSO test dialog is how customers verify their roles claim, so it has to read the claim
+    // exactly the way login does - including providers that emit a lone role as a bare string.
+    TestLoginResult result =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(List.of("email"), null, null),
+            authzConfig("example.com", false, true),
+            claims(Map.of("email", "keycloak-user@example.com", "roles", "DataSteward")));
+
+    assertEquals(TestLoginResult.Status.SUCCESS, result.getStatus());
+    assertEquals(List.of("DataSteward"), result.getMappedRoles());
+  }
+
+  @Test
+  void reportsNoRolesWhenTheTokenHasNoRolesClaim() {
+    TestLoginResult result =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(List.of("email"), null, null),
+            authzConfig("example.com", false, true),
+            claims(Map.of("email", "user@example.com")));
+
+    assertTrue(result.getMappedRoles().isEmpty());
+  }
+
+  @Test
   void doesNotMapRolesWhenUseRolesFromProviderDisabled() {
     TestLoginResult result =
         TestLoginService.resolveIdentityFromClaims(
