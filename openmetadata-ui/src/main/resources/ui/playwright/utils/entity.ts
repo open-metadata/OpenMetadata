@@ -1563,12 +1563,12 @@ export const validateFollowedEntityToWidget = async (
   if (isFollowing) {
     await expect(followingWidget).toBeVisible();
     await expect(
-      followingWidget.getByTestId(`following-${entity}`)
+      followingWidget.getByTestId(`Following-${entity}`)
     ).toBeVisible();
   } else {
     await expect(followingWidget).toBeVisible();
     await expect(
-      followingWidget.getByTestId(`following-${entity}`)
+      followingWidget.getByTestId(`Following-${entity}`)
     ).not.toBeVisible();
   }
 

@@ -15,6 +15,25 @@ import { createServer } from 'http';
 import { AddressInfo } from 'net';
 import { waitForSearchIndexed } from './polling';
 
+test('invalid search index fails before making a request', async ({
+  playwright,
+}) => {
+  const apiContext = await playwright.request.newContext({
+    baseURL: 'http://127.0.0.1:1',
+  });
+  try {
+    await expect(
+      waitForSearchIndexed(
+        apiContext,
+        'fixture',
+        undefined as unknown as string
+      )
+    ).rejects.toThrow(/empty search index/);
+  } finally {
+    await apiContext.dispose();
+  }
+});
+
 for (const scenario of [
   'wrong-entity',
   'indexed',

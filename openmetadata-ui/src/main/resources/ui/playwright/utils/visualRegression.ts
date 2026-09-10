@@ -22,14 +22,6 @@ export const SCREENSHOT_OPTS = {
   maxDiffPixelRatio: 0.01,
 };
 
-const FREEZE_CSS = `
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-  html { scroll-behavior: auto !important; }
-`;
-
 /**
  * Navigate with a frozen clock so relative timestamps ("x minutes ago")
  * render identically on every run, then quiesce the page.
@@ -45,6 +37,8 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.clock.setFixedTime(FIXED_DATE);
   await page.goto(path);
   await waitForPageLoaded(page);
-  await page.addStyleTag({ content: FREEZE_CSS });
+  await page.addStyleTag({
+    content: 'html { scroll-behavior: auto !important; }',
+  });
   await page.evaluate(() => window.scrollTo(0, 0));
 };

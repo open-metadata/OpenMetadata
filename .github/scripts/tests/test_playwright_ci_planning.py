@@ -13,6 +13,37 @@ import pytest
 SCRIPTS = Path(__file__).parents[1]
 
 
+@pytest.mark.parametrize("event", ["pull_request", "pull_request_target", "merge_group", "schedule", "push"])
+@pytest.mark.parametrize(
+    "changed_path", ["docs/index.md", "openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts"]
+)
+def test_automated_events_require_full_coverage(event, changed_path, tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    changed.write_text(changed_path)
+    output = tmp_path / "selection.json"
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            event,
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            ".github/playwright/impact-map.json",
+            "--output",
+            str(output),
+        ],
+    )
+    selector.main()
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "full"
+    assert selection["selectors"] == []
+
+
 def load_script(name: str):
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     assert spec and spec.loader
@@ -79,10 +110,7 @@ def test_common_lane_carries_its_own_shard_budget():
 
 def test_predicted_execution_applies_runner_efficiency():
     planner = load_script("build_playwright_shards")
-    units = [
-        planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=1_040_000)
-        for index in range(3)
-    ]
+    units = [planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=1_040_000) for index in range(3)]
 
     assert sum(unit.weight_ms for unit in units) / 3 < planner.TARGET_MS
     assert planner.predicted_execution_ms(units, 3) > planner.TARGET_MS
@@ -90,18 +118,12 @@ def test_predicted_execution_applies_runner_efficiency():
 
 def test_common_assignment_stays_within_the_execution_ceiling():
     planner = load_script("build_playwright_shards")
-    units = [
-        planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=940_000)
-        for index in range(13)
-    ]
+    units = [planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=940_000) for index in range(13)]
 
     shards = planner.assign_lane_within_budget(units, "chromium", "targeted")
 
     assert len(shards) == 5
-    assert all(
-        planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS
-        for shard in shards
-    )
+    assert all(planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS for shard in shards)
 
 
 def test_full_mode_chromium_converges_above_the_old_24_shard_ceiling():
@@ -119,19 +141,12 @@ def test_full_mode_chromium_converges_above_the_old_24_shard_ceiling():
     # ~1200 worker-minutes of chromium content), not a few near-atomic
     # blocks whose granularity would distort LPT balance.
     planner = load_script("build_playwright_shards")
-    units = [
-        planner.Unit(
-            "chromium", f"fine-{index}.spec.ts", str(index), weight_ms=60_000
-        )
-        for index in range(1300)
-    ]
+    units = [planner.Unit("chromium", f"fine-{index}.spec.ts", str(index), weight_ms=60_000) for index in range(1300)]
 
     shards = planner.assign_lane_within_budget(units, "chromium", "full")
 
     workers = planner.LANE_WORKERS.get("chromium", 3)
-    heaviest_ms = max(
-        planner.predicted_execution_ms(shard, workers) for shard in shards
-    )
+    heaviest_ms = max(planner.predicted_execution_ms(shard, workers) for shard in shards)
     assert len(shards) <= planner.COMMON_MAX_SHARDS
     assert heaviest_ms <= planner.COMMON_SHARD_BUDGET_MS
     assert len(shards) > 24
@@ -140,10 +155,7 @@ def test_full_mode_chromium_converges_above_the_old_24_shard_ceiling():
 def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
     planner = load_script("build_playwright_shards")
     units = [
-        planner.Unit(
-            "chromium", f"huge-{index}.spec.ts", str(index), weight_ms=19 * 60 * 1000
-        )
-        for index in range(120)
+        planner.Unit("chromium", f"huge-{index}.spec.ts", str(index), weight_ms=19 * 60 * 1000) for index in range(120)
     ]
 
     with pytest.raises(SystemExit, match=r"needs more than 28 shards"):
@@ -193,9 +205,7 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
-def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
-    tmp_path, monkeypatch
-):
+def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(tmp_path, monkeypatch):
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
     baseline = tmp_path / planner.CHECKED_IN_BASELINE
@@ -239,9 +249,7 @@ def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
     )
 
     weights, identity_weights = planner.load_history([history])
-    planner.backfill_from_checked_in_baseline(
-        [history], weights, identity_weights
-    )
+    planner.backfill_from_checked_in_baseline([history], weights, identity_weights)
 
     assert weights == {"existing-test": 200, "new-test": 700}
     assert identity_weights == {
@@ -277,6 +285,7 @@ def test_emit_unweighted_warnings_annotates_when_reserved_minutes_over_threshold
     # Fewer tests than UNWEIGHTED_WARN_MIN_TESTS but their reserved fallback
     # time exceeds UNWEIGHTED_WARN_MIN_MS should still annotate.
     import math
+
     trigger_count = max(
         1,
         math.ceil(planner.UNWEIGHTED_WARN_MIN_MS / planner.FALLBACK_TEST_MS),
@@ -416,10 +425,7 @@ def test_stale_baseline_files_ignore_files_covered_by_identity_match():
         )
         for index in range(planner.STALE_BASELINE_MIN_TESTS + 2)
     ]
-    identity_weights = {
-        (file, f"case {index}"): 4_000
-        for index in range(len(units))
-    }
+    identity_weights = {(file, f"case {index}"): 4_000 for index in range(len(units))}
 
     assert planner.stale_baseline_files_in_plan(units, {}, identity_weights) == []
 
@@ -467,10 +473,7 @@ def test_misrouted_lane_hint_violations_matches_import_export_filename_family():
         "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "Pages/GlossaryImportExport.spec.ts",
     ]
-    units = [
-        planner.Unit("chromium", file, "describe title")
-        for file in matching_files
-    ]
+    units = [planner.Unit("chromium", file, "describe title") for file in matching_files]
 
     violations = planner.misrouted_lane_hint_violations(units)
 
@@ -519,6 +522,7 @@ def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
     # nightly/merge_group runs can still generate the timing-history
     # artifact that unblocks the "wait for the next full run" fix.
     import subprocess
+
     planner_path = SCRIPTS / "build_playwright_shards.py"
     test_list = tmp_path / "test-list.json"
     selection = tmp_path / "selection.json"
@@ -558,9 +562,7 @@ def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
         json.dumps(
             {
                 "mode": "targeted",
-                "selectors": [
-                    {"spec": f"playwright/e2e/{file}", "projects": ["auto"]}
-                ],
+                "selectors": [{"spec": f"playwright/e2e/{file}", "projects": ["auto"]}],
             }
         )
     )
@@ -572,10 +574,14 @@ def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
         [
             sys.executable,
             str(planner_path),
-            "--test-list", str(test_list),
-            "--selection", str(selection),
-            "--history", str(history),
-            "--output-dir", str(output_dir),
+            "--test-list",
+            str(test_list),
+            "--selection",
+            str(selection),
+            "--history",
+            str(history),
+            "--output-dir",
+            str(output_dir),
         ],
         capture_output=True,
         text=True,
@@ -588,10 +594,7 @@ def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
     assert "5 planned test(s)" in combined
     # The `::error file=...::` annotation must carry the full repo-relative
     # spec path so GitHub Actions attaches it inline in the PR checks UI.
-    assert (
-        f"::error file=openmetadata-ui/src/main/resources/ui/playwright/e2e/{file}::"
-        in combined
-    )
+    assert f"::error file=openmetadata-ui/src/main/resources/ui/playwright/e2e/{file}::" in combined
     # The gate must fire BEFORE the plan is written — matrix.json must not
     # exist, so a downstream `jq` step will visibly fail on the plan step.
     assert not (output_dir / "matrix.json").exists()
@@ -602,6 +605,7 @@ def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
     # stale-baseline gate — otherwise the very run that captures the
     # missing timing evidence would fail before it could execute.
     import subprocess
+
     planner_path = SCRIPTS / "build_playwright_shards.py"
     test_list = tmp_path / "test-list.json"
     selection = tmp_path / "selection.json"
@@ -640,10 +644,14 @@ def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
         [
             sys.executable,
             str(planner_path),
-            "--test-list", str(test_list),
-            "--selection", str(selection),
-            "--history", str(history),
-            "--output-dir", str(output_dir),
+            "--test-list",
+            str(test_list),
+            "--selection",
+            str(selection),
+            "--history",
+            str(history),
+            "--output-dir",
+            str(output_dir),
         ],
         capture_output=True,
         text=True,
@@ -661,6 +669,7 @@ def test_main_fails_on_misrouted_lane_hint(tmp_path):
     # is on the wrong project. This is the guardrail that would have caught
     # PR #30834 at PR review instead of on the merge queue.
     import subprocess
+
     planner_path = SCRIPTS / "build_playwright_shards.py"
     test_list = tmp_path / "test-list.json"
     selection = tmp_path / "selection.json"
@@ -698,10 +707,14 @@ def test_main_fails_on_misrouted_lane_hint(tmp_path):
         [
             sys.executable,
             str(planner_path),
-            "--test-list", str(test_list),
-            "--selection", str(selection),
-            "--history", str(history),
-            "--output-dir", str(output_dir),
+            "--test-list",
+            str(test_list),
+            "--selection",
+            str(selection),
+            "--history",
+            str(history),
+            "--output-dir",
+            str(output_dir),
         ],
         capture_output=True,
         text=True,
@@ -724,7 +737,7 @@ def test_oversized_units_error_names_both_common_fixes():
     assert "FILE_LANE_HINTS" in src
     # The oversized branch mentions both remediation paths:
     oversized_index = src.index("Atomic Playwright units exceed")
-    following = src[oversized_index:oversized_index + 2000]
+    following = src[oversized_index : oversized_index + 2000]
     assert "tag:" in following or "tag option" in following.lower() or "'{ tag:" in following
     assert "AUDITED_PARALLEL_SUITES" in following
 
@@ -896,10 +909,7 @@ def test_timing_import_keeps_project_executions_separate(tmp_path, monkeypatch):
 
     timings = json.loads(output.read_text())["tests"]
     assert [timing["project"] for timing in timings] == ["Basic", "chromium"]
-    project_metrics = [
-        (timing["durationMs"], timing["attempts"], timing["retries"])
-        for timing in timings
-    ]
+    project_metrics = [(timing["durationMs"], timing["attempts"], timing["retries"]) for timing in timings]
     assert project_metrics == [
         (250, 2, 1),
         (100, 1, 0),
@@ -994,10 +1004,7 @@ def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
                                 "title": "Explore page right panel tests",
                                 "suites": [
                                     {
-                                        "title": (
-                                            "Overview panel - Deleted entity "
-                                            "verification"
-                                        ),
+                                        "title": ("Overview panel - Deleted entity verification"),
                                         "specs": [
                                             {
                                                 "id": "deleted-user",
@@ -1105,9 +1112,7 @@ def test_search_rbac_does_not_depend_on_data_asset_rule_assertions():
     disabled = planner.Unit("DataAssetRulesDisabled", "disabled.spec.ts", "disabled")
     search = planner.Unit("SearchRBAC", "search.spec.ts", "search")
 
-    expanded = planner.include_project_dependencies(
-        [search], [enabled, disabled, search]
-    )
+    expanded = planner.include_project_dependencies([search], [enabled, disabled, search])
 
     assert expanded == [search]
 
@@ -1151,9 +1156,7 @@ def test_each_unmapped_file_is_detected_in_a_mixed_change():
     }
     changed_files = ["src/lineage/view.ts", "docs/unmapped.md"]
 
-    unmapped = [
-        path for path in changed_files if not selector.is_mapped_file(path, impact_map)
-    ]
+    unmapped = [path for path in changed_files if not selector.is_mapped_file(path, impact_map)]
 
     assert unmapped == ["docs/unmapped.md"]
 
@@ -1171,10 +1174,7 @@ def test_selector_exports_direct_changed_specs_for_workflow_routing(tmp_path):
         },
     )
 
-    assert (
-        'direct_changed_specs=["playwright/e2e/Pages/Entity.spec.ts"]'
-        in github_output.read_text()
-    )
+    assert 'direct_changed_specs=["playwright/e2e/Pages/Entity.spec.ts"]' in github_output.read_text()
     assert "lineage_representative_only=true" in github_output.read_text()
 
     selector.write_github_output(
@@ -1189,9 +1189,7 @@ def test_selector_exports_direct_changed_specs_for_workflow_routing(tmp_path):
     assert github_output.read_text().endswith("lineage_representative_only=false\n")
 
 
-def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries(
-    tmp_path, monkeypatch
-):
+def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
@@ -1211,7 +1209,7 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -1226,9 +1224,7 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
     selection = json.loads(output.read_text())
     selected_specs = {entry["spec"] for entry in selection["selectors"]}
     assert "playwright/e2e/Pages/Entity.spec.ts" in selected_specs
-    assert any(
-        spec.startswith("playwright/e2e/Pages/Lineage/") for spec in selected_specs
-    )
+    assert any(spec.startswith("playwright/e2e/Pages/Lineage/") for spec in selected_specs)
     assert "playwright/e2e/Pages/HealthCheck.spec.ts" in selected_specs
     assert selection["unmappedFiles"] == ["docs/unmapped.md"]
     assert selection["directChangedSpecs"] == ["playwright/e2e/Pages/Entity.spec.ts"]
@@ -1239,8 +1235,7 @@ def test_persona_details_change_selects_ai_context_specs(tmp_path, monkeypatch):
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
     changed.write_text(
-        "openmetadata-ui/src/main/resources/ui/src/pages/Persona/"
-        "PersonaDetailsPage/PersonaDetailsPage.tsx\n"
+        "openmetadata-ui/src/main/resources/ui/src/pages/Persona/PersonaDetailsPage/PersonaDetailsPage.tsx\n"
     )
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     monkeypatch.setattr(
@@ -1249,7 +1244,7 @@ def test_persona_details_change_selects_ai_context_specs(tmp_path, monkeypatch):
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -1276,9 +1271,7 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
-    changed.write_text(
-        "openmetadata-ui/src/main/resources/ui/src/components/Explore/Explore.tsx\n"
-    )
+    changed.write_text("openmetadata-ui/src/main/resources/ui/src/components/Explore/Explore.tsx\n")
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     monkeypatch.setattr(
         sys,
@@ -1286,7 +1279,7 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -1300,9 +1293,7 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
 
     selection = json.loads(output.read_text())
     schema_search = next(
-        entry
-        for entry in selection["selectors"]
-        if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
+        entry for entry in selection["selectors"] if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
     )
     assert "Ingestion" in schema_search["projects"]
 
@@ -1316,10 +1307,7 @@ def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypa
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
-    changed.write_text(
-        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
-        "QuickFilterDropdown.tsx\n"
-    )
+    changed.write_text("openmetadata-ui/src/main/resources/ui/src/components/Explore/QuickFilterDropdown.tsx\n")
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     monkeypatch.setattr(
         sys,
@@ -1327,7 +1315,7 @@ def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypa
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -1341,9 +1329,7 @@ def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypa
 
     selection = json.loads(output.read_text())
     search_rbac = next(
-        entry
-        for entry in selection["selectors"]
-        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
+        entry for entry in selection["selectors"] if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
     )
     assert "SearchRBAC" in search_rbac["projects"]
 
@@ -1377,7 +1363,7 @@ def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatc
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -1390,9 +1376,7 @@ def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatc
     selector.main()
 
     selection = json.loads(output.read_text())
-    assert {entry["spec"] for entry in selection["selectors"]} == {
-        "playwright/e2e/Smoke.spec.ts"
-    }
+    assert {entry["spec"] for entry in selection["selectors"]} == {"playwright/e2e/Smoke.spec.ts"}
     assert selection["deletedChangedSpecs"] == [deleted_spec]
     assert selection["directChangedSpecs"] == []
 
@@ -1451,9 +1435,7 @@ def test_coverage_verifier_accounts_for_native_zero_attempt_skips():
         ]
     }
 
-    skipped = verifier.zero_attempt_skipped_tests(
-        report, verifier.Counter({"executed": 1})
-    )
+    skipped = verifier.zero_attempt_skipped_tests(report, verifier.Counter({"executed": 1}))
 
     assert skipped == {
         "zero-attempt-skipped": {
@@ -1537,9 +1519,7 @@ def test_zero_attempt_skip_requires_both_native_skip_and_no_results(status, resu
     assert verifier.zero_attempt_skipped_tests(report, verifier.Counter()) == {}
 
 
-def test_coverage_verifier_reconciles_zero_attempt_skips_in_output(
-    tmp_path, monkeypatch
-):
+def test_coverage_verifier_reconciles_zero_attempt_skips_in_output(tmp_path, monkeypatch):
     verifier = load_script("verify_playwright_coverage")
     plan = {
         "shardId": "search-rbac-01",
@@ -1677,9 +1657,7 @@ def test_coverage_verifier_ignores_lifecycle_executions(tmp_path, monkeypatch):
     assert coverage["executedTests"] == 2
 
 
-def test_coverage_verifier_still_flags_real_test_duplicates_and_unexpected(
-    tmp_path, monkeypatch
-):
+def test_coverage_verifier_still_flags_real_test_duplicates_and_unexpected(tmp_path, monkeypatch):
     # Guard against the fix being too permissive — a real test executed on a
     # shard that didn't plan it, or executed twice on one shard, must still
     # fire the mismatch.
@@ -1689,7 +1667,7 @@ def test_coverage_verifier_still_flags_real_test_duplicates_and_unexpected(
         "tests": [
             {"id": "planned-only", "project": "chromium"},
             {"id": "planned-only", "project": "chromium"},  # duplicate execution
-            {"id": "stowaway", "project": "chromium"},       # unexpected
+            {"id": "stowaway", "project": "chromium"},  # unexpected
         ]
     }
     (tmp_path / "plan.json").write_text(json.dumps(plan))
@@ -1720,12 +1698,8 @@ def test_coverage_verifier_still_flags_real_test_duplicates_and_unexpected(
 def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     requests = load_script("summarize_playwright_requests")
     accumulator = requests.RequestAccumulator()
-    accumulator.add(
-        '127.0.0.1 "GET /assets/app-entry-Ab_12.js HTTP/1.1" 200 120 "-" "ua" 4\n'
-    )
-    accumulator.add(
-        '127.0.0.1 "GET /api/v1/search/query?q=x HTTP/1.1" 200 80 "-" "ua" 7\n'
-    )
+    accumulator.add('127.0.0.1 "GET /assets/app-entry-Ab_12.js HTTP/1.1" 200 120 "-" "ua" 4\n')
+    accumulator.add('127.0.0.1 "GET /api/v1/search/query?q=x HTTP/1.1" 200 80 "-" "ua" 7\n')
 
     payload = accumulator.payload("chromium-01")
 
@@ -1734,15 +1708,11 @@ def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     assert payload["staticBytes"] == 120
     assert payload["apiBytes"] == 80
     assert payload["appEntryRequests"] == 1
-    assert payload["topApiEndpoints"] == [
-        {"endpoint": "GET /api/v1/search/query", "requests": 1}
-    ]
+    assert payload["topApiEndpoints"] == [{"endpoint": "GET /api/v1/search/query", "requests": 1}]
     assert payload["apiEndpointCounts"] == {"GET /api/v1/search/query": 1}
     assert payload["staticResourceTypes"] == {"javascript": 1}
     assert payload["staticEndpointCounts"] == {"GET /assets/app-entry-Ab_12.js": 1}
-    assert payload["topStaticEndpoints"] == [
-        {"endpoint": "GET /assets/app-entry-Ab_12.js", "requests": 1}
-    ]
+    assert payload["topStaticEndpoints"] == [{"endpoint": "GET /assets/app-entry-Ab_12.js", "requests": 1}]
 
 
 def test_request_metrics_exclude_diagnostic_beacons_and_manual_chunk_boots():
@@ -1783,9 +1753,7 @@ def test_performance_metrics_aggregate_ranked_endpoint_counts():
         },
     ]
 
-    assert evaluator.aggregate_ranked_counts(
-        payloads, "staticEndpointCounts", "topStaticEndpoints", 2
-    ) == [
+    assert evaluator.aggregate_ranked_counts(payloads, "staticEndpointCounts", "topStaticEndpoints", 2) == [
         {"endpoint": "GET /assets/app-a.js", "requests": 5},
         {"endpoint": "GET /assets/shared.js", "requests": 4},
     ]
@@ -1793,13 +1761,11 @@ def test_performance_metrics_aggregate_ranked_endpoint_counts():
 
 def test_performance_metrics_support_legacy_ranked_endpoint_counts():
     evaluator = load_script("evaluate_playwright_performance")
-    payloads = [
-        {"topStaticEndpoints": [{"endpoint": "GET /assets/app-a.js", "requests": 2}]}
-    ]
+    payloads = [{"topStaticEndpoints": [{"endpoint": "GET /assets/app-a.js", "requests": 2}]}]
 
-    assert evaluator.aggregate_ranked_counts(
-        payloads, "staticEndpointCounts", "topStaticEndpoints", 2
-    ) == [{"endpoint": "GET /assets/app-a.js", "requests": 2}]
+    assert evaluator.aggregate_ranked_counts(payloads, "staticEndpointCounts", "topStaticEndpoints", 2) == [
+        {"endpoint": "GET /assets/app-a.js", "requests": 2}
+    ]
 
 
 def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monkeypatch):
@@ -1903,9 +1869,7 @@ def test_boot_target_uses_exact_counts_instead_of_rounded_ratio():
     assert not evaluator.has_at_most_one_app_boot_per_ui_scenario(1_001, 1_000)
 
 
-def test_performance_enforcement_reports_convergence_without_failing(
-    tmp_path, monkeypatch
-):
+def test_performance_enforcement_reports_convergence_without_failing(tmp_path, monkeypatch):
     evaluator = load_script("evaluate_playwright_performance")
     timing_file = tmp_path / "timing.json"
     request_file = tmp_path / "requests.json"
@@ -1935,12 +1899,8 @@ def test_performance_enforcement_reports_convergence_without_failing(
             }
         )
     )
-    (tmp_path / "phase-1.json").write_text(
-        json.dumps({"lane": "chromium", "executionSeconds": 1})
-    )
-    (tmp_path / "phase-2.json").write_text(
-        json.dumps({"lane": "chromium", "executionSeconds": 2})
-    )
+    (tmp_path / "phase-1.json").write_text(json.dumps({"lane": "chromium", "executionSeconds": 1}))
+    (tmp_path / "phase-2.json").write_text(json.dumps({"lane": "chromium", "executionSeconds": 2}))
     monkeypatch.setattr(
         sys,
         "argv",
@@ -1973,9 +1933,7 @@ def test_performance_enforcement_reports_convergence_without_failing(
     }
 
 
-def test_environment_overrun_is_budget_breach_not_enforcement_failure(
-    tmp_path, monkeypatch, capsys
-):
+def test_environment_overrun_is_budget_breach_not_enforcement_failure(tmp_path, monkeypatch, capsys):
     # Formerly this fixture (481 s > the 480 s env ceiling) raised SystemExit
     # under --enforce and failed the merge-group check. Environment time is a
     # BUDGET target now: main() completes, the breach lands in the payload
@@ -2048,10 +2006,7 @@ def test_environment_overrun_is_budget_breach_not_enforcement_failure(
     performance = json.loads(output.read_text())
     assert performance["blockingTargetsMet"] is True
     assert performance["budgetTargets"]["environmentAtMostFiveMinutes"] is False
-    assert (
-        "environmentAtMostFiveMinutes"
-        in performance["failedBudgetTargetDetails"]
-    )
+    assert "environmentAtMostFiveMinutes" in performance["failedBudgetTargetDetails"]
 
 
 def test_outcome_classifier_reads_include_matrix():
@@ -2110,9 +2065,7 @@ def test_outcome_classifier_separates_lifecycle_retries_from_product_totals(tmp_
     report_file = report_dir / "results.json"
     report_file.write_text(json.dumps(report))
 
-    outcome = classifier.classify_playwright_outcome(
-        [report_file], [], matrix_outcome="success"
-    )
+    outcome = classifier.classify_playwright_outcome([report_file], [], matrix_outcome="success")
 
     assert outcome["classification"] == "passed_with_retries"
     assert outcome["counts"]["tests"] == 1
@@ -2123,9 +2076,7 @@ def test_outcome_classifier_separates_lifecycle_retries_from_product_totals(tmp_
 
 
 def test_fast_opensearch_config_does_not_duplicate_security_disable():
-    fast_compose = (
-        SCRIPTS.parents[1] / "docker/development/docker-compose-playwright-fast.yml"
-    ).read_text()
+    fast_compose = (SCRIPTS.parents[1] / "docker/development/docker-compose-playwright-fast.yml").read_text()
 
     assert 'plugins.security.disabled: "true"' in fast_compose
     assert "DISABLE_SECURITY_PLUGIN" not in fast_compose
@@ -2134,30 +2085,20 @@ def test_fast_opensearch_config_does_not_duplicate_security_disable():
 def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
     fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
     fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
-    ).read_text()
-    fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci:", 1
-    )[0]
+    workflow = (SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml").read_text()
+    fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
 
     assert "searchClusterAlias: $searchClusterAlias" in fixture_builder
     assert "ELASTICSEARCH_CLUSTER_ALIAS: openmetadata" in fixture_job
     assert "s/^[[:space:]]+//" in fixture_builder
     assert ".searchClusterAlias" in fast_launcher
-    assert (
-        'export ELASTICSEARCH_CLUSTER_ALIAS="$PW_SEARCH_CLUSTER_ALIAS"' in fast_launcher
-    )
+    assert 'export ELASTICSEARCH_CLUSTER_ALIAS="$PW_SEARCH_CLUSTER_ALIAS"' in fast_launcher
     assert "provider_address_texas" in fast_launcher
 
 
 def test_planner_discovers_oss_only_specs():
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
-    ).read_text()
-    planner_job = workflow.split("  plan-playwright:", 1)[1].split(
-        "  restore-playwright-fixture:", 1
-    )[0]
+    workflow = (SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml").read_text()
+    planner_job = workflow.split("  plan-playwright:", 1)[1].split("  restore-playwright-fixture:", 1)[0]
     discovery_step = planner_job.split("      - name: Discover tests", 1)[1].split(
         "      - name: Build duration-aware shard plans", 1
     )[0]
@@ -2166,13 +2107,8 @@ def test_planner_discovers_oss_only_specs():
 
 
 def test_basic_project_excludes_dedicated_state_specs():
-    playwright_config = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-    ).read_text()
-    basic_project = playwright_config.split("name: 'Basic'", 1)[1].split(
-        "name: 'Ingestion'", 1
-    )[0]
+    playwright_config = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/playwright.config.ts").read_text()
+    basic_project = playwright_config.split("name: 'Basic'", 1)[1].split("name: 'Ingestion'", 1)[0]
 
     assert "testIgnore: dedicatedStateTestIgnore" in basic_project
     assert "'**/SearchSettings.spec.ts'" in playwright_config
@@ -2181,13 +2117,8 @@ def test_basic_project_excludes_dedicated_state_specs():
 
 
 def test_search_rbac_uses_only_its_setup_and_teardown_projects():
-    playwright_config = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-    ).read_text()
-    search_project = playwright_config.split("name: 'SearchRBAC'", 1)[1].split(
-        "name: 'DomainIsolation'", 1
-    )[0]
+    playwright_config = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/playwright.config.ts").read_text()
+    search_project = playwright_config.split("name: 'SearchRBAC'", 1)[1].split("name: 'DomainIsolation'", 1)[0]
 
     assert "name: 'search-rbac-setup'" in playwright_config
     assert "teardown: 'search-rbac-teardown'" in playwright_config
@@ -2196,14 +2127,11 @@ def test_search_rbac_uses_only_its_setup_and_teardown_projects():
 
 
 def test_search_rbac_state_setup_maps_only_to_search_rbac():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
     mapping = next(
         entry
         for entry in impact_map["mappings"]
-        if "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts"
-        in entry["sources"]
+        if "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts" in entry["sources"]
     )
 
     assert mapping["projects"] == ["SearchRBAC"]
@@ -2211,18 +2139,14 @@ def test_search_rbac_state_setup_maps_only_to_search_rbac():
 
 
 def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
     mapping = next(
         entry
         for entry in impact_map["mappings"]
-        if "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
-        in entry["sources"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/search/**" in entry["sources"]
     )
     schema_search = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
+        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
     ).read_text()
 
     assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
@@ -2231,18 +2155,11 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
 
 
 def test_scheduler_impact_mapping_covers_shared_consumers():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
     scheduler_source = (
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/"
-        "AddIngestion/Steps/ScheduleInterval*"
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleInterval*"
     )
-    mapping = next(
-        entry
-        for entry in impact_map["mappings"]
-        if scheduler_source in entry["sources"]
-    )
+    mapping = next(entry for entry in impact_map["mappings"] if scheduler_source in entry["sources"])
 
     assert mapping["projects"] == [
         "chromium",
@@ -2260,14 +2177,11 @@ def test_scheduler_impact_mapping_covers_shared_consumers():
 
 
 def test_permission_impact_mapping_includes_ingestion_project():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
     mapping = next(
         entry
         for entry in impact_map["mappings"]
-        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
-        in entry["sources"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**" in entry["sources"]
     )
     service_creation_permissions = (
         SCRIPTS.parents[1]
@@ -2293,31 +2207,19 @@ def test_permission_impact_mapping_includes_ingestion_project():
     ],
 )
 def test_import_export_impacts_use_the_dedicated_project(source_pattern, spec_path):
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
-    mapping = next(
-        entry for entry in impact_map["mappings"] if source_pattern in entry["sources"]
-    )
-    source = (
-        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec_path
-    ).read_text()
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
+    mapping = next(entry for entry in impact_map["mappings"] if source_pattern in entry["sources"])
+    source = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec_path).read_text()
 
     assert "ImportExport" in mapping["projects"]
     assert "@import-export" in source
 
 
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
-    mapping = next(
-        entry for entry in impact_map["mappings"] if "ingestion/**" in entry["sources"]
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
+    mapping = next(entry for entry in impact_map["mappings"] if "ingestion/**" in entry["sources"])
 
-    data_quality_specs = {
-        spec for spec in mapping["specs"] if "/Features/DataQuality/" in spec
-    }
+    data_quality_specs = {spec for spec in mapping["specs"] if "/Features/DataQuality/" in spec}
     assert mapping["projects"] == ["Ingestion"]
     assert data_quality_specs == {
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
@@ -2327,56 +2229,37 @@ def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
     }
     for spec in data_quality_specs:
-        source = (
-            SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec
-        ).read_text()
+        source = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec).read_text()
         assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in source or "tag: '@ingestion'" in source
 
 
 def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
 
-    assert (
-        "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
-    )
-    assert (
-        "playwright/e2e/Features/Ontology*Rdf.spec.ts"
-        in impact_map["delegatedSpecs"]
-    )
+    assert "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
+    assert "playwright/e2e/Features/Ontology*Rdf.spec.ts" in impact_map["delegatedSpecs"]
 
 
 def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
-    source_path = (
-        tmp_path / selector.UI_ROOT / "src/components/OntologyExplorer/view.ts"
-    )
+    source_path = tmp_path / selector.UI_ROOT / "src/components/OntologyExplorer/view.ts"
     source_path.parent.mkdir(parents=True)
     source_path.write_text("export const view = {};\n")
     spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
     spec_dir.mkdir(parents=True)
-    (spec_dir / "OntologyStudio.spec.ts").write_text(
-        "test('ontology', () => undefined);\n"
-    )
-    (spec_dir / "OntologyStudioRdf.spec.ts").write_text(
-        "test('rdf', () => undefined);\n"
-    )
+    (spec_dir / "OntologyStudio.spec.ts").write_text("test('ontology', () => undefined);\n")
+    (spec_dir / "OntologyStudioRdf.spec.ts").write_text("test('rdf', () => undefined);\n")
     impact_map = tmp_path / "impact-map.json"
     impact_map.write_text(
         json.dumps(
             {
                 "smoke": [],
                 "canary": [],
-                "delegatedSpecs": [
-                    "playwright/e2e/Features/OntologyStudioRdf.spec.ts"
-                ],
+                "delegatedSpecs": ["playwright/e2e/Features/OntologyStudioRdf.spec.ts"],
                 "sharedInfrastructure": [],
                 "mappings": [
                     {
-                        "sources": [
-                            f"{selector.UI_ROOT}src/components/OntologyExplorer/**"
-                        ],
+                        "sources": [f"{selector.UI_ROOT}src/components/OntologyExplorer/**"],
                         "projects": ["chromium"],
                         "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"],
                     }
@@ -2395,7 +2278,7 @@ def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -2435,7 +2318,7 @@ def test_changed_data_insight_specs_are_selected_for_pr(spec, tmp_path, monkeypa
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -2454,9 +2337,7 @@ def test_changed_data_insight_specs_are_selected_for_pr(spec, tmp_path, monkeypa
 
 
 def test_visual_regression_specs_are_not_selected_by_the_main_workflow():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
 
     assert "playwright/e2e/VisualRegression/**" in impact_map["delegatedSpecs"]
 
@@ -2479,9 +2360,7 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
                     {
                         "sources": ["src/**"],
                         "projects": ["chromium"],
-                        "specs": [
-                            "playwright/e2e/VisualRegression/entityDetails.spec.ts"
-                        ],
+                        "specs": ["playwright/e2e/VisualRegression/entityDetails.spec.ts"],
                     }
                 ],
             }
@@ -2489,8 +2368,7 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
     )
     changed = tmp_path / "changed.txt"
     changed.write_text(
-        f"{selector.UI_ROOT}playwright/e2e/VisualRegression/entityDetails.spec.ts\n"
-        "src/VisualRegressionPage.tsx\n"
+        f"{selector.UI_ROOT}playwright/e2e/VisualRegression/entityDetails.spec.ts\nsrc/VisualRegressionPage.tsx\n"
     )
     output = tmp_path / "selection.json"
     monkeypatch.chdir(tmp_path)
@@ -2501,7 +2379,7 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -2516,10 +2394,7 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
     selection = json.loads(output.read_text())
     assert selection["selectors"] == []
     assert selection["directChangedSpecs"] == []
-    assert (
-        "playwright/e2e/VisualRegression/entityDetails.spec.ts"
-        in selection["delegatedChangedSpecs"]
-    )
+    assert "playwright/e2e/VisualRegression/entityDetails.spec.ts" in selection["delegatedChangedSpecs"]
     assert selection["unmappedFiles"] == []
 
 
@@ -2558,7 +2433,7 @@ def test_impact_mapping_cannot_reselect_a_delegated_spec(tmp_path, monkeypatch):
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -2576,20 +2451,15 @@ def test_impact_mapping_cannot_reselect_a_delegated_spec(tmp_path, monkeypatch):
 
 def test_security_impact_mapping_includes_ingestion_permission_specs():
     selector = load_script("select_playwright_tests")
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
+    impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
     mapping = next(
         entry
         for entry in impact_map["mappings"]
-        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
-        in entry["sources"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**" in entry["sources"]
     )
 
     assert "Ingestion" in mapping["projects"]
-    assert selector.matches(
-        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts", mapping["specs"]
-    )
+    assert selector.matches("playwright/e2e/Flow/ServiceCreationPermissions.spec.ts", mapping["specs"])
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():
@@ -2597,20 +2467,16 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     # reusable) so branch protection can require its unprefixed check name.
     # The paths-filter that watches render_playwright_summary.cjs still
     # lives in the reusable's check-changes job.
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
-    ).read_text()
-    reusable = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
-    ).read_text()
+    workflow = (SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml").read_text()
+    reusable = (SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml").read_text()
     summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
     summary_job = workflow.split("  playwright-summary:", 1)[1]
-    coverage_step = workflow.split(
-        "      - name: Verify Playwright timing coverage", 1
-    )[1].split("      - name: Evaluate Playwright performance", 1)[0]
-    performance_step = workflow.split(
+    coverage_step = workflow.split("      - name: Verify Playwright timing coverage", 1)[1].split(
         "      - name: Evaluate Playwright performance", 1
-    )[1].split("      - name: Upload merged Playwright report", 1)[0]
+    )[0]
+    performance_step = workflow.split("      - name: Evaluate Playwright performance", 1)[1].split(
+        "      - name: Upload merged Playwright report", 1
+    )[0]
 
     assert "--result-glob" in coverage_step
     assert "playwright-results-json-*/results.json" in coverage_step
@@ -2619,9 +2485,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "if: ${{ always() && !cancelled() }}" in summary_job
     assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
     assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
-    summary_script = summary_job.split("          script: |\n", 1)[1].split(
-        "\n      - name:", 1
-    )[0]
+    summary_script = summary_job.split("          script: |\n", 1)[1].split("\n      - name:", 1)[0]
     assert len(summary_script) < 21_000
     assert "- '.github/scripts/render_playwright_summary.cjs'" in reusable
     assert "'${{ github.run_id }}'" not in summary_helper
@@ -2644,8 +2508,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "Maximum shard-job elapsed before upload" in summary_helper
     assert "version: 2" in summary_helper
     performance_reporter = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright/reporters/PerformanceReporter.ts"
+        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/playwright/reporters/PerformanceReporter.ts"
     ).read_text()
     assert "lifecycleTests" in performance_reporter
 
@@ -2676,9 +2539,7 @@ def test_playwright_summary_commonjs_helper_executes(tmp_path):
             }
         )
     )
-    (results_dir / "ci-status.json").write_text(
-        json.dumps({"steps": {"tests": "success"}})
-    )
+    (results_dir / "ci-status.json").write_text(json.dumps({"steps": {"tests": "success"}}))
     payload_path = tmp_path / "playwright-pr-comment/summary.json"
     harness = f"""
 const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
@@ -2746,10 +2607,7 @@ const core = {{
     rendered = json.loads(completed.stdout)
     assert rendered["failure"] is None
     assert "all 1 tests passed" in rendered["summaryBody"]
-    assert (
-        "https://github.com/open-metadata/OpenMetadata/actions/runs/12345"
-        in rendered["summaryBody"]
-    )
+    assert "https://github.com/open-metadata/OpenMetadata/actions/runs/12345" in rendered["summaryBody"]
     payload = json.loads(payload_path.read_text())
     assert payload["totals"]["passed"] == 1
     assert payload["shards"][0]["id"] == "chromium-01"
@@ -2788,9 +2646,7 @@ def _run_playwright_summary_harness(tmp_path, *, event_name, extra_env, expected
             }
         )
     )
-    (results_dir / "ci-status.json").write_text(
-        json.dumps({"steps": {"tests": "success"}})
-    )
+    (results_dir / "ci-status.json").write_text(json.dumps({"steps": {"tests": "success"}}))
     payload_path = tmp_path / "playwright-pr-comment/summary.json"
     harness = f"""
 const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
@@ -2838,9 +2694,7 @@ const core = {{
             "FIXTURE_RESTORE_RESULT": "success",
             "FIXTURE_RESULT": "success",
             "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps(
-                {"include": [{"shardId": shard} for shard in expected_shards]}
-            ),
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": shard} for shard in expected_shards]}),
             "RUNNER_TEMP": str(tmp_path),
             "COMMENT_PAYLOAD_PATH": str(payload_path),
             "GITHUB_RUN_ID": "12345",
@@ -2913,9 +2767,7 @@ def test_playwright_summary_merge_group_fails_on_real_test_failure(tmp_path):
             }
         )
     )
-    (results_dir / "ci-status.json").write_text(
-        json.dumps({"steps": {"tests": "failure"}})
-    )
+    (results_dir / "ci-status.json").write_text(json.dumps({"steps": {"tests": "failure"}}))
     payload_path = tmp_path / "playwright-pr-comment/summary.json"
     harness = f"""
 const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
@@ -2971,9 +2823,7 @@ const core = {{
     assert "investigate assertion" in rendered["failure"]
 
 
-def _run_playwright_summary_bare(
-    tmp_path, *, event_name, playwright_result, expected_shards
-):
+def _run_playwright_summary_bare(tmp_path, *, event_name, playwright_result, expected_shards):
     """Run renderPlaywrightSummary with an empty results directory — no per-
     shard result files at all. Simulates the summary job's own download step
     flaking (run 34312746335: 37/37 shards succeeded upstream but
@@ -3016,9 +2866,7 @@ const core = {{
             "FIXTURE_RESTORE_RESULT": "success",
             "FIXTURE_RESULT": "success",
             "PLAYWRIGHT_RESULT": playwright_result,
-            "EXPECTED_MATRIX": json.dumps(
-                {"include": [{"shardId": s} for s in expected_shards]}
-            ),
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": s} for s in expected_shards]}),
             "RUNNER_TEMP": str(tmp_path),
             "COMMENT_PAYLOAD_PATH": str(payload_path),
             "GITHUB_RUN_ID": "12345",
@@ -3059,12 +2907,10 @@ def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
             expected_shards=["chromium-01"],
         )
         assert rendered["failure"] is not None, (
-            f"merge_group must fail when PLAYWRIGHT_RESULT={state!r}, "
-            f"got: {rendered['failure']}"
+            f"merge_group must fail when PLAYWRIGHT_RESULT={state!r}, got: {rendered['failure']}"
         )
         assert "shard matrix not green" in rendered["failure"], (
-            f"expected 'shard matrix not green' verdict for state {state!r}, "
-            f"got: {rendered['failure']}"
+            f"expected 'shard matrix not green' verdict for state {state!r}, got: {rendered['failure']}"
         )
 
 
@@ -3095,9 +2941,7 @@ def test_playwright_summary_checks_retry_artifact_integrity(tmp_path, conflictin
                 }
             )
         )
-        (d / "ci-status.json").write_text(
-            json.dumps({"steps": {"tests": "success"}})
-        )
+        (d / "ci-status.json").write_text(json.dumps({"steps": {"tests": "success"}}))
 
     write_shard(
         "chromium-01",
@@ -3179,19 +3023,12 @@ const core = {{
 
 
 def test_normal_vite_build_keeps_hashed_entry_assets():
-    vite_config = (
-        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
-    ).read_text()
-    app_entry = (
-        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/src/index.tsx"
-    ).read_text()
+    vite_config = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts").read_text()
+    app_entry = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/src/index.tsx").read_text()
 
     assert "? 'assets/app-entry-[hash].js'" in vite_config
     assert ": 'assets/[name]-[hash].js'" in vite_config
-    assert (
-        "'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild)"
-        in vite_config
-    )
+    assert "'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild)" in vite_config
     assert "if (!import.meta.env.PW_E2E_BUILD)" in app_entry
     assert "sessionStorage.getItem(scenarioKey)" in app_entry
     assert "'playwright-app-boot': '1'" in app_entry
@@ -3226,11 +3063,7 @@ def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
     # is runnable here, so both are unmatched. The existing one is created on disk
     # under the UI root the planner probes.
     existing_spec = "playwright/e2e/Features/GatedElsewhere.spec.ts"
-    existing_path = (
-        tmp_path
-        / "openmetadata-ui/src/main/resources/ui"
-        / existing_spec
-    )
+    existing_path = tmp_path / "openmetadata-ui/src/main/resources/ui" / existing_spec
     existing_path.parent.mkdir(parents=True)
     existing_path.write_text("// runs only in another lane", encoding="utf-8")
 
@@ -3255,9 +3088,12 @@ def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
         [
             sys.executable,
             str(planner_path),
-            "--test-list", str(test_list),
-            "--selection", str(selection),
-            "--output-dir", str(output_dir),
+            "--test-list",
+            str(test_list),
+            "--selection",
+            str(selection),
+            "--output-dir",
+            str(output_dir),
         ],
         capture_output=True,
         text=True,
@@ -3270,14 +3106,10 @@ def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
     assert "do not exist" in combined
     assert "DoesNotExist.spec.ts" in combined
     # ...while the tag-filtered-but-present spec is warned and skipped, not failed.
-    assert (
-        f"::warning file={existing_spec}::" in combined
-    )
+    assert f"::warning file={existing_spec}::" in combined
 
 
-def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(
-    tmp_path, monkeypatch
-):
+def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(tmp_path, monkeypatch):
     # Editing an OntologyExplorer source file fans out via the source->spec
     # mapping glob (OntologyStudio*.spec.ts), which matches both the regular
     # postgres specs and the delegated @ontology-rdf spec. The regular ones must
@@ -3286,10 +3118,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
-    changed.write_text(
-        f"{selector.UI_ROOT}"
-        "src/components/OntologyExplorer/OntologyExplorer.constants.ts\n"
-    )
+    changed.write_text(f"{selector.UI_ROOT}src/components/OntologyExplorer/OntologyExplorer.constants.ts\n")
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     monkeypatch.setattr(
         sys,
@@ -3297,7 +3126,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -3373,7 +3202,7 @@ def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatc
             [
                 "select_playwright_tests.py",
                 "--event-name",
-                "pull_request_target",
+                "workflow_dispatch",
                 "--changed-files",
                 str(changed),
                 "--impact-map",
@@ -3385,9 +3214,7 @@ def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatc
             ],
         )
         selector.main()
-        return {
-            entry["spec"] for entry in json.loads(output.read_text())["selectors"]
-        }
+        return {entry["spec"] for entry in json.loads(output.read_text())["selectors"]}
 
     # Generated-only source routes the generated spec.
     specs = run_with(["src/pages/Gen/genOnly.tsx"])
@@ -3444,7 +3271,7 @@ def test_generated_impact_map_auto_detected_beside_hand_authored(tmp_path, monke
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -3471,26 +3298,16 @@ def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_p
 
     # Build a mini repo: a src component with a testId, and a spec that uses
     # both the testId and a generated import.
-    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget").mkdir(
-        parents=True
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget").mkdir(parents=True)
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/generated/entity").mkdir(parents=True)
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features").mkdir(parents=True)
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx").write_text(
+        'export const W = () => <div data-testid="widget-open" />;\n'
     )
-    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/generated/entity").mkdir(
-        parents=True
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts").write_text(
+        "export type Table = { id: string };\n"
     )
-    (tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features").mkdir(
-        parents=True
-    )
-    (
-        tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
-    ).write_text('export const W = () => <div data-testid="widget-open" />;\n')
-    (
-        tmp_path
-        / "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts"
-    ).write_text("export type Table = { id: string };\n")
-    (
-        tmp_path
-        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Widget.spec.ts"
-    ).write_text(
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Widget.spec.ts").write_text(
         "import { Table } from '../../../src/generated/entity/table';\n"
         "test('opens', async ({ page }) => {\n"
         "  await page.getByTestId('widget-open').click();\n"
@@ -3499,21 +3316,11 @@ def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_p
 
     result = generator.build_map(tmp_path)
 
-    sources = {
-        source
-        for entry in result["mappings"]
-        for source in entry["sources"]
-    }
+    sources = {source for entry in result["mappings"] for source in entry["sources"]}
     # Import-graph signal picked up the generated schema.
-    assert (
-        "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts"
-        in sources
-    )
+    assert "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts" in sources
     # testId cross-reference picked up the component.
-    assert (
-        "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
-        in sources
-    )
+    assert "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx" in sources
 
 
 def test_generator_records_playwright_helpers_a_spec_imports(tmp_path):
@@ -3533,12 +3340,9 @@ def test_generator_records_playwright_helpers_a_spec_imports(tmp_path):
     (ui / "playwright/e2e/Features").mkdir(parents=True)
     (ui / "src/pages").mkdir(parents=True)
 
-    (ui / "playwright/utils/domain.ts").write_text(
-        "export const selectDomain = async (page, name) => {};\n"
-    )
+    (ui / "playwright/utils/domain.ts").write_text("export const selectDomain = async (page, name) => {};\n")
     (ui / "playwright/support/domain/Domain.ts").write_text(
-        "import { selectDomain } from '../../utils/domain';\n"
-        "export class Domain { select = selectDomain; }\n"
+        "import { selectDomain } from '../../utils/domain';\nexport class Domain { select = selectDomain; }\n"
     )
     # Mirrors the real SDD spec: imports the support class AND the util.
     (ui / "playwright/e2e/Features/Sdd.spec.ts").write_text(
@@ -3599,35 +3403,25 @@ def test_generator_ignores_unit_tests_and_mocks_that_colocate_with_components(
 
     # Product source, unit test, and Jest mock all define the SAME data-testid.
     # Only the product source should surface as an owner.
-    (ui / "src/components/Widget/Widget.tsx").write_text(
-        'export const W = () => <div data-testid="widget-open" />;\n'
-    )
+    (ui / "src/components/Widget/Widget.tsx").write_text('export const W = () => <div data-testid="widget-open" />;\n')
     (ui / "src/components/Widget/Widget.test.tsx").write_text(
         'test("renders", () => render(<div data-testid="widget-open" />));\n'
     )
-    (ui / "src/mocks/Widget.mock.tsx").write_text(
-        'export const mock = () => <div data-testid="widget-open" />;\n'
-    )
+    (ui / "src/mocks/Widget.mock.tsx").write_text('export const mock = () => <div data-testid="widget-open" />;\n')
     (ui / "playwright/e2e/Features/Widget.spec.ts").write_text(
-        "test('opens', async ({ page }) => {\n"
-        "  await page.getByTestId('widget-open').click();\n"
-        "});\n"
+        "test('opens', async ({ page }) => {\n  await page.getByTestId('widget-open').click();\n});\n"
     )
 
     result = generator.build_map(tmp_path)
     sources = {s for entry in result["mappings"] for s in entry["sources"]}
 
-    assert (
-        "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.tsx"
-        in sources
-    )
+    assert "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.tsx" in sources
     for excluded in (
         "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.test.tsx",
         "openmetadata-ui/src/main/resources/ui/src/mocks/Widget.mock.tsx",
     ):
         assert excluded not in sources, (
-            f"{excluded} should be excluded — editing a Jest test or a mock "
-            "must not schedule Playwright"
+            f"{excluded} should be excluded — editing a Jest test or a mock must not schedule Playwright"
         )
 
 
@@ -3676,13 +3470,9 @@ def test_generator_drops_testids_owned_by_too_many_files(tmp_path):
     (ui / "playwright/e2e/Features").mkdir(parents=True)
     # 4 owners for `loader`, over the threshold.
     for name in ("A", "B", "C", "D"):
-        (ui / "src" / f"{name}.tsx").write_text(
-            f'export const X = () => <div data-testid="loader" />;\n'
-        )
+        (ui / "src" / f"{name}.tsx").write_text(f'export const X = () => <div data-testid="loader" />;\n')
     (ui / "playwright/e2e/Features/UsesLoader.spec.ts").write_text(
-        "test('waits', async ({ page }) => {\n"
-        "  await page.getByTestId('loader').isVisible();\n"
-        "});\n"
+        "test('waits', async ({ page }) => {\n  await page.getByTestId('loader').isVisible();\n});\n"
     )
 
     result = generator.build_map(tmp_path)
@@ -3735,9 +3525,7 @@ def test_generator_skips_specs_delegated_by_the_hand_authored_map(tmp_path):
             }
         )
     )
-    (
-        ui / "src/components/Widget/Widget.tsx"
-    ).write_text('export const W = () => <div data-testid="widget-open" />;\n')
+    (ui / "src/components/Widget/Widget.tsx").write_text('export const W = () => <div data-testid="widget-open" />;\n')
 
     # Delegated specs — must NOT appear in the generated map.
     for delegated in (
@@ -3746,16 +3534,12 @@ def test_generator_skips_specs_delegated_by_the_hand_authored_map(tmp_path):
         "playwright/e2e/Features/OntologyImportRdf.spec.ts",
     ):
         (ui / delegated).write_text(
-            "test('opens', async ({ page }) => {\n"
-            "  await page.getByTestId('widget-open').click();\n"
-            "});\n"
+            "test('opens', async ({ page }) => {\n  await page.getByTestId('widget-open').click();\n});\n"
         )
 
     # Non-delegated spec — SHOULD appear.
     (ui / "playwright/e2e/Features/UsesWidget.spec.ts").write_text(
-        "test('opens', async ({ page }) => {\n"
-        "  await page.getByTestId('widget-open').click();\n"
-        "});\n"
+        "test('opens', async ({ page }) => {\n  await page.getByTestId('widget-open').click();\n});\n"
     )
 
     result = generator.build_map(tmp_path)
@@ -3792,9 +3576,7 @@ def test_unmapped_code_change_escalates_a_pr_to_the_full_plan(tmp_path, monkeypa
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
-    changed.write_text(
-        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java\n"
-    )
+    changed.write_text("openmetadata-service/src/main/java/org/openmetadata/service/Foo.java\n")
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     monkeypatch.setattr(
         sys,
@@ -3802,7 +3584,7 @@ def test_unmapped_code_change_escalates_a_pr_to_the_full_plan(tmp_path, monkeypa
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -3819,9 +3601,7 @@ def test_unmapped_code_change_escalates_a_pr_to_the_full_plan(tmp_path, monkeypa
     # An empty selectors list is how the downstream shard planner recognises a
     # full plan; adding anything here would double-schedule specs.
     assert selection["selectors"] == []
-    assert selection["unmappedCodeFiles"] == [
-        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"
-    ]
+    assert selection["unmappedCodeFiles"] == ["openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"]
 
 
 def test_unmapped_docs_change_stays_on_the_targeted_plan(tmp_path, monkeypatch):
@@ -3842,7 +3622,7 @@ def test_unmapped_docs_change_stays_on_the_targeted_plan(tmp_path, monkeypatch):
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -3862,9 +3642,7 @@ def test_unmapped_docs_change_stays_on_the_targeted_plan(tmp_path, monkeypatch):
     assert selection["selectors"], "docs-only unmapped change should still add canary"
 
 
-def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
-    tmp_path, monkeypatch
-):
+def test_unmapped_code_escalation_records_all_unmapped_code_files_together(tmp_path, monkeypatch):
     """
     A PR that mixes docs edits, a mapped UI file, and an unmapped code file
     still escalates — because the unmapped code file remains a coverage risk.
@@ -3894,7 +3672,7 @@ def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
         [
             "select_playwright_tests.py",
             "--event-name",
-            "pull_request_target",
+            "workflow_dispatch",
             "--changed-files",
             str(changed),
             "--impact-map",
@@ -3908,9 +3686,7 @@ def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
 
     selection = json.loads(output.read_text())
     assert selection["mode"] == "full"
-    assert selection["unmappedCodeFiles"] == [
-        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"
-    ]
+    assert selection["unmappedCodeFiles"] == ["openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"]
 
 
 def test_is_code_path_covers_every_root_the_e2e_filter_matches():

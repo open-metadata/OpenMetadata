@@ -65,12 +65,7 @@ test('delete confirmation modal matches baseline', async ({ page }) => {
   await page.getByTestId('manage-button').click();
   await expect(page.getByTestId('delete-button')).toBeVisible();
 
-  // FREEZE_CSS (applied by gotoForScreenshot) sets `animation: none`, so
-  // rc-motion never receives its animationend event and leaves the dropdown
-  // overlay stuck with `pointer-events: none` — a trusted click falls
-  // through to the element underneath. Dispatch the click directly on the
-  // menu item instead (same pattern as playwright/utils/lineage.ts).
-  await page.getByTestId('delete-button').dispatchEvent('click');
+  await page.getByTestId('delete-button').click();
   await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
 
   await expect(page).toHaveScreenshot('delete-modal.png', {

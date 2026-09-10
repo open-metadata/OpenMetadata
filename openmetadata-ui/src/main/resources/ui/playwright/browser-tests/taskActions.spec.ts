@@ -16,6 +16,7 @@ import { openTaskEditModal } from '../utils/taskWorkflow';
 
 for (const variant of [
   'workflow-accept',
+  'workflow-approve',
   'workflow-resolve',
   'legacy-accept',
 ]) {
@@ -23,7 +24,13 @@ for (const variant of [
     'editing a task selects one edit action: ' + variant,
     async ({ page }) => {
       const workflow = variant.startsWith('workflow');
-      const primaryIsEdit = variant === 'workflow-resolve';
+      const primaryIsEdit = workflow;
+      const primaryLabel =
+        variant === 'workflow-resolve'
+          ? 'Resolve'
+          : variant === 'workflow-approve'
+          ? 'Approve'
+          : 'Accept';
       const prefix = workflow
         ? 'workflow-task-action'
         : 'edit-accept-task-action';
@@ -34,7 +41,7 @@ for (const variant of [
       <div id="task-panel"><div data-testid="task-cta-buttons"><div data-testid="${dropdown}">
         <button data-testid="${prefix}-primary" onclick="openModal('${
         primaryIsEdit ? 'edit' : 'accept'
-      }')">${primaryIsEdit ? 'Resolve' : 'Accept'}</button>
+      }')">${primaryLabel}</button>
         <button data-testid="${prefix}-trigger" aria-label="down" onclick="document.getElementById('menu').hidden=false">Open</button>
       </div></div></div>
       <div id="menu" hidden class="task-action-dropdown"><div role="menu">

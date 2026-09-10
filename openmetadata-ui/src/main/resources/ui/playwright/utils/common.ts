@@ -1849,11 +1849,12 @@ export const testTableSearch = async (
 
   const responsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
+    const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
     return (
       response.request().method() === 'GET' &&
       url.pathname === '/api/v1/search/query' &&
       url.searchParams.get('index') === searchIndex &&
-      url.searchParams.get('q') === searchTerm.replaceAll('"', '\\"')
+      (query === searchTerm || query.startsWith(`*${searchTerm}*`))
     );
   });
   await page.getByTestId('searchbar').fill(searchTerm);

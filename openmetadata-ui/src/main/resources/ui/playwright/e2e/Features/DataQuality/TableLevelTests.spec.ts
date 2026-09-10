@@ -873,12 +873,14 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
-        await page.click('#testCaseFormV1_params_strategy');
-        await page
-          .getByRole('option')
-          .filter({ hasText: 'ROWS' })
-          .first()
-          .click();
+        const strategy = page.locator('#testCaseFormV1_params_strategy');
+        await chooseSelectOption(
+          strategy,
+          page
+            .getByRole('listbox')
+            .getByRole('option', { name: 'ROWS', exact: true })
+        );
+        await expect(strategy).toHaveText('ROWS');
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
 

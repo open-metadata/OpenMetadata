@@ -184,7 +184,7 @@
   },
   "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 9
     }
   },
   "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts": {

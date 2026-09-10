@@ -72,20 +72,13 @@ def matches(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
 
 
-def add_selection(
-    selected: dict[str, set[str]], entry: dict[str, Any], repo_root: Path
-) -> None:
+def add_selection(selected: dict[str, set[str]], entry: dict[str, Any], repo_root: Path) -> None:
     projects = set(entry.get("projects", ["auto"]))
     for pattern in entry.get("specs", []):
         absolute_pattern = repo_root / UI_ROOT / pattern
-        matches_for_pattern = sorted(
-            repo_root.glob(str(absolute_pattern.relative_to(repo_root)))
-        )
+        matches_for_pattern = sorted(repo_root.glob(str(absolute_pattern.relative_to(repo_root))))
         if matches_for_pattern:
-            specs = [
-                str(path.relative_to(repo_root / UI_ROOT))
-                for path in matches_for_pattern
-            ]
+            specs = [str(path.relative_to(repo_root / UI_ROOT)) for path in matches_for_pattern]
         else:
             specs = [pattern]
         for spec in specs:
@@ -100,9 +93,7 @@ def is_mapped_file(path: str, impact_map: dict[str, Any]) -> bool:
     )
 
 
-def remove_delegated_specs(
-    selected: dict[str, set[str]], delegated_patterns: list[str]
-) -> None:
+def remove_delegated_specs(selected: dict[str, set[str]], delegated_patterns: list[str]) -> None:
     for spec in list(selected):
         if matches(spec, delegated_patterns):
             del selected[spec]
@@ -110,20 +101,13 @@ def remove_delegated_specs(
 
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
     direct_changed_specs = plan.get("directChangedSpecs", [])
-    lineage_representative_only = (
-        plan["mode"] == "targeted" and LINEAGE_MATRIX_SPEC not in direct_changed_specs
-    )
+    lineage_representative_only = plan["mode"] == "targeted" and LINEAGE_MATRIX_SPEC not in direct_changed_specs
     with path.open("a", encoding="utf-8") as output:
         output.write(f"mode={plan['mode']}\n")
         output.write(f"selection={json.dumps(plan, separators=(',', ':'))}\n")
         output.write(f"selected_count={len(plan['selectors'])}\n")
-        output.write(
-            "direct_changed_specs="
-            f"{json.dumps(direct_changed_specs, separators=(',', ':'))}\n"
-        )
-        output.write(
-            f"lineage_representative_only={str(lineage_representative_only).lower()}\n"
-        )
+        output.write(f"direct_changed_specs={json.dumps(direct_changed_specs, separators=(',', ':'))}\n")
+        output.write(f"lineage_representative_only={str(lineage_representative_only).lower()}\n")
 
 
 def main() -> None:
@@ -148,17 +132,13 @@ def main() -> None:
             generated_path = default_generated
     if generated_path is not None and generated_path.exists():
         generated = json.loads(generated_path.read_text(encoding="utf-8"))
-        impact_map["mappings"] = impact_map.get("mappings", []) + generated.get(
-            "mappings", []
-        )
+        impact_map["mappings"] = impact_map.get("mappings", []) + generated.get("mappings", [])
     # `push` is the main-scoped cache warmer (populate-playwright-caches.yml).
     # It carries no PR diff to narrow against, and the fixture it warms has to be
     # the one a full merge-queue run restores — a targeted plan would leave
     # requires_airflow false and skip warming the ingestion image entirely.
-    full_event = args.event_name in {"merge_group", "schedule", "push"}
-    full_requested = (
-        args.event_name == "workflow_dispatch" and args.full_suite == "true"
-    )
+    full_event = args.event_name in {"pull_request", "pull_request_target", "merge_group", "schedule", "push"}
+    full_requested = args.event_name == "workflow_dispatch" and args.full_suite == "true"
 
     if full_event or full_requested:
         plan = {
@@ -172,18 +152,14 @@ def main() -> None:
         changed_files = []
         if args.changed_files and args.changed_files.exists():
             changed_files = [
-                line.strip()
-                for line in args.changed_files.read_text(encoding="utf-8").splitlines()
-                if line.strip()
+                line.strip() for line in args.changed_files.read_text(encoding="utf-8").splitlines() if line.strip()
             ]
 
         selected: dict[str, set[str]] = {}
         for entry in impact_map["smoke"]:
             add_selection(selected, entry, repo_root)
 
-        shared_infrastructure_changed = any(
-            matches(path, impact_map["sharedInfrastructure"]) for path in changed_files
-        )
+        shared_infrastructure_changed = any(matches(path, impact_map["sharedInfrastructure"]) for path in changed_files)
         if shared_infrastructure_changed:
             for entry in impact_map["canary"]:
                 add_selection(selected, entry, repo_root)
@@ -194,9 +170,7 @@ def main() -> None:
         unmapped_files: list[str] = []
         for changed_file in changed_files:
             file_mapped = is_mapped_file(changed_file, impact_map)
-            if changed_file.startswith(RUNNABLE_SPEC_PREFIX) and changed_file.endswith(
-                ".spec.ts"
-            ):
+            if changed_file.startswith(RUNNABLE_SPEC_PREFIX) and changed_file.endswith(".spec.ts"):
                 relative_spec = changed_file.removeprefix(UI_ROOT)
                 if not (repo_root / changed_file).is_file():
                     deleted_changed_specs.append(relative_spec)

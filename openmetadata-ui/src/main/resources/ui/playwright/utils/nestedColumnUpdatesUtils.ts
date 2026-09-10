@@ -146,7 +146,6 @@ const expandNestedColumn = async (
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
   if (!(await childRow.isVisible())) {
-    await expandIcon.scrollIntoViewIfNeeded();
     await expandIcon.click();
   }
   await expect(childRow).toBeVisible();
@@ -162,7 +161,6 @@ const collapseNestedColumn = async (
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
   if (await childRow.isVisible()) {
-    await expandIcon.scrollIntoViewIfNeeded();
     await expandIcon.click();
   }
   await expect(childRow).toBeHidden();

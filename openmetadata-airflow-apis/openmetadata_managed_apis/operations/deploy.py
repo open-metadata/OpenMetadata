@@ -11,11 +11,13 @@
 import json
 import pkgutil
 import traceback
+from datetime import datetime, timezone
 from pathlib import Path
+from time import monotonic, sleep
 
-import airflow
 from airflow import DAG, settings
 from airflow.models import DagModel
+from airflow.models.serialized_dag import SerializedDagModel
 from jinja2 import Template
 from markupsafe import escape
 
@@ -144,7 +146,8 @@ class DagDeployer:
         to the Scheduler job, to make sure that all
         the pieces are being properly picked up.
         """
-        # Refresh dag into session
+        parsed_after = datetime.now(timezone.utc)
+        requires_scheduler_sync = False
         with settings.Session() as session:
             try:
                 dag_bag = get_dagbag()
@@ -160,19 +163,38 @@ class DagDeployer:
                 if hasattr(dag, "sync_to_db"):
                     dag.sync_to_db(session=session)
                 else:
-                    logger.info(
-                        "Airflow version %s does not support dag.sync_to_db; relying on scheduler scan.",
-                        airflow.__version__,
-                    )
-                dag_model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
-                logger.info("dag_model:" + str(dag_model))
+                    requires_scheduler_sync = True
+                session.commit()
             except Exception:
                 logger.exception("Workflow [%s] failed to refresh", self.dag_id)
                 return ApiResponse.server_error()
 
         scan_dags_job_background()
+        if requires_scheduler_sync and not self._wait_for_dag_registration(parsed_after):
+            logger.error("Workflow [%s] was parsed but not registered for triggering within 60 seconds", self.dag_id)
+            return ApiResponse.server_error()
 
         return ApiResponse.success({"message": f"Workflow [{escape(self.dag_id)}] has been created"})
+
+    def _wait_for_dag_registration(self, parsed_after: datetime, timeout_seconds: float = 60) -> bool:
+        # Airflow 3 persists DAGs asynchronously. Returning success before that
+        # commit makes an immediate trigger fail, or run an older DAG on redeploy.
+        deadline = monotonic() + timeout_seconds
+        while True:
+            with settings.Session() as session:
+                model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
+                if (
+                    model is not None
+                    and model.last_parsed_time is not None
+                    and model.last_parsed_time >= parsed_after
+                    and not model.has_import_errors
+                    and SerializedDagModel.get(self.dag_id, session=session) is not None
+                ):
+                    return True
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                return False
+            sleep(min(1, remaining))
 
     def deploy(self):
         """

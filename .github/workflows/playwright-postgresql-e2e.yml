@@ -105,7 +105,7 @@ jobs:
       # Defaults inline what workflow_dispatch collects; non-dispatch events
       # fall back to the reusable's own defaults (full_suite=true, http,
       # coarse_bundle=true).
-      full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
+      full_suite: ${{ github.event_name != 'workflow_dispatch' || inputs.full_suite }}
       protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
 

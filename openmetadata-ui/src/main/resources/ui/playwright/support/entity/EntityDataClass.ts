@@ -108,7 +108,7 @@ export class EntityDataClass {
     classification: 'Tier',
   });
   static readonly classification1 = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   static readonly tag1 = new TagClass({

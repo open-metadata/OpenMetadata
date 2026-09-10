@@ -264,7 +264,7 @@ const selectActiveRowCellByColumn = async (page: Page, columnKey: string) => {
 };
 
 const openSelectedGridEditor = async (page: Page) => {
-  const cell = page.locator('.rdg-cell[tabindex="0"]');
+  const cell = page.locator('.rdg-cell[aria-selected="true"]');
   await expect(cell).toHaveCount(1);
   await cell.scrollIntoViewIfNeeded();
   await cell.focus();
@@ -273,7 +273,7 @@ const openSelectedGridEditor = async (page: Page) => {
 };
 
 const fillAndCommitTextEditor = async (page: Page, text: string) => {
-  const editor = page.getByTestId('bulk-edit-text-cell-editor');
+  const editor = page.locator('.rdg-cell').getByRole('textbox');
   if (!(await editor.isVisible())) await openSelectedGridEditor(page);
   await expect(editor).toBeVisible();
   await editor.fill(text);

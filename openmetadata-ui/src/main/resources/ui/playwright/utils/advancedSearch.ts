@@ -217,11 +217,8 @@ export const selectOption = async (
   const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
   await listbox.getByRole('option', { name: optionTitle, exact: true }).click();
 
-  if ((await comboboxInput.count()) > 0 && (await triggerButton.count()) > 0) {
-    await expect(comboboxInput).toHaveValue(optionTitle);
-  } else {
-    await expect(dropdownLocator).toContainText(optionTitle);
-  }
+  // RAQB can replace a group selector with a child rule after selection.
+  // Callers assert the resulting rule or request; the old input is not the result.
   if (await control.count()) {
     await control.blur();
   }

@@ -12,6 +12,7 @@
 """Run against an initialized Airflow database (``airflow db migrate``)."""
 
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -24,7 +25,7 @@ from airflow.utils.state import DagRunState, TaskInstanceState
 from airflow.utils.types import DagRunType
 from flask import Flask
 
-from openmetadata_managed_apis.operations import delete, deploy
+from openmetadata_managed_apis.operations import delete, deploy, trigger
 
 
 @pytest.fixture
@@ -117,20 +118,21 @@ def test_invalid_dag_does_not_report_success(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("invalid_second", [False, True])
-def test_concurrent_deployments_report_each_dag_result(tmp_path, monkeypatch, invalid_second):
-    monkeypatch.setattr(deploy, "scan_dags_job_background", lambda: None)
+def test_concurrent_deployments_report_each_dag_result(invalid_second):
+    dag_folder = Path(settings.DAGS_FOLDER)
+    dag_folder.mkdir(parents=True, exist_ok=True)
     names = [f"bulk_{uuid4().hex}" for _ in range(2)]
     for index, name in enumerate(names):
         source = f'from airflow import DAG\ndag = DAG("{name}", schedule=None)\n'
         if invalid_second and index == 1:
             source += 'raise ValueError("invalid second pipeline")\n'
-        (tmp_path / f"{name}.py").write_text(source)
+        (dag_folder / f"{name}.py").write_text(source)
 
     def refresh(name):
         deployer = object.__new__(deploy.DagDeployer)
         deployer.dag_id = name
         with Flask(__name__).app_context():
-            response = deployer.refresh_session_dag(str(tmp_path / f"{name}.py"))
+            response = deployer.refresh_session_dag(str(dag_folder / f"{name}.py"))
             return response.status_code, response.get_json()
 
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -142,3 +144,27 @@ def test_concurrent_deployments_report_each_dag_result(tmp_path, monkeypatch, in
             assert name in body["message"]
         else:
             assert body == {"error": "An unexpected problem occurred"}
+
+
+def test_deploy_is_triggerable_before_success_returns():
+    pytest.importorskip("airflow.models.dag_version")
+    name = f"deploy_ready_{uuid4().hex}"
+    path = Path(settings.DAGS_FOLDER) / f"{name}.py"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f'from airflow import DAG\ndag = DAG("{name}", schedule=None)\n')
+    deployer = object.__new__(deploy.DagDeployer)
+    deployer.dag_id = name
+
+    try:
+        with Flask(__name__).app_context():
+            response = deployer.refresh_session_dag(str(path))
+            assert response.status_code == 200
+            _, status = trigger.trigger(name, f"manual__{uuid4().hex}")
+            assert status == 200
+        with settings.Session() as session:
+            assert session.query(DagRun).filter_by(dag_id=name).count() == 1
+    finally:
+        with settings.Session() as session:
+            if session.query(DagModel).filter_by(dag_id=name).count():
+                airflow_delete_dag(name, session=session)
+                session.commit()

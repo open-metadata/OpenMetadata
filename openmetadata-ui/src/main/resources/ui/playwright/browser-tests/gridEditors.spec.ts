@@ -20,14 +20,8 @@ const bundle = buildSync({
   stdin: {
     contents: `import React, { useState } from 'react';
       import { createRoot } from 'react-dom/client';
-      import DataGrid from 'react-data-grid';
-      function Editor({ row, onRowChange }) {
-        const [value, setValue] = useState(row.name);
-        return <input autoFocus data-testid="bulk-edit-text-cell-editor" value={value}
-          onChange={event => setValue(event.target.value)}
-          onKeyDown={event => { if (event.key === 'Enter') { event.stopPropagation(); onRowChange({ ...row, name: value }, true); } }} />;
-      }
-      const columns = [{ key: 'name', name: 'Name', editable: true, renderEditCell: Editor }];
+      import DataGrid, { textEditor } from 'react-data-grid';
+      const columns = [{ key: 'name', name: 'Name', editable: true, renderEditCell: textEditor }];
       function App() {
         const [rows, setRows] = useState([{ name: 'Original' }]);
         return <main className="ant-layout-content"><input aria-label="Unrelated search" defaultValue="Keep this query" />

@@ -29,6 +29,9 @@ export const waitForSearchIndexed = async (
     matchBy?: 'fullyQualifiedName' | 'nameOrDisplayName';
   }
 ) => {
+  if (!index || index === 'undefined') {
+    throw new Error('waitForSearchIndexed called with empty search index');
+  }
   // An empty q= becomes a match-all query in the search API: hits.total>0
   // would resolve on the first poll against any non-empty index, silently
   // bypassing the very race this helper exists to close. Fail fast with a

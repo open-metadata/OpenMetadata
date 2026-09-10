@@ -153,10 +153,7 @@ export async function setSliderValue(
 // configuration rows) is collapsed and not mounted. Expand it before
 // interacting with any field-configuration control.
 export const openMatchingFieldsPanel = async (page: Page) => {
-  const panel = page.getByRole('button', {
-    name: 'Matching Fields',
-    exact: true,
-  });
+  const panel = page.getByRole('tab', { name: /Matching Fields/ });
   await expect(panel).toBeVisible();
   if ((await panel.getAttribute('aria-expanded')) !== 'true') {
     await panel.click();

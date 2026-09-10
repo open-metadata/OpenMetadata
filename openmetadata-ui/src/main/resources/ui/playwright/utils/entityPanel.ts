@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { clickOutside, redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { ENTITY_PATH } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { waitForAllLoadersToDisappear } from './entity';
 
@@ -98,7 +99,9 @@ export const openEntitySummaryPanel = async ({
       await waitForSearchIndexed(
         apiContext,
         fullyQualifiedName ?? entityName,
-        endpoint ? getEntityTypeSearchIndexMapping(endpoint) : 'dataAsset',
+        endpoint
+          ? ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH]
+          : 'dataAsset',
         {
           matchBy: fullyQualifiedName
             ? 'fullyQualifiedName'
@@ -703,5 +706,5 @@ export const editDisplayNameFromPanel = async (
   await modal.waitFor({ state: 'hidden' });
 };
 
-import { getApiContext, getEntityTypeSearchIndexMapping } from './common';
+import { getApiContext } from './common';
 import { waitForSearchIndexed } from './polling';

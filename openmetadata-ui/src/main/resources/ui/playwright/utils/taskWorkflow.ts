@@ -314,12 +314,20 @@ export const openTaskEditModal = async (page: Page) => {
   }
   const panel = page.locator(TASK_PANEL_SELECTOR);
   await expect(panel.getByTestId('task-cta-buttons')).toBeVisible();
+  // Workflow approval opens the transition form for editing the suggested fields.
+  // Legacy Accept submits directly, so it must use its separate Edit menu item.
+  const workflow = panel.locator(
+    '[data-testid="workflow-task-action-primary"]'
+  );
+  const workflowAction = /approve|accept|resolve/i;
   const editAction =
-    /edit suggestion|edit|resolve|update description|update tags|add description|add tags/i;
+    /edit suggestion|edit|resolve|update description|update tags|add description|add tags|add suggestion/i;
   const primary = panel
     .locator('button[data-testid$="-primary"]:visible')
     .filter({ hasText: editAction });
-  if (await primary.count()) {
+  if (await workflow.filter({ hasText: workflowAction }).count()) {
+    await workflow.click();
+  } else if (await primary.count()) {
     await primary.scrollIntoViewIfNeeded();
     await primary.click();
   } else {

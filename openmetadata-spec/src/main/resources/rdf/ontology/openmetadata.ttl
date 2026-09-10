@@ -1310,6 +1310,13 @@ om:fullyQualifiedName a owl:DatatypeProperty ;
     rdfs:domain om:Entity ;
     rdfs:range xsd:string .
 
+om:aliases a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "aliases" ;
+    rdfs:comment "Alternative fully qualified names used to reference a table in SQL queries" ;
+    rdfs:domain om:Table ;
+    rdfs:range xsd:string .
+
 om:serviceType a owl:DatatypeProperty ;
     om:projectionStatus om:Stored ;
     rdfs:label "service type" ;

@@ -1,9 +1,9 @@
 # Playwright test-design audit — September 9, 2026
 
 The audit scope is the complete suite, not the nine retry-pass tests in one
-report: **394 E2E spec files and 660 TypeScript files**, including configuration,
-setup, teardown, fixtures, page objects, utilities, and four browser-helper specs.
-There are 2,892 static test declarations; parameterized declarations expand into
+report: **395 E2E spec files and 663 TypeScript files**, including configuration,
+setup, teardown, fixtures, page objects, utilities, and six browser-helper specs.
+There are 2,900 static test declarations; parameterized declarations expand into
 more runtime tests. This is source review and focused regression validation, not
 a claim that every end-to-end scenario has been executed or proven stable.
 
@@ -106,6 +106,38 @@ required CI step. PR diagnostic uploads remain enabled; a JSON transport failure
 does not rewrite a shard's test outcome, while missing execution evidence still
 fails the required summary. Merge groups keep local coverage verification and
 avoid diagnostic artifact uploads.
+
+
+## Follow-up CI failures and full PR coverage
+
+The next CI run ([34422261152](https://github.com/open-metadata/OpenMetadata/actions/runs/34422261152)) exposed regressions in shared helpers in this PR. The 36 downloaded result reports contain 565 failed, 100 timed-out, and four interrupted executions. These are not 669 independent flaky tests. Examples of repeated causes and the resulting repairs:
+
+| Cause | Repair |
+| --- | --- |
+| 307 executions queried `openmetadata_undefined` | Resolve REST collection names through `ENTITY_PATH`; reject an empty search index before making a request. |
+| Query-builder selection asserted the old control's value after selecting a group | Preserve the scoped option click; assert the resulting rule/request in the caller. A real `OMFieldSelect` browser regression covers group-to-child replacement. |
+| Following-widget checks used lowercase `following-` | Match the component's existing `Following-` test IDs. |
+| Listing searches never matched their response | URL-encode the actual Elasticsearch query in the product API client; match wildcard queries and encoded reserved characters in the helpers. |
+| Shared teardown tried deleting a system classification | Create a user classification for the owned test fixture; keep strict cleanup error checking. |
+| Native grid inputs had no custom editor test ID | Scope the textbox to the active grid cell and select the cell through `aria-selected`; verify the saved cell using the real native grid editor. |
+| Search settings looked for a button named exactly `Matching Fields` | Use the actual accordion tab role; its accessible name also includes the Add control. |
+| Workflow task helper waited for a nonexistent Edit menu item | Use the workflow Approve/Accept transition, which opens the task form; legacy Accept still uses its separate Edit action. |
+| SQL strategy option detached on selection | Establish focus before opening the Select, scope the exact ROWS option to the listbox, and verify the selected trigger text. |
+| Nested-column expansion separated scrolling from clicking a remounting control | Let the locator click perform its own stability and scrolling checks. |
+| Visual tests globally disabled animation events | Disable animation only while capturing screenshots; preserve menu lifecycle events during interaction. |
+
+The ingestion failures also have a concrete server-side cause. For the bundle-suite pipeline, deploy returned 200 at 01:32:53 UTC, the immediate trigger failed because no `DagModel` existed, and Airflow persisted it around 01:32:57. The AutoPilot/incident-manager shard also logged `not found in DagModel`. Airflow 3 deployment now waits for a fresh parsed model and serialized DAG before reporting success, with a 60-second readiness deadline and no repeat deploy or trigger. The real Airflow/PostgreSQL regression reproduced the immediate-trigger failure before the change and passes afterward. Undeployed pipeline metadata no longer requires an available runner for deletion; deployed pipelines still propagate runner errors.
+
+PR pushes previously allowed impact-selected PostgreSQL tests and path-selected RDF, visual, and data-access tests. Authorized, non-draft PR pushes now request the full PostgreSQL suite and run the RDF, visual, and data-access workflows regardless of changed paths. Manual diagnostic dispatch can still request selection. Existing fork approval gates remain. These changes require merging the workflow updates before base-owned `pull_request_target` execution adopts them.
+
+For [#32919's queue removal](https://github.com/open-metadata/OpenMetadata/pull/32919#issuecomment-5610498705), the SQL Select and Test Library failures accompanied two backend failures:
+
+- The ontology contract tests rejected the new table `aliases` predicate. Its stored datatype-property declaration is now present; the two original failures reproduced locally and all seven contract tests pass.
+- `StoredProcedureResourceIT.test_sdkCRUDOperations` read a stored procedure after deletion. Redis logs show another cache write after the delete's write. Stale cache population remains a candidate requiring a deterministic concurrent reproduction; this change does not declare that defect fixed.
+
+Two other CI checks had separate causes. Sonar discarded 47 Airflow coverage paths after an obsolete `/github/workspace` rewrite, although the tests passed and reported 97% delete-module / 86% deploy-module coverage. Coverage filenames now resolve relative to the scanner's module directory. Collate main depends on `DataInsightsExtension` from still-open [#33079](https://github.com/open-metadata/OpenMetadata/pull/33079); the compatibility build remains externally blocked until that dependency is integrated.
+
+Follow-up local validation: 230 CI-script tests, 50 backend tests (43 ingestion repository + seven RDF contract), 45 HTTP/helper tests, 15 browser-helper tests, seven search-API unit tests, and 11 Airflow tests on each of PostgreSQL and SQLite pass. These are distinct targeted tests, not 50 repetitions of the E2E suite. Full Playwright discovery reports no collection errors. Type checking still has 165 existing diagnostics versus 166 on the main baseline, with no introduced diagnostic signatures. The full GitHub validation and operational repetition criteria below remain pending.
 
 Operational acceptance remains **50 repetitions of affected full scenarios with
 zero test retries**, at normal CI concurrency in cold and warm environments,

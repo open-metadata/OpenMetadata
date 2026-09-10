@@ -86,6 +86,24 @@ const mockTableSearchResponse = {
 describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
 
+  it.each([
+    'PW%dataProduct.33599110',
+    'R&D + finance#1',
+    'name="Sales & Finance"',
+  ])('preserves reserved URL characters in search query %s', async (query) => {
+    const mockGet = jest
+      .fn()
+      .mockResolvedValue({ data: mockTableSearchResponse });
+    jest.doMock('./index', () => ({ get: mockGet }));
+    const { rawSearchQuery } = require('./searchAPI');
+    await rawSearchQuery({ query, searchIndex: SearchIndex.DATA_PRODUCT });
+    const [url] = mockGet.mock.calls[0];
+
+    expect(new URL(url, 'http://localhost').searchParams.get('q')).toBe(
+      query.replaceAll(/["']/g, String.raw`\$&`)
+    );
+  });
+
   it('searchQuery should not return nulls', async () => {
     jest.mock('./index', () => ({
       get: jest
