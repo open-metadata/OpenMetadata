@@ -11,17 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Space,
-  Tag,
-  Typography,
-} from 'antd';
+import { Button, Col, Form, Row, Space, Tag, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -57,15 +47,15 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './data-quality-settings-page.less';
-
-interface DimensionFormValues {
-  name: string;
-  displayName?: string;
-  description?: string;
-  color: string;
-}
+import DeleteDimensionModal from './DeleteDimensionModal';
+import DimensionForm, { DimensionFormValues } from './DimensionForm';
 
 const DEFAULT_COLOR = DIMENSION_COLOR_PALETTE[0];
+
+const countFor = (
+  counts: Record<string, number>,
+  dimension?: DataQualityDimension
+): number => counts[dimension?.id ?? ''] ?? 0;
 
 const DataQualitySettingsPage = () => {
   const { t } = useTranslation();
@@ -201,7 +191,9 @@ const DataQualitySettingsPage = () => {
     try {
       await deleteDataQualityDimension(deleting.id);
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.dimension') })
+        t('server.entity-deleted-successfully', {
+          entity: t('label.dimension'),
+        })
       );
       setDeleting(undefined);
       await fetchDimensions();
@@ -298,98 +290,16 @@ const DataQualitySettingsPage = () => {
     [t, testCaseCounts]
   );
 
-  // `key` remounts the form on every open so the fields (and the preview) start from the
-  // dimension being edited instead of whatever was in the form last time.
   const dimensionForm = (
-    <Form<DimensionFormValues>
-      className="new-form-style"
+    <DimensionForm
       form={form}
+      formKey={editing?.id ?? 'new-dimension'}
       initialValues={initialValues}
-      key={editing?.id ?? 'new-dimension'}
-      layout="vertical"
-      onFinish={handleSave}>
-      <Row className="dimension-form" gutter={[24, 0]}>
-        <Col span={15}>
-          <Form.Item
-            extra={
-              editing
-                ? t('message.dimension-name-is-fixed-after-creation')
-                : t('message.dimension-name-help')
-            }
-            label={t('label.name')}
-            name="name"
-            rules={[
-              {
-                required: true,
-                message: t('label.field-required', { field: t('label.name') }),
-              },
-              {
-                pattern: /^[\w-]+$/,
-                message: t('message.dimension-name-help'),
-              },
-            ]}>
-            {/* The name is referenced by the API and by every test case relationship, so it is
-                read-only once the dimension exists. */}
-            <Input data-testid="dimension-name" disabled={Boolean(editing)} />
-          </Form.Item>
-          <Form.Item
-            extra={t('message.dimension-display-name-help')}
-            label={t('label.display-name')}
-            name="displayName">
-            <Input data-testid="dimension-display-name" />
-          </Form.Item>
-          <Form.Item label={t('label.description')} name="description">
-            <Input.TextArea
-              data-testid="dimension-description"
-              placeholder={t('message.dimension-description-placeholder')}
-              rows={4}
-            />
-          </Form.Item>
-          {/* The colour is held by the form itself — the swatches below write to it — so that
-              the preview re-renders from a watcher instead of from local state. */}
-          <Form.Item hidden name="color">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t('label.color')}>
-            <Space size={8} wrap>
-              {DIMENSION_COLOR_PALETTE.map((color) => (
-                <button
-                  aria-label={color}
-                  aria-pressed={watchedColor === color}
-                  className={`dimension-color-swatch${
-                    watchedColor === color ? ' selected' : ''
-                  }`}
-                  data-testid={`color-${color}`}
-                  key={color}
-                  style={{ backgroundColor: color }}
-                  type="button"
-                  onClick={() => form.setFieldValue('color', color)}
-                />
-              ))}
-            </Space>
-          </Form.Item>
-        </Col>
-        <Col span={9}>
-          <div className="dimension-side-panel">
-            <Typography.Text type="secondary">
-              {t('label.preview')}
-            </Typography.Text>
-            <div className="dimension-preview">
-              <span
-                className="dimension-color-dot"
-                style={{ backgroundColor: watchedColor }}
-              />
-              <Typography.Text strong>
-                {watchedDisplayName || watchedName || t('label.dimension')}
-              </Typography.Text>
-            </div>
-            <Typography.Paragraph className="m-b-0" type="secondary">
-              {t('message.data-quality-dimensions-description')}
-            </Typography.Paragraph>
-          </div>
-        </Col>
-      </Row>
-    </Form>
+      isEditing={Boolean(editing)}
+      previewLabel={watchedDisplayName || watchedName || t('label.dimension')}
+      watchedColor={watchedColor}
+      onFinish={handleSave}
+    />
   );
 
   // Every dismissal path — cancel, the header X, Escape and the backdrop — ends up in the base
@@ -432,9 +342,8 @@ const DataQualitySettingsPage = () => {
     return <Loader />;
   }
 
-  const deletingCount = testCaseCounts[deleting?.id ?? ''] ?? 0;
-  const deletingDefinitionCount =
-    testDefinitionCounts[deleting?.id ?? ''] ?? 0;
+  const deletingCount = countFor(testCaseCounts, deleting);
+  const deletingDefinitionCount = countFor(testDefinitionCounts, deleting);
 
   return (
     <PageLayoutV1 pageTitle={t('label.data-quality')}>
@@ -507,50 +416,14 @@ const DataQualitySettingsPage = () => {
 
       {formDrawer}
 
-      <Modal
-        cancelText={t('label.cancel')}
-        confirmLoading={isSaving}
-        data-testid="delete-dimension-modal"
-        okButtonProps={{ danger: true }}
-        okText={t('label.delete-entity', { entity: t('label.dimension') })}
-        open={Boolean(deleting)}
-        title={t('label.delete-entity', {
-          entity: deleting?.displayName ?? deleting?.name ?? '',
-        })}
+      <DeleteDimensionModal
+        dimension={deleting}
+        isDeleting={isSaving}
+        testCaseCount={deletingCount}
+        testDefinitionCount={deletingDefinitionCount}
         onCancel={() => setDeleting(undefined)}
-        onOk={handleDelete}>
-        <Typography.Paragraph>
-          {t('message.delete-dimension-confirmation')}
-        </Typography.Paragraph>
-        {(deletingCount > 0 || deletingDefinitionCount > 0) && (
-          <div className="dimension-delete-warning">
-            {deletingCount > 0 && (
-              <>
-                <Typography.Text strong>
-                  {t('message.dimension-in-use-count', {
-                    count: deletingCount,
-                  })}
-                </Typography.Text>
-                <Typography.Paragraph className="m-b-0">
-                  {t('message.dimension-delete-fallback')}
-                </Typography.Paragraph>
-              </>
-            )}
-            {deletingDefinitionCount > 0 && (
-              <>
-                <Typography.Text strong>
-                  {t('message.dimension-in-use-test-definition-count', {
-                    count: deletingDefinitionCount,
-                  })}
-                </Typography.Text>
-                <Typography.Paragraph className="m-b-0">
-                  {t('message.dimension-delete-test-definition-fallback')}
-                </Typography.Paragraph>
-              </>
-            )}
-          </div>
-        )}
-      </Modal>
+        onConfirm={handleDelete}
+      />
     </PageLayoutV1>
   );
 };

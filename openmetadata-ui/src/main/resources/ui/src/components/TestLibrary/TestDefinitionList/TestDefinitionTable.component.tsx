@@ -12,10 +12,10 @@
  */
 
 import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Table,
+    Box,
+    EmptyPlaceholder,
+    Skeleton,
+    Table
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
 import { Button, Space, Switch, Tooltip, Typography } from 'antd';

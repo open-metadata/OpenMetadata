@@ -14,23 +14,23 @@
 import { Table } from '../../../../generated/entity/data/table';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
-  TestDataType,
-  TestDefinition,
+    TestDataType,
+    TestDefinition
 } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
+    LabelType,
+    State,
+    TagLabel,
+    TagSource
 } from '../../../../generated/type/tagLabel';
 import { normalizeParamsForPayload } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { TestLevel } from './TestCaseFormV1.interface';
 import {
-  buildEditDefaults,
-  buildTestSuitePipelinePayload,
-  transformTestCaseFormData,
+    buildEditDefaults,
+    buildTestSuitePipelinePayload,
+    transformTestCaseFormData
 } from './transformTestCaseFormData';
 
 const makeTag = (tagFQN: string): TagLabel => ({

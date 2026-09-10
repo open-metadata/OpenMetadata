@@ -14,13 +14,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
 import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
-  DataType,
-  EntityType,
-  TestPlatform,
+    DataType,
+    EntityType,
+    TestPlatform
 } from '../../../generated/tests/testDefinition';
 import {
-  createTestDefinition,
-  patchTestDefinition,
+    createTestDefinition,
+    patchTestDefinition
 } from '../../../rest/testAPI';
 import TestDefinitionForm from './TestDefinitionForm.component';
 

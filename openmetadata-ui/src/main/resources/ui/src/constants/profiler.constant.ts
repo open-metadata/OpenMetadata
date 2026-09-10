@@ -19,20 +19,20 @@ import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
-  ColumnProfilerConfig,
-  DataType,
-  PartitionIntervalTypes,
-  PartitionIntervalUnit,
-  ProfileSampleType,
+    ColumnProfilerConfig,
+    DataType,
+    PartitionIntervalTypes,
+    PartitionIntervalUnit,
+    ProfileSampleType
 } from '../generated/entity/data/table';
 import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestPlatform } from '../generated/tests/testDefinition';
 import {
-  getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
-  getStartOfDayInMillis,
+    getCurrentMillis,
+    getEndOfDayInMillis,
+    getEpochMillisForPastDays,
+    getStartOfDayInMillis
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';

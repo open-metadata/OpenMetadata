@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  FieldTypes,
-  FormItemLayout,
-  HookForm,
+    FieldTypes,
+    FormItemLayout,
+    HookForm
 } from '@openmetadata/ui-core-components';
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
@@ -30,8 +30,8 @@ import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import {
-  getListTestCaseBySearch,
-  getListTestDefinitions,
+    getListTestCaseBySearch,
+    getListTestDefinitions
 } from '../../../../rest/testAPI';
 import TestCaseFormBody from './TestCaseFormBody';
 import { FormValues, TestLevel } from './TestCaseFormV1.interface';

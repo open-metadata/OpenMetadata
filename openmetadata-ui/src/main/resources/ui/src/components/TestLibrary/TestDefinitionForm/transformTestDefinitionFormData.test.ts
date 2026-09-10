@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-  EntityType,
-  TestPlatform,
+    EntityType,
+    TestPlatform
 } from '../../../generated/tests/testDefinition';
 import {
-  buildCreateTestDefinitionPayload,
-  buildEditPatch,
-  buildFormDefaults,
+    buildCreateTestDefinitionPayload,
+    buildEditPatch,
+    buildFormDefaults
 } from './transformTestDefinitionFormData';
 
 describe('transformTestDefinitionFormData', () => {

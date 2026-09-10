@@ -14,15 +14,15 @@ import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { compare, Operation } from 'fast-json-patch';
 import { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
 import {
-  DataType,
-  EntityType,
-  TestDataType,
-  TestDefinition,
-  TestPlatform,
+    DataType,
+    EntityType,
+    TestDataType,
+    TestDefinition,
+    TestPlatform
 } from '../../../generated/tests/testDefinition';
 import {
-  ParameterDefinitionValue,
-  TestDefinitionFormValues,
+    ParameterDefinitionValue,
+    TestDefinitionFormValues
 } from './TestDefinitionForm.interface';
 
 /**

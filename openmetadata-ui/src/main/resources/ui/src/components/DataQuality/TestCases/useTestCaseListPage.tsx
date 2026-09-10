@@ -34,9 +34,9 @@ import { useTestCaseList } from './useTestCaseList';
  * Test-Cases callers keep compiling.
  */
 export type {
-  FilterDescriptor as TestCaseFilterDescriptor,
-  FilterOptionData as TestCaseFilterOptionData,
-  FilterValue as TestCaseFilterValue,
+    FilterDescriptor as TestCaseFilterDescriptor,
+    FilterOptionData as TestCaseFilterOptionData,
+    FilterValue as TestCaseFilterValue
 } from './FilterChip.interface';
 
 export const useTestCaseListPage = () => {

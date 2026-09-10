@@ -18,8 +18,8 @@ import { SORT_ORDER } from '../enums/common.enum';
 import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
-  BundleSuiteBulkAddRequestClass,
-  Mode as BundleSuiteBulkAddMode,
+    BundleSuiteBulkAddRequestClass,
+    Mode as BundleSuiteBulkAddMode
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
@@ -28,16 +28,16 @@ import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
 import { DataQualityReportBatchResponse } from '../generated/tests/dataQualityReportBatchResponse';
 import {
-  TableData,
-  TestCase,
-  TestCaseDimensionResult,
-  TestCaseResult,
-  TestCaseStatus,
+    TableData,
+    TestCase,
+    TestCaseDimensionResult,
+    TestCaseResult,
+    TestCaseStatus
 } from '../generated/tests/testCase';
 import {
-  EntityType,
-  TestDefinition,
-  TestPlatform,
+    EntityType,
+    TestDefinition,
+    TestPlatform
 } from '../generated/tests/testDefinition';
 import { TestSuite, TestSummary } from '../generated/tests/testSuite';
 import { EntityHistory } from '../generated/type/entityHistory';

@@ -15,8 +15,8 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import { DataQualityDashboardChartFilters } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
-  fetchTestCaseSummaryByDimension,
-  fetchTestCaseSummaryByNoDimension,
+    fetchTestCaseSummaryByDimension,
+    fetchTestCaseSummaryByNoDimension
 } from '../../../../rest/dataQualityDashboardAPI';
 import StatusByDimensionCardWidget from './StatusByDimensionCardWidget.component';
 

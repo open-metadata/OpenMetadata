@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 import {
-  Alert,
-  Button,
-  FieldProp,
-  FieldTypes,
-  FormFields,
-  FormItemLabel,
-  FormItemLayout,
-  FormSelectItem,
-  getField,
-  HelperTextType,
-  useFieldDoc,
-  useFieldDocRegistry,
+    Alert,
+    Button,
+    FieldProp,
+    FieldTypes,
+    FormFields,
+    FormItemLabel,
+    FormItemLayout,
+    FormSelectItem,
+    getField,
+    HelperTextType,
+    useFieldDoc,
+    useFieldDocRegistry
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import {
-  FC,
-  FocusEvent,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    FocusEvent,
+    lazy,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useFieldArray, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -42,10 +42,10 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { DataQualityDimension } from '../../../generated/tests/dataQualityDimension';
 import {
-  DataType,
-  EntityType,
-  TestDataType,
-  TestPlatform,
+    DataType,
+    EntityType,
+    TestDataType,
+    TestPlatform
 } from '../../../generated/tests/testDefinition';
 import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';

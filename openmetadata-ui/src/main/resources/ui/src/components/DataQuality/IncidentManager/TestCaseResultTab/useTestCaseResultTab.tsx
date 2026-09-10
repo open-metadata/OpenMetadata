@@ -25,34 +25,34 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-  ChangeDescription,
-  TagLabel,
-  TestCase,
-  TestCaseParameterValue,
+    ChangeDescription,
+    TagLabel,
+    TestCase,
+    TestCaseParameterValue
 } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { useChangeSummary } from '../../../../hooks/useChangeSummary';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { ChangeSummaryEntry } from '../../../../rest/changeSummaryAPI';
 import {
-  getTestDefinitionById,
-  updateTestCaseById,
+    getTestDefinitionById,
+    updateTestCaseById
 } from '../../../../rest/testAPI';
 import { getComputeRowCountDiffDisplay } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import {
-  getEntityVersionByField,
-  getEntityVersionTags,
+    getEntityVersionByField,
+    getEntityVersionTags
 } from '../../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
-  getTagsWithoutTier,
-  getTierTags,
+    getTagsWithoutTier,
+    getTierTags
 } from '../../../../utils/TablePureUtils';
 import { createTagObject } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import testCaseResultTabClassBase, {
-  AdditionalComponentInterface,
+    AdditionalComponentInterface
 } from './TestCaseResultTabClassBase';
 
 export interface ParameterDisplayItem {

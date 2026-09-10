@@ -16,13 +16,13 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  TIER_CATEGORY,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    TIER_CATEGORY
 } from '../../../constants/constants';
 import {
-  TEST_CASE_DIMENSIONS_OPTION,
-  TEST_CASE_FILTERS,
+    TEST_CASE_DIMENSIONS_OPTION,
+    TEST_CASE_FILTERS
 } from '../../../constants/profiler.constant';
 import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
 import { SearchIndex } from '../../../enums/search.enum';

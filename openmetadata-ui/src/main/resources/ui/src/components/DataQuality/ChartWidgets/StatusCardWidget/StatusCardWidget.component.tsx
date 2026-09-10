@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Card,
-  Skeleton,
-  Tooltip,
-  Typography,
+    Box,
+    Card,
+    Skeleton,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

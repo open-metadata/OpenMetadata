@@ -19,19 +19,19 @@ import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TEST_CASE_FILTERS,
-  TEST_CASE_FILTERS_LABELS,
-  TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_FILTER_OPTIONS,
-  TEST_CASE_TYPE_OPTION,
+    TEST_CASE_FILTERS,
+    TEST_CASE_FILTERS_LABELS,
+    TEST_CASE_PLATFORM_OPTION,
+    TEST_CASE_STATUS_FILTER_OPTIONS,
+    TEST_CASE_TYPE_OPTION
 } from '../../../constants/profiler.constant';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import {
-  FilterControlType,
-  FilterDescriptor,
-  FilterOptionData,
-  FilterValue,
+    FilterControlType,
+    FilterDescriptor,
+    FilterOptionData,
+    FilterValue
 } from './FilterChip.interface';
 import { FetchedOption } from './useTestCaseFilterOptions';
 

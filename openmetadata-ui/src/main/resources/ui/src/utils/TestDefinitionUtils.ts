@@ -13,8 +13,8 @@
 
 import { ProviderType } from '../generated/entity/bot';
 import {
-  TestDefinition,
-  TestPlatform,
+    TestDefinition,
+    TestPlatform
 } from '../generated/tests/testDefinition';
 
 /**

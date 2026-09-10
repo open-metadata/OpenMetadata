@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-  fireEvent,
-  queryByTestId,
-  queryByText,
-  render,
-  screen,
+    fireEvent,
+    queryByTestId,
+    queryByText,
+    render,
+    screen
 } from '@testing-library/react';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
 import {
-  LabelType,
-  State,
-  TagSource,
+    LabelType,
+    State,
+    TagSource
 } from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
