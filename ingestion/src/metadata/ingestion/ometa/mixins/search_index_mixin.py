@@ -15,7 +15,6 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.applications.app import App
 from metadata.generated.schema.entity.data.searchIndex import (
@@ -39,7 +38,7 @@ class OMetaSearchIndexMixin:
 
     def ingest_search_index_sample_data(
         self, search_index: SearchIndex, sample_data: SearchIndexSampleData
-    ) -> Optional[SearchIndexSampleData]:  # noqa: UP045
+    ) -> SearchIndexSampleData | None:
         """
         PUT sample data for a search index
 

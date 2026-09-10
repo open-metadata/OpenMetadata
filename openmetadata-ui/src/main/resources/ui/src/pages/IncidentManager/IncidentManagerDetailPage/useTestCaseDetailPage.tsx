@@ -34,6 +34,7 @@ import {
   TestCase,
 } from '../../../generated/tests/testCase';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -43,6 +44,7 @@ import {
 import {
   getTestCaseVersionDetails,
   getTestCaseVersionList,
+  restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
@@ -51,7 +53,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
@@ -70,6 +72,7 @@ export interface UseTestCaseDetailPageResult {
   hasEditPermission: boolean | undefined;
   hasDeletePermission: boolean | undefined;
   editDisplayNamePermission: boolean | undefined;
+  canRestorePermission: boolean;
   feedCount: FeedCounts;
   displayName: string | undefined;
   tabs: TestCaseTabType[];
@@ -94,6 +97,7 @@ export interface UseTestCaseDetailPageResult {
   }>;
   handleOwnerChange: (owners?: EntityReference[]) => Promise<void>;
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
+  handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
   setTestCase: (testCase: TestCase) => void;
 }
@@ -109,6 +113,7 @@ export const useTestCaseDetailPage = ({
 }: UseTestCaseDetailPageProps = {}): UseTestCaseDetailPageResult => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useCustomLocation();
   const queryClient = useQueryClient();
 
   const {
@@ -151,16 +156,21 @@ export const useTestCaseDetailPage = ({
     editDisplayNamePermission,
     hasDeletePermission,
     hasEditPermission,
+    canRestorePermission,
   } = useMemo(() => {
+    const isDeleted = Boolean(testCase?.deleted);
+
     return {
       hasViewPermission:
         testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
       editDisplayNamePermission:
-        testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
-      hasDeletePermission: testCasePermission?.Delete,
-      hasEditPermission: testCasePermission?.EditAll,
+        !isDeleted &&
+        (testCasePermission?.EditAll || testCasePermission?.EditDisplayName),
+      hasDeletePermission: !isDeleted && testCasePermission?.Delete,
+      hasEditPermission: !isDeleted && testCasePermission?.EditAll,
+      canRestorePermission: Boolean(testCasePermission?.EditAll),
     };
-  }, [testCasePermission]);
+  }, [testCasePermission, testCase?.deleted]);
 
   const testCaseFields = useMemo(() => testCaseClassBase.getFields(), []);
 
@@ -287,12 +297,17 @@ export const useTestCaseDetailPage = ({
               version,
               activeKey
             )
-          : testCaseDetailsPath
+          : testCaseDetailsPath,
+        { state: location.state }
       );
     }
   };
   const updateTestCase = useCallback(
     async (id: string, patch: PatchOperation[]) => {
+      if (testCase?.deleted) {
+        return;
+      }
+
       try {
         const res = await updateTestCaseById(id, patch);
         setEntityDetails(res);
@@ -300,8 +315,30 @@ export const useTestCaseDetailPage = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [setEntityDetails]
+    [setEntityDetails, testCase?.deleted]
   );
+
+  const handleRestore = useCallback(async () => {
+    if (!testCase?.id) {
+      return false;
+    }
+
+    try {
+      const restoredTestCase = await restoreTestCase(testCase.id);
+      setEntityDetails(restoredTestCase);
+      showSuccessToast(
+        t('server.restore-entity-success', {
+          entity: testCase.displayName ?? testCase.name,
+        })
+      );
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+  }, [setEntityDetails, t, testCase]);
   const handleOwnerChange = async (owners?: EntityReference[]) => {
     if (testCase) {
       const updatedTestCase = {
@@ -363,7 +400,8 @@ export const useTestCaseDetailPage = ({
             testCaseFQN,
             toString(testCase?.version) ?? '',
             activeTab
-          )
+          ),
+      { state: location.state }
     );
   };
 
@@ -374,10 +412,11 @@ export const useTestCaseDetailPage = ({
           testCaseFQN,
           toString(newVersion),
           activeTab
-        )
+        ),
+        { state: location.state }
       );
     },
-    [testCaseFQN, activeTab]
+    [testCaseFQN, activeTab, location.state]
   );
   const fetchCurrentVersion = async (id: string) => {
     try {
@@ -453,6 +492,7 @@ export const useTestCaseDetailPage = ({
     hasEditPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     feedCount,
     displayName,
     tabs,
@@ -473,6 +513,7 @@ export const useTestCaseDetailPage = ({
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   };

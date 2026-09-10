@@ -22,6 +22,16 @@ const handleSuccessfulLogout = jest.fn();
 const logoutUser = jest.fn().mockResolvedValue(undefined);
 const renewToken = jest.fn();
 const setOidcToken = jest.fn();
+const updateRenewToken = jest.fn();
+
+jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({
+      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
+    }),
+  },
+}));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ setIsAuthenticated, setIsSigningUp }),
@@ -121,5 +131,28 @@ describe('GenericAuthenticator', () => {
     expect(renewToken).toHaveBeenCalled();
     expect(setOidcToken).toHaveBeenCalledWith('token');
     expect(result).toEqual(mockResp);
+  });
+
+  // Regression: renewer registration now lives here instead of in the
+  // parent AuthProvider's ref-deps useEffect. See BasicAuthAuthenticator
+  // test for the full rationale.
+  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    expect(updateRenewToken).toHaveBeenCalled();
+
+    const registered = updateRenewToken.mock.calls[0][0];
+
+    expect(typeof registered).toBe('function');
+
+    unmount();
+
+    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
   });
 });

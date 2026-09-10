@@ -66,10 +66,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -458,6 +455,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
+        if (!isPortEligibleType(ref.getType())) {
+          String msg =
+              String.format(
+                  "Asset '%s' of type '%s' cannot be added as a port; ports must reference a data asset",
+                  ref.getFullyQualifiedName(), ref.getType());
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
+        }
+
         if (oppositePortIds.contains(ref.getId())) {
           String oppositePortType =
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
@@ -611,6 +619,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
+  // A port must reference a data asset: a real, non-time-series entity whose schema declares a
+  // dataProducts field (same rule the assets API uses). Excludes pseudo-types like tableColumn.
+  private static boolean isPortEligibleType(String entityType) {
+    return entityType != null
+        && Entity.hasEntityRepository(entityType)
+        && !Entity.isTimeSeriesEntity(entityType)
+        && Entity.entityHasField(entityType, Entity.FIELD_DATA_PRODUCTS);
+  }
+
   private ResultList<EntityWithType> getPaginatedPorts(
       UUID dataProductId, Relationship relationship, String fields, int limit, int offset) {
     List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
@@ -635,7 +652,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       refsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(ref);
     }
 
-    // Bulk fetch entities by type and collect in order
+    // Bulk fetch entities by type, keyed by each entity's own id. NON_DELETED filtering and the
+    // absence of an ORDER BY mean getEntities may return fewer entities than requested and in a
+    // different order, so keying by request-list index would misattribute or drop rows.
     // Use empty string if fields is null to avoid NPE
     String fieldsToFetch = fields != null ? fields : "";
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
@@ -643,9 +662,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String entityType = entry.getKey();
       List<EntityInterface> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (int i = 0; i < entitiesOfType.size(); i++) {
-        entitiesById.put(
-            entry.getValue().get(i).getId(), new EntityWithType(entitiesOfType.get(i), entityType));
+      for (EntityInterface entity : entitiesOfType) {
+        entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
 
@@ -742,8 +760,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
         List<EntityInterface> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
-        for (int i = 0; i < entitiesOfType.size(); i++) {
-          assetEntitiesMap.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+        // Key by each entity's own id; getEntities may reorder or drop rows relative to the
+        // request list, so request-index zipping would validate the wrong asset.
+        for (EntityInterface entity : entitiesOfType) {
+          assetEntitiesMap.put(entity.getId(), entity);
         }
       }
     }
@@ -776,7 +796,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         // (FIELDS_STORED_AS_RELATIONSHIPS) and re-derived from entity_relationship on read.
         // Drop every cached variant of the asset so the next read rebuilds it from the
         // freshly-written relationships.
-        invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+        EntityRepository.invalidateCacheForEntity(
+            ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -931,16 +952,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       capturedUpdatedDomains = null;
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
     public List<EntityReference> getCapturedOriginalDomains() {
       return capturedOriginalDomains;
     }
@@ -1026,6 +1037,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           List<UUID> assetIds =
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
           searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
+          List<EntityReference> assetRefs =
+              allRecords.stream()
+                  .map(
+                      record ->
+                          new EntityReference().withId(record.getId()).withType(record.getType()))
+                  .toList();
+          searchRepository.propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
         }
       }
     }
@@ -1104,7 +1122,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
       // too; otherwise GET-by-name would keep serving stale domain references until TTL.
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -1147,16 +1165,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               .relationshipDAO()
               .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
-      EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getConversationRepository()
+          .updateEntityReference(updated.getEntityReference(), oldFqn);
     }
   }
 
@@ -1192,12 +1209,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
   }
 
   @Override
@@ -1239,20 +1250,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataProduct dataProduct) {
-    dataProduct =
-        Entity.getEntityByName(
-            Entity.DATA_PRODUCT,
-            dataProduct.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataProduct.getFullyQualifiedName(),
-        new ArrayList<>(dataProduct.getReviewers()),
-        dataProduct.getUpdatedBy());
   }
 
   public org.openmetadata.schema.entity.data.DataContract getDataProductContract(

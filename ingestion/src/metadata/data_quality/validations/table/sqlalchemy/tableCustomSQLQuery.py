@@ -14,7 +14,7 @@ Validator for table custom SQL Query test case
 """
 
 import traceback
-from typing import Any, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Any, cast
 
 import sqlparse
 from sqlalchemy import text
@@ -53,7 +53,7 @@ logger = ingestion_logger()
 class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> Optional[str]:  # noqa: UP045
+    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> str | None:
         """Replace or add WHERE clause in SQL query using sqlparse.
 
         This method properly handles:
@@ -81,7 +81,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
 
         return "".join(str(token) for token in new_tokens)
 
-    def _find_clause_positions(self, tokens: list) -> Tuple[Optional[int], Optional[int], Optional[int]]:  # noqa: UP006, UP045
+    def _find_clause_positions(self, tokens: list) -> tuple[int | None, int | None, int | None]:
         """Find positions of WHERE clause and insertion points in token list.
 
         Args:
@@ -127,7 +127,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return current_depth - 1
         return current_depth
 
-    def _should_insert_before_token(self, token: Token, insert_before_idx: Optional[int], paren_depth: int) -> bool:  # noqa: UP045
+    def _should_insert_before_token(self, token: Token, insert_before_idx: int | None, paren_depth: int) -> bool:
         """Check if WHERE clause should be inserted before this token.
 
         Args:
@@ -160,9 +160,9 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
     def _build_new_tokens(
         self,
         tokens: list,
-        where_idx: Optional[int],  # noqa: UP045
-        where_end_idx: Optional[int],  # noqa: UP045
-        insert_before_idx: Optional[int],  # noqa: UP045
+        where_idx: int | None,
+        where_end_idx: int | None,
+        insert_before_idx: int | None,
         partition_expression: str,
     ) -> list:
         """Build new token list with WHERE clause inserted or replaced.
@@ -297,7 +297,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             self.runner._session.rollback()  # pylint: disable=protected-access
             raise exc  # noqa: TRY201
 
-    def compute_row_count(self) -> Optional[int]:  # noqa: UP045
+    def compute_row_count(self) -> int | None:
         """Compute row count for the given column
 
         Raises:
@@ -359,7 +359,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         cols, rows = self._get_custom_sql_failed_rows()
         return TableData(columns=cols, rows=rows)
 
-    def _get_custom_sql_failed_rows(self) -> Tuple[List[str], List[List[Any]]]:  # noqa: UP006
+    def _get_custom_sql_failed_rows(self) -> tuple[list[str], list[list[Any]]]:
         sql_expression = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "sqlExpression",
@@ -370,7 +370,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return [], []
         return [str(col) for col in rows[0]._fields], [list(row) for row in rows]
 
-    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
+    def get_inspection_query(self) -> str | None:
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "sqlExpression",

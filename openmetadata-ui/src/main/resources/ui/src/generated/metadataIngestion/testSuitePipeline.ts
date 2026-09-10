@@ -315,6 +315,8 @@ export interface ServiceConnection {
  *
  * QuestDB Connection Config
  *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
  * SAP BW/4HANA Database Connection Config
  *
  * Kafka Connection Config
@@ -322,6 +324,8 @@ export interface ServiceConnection {
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * NATS Connection Config
  *
  * Google Cloud Pub/Sub Connection Config
  *
@@ -388,6 +392,8 @@ export interface ServiceConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
@@ -470,6 +476,9 @@ export interface Connection {
     sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
+     *
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
      */
     supportsMetadataExtraction?: boolean;
     /**
@@ -1066,6 +1075,8 @@ export interface Connection {
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
+     * NATS authentication method. Leave empty for anonymous authentication.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Choose between Prefect Cloud or a self-hosted Prefect Server.
@@ -1080,7 +1091,13 @@ export interface Connection {
      *
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
+     *
      * Pagination limit used for Alation APIs pagination
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
      */
     paginationLimit?: number;
     /**
@@ -1333,6 +1350,10 @@ export interface Connection {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
+     *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
@@ -1554,6 +1575,11 @@ export interface Connection {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
@@ -1637,12 +1663,16 @@ export interface Connection {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -1719,6 +1749,10 @@ export interface Connection {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
     /**
      * Ingest external and internal stages.
      */
@@ -1957,8 +1991,27 @@ export interface Connection {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2329,6 +2382,22 @@ export interface Connection {
      */
     workspaceId?: string;
     /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -2357,6 +2426,10 @@ export interface Connection {
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?: FilterPattern;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
     /**
      * Connection Timeout in Seconds
      */
@@ -2538,6 +2611,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch topics that matches the pattern.
  *
+ * Regex to only fetch subjects/streams that match the pattern.
+ *
  * Regex to only include/exclude domains that match the pattern.
  *
  * Regex to only include/exclude glossaries that match the pattern.
@@ -2697,6 +2772,14 @@ export enum AuthProvider {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2744,6 +2827,8 @@ export interface AuthenticationType {
      *
      * Password for the Dremio Software user account.
      *
+     * Password for NATS authentication.
+     *
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
@@ -2758,6 +2843,8 @@ export interface AuthenticationType {
      *
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
+     *
+     * Username for NATS authentication.
      *
      * Elastic Search Username for Login
      *
@@ -2799,6 +2886,8 @@ export interface AuthenticationType {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     *
+     * Token for NATS authentication.
      */
     token?: string;
     /**
@@ -2851,6 +2940,10 @@ export interface AuthenticationType {
      * http://localhost:9047 or https://dremio.example.com:9047).
      */
     hostPort?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
     /**
      * Access Token for the API
      */
@@ -3423,6 +3516,8 @@ export enum KafkaSecurityProtocol {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for OpenMetadata Server
  *
@@ -4182,6 +4277,8 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
  *
  * SSL Configuration for Prefect API connection.
@@ -4340,6 +4437,11 @@ export interface DatabaseConnectionClass {
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
@@ -4876,6 +4978,8 @@ export enum AirflowConnectionScheme {
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -4892,6 +4996,7 @@ export enum AirflowConnectionScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
@@ -4970,15 +5075,18 @@ export interface MCPServerConfig {
      */
     apiKey?: string;
     /**
-     * Arguments to pass to the command
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     args?: string[];
     /**
-     * Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     command?: string;
     /**
-     * Environment variables for the server process
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     env?: { [key: string]: string };
     /**
@@ -5031,6 +5139,8 @@ export enum SpaceType {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for OpenMetadata Server
  *
@@ -5251,6 +5361,8 @@ export enum AirflowConnectionType {
     CustomStorage = "CustomStorage",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360 = "Data360",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
@@ -5301,6 +5413,7 @@ export enum AirflowConnectionType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",

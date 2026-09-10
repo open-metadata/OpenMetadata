@@ -1,0 +1,142 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyBulkResultArtifact.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyBulkResultArtifact",
+  "description": "Typed, downloadable validation and Draft result for an ontology bulk operation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyBulkResultArtifact",
+  "definitions": {
+    "errorCode": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkErrorCode",
+      "type": "string",
+      "enum": [
+        "INVALID_HEADER",
+        "INVALID_ACTION",
+        "MISSING_REQUIRED_VALUE",
+        "INVALID_IDENTIFIER",
+        "INVALID_IRI",
+        "TERM_NOT_FOUND",
+        "TERM_OUTSIDE_GLOSSARY",
+        "DUPLICATE_TERM",
+        "RELATIONSHIP_NOT_FOUND",
+        "INFERRED_RELATIONSHIP_READ_ONLY",
+        "NO_CHANGES"
+      ]
+    },
+    "rowError": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkRowError",
+      "type": "object",
+      "properties": {
+        "rowNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "code": {
+          "$ref": "#/definitions/errorCode"
+        },
+        "message": {
+          "type": "string"
+        },
+        "termId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "relationshipId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "required": [
+        "rowNumber",
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "operation": {
+      "$ref": "ontologyBulkRequest.json#/definitions/operation"
+    },
+    "glossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "totalRows": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "validRows": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "invalidRows": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unchangedRows": {
+      "description": "Rows or candidates that were valid but did not match or change.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "createCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "updateCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "findReplaceCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "retypeCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/rowError"
+      },
+      "maxItems": 1000,
+      "default": []
+    },
+    "errorsTruncated": {
+      "type": "boolean",
+      "default": false
+    },
+    "changeSet": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "generatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "generatedBy": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "operation",
+    "glossary",
+    "dryRun",
+    "totalRows",
+    "validRows",
+    "invalidRows",
+    "unchangedRows",
+    "createCount",
+    "updateCount",
+    "findReplaceCount",
+    "retypeCount",
+    "errors",
+    "errorsTruncated",
+    "generatedAt",
+    "generatedBy"
+  ],
+  "additionalProperties": false
+}

@@ -41,6 +41,7 @@ import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/datab
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component';
@@ -63,6 +64,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   ContextMemoryListParams,
   deleteContextMemory,
@@ -75,6 +77,7 @@ import {
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -92,6 +95,135 @@ const FILTER_BUTTON_BASE_CLS =
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:outline-primary`;
 const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:outline-utility-brand-100`;
+
+const getSortLabel = (
+  options: Array<{ id: string; label: string }>,
+  sortBy: MemorySortBy
+): string => options.find((option) => option.id === sortBy)?.label ?? '';
+
+const getMemoriesViewFlags = ({
+  selectedAsset,
+  selectedAuthor,
+  activeFilter,
+  debouncedSearch,
+  isMemoriesLoading,
+  memoriesLength,
+}: {
+  selectedAsset?: DataAssetOption;
+  selectedAuthor?: MemoryFilterOption;
+  activeFilter: MemoryFilterTab;
+  debouncedSearch: string;
+  isMemoriesLoading: boolean;
+  memoriesLength: number;
+}) => {
+  const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
+  const isMemoriesSearching = Boolean(debouncedSearch.trim());
+  const isMemoriesFilteredOnly = Boolean(
+    selectedAsset || selectedAuthor || (activeFilter && activeFilter !== 'all')
+  );
+  const isMemoriesFiltered = isMemoriesSearching || isMemoriesFilteredOnly;
+  const showMemoriesEmptyState =
+    !isMemoriesLoading && !isMemoriesFiltered && memoriesLength === 0;
+
+  return {
+    hasActiveFilters,
+    isMemoriesSearching,
+    isMemoriesFilteredOnly,
+    showMemoriesEmptyState,
+  };
+};
+
+interface ContextCenterMemoriesModalsProps {
+  canCreate: boolean;
+  canDelete: boolean;
+  canEdit: boolean;
+  currentUserName?: string;
+  isAdminUser?: boolean;
+  isCreateModalOpen: boolean;
+  isViewModalOpen: boolean;
+  isDeletingMemory: boolean;
+  memoryToEdit?: ContextMemory;
+  memoryToView?: ContextMemory;
+  memoryToDelete?: ContextMemory;
+  onModalClose: () => void;
+  onModalSuccess: () => void;
+  onViewModalClose: () => void;
+  onEditMemory: (memory: ContextMemory) => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+}
+
+const ContextCenterMemoriesModals = ({
+  canCreate,
+  canDelete,
+  canEdit,
+  currentUserName,
+  isAdminUser,
+  isCreateModalOpen,
+  isViewModalOpen,
+  isDeletingMemory,
+  memoryToEdit,
+  memoryToView,
+  memoryToDelete,
+  onModalClose,
+  onModalSuccess,
+  onViewModalClose,
+  onEditMemory,
+  onCancelDelete,
+  onConfirmDelete,
+}: ContextCenterMemoriesModalsProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {/* Edit / Create modal */}
+      <CreateMemoryModal
+        canCreate={canCreate}
+        canDelete={canDelete}
+        canEdit={canEdit}
+        currentUserName={currentUserName}
+        isAdminUser={isAdminUser}
+        isOpen={isCreateModalOpen}
+        memoryToEdit={memoryToEdit}
+        onClose={onModalClose}
+        onCreated={onModalSuccess}
+        onDeleted={onModalSuccess}
+        onUpdated={onModalSuccess}
+      />
+
+      {/* View-only modal */}
+      {memoryToView && (
+        <CreateMemoryModal
+          viewOnly
+          canDelete={canDelete}
+          canEdit={canEdit}
+          currentUserName={currentUserName}
+          isAdminUser={isAdminUser}
+          isOpen={isViewModalOpen}
+          memoryToEdit={memoryToView}
+          onClose={onViewModalClose}
+          onCreated={onViewModalClose}
+          onDeleted={onModalSuccess}
+          onEditMemory={onEditMemory}
+          onUpdated={onModalSuccess}
+        />
+      )}
+
+      {memoryToDelete && (
+        <DeleteModal
+          entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
+          isDeleting={isDeletingMemory}
+          message={t('message.delete-entity-permanently', {
+            entityType: t('label.memory-lowercase'),
+          })}
+          open={Boolean(memoryToDelete)}
+          onCancel={onCancelDelete}
+          onDelete={onConfirmDelete}
+        />
+      )}
+    </>
+  );
+};
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
@@ -314,18 +446,19 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
 
-  const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
-
-  const isMemoriesSearching = Boolean(debouncedSearch.trim());
-
-  const isMemoriesFilteredOnly = Boolean(
-    selectedAsset || selectedAuthor || (activeFilter && activeFilter !== 'all')
-  );
-
-  const isMemoriesFiltered = isMemoriesSearching || isMemoriesFilteredOnly;
-
-  const showMemoriesEmptyState =
-    !isMemoriesLoading && !isMemoriesFiltered && memories.length === 0;
+  const {
+    hasActiveFilters,
+    isMemoriesSearching,
+    isMemoriesFilteredOnly,
+    showMemoriesEmptyState,
+  } = getMemoriesViewFlags({
+    selectedAsset,
+    selectedAuthor,
+    activeFilter,
+    debouncedSearch,
+    isMemoriesLoading,
+    memoriesLength: memories.length,
+  });
 
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
@@ -383,6 +516,9 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsDeletingMemory(true);
     try {
       await deleteContextMemory(memoryToDelete.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
@@ -464,7 +600,8 @@ const ContextCenterMemoriesPage: FC = () => {
           return prev;
         });
       });
-  }, [isViewModalOpen, searchParams, handleViewMemory, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, handleViewMemory, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -511,6 +648,7 @@ const ContextCenterMemoriesPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
+      <DocumentTitle title={t('label.memory-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           actionsSlot={headerActions}
@@ -746,6 +884,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   <Dropdown.Popover>
                     <div className="tw:p-2 tw:border-b tw:border-secondary">
                       <Input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                         autoFocus
                         className="tw:w-full"
                         icon={SearchLg}
@@ -849,7 +988,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       {t('label.sort')}:
                     </Typography>
                     <Typography className="tw:text-secondary" weight="medium">
-                      {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
+                      {getSortLabel(SORT_OPTIONS, sortBy)}
                     </Typography>
                     <ChevronDown
                       className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
@@ -910,51 +1049,25 @@ const ContextCenterMemoriesPage: FC = () => {
         )}
       </div>
 
-      {/* Edit / Create modal */}
-      <CreateMemoryModal
+      <ContextCenterMemoriesModals
         canCreate={hasCreatePermission}
         canDelete={canDeleteMemory}
         canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
         isAdminUser={currentUser?.isAdmin}
-        isOpen={isCreateModalOpen}
+        isCreateModalOpen={isCreateModalOpen}
+        isDeletingMemory={isDeletingMemory}
+        isViewModalOpen={isViewModalOpen}
+        memoryToDelete={memoryToDelete}
         memoryToEdit={memoryToEdit}
-        onClose={handleModalClose}
-        onCreated={handleModalSuccess}
-        onDeleted={handleModalSuccess}
-        onUpdated={handleModalSuccess}
+        memoryToView={memoryToView}
+        onCancelDelete={handleCancelDelete}
+        onConfirmDelete={handleConfirmDelete}
+        onEditMemory={handleEditMemory}
+        onModalClose={handleModalClose}
+        onModalSuccess={handleModalSuccess}
+        onViewModalClose={handleViewModalClose}
       />
-
-      {/* View-only modal */}
-      {memoryToView && (
-        <CreateMemoryModal
-          viewOnly
-          canDelete={canDeleteMemory}
-          canEdit={hasEditPermission}
-          currentUserName={currentUser?.name}
-          isAdminUser={currentUser?.isAdmin}
-          isOpen={isViewModalOpen}
-          memoryToEdit={memoryToView}
-          onClose={handleViewModalClose}
-          onCreated={handleViewModalClose}
-          onDeleted={handleModalSuccess}
-          onEditMemory={handleEditMemory}
-          onUpdated={handleModalSuccess}
-        />
-      )}
-
-      {memoryToDelete && (
-        <DeleteModal
-          entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
-          isDeleting={isDeletingMemory}
-          message={t('message.delete-entity-permanently', {
-            entityType: t('label.memory-lowercase'),
-          })}
-          open={Boolean(memoryToDelete)}
-          onCancel={handleCancelDelete}
-          onDelete={handleConfirmDelete}
-        />
-      )}
     </Box>
   );
 };

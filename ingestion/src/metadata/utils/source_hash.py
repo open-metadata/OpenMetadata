@@ -26,7 +26,7 @@ import hashlib
 import json
 import re
 import traceback
-from typing import Any, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any, cast
 
 from metadata.ingestion.ometa.ometa_api import C
 from metadata.utils.logger import utils_logger
@@ -41,7 +41,7 @@ SOURCE_HASH_EXCLUDE_FIELDS = {
 VOLATILE_ENTITY_REFERENCE_FIELDS = {"href", "deleted", "inherited"}
 
 
-def _normalize_whitespace(text: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _normalize_whitespace(text: str | None) -> str | None:
     """
     Normalize whitespace in SQL/DDL text to ensure consistent hashing.
     - Collapses multiple whitespace characters into a single space
@@ -52,7 +52,7 @@ def _normalize_whitespace(text: Optional[str]) -> Optional[str]:  # noqa: UP045
     return re.sub(r"\s+", " ", text.strip())
 
 
-def _get_column_sort_key(column: Dict[str, Any]) -> tuple:  # noqa: UP006
+def _get_column_sort_key(column: dict[str, Any]) -> tuple:
     """
     Get a sort key for a column dict.
     Prioritizes ordinalPosition if present, otherwise uses name.
@@ -64,7 +64,7 @@ def _get_column_sort_key(column: Dict[str, Any]) -> tuple:  # noqa: UP006
     return (ordinal if ordinal is not None else float("inf"), str(name))
 
 
-def _get_tag_sort_key(tag: Dict[str, Any]) -> str:  # noqa: UP006
+def _get_tag_sort_key(tag: dict[str, Any]) -> str:
     """Get a sort key for a tag dict based on tagFQN."""
     tag_fqn = tag.get("tagFQN", "")
     if isinstance(tag_fqn, dict):
@@ -72,7 +72,7 @@ def _get_tag_sort_key(tag: Dict[str, Any]) -> str:  # noqa: UP006
     return str(tag_fqn)
 
 
-def _get_constraint_sort_key(constraint: Dict[str, Any]) -> tuple:  # noqa: UP006
+def _get_constraint_sort_key(constraint: dict[str, Any]) -> tuple:
     """Get a sort key for a table constraint dict."""
     constraint_type = constraint.get("constraintType", "")
     columns = constraint.get("columns", [])
@@ -80,12 +80,12 @@ def _get_constraint_sort_key(constraint: Dict[str, Any]) -> tuple:  # noqa: UP00
     return (str(constraint_type), columns_str)
 
 
-def _get_entity_reference_sort_key(ref: Dict[str, Any]) -> str:  # noqa: UP006
+def _get_entity_reference_sort_key(ref: dict[str, Any]) -> str:
     """Get a sort key for an entity reference dict."""
     return str(ref.get("fullyQualifiedName") or ref.get("name") or ref.get("id") or "")
 
 
-def _remove_volatile_fields(obj: Union[Dict, List, Any]) -> Union[Dict, List, Any]:  # noqa: UP006, UP007
+def _remove_volatile_fields(obj: dict | list | Any) -> dict | list | Any:
     """
     Recursively remove volatile fields from entity references and normalize data.
     This ensures that fields like href, deleted, inherited don't affect the hash.
@@ -102,7 +102,7 @@ def _remove_volatile_fields(obj: Union[Dict, List, Any]) -> Union[Dict, List, An
     return obj
 
 
-def _sort_columns(columns: List[Any]) -> List[Any]:  # noqa: UP006
+def _sort_columns(columns: list[Any]) -> list[Any]:
     """
     Sort columns by ordinalPosition (if present) then by name.
     Also recursively sorts nested children columns.
@@ -124,7 +124,7 @@ def _sort_columns(columns: List[Any]) -> List[Any]:  # noqa: UP006
     return sorted_columns
 
 
-def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
+def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize a create request dict to ensure deterministic hashing.
 
@@ -133,10 +133,14 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
     2. Sorts tags by tagFQN
     3. Sorts tableConstraints by type and columns
     4. Sorts owners by FQN/name/id
-    5. Removes volatile EntityReference fields (href, deleted, inherited)
-    6. Normalizes schemaDefinition whitespace
+    5. Sorts aliases lexicographically
+    6. Removes volatile EntityReference fields (href, deleted, inherited)
+    7. Normalizes schemaDefinition whitespace
     """
-    result = _remove_volatile_fields(data)
+    # _remove_volatile_fields is `dict | list | Any` because it recurses into nested
+    # lists, but called here on a top-level create-request dict it always returns a dict
+    # (see its `isinstance(obj, dict)` branch); cast narrows for the string-keyed lookups below.
+    result = cast("dict[str, Any]", _remove_volatile_fields(data))
 
     if "columns" in result and isinstance(result["columns"], list):
         result["columns"] = _sort_columns(result["columns"])
@@ -150,19 +154,22 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
     if "owners" in result and isinstance(result["owners"], list):
         result["owners"] = sorted(result["owners"], key=_get_entity_reference_sort_key)
 
+    if "aliases" in result and isinstance(result["aliases"], list):
+        result["aliases"] = sorted(result["aliases"], key=str)
+
     if "schemaDefinition" in result and result["schemaDefinition"]:  # noqa: RUF019
         result["schemaDefinition"] = _normalize_whitespace(result["schemaDefinition"])
 
     return result
 
 
-def generate_source_hash(create_request: C, exclude_fields: Optional[Dict] = None) -> Optional[str]:  # noqa: UP006, UP045
+def generate_source_hash(create_request: C, exclude_fields: dict | None = None) -> str | None:
     """
     Given a create_request model convert it to a normalized json string
     and generate a stable hash value.
 
     The normalization process ensures hash stability by:
-    - Sorting lists (columns, tags, constraints, owners) by deterministic keys
+    - Sorting lists (columns, tags, constraints, owners, aliases) by deterministic keys
     - Removing volatile fields (href, deleted, inherited) from entity references
     - Normalizing whitespace in DDL/SQL definitions
     """

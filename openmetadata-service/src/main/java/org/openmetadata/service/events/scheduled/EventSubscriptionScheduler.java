@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
@@ -367,7 +368,14 @@ public class EventSubscriptionScheduler {
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
     // Previously, getEventSubscription was called for each event in the stream
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -377,8 +385,12 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.checkIfChangeEventIsAllowed(
+                          event, filteringRules, startingTimestamp)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .count();
@@ -459,7 +471,14 @@ public class EventSubscriptionScheduler {
   public List<ChangeEvent> getRelevantUnprocessedEvents(
       UUID subscriptionId, int limit, int paginationOffset) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -472,8 +491,12 @@ public class EventSubscriptionScheduler {
         .parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.checkIfChangeEventIsAllowed(
+                          event, filteringRules, startingTimestamp)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .toList();
@@ -490,7 +513,8 @@ public class EventSubscriptionScheduler {
         .changeEventDAO()
         .listUnprocessedEvents(offset, limit, paginationOffset)
         .parallelStream()
-        .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
+        .map(eventJson -> ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -558,7 +582,8 @@ public class EventSubscriptionScheduler {
             .getSuccessfulChangeEventBySubscriptionId(id.toString(), limit, paginationOffset);
 
     return successfullySentChangeEvents.stream()
-        .map(e -> JsonUtils.readValue(e, ChangeEvent.class))
+        .map(e -> ChangeEventJsonUtils.readOrNull(e, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 

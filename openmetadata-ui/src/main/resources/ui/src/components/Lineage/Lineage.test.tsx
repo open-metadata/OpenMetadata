@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render as renderComponent,
+  screen,
+} from '@testing-library/react';
 import { DragEvent } from 'react';
 import ReactFlow from 'reactflow';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
+import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { useLineageStore } from '../../hooks/useLineageStore';
@@ -150,6 +155,9 @@ const mockLineageStore = {
   activeLayer: [],
 };
 
+const render = (component: React.ReactElement) =>
+  renderComponent(component, { wrapper: ThemeProvider });
+
 jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn(),
 }));
@@ -218,6 +226,7 @@ jest.mock('reactflow', () => ({
     }) => (
       <div
         data-testid="react-flow-component"
+        role="presentation"
         onClick={(e) => {
           if ((e.target as HTMLElement).dataset.testid === 'react-flow-node') {
             onNodeClick?.(e, { id: 'node-1' });
@@ -448,7 +457,10 @@ describe('Lineage Component', () => {
       fireEvent(reactFlow, dragOverEvent);
 
       expect(preventDefaultSpy).toHaveBeenCalled();
-      expect((dragOverEvent as any).dataTransfer.dropEffect).toBe('move');
+      expect(
+        (dragOverEvent as unknown as { dataTransfer: { dropEffect: string } })
+          .dataTransfer.dropEffect
+      ).toBe('move');
     });
 
     it('should handle node drop event', () => {

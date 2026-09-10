@@ -27,6 +27,10 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import TestSummaryGraph from './TestSummaryGraph';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
+}));
+
 const mockProps: TestSummaryGraphProps = {
   testCaseName: 'column_values_to_be_between',
   testCaseParameterValue: [
@@ -537,6 +541,8 @@ describe('TestSummaryGraph', () => {
 
   it('should flip the fixed tooltip position when the chart edges would overflow', () => {
     mockPointCoordinate = { x: 760, y: 360 };
+    const getBoundingClientRect = HTMLElement.prototype
+      .getBoundingClientRect as jest.Mock;
     render(<TestSummaryGraph {...mockProps} />);
 
     const point = screen.getByTestId(POINT_TEST_ID);
@@ -551,5 +557,6 @@ describe('TestSummaryGraph', () => {
     expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '516');
     expect(tooltip).toHaveAttribute(TOOLTIP_Y_ATTRIBUTE, '196');
     expect(tooltip).toHaveAttribute('data-visibility', 'visible');
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(1);
   });
 });

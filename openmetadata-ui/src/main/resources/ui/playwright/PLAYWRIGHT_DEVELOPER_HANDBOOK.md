@@ -374,6 +374,42 @@ await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
 
 **Why**: Stored `:visible` locators become stale when re-queried. Always chain them inline!
 
+### ⚠️ CRITICAL: Clicking an Ant Design Dropdown Menu Item
+
+**A click on the item you located can select the item above it.**
+
+Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)` around
+`transform-origin: 0 0`, and rc-motion applies the start class one frame before the `-active`
+class that begins the transition. Playwright's actionability check ("bounding box unchanged
+across two consecutive animation frames") can be satisfied on those pre-transition frames, so
+the click point is computed against the 0.8-scaled menu. Once the menu finishes growing, that
+point has slid onto the previous item. Under CI worker contention this happens often.
+
+```typescript
+// ❌ WRONG - clicks while the menu is still scaling open
+await trigger.click();
+const response = page.waitForResponse("/api/v1/activity/following");
+await page.getByRole("menuitem", { name: "Following" }).click();
+await response; // may hang forever - "My Data" was selected and my-feed was fetched
+
+// ✅ CORRECT - wait for the popup to settle, then assert the selection took
+await trigger.click();
+const menuItem = page.getByRole("menuitem", { name: "Following" });
+await expect(menuItem).toBeVisible();
+await waitForAntdPopupToSettle(page); // from playwright/utils/common.ts
+const response = page.waitForResponse("/api/v1/activity/following");
+await menuItem.click();
+await expect(trigger).toContainText("Following"); // fails fast if the click drifted
+await response;
+```
+
+**Always assert the post-click state** (trigger label, `ant-*-item-selected`, rendered content)
+before awaiting a response. A `waitForResponse` whose predicate can never match does not fail —
+it hangs until the test timeout and then reports `Target page, context or browser has been
+closed`, which points nowhere near the real cause.
+
+`playwright/utils/widgetFilters.ts` (`selectWidgetSortOption`) is the reference implementation.
+
 ### Modal and Scrollable Container Patterns
 
 ```typescript
@@ -754,36 +790,55 @@ Playwright tests are linted with `eslint-plugin-playwright` to automatically cat
 
 ```bash
 cd openmetadata-ui/src/main/resources/ui
-yarn lint:playwright
+yarn lint:playwright               # check only — never writes
+yarn lint:playwright:suppressions  # check, then prune entries you have fixed
 ```
+
+Both run the same rules over the whole corpus against `eslint-suppressions.json`. The difference is
+only what happens once you have *fixed* something: `lint:playwright` reports the now-unused entry and
+exits non-zero, while `lint:playwright:suppressions` removes it and rewrites the file for you. Run
+the second after a cleanup and commit the rewritten baseline — that commit is what ratchets the count
+down. Neither will let a *new* violation through; adding to the baseline needs an explicit
+`--suppress-all`.
 
 ### Rule Levels
 
-**Blocking (error)** — these fail CI and must be fixed before merging:
+Every guardrail rule — `playwright/*` and `om-playwright/*` — runs at `error`. Existing violations at
+the time each rule was promoted are snapshotted in `eslint-suppressions.json`; that file may shrink
+as violations are fixed, never grow, so nothing new gets in without failing CI.
 
-| Rule | What It Catches |
-|------|----------------|
-| `no-networkidle` | `waitForLoadState('networkidle')` — unreliable with websockets/polling |
-| `no-page-pause` | `page.pause()` — debug statement left in code |
-| `no-focused-test` | `test.only()` / `describe.only()` — accidentally committed focus |
+The severity column is authoritative, not decorative: read it rather than assuming. A rule may
+legitimately sit at `warn` while its call sites are migrated — `openmetadata-playwright/*` rules come
+from the repo-wide plugin in `eslint-rules/` and set their own severity on that basis.
 
-**Aspirational (warn)** — reported but don't block CI; fix when touching a file:
+This table is generated from `eslint.config.mjs` by `scripts/generate-playwright-rule-table.mjs` — do
+not hand-edit it, run `yarn generate:playwright-rules` instead.
 
-| Rule | What It Catches |
-|------|----------------|
-| `missing-playwright-await` | Missing `await` on `expect()` matchers and Playwright API calls |
-| `no-wait-for-timeout` | `page.waitForTimeout()` — use event-driven waits instead |
-| `no-force-option` | `{ force: true }` — hides real interaction issues |
-| `no-element-handle` | `page.$()` / `page.$$()` — use locators with auto-retry |
-| `no-eval` | `page.$eval()` / `page.$$eval()` — use locators instead |
-| `no-skipped-test` | `test.skip()` — skipped tests should be fixed or removed |
-| `prefer-web-first-assertions` | `textContent()` / `isVisible()` — use `toHaveText()` / `toBeVisible()` |
-| `no-useless-await` | Unnecessary `await` on non-async methods |
-| `no-wait-for-selector` | `page.waitForSelector()` — use `expect().toBeVisible()` instead |
+<!-- BEGIN GENERATED RULE TABLE -->
 
-### Promoting Rules
+| Rule | Severity | What it catches |
+|---|---|---|
+| `om-playwright/justified-rule-disable` | error | Require a justification comment when disabling a playwright lint rule |
+| `om-playwright/no-awaited-wait-for-response` | error | Disallow awaiting page.waitForResponse() directly — register the listener before the action instead |
+| `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
+| `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
+| `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
+| `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
+| `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
+| `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |
+| `playwright/no-eval` | error | The use of `page.$eval` and `page.$$eval` are discouraged, use `locator.evaluate` or `locator.evaluateAll` instead |
+| `playwright/no-focused-test` | error | Prevent usage of `.only()` focus test annotation |
+| `playwright/no-force-option` | error | Prevent usage of `{ force: true }` option. |
+| `playwright/no-networkidle` | error | Prevent usage of the networkidle option |
+| `playwright/no-page-pause` | error | Prevent usage of page.pause() |
+| `playwright/no-skipped-test` | error | Prevent usage of the `.skip()` skip test annotation. |
+| `playwright/no-useless-await` | error | Disallow unnecessary awaits for Playwright methods |
+| `playwright/no-wait-for-selector` | error | Prevent usage of page.waitForSelector() |
+| `playwright/no-wait-for-timeout` | error | Prevent usage of page.waitForTimeout() |
+| `playwright/prefer-web-first-assertions` | error | Prefer web first assertions |
+| `playwright/valid-expect` | error | Enforce valid `expect()` usage |
 
-As existing violations are fixed, warning-level rules should be promoted to error level to prevent regressions.
+<!-- END GENERATED RULE TABLE -->
 
 ---
 
@@ -818,7 +873,7 @@ Before finalizing tests, verify:
 - [ ] Assertions use `.toBeVisible()` instead of `.waitForSelector()`
 
 ### ESLint
-- [ ] `yarn lint:playwright` passes with zero errors
+- [ ] `yarn lint:playwright` passes with zero errors (this is what CI runs)
 - [ ] No new warnings introduced (fix existing ones when touching a file)
 
 ### Coverage & Roles

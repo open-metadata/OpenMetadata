@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -57,10 +56,10 @@ logger = logging.getLogger(__name__)
 class DatabaseServiceBuilderPy:
     """Builder for creating database service requests."""
 
-    name_val: Optional[str] = None  # noqa: UP045
-    description_val: Optional[str] = None  # noqa: UP045
-    type_val: Optional[DatabaseServiceType] = None  # noqa: UP045
-    connection_val: Optional[DatabaseConnection] = None  # noqa: UP045
+    name_val: str | None = None
+    description_val: str | None = None
+    type_val: DatabaseServiceType | None = None
+    connection_val: DatabaseConnection | None = None
 
     def name(self, name: str) -> "DatabaseServiceBuilderPy":  # noqa: UP037
         self.name_val = name
@@ -78,7 +77,7 @@ class DatabaseServiceBuilderPy:
         self,
         host_port: str,
         username: str,
-        database: Optional[str] = None,  # noqa: UP045
+        database: str | None = None,
     ) -> "DatabaseServiceBuilderPy":  # noqa: UP037
         """Configure a MySQL connection for the database service."""
         conn = DatabaseConnection(
@@ -139,9 +138,9 @@ class DatabaseServiceBuilderPy:
 class DatabaseBuilderPy:
     """Builder for creating database requests."""
 
-    name_val: Optional[str] = None  # noqa: UP045
-    description_val: Optional[str] = None  # noqa: UP045
-    service_fqn_val: Optional[str] = None  # noqa: UP045
+    name_val: str | None = None
+    description_val: str | None = None
+    service_fqn_val: str | None = None
 
     def name(self, name: str) -> "DatabaseBuilderPy":  # noqa: UP037
         self.name_val = name
@@ -185,9 +184,9 @@ class DatabaseBuilderPy:
 class SchemaBuilderPy:
     """Builder for creating database schema requests."""
 
-    name_val: Optional[str] = None  # noqa: UP045
-    description_val: Optional[str] = None  # noqa: UP045
-    database_fqn_val: Optional[str] = None  # noqa: UP045
+    name_val: str | None = None
+    description_val: str | None = None
+    database_fqn_val: str | None = None
 
     def name(self, name: str) -> "SchemaBuilderPy":  # noqa: UP037
         self.name_val = name
@@ -230,10 +229,10 @@ class SchemaBuilderPy:
 class TableBuilderPy:
     """Builder for creating table requests."""
 
-    name_val: Optional[str] = None  # noqa: UP045
-    description_val: Optional[str] = None  # noqa: UP045
-    schema_fqn_val: Optional[str] = None  # noqa: UP045
-    columns_val: List[Column] = field(default_factory=list)  # noqa: UP006
+    name_val: str | None = None
+    description_val: str | None = None
+    schema_fqn_val: str | None = None
+    columns_val: list[Column] = field(default_factory=list)
 
     def name(self, name: str) -> "TableBuilderPy":  # noqa: UP037
         self.name_val = name
@@ -247,7 +246,7 @@ class TableBuilderPy:
         self.schema_fqn_val = schema_fqn
         return self
 
-    def add_column(self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None) -> "TableBuilderPy":  # noqa: UP037, UP045
+    def add_column(self, name: str, dtype: ColumnDataType, *, length: int | None = None) -> "TableBuilderPy":  # noqa: UP037
         """Add a column to the table."""
         col = Column(
             name=ColumnName(name),

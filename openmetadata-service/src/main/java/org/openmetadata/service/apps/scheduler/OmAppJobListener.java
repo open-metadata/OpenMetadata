@@ -23,6 +23,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.apps.logging.AppRunLogAppender;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -40,6 +41,7 @@ public class OmAppJobListener implements JobListener {
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
   public static final String SERVICES_FIELD = "services";
   public static final String APP_ID = "appId";
+  public static final String TRIGGER_TYPE_KEY = "triggerType";
   private static final String APP_RUN_LOG_ID = "appRunLogId";
 
   protected OmAppJobListener() {
@@ -90,11 +92,20 @@ public class OmAppJobListener implements JobListener {
     return JOB_LISTENER_NAME;
   }
 
+  /**
+   * Quartz worker threads are long lived and never pass through the JAX-RS response filter, so a
+   * per-request ThreadLocal cache left behind by an earlier job is served to this one. The App is
+   * read below with {@code fromCache = true}, so without this the app runs with whatever
+   * appConfiguration was current the first time this particular worker ran it — for the life of the
+   * process, and differing between workers. {@code AbstractEventConsumer} brackets its tick the same
+   * way.
+   */
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
+    PerRequestContextCleaner.clear();
     try {
       String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp =
           repository.getByName(
@@ -247,6 +258,8 @@ public class OmAppJobListener implements JobListener {
       LOG.error("OmAppJobListener.jobWasExecuted failed unexpectedly", e);
     } finally {
       cleanupLogCapture(jobExecutionContext);
+      // Leave the worker clean however this exits, so the next job on it starts from the database.
+      PerRequestContextCleaner.clear();
     }
   }
 

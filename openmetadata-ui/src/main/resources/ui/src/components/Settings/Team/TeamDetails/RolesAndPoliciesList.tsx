@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -27,7 +26,8 @@ import {
   getRoleWithFqnPath,
 } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 
 const ListEntities = ({
   list,

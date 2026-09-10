@@ -24,6 +24,7 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
+  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   visitEntityPage,
@@ -72,7 +73,7 @@ class ServiceBaseClass {
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
   public ingestionRunner: RunnerDetails = {
     name: 'CollateSaaS',
-    displayName: 'Collate SaaS',
+    displayName: 'Collate SaaS Runner',
   };
 
   constructor(
@@ -131,22 +132,14 @@ class ServiceBaseClass {
     );
 
     if (await runnerSelector.isVisible()) {
-      await runnerSelector.click();
-
-      // The runner control is now a react-aria Select whose options render as
-      // role="listbox" entries (no more antd `data-key`). Match the option by
-      // its visible label (displayName); the substring match tolerates a
-      // display-name suffix (e.g. "Collate SaaS" matches "Collate SaaS Runner").
       const runnerLabel = this.ingestionRunner.displayName;
-      const runnerOption = page
-        .getByRole('option', { name: runnerLabel })
-        .first();
-      await runnerOption.waitFor({ state: 'visible' });
-      await runnerOption.click();
+      const trigger = runnerSelector.getByRole('button');
+      const option = page
+        .locator('.core-select-widget-popover')
+        .getByRole('option', { name: runnerLabel, exact: true });
 
-      await expect(
-        page.getByTestId('select-widget-root/ingestionRunner')
-      ).toContainText(runnerLabel);
+      await selectOptionWithRetry(trigger, option);
+      await expect(runnerSelector).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {
@@ -218,7 +211,19 @@ class ServiceBaseClass {
     await waitForIngestionWorkflowForm(page);
     await this.fillIngestionDetails(page);
 
-    await page.click('[data-testid="next-button"]');
+    // Creating the service triggers AutoPilot, whose success toast renders
+    // bottom-center — directly over the wizard footer — and auto-closes after 5s
+    // (showSuccessToast(..., 5000) in AddServicePage). A click landing inside
+    // that window is intercepted by the toast, and with no per-action timeout
+    // the retry loop runs to the end of the test instead.
+    //
+    // Bounding the click is what fixes it, not waiting the toast out: the toast
+    // is fired by the create call several steps earlier, so whether it is on
+    // screen when we get here depends on how fast those steps ran. Gating on it
+    // being gone is a no-op when it has not rendered yet and when it has already
+    // closed. A bounded click covers every ordering — Playwright retries the
+    // intercepted click for the whole timeout, which outlasts the toast.
+    await page.click('[data-testid="next-button"]', { timeout: 30_000 });
 
     // Go back and data should persist
     await page.click('[data-testid="previous-button"]');

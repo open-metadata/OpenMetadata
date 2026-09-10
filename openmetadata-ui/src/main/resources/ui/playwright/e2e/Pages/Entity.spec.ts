@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Request, test as base } from '@playwright/test';
+import { Page, Request } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -35,17 +35,18 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
   verifyDomainPropagation,
@@ -1380,8 +1381,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          // Match both engines without a positional pick: AntD rows live in
+          // a <table> nested inside .ant-table (excluded here, the wrapper
+          // matches instead); TableV2 renders one plain <table>.
           const childTable = page
-            .locator('.ant-table')
+            .locator('.ant-table, table:not(.ant-table table)')
             .filter({ has: taggedRow });
           const rows = childTable.locator(`[${rowSelector}]`);
 
@@ -1408,23 +1412,27 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           );
 
           const toggleTagFilter = async () => {
+            // TableV2 folds the filter trigger's label into the header's
+            // accessible name ("Tags filter"), so an exact match only works
+            // for the AntD engine — anchor on the title prefix instead.
             await page
-              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByRole('columnheader', { name: /^Tags\b/ })
               .getByTestId('filter-icon')
               .click();
 
-            await expect(
-              page.locator('.ant-table-filter-dropdown:visible')
-            ).toBeVisible();
+            // AntD mounts the dropdown as .ant-table-filter-dropdown;
+            // TableV2 mounts ColumnFilter inside a react-aria dialog popover.
+            const filterDropdown = page.locator(
+              '.ant-table-filter-dropdown:visible, [role="dialog"]:has(.ant-menu)'
+            );
 
-            await page
-              .locator('.ant-table-filter-dropdown:visible')
+            await expect(filterDropdown).toBeVisible();
+
+            await filterDropdown
               .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
               .click();
 
-            await expect(
-              page.locator('.ant-table-filter-dropdown:visible')
-            ).toBeHidden();
+            await expect(filterDropdown).toBeHidden();
           };
 
           await test.step('Apply tag filter and verify pruning', async () => {
@@ -1623,8 +1631,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await editDescriptionButton.click();
 
             // Wait for description box to be visible and ready
-            const descBox = page.locator(descriptionBox).first();
-            await expect(descBox).toBeVisible();
+            const descBox = await resolveDescriptionBox(page);
             await descBox.clear();
             await descBox.fill(newDescription);
 
@@ -2283,8 +2290,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           // Wait for activity feed API call (all tab is selected by default)
           const activityFeedResponse = page.waitForResponse(
             (response) =>
-              response.url().includes('/api/v1/feed') &&
-              response.url().includes('entityLink')
+              response.url().includes('/api/v1/activity/') &&
+              response.url().includes('/name/')
           );
 
           await activityFeedTab.click();

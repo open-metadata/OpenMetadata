@@ -46,6 +46,12 @@
       "description": "Validate if the Data Sources(Data Models) information is retrieved for Workbooks",
       "errorMessage": "Failed to fetch Workbook Data Sources, please validate if user has access to fetch Data Sources and Metadata API is enabled for tableau server",
       "mandatory": false
+    },
+    {
+      "name": "GetSourceTables",
+      "description": "Validate if the source tables behind a Data Source are named. Tableau hides table and database names from accounts without Tableau Catalog permissions, which drops the lineage for those tables.",
+      "errorMessage": "Failed to read the names of one or more source tables, please validate if user has the View capability on those external assets in Tableau Catalog. Data Sources and Dashboards are still ingested, but lineage cannot be built for the tables the account cannot see",
+      "mandatory": false
     }
   ]
 }

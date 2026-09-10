@@ -152,6 +152,13 @@ rdf:
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
   inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
+  defaultInferenceLevel: ${RDF_DEFAULT_INFERENCE_LEVEL:-"NONE"}
+  maxInMemoryInferenceTriples: ${RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES:-100000}
+  materializedInferenceEnabled: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-false}
+  shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
+  dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
+  strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
+  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -165,6 +172,7 @@ rdf:
 | `RDF_REMOTE_ENDPOINT` | Deprecated fallback when `RDF_ENDPOINT` is unset | unset |
 | `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
 | `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | In-flight live writes (automatically clamped to one for Fuseki) | `8` |
 | `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |
 | `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | Relationship sources per bulk write | `100` |
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | Detailed lineage edges per bulk write | `50` |
@@ -172,6 +180,13 @@ rdf:
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
 | `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | Default inference selection | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Legacy in-process safety limit | `100000` |
+| `RDF_MATERIALIZED_INFERENCE_ENABLED` | Enable durable per-rule inference graphs | `false` |
+| `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
+| `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
+| `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
+| `RDF_ASK_COLLATE_ENABLED` | Enable Ontology Studio AI | `false` |
 
 ### Docker Compose Configuration
 
@@ -183,7 +198,7 @@ services:
     build:
       context: ../rdf-store
       dockerfile: Dockerfile
-    image: openmetadata-fuseki:5.6.0
+    image: openmetadata-fuseki:6.2.0
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"

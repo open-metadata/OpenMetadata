@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchAggregationNode;
@@ -37,6 +38,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -384,6 +386,21 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  /**
+   * {@link #getById} answers a missing row with {@code null}, which a resource that has to
+   * dereference the record — to authorize against the entity it belongs to, say — turns into a
+   * NullPointerException and a 500. Callers that want the read to fail rather than degrade should
+   * use this instead, so the miss surfaces as a 404.
+   */
+  public T getByIdOrNotFound(UUID id) {
+    T entityRecord = getById(id);
+    if (entityRecord == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+    return entityRecord;
+  }
+
   public T getById(UUID id) {
     String jsonRecord = timeSeriesDao.getById(id);
     if (jsonRecord == null) {
@@ -462,6 +479,28 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String q,
       String queryString)
       throws IOException {
+    return listFromSearchWithOffset(
+        fields, searchListFilter, limit, offset, searchSortFilter, q, queryString, null);
+  }
+
+  /**
+   * Same as {@link #listFromSearchWithOffset(EntityUtil.Fields, SearchListFilter, int, int,
+   * SearchSortFilter, String, String)} but evaluates the caller's policies against the search query,
+   * so a listing cannot return time series documents the caller may not read. Domain conditions such
+   * as {@code hasDomain()} can only be enforced here: {@code RuleEvaluator#hasDomain} short-circuits
+   * to {@code true} for list operations because no single resource is in scope, and relies on this
+   * search-side filtering instead. Passing a {@code null} subject keeps the unfiltered behaviour.
+   */
+  public ResultList<T> listFromSearchWithOffset(
+      EntityUtil.Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
     long total;
 
@@ -470,7 +509,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (limit > 0) {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
@@ -494,7 +540,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     } else {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, (int) total);
     }
@@ -511,6 +564,27 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortField,
       String sortType)
       throws IOException {
+    return listLatestFromSearch(
+        fields, contentFilter, groupBy, q, limit, offset, sortField, sortType, null);
+  }
+
+  /**
+   * Subject-aware variant of {@link #listLatestFromSearch(EntityUtil.Fields, SearchListFilter,
+   * String, String, Integer, Integer, String, String)}. The aggregation that picks the latest
+   * document per group must be filtered by the caller's policies too, otherwise {@code latest=true}
+   * bypasses the filtering applied to the plain listing.
+   */
+  public ResultList<T> listLatestFromSearch(
+      EntityUtil.Fields fields,
+      SearchListFilter contentFilter,
+      String groupBy,
+      String q,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
+      SubjectContext subjectContext)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
     SearchListFilter searchListFilter = new SearchListFilter();
     setIncludeSearchFields(searchListFilter);
@@ -519,7 +593,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchAggregation searchAggregation =
         buildComplexAggregation(groupBy, contentFilter, limit, offset, sortField, sortType);
     JsonObject jsonObjResults =
-        searchRepository.aggregate(q, entityType, searchAggregation, searchListFilter);
+        searchRepository.aggregate(
+            q, entityType, searchAggregation, searchListFilter, subjectContext);
 
     Optional<List> jsonObjects =
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);

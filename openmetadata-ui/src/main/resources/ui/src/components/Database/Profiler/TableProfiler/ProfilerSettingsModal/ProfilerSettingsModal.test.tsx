@@ -71,7 +71,6 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
     { label: 'Day', value: 'DAY' },
     { label: 'Hour', value: 'HOUR' },
   ],
-  PROFILER_METRIC: ['column_count', 'distinct_count'],
   PROFILER_MODAL_LABEL_STYLE: {},
   PROFILE_SAMPLE_OPTIONS: [
     { label: 'Percentage', value: 'PERCENTAGE' },
@@ -86,6 +85,15 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
 
 jest.mock('../../../../../utils/ObjectUtils', () => ({
   reducerWithoutAction: jest.fn(),
+}));
+
+jest.mock('../../../../../utils/ProfilerMetricsClassBase', () => ({
+  __esModule: true,
+  default: {
+    getProfilerMetricOptions: jest
+      .fn()
+      .mockReturnValue(['column_count', 'distinct_count']),
+  },
 }));
 
 jest.mock('../../../../../utils/ToastUtils', () => ({

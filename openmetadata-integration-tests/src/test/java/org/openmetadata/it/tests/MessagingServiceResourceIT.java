@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.net.URI;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -449,6 +450,28 @@ public class MessagingServiceResourceIT
 
     KafkaConnection conn = extractKafkaConnection(fetched);
     assertPasswordsNotMasked(conn, "Bot GET by name");
+  }
+
+  @Test
+  void patch_messagingServiceConnection_preservesMaskedPasswords(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "patch_preserves_secrets");
+    KafkaConnection maskedConnection = extractKafkaConnection(service);
+    assertPasswordsMasked(maskedConnection, "Admin create response");
+    maskedConnection.setBootstrapServers("updated:9092");
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config")
+        .set("value", JsonUtils.valueToTree(maskedConnection));
+
+    SdkClients.adminClient().messagingServices().patch(service.getId(), patch);
+
+    MessagingService persisted =
+        SdkClients.ingestionBotClient().messagingServices().get(service.getId());
+    KafkaConnection persistedConnection = extractKafkaConnection(persisted);
+    assertEquals("updated:9092", persistedConnection.getBootstrapServers());
+    assertPasswordsNotMasked(persistedConnection, "Bot GET after masked PATCH");
   }
 
   /**

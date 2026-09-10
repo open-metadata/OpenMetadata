@@ -14,6 +14,7 @@
 import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
+import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import glossaryTermClassBase, {
   GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
@@ -98,6 +99,37 @@ const mockProps: GlossaryTermDetailPageTabProps = {
   setPreviewAsset: jest.fn(),
 };
 
+type AssetsTabElementProps = {
+  addDisabledMessage?: React.ReactNode;
+  onAddAsset?: () => void;
+};
+
+const getAssetsTabProps = (
+  tabs: ReturnType<typeof getGlossaryTermDetailPageTabs>
+): AssetsTabElementProps => {
+  const assetsTab = tabs.find((tab) => tab.key === EntityTabs.ASSETS);
+  const resizable = assetsTab?.children as React.ReactElement<{
+    firstPanel: { children: React.ReactNode };
+  }>;
+  const firstPanelChildren = resizable.props.firstPanel.children;
+  const panelChildren =
+    React.isValidElement<{ children?: React.ReactNode }>(firstPanelChildren) &&
+    firstPanelChildren.type === React.Fragment
+      ? firstPanelChildren.props.children
+      : firstPanelChildren;
+  const assetsTabElement = React.Children.toArray(panelChildren).find(
+    (child) =>
+      React.isValidElement<AssetsTabElementProps>(child) &&
+      child.props.onAddAsset !== undefined
+  );
+
+  if (!React.isValidElement<AssetsTabElementProps>(assetsTabElement)) {
+    throw new Error('Assets tab element was not found');
+  }
+
+  return assetsTabElement.props;
+};
+
 describe('getGlossaryTermDetailPageTabs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -128,6 +160,52 @@ describe('getGlossaryTermDetailPageTabs', () => {
       const tabs = getGlossaryTermDetailPageTabs(mockProps);
 
       expect(tabs.find((t) => t.key === EntityTabs.ASSETS)).toBeDefined();
+    });
+
+    it('passes a status message and disables Add on the ASSETS tab when the term is not Approved', () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        glossaryTerm: {
+          ...mockGlossaryTerm,
+          entityStatus: EntityStatus.InReview,
+        },
+      });
+      const assetsTabsProps = getAssetsTabProps(tabs);
+
+      expect(assetsTabsProps.addDisabledMessage).toBeTruthy();
+    });
+
+    it('does not pass a disabled message on the ASSETS tab when the term is Approved', () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        glossaryTerm: {
+          ...mockGlossaryTerm,
+          entityStatus: EntityStatus.Approved,
+        },
+      });
+      const assetsTabsProps = getAssetsTabProps(tabs);
+
+      expect(assetsTabsProps.addDisabledMessage).toBeUndefined();
+    });
+
+    it('uses a different, status-appropriate disabled message for terminal statuses vs pending ones', () => {
+      const getAssetsMessage = (entityStatus: EntityStatus) => {
+        const tabs = getGlossaryTermDetailPageTabs({
+          ...mockProps,
+          glossaryTerm: { ...mockGlossaryTerm, entityStatus },
+        });
+
+        return getAssetsTabProps(tabs).addDisabledMessage;
+      };
+
+      // Pending (can still be approved) vs terminal (Deprecated will not) must
+      // not share the misleading "once it is approved" copy.
+      const pendingMessage = getAssetsMessage(EntityStatus.InReview);
+      const terminalMessage = getAssetsMessage(EntityStatus.Deprecated);
+
+      expect(pendingMessage).toBeTruthy();
+      expect(terminalMessage).toBeTruthy();
+      expect(terminalMessage).not.toEqual(pendingMessage);
     });
 
     it('includes ACTIVITY_FEED tab', () => {

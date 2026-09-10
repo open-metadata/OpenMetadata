@@ -48,9 +48,14 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
@@ -320,65 +325,84 @@ class JwtFilterTest {
         .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
   }
 
-  @Test
-  void sessionBoundUserTokenRequiresActiveMatchingSession() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
-            .withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, "session-1")
-            .sign(algorithm);
-    SessionService sessionService = mock(SessionService.class);
-    when(sessionService.getFreshSessionById("session-1"))
-        .thenReturn(
-            Optional.of(
-                UserSession.builder()
-                    .id("session-1")
-                    .username("sam")
-                    .status(SessionStatus.ACTIVE)
-                    .expiresAt(System.currentTimeMillis() + 60_000)
-                    .idleExpiresAt(System.currentTimeMillis() + 60_000)
-                    .build()));
-    AuthServeletHandlerRegistry.setSessionService(null, sessionService);
-
+  @ParameterizedTest
+  @EnumSource(
+      value = SessionStatus.class,
+      names = {"ACTIVE", "REFRESHING"})
+  void sessionBoundUserTokenAcceptsAuthenticatedSessionDuringRefresh(final SessionStatus status) {
+    final UserSession session =
+        activeSession("session-1", "sam", "basic").toBuilder()
+            .status(status)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
+            .build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(session));
     try {
-      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
       jwtFilter.filter(context);
-      verify(context, times(1))
-          .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
-      verify(sessionService, times(1))
-          .recordSessionAccess(org.mockito.ArgumentMatchers.any(UserSession.class));
+      final ArgumentCaptor<SecurityContext> securityContext =
+          ArgumentCaptor.forClass(SecurityContext.class);
+      verify(context).setSecurityContext(securityContext.capture());
+      assertEquals("sam", securityContext.getValue().getUserPrincipal().getName());
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }
   }
 
-  @Test
-  void sessionBoundUserTokenRejectsRevokedSession() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
-            .withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, "session-1")
-            .sign(algorithm);
-    SessionService sessionService = mock(SessionService.class);
-    when(sessionService.getFreshSessionById("session-1"))
-        .thenReturn(
-            Optional.of(
-                UserSession.builder()
-                    .id("session-1")
-                    .username("sam")
-                    .status(SessionStatus.REVOKED)
-                    .build()));
-    AuthServeletHandlerRegistry.setSessionService(null, sessionService);
-
+  @ParameterizedTest
+  @EnumSource(
+      value = SessionStatus.class,
+      names = {"PENDING", "REVOKED", "EXPIRED"})
+  void sessionBoundUserTokenRejectsUnauthenticatedSession(final SessionStatus status) {
+    final UserSession session =
+        activeSession("session-1", "sam", "basic").toBuilder().status(status).build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(session));
     try {
-      ContainerRequestContext context = createRequestContextWithJwt(jwt);
-      Exception exception =
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      final Exception exception =
           assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
       assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid session"));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void refreshingSessionCannotBypassSessionExpiry(final boolean idleExpiry) {
+    final UserSession session = activeSession("session-1", "sam", "basic");
+    final UserSession expired =
+        session.toBuilder()
+            .status(SessionStatus.REFRESHING)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
+            .expiresAt(idleExpiry ? session.getExpiresAt() : 0L)
+            .idleExpiresAt(idleExpiry ? 0L : session.getIdleExpiresAt())
+            .build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(expired));
+    try {
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "another-user")
+  void refreshingSessionMustMatchTokenUser(final String username) {
+    final UserSession session =
+        activeSession("session-1", username, "basic").toBuilder()
+            .status(SessionStatus.REFRESHING)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
+            .build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(session));
+    try {
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }
@@ -493,5 +517,76 @@ class JwtFilterTest {
     when(context.getHeaders()).thenReturn(headers);
 
     return context;
+  }
+
+  private static SessionService sessionServiceReturning(UserSession session) {
+    SessionService sessionService = mock(SessionService.class);
+    when(sessionService.getFreshSessionById(session.getId())).thenReturn(Optional.of(session));
+    return sessionService;
+  }
+
+  private static UserSession activeSession(String id, String username, String provider) {
+    return UserSession.builder()
+        .id(id)
+        .username(username)
+        .provider(provider)
+        .status(SessionStatus.ACTIVE)
+        .expiresAt(System.currentTimeMillis() + 60_000)
+        .idleExpiresAt(System.currentTimeMillis() + 60_000)
+        .build();
+  }
+
+  private static String sessionBoundJwt(String userName, String sessionId) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("sub", userName)
+        .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+        .withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, sessionId)
+        .sign(algorithm);
+  }
+
+  @Test
+  void sessionIssuedUnderTheOtherNativePasswordProviderNameIsAccepted() {
+    // basic and openmetadata are two names for the same native-password authenticator. Renaming one
+    // to the other is not a provider swap, so it must not invalidate every live session.
+    UserSession openMetadataSession = activeSession("session-1", "sam", "openmetadata");
+    AuthServeletHandlerRegistry.setSessionService(
+        null, sessionServiceReturning(openMetadataSession));
+    JwtFilter basicProviderFilter =
+        new JwtFilter(
+            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+
+    try {
+      ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      basicProviderFilter.filter(context);
+      verify(context, times(1))
+          .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = SessionStatus.class,
+      names = {"ACTIVE", "REFRESHING"})
+  void sessionIssuedByDecommissionedProviderIsRejected(final SessionStatus status) {
+    UserSession googleSession =
+        activeSession("session-1", "sam", "google").toBuilder().status(status).build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(googleSession));
+    JwtFilter basicProviderFilter =
+        new JwtFilter(
+            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+
+    try {
+      ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> basicProviderFilter.filter(context));
+      assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("no longer configured"));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
   }
 }

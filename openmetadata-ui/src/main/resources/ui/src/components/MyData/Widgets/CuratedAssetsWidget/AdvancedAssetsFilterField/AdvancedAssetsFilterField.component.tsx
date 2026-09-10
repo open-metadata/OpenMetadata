@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,7 +18,7 @@ import {
   JsonTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -184,6 +184,7 @@ export const AdvancedAssetsFilterField = ({
       <Row className="advanced-filter-form-field" gutter={[8, 8]}>
         <Col data-testid="advanced-filter-container" span={24}>
           <div className="ant-form-item-label advanced-filter-label">
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
             <label>{t('label.advance-filter')}</label>
           </div>
           <Query

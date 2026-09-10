@@ -24,7 +24,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -43,6 +42,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +62,7 @@ import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandle
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
@@ -83,7 +84,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -365,10 +365,15 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
+    // Duplicate check re-runs on PATCH/PUT so an existing task can't be repointed at an entity
+    // that already has an active DAR (H6). Expiry future-check stays create-only: a task that
+    // sat in Open past its own deadline (H7 gray-zone) must still be editable by its filer up
+    // until close; the JSON-schema bound on expirationDate plus the "payload frozen after Open"
+    // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
     if (!update) {
       TaskFieldValidator.validateDataAccessRequestExpiry(task);
-      validateNoDuplicateActiveDataAccessRequest(task);
     }
+    validateNoDuplicateActiveDataAccessRequest(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -404,7 +409,11 @@ public class TaskRepository extends EntityRepository<Task> {
     if (isDuplicateDataAccessRequestCheckable(task)) {
       String entityFqn = task.getAbout().getFullyQualifiedName();
       Task existing = findActiveDataAccessRequestByCreator(entityFqn, task.getCreatedBy().getId());
-      if (existing != null) {
+      // Exclude the task's own row so re-running the check on PATCH/PUT (needed to catch H6:
+      // repointing task B's `about` at task A's entity) doesn't fire on the task's own record.
+      boolean collides =
+          existing != null && (task.getId() == null || !existing.getId().equals(task.getId()));
+      if (collides) {
         throw new IllegalArgumentException(
             String.format(
                 "An active data access request (%s) already exists for '%s'. "
@@ -747,21 +756,30 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     List<EntityLink> mentions = MessageParser.getEntityLinks(message);
-    mentions.stream()
-        .distinct()
-        .forEach(
-            mention ->
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .insert(
-                        mention.getFullyQualifiedFieldValue(),
-                        task.getId().toString(),
-                        mention.getFullyQualifiedFieldValue(),
-                        task.getId().toString(),
-                        mention.getFullyQualifiedFieldType(),
-                        Entity.TASK,
-                        Relationship.MENTIONED_IN.ordinal(),
-                        null));
+    String taskId = task.getId().toString();
+    String taskIdHash = FullyQualifiedName.buildHash(taskId);
+
+    List<FieldRelationship> relationships =
+        mentions.stream()
+            .distinct()
+            .map(
+                mention -> {
+                  FieldRelationship relationship = new FieldRelationship();
+                  relationship.setFromFQNHash(
+                      FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()));
+                  relationship.setToFQNHash(taskIdHash);
+                  relationship.setFromFQN(mention.getFullyQualifiedFieldValue());
+                  relationship.setToFQN(taskId);
+                  relationship.setFromType(mention.getFullyQualifiedFieldType());
+                  relationship.setToType(Entity.TASK);
+                  relationship.setRelation(Relationship.MENTIONED_IN.ordinal());
+                  return relationship;
+                })
+            .toList();
+
+    if (!relationships.isEmpty()) {
+      daoCollection.fieldRelationshipDAO().insertMany(relationships);
+    }
   }
 
   /**
@@ -948,9 +966,11 @@ public class TaskRepository extends EntityRepository<Task> {
    * resolve the task".
    *
    * <p>For incident-style tasks ({@code TestCaseResolution}, {@code IncidentResolution}) a
-   * fallback is permitted: a non-filer user with {@code EditTests}/{@code EditAll} on the related
-   * entity can resolve the task even if the task policy alone would deny — preserving the
-   * historical behaviour that test owners can act on incidents. The filer check is intentional:
+   * fallback is permitted: a non-filer user with {@code EditStatus}, {@code EditTests} or
+   * {@code EditAll} on the related entity can resolve the task even if the task policy alone would
+   * deny — preserving the historical behaviour that test owners can act on incidents, and letting
+   * {@code EditStatus} alone grant incident management without test case edit rights. The filer
+   * check is intentional:
    * mixing the task policy and the incident fallback in a single {@code AuthorizationLogic.ANY}
    * call would let a filer who also owns the related entity bypass the {@code isTaskFiler()} deny
    * rule and approve their own task. The two checks are therefore evaluated sequentially with the
@@ -1053,38 +1073,52 @@ public class TaskRepository extends EntityRepository<Task> {
       if (testCase == null) {
         return;
       }
-      ResourceContextInterface testCaseResourceContext =
-          TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-      EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-      ResourceContextInterface entityResourceContext =
-          entityLink != null
-              ? TestCaseResourceContext.builder().entityLink(entityLink).build()
-              : TestCaseResourceContext.builder().build();
-
-      if (entityLink != null) {
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
-                entityResourceContext));
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
-                entityResourceContext));
-      }
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
-              testCaseResourceContext));
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
-              testCaseResourceContext));
+      requests.addAll(buildIncidentEditRequests(testCase));
     } catch (Exception e) {
       LOG.warn(
           "[TaskRepository] Failed to build incident permission fallback for task '{}': {}",
           task.getId(),
           e.getMessage());
     }
+  }
+
+  /**
+   * Auth requests accepted for the task-first incident fallback. {@code EditStatus} on the test
+   * case is the Incident Manager grant: it lets a user drive incident transitions (status,
+   * severity, assignment) without holding edit rights on the test case itself. The historical
+   * {@code EditTests}/{@code EditAll} grants — on the test case and on the entity under test —
+   * remain accepted.
+   */
+  static List<AuthRequest> buildIncidentEditRequests(TestCase testCase) {
+    List<AuthRequest> requests = new ArrayList<>();
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    if (entityLink != null) {
+      ResourceContextInterface entityResourceContext =
+          TestCaseResourceContext.builder().entityLink(entityLink).build();
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
+              entityResourceContext));
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+              entityResourceContext));
+    }
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+            testCaseResourceContext));
+    return requests;
   }
 
   private void validateUnderlyingEntityPermission(
@@ -1353,37 +1387,6 @@ public class TaskRepository extends EntityRepository<Task> {
     if (task != null) {
       closeTask(task, user, comment);
     }
-  }
-
-  /**
-   * Update assignees on an open approval task for the given entity.
-   * Used when an entity's reviewers change while an approval task is in progress.
-   * Silently does nothing if no open task exists.
-   *
-   * @param entityFqn Fully qualified name of the target entity
-   * @param newAssignees The new list of assignees (typically entity reviewers)
-   * @param updatedBy The user making the change
-   */
-  public void updateApprovalTaskAssignees(
-      String entityFqn, List<EntityReference> newAssignees, String updatedBy) {
-    Task task = findOpenTaskByEntityAndCategory(entityFqn, TaskCategory.Approval);
-    if (task == null) {
-      return;
-    }
-
-    Task currentTask = get(null, task.getId(), getFields("*"));
-    Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
-    updatedTask.setAssignees(newAssignees);
-    updatedTask.setUpdatedBy(updatedBy);
-    updatedTask.setUpdatedAt(System.currentTimeMillis());
-
-    JsonPatch patch = JsonUtils.getJsonPatch(currentTask, updatedTask);
-    if (patch.toJsonArray().isEmpty()) {
-      return;
-    }
-
-    Task patchedTask = patch(null, currentTask.getId(), updatedBy, patch).entity();
-    WebsocketNotificationHandler.handleTaskNotification(patchedTask);
   }
 
   @Override
@@ -1766,8 +1769,39 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     private void updatePayload() {
+      // Report M7 (past date on PATCH) + Copilot follow-up (10-year horizon cap on PATCH):
+      // create-time validation rejects both a past expirationDate and one beyond the ten-year
+      // horizon, but the update path used to accept either. If the field actually changes,
+      // re-run the same create-time check so the same 400 fires whether the caller lands the
+      // bad value on POST or on PATCH. Skip when expirationDate is untouched so unrelated
+      // payload edits (columns, reason) on an already-expired-but-still-Open task remain
+      // possible.
+      if (updated.getType() == TaskEntityType.DataAccessRequest) {
+        Long previousExpiry = readExpirationDate(original.getPayload());
+        Long nextExpiry = readExpirationDate(updated.getPayload());
+        if (!Objects.equals(previousExpiry, nextExpiry)) {
+          TaskFieldValidator.validateDataAccessRequestExpiry(updated);
+        }
+      }
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
+    }
+
+    private Long readExpirationDate(Object payload) {
+      Long expirationDate = null;
+      if (payload != null) {
+        try {
+          DataAccessRequestPayload typed =
+              JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+          expirationDate = typed == null ? null : typed.getExpirationDate();
+        } catch (IllegalArgumentException malformed) {
+          // Malformed payload is separately caught at the API boundary by
+          // TaskFieldValidator.readDataAccessPayload; here we just refuse to compare instead
+          // of surfacing the parse failure twice.
+          expirationDate = null;
+        }
+      }
+      return expirationDate;
     }
 
     private void updateResolution() {

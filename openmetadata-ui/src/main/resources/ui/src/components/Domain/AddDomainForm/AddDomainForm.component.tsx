@@ -166,6 +166,36 @@ const normalizeExtensionForApi = (
   return normalized;
 };
 
+const applyDataProductFields = (
+  dataProduct: CreateDataProduct,
+  formData: DomainFormValues,
+  parentDomain?: Domain
+): void => {
+  const domainRef = formData.domains?.value as EntityReference | undefined;
+  if (domainRef?.fullyQualifiedName) {
+    dataProduct.domains = [domainRef.fullyQualifiedName];
+  } else if (parentDomain?.fullyQualifiedName) {
+    dataProduct.domains = [parentDomain.fullyQualifiedName];
+  }
+  if (formData.dataProductType?.value) {
+    dataProduct.dataProductType = formData.dataProductType
+      .value as DataProductType;
+  }
+  if (formData.visibility?.value) {
+    dataProduct.visibility = formData.visibility.value as Visibility;
+  }
+  if (formData.portfolioPriority?.value) {
+    dataProduct.portfolioPriority = formData.portfolioPriority
+      .value as PortfolioPriority;
+  }
+  // Collate-only: no field means the property is never sent.
+  if (domainClassBase.getReviewersField()) {
+    dataProduct.reviewers = formData.reviewers.map(
+      (item) => item.value as EntityReference
+    );
+  }
+};
+
 export const transformDomainFormData = (
   formData: DomainFormValues,
   type: DomainFormType,
@@ -176,9 +206,6 @@ export const transformDomainFormData = (
     (item) => item.value as EntityReference
   );
   const ownersList = formData.owners.map(
-    (item) => item.value as EntityReference
-  );
-  const reviewersList = formData.reviewers.map(
     (item) => item.value as EntityReference
   );
 
@@ -222,25 +249,7 @@ export const transformDomainFormData = (
   } as CreateDomain | CreateDataProduct;
 
   if (type === DomainFormType.DATA_PRODUCT) {
-    const dataProduct = data as CreateDataProduct;
-    const domainRef = formData.domains?.value as EntityReference | undefined;
-    if (domainRef?.fullyQualifiedName) {
-      dataProduct.domains = [domainRef.fullyQualifiedName];
-    } else if (parentDomain?.fullyQualifiedName) {
-      dataProduct.domains = [parentDomain.fullyQualifiedName];
-    }
-    if (formData.dataProductType?.value) {
-      dataProduct.dataProductType = formData.dataProductType
-        .value as DataProductType;
-    }
-    if (formData.visibility?.value) {
-      dataProduct.visibility = formData.visibility.value as Visibility;
-    }
-    if (formData.portfolioPriority?.value) {
-      dataProduct.portfolioPriority = formData.portfolioPriority
-        .value as PortfolioPriority;
-    }
-    dataProduct.reviewers = reviewersList;
+    applyDataProductFields(data as CreateDataProduct, formData, parentDomain);
   } else {
     delete (data as CreateDomain & { domains?: unknown }).domains;
   }
@@ -291,6 +300,24 @@ const mapEntityReferenceToOption = (
   label: getEntityName(reference),
   supportingText: reference.fullyQualifiedName || reference.type,
   value: reference,
+});
+
+// Built once at module scope, never per render. DomainType is an enum, so this
+// list can never change — but rebuilding it inside the component handed `Select`
+// a new `items` array on every render, and a new collection identity makes
+// react-aria tear down and remount the open listbox. The option the user (or
+// Playwright) is mid-click on is detached underneath them: the merge-queue trace
+// for "Create domains and add assets" shows the Aggregate option going
+// "not stable" and then "detached from the DOM", retrying until the test timed
+// out. `dataProductTypeOptions` just below was already memoized; this was not.
+const DOMAIN_TYPE_OPTIONS = Object.keys(DomainType).map((key) => {
+  const domainTypeValue = DomainType[key as keyof typeof DomainType];
+
+  return {
+    label: domainTypeValue,
+    id: domainTypeValue,
+    value: domainTypeValue,
+  };
 });
 
 const AddDomainForm = ({
@@ -370,12 +397,12 @@ const AddDomainForm = ({
       return;
     }
     setCustomPropertiesLoaded(false);
-    const entityTypeApiName =
-      targetEntityType === TargetEntityType.DataProduct
-        ? 'dataProduct'
-        : targetEntityType === TargetEntityType.Domain
-        ? 'domain'
-        : 'glossaryTerm';
+    let entityTypeApiName = 'glossaryTerm';
+    if (targetEntityType === TargetEntityType.DataProduct) {
+      entityTypeApiName = 'dataProduct';
+    } else if (targetEntityType === TargetEntityType.Domain) {
+      entityTypeApiName = 'domain';
+    }
     getCustomPropertiesByEntityType(entityTypeApiName)
       .then((props) => {
         if (!cancelled) {
@@ -437,16 +464,6 @@ const AddDomainForm = ({
         field.fieldPath.startsWith('extension.')
     );
   }, [intakeForm]);
-
-  const domainTypeOptions = Object.keys(DomainType).map((key) => {
-    const domainTypeValue = DomainType[key as keyof typeof DomainType];
-
-    return {
-      label: domainTypeValue,
-      id: domainTypeValue,
-      value: domainTypeValue,
-    };
-  });
 
   const dataProductTypeOptions = useMemo<DomainFormSelectItem[]>(
     () =>
@@ -868,7 +885,7 @@ const AddDomainForm = ({
       entity: t('label.domain-type'),
     }),
     props: {
-      options: domainTypeOptions,
+      options: DOMAIN_TYPE_OPTIONS,
       size: 'sm',
       fontSize: 'sm',
     },
@@ -939,23 +956,21 @@ const AddDomainForm = ({
     type: FieldTypes.USER_TEAM_SELECT,
   });
 
-  const reviewersField: FieldProp = applyIntakeFormRequired({
-    id: 'root/reviewers',
-    label: t('label.reviewer-plural'),
-    name: 'reviewers',
-    placeholder: t('label.select-field', {
-      field: t('label.reviewer-plural'),
-    }),
-    props: {
-      filterOption: () => true,
-      multiple: true,
-      onFocus: handleUserTeamFocus,
-      onSearchChange: (searchText: string) =>
-        debouncedUserTeamSearch(searchText),
-      options: userTeamOptions,
-    },
-    type: FieldTypes.USER_TEAM_SELECT_INPUT,
-  });
+  const baseReviewersField = domainClassBase.getReviewersField();
+  const reviewersField: FieldProp | null = baseReviewersField
+    ? applyIntakeFormRequired({
+        ...baseReviewersField,
+        props: {
+          ...baseReviewersField.props,
+          filterOption: () => true,
+          multiple: true,
+          onFocus: handleUserTeamFocus,
+          onSearchChange: (searchText: string) =>
+            debouncedUserTeamSearch(searchText),
+          options: userTeamOptions,
+        },
+      })
+    : null;
 
   const dataProductTypeField: FieldProp = applyIntakeFormRequired({
     id: 'root/dataProductType',
@@ -1037,9 +1052,41 @@ const AddDomainForm = ({
     [onSubmit]
   );
 
+  const renderConditionalSections = () => (
+    <>
+      {isDomain && (
+        <div data-testid="domainType">{getField(domainTypeField)}</div>
+      )}
+
+      {isDataProduct && !parentDomain && (
+        <div data-testid="domain-select">{getField(domainField)}</div>
+      )}
+
+      {isDataProduct && (
+        <>
+          <div>{getField(dataProductTypeField)}</div>
+          <div>{getField(visibilityField)}</div>
+          <div>{getField(portfolioPriorityField)}</div>
+        </>
+      )}
+
+      <div>{getField(ownersField)}</div>
+      <div>{getField(expertsField)}</div>
+      {isDataProduct && reviewersField && <div>{getField(reviewersField)}</div>}
+
+      {customPropertiesLoaded && (
+        <AddDomainFormExtensionFields
+          control={form.control}
+          customProperties={customProperties}
+          formFields={extensionFormFields}
+        />
+      )}
+    </>
+  );
+
   return (
     <HookForm
-      className="tw:flex tw:flex-col tw:gap-6"
+      className="tw:flex tw:flex-col tw:gap-6 tw:**:data-[testid=form-item-label]:font-medium"
       data-testid="add-domain-form"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>
@@ -1103,33 +1150,7 @@ const AddDomainForm = ({
         )}
       </FormField>
 
-      {isDomain && (
-        <div data-testid="domainType">{getField(domainTypeField)}</div>
-      )}
-
-      {isDataProduct && !parentDomain && (
-        <div data-testid="domain-select">{getField(domainField)}</div>
-      )}
-
-      {isDataProduct && (
-        <>
-          <div>{getField(dataProductTypeField)}</div>
-          <div>{getField(visibilityField)}</div>
-          <div>{getField(portfolioPriorityField)}</div>
-        </>
-      )}
-
-      <div>{getField(ownersField)}</div>
-      <div>{getField(expertsField)}</div>
-      {isDataProduct && <div>{getField(reviewersField)}</div>}
-
-      {customPropertiesLoaded && (
-        <AddDomainFormExtensionFields
-          control={form.control}
-          customProperties={customProperties}
-          formFields={extensionFormFields}
-        />
-      )}
+      {renderConditionalSections()}
 
       {!isFormInDialog && (
         <Box data-testid="cta-buttons" gap={4} justify="end">

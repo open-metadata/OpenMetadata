@@ -98,13 +98,17 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
   public static final String RESULT_EXTENSION_KEY = "id";
+
+  // deleteLogicalTestSuite walks the suite's tests and pipelines, so both have to be hydrated
+  // before it runs.
+  private static final String TEST_SUITE_LIFECYCLE_FIELDS = "tests,pipelines";
 
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
   private final IngestionPipelineMapper ingestionPipelineMapper;
@@ -229,16 +233,51 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     postCreateOrUpdate(updated);
   }
 
+  /**
+   * Contract results are destroyed only on hard delete: {@code entitySpecificCleanup} is reached
+   * exclusively from {@code cleanup()}, which the delete path runs on the hard-delete branch only.
+   */
   @Override
-  protected void postDelete(DataContract dataContract, boolean hardDelete) {
-    super.postDelete(dataContract, hardDelete);
-    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      deleteTestSuite(dataContract);
-    }
-    // Clean status
+  protected void entitySpecificCleanup(DataContract dataContract) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .delete(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
+  }
+
+  /**
+   * The logical test suite is linked as {@code testSuite --CONTAINS--> dataContract}, i.e. the
+   * contract is the <i>target</i> of the edge, so the delete cascade — which walks from → to —
+   * never reaches it and the repository has to drive it explicitly. Destroying the suite (and, via
+   * {@code deleteLogicalTestSuite}, its DQ ingestion pipeline) is irreversible, so it belongs on
+   * the hard-delete hook only: a soft-deleted contract keeps a working suite to come back to.
+   *
+   * <p>Deliberately no soft-delete/restore counterpart. That same {@code testSuite CONTAINS
+   * dataContract} edge makes the contract a restore-cascade <i>child</i> of the suite, and
+   * {@code bulkRestoreSubtree} runs {@code restoreAdditionalChildren} unconditionally — so a
+   * contract → suite restore hook and the suite → contract cascade would call each other forever.
+   */
+  @Override
+  protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
+    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL)), updatedBy);
+  }
+
+  private TestSuite findContractTestSuite(DataContract dataContract) {
+    return Entity.getEntityOrNull(
+        dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+  }
+
+  /**
+   * No-op when the contract never owned a suite — it must never be created on a delete path.
+   * {@code deletedBy} is the operator the delete came in as, so the suite's audit trail credits
+   * them rather than a hard-coded system user.
+   */
+  private void deleteContractTestSuite(TestSuite testSuite, String deletedBy) {
+    if (testSuite != null) {
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      testSuiteRepository.deleteLogicalTestSuite(deletedBy, testSuite, true);
+      testSuiteRepository.deleteFromSearch(testSuite, true);
+    }
   }
 
   private void postCreateOrUpdate(DataContract dataContract) {
@@ -863,7 +902,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // If we had a test suite from older tests, but we removed them, we can delete the suite
       if (nullOrEmpty(dataContract.getQualityExpectations())) {
-        deleteTestSuite(dataContract);
+        deleteContractTestSuite(findContractTestSuite(dataContract), dataContract.getUpdatedBy());
         dataContract.setTestSuite(null);
         return null;
       }
@@ -929,14 +968,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  private void deleteTestSuite(DataContract dataContract) {
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = getOrCreateTestSuite(dataContract);
-    testSuiteRepository.deleteLogicalTestSuite(ADMIN_USER_NAME, testSuite, true);
-    testSuiteRepository.deleteFromSearch(testSuite, true);
-  }
-
   private TestSuite getOrCreateTestSuite(DataContract dataContract) {
     String testSuiteName = getTestSuiteName(dataContract);
     TestSuiteRepository testSuiteRepository =
@@ -945,7 +976,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // Check if test suite already exists
     if (contractHasTestSuite(dataContract)) {
       return Entity.getEntityOrNull(
-          dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+          dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
     } else {
       // Create new test suite
       LOG.debug(
@@ -1157,7 +1188,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               dataContract.getFullyQualifiedName()));
     }
     TestSuite testSuite =
-        Entity.getEntity(dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+        Entity.getEntity(
+            dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
 
     if (nullOrEmpty(testSuite.getPipelines())) {
       throw DataContractValidationException.byMessage(
@@ -1169,39 +1201,85 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
-    // ensure pipeline is deployed before running
-    // we deploy the pipeline during post create
-    if (!pipeline.getDeployed()) {
-      prepareAndDeployIngestionPipeline(pipeline, testSuite);
-    }
+    refreshDeployedPipelineBeforeRun(pipeline, testSuite);
     prepareAndRunIngestionPipeline(pipeline, testSuite);
   }
 
+  /**
+   * The pipeline service pins the bot JWT into the generated DAG configuration when a pipeline is
+   * deployed and never reads it again, so a contract deployed once keeps running with the token it
+   * was born with. Re-deploying on every validation rewrites that configuration with a freshly
+   * minted token, which is what makes a rotated or expired token self-healing (issue #24806).
+   * Refreshing an already deployed pipeline is best-effort so that an installation which validated
+   * fine before this refresh existed cannot start failing because of it. That fallback assumes the
+   * deploy left the previous DAG artifacts usable, which holds for every failure that reaches a
+   * decision before Airflow rewrites them - transport failures, a payload the deploy endpoint
+   * rejects, and a DagBag reparse failure, which happens only after both files have been written in
+   * full with the new token. It does not hold if the write itself fails part way through
+   * (DagDeployer.store_airflow_pipeline_config and store_and_validate_dag_file truncate in place and
+   * validate afterwards), which can leave a half-written config or DAG file. That hazard is not
+   * introduced here - every deploy caller runs the same non-atomic code - but this is the only
+   * caller that does not surface it, so a persistent failure shows up as a WARN plus a failing DAG
+   * run rather than an aborted validation.
+   *
+   * <p>Only runners that pin the credentials at deploy time are refreshed. The Kubernetes and Argo
+   * runners rebuild the whole run spec from the pipeline on every run, so they already carry the
+   * current token; re-deploying them would rewrite a ConfigMap, a Secret and a CronWorkflow per
+   * validation - and DataContractValidationApp sweeps every contract nightly - to fix a problem they
+   * do not have. Those keep the pre-refresh behaviour of deploying only when nothing is deployed
+   * yet.
+   */
+  private void refreshDeployedPipelineBeforeRun(IngestionPipeline pipeline, TestSuite testSuite) {
+    boolean alreadyDeployed = Boolean.TRUE.equals(pipeline.getDeployed());
+    if (alreadyDeployed && !pipelineServiceClient.pinsCredentialsAtDeployTime()) {
+      return;
+    }
+    try {
+      prepareAndDeployIngestionPipeline(pipeline, testSuite);
+    } catch (RuntimeException e) {
+      if (!alreadyDeployed) {
+        throw e;
+      }
+      LOG.warn(
+          "Could not refresh DQ pipeline '{}' before validation, running the DAG already deployed: {}",
+          pipeline.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
   private void prepareAndDeployIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
-    pipeline.setOpenMetadataServerConnection(
-        SecretsManagerFactory.getSecretsManager()
-            .encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    boolean alreadyDeployed = Boolean.TRUE.equals(pipeline.getDeployed());
+    refreshOpenMetadataServerConnection(pipeline);
 
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     PipelineServiceClientResponse response =
         ingestionPipelineRepository.deployIngestionPipeline(pipeline, testSuite);
-    if (response.getCode() == 200) {
+    // Re-deploying an already deployed pipeline must not reach createOrUpdate: storeEntity runs
+    // encryptIngestionPipeline with store=true, a remote write on an external secrets manager, and
+    // the only thing this branch persists is a deployed flag that is already true.
+    if (response.getCode() == Response.Status.OK.getStatusCode() && !alreadyDeployed) {
       pipeline.setDeployed(true);
       ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
     }
   }
 
   private void prepareAndRunIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
+    // Do not fold this refresh into the deploy step. On a first deploy, createOrUpdate runs
+    // storeEntity -> encryptIngestionPipeline, which swaps openMetadataServerConnection for its
+    // store=true form - a secret reference rather than the token on an external secrets manager.
+    // Rebuilding here is what puts the usable token back before the runner reads it.
+    refreshOpenMetadataServerConnection(pipeline);
+    pipelineServiceClient.runPipeline(pipeline, testSuite);
+  }
+
+  private void refreshOpenMetadataServerConnection(IngestionPipeline pipeline) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
     pipeline.setOpenMetadataServerConnection(
         SecretsManagerFactory.getSecretsManager()
             .encryptOpenMetadataConnection(openMetadataServerConnection, false));
-
-    pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {
@@ -1260,6 +1338,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTestCaseResultSummary().stream()
             .filter(test -> currentTests.contains(test.getTestCaseName()))
             .toList();
+    if (testSummary.isEmpty()) {
+      return validation; // all referenced test cases filtered out (e.g. soft-deleted); avoid 0/0 ->
+      // NaN
+    }
 
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
@@ -1426,17 +1508,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
-    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveUnspecifiedODCSPassthrough();
       compareAndUpdate(
           "latestResult",
           () ->
@@ -1458,9 +1531,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       compareAndUpdate("schema", () -> updateSchema(original, updated));
       compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
       compareAndUpdate("semantics", () -> updateSemantics(original, updated));
+      compareAndUpdate(
+          "odcsQualityRules",
+          () ->
+              recordChange(
+                  "odcsQualityRules",
+                  original.getOdcsQualityRules(),
+                  updated.getOdcsQualityRules()));
+      compareAndUpdate(
+          "odcsElementExtensions",
+          () ->
+              recordChange(
+                  "odcsElementExtensions",
+                  original.getOdcsElementExtensions(),
+                  updated.getOdcsElementExtensions()));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
+    }
+
+    /**
+     * The ODCS passthrough fields exist only so that an imported ODCS document can be exported back
+     * unchanged. They are not part of the OpenMetadata contract editing surface, so a PUT that never
+     * mentions them comes from a client unaware they exist rather than from a user asking to drop
+     * them — carry them forward. An explicit empty list still clears them, which is how
+     * PUT /odcs?mode=replace drops the rules a re-imported document no longer declares. PATCH is
+     * left alone so that removing a field there stays an explicit removal.
+     */
+    private void preserveUnspecifiedODCSPassthrough() {
+      if (operation.isPut()) {
+        if (updated.getOdcsQualityRules() == null) {
+          updated.setOdcsQualityRules(original.getOdcsQualityRules());
+        }
+        if (updated.getOdcsElementExtensions() == null) {
+          updated.setOdcsElementExtensions(original.getOdcsElementExtensions());
+        }
+      }
     }
 
     private void updateSchema(DataContract original, DataContract updated) {
@@ -1753,12 +1859,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
   protected void preDelete(DataContract entity, String deletedBy) {
     // Inherited contracts cannot be deleted - they are virtual contracts derived from Data Product
     if (Boolean.TRUE.equals(entity.getInherited())) {
@@ -1804,19 +1904,5 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataContract dataContract) {
-    dataContract =
-        Entity.getEntityByName(
-            Entity.DATA_CONTRACT,
-            dataContract.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataContract.getFullyQualifiedName(),
-        new ArrayList<>(dataContract.getReviewers()),
-        dataContract.getUpdatedBy());
   }
 }

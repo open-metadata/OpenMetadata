@@ -77,6 +77,12 @@ const DataAssetRulesPage = withPageSuspenseFallback(
   )
 );
 
+const DefaultAppModePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/Settings/DefaultAppModePage/DefaultAppModePage')
+  )
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -490,7 +496,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AddNotificationPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
           />
@@ -929,6 +935,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LEARNING_RESOURCES
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultAppModePage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.APP_MODE
         )}
       />
       <Route

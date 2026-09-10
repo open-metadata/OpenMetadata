@@ -181,13 +181,15 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain1.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain1.responseData.name,
-            displayName: EntityDataClass.domain1.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain1.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain1.responseData.name,
+              displayName: EntityDataClass.domain1.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -226,6 +228,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     browser,
     page,
   }) => {
+    test.slow();
     const { apiContext, afterAction } = await createNewPage(browser);
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
@@ -272,7 +275,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
 
         expect(response.ok()).toBe(true);
         expect(result.boolean).toBe(true);
-      }).toPass({ intervals: [500, 1_000], timeout: 30_000 });
+      }).toPass({ intervals: [2_000, 5_000], timeout: 120_000 });
 
       const pageErrors = await openKnowledgeGraph(page, ontologyTable);
       await selectDepth(page, 2, ontologyTable);

@@ -53,6 +53,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
         {isEditing ? (
           <div className="math-equation-edit-input-wrapper">
             <Input.TextArea
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required to edit equation inline
               autoFocus
               bordered={false}
               className="math-equation-input"

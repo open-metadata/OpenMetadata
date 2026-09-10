@@ -1,22 +1,33 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import org.apache.jena.rdf.model.Model;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfWriteMode;
 
 /**
  * Interface for remote RDF storage implementations.
  * OpenMetadata maintains a stateless architecture, so all RDF storage must be remote.
  */
-public interface RdfStorageInterface {
+public interface RdfStorageInterface extends AutoCloseable {
 
   /**
    * Store an entity model in the RDF store
    */
   void storeEntity(String entityType, UUID entityId, Model entityModel);
+
+  /**
+   * Maximum JVM heap of the remote storage server in bytes, when the backend exposes it (Fuseki
+   * publishes it at {@code /$/metrics}). Empty when unknown or unreachable — callers fall back to
+   * configured defaults.
+   */
+  default OptionalLong fetchServerMaxHeapBytes() {
+    return OptionalLong.empty();
+  }
 
   /**
    * Bulk-write multiple entity models in a single SPARQL transaction.
@@ -49,8 +60,64 @@ public interface RdfStorageInterface {
     bulkStoreEntities(requests);
   }
 
+  /** Apply a run's append ceiling without changing a shared storage handle. */
+  default void bulkStoreEntities(
+      List<EntityWriteRequest> requests, RdfWriteMode writeMode, long appendBudgetBytes) {
+    bulkStoreEntities(requests, writeMode);
+  }
+
   /** Payload for {@link #bulkStoreEntities}. */
   record EntityWriteRequest(String entityType, UUID entityId, Model model) {}
+
+  /**
+   * Planning factor for budgeting bulk requests before serialization. TDB2 N-Triples payloads for
+   * OpenMetadata graphs run 150-250 bytes per triple (see docs/rdf-production-setup.md); 220 keeps
+   * the estimate on the conservative side without serializing twice.
+   */
+  int ESTIMATED_BYTES_PER_TRIPLE = 220;
+
+  int DEFAULT_MAX_UPDATE_PAYLOAD_BYTES = 4_194_304;
+
+  int DEFAULT_MAX_APPEND_PAYLOAD_BYTES = 16_777_216;
+
+  int DEFAULT_BULK_APPEND_ENTITY_BATCH_SIZE = 1_000;
+
+  long DEFAULT_REQUEST_TIMEOUT_MS = 60_000L;
+
+  static long resolveRequestTimeoutMs(RdfConfiguration config) {
+    Integer configured = config != null ? config.getRequestTimeoutMs() : null;
+    return configured != null && configured > 0 ? configured : DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+
+  /**
+   * Approximate serialized-size cap for one bulk write request. Callers budget chunks by {@link
+   * #ESTIMATED_BYTES_PER_TRIPLE}; backends enforce a hard guard on the serialized body. Without a
+   * cap, entity-count batching lets a batch of wide tables produce multi-MB requests that time out
+   * server-side, and each same-size retry multiplies backend load.
+   */
+  static int resolveMaxUpdatePayloadBytes(RdfConfiguration config) {
+    Integer configured = config != null ? config.getMaxUpdatePayloadBytes() : null;
+    return configured != null && configured > 0 ? configured : DEFAULT_MAX_UPDATE_PAYLOAD_BYTES;
+  }
+
+  /**
+   * Budget for insert-only appends. These carry no DELETE statements and are parsed by the
+   * streaming RDF parser instead of the SPARQL grammar, so the backend tolerates far larger bodies
+   * than a reconciling update — and fewer, larger transactions is the throughput lever that matters
+   * on a single-writer store. The ceiling is indexer heap: a whole chunk is materialized as an
+   * in-memory model before it is sent.
+   */
+  static int resolveMaxAppendPayloadBytes(RdfConfiguration config) {
+    Integer configured = config != null ? config.getMaxAppendPayloadBytes() : null;
+    return configured != null && configured > 0 ? configured : DEFAULT_MAX_APPEND_PAYLOAD_BYTES;
+  }
+
+  static int resolveBulkAppendEntityBatchSize(RdfConfiguration config) {
+    Integer configured = config != null ? config.getBulkAppendEntityBatchSize() : null;
+    return configured != null && configured > 0
+        ? configured
+        : DEFAULT_BULK_APPEND_ENTITY_BATCH_SIZE;
+  }
 
   /**
    * Store a relationship between two entities
@@ -126,6 +193,9 @@ public interface RdfStorageInterface {
    */
   long getTripleCount();
 
+  /** Get the exact triple count for one named graph. */
+  long getTripleCount(String graphUri);
+
   /**
    * Clear all triples from a specific graph
    */
@@ -166,6 +236,50 @@ public interface RdfStorageInterface {
   default void ensureStorageReady() {}
 
   /**
+   * Whether this backend supports named rebuild datasets. Blue/green rebuilds require it;
+   * backends that return false cannot honor an explicitly requested blue/green rebuild.
+   */
+  default boolean supportsDatasetManagement() {
+    return false;
+  }
+
+  /** Ensure a named dataset is ready, or fail if it cannot be provisioned with the required settings. */
+  default void createDatasetIfMissing(String datasetName) {
+    throw new UnsupportedOperationException(
+        "Dataset management is not supported by " + getStorageType());
+  }
+
+  /**
+   * Remove a dataset from the server. Implementations should treat "already absent" as success.
+   * Note that removal from the server does not necessarily reclaim disk — see the implementation
+   * for backend-specific behaviour.
+   */
+  default void deleteDataset(String datasetName) {
+    throw new UnsupportedOperationException(
+        "Dataset management is not supported by " + getStorageType());
+  }
+
+  /** Whether the named dataset currently exists on the server. */
+  default boolean datasetExists(String datasetName) {
+    throw new UnsupportedOperationException(
+        "Dataset management is not supported by " + getStorageType());
+  }
+
+  /** Dataset this instance currently reads and writes, or null if the backend has no concept. */
+  default String currentDatasetName() {
+    return null;
+  }
+
+  /**
+   * Re-point this instance at another dataset on the same server, so a blue/green flip does not
+   * require rebuilding every caller's storage handle.
+   */
+  default void repointToDataset(String datasetName) {
+    throw new UnsupportedOperationException(
+        "Dataset management is not supported by " + getStorageType());
+  }
+
+  /**
    * Get storage type identifier
    */
   String getStorageType();
@@ -187,8 +301,8 @@ public interface RdfStorageInterface {
     private final String relationshipType;
     // Full predicate URI to write. Set by RdfRepository.bulkAddRelationships via
     // getRelationshipPredicate so bulkStoreRelationships writes the same predicate
-    // that addRelationship/removeRelationship would (e.g. prov:wasDerivedFrom for
-    // "upstream"), instead of a naive "<baseUri>ontology/<relationshipType>"
+    // that addRelationship/removeRelationship would (e.g. prov:used for
+    // "uses"), instead of a naive "<baseUri>ontology/<relationshipType>"
     // concat that wouldn't match the live remove path.
     private final String predicateUri;
 

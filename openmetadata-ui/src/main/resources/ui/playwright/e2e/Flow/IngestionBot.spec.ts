@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { expect, test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDomain,
   addServicesToDomain,
@@ -22,6 +23,7 @@ import {
   setupAssetsForDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
@@ -41,15 +43,25 @@ const test = base.extend<{
   ingestionBotPage: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const page = await browser.newPage();
-    await page.goto('/');
-
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
       .then((response) => response.json());
     const tokenData = await apiContext
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
+
+    const page = await browser.newPage();
+    await page.goto('/signin');
+    // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
+    // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
+    // registers a SW -- there is no clients.claim() race to wait out there.
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker.controller),
+      undefined,
+      { timeout: 30_000 }
+    );
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
@@ -83,16 +95,33 @@ test.describe('Ingestion Bot ', () => {
     await redirectToHomePage(page);
   });
 
-  test.slow();
-
   test('Ingestion bot should be able to access domain specific domain', async ({
     ingestionBotPage,
     page,
   }) => {
+    test.slow();
     const { assets: domainAsset1, assetCleanup: assetCleanup1 } =
       await setupAssetsForDomain(page);
     const { assets: domainAsset2, assetCleanup: assetCleanup2 } =
       await setupAssetsForDomain(page);
+
+    // setupAssetsForDomain creates these assets over the REST API, and their
+    // Elasticsearch indexing is eventually consistent. addAssetsToDomain drives
+    // the search-backed asset-selection modal, so gate on indexing first —
+    // otherwise the modal search returns no rows and the row check() waits out
+    // the whole test timeout, ejecting the test from the merge queue.
+    const { apiContext, afterAction: disposeApiContext } = await getApiContext(
+      page
+    );
+    await Promise.all(
+      [...domainAsset1, ...domainAsset2].map((asset) =>
+        waitForSearchIndexed(
+          apiContext,
+          asset.entityResponseData.fullyQualifiedName,
+          'all'
+        )
+      )
+    );
 
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
@@ -171,5 +200,6 @@ test.describe('Ingestion Bot ', () => {
 
     await assetCleanup1();
     await assetCleanup2();
+    await disposeApiContext();
   });
 });

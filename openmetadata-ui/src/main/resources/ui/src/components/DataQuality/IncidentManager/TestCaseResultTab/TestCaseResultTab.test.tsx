@@ -95,9 +95,18 @@ jest.mock(
   })
 );
 const mockBannerComponent = () => <div>BannerComponent</div>;
+const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
 jest.mock('./TestCaseResultTabClassBase', () => ({
-  getAdditionalComponents: jest.fn().mockReturnValue([]),
-  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+  __esModule: true,
+  default: {
+    getAdditionalComponents: jest.fn().mockReturnValue([]),
+    getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+    shouldRenderDefaultGraph: jest
+      .fn()
+      .mockImplementation((...args: unknown[]) =>
+        mockShouldRenderDefaultGraph(...args)
+      ),
+  },
 }));
 jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
@@ -114,6 +123,17 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
   }
 );
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockReturnValue({
+    entityRules: {
+      canAddMultipleDataProducts: true,
+      requireDomainForDataProduct: false,
+    },
+    rules: [],
+    isRulesLoaded: true,
+    isLoading: false,
+  }),
+}));
 jest.mock('../../AddDataQualityTest/components/TestCaseFormDrawer', () => {
   return jest.fn().mockImplementation(({ open, onUpdate, testCase, onClose }) =>
     open ? (
@@ -171,6 +191,8 @@ describe('TestCaseResultTab', () => {
     );
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
+    mockUseTestCaseStore.testCase.deleted = undefined;
+    mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
 
   it('Should render component', async () => {
@@ -187,6 +209,17 @@ describe('TestCaseResultTab', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Description')).toBeInTheDocument();
     expect(await screen.findByText('TestSummary')).toBeInTheDocument();
+  });
+
+  it('should not mount the default graph when the class base suppresses it', async () => {
+    mockShouldRenderDefaultGraph.mockReturnValue(false);
+
+    render(<TestCaseResultTab />);
+
+    expect(
+      await screen.findByTestId('test-case-result-tab-container')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
   });
 
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {
@@ -219,6 +252,19 @@ describe('TestCaseResultTab', () => {
     fireEvent.click(cancelButton);
 
     expect(queryByText(container, 'EditTestCaseModal')).not.toBeInTheDocument();
+  });
+
+  it('should close the parameter editor when the test case becomes deleted', async () => {
+    const { rerender } = render(<TestCaseResultTab />);
+
+    fireEvent.click(await screen.findByTestId('edit-parameter-icon'));
+
+    expect(await screen.findByTestId('test-case-form-v1')).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.deleted = true;
+    rerender(<TestCaseResultTab />);
+
+    expect(screen.queryByTestId('test-case-form-v1')).not.toBeInTheDocument();
   });
 
   it('onTestCaseUpdate should be called while updating params', async () => {

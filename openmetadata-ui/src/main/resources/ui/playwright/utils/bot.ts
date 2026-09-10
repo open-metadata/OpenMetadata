@@ -13,13 +13,14 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -94,7 +95,7 @@ export const createBot = async (page: Page) => {
   await page.click('[data-testid="token-expiry"]');
   await page.locator('[title="1 hour"] div').click();
 
-  await page.locator(descriptionBox).fill(BOT_DETAILS.description);
+  await fillDescriptionBox(page, BOT_DETAILS.description);
 
   const saveResponse = page.waitForResponse(
     (response) =>
@@ -111,9 +112,7 @@ export const createBot = async (page: Page) => {
     page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
   ).toBeVisible();
 
-  await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
-  ).toBeVisible();
+  await expect(getCellByName(page, BOT_DETAILS.description)).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });
@@ -166,7 +165,7 @@ export const updateBotDetails = async (page: Page) => {
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();
-  await page.locator(descriptionBox).fill(BOT_DETAILS.updatedDescription);
+  await fillDescriptionBox(page, BOT_DETAILS.updatedDescription);
 
   const updateDescriptionResponse = page.waitForResponse(`api/v1/bots/*`);
   await page.getByTestId('save').click();

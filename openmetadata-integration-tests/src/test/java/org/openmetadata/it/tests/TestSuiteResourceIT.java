@@ -1,12 +1,15 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.RESERVED_CHARACTER_QUERIES;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -416,6 +419,62 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
         filtered.contains(doomed.getId()),
         "getByName must hide the soft-deleted owner when includeRelations=owners:non-deleted");
     assertTrue(filtered.contains(active.getId()), "the active owner must remain");
+  }
+
+  /**
+   * Regression: Lucene reserved characters in {@code q} produced a query_shard_exception. The
+   * display name deliberately carries reserved characters so the test proves the term still
+   * <em>matches</em>, not merely that the request stopped throwing.
+   */
+  @Test
+  void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    // A single lowercase alphanumeric token plus reserved characters. Because the reserved
+    // characters are the only thing separating the token from "v2", a parser that dropped them
+    // instead of matching them literally would search for `<token>v2` and stop matching this
+    // entity.
+    String reservedDisplayName = "dq" + ns.uniqueShortId() + "(v2)";
+    String reservedSuite = ns.prefix("reserved_hit");
+
+    createTestSuiteWithDisplayName(reservedSuite, reservedDisplayName);
+
+    Awaitility.await("search matches a display name containing reserved characters")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestSuiteNames(reservedDisplayName).contains(reservedSuite),
+                    "A reserved-character term must still match, not just avoid a 500"));
+
+    for (String reservedQuery : RESERVED_CHARACTER_QUERIES) {
+      assertDoesNotThrow(
+          () -> searchTestSuiteNames(reservedQuery),
+          "search/list must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private void createTestSuiteWithDisplayName(String name, String displayName) {
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(name);
+    request.setDisplayName(displayName);
+    request.setDescription("Test suite for Lucene reserved character search");
+    createEntity(request);
+  }
+
+  private List<String> searchTestSuiteNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list",
+                null,
+                RequestOptions.builder().queryParam("q", query).queryParam("limit", "50").build());
+    List<String> names = new ArrayList<>();
+    for (JsonNode suite : JsonUtils.readTree(response).path("data")) {
+      names.add(suite.path("name").asText());
+    }
+    return names;
   }
 
   private List<UUID> ownerIdsByName(String fqn, String extraQuery) {

@@ -30,6 +30,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
   isTier,
   isLoading,
   permissions,
+  isParentAutoClassificationEnabled,
   tagsFormHeader,
   onClose,
   onSubmit,
@@ -66,6 +67,9 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
               form={form}
               initialValues={editTag}
               isEditing={!isUndefined(editTag)}
+              isParentAutoClassificationEnabled={
+                isParentAutoClassificationEnabled
+              }
               isSystemTag={editTag?.provider === ProviderType.System}
               isTier={isTier}
               key={editTag?.id ?? 'new-tag'}

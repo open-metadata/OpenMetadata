@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -20,7 +19,8 @@ import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/succe
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import {
   UserCSVRecord,
   UserImportResultProps,

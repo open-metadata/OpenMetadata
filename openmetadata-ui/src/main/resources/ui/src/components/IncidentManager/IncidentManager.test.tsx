@@ -94,7 +94,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid="date-field-dropdown-trigger"
         role="button"
         tabIndex={0}
-        onClick={() => onOpenChange(!isOpen)}>
+        onClick={() => onOpenChange(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onOpenChange(!isOpen);
+          }
+        }}>
         {children[0]}
       </div>
       {isOpen && children[1]}
@@ -239,6 +244,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )
       ),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
@@ -363,8 +378,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+  Link: jest.fn().mockImplementation(({ children, state, to, ...rest }) => (
+    <a
+      data-state={JSON.stringify(state)}
+      data-to={typeof to === 'string' ? to : JSON.stringify(to)}
+      {...rest}>
       {children}
     </a>
   )),
@@ -608,12 +626,14 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
+    const selectBox = select.querySelector(
+      '.ant-select-selector'
+    ) as HTMLElement;
 
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');
@@ -1203,6 +1223,14 @@ describe('IncidentManagerPage', () => {
         fqn,
         TestCasePageTabs.TEST_CASE_RESULTS
       );
+      expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual({
+        breadcrumbData: [
+          {
+            name: 'label.incident-manager',
+            url: '/incident-manager',
+          },
+        ],
+      });
     });
   });
 });

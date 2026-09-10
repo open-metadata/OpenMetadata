@@ -67,13 +67,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
-    Menu: jest
-      .fn()
-      .mockImplementation(({ children, onAction }) => (
-        <ul onClick={(e) => onAction?.((e.target as HTMLElement).dataset.key)}>
-          {children}
-        </ul>
-      )),
+    Menu: jest.fn().mockImplementation(({ children, onAction }) => (
+      <div
+        role="menu"
+        tabIndex={0}
+        onClick={(e) => onAction?.((e.target as HTMLElement).dataset.key)}
+        onKeyDown={(e) => onAction?.((e.target as HTMLElement).dataset.key)}>
+        {children}
+      </div>
+    )),
     Item: jest
       .fn()
       .mockImplementation(({ children, key }) => (
@@ -113,16 +115,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )
     ),
   Tabs: Object.assign(
-    jest
-      .fn()
-      .mockImplementation(({ children, onSelectionChange }) => (
-        <div
-          onClick={(e) =>
-            onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
-          }>
-          {children}
-        </div>
-      )),
+    jest.fn().mockImplementation(({ children, onSelectionChange }) => (
+      <div
+        role="tablist"
+        tabIndex={0}
+        onClick={(e) =>
+          onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
+        }
+        onKeyDown={(e) =>
+          onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
+        }>
+        {children}
+      </div>
+    )),
     {
       List: jest
         .fn()
@@ -175,6 +180,7 @@ jest.mock('./LineageConfigModal', () =>
 jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn(({ onSearch, searchValue, placeholder }) => (
     <input
+      aria-label="Search"
       data-testid="search-bar"
       placeholder={placeholder}
       value={searchValue}

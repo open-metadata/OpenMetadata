@@ -16,7 +16,6 @@ Utils module to parse the jsonschema
 import json
 import traceback
 from enum import Enum
-from typing import List, Optional, Tuple, Type  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -41,7 +40,7 @@ class JsonSchemaDataTypes(Enum):
     UNKNOWN = "unknown"
 
 
-def parse_json_schema(schema_text: str, cls: Type[BaseModel] = FieldModel) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+def parse_json_schema(schema_text: str, cls: type[BaseModel] = FieldModel) -> list[FieldModel] | None:
     """
     Method to parse the jsonschema
     """
@@ -62,7 +61,7 @@ def parse_json_schema(schema_text: str, cls: Type[BaseModel] = FieldModel) -> Op
     return None
 
 
-def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel):  # noqa: UP006
+def get_child_models(key, value, field_models, cls: type[BaseModel] = FieldModel):
     """
     Method to parse the child objects in the json schema.
     Handles oneOf union types (e.g., Debezium CDC nullable fields).
@@ -122,8 +121,8 @@ def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel
 
 def get_json_schema_array_fields(
     array_items,
-    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
-) -> Optional[Tuple[str, List[FieldModel]]]:  # noqa: UP006, UP045
+    cls: type[BaseModel] = FieldModel,
+) -> tuple[str, list[FieldModel]] | None:
     """
     Recursively convert the parsed array schema into required models
     """
@@ -138,7 +137,7 @@ def get_json_schema_array_fields(
     )
 
 
-def get_json_schema_fields(properties, cls: Type[BaseModel] = FieldModel) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+def get_json_schema_fields(properties, cls: type[BaseModel] = FieldModel) -> list[FieldModel] | None:
     """
     Recursively convert the parsed schema into required models
     """

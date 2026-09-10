@@ -57,11 +57,15 @@ import {
   type DataQualityDashboardChartFilters,
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { formatDate } from '../date-time/DateTimeUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../DatePickerMenuUtils';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityPureUtils';
 import { getEntityFQN } from '../FeedUtilsPure';
 import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink, getTierTags } from '../TablePureUtils';
+
+const COLUMNS_ENTITY_LINK_SEGMENT = '::columns::';
 
 export const buildTestCaseParams = (
   params: ListTestCaseParamsBySearch | undefined,
@@ -123,6 +127,50 @@ export interface CreateUpdatedTestCasePatchArgs {
   isComputeRowCountFieldVisible: boolean;
 }
 
+const resolvePatchedDescription = (
+  showOnlyParameter: boolean | undefined,
+  testCase: TestCase,
+  value: TestCaseFormType
+): string | undefined => {
+  if (showOnlyParameter) {
+    return testCase.description;
+  }
+
+  return isEmpty(value.description) ? undefined : value.description;
+};
+
+const resolvePatchedTags = (
+  showOnlyParameter: boolean | undefined,
+  rebuiltTags: TestCase['tags'],
+  testCase: TestCase
+): TestCase['tags'] => {
+  const hasNoTagChanges = isEmpty(rebuiltTags) && isEmpty(testCase.tags);
+
+  return showOnlyParameter || hasNoTagChanges ? testCase.tags : rebuiltTags;
+};
+
+const resolvePatchedDimensionColumns = (
+  testCase: TestCase,
+  value: TestCaseFormType
+) => {
+  if (isUndefined(value.dimensionColumns)) {
+    return testCase.dimensionColumns;
+  }
+
+  return value.dimensionColumns || undefined;
+};
+
+const resolvePatchedTopDimensions = (
+  testCase: TestCase,
+  value: TestCaseFormType
+) => {
+  if (isUndefined(value.topDimensions)) {
+    return testCase.topDimensions;
+  }
+
+  return value.topDimensions ?? undefined;
+};
+
 export const createUpdatedTestCasePatch = ({
   testCase,
   value,
@@ -139,25 +187,14 @@ export const createUpdatedTestCasePatch = ({
   const updatedTestCase = {
     ...testCase,
     ...createTestCaseObject,
-    description: showOnlyParameter
-      ? testCase.description
-      : isEmpty(value.description)
-      ? undefined
-      : value.description,
+    description: resolvePatchedDescription(showOnlyParameter, testCase, value),
     displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
     computePassedFailedRowCount: isComputeRowCountFieldVisible
       ? value.computePassedFailedRowCount
       : testCase?.computePassedFailedRowCount,
-    tags:
-      showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
-        ? testCase.tags
-        : rebuiltTags,
-    dimensionColumns: isUndefined(value.dimensionColumns)
-      ? testCase.dimensionColumns
-      : value.dimensionColumns || undefined,
-    topDimensions: isUndefined(value.topDimensions)
-      ? testCase.topDimensions
-      : value.topDimensions ?? undefined,
+    tags: resolvePatchedTags(showOnlyParameter, rebuiltTags, testCase),
+    dimensionColumns: resolvePatchedDimensionColumns(testCase, value),
+    topDimensions: resolvePatchedTopDimensions(testCase, value),
   };
 
   return compare(testCase, updatedTestCase);
@@ -291,51 +328,41 @@ export const buildMustEsFilterForDataProducts = (
   };
 };
 
-export const buildDataQualityDashboardFilters = (data: {
-  filters?: DataQualityDashboardChartFilters;
-  unhealthy?: boolean;
-  isTableApi?: boolean;
-}) => {
-  const { filters, unhealthy = false, isTableApi = false } = data;
+/**
+ * Builds only filters backed by fields in the table index. Test-case filters
+ * must stay out of this query so values such as Column do not exclude all
+ * table documents while calculating total asset coverage.
+ */
+export const buildDataQualityTableFilters = (
+  filters?: DataQualityDashboardChartFilters
+) => {
   const mustFilter = [];
-
-  if (unhealthy) {
-    mustFilter.push({
-      terms: {
-        'testCaseStatus.keyword': ['Failed', 'Aborted'],
-      },
-    });
-  }
 
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
   }
 
-  if (filters?.tags && isTableApi) {
+  if (filters?.tags?.length) {
     mustFilter.push({
       bool: {
         should: filters.tags.map((tag) => ({
-          term: {
-            'tags.tagFQN': tag,
-          },
+          term: { 'tags.tagFQN': tag },
         })),
       },
     });
   }
 
-  if (filters?.tier && isTableApi) {
+  if (filters?.tier?.length) {
     mustFilter.push({
       bool: {
-        should: filters.tier.map((tag) => ({
-          term: {
-            'tier.tagFQN': tag,
-          },
+        should: filters.tier.map((tier) => ({
+          term: { 'tier.tagFQN': tier },
         })),
       },
     });
   }
 
-  if (filters?.certification) {
+  if (filters?.certification?.length) {
     mustFilter.push({
       bool: {
         should: filters.certification.map((fqn) => ({
@@ -345,29 +372,103 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
-  if (filters?.tags && filters.tags.length > 0 && !isTableApi) {
-    mustFilter.push(buildMustEsFilterForTags(filters.tags));
-  }
-
-  if (filters?.tier && filters.tier.length > 0 && !isTableApi) {
-    mustFilter.push(buildMustEsFilterForTier(filters.tier));
-  }
-
-  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+  if (filters?.dataProductFqns?.length) {
     mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
   }
 
   if (filters?.entityFQN) {
     mustFilter.push({
-      term: {
-        [isTableApi ? 'fullyQualifiedName.keyword' : 'originEntityFQN']:
-          filters.entityFQN,
-      },
+      term: { 'fullyQualifiedName.keyword': filters.entityFQN },
     });
   }
 
   if (filters?.serviceName) {
     mustFilter.push({
+      term: { 'service.name.keyword': filters.serviceName },
+    });
+  }
+
+  mustFilter.push({ term: { deleted: false } });
+
+  return mustFilter;
+};
+
+const buildDataQualityDimensionFilter = (dimension: string) => {
+  // No Dimension is represented by an absent field in the search document,
+  // matching the Test Cases listing endpoint's filter semantics.
+  if (dimension === DataQualityDimensions.NoDimension) {
+    return {
+      bool: {
+        must_not: [{ exists: { field: 'dataQualityDimension' } }],
+      },
+    };
+  }
+
+  return { term: { dataQualityDimension: dimension } };
+};
+
+type EsFilterClause = Record<string, unknown>;
+
+/** Owner/tagging-related filters (unhealthy status, owner, certification, tags, tier, data products). */
+const buildOwnershipAndTaggingFilters = (
+  filters: DataQualityDashboardChartFilters | undefined,
+  unhealthy: boolean
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (unhealthy) {
+    clauses.push({
+      terms: {
+        // The latest status is stored under testCaseResult in the testCase
+        // index; the top-level testCaseStatus field belongs to result documents.
+        'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
+      },
+    });
+  }
+
+  if (filters?.ownerFqn) {
+    clauses.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.certification) {
+    clauses.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tags && filters.tags.length > 0) {
+    clauses.push(buildMustEsFilterForTags(filters.tags));
+  }
+
+  if (filters?.tier && filters.tier.length > 0) {
+    clauses.push(buildMustEsFilterForTier(filters.tier));
+  }
+
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    clauses.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
+  }
+
+  return clauses;
+};
+
+/** Entity/service/platform/dimension-related filters. */
+const buildEntityAndServiceFilters = (
+  filters: DataQualityDashboardChartFilters | undefined
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (filters?.entityFQN) {
+    clauses.push({
+      term: { originEntityFQN: filters.entityFQN },
+    });
+  }
+
+  if (filters?.serviceName) {
+    clauses.push({
       term: {
         'service.name.keyword': filters.serviceName,
       },
@@ -375,7 +476,7 @@ export const buildDataQualityDashboardFilters = (data: {
   }
 
   if (filters?.testPlatforms) {
-    mustFilter.push({
+    clauses.push({
       terms: {
         testPlatforms: filters.testPlatforms,
       },
@@ -383,35 +484,50 @@ export const buildDataQualityDashboardFilters = (data: {
   }
 
   if (filters?.dataQualityDimension) {
-    mustFilter.push({
-      term: {
-        dataQualityDimension: filters.dataQualityDimension,
-      },
-    });
+    clauses.push(buildDataQualityDimensionFilter(filters.dataQualityDimension));
   }
 
-  if (filters?.testCaseStatus) {
-    mustFilter.push({
-      term: {
-        'testCaseResult.testCaseStatus': filters.testCaseStatus,
-      },
-    });
+  return clauses;
+};
+
+/** Status/type/time-range-related filters. */
+const buildStatusTypeAndTimeFilters = (
+  filters: DataQualityDashboardChartFilters | undefined
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (!isEmpty(filters?.testCaseStatus)) {
+    // Elasticsearch `term` only accepts one value; URL-backed multi-selects
+    // need `terms` so the selected statuses are matched with OR semantics.
+    if (isArray(filters?.testCaseStatus)) {
+      clauses.push({
+        terms: {
+          'testCaseResult.testCaseStatus': filters.testCaseStatus,
+        },
+      });
+    } else {
+      clauses.push({
+        term: {
+          'testCaseResult.testCaseStatus': filters?.testCaseStatus,
+        },
+      });
+    }
   }
 
   if (filters?.testCaseType) {
     if (filters.testCaseType === TestCaseType.table) {
-      mustFilter.push({
+      clauses.push({
         bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
       });
     }
 
     if (filters.testCaseType === TestCaseType.column) {
-      mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
+      clauses.push({ regexp: { entityLink: '.*::columns::.*' } });
     }
   }
 
-  if (filters?.startTs && filters?.endTs && !isTableApi) {
-    mustFilter.push({
+  if (filters?.startTs && filters?.endTs) {
+    clauses.push({
       range: {
         'testCaseResult.timestamp': {
           gte: filters.startTs,
@@ -420,6 +536,30 @@ export const buildDataQualityDashboardFilters = (data: {
       },
     });
   }
+
+  return clauses;
+};
+
+/** Builds the complete filter set supported by the testCase index. */
+export const buildDataQualityDashboardFilters = (data: {
+  filters?: DataQualityDashboardChartFilters;
+  unhealthy?: boolean;
+  /** Retained for compatibility with callers using the former table mode. */
+  isTableApi?: boolean;
+}) => {
+  const { filters, unhealthy = false, isTableApi = false } = data;
+
+  // Route legacy table-mode calls through the dedicated builder so private
+  // consumers keep their existing contract without mixing index field sets.
+  if (isTableApi) {
+    return buildDataQualityTableFilters(filters);
+  }
+
+  const mustFilter = [
+    ...buildOwnershipAndTaggingFilters(filters, unhealthy),
+    ...buildEntityAndServiceFilters(filters),
+    ...buildStatusTypeAndTimeFilters(filters),
+  ];
 
   mustFilter.push({
     term: {
@@ -554,7 +694,7 @@ export function getColumnFilterOptions(
   items: TestCase[]
 ): SearchDropdownOption[] {
   const withColumn = items.filter((tc) =>
-    tc.entityLink?.includes('::columns::')
+    tc.entityLink?.includes(COLUMNS_ENTITY_LINK_SEGMENT)
   );
   const pairs = withColumn.map((tc) => {
     const tableFqn = getEntityFQN(tc.entityLink);
@@ -603,7 +743,7 @@ export function filterTestCasesByTableAndColumn(
   if (filterColumns.length > 0) {
     const columnSet = new Set(filterColumns);
     result = result.filter((tc) => {
-      if (!tc.entityLink?.includes('::columns::')) {
+      if (!tc.entityLink?.includes(COLUMNS_ENTITY_LINK_SEGMENT)) {
         return false;
       }
 
@@ -650,7 +790,7 @@ export function getColumnFilterEntityLink(
 ): string | undefined {
   if (
     !columnFilterKey.includes('::') ||
-    columnFilterKey.includes('::columns::') ||
+    columnFilterKey.includes(COLUMNS_ENTITY_LINK_SEGMENT) ||
     columnFilterKey.startsWith('<#E')
   ) {
     return undefined;
@@ -676,19 +816,30 @@ export function getColumnNameFromColumnFilterKey(
 
 /**
  * Builds a test-case list link that preserves the dashboard slice represented
- * by the clicked card or chart segment.
+ * by the clicked card or chart segment. Dashboard timestamps are serialized as
+ * lastRunRange because that is the date-filter shape consumed by the list page.
  */
-export const getTestCaseTabPath = (
-  testCaseStatus: TestCaseStatus,
-  filters?: DataQualityDashboardChartFilters
+export const getTestCaseListPath = (
+  filters?: DataQualityDashboardChartFilters,
+  overrides?: Partial<TestCaseSearchParams>
 ) => ({
   pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
   search: QueryString.stringify(
     {
-      testCaseStatus,
+      testCaseStatus: filters?.testCaseStatus,
       lastRunRange:
         filters?.startTs && filters.endTs
-          ? { startTs: filters.startTs, endTs: filters.endTs }
+          ? {
+              startTs: filters.startTs,
+              endTs: filters.endTs,
+              // Mark redirected timestamps as a custom range so the Test Cases
+              // Last Run control displays the exact dashboard selection.
+              key: CUSTOM_DATE_RANGE_KEY,
+              title: `${formatDate(filters.startTs, true)} -> ${formatDate(
+                filters.endTs,
+                true
+              )}`,
+            }
           : undefined,
       tags: filters?.tags,
       tier: filters?.tier?.[0],
@@ -698,10 +849,16 @@ export const getTestCaseTabPath = (
       testPlatforms: filters?.testPlatforms,
       dataQualityDimension: filters?.dataQualityDimension,
       testCaseType: filters?.testCaseType,
+      ...overrides,
     },
     { arrayFormat: 'brackets' }
   ),
 });
+
+export const getTestCaseTabPath = (
+  testCaseStatus: TestCaseStatus | TestCaseStatus[],
+  filters?: DataQualityDashboardChartFilters
+) => getTestCaseListPath(filters, { testCaseStatus });
 
 export const transformToTestCaseStatusByDimension = (
   inputData: DataQualityReport['data']

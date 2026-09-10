@@ -24,7 +24,7 @@
 
 # OpenMetadata Complete Ontology
 om: a owl:Ontology ;
-    owl:versionInfo "1.0.0" ;
+    owl:versionInfo "2.0.2" ;
     dct:title "OpenMetadata Ontology" ;
     dct:description "Complete ontology for OpenMetadata covering all entities and relationships" ;
     dct:creator "OpenMetadata Team" ;
@@ -215,6 +215,35 @@ om:Worksheet a owl:Class ;
     rdfs:subClassOf om:DataAsset .
 
 #################################################################
+# AI Classes
+#################################################################
+
+om:LLMModel a owl:Class ;
+    rdfs:label "LLM Model" ;
+    rdfs:comment "Registered large language model deployment, fine-tune, or base model" ;
+    rdfs:subClassOf om:Entity .
+
+om:AIApplication a owl:Class ;
+    rdfs:label "AI Application" ;
+    rdfs:subClassOf om:Entity .
+
+om:McpServer a owl:Class ;
+    rdfs:label "MCP Server" ;
+    rdfs:subClassOf om:Entity .
+
+om:AgentExecution a owl:Class ;
+    rdfs:label "Agent Execution" ;
+    rdfs:subClassOf om:Entity, prov:Activity .
+
+om:McpExecution a owl:Class ;
+    rdfs:label "MCP Execution" ;
+    rdfs:subClassOf om:Entity, prov:Activity .
+
+om:PromptTemplate a owl:Class ;
+    rdfs:label "Prompt Template" ;
+    rdfs:subClassOf om:Entity .
+
+#################################################################
 # Metadata & Governance Classes
 #################################################################
 
@@ -241,6 +270,7 @@ om:Tag a owl:Class ;
 
 # Associative Relations
 om:relatedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "related to" ;
     rdfs:comment "General associative relationship between terms that are conceptually connected" ;
     rdfs:subPropertyOf skos:related ;
@@ -249,6 +279,8 @@ om:relatedTo a owl:ObjectProperty ;
     rdfs:range om:GlossaryTerm .
 
 om:synonym a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of skos:exactMatch. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "synonym" ;
     rdfs:comment "Terms that have the same or nearly identical meaning and can be used interchangeably" ;
     rdfs:subPropertyOf skos:exactMatch ;
@@ -257,6 +289,8 @@ om:synonym a owl:ObjectProperty ;
     rdfs:range om:GlossaryTerm .
 
 om:seeAlso a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of rdfs:seeAlso. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "see also" ;
     rdfs:comment "Reference to a related term that may provide additional context" ;
     rdfs:subPropertyOf rdfs:seeAlso ;
@@ -266,6 +300,8 @@ om:seeAlso a owl:ObjectProperty ;
 
 # Hierarchical Relations (Classification)
 om:typeOf a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of rdfs:subClassOf. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "type of" ;
     rdfs:comment "Classification where the subject is a specific type of the object (e.g., 'Premium Customer' typeOf 'Customer')" ;
     rdfs:subPropertyOf rdfs:subClassOf ;
@@ -275,6 +311,8 @@ om:typeOf a owl:ObjectProperty ;
     rdfs:range om:GlossaryTerm .
 
 om:hasTypes a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "has types" ;
     rdfs:comment "Inverse of 'Type Of'. The subject has specific types (e.g., 'Customer' hasTypes 'Premium Customer')" ;
     owl:inverseOf om:typeOf ;
@@ -284,6 +322,8 @@ om:hasTypes a owl:ObjectProperty ;
 
 # Hierarchical Relations (Composition)
 om:componentOf a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "component of" ;
     rdfs:comment "The subject is a component or part of the object (e.g., 'Product Revenue' componentOf 'Total Revenue')" ;
     owl:inverseOf om:composedOf ;
@@ -291,6 +331,8 @@ om:componentOf a owl:ObjectProperty ;
     rdfs:range om:GlossaryTerm .
 
 om:composedOf a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "composed of" ;
     rdfs:comment "The subject is composed of or includes the object (e.g., 'Total Revenue' composedOf 'Product Revenue')" ;
     owl:inverseOf om:componentOf ;
@@ -299,6 +341,7 @@ om:composedOf a owl:ObjectProperty ;
 
 # Derivation Relations (for Metrics/KPIs)
 om:calculatedFrom a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "calculated from" ;
     rdfs:comment "The subject metric is calculated or derived from the object (e.g., 'ARR' calculatedFrom 'MRR')" ;
     rdfs:subPropertyOf prov:wasDerivedFrom ;
@@ -307,6 +350,7 @@ om:calculatedFrom a owl:ObjectProperty ;
     rdfs:range om:GlossaryTerm .
 
 om:usedToCalculate a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "used to calculate" ;
     rdfs:comment "The subject is used to calculate the object metric (e.g., 'MRR' usedToCalculate 'ARR')" ;
     owl:inverseOf om:calculatedFrom ;
@@ -461,118 +505,142 @@ om:Post a owl:Class ;
 #################################################################
 
 om:contains a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "contains" ;
     rdfs:comment "Hierarchical containment relationship" .
 
 om:createdBy a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "created by" ;
     rdfs:subPropertyOf prov:wasGeneratedBy .
 
 om:repliedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "replied to" ;
     rdfs:domain om:Post ;
     rdfs:range om:Post .
 
 om:isAbout a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "is about" ;
     rdfs:comment "Thread or post is about an entity" .
 
 om:addressedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "addressed to" ;
     rdfs:domain om:Post ;
     rdfs:range prov:Agent .
 
 om:mentionedIn a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "mentioned in" ;
     rdfs:comment "Entity is mentioned in a post or thread" .
 
 om:testedBy a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "tested by" ;
     rdfs:domain om:DataAsset ;
     rdfs:range om:TestCase .
 
 om:uses a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:used. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "uses" ;
     rdfs:subPropertyOf prov:used .
 
 om:owns a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "owns" ;
     rdfs:domain prov:Agent ;
     rdfs:range om:Entity .
 
 om:parentOf a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "parent of" ;
     rdfs:comment "Hierarchical parent relationship" .
 
 om:has a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has" ;
     rdfs:comment "General possession relationship" .
 
 om:follows a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "follows" ;
     rdfs:domain prov:Agent ;
     rdfs:range om:Entity .
 
 om:joinedWith a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "joined with" ;
     rdfs:comment "Join relationship between tables" ;
     rdfs:domain om:Table ;
     rdfs:range om:Table .
 
 om:upstream a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "upstream" ;
-    rdfs:comment "Data lineage upstream relationship" ;
+    rdfs:comment "The subject data asset is derived from the upstream source in the object. Stored directly, including when inference is disabled." ;
     rdfs:subPropertyOf prov:wasDerivedFrom ;
-    owl:equivalentProperty dcat:qualifiedRelation ;
     rdfs:domain om:DataAsset ;
     rdfs:range om:DataAsset .
 
 om:downstream a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "downstream" ;
-    rdfs:comment "Data lineage downstream relationship" ;
+    rdfs:comment "The subject is an upstream source of the downstream data asset in the object. Stored directly, including when inference is disabled." ;
     owl:inverseOf om:upstream .
 
 om:appliedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "applied to" ;
     rdfs:comment "Tag or classification applied to entity" ;
     rdfs:domain om:Tag ;
     rdfs:range om:Entity .
 
 om:relatedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "related to" ;
     rdfs:comment "General relationship between entities" .
 
 om:reviews a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "reviews" ;
     rdfs:domain prov:Agent ;
     rdfs:range om:Entity .
 
 om:reactedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "reacted to" ;
     rdfs:domain prov:Agent ;
     rdfs:range om:Post .
 
 om:voted a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "voted" ;
     rdfs:domain prov:Agent ;
     rdfs:range om:Entity .
 
 om:expert a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "expert" ;
     rdfs:comment "User is expert on entity" ;
     rdfs:domain om:User ;
     rdfs:range om:Entity .
 
 om:editedBy a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "edited by" ;
     rdfs:domain om:Entity ;
     rdfs:range prov:Agent .
 
 om:defaultsTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "defaults to" ;
     rdfs:comment "Default value relationship" .
 
 om:relatesTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "relates to" ;
     rdfs:comment "Alternative spelling of relatedTo" ;
     owl:equivalentProperty om:relatedTo .
@@ -582,18 +650,21 @@ om:relatesTo a owl:ObjectProperty ;
 #################################################################
 
 om:belongsToDatabase a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "belongs to database" ;
     rdfs:subPropertyOf dct:isPartOf ;
     rdfs:domain om:Table ;
     rdfs:range om:Database .
 
 om:belongsToSchema a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "belongs to schema" ;
     rdfs:subPropertyOf dct:isPartOf ;
     rdfs:domain om:Table ;
     rdfs:range om:DatabaseSchema .
 
 om:belongsToService a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "belongs to service" ;
     rdfs:subPropertyOf dcat:accessService ;
     rdfs:domain om:DataAsset ;
@@ -604,23 +675,71 @@ om:Column a owl:Class ;
     rdfs:comment "Column in a table" ;
     rdfs:subClassOf om:Entity .
 
+om:TableConstraint a owl:Class ;
+    rdfs:label "Table Constraint" ;
+    rdfs:comment "A constraint (primary key, foreign key, unique, etc.) declared on a table." ;
+    rdfs:subClassOf om:Entity .
+
+om:LineageDetails a owl:Class ;
+    rdfs:label "Lineage Details" ;
+    rdfs:comment "Reified details of a lineage edge, including column-level mappings and the pipeline that produced it." ;
+    rdfs:subClassOf om:Entity .
+
 om:hasColumn a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has column" ;
     rdfs:domain om:Table ;
     rdfs:range om:Column .
 
 om:hasTag a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has tag" ;
     rdfs:domain om:Entity ;
     rdfs:range om:Tag .
 
 om:hasGlossaryTerm a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has glossary term" ;
     rdfs:subPropertyOf dct:subject ;
     rdfs:domain om:Entity ;
     rdfs:range om:GlossaryTerm .
 
+om:mappedTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "mapped to" ;
+    rdfs:comment "Data asset that stores the instances of this concept. Stronger than om:hasGlossaryTerm, which only records that an asset references the concept." ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasPrimaryStore a owl:ObjectProperty, owl:FunctionalProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
+    rdfs:label "has primary store" ;
+    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasDerivedAsset a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
+    rdfs:label "has derived asset" ;
+    rdfs:comment "Data asset deriving this concept's instances from another asset." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasReplica a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
+    rdfs:label "has replica" ;
+    rdfs:comment "Data asset replicating this concept's instances from another asset." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
 om:hasOwner a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has owner" ;
     rdfs:subPropertyOf dcat:contactPoint ;
     rdfs:comment "Agent responsible for the entity" ;
@@ -628,16 +747,21 @@ om:hasOwner a owl:ObjectProperty ;
     rdfs:range prov:Agent .
 
 om:memberOf a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "member of" ;
     rdfs:domain om:User ;
     rdfs:range om:Team .
 
 om:creates a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "creates" ;
     rdfs:domain om:User ;
     rdfs:range om:Thread .
 
 om:containsPosts a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "contains posts" ;
     rdfs:domain om:Thread ;
     rdfs:range om:Post .
@@ -647,6 +771,8 @@ om:containsPosts a owl:ObjectProperty ;
 #################################################################
 
 om:inSeries a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:inSeries. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "in series" ;
     rdfs:subPropertyOf dcat:inSeries ;
     rdfs:comment "Links a dataset to its series" ;
@@ -654,6 +780,8 @@ om:inSeries a owl:ObjectProperty ;
     rdfs:range om:DatasetSeries .
 
 om:servesDataset a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:servesDataset. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "serves dataset" ;
     rdfs:subPropertyOf dcat:servesDataset ;
     rdfs:comment "Links a data service to datasets it serves" ;
@@ -661,6 +789,8 @@ om:servesDataset a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:distribution a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:distribution. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "distribution" ;
     rdfs:subPropertyOf dcat:distribution ;
     rdfs:comment "Available distribution of the dataset" ;
@@ -668,6 +798,8 @@ om:distribution a owl:ObjectProperty ;
     rdfs:range om:Distribution .
 
 om:landingPage a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:landingPage. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "landing page" ;
     rdfs:subPropertyOf dcat:landingPage ;
     rdfs:comment "Web page providing access and information" ;
@@ -675,6 +807,8 @@ om:landingPage a owl:ObjectProperty ;
     rdfs:range foaf:Document .
 
 om:theme a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:theme. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "theme" ;
     rdfs:subPropertyOf dcat:theme ;
     rdfs:comment "Main category of the dataset" ;
@@ -682,6 +816,8 @@ om:theme a owl:ObjectProperty ;
     rdfs:range skos:Concept .
 
 om:keyword a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:keyword. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "keyword" ;
     rdfs:subPropertyOf dcat:keyword ;
     rdfs:comment "Keywords describing the dataset" ;
@@ -689,6 +825,8 @@ om:keyword a owl:DatatypeProperty ;
     rdfs:range xsd:string .
 
 om:contactPoint a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:contactPoint. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "contact point" ;
     rdfs:subPropertyOf dcat:contactPoint ;
     rdfs:comment "Contact information for the dataset" ;
@@ -696,6 +834,8 @@ om:contactPoint a owl:ObjectProperty ;
     rdfs:range vcard:Kind .
 
 om:temporal a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:temporal. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "temporal coverage" ;
     rdfs:subPropertyOf dcat:temporal ;
     rdfs:comment "Temporal period covered by the dataset" ;
@@ -703,6 +843,8 @@ om:temporal a owl:ObjectProperty ;
     rdfs:range om:PeriodOfTime .
 
 om:spatial a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:spatial. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "spatial coverage" ;
     rdfs:subPropertyOf dcat:spatial ;
     rdfs:comment "Spatial area covered by the dataset" ;
@@ -710,6 +852,8 @@ om:spatial a owl:ObjectProperty ;
     rdfs:range om:Location .
 
 om:accrualPeriodicity a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:accrualPeriodicity. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "accrual periodicity" ;
     rdfs:subPropertyOf dcat:accrualPeriodicity ;
     rdfs:comment "Frequency of dataset updates" ;
@@ -717,6 +861,8 @@ om:accrualPeriodicity a owl:ObjectProperty ;
     rdfs:range om:Frequency .
 
 om:language a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:language. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "language" ;
     rdfs:subPropertyOf dcat:language ;
     rdfs:comment "Language of the dataset" ;
@@ -724,6 +870,8 @@ om:language a owl:ObjectProperty ;
     rdfs:range dct:LinguisticSystem .
 
 om:publisher a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:publisher. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "publisher" ;
     rdfs:subPropertyOf dcat:publisher ;
     rdfs:comment "Entity responsible for making the dataset available" ;
@@ -731,6 +879,8 @@ om:publisher a owl:ObjectProperty ;
     rdfs:range prov:Agent .
 
 om:issued a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:issued. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "issued" ;
     rdfs:subPropertyOf dcat:issued ;
     rdfs:comment "Date of formal issuance" ;
@@ -738,6 +888,8 @@ om:issued a owl:DatatypeProperty ;
     rdfs:range xsd:dateTime .
 
 om:license a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:license. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "license" ;
     rdfs:subPropertyOf dcat:license ;
     rdfs:comment "License under which the dataset is available" ;
@@ -745,6 +897,8 @@ om:license a owl:ObjectProperty ;
     rdfs:range om:LicenseDocument .
 
 om:rights a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:rights. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "rights" ;
     rdfs:subPropertyOf dcat:rights ;
     rdfs:comment "Rights statement for the dataset" ;
@@ -752,6 +906,8 @@ om:rights a owl:ObjectProperty ;
     rdfs:range om:RightsStatement .
 
 om:accessRights a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:accessRights. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "access rights" ;
     rdfs:subPropertyOf dcat:accessRights ;
     rdfs:comment "Information about access restrictions" ;
@@ -759,12 +915,16 @@ om:accessRights a owl:ObjectProperty ;
     rdfs:range dct:RightsStatement .
 
 om:endpointURL a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:endpointURL. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "endpoint URL" ;
     rdfs:subPropertyOf dcat:endpointURL ;
     rdfs:domain om:Service ;
     rdfs:range xsd:anyURI .
 
 om:endpointDescription a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:endpointDescription. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "endpoint description" ;
     rdfs:subPropertyOf dcat:endpointDescription ;
     rdfs:domain om:Service ;
@@ -775,6 +935,8 @@ om:endpointDescription a owl:DatatypeProperty ;
 #################################################################
 
 om:accessURL a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:accessURL. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "access URL" ;
     rdfs:subPropertyOf dcat:accessURL ;
     rdfs:comment "URL to access the distribution" ;
@@ -782,6 +944,8 @@ om:accessURL a owl:ObjectProperty ;
     rdfs:range rdfs:Resource .
 
 om:downloadURL a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:downloadURL. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "download URL" ;
     rdfs:subPropertyOf dcat:downloadURL ;
     rdfs:comment "Direct download URL" ;
@@ -789,6 +953,7 @@ om:downloadURL a owl:ObjectProperty ;
     rdfs:range rdfs:Resource .
 
 om:format a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "format" ;
     rdfs:subPropertyOf dcat:format ;
     rdfs:comment "File format of the distribution" ;
@@ -796,6 +961,8 @@ om:format a owl:ObjectProperty ;
     rdfs:range om:MediaType .
 
 om:mediaType a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:mediaType. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "media type" ;
     rdfs:subPropertyOf dcat:mediaType ;
     rdfs:comment "Media type of the distribution" ;
@@ -803,6 +970,8 @@ om:mediaType a owl:ObjectProperty ;
     rdfs:range om:MediaType .
 
 om:byteSize a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:byteSize. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "byte size" ;
     rdfs:subPropertyOf dcat:byteSize ;
     rdfs:comment "Size in bytes" ;
@@ -810,6 +979,8 @@ om:byteSize a owl:DatatypeProperty ;
     rdfs:range xsd:nonNegativeInteger .
 
 om:compressFormat a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:compressFormat. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "compression format" ;
     rdfs:subPropertyOf dcat:compressFormat ;
     rdfs:comment "Compression format of the distribution" ;
@@ -817,6 +988,8 @@ om:compressFormat a owl:ObjectProperty ;
     rdfs:range om:MediaType .
 
 om:packageFormat a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:packageFormat. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "package format" ;
     rdfs:subPropertyOf dcat:packageFormat ;
     rdfs:comment "Package format of the distribution" ;
@@ -828,6 +1001,8 @@ om:packageFormat a owl:ObjectProperty ;
 #################################################################
 
 om:dataset a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:dataset. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "dataset" ;
     rdfs:subPropertyOf dcat:dataset ;
     rdfs:comment "Dataset that is part of the catalog" ;
@@ -835,6 +1010,7 @@ om:dataset a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:service a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "service" ;
     rdfs:subPropertyOf dcat:service ;
     rdfs:comment "Service that is part of the catalog" ;
@@ -842,6 +1018,8 @@ om:service a owl:ObjectProperty ;
     rdfs:range om:DataService .
 
 om:catalog a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:catalog. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "catalog" ;
     rdfs:subPropertyOf dcat:catalog ;
     rdfs:comment "Sub-catalog" ;
@@ -849,6 +1027,8 @@ om:catalog a owl:ObjectProperty ;
     rdfs:range om:Catalog .
 
 om:themeTaxonomy a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:themeTaxonomy. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "theme taxonomy" ;
     rdfs:subPropertyOf dcat:themeTaxonomy ;
     rdfs:comment "Knowledge organization system for categorizing datasets" ;
@@ -856,6 +1036,8 @@ om:themeTaxonomy a owl:ObjectProperty ;
     rdfs:range skos:ConceptScheme .
 
 om:homepage a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of foaf:homepage. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "homepage" ;
     rdfs:subPropertyOf foaf:homepage ;
     rdfs:comment "Homepage of the catalog" ;
@@ -863,6 +1045,8 @@ om:homepage a owl:ObjectProperty ;
     rdfs:range foaf:Document .
 
 om:temporalResolution a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:temporalResolution. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "temporal resolution" ;
     rdfs:subPropertyOf dcat:temporalResolution ;
     rdfs:comment "Minimum time period resolvable in the dataset" ;
@@ -870,6 +1054,8 @@ om:temporalResolution a owl:DatatypeProperty ;
     rdfs:range xsd:duration .
 
 om:spatialResolution a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:spatialResolutionInMeters. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "spatial resolution" ;
     rdfs:subPropertyOf dcat:spatialResolutionInMeters ;
     rdfs:comment "Minimum spatial separation resolvable in the dataset" ;
@@ -881,6 +1067,8 @@ om:spatialResolution a owl:DatatypeProperty ;
 #################################################################
 
 om:hasQualityMeasurement a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:hasQualityMeasurement. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has quality measurement" ;
     rdfs:subPropertyOf dcat:hasQualityMeasurement ;
     rdfs:comment "Quality measurement for the dataset" ;
@@ -888,6 +1076,8 @@ om:hasQualityMeasurement a owl:ObjectProperty ;
     rdfs:range dqv:QualityMeasurement .
 
 om:hasQualityAnnotation a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:hasQualityAnnotation. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has quality annotation" ;
     rdfs:subPropertyOf dcat:hasQualityAnnotation ;
     rdfs:comment "Quality annotation for the dataset" ;
@@ -895,6 +1085,8 @@ om:hasQualityAnnotation a owl:ObjectProperty ;
     rdfs:range oa:Annotation .
 
 om:conformsToStandard a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:conformsTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "conforms to standard" ;
     rdfs:subPropertyOf dcat:conformsTo ;
     rdfs:comment "Standard the dataset conforms to" ;
@@ -902,12 +1094,15 @@ om:conformsToStandard a owl:ObjectProperty ;
     rdfs:range om:Standard .
 
 om:checksum a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "checksum" ;
     rdfs:comment "Checksum for data integrity verification" ;
     rdfs:domain om:File ;
     rdfs:range spdx:Checksum .
 
 om:hadRole a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:hadRole. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "had role" ;
     rdfs:subPropertyOf dcat:hadRole ;
     rdfs:comment "Role in a qualified relationship" ;
@@ -915,6 +1110,8 @@ om:hadRole a owl:ObjectProperty ;
     rdfs:range dcat:Role .
 
 om:qualifiedRelation a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:qualifiedRelation. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "qualified relation" ;
     rdfs:subPropertyOf dcat:qualifiedRelation ;
     rdfs:comment "Link to a qualified relationship" ;
@@ -926,6 +1123,8 @@ om:qualifiedRelation a owl:ObjectProperty ;
 #################################################################
 
 om:version a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:version. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "version" ;
     rdfs:subPropertyOf dcat:version ;
     rdfs:comment "Version identifier" ;
@@ -933,6 +1132,8 @@ om:version a owl:DatatypeProperty ;
     rdfs:range xsd:string .
 
 om:versionNotes a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of adms:versionNotes. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "version notes" ;
     rdfs:subPropertyOf adms:versionNotes ;
     rdfs:comment "Notes about this version" ;
@@ -940,6 +1141,8 @@ om:versionNotes a owl:DatatypeProperty ;
     rdfs:range xsd:string .
 
 om:isVersionOf a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:isVersionOf. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "is version of" ;
     rdfs:subPropertyOf dcat:isVersionOf ;
     rdfs:comment "Links to the non-versioned or abstract dataset" ;
@@ -947,6 +1150,8 @@ om:isVersionOf a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:hasVersion a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:hasVersion. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has version" ;
     rdfs:subPropertyOf dcat:hasVersion ;
     owl:inverseOf om:isVersionOf ;
@@ -954,6 +1159,8 @@ om:hasVersion a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:previousVersion a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:previousVersion. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "previous version" ;
     rdfs:subPropertyOf dcat:previousVersion ;
     rdfs:comment "Link to previous version" ;
@@ -961,6 +1168,8 @@ om:previousVersion a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:first a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:first. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "first" ;
     rdfs:subPropertyOf dcat:first ;
     rdfs:comment "First dataset in a series" ;
@@ -968,6 +1177,8 @@ om:first a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:last a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:last. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "last" ;
     rdfs:subPropertyOf dcat:last ;
     rdfs:comment "Last dataset in a series" ;
@@ -975,6 +1186,8 @@ om:last a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:prev a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:prev. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "previous" ;
     rdfs:subPropertyOf dcat:prev ;
     rdfs:comment "Previous dataset in a series" ;
@@ -982,6 +1195,8 @@ om:prev a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:next a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:next. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "next" ;
     rdfs:subPropertyOf dcat:next ;
     rdfs:comment "Next dataset in a series" ;
@@ -993,6 +1208,8 @@ om:next a owl:ObjectProperty ;
 #################################################################
 
 om:record a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:record. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "record" ;
     rdfs:subPropertyOf dcat:record ;
     rdfs:comment "Links catalog to its records" ;
@@ -1000,6 +1217,8 @@ om:record a owl:ObjectProperty ;
     rdfs:range om:CatalogRecord .
 
 om:primaryTopic a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of foaf:primaryTopic. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "primary topic" ;
     rdfs:subPropertyOf foaf:primaryTopic ;
     rdfs:comment "Main entity described by this record" ;
@@ -1007,12 +1226,16 @@ om:primaryTopic a owl:ObjectProperty ;
     rdfs:range om:Entity .
 
 om:cataloged a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "cataloged" ;
     rdfs:comment "Date when entity was added to catalog" ;
     rdfs:domain om:CatalogRecord ;
     rdfs:range xsd:dateTime .
 
 om:conformsTo a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:conformsTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "conforms to" ;
     rdfs:subPropertyOf dct:conformsTo ;
     rdfs:comment "Standard or schema that the resource conforms to" ;
@@ -1024,6 +1247,8 @@ om:conformsTo a owl:ObjectProperty ;
 #################################################################
 
 om:wasGeneratedBy a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:wasGeneratedBy. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "was generated by" ;
     rdfs:subPropertyOf prov:wasGeneratedBy ;
     rdfs:comment "Activity that generated the dataset" ;
@@ -1031,6 +1256,8 @@ om:wasGeneratedBy a owl:ObjectProperty ;
     rdfs:range prov:Activity .
 
 om:wasDerivedFrom a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:wasDerivedFrom. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "was derived from" ;
     rdfs:subPropertyOf prov:wasDerivedFrom ;
     rdfs:comment "Source dataset this was derived from" ;
@@ -1038,6 +1265,8 @@ om:wasDerivedFrom a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:qualifiedAttribution a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:qualifiedAttribution. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "qualified attribution" ;
     rdfs:subPropertyOf prov:qualifiedAttribution ;
     rdfs:comment "Detailed attribution with roles" ;
@@ -1045,6 +1274,8 @@ om:qualifiedAttribution a owl:ObjectProperty ;
     rdfs:range prov:Attribution .
 
 om:qualifiedDerivation a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:qualifiedDerivation. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "qualified derivation" ;
     rdfs:subPropertyOf prov:qualifiedDerivation ;
     rdfs:comment "Detailed derivation with transformation info" ;
@@ -1052,6 +1283,7 @@ om:qualifiedDerivation a owl:ObjectProperty ;
     rdfs:range prov:Derivation .
 
 om:provenance a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "provenance" ;
     rdfs:subPropertyOf dct:provenance ;
     rdfs:comment "Provenance statement" ;
@@ -1059,6 +1291,7 @@ om:provenance a owl:ObjectProperty ;
     rdfs:range dct:ProvenanceStatement .
 
 om:source a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "source" ;
     rdfs:subPropertyOf dct:source ;
     rdfs:comment "Source of the dataset" ;
@@ -1070,6 +1303,7 @@ om:source a owl:ObjectProperty ;
 #################################################################
 
 om:fullyQualifiedName a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "fully qualified name" ;
     rdfs:subPropertyOf dct:identifier ;
     rdfs:comment "Unique identifier for the entity within OpenMetadata" ;
@@ -1077,24 +1311,31 @@ om:fullyQualifiedName a owl:DatatypeProperty ;
     rdfs:range xsd:string .
 
 om:serviceType a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "service type" ;
     rdfs:subPropertyOf dct:type ;
     rdfs:domain om:Service ;
     rdfs:range xsd:string .
 
 om:description a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:description. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "description" ;
     rdfs:subPropertyOf dct:description ;
     rdfs:domain om:Entity ;
     rdfs:range xsd:string .
 
 om:created a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:created. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "created" ;
     rdfs:subPropertyOf dct:created ;
     rdfs:domain om:Entity ;
     rdfs:range xsd:dateTime .
 
 om:modified a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:modified. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "modified" ;
     rdfs:subPropertyOf dct:modified ;
     rdfs:domain om:Entity ;
@@ -1105,18 +1346,21 @@ om:modified a owl:DatatypeProperty ;
 #################################################################
 
 om:rowCount a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "row count" ;
     rdfs:comment "Number of rows in the table" ;
     rdfs:domain om:Table ;
     rdfs:range xsd:integer .
 
 om:columnCount a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "column count" ;
     rdfs:comment "Number of columns in the table" ;
     rdfs:domain om:Table ;
     rdfs:range xsd:integer .
 
 om:columnDataType a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "column data type" ;
     rdfs:subPropertyOf csvw:datatype ;
     rdfs:comment "Data type of the column" ;
@@ -1124,18 +1368,21 @@ om:columnDataType a owl:DatatypeProperty ;
     rdfs:range xsd:string .
 
 om:columnDescription a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "column description" ;
     rdfs:comment "Description of what the column contains" ;
     rdfs:domain om:Column ;
     rdfs:range xsd:string .
 
 om:isPrimaryKey a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "is primary key" ;
     rdfs:comment "Whether this column is a primary key" ;
     rdfs:domain om:Column ;
     rdfs:range xsd:boolean .
 
 om:isNullable a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "is nullable" ;
     rdfs:subPropertyOf csvw:null ;
     rdfs:comment "Whether this column can contain null values" ;
@@ -1143,6 +1390,8 @@ om:isNullable a owl:DatatypeProperty ;
     rdfs:range xsd:boolean .
 
 om:sampleData a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "sample data" ;
     rdfs:comment "Sample data from the table" ;
     rdfs:domain om:Table ;
@@ -1153,24 +1402,29 @@ om:sampleData a owl:ObjectProperty ;
 #################################################################
 
 om:lineageSource a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "lineage source" ;
     rdfs:comment "How the lineage was created (Manual, Pipeline, Query, etc.)" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:string .
 
 om:sqlQuery a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "SQL query" ;
     rdfs:comment "SQL query used in transformation" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:string .
 
 om:transformationFunction a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "transformation function" ;
     rdfs:comment "Function applied to transform data" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:string .
 
 om:fromColumn a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "from column" ;
     rdfs:subPropertyOf prov:used ;
     rdfs:comment "Source column used in transformation" ;
@@ -1178,6 +1432,7 @@ om:fromColumn a owl:ObjectProperty ;
     rdfs:range om:Column .
 
 om:toColumn a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "to column" ;
     rdfs:subPropertyOf prov:wasGeneratedBy ;
     rdfs:comment "Target column created by transformation" ;
@@ -1185,6 +1440,7 @@ om:toColumn a owl:ObjectProperty ;
     rdfs:range om:Column .
 
 om:lineageCreatedBy a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "lineage created by" ;
     rdfs:subPropertyOf prov:wasAttributedTo ;
     rdfs:comment "User who created the lineage" ;
@@ -1192,6 +1448,8 @@ om:lineageCreatedBy a owl:ObjectProperty ;
     rdfs:range prov:Agent .
 
 om:lineageCreatedAt a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:generatedAtTime. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "lineage created at" ;
     rdfs:subPropertyOf prov:generatedAtTime ;
     rdfs:comment "When the lineage was created" ;
@@ -1199,6 +1457,8 @@ om:lineageCreatedAt a owl:DatatypeProperty ;
     rdfs:range xsd:dateTime .
 
 om:pipeline a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of prov:wasGeneratedBy. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "pipeline" ;
     rdfs:subPropertyOf prov:wasGeneratedBy ;
     rdfs:comment "Pipeline that processes the data" ;
@@ -1225,18 +1485,24 @@ om:DataProductSLA a owl:Class ;
     rdfs:subClassOf dprod:ServiceLevelAgreement .
 
 om:dataProductAssets a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "data product assets" ;
     rdfs:comment "Assets that are part of this data product" ;
     rdfs:domain om:DataProduct ;
     rdfs:range om:DataAsset .
 
 om:dataProductDomain a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "data product domain" ;
     rdfs:comment "Domain this data product belongs to" ;
     rdfs:domain om:DataProduct ;
     rdfs:range om:Domain .
 
 om:dataProductOwner a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:contactPoint. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "data product owner" ;
     rdfs:subPropertyOf dcat:contactPoint ;
     rdfs:comment "Owner of the data product" ;
@@ -1244,12 +1510,16 @@ om:dataProductOwner a owl:ObjectProperty ;
     rdfs:range prov:Agent .
 
 om:dataProductExpert a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "data product expert" ;
     rdfs:comment "Expert for this data product" ;
     rdfs:domain om:DataProduct ;
     rdfs:range prov:Agent .
 
 om:hasInputPort a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dprod:hasInputPort. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has input port" ;
     rdfs:subPropertyOf dprod:hasInputPort ;
     rdfs:comment "Input port of the data product" ;
@@ -1257,6 +1527,8 @@ om:hasInputPort a owl:ObjectProperty ;
     rdfs:range om:InputPort .
 
 om:hasOutputPort a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dprod:hasOutputPort. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has output port" ;
     rdfs:subPropertyOf dprod:hasOutputPort ;
     rdfs:comment "Output port of the data product" ;
@@ -1264,24 +1536,32 @@ om:hasOutputPort a owl:ObjectProperty ;
     rdfs:range om:OutputPort .
 
 om:portName a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "port name" ;
     rdfs:comment "Name of the port" ;
     rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:string .
 
 om:portProtocol a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "port protocol" ;
     rdfs:comment "Protocol used by the port (REST, GRPC, KAFKA, etc.)" ;
     rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:string .
 
 om:portFormat a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "port format" ;
     rdfs:comment "Data format supported by the port (JSON, CSV, PARQUET, etc.)" ;
     rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:string .
 
 om:portEndpoint a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:endpointURL. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "port endpoint" ;
     rdfs:subPropertyOf dcat:endpointURL ;
     rdfs:comment "Endpoint URL or connection string for the port" ;
@@ -1289,54 +1569,70 @@ om:portEndpoint a owl:DatatypeProperty ;
     rdfs:range xsd:anyURI .
 
 om:portDataAsset a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "port data asset" ;
     rdfs:comment "Data asset exposed through this port" ;
     rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range om:DataAsset .
 
 om:lifecycleStage a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "lifecycle stage" ;
     rdfs:comment "Current lifecycle stage (IDEATION, DESIGN, DEVELOPMENT, TESTING, PRODUCTION, DEPRECATED, RETIRED)" ;
     rdfs:domain om:DataProduct ;
     rdfs:range xsd:string .
 
 om:hasSLA a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "has SLA" ;
     rdfs:comment "Service Level Agreement for the data product" ;
     rdfs:domain om:DataProduct ;
     rdfs:range om:DataProductSLA .
 
 om:slaTier a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "SLA tier" ;
     rdfs:comment "SLA tier level (GOLD, SILVER, BRONZE)" ;
     rdfs:domain om:DataProductSLA ;
     rdfs:range xsd:string .
 
 om:slaAvailability a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "SLA availability" ;
     rdfs:comment "Expected availability percentage" ;
     rdfs:domain om:DataProductSLA ;
     rdfs:range xsd:decimal .
 
 om:slaResponseTime a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "SLA response time" ;
     rdfs:comment "Expected response time in milliseconds" ;
     rdfs:domain om:DataProductSLA ;
     rdfs:range xsd:integer .
 
 om:slaDataFreshness a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "SLA data freshness" ;
     rdfs:comment "Maximum data staleness in minutes" ;
     rdfs:domain om:DataProductSLA ;
     rdfs:range xsd:integer .
 
 om:slaDataQuality a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "SLA data quality" ;
     rdfs:comment "Minimum data quality score" ;
     rdfs:domain om:DataProductSLA ;
     rdfs:range xsd:decimal .
 
 om:consumesFrom a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "consumes from" ;
     rdfs:subPropertyOf dprod:consumesFrom ;
     rdfs:comment "Data products that this product consumes data from" ;
@@ -1344,6 +1640,7 @@ om:consumesFrom a owl:ObjectProperty ;
     rdfs:range om:DataProduct .
 
 om:providesTo a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "provides to" ;
     rdfs:subPropertyOf dprod:providesTo ;
     rdfs:comment "Data products that consume data from this product" ;
@@ -1355,6 +1652,8 @@ om:providesTo a owl:ObjectProperty ;
 #################################################################
 
 om:identifier a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:identifier. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "identifier" ;
     rdfs:subPropertyOf dct:identifier ;
     rdfs:comment "Unique identifier of the dataset" ;
@@ -1362,6 +1661,7 @@ om:identifier a owl:DatatypeProperty ;
     rdfs:range rdfs:Literal .
 
 om:title a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "title" ;
     rdfs:subPropertyOf dct:title ;
     rdfs:comment "Title of the dataset" ;
@@ -1369,6 +1669,8 @@ om:title a owl:DatatypeProperty ;
     rdfs:range rdfs:Literal .
 
 om:creator a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:creator. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "creator" ;
     rdfs:subPropertyOf dct:creator ;
     rdfs:comment "Entity primarily responsible for creating the dataset" ;
@@ -1376,6 +1678,8 @@ om:creator a owl:ObjectProperty ;
     rdfs:range prov:Agent .
 
 om:contributor a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:contributor. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "contributor" ;
     rdfs:subPropertyOf dct:contributor ;
     rdfs:comment "Entity responsible for contributions to the dataset" ;
@@ -1383,6 +1687,8 @@ om:contributor a owl:ObjectProperty ;
     rdfs:range prov:Agent .
 
 om:type a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:type. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "type" ;
     rdfs:subPropertyOf dct:type ;
     rdfs:comment "Nature or genre of the dataset" ;
@@ -1390,6 +1696,8 @@ om:type a owl:ObjectProperty ;
     rdfs:range rdfs:Class .
 
 om:isReferencedBy a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:isReferencedBy. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "is referenced by" ;
     rdfs:subPropertyOf dct:isReferencedBy ;
     rdfs:comment "Related resource that references this dataset" ;
@@ -1397,6 +1705,8 @@ om:isReferencedBy a owl:ObjectProperty ;
     rdfs:range rdfs:Resource .
 
 om:relation a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dct:relation. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "relation" ;
     rdfs:subPropertyOf dct:relation ;
     rdfs:comment "Related resource" ;
@@ -1404,6 +1714,7 @@ om:relation a owl:ObjectProperty ;
     rdfs:range rdfs:Resource .
 
 om:hasPolicy a owl:ObjectProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has policy" ;
     rdfs:subPropertyOf odrl:hasPolicy ;
     rdfs:comment "ODRL policy associated with the dataset" ;
@@ -1411,6 +1722,8 @@ om:hasPolicy a owl:ObjectProperty ;
     rdfs:range odrl:Policy .
 
 om:qualifiedAccess a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "qualified access" ;
     rdfs:comment "Qualified access information including authentication and authorization" ;
     rdfs:domain om:DataAsset ;
@@ -1421,36 +1734,48 @@ om:qualifiedAccess a owl:ObjectProperty ;
 #################################################################
 
 om:accuracy a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "accuracy" ;
     rdfs:comment "Degree of data accuracy" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:decimal .
 
 om:completeness a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "completeness" ;
     rdfs:comment "Degree of data completeness" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:decimal .
 
 om:consistency a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "consistency" ;
     rdfs:comment "Degree of data consistency" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:decimal .
 
 om:timeliness a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "timeliness" ;
     rdfs:comment "How current the data is" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:string .
 
 om:validity a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "validity" ;
     rdfs:comment "Degree to which data conforms to defined rules" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:decimal .
 
 om:uniqueness a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "uniqueness" ;
     rdfs:comment "Degree of uniqueness in the data" ;
     rdfs:domain om:DataAsset ;
@@ -1461,6 +1786,8 @@ om:uniqueness a owl:DatatypeProperty ;
 #################################################################
 
 om:bbox a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:bbox. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "bounding box" ;
     rdfs:subPropertyOf dcat:bbox ;
     rdfs:comment "Geographic bounding box" ;
@@ -1468,6 +1795,8 @@ om:bbox a owl:DatatypeProperty ;
     rdfs:range rdfs:Literal .
 
 om:centroid a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:centroid. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "centroid" ;
     rdfs:subPropertyOf dcat:centroid ;
     rdfs:comment "Geographic center point" ;
@@ -1475,6 +1804,8 @@ om:centroid a owl:DatatypeProperty ;
     rdfs:range rdfs:Literal .
 
 om:geometry a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of locn:geometry. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "geometry" ;
     rdfs:subPropertyOf locn:geometry ;
     rdfs:comment "Geometry of the spatial area" ;
@@ -1486,6 +1817,8 @@ om:geometry a owl:DatatypeProperty ;
 #################################################################
 
 om:startDate a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of dcat:startDate. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "start date" ;
     rdfs:subPropertyOf dcat:startDate ;
     rdfs:comment "Start of the temporal period" ;
@@ -1493,6 +1826,7 @@ om:startDate a owl:DatatypeProperty ;
     rdfs:range xsd:dateTime .
 
 om:endDate a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
     rdfs:label "end date" ;
     rdfs:subPropertyOf dcat:endDate ;
     rdfs:comment "End of the temporal period" ;
@@ -1500,6 +1834,8 @@ om:endDate a owl:DatatypeProperty ;
     rdfs:range xsd:dateTime .
 
 om:hasBeginning a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of time:hasBeginning. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has beginning" ;
     rdfs:subPropertyOf time:hasBeginning ;
     rdfs:comment "Beginning instant of the temporal period" ;
@@ -1507,6 +1843,8 @@ om:hasBeginning a owl:ObjectProperty ;
     rdfs:range time:Instant .
 
 om:hasEnd a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of time:hasEnd. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has end" ;
     rdfs:subPropertyOf time:hasEnd ;
     rdfs:comment "Ending instant of the temporal period" ;
@@ -1518,30 +1856,40 @@ om:hasEnd a owl:ObjectProperty ;
 #################################################################
 
 om:numberOfRecords a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "number of records" ;
     rdfs:comment "Number of records in the dataset" ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:integer .
 
 om:numberOfColumns a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "number of columns" ;
     rdfs:comment "Number of columns in the dataset" ;
     rdfs:domain om:Table ;
     rdfs:range xsd:integer .
 
 om:statisticalUnit a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "statistical unit" ;
     rdfs:comment "Unit of observation in the dataset" ;
     rdfs:domain om:DataAsset ;
     rdfs:range skos:Concept .
 
 om:dimension a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "dimension" ;
     rdfs:comment "Dimension represented in the dataset" ;
     rdfs:domain om:DataAsset ;
     rdfs:range qb:DimensionProperty .
 
 om:measure a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "measure" ;
     rdfs:comment "Measure represented in the dataset" ;
     rdfs:domain om:DataAsset ;
@@ -1552,25 +1900,2118 @@ om:measure a owl:ObjectProperty ;
 #################################################################
 
 om:serviceEndpoint a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "service endpoint" ;
     rdfs:comment "Endpoint for accessing the service" ;
     rdfs:domain om:DataService ;
     rdfs:range rdfs:Resource .
 
 om:serviceStatus a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "service status" ;
     rdfs:comment "Operational status of the service" ;
     rdfs:domain om:DataService ;
     rdfs:range xsd:string .
 
 om:serviceLevel a owl:DatatypeProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "service level" ;
     rdfs:comment "Service level agreement details" ;
     rdfs:domain om:DataService ;
     rdfs:range xsd:string .
 
 om:apiDocumentation a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Retained for custom inference or externally supplied ontology data; there is no built-in derivation for this property." ;
     rdfs:label "API documentation" ;
     rdfs:comment "Link to API documentation" ;
     rdfs:domain om:DataService ;
     rdfs:range foaf:Document .
+
+
+#################################################################
+# Projection availability
+#################################################################
+
+om:projectionStatus a owl:AnnotationProperty ;
+    rdfs:label "projection status" ;
+    rdfs:comment "Whether a property is asserted by the metadata projection (Stored) or is vocabulary for custom inference/external data only (InferenceOnly). This annotation does not enable inference." .
+
+om:Stored rdfs:label "stored" ;
+    rdfs:comment "Asserted when the corresponding metadata field or relationship is populated. Queryable with inference=none; optional fields need not exist on every entity." .
+
+om:InferenceOnly rdfs:label "inference or external data only" ;
+    rdfs:comment "Not asserted by the metadata projection. Requires custom rules or externally supplied data. Merely enabling RDFS/OWL does not guarantee this property is present, especially for aliases declared only as subproperties." .
+
+om:UPSTREAM a owl:ObjectProperty ;
+    om:projectionStatus om:InferenceOnly ;
+    owl:deprecated true ;
+    owl:inverseOf om:upstream ;
+    rdfs:label "legacy source-to-output lineage" ;
+    rdfs:comment "Not emitted by the metadata projection. Legacy source-to-output alias of om:downstream, supported by readers until a full RDF rebuild replaces old triples." .
+
+om:ExtensionProperty a owl:Class ;
+    rdfs:label "extension property entry" ;
+    rdfs:comment "A user-defined key and typed value, linked from an Extension by hasExtensionProperty. Keys are data, not predicates in the OpenMetadata vocabulary." .
+
+#################################################################
+# Predicates emitted by JSON-LD mappings and structured projections
+#
+# Generic schema fields can be literals or references depending on the entity
+# context. rdf:Property deliberately avoids inventing domain/range constraints.
+# External vocabulary declarations document usage without redefining its axioms.
+# RdfOntologyContractTest checks these against actual projected schema fixtures.
+#################################################################
+
+<http://purl.org/dc/terms/created> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "created" .
+
+<http://purl.org/dc/terms/description> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "description" .
+
+<http://purl.org/dc/terms/hasVersion> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasVersion" .
+
+<http://purl.org/dc/terms/modified> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modified" .
+
+<http://purl.org/dc/terms/publisher> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "publisher" .
+
+<http://rdfs.org/ns/void#entities> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "entities" .
+
+<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "first" .
+
+<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "rest" .
+
+<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "type" .
+
+<http://www.w3.org/2000/01/rdf-schema#label> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "label" .
+
+<http://www.w3.org/2000/01/rdf-schema#seeAlso> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "seeAlso" .
+
+<http://www.w3.org/2000/01/rdf-schema#subClassOf> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "subClassOf" .
+
+<http://www.w3.org/2004/02/skos/core#altLabel> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "altLabel" .
+
+<http://www.w3.org/2004/02/skos/core#broader> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "broader" .
+
+<http://www.w3.org/2004/02/skos/core#exactMatch> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "exactMatch" .
+
+<http://www.w3.org/2004/02/skos/core#inScheme> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "inScheme" .
+
+<http://www.w3.org/2004/02/skos/core#narrower> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "narrower" .
+
+<http://www.w3.org/2004/02/skos/core#prefLabel> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "prefLabel" .
+
+<http://www.w3.org/ns/dcat#byteSize> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "byteSize" .
+
+<http://www.w3.org/ns/dcat#mediaType> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "mediaType" .
+
+<http://www.w3.org/ns/dcat#version> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "version" .
+
+<http://www.w3.org/ns/dqv#computedOn> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "computedOn" .
+
+<http://www.w3.org/ns/dqv#hasQualityMeasurement> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasQualityMeasurement" .
+
+<http://www.w3.org/ns/dqv#isMeasurementOf> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isMeasurementOf" .
+
+<http://www.w3.org/ns/dqv#value> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "value" .
+
+<http://www.w3.org/ns/prov#endedAtTime> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "endedAtTime" .
+
+<http://www.w3.org/ns/prov#generated> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "generated" .
+
+<http://www.w3.org/ns/prov#generatedAtTime> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "generatedAtTime" .
+
+<http://www.w3.org/ns/prov#hadPlan> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hadPlan" .
+
+<http://www.w3.org/ns/prov#invalidatedAtTime> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "invalidatedAtTime" .
+
+<http://www.w3.org/ns/prov#startedAtTime> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "startedAtTime" .
+
+<http://www.w3.org/ns/prov#used> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "used" .
+
+<http://www.w3.org/ns/prov#value> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "value" .
+
+<http://www.w3.org/ns/prov#wasAssociatedWith> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "wasAssociatedWith" .
+
+<http://www.w3.org/ns/prov#wasAttributedTo> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "wasAttributedTo" .
+
+<http://www.w3.org/ns/prov#wasDerivedFrom> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "wasDerivedFrom" .
+
+<http://www.w3.org/ns/prov#wasGeneratedBy> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "wasGeneratedBy" .
+
+<http://www.w3.org/ns/prov#wasInfluencedBy> a rdf:Property ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:label "wasInfluencedBy" ;
+    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+
+<http://www.w3.org/ns/prov#wasInformedBy> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "wasInformedBy" .
+
+<http://xmlns.com/foaf/0.1/mbox> a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "mbox" .
+
+om:accessTimestamp a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "accessTimestamp" .
+
+om:accessedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "accessedBy" .
+
+om:accessedByProcess a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "accessedByProcess" .
+
+om:agentType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "agentType" .
+
+om:allowBotImpersonation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "allowBotImpersonation" .
+
+om:allowConcurrentExecution a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "allowConcurrentExecution" .
+
+om:allowConfiguration a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "allowConfiguration" .
+
+om:allowDelete a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "allowDelete" .
+
+om:allowEdit a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "allowEdit" .
+
+om:allowImpersonation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "allowImpersonation" .
+
+om:answer a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "answer" .
+
+om:antonym a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "antonym" .
+
+om:apiEndpoints a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "apiEndpoints" .
+
+om:appLogoUrl a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "appLogoUrl" .
+
+om:appScreenshots a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "appScreenshots" .
+
+om:appType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "appType" .
+
+om:applicationResult a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "applicationResult" .
+
+om:applicationType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "applicationType" .
+
+om:appliesTo a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "appliesTo" .
+
+om:appliesToUser a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "appliesToUser" .
+
+om:approvedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "approvedBy" .
+
+om:artifacts a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "artifacts" .
+
+om:asOfDate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "asOfDate" .
+
+om:assessmentCadence a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "assessmentCadence" .
+
+om:assetId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "assetId" .
+
+om:assets a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "assets" .
+
+om:assignedTo a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "assignedTo" .
+
+om:attachments a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "attachments" .
+
+om:attributes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "attributes" .
+
+om:authenticationMechanism a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "authenticationMechanism" .
+
+om:autoApply a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "autoApply" .
+
+om:autoClassificationConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "autoClassificationConfig" .
+
+om:autoClassificationEnabled a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "autoClassificationEnabled" .
+
+om:autoClassificationPriority a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "autoClassificationPriority" .
+
+om:automationRequest a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "automationRequest" .
+
+om:automationResponse a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "automationResponse" .
+
+om:axiomType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "axiomType" .
+
+om:baseModel a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "baseModel" .
+
+om:belongsToAPICollection a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "belongsToAPICollection" .
+
+om:belongsToDomain a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "belongsToDomain" .
+
+om:belongsToProject a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "belongsToProject" .
+
+om:belongsToSpreadsheet a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "belongsToSpreadsheet" .
+
+om:biasMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "biasMetrics" .
+
+om:biasThresholds a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "biasThresholds" .
+
+om:botUser a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "botUser" .
+
+om:capabilities a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "capabilities" .
+
+om:cardinality a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "cardinality" .
+
+om:categories a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "categories" .
+
+om:category a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "category" .
+
+om:certificationAppliedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "certificationAppliedAt" .
+
+om:certificationExpiresAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "certificationExpiresAt" .
+
+om:certificationLevel a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "certificationLevel" .
+
+om:certifications a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "certifications" .
+
+om:characteristics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "characteristics" .
+
+om:childrenCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "childrenCount" .
+
+om:className a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "className" .
+
+om:code a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "code" .
+
+om:color a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "color" .
+
+om:completedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "completedAt" .
+
+om:complianceRequirements a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "complianceRequirements" .
+
+om:compressionCodec a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "compressionCodec" .
+
+om:compressionEnabled a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "compressionEnabled" .
+
+om:compressionStrategy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "compressionStrategy" .
+
+om:conceptMappings a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "conceptMappings" .
+
+om:conceptType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "conceptType" .
+
+om:concurrency a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "concurrency" .
+
+om:connection a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "connection" .
+
+om:connectionConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "connectionConfig" .
+
+om:constraintType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "constraintType" .
+
+om:contentType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "contentType" .
+
+om:contextDefinition a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "contextDefinition" .
+
+om:contextFile a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "contextFile" .
+
+om:contexts a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "contexts" .
+
+om:contractUpdates a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "contractUpdates" .
+
+om:costControls a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "costControls" .
+
+om:costMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "costMetrics" .
+
+om:createdAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "createdAt" .
+
+om:createdTime a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "createdTime" .
+
+om:crossGlossaryAllowed a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "crossGlossaryAllowed" .
+
+om:customMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "customMetrics" .
+
+om:customUnitOfMeasurement a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "customUnitOfMeasurement" .
+
+om:dashboardType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dashboardType" .
+
+om:dashboards a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dashboards" .
+
+om:dataAccessControls a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dataAccessControls" .
+
+om:dataAccessSummary a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dataAccessSummary" .
+
+om:dataContract a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dataContract" .
+
+om:dataModelType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dataModelType" .
+
+om:dataProductType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dataProductType" .
+
+om:dataSources a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dataSources" .
+
+om:databaseProfilerConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "databaseProfilerConfig" .
+
+om:databaseSchemaProfilerConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "databaseSchemaProfilerConfig" .
+
+om:databaseSchemas a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "databaseSchemas" .
+
+om:default a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "default" .
+
+om:defaultPersona a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "defaultPersona" .
+
+om:deploymentInfo a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "deploymentInfo" .
+
+om:deploymentUrl a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "deploymentUrl" .
+
+om:deprecated a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "deprecated" .
+
+om:derivedEntities a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "derivedEntities" .
+
+om:derivedFrom a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "derivedFrom" .
+
+om:detection a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "detection" .
+
+om:developer a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "developer" .
+
+om:developerUrl a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "developerUrl" .
+
+om:developmentStage a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "developmentStage" .
+
+om:difficulty a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "difficulty" .
+
+om:dimensions a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "dimensions" .
+
+om:directory a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "directory" .
+
+om:disjointWith a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "disjointWith" .
+
+om:documentForEntityType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "documentForEntityType" .
+
+om:documentation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "documentation" .
+
+om:domainType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "domainType" .
+
+om:domains a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "domains" .
+
+om:downloadLink a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "downloadLink" .
+
+om:downstreamApplications a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "downstreamApplications" .
+
+om:driveFileId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "driveFileId" .
+
+om:editors a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "editors" .
+
+om:effectiveAttributes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "effectiveAttributes" .
+
+om:effectiveDate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "effectiveDate" .
+
+om:effectiveFrom a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "effectiveFrom" .
+
+om:effectiveUntil a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "effectiveUntil" .
+
+om:enableStreamableLogs a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "enableStreamableLogs" .
+
+om:enabled a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "enabled" .
+
+om:enforcementLevel a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "enforcementLevel" .
+
+om:entity a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "entity" .
+
+om:entityStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "entityStatus" .
+
+om:estimatedDuration a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "estimatedDuration" .
+
+om:eventSubscriptions a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "eventSubscriptions" .
+
+om:evidence a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "evidence" .
+
+om:evidenceRequirements a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "evidenceRequirements" .
+
+om:examples a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "examples" .
+
+om:exclude_usage a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "exclude_usage" .
+
+om:executedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "executedBy" .
+
+om:executionId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "executionId" .
+
+om:executionStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "executionStatus" .
+
+om:expirationDate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "expirationDate" .
+
+om:expressions a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "expressions" .
+
+om:extensionKey a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "extensionKey" .
+
+om:extensionValue a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "extensionValue" .
+
+om:externalId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "externalId" .
+
+om:extractedText a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "extractedText" .
+
+om:extractionStats a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "extractionStats" .
+
+om:failureReason a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "failureReason" .
+
+om:features a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "features" .
+
+om:fileExtension a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "fileExtension" .
+
+om:fileFormats a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "fileFormats" .
+
+om:fileSize a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "fileSize" .
+
+om:fileType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "fileType" .
+
+om:fileVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "fileVersion" .
+
+om:filters a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "filters" .
+
+om:folder a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "folder" .
+
+om:forkedFrom a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "forkedFrom" .
+
+om:framework a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "framework" .
+
+om:fromColumnFqn a rdf:Property ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:label "fromColumnFqn" ;
+    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+
+om:fullPath a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "fullPath" .
+
+om:glossaries a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "glossaries" .
+
+om:glossary a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "glossary" .
+
+om:governanceMetadata a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "governanceMetadata" .
+
+om:governanceStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "governanceStatus" .
+
+om:hasAirflowConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasAirflowConfig" .
+
+om:hasAlgorithm a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasAlgorithm" .
+
+om:hasAppConfiguration a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasAppConfiguration" .
+
+om:hasAppSchedule a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasAppSchedule" .
+
+om:hasAsset a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasAsset" .
+
+om:hasBot a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasBot" .
+
+om:hasCertification a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasCertification" .
+
+om:hasChart a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasChart" .
+
+om:hasChartType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasChartType" .
+
+om:hasChild a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasChild" .
+
+om:hasChildColumn a rdf:Property ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:label "hasChildColumn" ;
+    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+
+om:hasCleanupPolicy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasCleanupPolicy" .
+
+om:hasColumnLineage a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasColumnLineage" .
+
+om:hasConnection a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasConnection" .
+
+om:hasConstrainedColumn a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasConstrainedColumn" .
+
+om:hasConstraint a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasConstraint" .
+
+om:hasCustomProperty a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasCustomProperty" .
+
+om:hasDataModel a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasDataModel" .
+
+om:hasDataProduct a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasDataProduct" .
+
+om:hasDefaultRole a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasDefaultRole" .
+
+om:hasDirectoryType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasDirectoryType" .
+
+om:hasDocumentData a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasDocumentData" .
+
+om:hasExecution a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasExecution" .
+
+om:hasExpert a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasExpert" .
+
+om:hasExtension a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasExtension" .
+
+om:hasExtensionProperty a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasExtensionProperty" .
+
+om:hasField a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasField" .
+
+om:hasFileFormat a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasFileFormat" .
+
+om:hasFollower a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasFollower" .
+
+om:hasGranularity a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasGranularity" .
+
+om:hasIndexSettings a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasIndexSettings" .
+
+om:hasIndexType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasIndexType" .
+
+om:hasLifeCycle a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasLifeCycle" .
+
+om:hasLineageDetails a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasLineageDetails" .
+
+om:hasLineageNode a rdf:Property ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:label "hasLineageNode" ;
+    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+
+om:hasLoggerLevel a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasLoggerLevel" .
+
+om:hasMLDashboard a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMLDashboard" .
+
+om:hasMLFeature a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMLFeature" .
+
+om:hasMLHyperParameter a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMLHyperParameter" .
+
+om:hasMLStore a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMLStore" .
+
+om:hasMember a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMember" .
+
+om:hasMessageSchema a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMessageSchema" .
+
+om:hasMetricExpression a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMetricExpression" .
+
+om:hasMetricType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasMetricType" .
+
+om:hasParent a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasParent" .
+
+om:hasPart a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasPart" .
+
+om:hasPartition a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasPartition" .
+
+om:hasPath a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasPath" .
+
+om:hasPipelineStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasPipelineStatus" .
+
+om:hasPromptTemplate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasPromptTemplate" .
+
+om:hasQueryText a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasQueryText" .
+
+om:hasReference a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasReference" .
+
+om:hasReferredColumn a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasReferredColumn" .
+
+om:hasRelatedMetric a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasRelatedMetric" .
+
+om:hasReplicationFactor a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasReplicationFactor" .
+
+om:hasRequestMethod a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasRequestMethod" .
+
+om:hasResponseSchema a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasResponseSchema" .
+
+om:hasRetentionTime a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasRetentionTime" .
+
+om:hasReviewer a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasReviewer" .
+
+om:hasRole a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasRole" .
+
+om:hasSampleData a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasSampleData" .
+
+om:hasScheduleInterval a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasScheduleInterval" .
+
+om:hasSchemaDefinition a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasSchemaDefinition" .
+
+om:hasServer a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasServer" .
+
+om:hasServerConnection a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasServerConnection" .
+
+om:hasServiceType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasServiceType" .
+
+om:hasSourceConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasSourceConfig" .
+
+om:hasStartDate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasStartDate" .
+
+om:hasStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasStatus" .
+
+om:hasStyle a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasStyle" .
+
+om:hasTableType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasTableType" .
+
+om:hasTarget a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasTarget" .
+
+om:hasTier a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasTier" .
+
+om:hasTopicConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasTopicConfig" .
+
+om:hasUnitOfMeasurement a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasUnitOfMeasurement" .
+
+om:hasWorksheet a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "hasWorksheet" .
+
+om:headContentId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "headContentId" .
+
+om:icon a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "icon" .
+
+om:impersonatedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "impersonatedBy" .
+
+om:includeRedacted a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "includeRedacted" .
+
+om:incrementalChangeDescription a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "incrementalChangeDescription" .
+
+om:index a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "index" .
+
+om:ingestedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ingestedAt" .
+
+om:ingestionRunner a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ingestionRunner" .
+
+om:inherited a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "inherited" .
+
+om:inheritedPersonas a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "inheritedPersonas" .
+
+om:inheritedRoles a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "inheritedRoles" .
+
+om:inputPort a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "inputPort" .
+
+om:inverse a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "inverse" .
+
+om:iri a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "iri" .
+
+om:isAdmin a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isAdmin" .
+
+om:isBot a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isBot" .
+
+om:isCurrent a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isCurrent" .
+
+om:isDeleted a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isDeleted" .
+
+om:isDeployed a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isDeployed" .
+
+om:isDisabled a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isDisabled" .
+
+om:isEmailVerified a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isEmailVerified" .
+
+om:isEnabled a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isEnabled" .
+
+om:isHidden a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isHidden" .
+
+om:isJoinable a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isJoinable" .
+
+om:isModifiedFromDefault a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isModifiedFromDefault" .
+
+om:isMutuallyExclusive a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isMutuallyExclusive" .
+
+om:isShared a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isShared" .
+
+om:isUnique a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isUnique" .
+
+om:joins a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "joins" .
+
+om:knowledgeBases a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "knowledgeBases" .
+
+om:labelType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "labelType" .
+
+om:lastActivityTime a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lastActivityTime" .
+
+om:lastLoginTime a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lastLoginTime" .
+
+om:lastModifiedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lastModifiedBy" .
+
+om:lastUsedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lastUsedAt" .
+
+om:latestResult a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "latestResult" .
+
+om:lifecycleAccessed a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lifecycleAccessed" .
+
+om:lifecycleCreated a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lifecycleCreated" .
+
+om:lifecycleUpdated a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lifecycleUpdated" .
+
+om:lineageUpdatedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lineageUpdatedBy" .
+
+om:literal a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "literal" .
+
+om:location a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "location" .
+
+om:locationPath a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "locationPath" .
+
+om:machineRepresentation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "machineRepresentation" .
+
+om:manifest a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "manifest" .
+
+om:maximumMessageSize a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "maximumMessageSize" .
+
+om:measures a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "measures" .
+
+om:memoryCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "memoryCount" .
+
+om:memoryScope a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "memoryScope" .
+
+om:memoryStats a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "memoryStats" .
+
+om:memoryType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "memoryType" .
+
+om:metrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "metrics" .
+
+om:minimumInSyncReplicas a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "minimumInSyncReplicas" .
+
+om:modelConfigurations a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modelConfigurations" .
+
+om:modelEvaluation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modelEvaluation" .
+
+om:modelProvider a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modelProvider" .
+
+om:modelSpecifications a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modelSpecifications" .
+
+om:modelType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modelType" .
+
+om:modelVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modelVersion" .
+
+om:models a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "models" .
+
+om:modifiedTime a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "modifiedTime" .
+
+om:name a rdf:Property ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:label "name" ;
+    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+
+om:nameSpace a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "nameSpace" .
+
+om:namespaces a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "namespaces" .
+
+om:nextDeadline a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "nextDeadline" .
+
+om:numberOfFiles a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "numberOfFiles" .
+
+om:numberOfSubDirectories a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "numberOfSubDirectories" .
+
+om:odcsElementExtensions a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "odcsElementExtensions" .
+
+om:odcsQualityRules a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "odcsQualityRules" .
+
+om:ontologyConfiguration a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ontologyConfiguration" .
+
+om:ontologySource a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ontologySource" .
+
+om:openMetadataServerConnection a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "openMetadataServerConnection" .
+
+om:operations a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "operations" .
+
+om:ordinalPosition a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ordinalPosition" .
+
+om:outputPort a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "outputPort" .
+
+om:page a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "page" .
+
+om:pageCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pageCount" .
+
+om:pageType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pageType" .
+
+om:paletteKey a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "paletteKey" .
+
+om:parent a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "parent" .
+
+om:parentMemory a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "parentMemory" .
+
+om:parentTemplate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "parentTemplate" .
+
+om:partOf a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "partOf" .
+
+om:performanceMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "performanceMetrics" .
+
+om:performanceStandards a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "performanceStandards" .
+
+om:permission a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "permission" .
+
+om:personaPreferences a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "personaPreferences" .
+
+om:personas a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "personas" .
+
+om:pinned a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pinned" .
+
+om:pipelineLocation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pipelineLocation" .
+
+om:pipelineObservability a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pipelineObservability" .
+
+om:pipelineType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pipelineType" .
+
+om:pipelines a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "pipelines" .
+
+om:policyType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "policyType" .
+
+om:portfolioPriority a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "portfolioPriority" .
+
+om:prefix a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "prefix" .
+
+om:primaryEntity a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "primaryEntity" .
+
+om:primaryModel a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "primaryModel" .
+
+om:privacyPolicyUrl a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "privacyPolicyUrl" .
+
+om:privateConfiguration a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "privateConfiguration" .
+
+om:processedLineage a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "processedLineage" .
+
+om:processingEngine a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "processingEngine" .
+
+om:processingError a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "processingError" .
+
+om:processingStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "processingStatus" .
+
+om:prompts a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "prompts" .
+
+om:propertyChain a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "propertyChain" .
+
+om:propertyIri a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "propertyIri" .
+
+om:propertyName a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "propertyName" .
+
+om:propertyType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "propertyType" .
+
+om:propertyValue a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "propertyValue" .
+
+om:protocolVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "protocolVersion" .
+
+om:providerModelId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "providerModelId" .
+
+om:qualityExpectations a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "qualityExpectations" .
+
+om:qualityMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "qualityMetrics" .
+
+om:queries a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "queries" .
+
+om:queryDuration a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "queryDuration" .
+
+om:queryExecutedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "queryExecutedAt" .
+
+om:queryUsedIn a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "queryUsedIn" .
+
+om:query_type a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "query_type" .
+
+om:question a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "question" .
+
+om:raiseOnError a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "raiseOnError" .
+
+om:range a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "range" .
+
+om:rdfPredicate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "rdfPredicate" .
+
+om:realizedIn a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "realizedIn" .
+
+om:recognizers a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "recognizers" .
+
+om:reference a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "reference" .
+
+om:references a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "references" .
+
+om:region a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "region" .
+
+om:regulatoryCompliance a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "regulatoryCompliance" .
+
+om:relatedEntities a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "relatedEntities" .
+
+om:relationshipType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "relationshipType" .
+
+om:remediationActions a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "remediationActions" .
+
+om:replacedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "replacedBy" .
+
+om:requestSchema a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "requestSchema" .
+
+om:requestSignature a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "requestSignature" .
+
+om:requestedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "requestedAt" .
+
+om:requestedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "requestedBy" .
+
+om:resourceType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "resourceType" .
+
+om:resources a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "resources" .
+
+om:retentionPeriod a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "retentionPeriod" .
+
+om:retentionSize a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "retentionSize" .
+
+om:reusedEntities a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "reusedEntities" .
+
+om:reviewTask a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "reviewTask" .
+
+om:reviewers a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "reviewers" .
+
+om:rootMemory a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "rootMemory" .
+
+om:rules a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "rules" .
+
+om:runningOn a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "runningOn" .
+
+om:runtime a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "runtime" .
+
+om:safetyMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "safetyMetrics" .
+
+om:scheduleType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "scheduleType" .
+
+om:schema a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "schema" .
+
+om:scimUserName a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "scimUserName" .
+
+om:scope a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "scope" .
+
+om:scopeTarget a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "scopeTarget" .
+
+om:security a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "security" .
+
+om:securityMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "securityMetrics" .
+
+om:semantics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "semantics" .
+
+om:serverInfo a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "serverInfo" .
+
+om:serverType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "serverType" .
+
+om:shareConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "shareConfig" .
+
+om:size a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "size" .
+
+om:sla a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sla" .
+
+om:sourceAssistantMessage a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceAssistantMessage" .
+
+om:sourceCode a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceCode" .
+
+om:sourceConversation a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceConversation" .
+
+om:sourceEntity a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceEntity" .
+
+om:sourceFile a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceFile" .
+
+om:sourceHash a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceHash" .
+
+om:sourceHumanMessage a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceHumanMessage" .
+
+om:sourceId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceId" .
+
+om:sourcePythonClass a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourcePythonClass" .
+
+om:sourceType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceType" .
+
+om:sourceVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceVersion" .
+
+om:sql a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sql" .
+
+om:startedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "startedAt" .
+
+om:state a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "state" .
+
+om:status a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "status" .
+
+om:steps a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "steps" .
+
+om:stewards a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "stewards" .
+
+om:storedProcedureType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "storedProcedureType" .
+
+om:style a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "style" .
+
+om:subjectIri a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "subjectIri" .
+
+om:summary a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "summary" .
+
+om:superClassOf a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "superClassOf" .
+
+om:supportEmail a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "supportEmail" .
+
+om:supportsIngestionRunner a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "supportsIngestionRunner" .
+
+om:supportsInterrupt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "supportsInterrupt" .
+
+om:system a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "system" .
+
+om:systemDefined a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "systemDefined" .
+
+om:systemPrompt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "systemPrompt" .
+
+om:tableProfilerConfig a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "tableProfilerConfig" .
+
+om:tables a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "tables" .
+
+om:tagFQN a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "tagFQN" .
+
+om:tagSource a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "tagSource" .
+
+om:tagState a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "tagState" .
+
+om:targetIri a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "targetIri" .
+
+om:teamType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "teamType" .
+
+om:templateBody a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "templateBody" .
+
+om:templateContent a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "templateContent" .
+
+om:templateSubject a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "templateSubject" .
+
+om:templateType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "templateType" .
+
+om:templateVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "templateVersion" .
+
+om:termCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "termCount" .
+
+om:termsOfUse a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "termsOfUse" .
+
+om:testConnectionResult a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "testConnectionResult" .
+
+om:testSuite a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "testSuite" .
+
+om:testSuites a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "testSuites" .
+
+om:timezone a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "timezone" .
+
+om:toColumnFqn a rdf:Property ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:label "toColumnFqn" ;
+    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+
+om:totalSize a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "totalSize" .
+
+om:trainingMetadata a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "trainingMetadata" .
+
+om:transformFunction a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "transformFunction" .
+
+om:transportType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "transportType" .
+
+om:triggeredBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "triggeredBy" .
+
+om:uiCustomization a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "uiCustomization" .
+
+om:undoCursor a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "undoCursor" .
+
+om:upstreamApplications a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "upstreamApplications" .
+
+om:usageCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageCount" .
+
+om:usageDailyCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageDailyCount" .
+
+om:usageDailyPercentile a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageDailyPercentile" .
+
+om:usageDate a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageDate" .
+
+om:usageMetrics a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageMetrics" .
+
+om:usageMonthlyCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageMonthlyCount" .
+
+om:usageMonthlyPercentile a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageMonthlyPercentile" .
+
+om:usageWeeklyCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageWeeklyCount" .
+
+om:usageWeeklyPercentile a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usageWeeklyPercentile" .
+
+om:usedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usedBy" .
+
+om:usedByAgents a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usedByAgents" .
+
+om:usedByApplications a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usedByApplications" .
+
+om:userCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "userCount" .
+
+om:usesMcpServer a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usesMcpServer" .
+
+om:usesTool a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "usesTool" .
+
+om:variables a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "variables" .
+
+om:violations a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "violations" .
+
+om:visibility a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "visibility" .
+
+om:webViewLink a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "webViewLink" .
+
+om:workflowType a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "workflowType" .
+
+om:worksheetId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "worksheetId" .

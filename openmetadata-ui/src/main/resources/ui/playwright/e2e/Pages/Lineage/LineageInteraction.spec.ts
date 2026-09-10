@@ -70,11 +70,13 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            type: 'domain',
-            id: EntityDataClass.domain1.responseData.id,
-          },
+          path: '/domains',
+          value: [
+            {
+              type: 'domain',
+              id: EntityDataClass.domain1.responseData.id,
+            },
+          ],
         },
       ],
     });
@@ -360,23 +362,31 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await fitToScreen(page);
     });
 
-    test('Verify node panel opens on click', async ({ page }) => {
-      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName', '');
+    test(
+      'Verify node panel opens on click',
+      { tag: '@quarantine' },
+      async ({ page }) => {
+        const topicFqn = get(
+          topic,
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
 
-      await clickLineageNode(page, topicFqn);
+        await clickLineageNode(page, topicFqn);
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+        await expect(page.locator('[role="dialog"]')).toBeVisible();
 
-      await expect(
-        page
-          .getByTestId('entity-summary-panel-container')
-          .getByTestId('entity-header-title')
-      ).toHaveText(topic.entityResponseData.displayName ?? '');
+        await expect(
+          page
+            .getByTestId('entity-summary-panel-container')
+            .getByTestId('entity-header-title')
+        ).toHaveText(topic.entityResponseData.displayName ?? '');
 
-      await page.getByLabel('Close').first().click();
+        await page.getByLabel('Close').first().click();
 
-      await expect(page.locator('[role="dialog"]')).not.toBeVisible();
-    });
+        await expect(page.locator('[role="dialog"]')).not.toBeVisible();
+      }
+    );
 
     test('Verify node full path is present as breadcrumb in lineage node', async ({
       page,

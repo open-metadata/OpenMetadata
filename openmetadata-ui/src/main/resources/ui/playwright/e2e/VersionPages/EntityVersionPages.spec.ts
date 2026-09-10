@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -30,6 +30,7 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -115,13 +116,15 @@ test.describe('Entity Version pages', () => {
           },
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.id,
-              type: 'domain',
-              name: domain.name,
-              description: domain.description,
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.id,
+                type: 'domain',
+                name: domain.name,
+                description: domain.description,
+              },
+            ],
           },
           ...(dataTypeDisplayPath
             ? [

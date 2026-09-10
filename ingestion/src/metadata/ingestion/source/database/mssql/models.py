@@ -10,8 +10,7 @@
 #  limitations under the License.
 """MSSQL models"""
 
-from enum import IntEnum
-from typing import Optional
+from enum import Enum, IntEnum
 
 from pydantic import BaseModel, Field
 
@@ -32,10 +31,41 @@ class QueryStoreState(IntEnum):
     ERROR = 3
 
 
+# sys.database_query_store_options.readonly_reason value that means the database is
+# a readable Availability Group secondary (SQL Server < 2025).  On such a replica the
+# Query Store contains the *primary*'s captured workload, not this node's, so we must
+# fall back to the plan-cache DMVs to see the secondary's actual query traffic.
+QUERY_STORE_READONLY_REASON_AG_SECONDARY = 8
+
+
 class MssqlStoredProcedure(BaseModel):
     """MSSQL stored procedure list query results"""
 
     name: str = Field(...)
-    owner: Optional[str] = Field(None)  # noqa: UP045
+    owner: str | None = Field(None)
     language: str = Field(Language.SQL)
-    definition: Optional[str] = Field(None)  # noqa: UP045
+    definition: str | None = Field(None)
+
+
+class SynonymUnresolvedReason(str, Enum):
+    """Why a discovered synonym could not be attached to a canonical table"""
+
+    UNRESOLVED = "Unresolved"
+    UNSUPPORTED_TARGET_TYPE = "UnsupportedTargetType"
+    REMOTE_TARGET_UNMAPPED = "RemoteTargetUnmapped"
+
+
+class MssqlSynonym(BaseModel):
+    """A row from sys.synonyms joined to sys.schemas"""
+
+    synonym_schema: str = Field(...)
+    synonym_name: str = Field(...)
+    base_object_name: str = Field(...)
+
+
+class MssqlSynonymTarget(BaseModel):
+    """The parsed three-part target a synonym resolves to"""
+
+    database: str = Field(...)
+    schema_name: str = Field(...)
+    table: str = Field(...)

@@ -14,7 +14,7 @@
 
 import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
-import { debounce, isNil } from 'lodash';
+import { debounce, escape, isNil } from 'lodash';
 import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
@@ -41,6 +41,7 @@ import {
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   suggestions,
   userMentionItemWithAvatar,
@@ -163,8 +164,12 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           return item.avatarEle;
         }
 
+        // Escape all search-index-sourced values (names are user-editable)
+        // before interpolating into the innerHTML template below
         const breadcrumbsData = item.breadcrumbs
-          ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
+          ? item.breadcrumbs
+              .map((obj: { name: string }) => escape(obj.name))
+              .join('/')
           : '';
 
         const breadcrumbEle = breadcrumbsData
@@ -173,21 +178,26 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = searchClassBase.getEntityIcon(item.type ?? '');
-
-        const iconString = ReactDOMServer.renderToString(icon ?? <></>);
+        const iconString = ReactDOMServer.renderToString(
+          searchClassBase.getEntityIconWithBg(
+            item.type ?? '',
+            EntityIconSize.Size14
+          )
+        );
 
         const typeSpan = !breadcrumbEle
-          ? `<span class="text-grey-muted text-xs">${item.type}</span>`
+          ? `<span class="text-grey-muted text-xs">${escape(item.type)}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${iconString}</div>
+          ${iconString}
           <div>
             ${breadcrumbEle}
             <div class="d-flex flex-col">
               ${typeSpan}
-              <span class="font-medium truncate w-56">${item.name}</span>
+              <span class="font-medium truncate w-56">${escape(
+                item.name
+              )}</span>
             </div>
           </div>
         </div>`;
@@ -225,9 +235,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             setTimeout(() => toggleMentionList(false), 0);
           },
           onSelect: (
-            item: Record<string, any>,
+            item: Record<string, unknown>,
 
-            insertItem: (item: Record<string, any>) => void
+            insertItem: (item: Record<string, unknown>) => void
           ) => {
             insertItem(item);
           },

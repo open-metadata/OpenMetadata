@@ -17,6 +17,7 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  isSameTooltipPosition,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -48,7 +49,7 @@ jest.mock('../ChartUtils', () => ({
 }));
 
 describe('prepareChartData', () => {
-  it('should resolve task-first incident metadata before legacy threads', () => {
+  it('should resolve incident metadata from tasks', () => {
     const incidentId = '3093dbee-196b-4284-9f97-7103063d0dd7';
     const task = {
       id: incidentId,
@@ -56,7 +57,6 @@ describe('prepareChartData', () => {
     } as Task;
 
     const result = prepareChartData({
-      entityThread: [],
       tasks: [task],
       testCaseParameterValue: [],
       testCaseResults: [
@@ -69,6 +69,21 @@ describe('prepareChartData', () => {
     });
 
     expect(result.data[0].task).toEqual(task);
+  });
+
+  it('should not attach an incident to results that have no incidentId', () => {
+    const result = prepareChartData({
+      tasks: [{ id: 'd0a1c3e2-6b64-4f2e-9a1a-3d0a5f8b7c22' } as Task],
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          testCaseStatus: TestCaseStatus.Success,
+          timestamp: 1720525804736,
+        },
+      ],
+    });
+
+    expect(result.data[0].task).toBeUndefined();
   });
 
   it('should prepare chart data correctly', () => {
@@ -115,7 +130,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -197,7 +212,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -259,7 +274,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -298,7 +313,7 @@ describe('prepareChartData', () => {
         },
       ],
       testCaseResults: [],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -337,7 +352,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -390,7 +405,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -444,7 +459,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -556,5 +571,28 @@ describe('getTestSummaryTooltipPosition', () => {
         tooltipSize: { height: 400, width: 900 },
       })
     ).toEqual({ x: 80, y: 16 });
+  });
+});
+
+describe('isSameTooltipPosition', () => {
+  it('should treat sub-pixel measurement noise as the same position', () => {
+    expect(
+      isSameTooltipPosition({ x: 516, y: 196 }, { x: 516.25, y: 195.75 })
+    ).toBe(true);
+  });
+
+  it('should treat a visible shift as a new position', () => {
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 520, y: 196 })).toBe(
+      false
+    );
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 204 })).toBe(
+      false
+    );
+  });
+
+  it('should treat an identical position as the same position', () => {
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 196 })).toBe(
+      true
+    );
   });
 });

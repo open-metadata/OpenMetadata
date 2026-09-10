@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
 import removeMarkdown from 'remove-markdown';
@@ -91,15 +92,18 @@ export const getQueryWithSlash = (query: string): string =>
   query.replaceAll(/["']/g, String.raw`\$&`);
 
 /**
- * Convert a template string into HTML DOM nodes
- * Same as React.createElement(type, options, children)
- * @param  {String} str The template string
- * @return {Node}       The template HTML
+ * Convert a template string into HTML DOM nodes.
+ * Input is sanitized with DOMPurify before being parsed to prevent stored
+ * XSS from stored user content (e.g. entity name/displayName) — see
+ * GHSA-59gm-6h39-397f. DOMPurify's default profile preserves the benign
+ * markup callers rely on (<span class>, <mark>, <em>, <ins>, <del>) while
+ * stripping <iframe>, <script>, event handler attributes, and
+ * javascript:/data: URLs.
  */
 export const stringToHTML = function (
   strHTML: string
 ): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(strHTML) : strHTML;
+  return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
 };
 
 /**
@@ -261,13 +265,14 @@ export const customServiceComparator = (a: string, b: string): number => {
  */
 export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
 
+// Looked up one character at a time by the character class in escapeESReservedCharacters,
+// so every key here must be a single character — a multi-character key would be unreachable.
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '+': String.raw`\+`,
   '-': String.raw`\-`,
   '=': String.raw`\=`,
   '&': String.raw`\&`,
-  '&&': String.raw`\&&`,
-  '||': String.raw`\||`,
+  '|': String.raw`\|`,
   '>': String.raw`\>`,
   '<': String.raw`\<`,
   '!': String.raw`\!`,

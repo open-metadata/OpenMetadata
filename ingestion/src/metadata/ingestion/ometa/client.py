@@ -14,9 +14,10 @@ Python API REST wrapper and helpers
 
 import time
 import traceback
+from collections.abc import Callable
 from contextlib import nullcontext
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Union, cast  # noqa: UP035
+from typing import Any, cast
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -53,6 +54,71 @@ class RestTransportError(Exception):
         self.method = method
         self.url = url
         self.cause = cause
+
+
+class HtmlResponseError(Exception):
+    """An HTML page came back where the API answers JSON.
+
+    The body is a web page, not an API response: the request reached a UI, a login
+    page or a proxy rather than the endpoint. Raised instead of handing the caller a
+    ``Response`` it would try to subscript.
+
+    ``REST`` is generic - connectors use it against third-party APIs too - so the
+    message stays provider-neutral. Callers that know which API they were talking to
+    pass a ``hint`` with the advice specific to it.
+    """
+
+    def __init__(self, url: object, status_code: int, hint: str | None = None) -> None:
+        super().__init__(
+            f"Got an HTML page instead of JSON from [{url}] (HTTP {status_code})."
+            " The endpoint served a web page, not an API response - check the configured"
+            " host/URL and that no proxy or login page is intercepting the call." + (f" {hint}" if hint else "")
+        )
+        self.url = url
+        self.status_code = status_code
+
+
+def is_html_body(resp: requests.Response) -> bool:
+    """Whether a non-JSON body is an HTML page.
+
+    Content type first; some proxies mislabel index.html as text/plain, so fall back
+    to sniffing an `<html` tag in the head of the body. CSV and ODCS-YAML exports are
+    legitimate non-JSON payloads and must not match.
+    """
+    if "html" in resp.headers.get("Content-Type", "").lower():
+        return True
+    head = resp.text[:2048].lstrip()
+    return head.startswith("<") and "<html" in head.lower()
+
+
+def _decode_body(resp: requests.Response, url: object, raise_on_html: bool = False):
+    """Decode a successful response body.
+
+    JSON when it parses; otherwise the ``Response`` itself, for the text payloads
+    some endpoints answer with (CSV and ODCS-YAML exports).
+
+    ``raise_on_html`` turns an HTML page into an ``HtmlResponseError`` instead. It
+    is opt-in because callers disagree on what HTML means: the OpenMetadata API
+    never answers it, but connectors share this client and some deliberately
+    tolerate a non-JSON reply on their ingestion path.
+    """
+    try:
+        return resp.json()
+    except JSONDecodeError as json_decode_error:
+        if raise_on_html and is_html_body(resp):
+            raise HtmlResponseError(url, resp.status_code) from json_decode_error
+        logger.debug(
+            "Non-JSON response (%s) from [%s] with content type [%s] returned as-is: %s",
+            resp.status_code,
+            url,
+            resp.headers.get("Content-Type", "unknown"),
+            json_decode_error,
+        )
+        return resp
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
+    return None
 
 
 class APIError(Exception):
@@ -116,28 +182,32 @@ class ClientConfig(ConfigModel):
     """
 
     base_url: str
-    api_version: Optional[str] = "v1"  # noqa: UP045
-    retry: Optional[int] = 3  # noqa: UP045
-    retry_wait: Optional[int] = 30  # noqa: UP045
-    limit_codes: List[int] = [429]  # noqa: RUF012, UP006
-    retry_codes: List[int] = [504]  # noqa: RUF012, UP006
-    auth_token: Optional[Callable] = None  # noqa: UP045
-    access_token: Optional[str] = None  # noqa: UP045
-    expires_in: Optional[int] = None  # noqa: UP045
-    auth_header: Optional[str] = None  # noqa: UP045
-    extra_headers: Optional[dict] = None  # noqa: UP045
-    user_agent: Optional[str] = None  # noqa: UP045
-    raw_data: Optional[bool] = False  # noqa: UP045
-    allow_redirects: Optional[bool] = False  # noqa: UP045
-    auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
-    verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
-    cookies: Optional[Any] = None  # noqa: UP045
+    api_version: str | None = "v1"
+    retry: int | None = 3
+    retry_wait: int | None = 30
+    limit_codes: list[int] = [429]  # noqa: RUF012
+    retry_codes: list[int] = [503, 504]  # noqa: RUF012
+    auth_token: Callable | None = None
+    access_token: str | None = None
+    expires_in: int | None = None
+    auth_header: str | None = None
+    extra_headers: dict | None = None
+    user_agent: str | None = None
+    raw_data: bool | None = False
+    allow_redirects: bool | None = False
+    # Treat an HTML body as an error rather than handing the caller the raw
+    # Response. Off by default: connectors share this client against third-party
+    # APIs, and some tolerate a non-JSON reply on purpose.
+    raise_on_html: bool = False
+    auth_token_mode: str | None = "Bearer"
+    verify: bool | str | None = None
+    cookies: Any | None = None
     ttl_cache: int = 60
     # (connect, read) seconds. Default prevents indefinite hangs when a pooled
     # socket is silently severed (NAT/LB idle reaping). Override with None to
     # disable, or pass a single int to use the same value for both.
-    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
-    cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
+    timeout: int | tuple[int, int] | None = (10, 300)
+    cert: str | tuple | None = None
 
 
 # pylint: disable=too-many-instance-attributes
@@ -174,18 +244,18 @@ class REST:
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
-    def _request(  # noqa: C901, pylint: disable=too-many-arguments,too-many-branches
+    def _request(  # noqa: C901
         self,
         method: str,
         path: str,
         data: Any = None,
         json: Any = None,
-        base_url: Optional[URL] = None,  # noqa: UP045
-        api_version: Optional[str] = None,  # noqa: UP045
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        retries: Optional[int] = None,  # noqa: UP045
-        retry_wait: Optional[int] = None,  # noqa: UP045
+        base_url: URL | None = None,
+        api_version: str | None = None,
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
+        retries: int | None = None,
+        retry_wait: int | None = None,
         raw: bool = False,
     ):
         # pylint: disable=too-many-locals
@@ -225,7 +295,7 @@ class REST:
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
         # Any header which is comming as extra header from client will overwrite the header with same name in headers
         if self.config.extra_headers:
-            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
+            extra_headers: dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             headers = {**headers, **extra_headers}
 
@@ -309,18 +379,7 @@ class REST:
                 return resp
 
             if resp.text != "":
-                try:
-                    return resp.json()
-                except JSONDecodeError as json_decode_error:
-                    logger.debug(
-                        "Non-JSON response (%s) returned as-is: %s",
-                        resp.status_code,
-                        json_decode_error,
-                    )
-                    return resp
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
+                return _decode_body(resp, url, self.config.raise_on_html)
 
         except HTTPError as http_error:
             # retry if we hit Rate Limit
@@ -336,6 +395,10 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
+        except HtmlResponseError:
+            # Already carries the actionable message; the catch-all below would
+            # downgrade it to a warning and hand the caller a None.
+            raise
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
@@ -372,9 +435,9 @@ class REST:
         self,
         path: str,
         data: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        retry_wait: Optional[int] = None,  # noqa: UP045
-        retries: Optional[int] = None,  # noqa: UP045
+        headers: dict | None = None,
+        retry_wait: int | None = None,
+        retries: int | None = None,
     ) -> requests.Response:
         """GET returning the raw ``Response`` so the caller can read its status.
 
@@ -394,9 +457,9 @@ class REST:
         path: str,
         data: Any = None,
         json: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        retries: Optional[int] = None,  # noqa: UP045
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
+        retries: int | None = None,
     ):
         """
         POST method
@@ -427,8 +490,8 @@ class REST:
         self,
         path: str,
         data: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
     ) -> bool:
         """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
         if path in self._limits_reached:
@@ -453,7 +516,7 @@ class REST:
             return False
         return 200 <= resp.status_code < 300
 
-    def _build_request_headers(self, headers: Optional[dict] = None):  # noqa: UP045
+    def _build_request_headers(self, headers: dict | None = None):
         """Reader-only headers builder. Does NOT refresh auth token —
         refresh stays on _request() to avoid concurrent refreshes from
         post_best_effort callers sharing ClientConfig."""
@@ -466,7 +529,7 @@ class REST:
                 else self.config.access_token
             )
         if self.config.extra_headers:
-            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
+            extra_headers: dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             headers = {**headers, **extra_headers}
         return headers
@@ -510,19 +573,20 @@ class REST:
             headers=request_headers,
         )
 
-    def delete(self, path, data=None, headers=None):
+    def delete(self, path, data=None, json=None, headers=None):
         """
         DELETE method
 
         Parameters:
             path (str):
             data ():
+            json (): Request body for the endpoints that take one (e.g. ``deleteStale``)
             headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("DELETE", path, data, headers=headers)
+        return self._request("DELETE", path, data, json=json, headers=headers)
 
     def __enter__(self):
         return self

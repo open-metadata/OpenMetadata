@@ -176,10 +176,11 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       "descriptionStatus = 'INCOMPLETE'"
     );
 
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.waitForResponse(
+    const descriptionChartResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await descriptionChartResponse;
 
     await page.getByTestId('explore-asset-with-no-owner').click();
     await page.waitForURL('/explore/tables?*');
@@ -268,7 +269,15 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await redirectToHomePage(page);
 
-    await waitForLandingPageWidget(page, 'kpi-widget');
+    // `kpi-widget` is a child of the KPI widget, not its layout key. The landing-page helper
+    // keys off the layout key — the testid the widget renders on its wrapper and the one its
+    // DeferredWidget slot is named after — so an inner testid reveals nothing.
+    const kpiWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.KPI'
+    );
+
+    await expect(kpiWidget.getByTestId('kpi-widget')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {

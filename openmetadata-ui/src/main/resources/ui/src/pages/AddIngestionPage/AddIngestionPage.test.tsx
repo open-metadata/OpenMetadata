@@ -17,6 +17,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useFqn } from '../../hooks/useFqn';
 import AddIngestionPage from './AddIngestionPage.component';
@@ -157,6 +158,28 @@ describe('Test AddIngestionPage component', () => {
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('AddIngestion')).toBeInTheDocument();
     expect(screen.getByText('ServiceDocPanel')).toBeInTheDocument();
+  });
+
+  it('should hand the scroll to the full-width panel, not the centred form body', async () => {
+    // Otherwise the blank margins beside the form belong to an overflow:hidden ancestor and the
+    // wheel does nothing there.
+    render(
+      <MemoryRouter
+        initialEntries={['/addIngestion/databaseServices/testIngestionType']}>
+        <Routes>
+          <Route
+            element={<AddIngestionPage {...mockProps} />}
+            path="/addIngestion/:serviceCategory/:ingestionType"
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const { firstPanel } = (ResizablePanels as jest.Mock).mock.calls[0][0];
+
+    expect(firstPanel.allowScroll).toBe(true);
   });
 
   it('should keep the next button disabled until the active step reports ready', async () => {

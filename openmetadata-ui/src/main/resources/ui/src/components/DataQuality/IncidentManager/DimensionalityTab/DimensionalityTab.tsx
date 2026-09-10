@@ -25,6 +25,7 @@ import {
 } from '../../../../constants/profiler.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
@@ -49,6 +50,7 @@ const TransWithComponents = ReactI18nextTrans as unknown as ComponentType<{
 
 const DimensionalityTab = () => {
   const { t } = useTranslation();
+  const location = useCustomLocation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const { testCase } = useTestCaseStore();
   const [dateRange, setDateRange] = useState(DEFAULT_RANGE_DATA);
@@ -219,6 +221,7 @@ const DimensionalityTab = () => {
           return (
             <Link
               className="tw:text-text-brand-secondary"
+              state={location.state}
               to={getTestCaseDimensionsDetailPagePath(
                 testCase?.fullyQualifiedName || '',
                 row.result.dimensionKey || ''
@@ -236,7 +239,7 @@ const DimensionalityTab = () => {
           return null;
       }
     },
-    [testCase?.fullyQualifiedName]
+    [location.state, testCase?.fullyQualifiedName]
   );
 
   const noDataPlaceholder = useMemo(() => {

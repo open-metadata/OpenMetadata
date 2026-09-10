@@ -19,6 +19,9 @@ from metadata.data_quality.validations.column.pandas.columnRuleLibrarySqlExpress
 from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator as SQAValidator,
 )
+from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
+    TableRuleLibrarySqlExpressionValidator as TableBaseValidator,
+)
 
 
 class TestReservedParams:
@@ -124,6 +127,48 @@ class TestBaseValidatorGetUserParams:
         result = base_validator._get_user_params()
 
         assert result == {"validParam": "validValue"}
+
+
+class TestBaseValidatorGetTableName:
+    @pytest.mark.parametrize(
+        "validator_class,entity_link,database_type,expected",
+        [
+            pytest.param(
+                BaseValidator,
+                "<#E::table::athena.default.sales.orders::columns::id>",
+                "Athena",
+                "sales.orders",
+                id="column-athena-skips-default-database",
+            ),
+            pytest.param(
+                TableBaseValidator,
+                "<#E::table::athena.default.sales.orders>",
+                "Athena",
+                "sales.orders",
+                id="table-athena-skips-default-database",
+            ),
+            pytest.param(
+                BaseValidator,
+                "<#E::table::postgres.warehouse.sales.orders::columns::id>",
+                "Postgres",
+                "warehouse.sales.orders",
+                id="column-postgres-keeps-database",
+            ),
+            pytest.param(
+                TableBaseValidator,
+                "<#E::table::postgres.warehouse.sales.orders>",
+                "Postgres",
+                "warehouse.sales.orders",
+                id="table-postgres-keeps-database",
+            ),
+        ],
+    )
+    def test_get_table_name(self, validator_class, entity_link, database_type, expected):
+        validator = validator_class.__new__(validator_class)
+        validator.test_case = Mock(entityLink=Mock(root=entity_link))
+        validator.runtime_params = Mock(conn_config=Mock(config=Mock(type=Mock(value=database_type))))
+
+        assert validator.get_table_name() == expected
 
 
 def _mock_sql_query(sql_string: str) -> Mock:

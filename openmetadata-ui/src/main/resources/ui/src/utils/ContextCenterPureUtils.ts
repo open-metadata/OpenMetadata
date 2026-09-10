@@ -27,9 +27,11 @@ import type {
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
+import { queryClient } from '../queryClient';
 import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from './ContextCenterQueryKeys';
 import EntityLink from './EntityLink';
 import { getEntityName } from './EntityNameUtils';
 import { showErrorToast } from './ToastUtils';
@@ -76,21 +78,25 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): KnowledgePageArticleItem => ({
-  description: data.description ?? '',
-  href:
-    data.pageType === PageType.QUICK_LINK
-      ? (data.page as QuickLink)?.url
-      : data.fullyQualifiedName
-      ? contextCenterClassBase.getArticlePath(data.fullyQualifiedName)
-      : undefined,
-  id: data.id,
-  lastEditedAt: data.updatedAt,
-  tags: (data.tags ?? []).map((tag) => ({
-    label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
-  })),
-  title: getEntityName(data) || untitledLabel,
-});
+): KnowledgePageArticleItem => {
+  let href: string | undefined;
+  if (data.pageType === PageType.QUICK_LINK) {
+    href = (data.page as QuickLink)?.url;
+  } else if (data.fullyQualifiedName) {
+    href = contextCenterClassBase.getArticlePath(data.fullyQualifiedName);
+  }
+
+  return {
+    description: data.description ?? '',
+    href,
+    id: data.id,
+    lastEditedAt: data.updatedAt,
+    tags: (data.tags ?? []).map((tag) => ({
+      label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
+    })),
+    title: getEntityName(data) || untitledLabel,
+  };
+};
 
 export const fetchContextCenterDocuments = async (
   params?: ListParams
@@ -120,6 +126,9 @@ export const createArticleKnowledgePage = async (
       pageType: PageType.ARTICLE,
     };
     const response = await postKnowledgePage(data);
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+    });
     onResourceLimit?.();
     navigate({
       hash: CREATE_PAGE_HASH,

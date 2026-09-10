@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 export type BotResponseDataType = {
@@ -78,10 +79,10 @@ export class BotClass {
     const response = await apiContext.post('/api/v1/bots', {
       data: this.data,
     });
-    const data = await response.json();
+    const data = await okJson(response, 'BotClass.create');
     this.responseData = data;
 
-    const userResponseData = await userResponse.json();
+    const userResponseData = await okJson(userResponse, 'BotClass.create');
     this.userData = userResponseData;
 
     return data;
@@ -96,18 +97,17 @@ export class BotClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/bots/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/bots/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'BotClass.patch');
 
-    return await response.json();
+    return await okJson(response, 'BotClass.patch');
   }
 }

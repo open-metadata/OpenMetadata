@@ -38,11 +38,30 @@ Applies to UI `*.{ts,tsx}`. Component/hook conventions in `frontend-react.md`; s
   Exception: `@openmetadata/ui-core-components` is consumed by bare package name — keep that.
 - **Never `import _ from 'lodash'` or `import * as _ from 'lodash'`.** Use named members only:
   `import { isEmpty, groupBy } from 'lodash';`.
-- **Lazy-load routes and heavy widgets** with `React.lazy` + `Suspense` (existing pattern:
-  `src/utils/CustomizeMyDataPageWidgetUtils.tsx`, `LineageProvider`). Anything importing a graph,
-  editor, chart, diff, or markdown renderer must be lazy — never in a route's top-level import.
+- **Lazy-load routes and heavy widgets** with `React.lazy`. Every lazy component must be passed to
+  an approved helper from `components/AppRouter/withSuspenseFallback`, or rendered in a real React
+  `Suspense` boundary with an explicit `fallback`. Anything importing a graph, editor, chart, diff,
+  or markdown renderer must be lazy — never in a route's top-level import.
+- **Router modules must not statically import page modules.** Runtime imports whose path contains
+  `pages/` must use `import()` so the page stays in a deferred chunk. Type-only imports are allowed.
+- Keep critical entity headers eager, then defer secondary tabs and expensive visualizations behind
+  the nearest useful loading boundary. Preserve `ref` behavior when wrapping a ref-sensitive lazy
+  component.
+- Prefer direct imports for pure utilities. Code splitting a small utility creates request overhead
+  without reducing meaningful render work.
 - Do not add a new dependency for something the repo already has, and never add a second UI
   component library (see `component-library.md`).
+
+## Loading and prefetching
+
+- Loading fallbacks belong at the smallest boundary that can render independently; avoid replacing
+  an entire page when only a secondary panel is deferred.
+- Prefetch only from a clear user signal or an established high-confidence navigation path. Do not
+  indiscriminately idle-prefetch settings, admin, graph, or editor chunks.
+- React Query prefetching is intentional cache warming: use the same query key and stale-time policy
+  as the destination query so it does not become a duplicate fetch.
+- When deferring extension or plugin requests, validate that no synchronous render path still needs
+  their data; moving the request later must not introduce a render-time waterfall.
 
 ## Re-renders
 
@@ -72,3 +91,38 @@ Applies to UI `*.{ts,tsx}`. Component/hook conventions in `frontend-react.md`; s
 - Never render the full result set and hide overflow with CSS.
 - Debounce/throttle search inputs, `resize`, and `scroll` handlers; passive listeners for scroll.
 - Guard against layout thrash: don't read `getBoundingClientRect` in a loop that also writes styles.
+
+## Caches
+
+- Every module-level `Map` or `Set` used as a cache must have an explicit numeric or named uppercase
+  size limit and an eviction path using `delete` or `clear`. Prefer LRU behavior when stale entries
+  are inexpensive to recreate.
+- Cache hits and misses both consume capacity. Bound negative-result caches as carefully as successful
+  results, and dispose retained browser resources such as textures when evicting them.
+- Before adding a UI cache, check whether the API client, React Query, or a lower layer already owns
+  the same data. Avoid parallel caches with different invalidation rules.
+
+## Mechanically enforced rules
+
+ESLint blocks these zero-backlog invariants:
+
+- `openmetadata-performance/no-eager-page-imports` in AppRouter modules.
+- `openmetadata-performance/require-suspense-fallback` for every React lazy call.
+- `openmetadata-performance/no-unbounded-module-cache` for module-level cache-like `Map` and `Set`
+  bindings.
+
+ESLint also reports these backlog-bearing invariants as non-blocking warnings:
+
+- Pure utilities cannot contain JSX or depend on React, UI/state layers, pages, hooks, or REST.
+- Lower layers cannot import pages; page features cannot import other page features; REST and hooks
+  cannot depend upward on UI layers.
+- Runtime circular imports and app-internal barrel imports are reported; type-only imports do not
+  create runtime cycle/barrel findings.
+- Lodash default/namespace imports, REST calls inside iteration, and potentially sequential REST
+  calls are reported for direct-import, bulk-fetch, or parallelization review.
+
+The exact rule names, measured baselines, and CI visibility are documented in
+`docs/ui-code-quality-gate.md`.
+
+Use a narrow `eslint-disable-next-line` only when a test deliberately exercises the boundary helper
+itself and therefore owns the fallback in the test case. Include the reason beside the suppression.

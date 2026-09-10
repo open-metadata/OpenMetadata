@@ -47,6 +47,7 @@ import java.net.URL;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -63,6 +64,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -85,6 +87,8 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
+  private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
+      Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -148,10 +152,21 @@ public class JwtFilter implements ContainerRequestFilter {
       List<String> jwtPrincipalClaims,
       String principalDomain,
       boolean enforcePrincipalDomain) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain, null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      AuthProvider providerType) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.providerType = providerType;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
@@ -190,16 +205,9 @@ public class JwtFilter implements ContainerRequestFilter {
           throw new AuthorizationException("Only bot users can impersonate other users");
         }
         impersonatedBy = userName;
-        try {
-          User impersonatedUser =
-              Entity.getEntityByName(Entity.USER, impersonateUser, "", Include.NON_DELETED);
-          userName = impersonatedUser.getName();
-          email = impersonatedUser.getEmail();
-        } catch (Exception e) {
-          LOG.warn("Impersonation target user not found: {}", impersonateUser);
-          throw new AuthenticationException(
-              "Cannot impersonate non-existent user: " + impersonateUser);
-        }
+        User impersonatedUser = resolveImpersonationTarget(impersonatedBy, impersonateUser);
+        userName = impersonatedUser.getName();
+        email = impersonatedUser.getEmail();
       }
 
       checkValidationsForToken(claims, tokenFromHeader, tokenKeyId, userName, impersonatedBy);
@@ -231,6 +239,27 @@ public class JwtFilter implements ContainerRequestFilter {
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
     }
+  }
+
+  /**
+   * Resolves the {@code X-Impersonate-User} target and authorizes the swap here, where the header
+   * is read, so the grant is enforced at the door and fails closed.
+   *
+   * <p>{@link Authorizer} entry points check this too. Both are needed: the authorizer covers the
+   * paths that reach it, and this covers the ones that never call an authorizer at all - which is
+   * how GHSA-3w33-vhhj-h357 slipped through {@code authorizeRequests}. The authorizer-side check is
+   * memoized per request, so the duplicate costs one extra lookup on impersonated requests only.
+   */
+  private User resolveImpersonationTarget(String botName, String targetName) {
+    User target;
+    try {
+      target = Entity.getEntityByName(Entity.USER, targetName, "", Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Impersonation target user not found: {}", targetName);
+      throw new AuthenticationException("Cannot impersonate non-existent user: " + targetName);
+    }
+    ImpersonationAuthorizer.authorize(botName, target);
+    return target;
   }
 
   public void checkValidationsForToken(
@@ -270,10 +299,13 @@ public class JwtFilter implements ContainerRequestFilter {
           enforcePrincipalDomain);
     }
 
-    // Validate Bot token matches what was created in OM
-    // Skip validation for impersonation tokens - they are generated dynamically and not stored in
-    // cache
-    if (impersonatedBy == null && isBot(claims)) {
+    // Validate Bot token matches what was created in OM. Under impersonation the presented token
+    // belongs to the impersonating bot (impersonatedBy), while userName is the target, so validate
+    // the bot's own token against its cache entry instead of skipping - otherwise a rotated (i.e.
+    // revoked) bot token keeps working as long as an X-Impersonate-User header is attached.
+    if (impersonatedBy != null) {
+      validateBotToken(tokenFromHeader, impersonatedBy);
+    } else if (isBot(claims)) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -412,17 +444,61 @@ public class JwtFilter implements ContainerRequestFilter {
             .getFreshSessionById(sessionId)
             .orElseThrow(
                 () -> AuthenticationException.getInvalidTokenException("Invalid session."));
-    if (session.getStatus() != SessionStatus.ACTIVE
+    // Existing access tokens remain usable while another request holds the refresh lease.
+    final boolean isAuthenticated =
+        session.getStatus() == SessionStatus.ACTIVE
+            || session.getStatus() == SessionStatus.REFRESHING;
+    if (!isAuthenticated
         || session.isExpired(System.currentTimeMillis())
         || nullOrEmpty(session.getUsername())
         || !session.getUsername().equalsIgnoreCase(userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
+    validateSessionProviderIsCurrent(session);
     try {
       sessionService.recordSessionAccess(session);
     } catch (Exception e) {
       LOG.warn("Failed to record session access for session {}", session.getId(), e);
     }
+  }
+
+  /**
+   * Sessions record the provider that authenticated them. Swapping {@code AUTHENTICATION_PROVIDER}
+   * decommissions that provider, so sessions minted under it must stop working immediately instead of
+   * living on until natural expiry — otherwise off-boarding a user by moving IdPs leaves their old
+   * token valid for up to a week. Checked per request against this pod's current config, so it holds
+   * on every pod without a session sweep.
+   */
+  private void validateSessionProviderIsCurrent(UserSession session) {
+    String sessionProvider = session.getProvider();
+    if (nullOrEmpty(sessionProvider) || providerType == null) {
+      return;
+    }
+    if (!isSameProvider(sessionProvider, providerType.value())) {
+      LOG.warn(
+          "Rejecting session {} issued by provider {} — the configured provider is now {}",
+          SessionService.truncateId(session.getId()),
+          sessionProvider,
+          providerType.value());
+      throw AuthenticationException.getInvalidTokenException(
+          "Session was issued by a provider that is no longer configured.");
+    }
+  }
+
+  /**
+   * {@code basic} and {@code openmetadata} are two historical names for the same native-password
+   * authenticator — {@code SecurityConfigurationManager.isNativePasswordProvider} treats them
+   * interchangeably and one servlet handler serves both. Renaming one to the other is not a provider
+   * swap and must not log the whole deployment out.
+   */
+  private static boolean isSameProvider(String sessionProvider, String configuredProvider) {
+    return sessionProvider.equalsIgnoreCase(configuredProvider)
+        || (isNativePasswordProviderValue(sessionProvider)
+            && isNativePasswordProviderValue(configuredProvider));
+  }
+
+  private static boolean isNativePasswordProviderValue(String provider) {
+    return NATIVE_PASSWORD_PROVIDER_VALUES.contains(provider.toLowerCase(Locale.ROOT));
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {

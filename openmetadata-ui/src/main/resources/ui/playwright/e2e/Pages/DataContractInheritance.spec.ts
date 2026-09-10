@@ -71,15 +71,26 @@ const DATA_PRODUCT_SLA = {
 const fillContractDetailsForm = async (
   page: Page,
   contractName: string,
-  description: string
+  description: string,
+  status?: 'Draft' | 'In Review' | 'Approved'
 ) => {
   await page.getByTestId('contract-name').fill(contractName);
   await page.fill('.om-block-editor[contenteditable="true"]', description);
 
   await page.getByTestId('select-owners').click();
-  await page.locator('.rc-virtual-list-holder-inner li').first().click();
+  const firstOwner = page.getByTestId('owner-option').first();
+  await expect(firstOwner).toBeVisible();
+  await firstOwner.click();
 
   await expect(page.getByTestId('user-tag')).toBeVisible();
+
+  if (status) {
+    await page.getByTestId('contract-status').click();
+    await expect(
+      page.locator(`.contract-status-dropdown [title="${status}"]`)
+    ).toBeVisible();
+    await page.locator(`.contract-status-dropdown [title="${status}"]`).click();
+  }
 };
 
 const fillTermsOfServiceForm = async (page: Page, termsContent: string) => {
@@ -99,13 +110,13 @@ const fillSemanticsForm = async (
   const ruleLocator = page.locator('.group').nth(0);
   await selectOption(
     page,
-    ruleLocator.locator('.group--field .ant-select'),
+    ruleLocator.locator('.group--field'),
     semanticsData.rules[0].field,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.locator('.rule--operator'),
     semanticsData.rules[0].operator
   );
 
@@ -266,11 +277,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -280,11 +293,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -294,11 +309,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -308,11 +325,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -322,11 +341,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -336,11 +357,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -350,11 +373,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -364,11 +389,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -422,7 +449,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DATA_PRODUCT_CONTRACT_DETAILS.name,
-        DATA_PRODUCT_CONTRACT_DETAILS.description
+        DATA_PRODUCT_CONTRACT_DETAILS.description,
+        'Approved'
       );
     });
 
@@ -547,7 +575,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_partial_${uuid()}`,
-        'Data Product contract for partial inheritance'
+        'Data Product contract for partial inheritance',
+        'Approved'
       );
     });
 
@@ -665,7 +694,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_sla_edit_test_${uuid()}`,
-        'Data Product contract with SLA for edit test'
+        'Data Product contract with SLA for edit test',
+        'Approved'
       );
     });
 
@@ -842,7 +872,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
@@ -982,7 +1013,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1051,7 +1083,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1132,7 +1165,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1151,15 +1185,20 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Verify asset shows inherited contract', async () => {
-      await tableForRemoveAssetTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify the inherited contract is displayed
-      await expect(page.getByTestId('contract-title')).toContainText(
-        DP_CONTRACT_DETAILS.name
-      );
+      // Contract inheritance propagates asynchronously after the /assets/add
+      // response returns — the search index and the entity's dataProducts field
+      // update on separate event-bus consumers. Reload until the inherited
+      // contract surfaces rather than asserting once and burning 300s on a
+      // stale first paint (which was cascading the whole shard).
+      await expect(async () => {
+        await tableForRemoveAssetTest.visitEntityPage(page);
+        await openContractTab(page);
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('contract-title')).toContainText(
+          DP_CONTRACT_DETAILS.name,
+          { timeout: 5_000 }
+        );
+      }).toPass({ timeout: 30_000, intervals: [2_000, 3_000, 5_000] });
 
       // Verify the inherited icon is shown
       await expect(
@@ -1227,7 +1266,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);

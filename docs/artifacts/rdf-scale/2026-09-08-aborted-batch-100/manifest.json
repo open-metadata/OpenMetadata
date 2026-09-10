@@ -1,0 +1,46 @@
+{
+  "productionCommit": "1f71a22556f4982c62540ee5381672526bbf0fe6",
+  "outcome": "operator-aborted-storage-growth",
+  "workload": {
+    "tables": 200000,
+    "edges": 2000000,
+    "wideEvery": 100,
+    "wideColumns": 500,
+    "detailedEvery": 100
+  },
+  "compression": "JSONL files use gzip with mtime=0; JSON files are unchanged",
+  "files": [
+    {
+      "source": "report.json",
+      "published": "report.json",
+      "sourceBytes": 40168,
+      "sourceSha256": "9cb15ffe4bfa4590afe4fa7c1bdadfc0ef539cc948668a8f76d47bd1e2f8fd55",
+      "publishedBytes": 40168,
+      "publishedSha256": "9cb15ffe4bfa4590afe4fa7c1bdadfc0ef539cc948668a8f76d47bd1e2f8fd55"
+    },
+    {
+      "source": "resources.jsonl",
+      "published": "resources.jsonl.gz",
+      "sourceBytes": 103904,
+      "sourceSha256": "4b78339e087378c666f7ae6a6eb24c9a75d5448b5e7e5f40d7ad4c588923dc27",
+      "publishedBytes": 17135,
+      "publishedSha256": "e27767c83aa425af299fa77ca85cf128553b996fce1b221eab12ce248352c32d"
+    },
+    {
+      "source": "aborted-attempt.json",
+      "published": "aborted-attempt.json",
+      "sourceBytes": 35982,
+      "sourceSha256": "61ed4eadbdc6d8b08991e74090c11069da9f45eb7c1d7b1e9e44b0b5a1f41f51",
+      "publishedBytes": 35982,
+      "publishedSha256": "61ed4eadbdc6d8b08991e74090c11069da9f45eb7c1d7b1e9e44b0b5a1f41f51"
+    },
+    {
+      "source": "progress.jsonl",
+      "published": "progress.jsonl.gz",
+      "sourceBytes": 736,
+      "sourceSha256": "57bfb8ce54194500ee0f62024a65d5e7c3cc14d3e29ec0d81a064525a6abdcef",
+      "publishedBytes": 259,
+      "publishedSha256": "417e617287193e00a29d3bcbf2129d610cc7cc0cdf9171a656035af5eb91efd1"
+    }
+  ]
+}

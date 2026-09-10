@@ -12,13 +12,13 @@
 Factory for creating Presidio recognizers from OpenMetadata recognizer configurations.
 """
 
-import re  # noqa: I001
-from typing import Any, Callable, Dict, List, Optional, cast  # noqa: UP035
+import re
+from collections.abc import Callable
+from typing import Any, cast
 
-from presidio_analyzer import EntityRecognizer
+from presidio_analyzer import EntityRecognizer, predefined_recognizers
 from presidio_analyzer import Pattern as PresidioPattern
 from presidio_analyzer import PatternRecognizer as PresidioPatternRecognizer
-from presidio_analyzer import predefined_recognizers
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.contextRecognizer import ContextRecognizer
@@ -43,7 +43,7 @@ class PresidioRecognizerFactory:
     """Factory for creating Presidio recognizers from OpenMetadata configurations."""
 
     @staticmethod
-    def create_recognizer(recognizer_config: Recognizer, tag_fqn: str = "Unknown") -> Optional[EntityRecognizer]:  # noqa: UP045
+    def create_recognizer(recognizer_config: Recognizer, tag_fqn: str = "Unknown") -> EntityRecognizer | None:
         """
         Create a Presidio recognizer from an OpenMetadata recognizer configuration.
 
@@ -73,7 +73,7 @@ class PresidioRecognizerFactory:
             logger.warning(f"Unknown recognizer type for {recognizer_config.name}")
             return None
 
-        decorators: List[Callable[[EntityRecognizer], EntityRecognizer]] = [  # noqa: UP006
+        decorators: list[Callable[[EntityRecognizer], EntityRecognizer]] = [
             enhance_using_context,
         ]
 
@@ -86,7 +86,7 @@ class PresidioRecognizerFactory:
         return recognizer
 
     @staticmethod
-    def _get_regex_flags(flags: Optional[RegexFlags]) -> Optional[int]:  # noqa: UP045
+    def _get_regex_flags(flags: RegexFlags | None) -> int | None:
         if flags is None:
             return re.IGNORECASE | re.DOTALL | re.MULTILINE
 
@@ -107,7 +107,7 @@ class PresidioRecognizerFactory:
         tag_fqn: str,
     ) -> PresidioPatternRecognizer:
         """Create a pattern-based recognizer."""
-        patterns: List[PresidioPattern] = []  # noqa: UP006
+        patterns: list[PresidioPattern] = []
         for pattern_config in config.patterns:
             patterns.append(  # noqa: PERF401
                 PresidioPattern(
@@ -131,7 +131,7 @@ class PresidioRecognizerFactory:
         config: ExactTermsRecognizer, recognizer_config: Recognizer, tag_fqn: str
     ) -> PresidioPatternRecognizer:
         """Create an exact terms recognizer using patterns."""
-        patterns: List[PresidioPattern] = []  # noqa: UP006
+        patterns: list[PresidioPattern] = []
         for value in config.exactTerms:
             escaped_value = re.escape(value)
 
@@ -156,7 +156,7 @@ class PresidioRecognizerFactory:
         config: ContextRecognizer, recognizer_config: Recognizer, tag_fqn: str
     ) -> PresidioPatternRecognizer:
         """Create a context-aware recognizer."""
-        context_patterns: List[PresidioPattern] = []  # noqa: UP006
+        context_patterns: list[PresidioPattern] = []
 
         for context_word in config.contextWords:
             pattern = f"(?i)(?:{context_word})\\s+\\w+|\\w+\\s+(?:{context_word})"
@@ -179,7 +179,7 @@ class PresidioRecognizerFactory:
     def _create_custom_recognizer(
         config: CustomRecognizer,  # pyright: ignore[reportUnusedParameter]
         recognizer_config: Recognizer,
-    ) -> Optional[EntityRecognizer]:  # noqa: UP045
+    ) -> EntityRecognizer | None:
         """
         Create a custom recognizer with user-defined logic.
 
@@ -197,7 +197,7 @@ class PresidioRecognizerFactory:
     def _create_predefined_recognizer(
         config: PredefinedRecognizer,
         recognizer: Recognizer,  # pyright: ignore[reportUnusedParameter]
-    ) -> Optional[EntityRecognizer]:  # noqa: UP045
+    ) -> EntityRecognizer | None:
         """Create a custom recognizer with user-defined logic."""
         try:
             predefined_class = getattr(predefined_recognizers, config.name.value)
@@ -221,7 +221,7 @@ class PresidioRecognizerFactory:
         return factory(**args)
 
     @staticmethod
-    def create_recognizers_for_tag(tag: Tag) -> List[EntityRecognizer]:  # noqa: UP006
+    def create_recognizers_for_tag(tag: Tag) -> list[EntityRecognizer]:
         """
         Create all enabled recognizers for a given tag.
 
@@ -231,7 +231,7 @@ class PresidioRecognizerFactory:
         Returns:
             List of Presidio EntityRecognizer instances
         """
-        recognizers: List[EntityRecognizer] = []  # noqa: UP006
+        recognizers: list[EntityRecognizer] = []
 
         if not tag.autoClassificationEnabled or not tag.recognizers:
             return recognizers
@@ -255,9 +255,9 @@ class RecognizerRegistry:
     """Registry for managing custom recognizers from OpenMetadata."""
 
     def __init__(self):
-        self.recognizers: Dict[str, List[EntityRecognizer]] = {}  # noqa: UP006
-        self.tag_priority: Dict[str, int] = {}  # noqa: UP006
-        self.tag_confidence_threshold: Dict[str, float] = {}  # noqa: UP006
+        self.recognizers: dict[str, list[EntityRecognizer]] = {}
+        self.tag_priority: dict[str, int] = {}
+        self.tag_confidence_threshold: dict[str, float] = {}
 
     def register_tag_recognizers(self, tag: Tag) -> None:
         """
@@ -285,11 +285,11 @@ class RecognizerRegistry:
                 min_confidence = min(min_confidence, recognizer_config.confidenceThreshold)
         self.tag_confidence_threshold[tag_fqn] = min_confidence
 
-    def get_recognizers_for_tag(self, tag_fqn: str) -> List[EntityRecognizer]:  # noqa: UP006
+    def get_recognizers_for_tag(self, tag_fqn: str) -> list[EntityRecognizer]:
         """Get all recognizers registered for a tag."""
         return self.recognizers.get(tag_fqn, [])
 
-    def get_all_recognizers(self) -> List[EntityRecognizer]:  # noqa: UP006
+    def get_all_recognizers(self) -> list[EntityRecognizer]:
         """Get all registered recognizers across all tags."""
         all_recognizers: list[EntityRecognizer] = []
         for recognizers in self.recognizers.values():

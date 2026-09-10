@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   ButtonUtility,
   Card,
@@ -20,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { OwnerType } from '../../../enums/user.enum';
@@ -57,8 +57,10 @@ import {
 import { Trash01 } from '@untitledui/icons';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 
 export interface KnowledgeCardProps {
@@ -70,6 +72,86 @@ export interface KnowledgeCardProps {
   onRefreshTagsCategory?: (value: boolean) => void;
   readonly?: boolean;
 }
+
+interface KnowledgeCardFooterProps {
+  owners: KnowledgePage['owners'];
+  firstDomain?: NonNullable<KnowledgePage['domains']>[number];
+  tags: KnowledgePage['tags'];
+}
+
+const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
+  owners,
+  firstDomain,
+  tags,
+}) => {
+  const tagList = tags ?? [];
+
+  return (
+    <Box
+      align="center"
+      className="tw:pt-2"
+      data-testid="knowledge-footer"
+      gap={3}>
+      {owners?.[0] ? (
+        <UserPopOverCard
+          showUserName
+          className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
+          displayName={getEntityName(owners?.[0])}
+          profileWidth={20}
+          type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+          userName={owners?.[0].name || owners?.[0].displayName}
+        />
+      ) : (
+        <Typography
+          className="tw:text-utility-gray-400"
+          data-testid="owner-name"
+          size="text-xs"
+          weight="medium">
+          {t('label.no-entity', { entity: t('label.owner') })}
+        </Typography>
+      )}
+
+      <Dot className="tw:text-fg-quaternary" size="micro" />
+      <div className="tw:max-w-40 tw:mb-0.5">
+        <Typography
+          ellipsis
+          className={
+            firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
+          }
+          data-testid="domain-name"
+          size="text-xs"
+          weight="medium">
+          {firstDomain?.displayName ??
+            firstDomain?.name ??
+            t('label.no-entity', { entity: t('label.domain') })}
+        </Typography>
+      </div>
+
+      <span className="tw:flex-1" />
+      <Box align="center" className="tw:gap-1.5">
+        {tagList.slice(0, 2).map((tag) => (
+          <TagChip
+            icon={tag.style?.iconURL}
+            key={String(tag.tagFQN ?? '')}
+            label={getEntityName(tag)}
+            maxWidth={120}
+            size="small"
+            tagColor={tag.style?.color}
+            variant="blueGray"
+          />
+        ))}
+        {tagList.length > 2 && (
+          <Typography
+            className="tw:text-secondary tw:whitespace-nowrap"
+            size="text-xs"
+            weight="medium">
+            +{tagList.length - 2}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
 
 const KnowledgeCard: FC<KnowledgeCardProps> = ({
   knowledgeItem,
@@ -273,73 +355,11 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
 
         {/* Row 4: owner · dot · domain · spacer → tags */}
-        <Box
-          align="center"
-          className="tw:pt-2"
-          data-testid="knowledge-footer"
-          gap={3}>
-          {owners?.[0] ? (
-            <UserPopOverCard
-              showUserName
-              className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
-              displayName={getEntityName(owners?.[0])}
-              profileWidth={20}
-              type={
-                owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER
-              }
-              userName={owners?.[0].name || owners?.[0].displayName}
-            />
-          ) : (
-            <Typography
-              className="tw:text-utility-gray-400"
-              data-testid="owner-name"
-              size="text-xs"
-              weight="medium">
-              {t('label.no-entity', { entity: t('label.owner') })}
-            </Typography>
-          )}
-
-          <Dot className="tw:text-fg-quaternary" size="micro" />
-          <div className="tw:max-w-40 tw:mb-0.5">
-            <Typography
-              ellipsis
-              className={
-                firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
-              }
-              data-testid="domain-name"
-              size="text-xs"
-              weight="medium">
-              {firstDomain?.displayName ??
-                firstDomain?.name ??
-                t('label.no-entity', { entity: t('label.domain') })}
-            </Typography>
-          </div>
-
-          <span className="tw:flex-1" />
-          <Box align="center" className="tw:gap-1.5">
-            {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
-              <Badge
-                className="tw:max-w-30"
-                key={String(tag.tagFQN ?? '')}
-                size="md"
-                type="modern">
-                <Typography
-                  ellipsis
-                  className="tw:text-secondary"
-                  size="text-xs">
-                  {getEntityName(tag)}
-                </Typography>
-              </Badge>
-            ))}
-            {(knowledgePage.tags ?? []).length > 2 && (
-              <Badge size="md" type="modern">
-                <Typography className="tw:text-secondary" size="text-xs">
-                  +{(knowledgePage.tags ?? []).length - 2}
-                </Typography>
-              </Badge>
-            )}
-          </Box>
-        </Box>
+        <KnowledgeCardFooter
+          firstDomain={firstDomain}
+          owners={owners}
+          tags={knowledgePage.tags}
+        />
       </Link>
 
       {showAddLinkModal && (
@@ -366,6 +386,9 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           setIsDeleting(true);
           try {
             await deleteKnowledgePage(knowledgePage.id, false, true);
+            queryClient.invalidateQueries({
+              queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+            });
             removeDraft(knowledgePage.id);
             afterDeleteAction(false);
           } catch (error) {

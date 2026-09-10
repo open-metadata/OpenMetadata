@@ -8,15 +8,21 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx}"
 Applies to UI `*.{ts,tsx}`. Styling/tokens are in `frontend-styling.md`; component-library choice in
 `component-library.md`; strings/i18n in `i18n.md`; Playwright in `frontend-playwright.md`. For the
 **formatting procedure** invoke the `ui-checkstyle` skill — do not hand-edit formatting.
-Compliant reference: `openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardNew/ActivityFeedcardNew.component.tsx`
-with its interface in a sibling `*.interface.ts`; forms reference
-`openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
+**Folder structure and file naming for new code:
+`openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md`** — read it before creating any new
+file. Forms reference `openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
 
 ## Component patterns
 
-- **File naming**: components `ComponentName.component.tsx`, interfaces `ComponentName.interface.ts`
-  (props interfaces live in the `.interface.ts` file). *(Adherence is partial across the tree; follow
-  it for new files.)*
+- **Folder structure**: layers stay top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`);
+  inside each, group by `domain/feature/` — `components/governance/glossary/GlossaryList/`. Domains:
+  `discovery`, `governance`, `observability`, `insights`, `platform`; cross-cutting features
+  (`lineage`, `data-contract`, `entity`, `activity-feed`) sit at the domain level, not inside one.
+- **File naming (new code)**: one stem, suffix = role — `GlossaryList.tsx`, `.types.ts`, `.utils.ts`,
+  `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`. Pure logic goes in `*.utils.ts` (no React,
+  no JSX) so it is testable without rendering.
+  *(Legacy uses `.component.tsx`/`.interface.ts` — don't rename; the suffix marks migration status.)*
+- **No `index.ts` barrel** inside a component folder — `no-internal-barrel-imports` reports it.
 - **Functional components only** — no class components.
 - **State**: `useState` with proper typing; multiple loading states as one object
   (`useState<Record<string, boolean>>({})`).

@@ -70,6 +70,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.SchemaFieldExtractor;
@@ -105,9 +106,14 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      repository.populateRegistryFromDatabase();
+      return;
+    }
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
-    List<Type> types = JsonUtils.getTypes();
+    List<Type> types =
+        JsonUtils.getTypes(ignored -> SeedDataGate.getInstance().recordSeedFailure());
     types.forEach(
         type -> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
@@ -129,6 +135,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
             this.repository.addToRegistry(type);
           } catch (Exception e) {
+            SeedDataGate.getInstance().recordSeedFailure();
             LOG.error("Error loading type {}", type.getName(), e);
           }
         });

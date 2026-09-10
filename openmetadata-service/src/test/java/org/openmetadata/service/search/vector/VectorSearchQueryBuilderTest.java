@@ -59,6 +59,41 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testContextMemoryScopingFiltersReachTheQuery() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of(Entity.CONTEXT_MEMORY),
+            "sourceType", List.of("FileExtraction"),
+            "visibility", List.of(MemoryVisibility.SHARED.value()));
+
+    String query =
+        VectorSearchQueryBuilder.build(new float[] {0.1f, 0.2f}, 10, 0, 100, filters, 0.0);
+
+    JsonNode must =
+        MAPPER
+            .readTree(query)
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+    assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
+    assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
+    boolean found = false;
+    for (JsonNode clause : mustClauses) {
+      if (value.equals(clause.path("term").path(field).asText(null))) {
+        found = true;
+        break;
+      }
+    }
+    return found;
+  }
+
+  @Test
   void testBuildsValidQueryWithNoFilters() throws Exception {
     float[] vector = {0.1f, 0.2f, 0.3f};
     int size = 10;
