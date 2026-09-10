@@ -13,53 +13,12 @@
 import { isNil, startCase } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
+import { LimitConfig, ResourceLimit } from '../../rest/limitsAPI.interface';
+
+export type { LimitConfig, ResourceLimit };
 
 const ERROR_SUB_HEADER =
   'You have used {{currentCount}} out of {{limit}} of the {{resource}} resource.';
-
-export interface ResourceLimit {
-  featureLimitStatuses: Array<{
-    configuredLimit: {
-      name: string;
-      maxVersions?: number;
-      disableFields?: Array<string>;
-      disabledFields?: Array<string>;
-      limits: {
-        softLimit: number;
-        hardLimit: number;
-      };
-    };
-    limitReached: boolean;
-    currentCount: number;
-    name: string;
-  }>;
-}
-
-export type LimitConfig = {
-  enable: boolean;
-  limits: {
-    config: {
-      version: string;
-      plan: string;
-      installationType: string;
-      deployment: string;
-      companyName: string;
-      domain: string;
-      instances: number;
-      featureLimits: Array<{
-        name: string;
-        maxVersions: number;
-        versionHistory: number;
-        limits: {
-          softLimit: number;
-          hardLimit: number;
-        };
-        disableFields: Array<string>;
-        pipelineSchedules?: Array<string>;
-      }>;
-    };
-  };
-};
 
 export type BannerDetails = {
   header: string;
@@ -87,6 +46,14 @@ const buildDisabledResourceLimit = (
   },
 });
 
+const computeLimitStatus = (
+  limits: { softLimit: number; hardLimit: number },
+  currentCount: number
+) => ({
+  softLimitExceed: limits.softLimit !== -1 && currentCount >= limits.softLimit,
+  hardLimitExceed: limits.hardLimit !== -1 && currentCount >= limits.hardLimit,
+});
+
 const maybeShowLimitBanner = (
   rLimit: ResourceLimit['featureLimitStatuses'][number],
   resource: string,
@@ -101,10 +68,10 @@ const maybeShowLimitBanner = (
     limitReached,
   } = rLimit;
 
-  const softLimitExceed =
-    limits.softLimit !== -1 && currentCount >= limits.softLimit;
-  const hardLimitExceed =
-    limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+  const { softLimitExceed, hardLimitExceed } = computeLimitStatus(
+    limits,
+    currentCount
+  );
   const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
 
   if (isAnyLimitExceeded && showBanner) {
