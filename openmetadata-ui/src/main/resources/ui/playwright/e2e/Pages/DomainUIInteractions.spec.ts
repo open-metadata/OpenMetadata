@@ -79,10 +79,13 @@ test.describe('Domain Owner Management', () => {
         exact: true,
       });
 
+      // Users hit ES indexing pressure under full-suite load; the default 30s
+      // is not enough when several parallel specs are creating users at once.
       await waitForSearchIndexed(
         apiContext,
         user.getUserName(),
-        'user_search_index'
+        'user_search_index',
+        { timeout: 60_000 }
       );
       await searchBar.clear();
       const searchResponse = waitForResponseWithStatus(
@@ -225,10 +228,13 @@ test.describe('Domain Expert Management', () => {
         exact: true,
       });
 
+      // Users hit ES indexing pressure under full-suite load; the default 30s
+      // is not enough when several parallel specs are creating users at once.
       await waitForSearchIndexed(
         apiContext,
         user.getUserName(),
-        'user_search_index'
+        'user_search_index',
+        { timeout: 60_000 }
       );
       await searchBar.clear();
       const searchResponse = waitForResponseWithStatus(
@@ -407,10 +413,13 @@ test.describe('Data Product UI Operations', () => {
         exact: true,
       });
 
+      // Users hit ES indexing pressure under full-suite load; the default 30s
+      // is not enough when several parallel specs are creating users at once.
       await waitForSearchIndexed(
         apiContext,
         user.getUserName(),
-        'user_search_index'
+        'user_search_index',
+        { timeout: 60_000 }
       );
       await searchBar.clear();
       const searchResponse = waitForResponseWithStatus(

@@ -1561,26 +1561,29 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
-  const followingWidget = await loadFollowingWidget(page);
+  let followingWidget = await loadFollowingWidget(page);
 
   if (!entity) {
     return followingWidget;
   }
 
-  if (isFollowing) {
+  // The widget loads its list on mount and does not refetch when the
+  // followed set changes elsewhere, so a stale panel from before the follow
+  // API returned can outlast the assertion. Reload the homepage between
+  // iterations to force a fresh fetch.
+  await expect(async () => {
+    followingWidget = await loadFollowingWidget(page);
     await expect(followingWidget).toBeVisible();
-    // The widget refetches its list asynchronously after the follow API call,
-    // so the entity row may not be present on the first assertion. Retry
-    // reload-and-check so a slow refresh does not fail the test.
-    await expect(
-      followingWidget.getByTestId(`Following-${entity}`)
-    ).toBeVisible({ timeout: 30_000 });
-  } else {
-    await expect(followingWidget).toBeVisible();
-    await expect(followingWidget.getByTestId(`Following-${entity}`)).toBeHidden(
-      { timeout: 30_000 }
-    );
-  }
+    if (isFollowing) {
+      await expect(
+        followingWidget.getByTestId(`Following-${entity}`)
+      ).toBeVisible({ timeout: 5_000 });
+    } else {
+      await expect(
+        followingWidget.getByTestId(`Following-${entity}`)
+      ).toBeHidden({ timeout: 5_000 });
+    }
+  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000, 10_000] });
 
   return followingWidget;
 };

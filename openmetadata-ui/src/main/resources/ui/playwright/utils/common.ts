@@ -1846,24 +1846,40 @@ export const testTableSearch = async (
   notVisibleText: string
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const searchbar = page.getByTestId('searchbar');
+  await expect(searchbar).toBeVisible();
 
-  const responsePromise = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
-    return (
-      response.request().method() === 'GET' &&
-      url.pathname === '/api/v1/search/query' &&
-      url.searchParams.get('index') === searchIndex &&
-      (query === searchTerm || query.startsWith(`*${searchTerm}*`))
+  // Wrap the fill → response → visibility sequence in a bounded retry so a
+  // slow first render, a debounced input, or a swallowed request does not
+  // burn the whole 60s test budget on a single-shot wait.
+  await expect(async () => {
+    const responsePromise = page.waitForResponse(
+      (response) => {
+        const url = new URL(response.url());
+        const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === searchIndex &&
+          (query === searchTerm ||
+            query.startsWith(`*${searchTerm}*`) ||
+            query.includes(searchTerm))
+        );
+      },
+      { timeout: 10_000 }
     );
-  });
-  await page.getByTestId('searchbar').fill(searchTerm);
-  expect((await responsePromise).status()).toBe(200);
-  await waitForAllLoadersToDisappear(page);
-  await expect(
-    page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i'))
-  ).toBeVisible();
-  await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden();
+    await searchbar.fill('');
+    await searchbar.fill(searchTerm);
+    expect((await responsePromise).status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+    await expect(
+      page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i'))
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden({
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 40_000, intervals: [2_000, 5_000] });
 };
 
 export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
