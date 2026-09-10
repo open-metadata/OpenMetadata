@@ -49,6 +49,11 @@ import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
+// RAQB hands each operator's jsonLogic emitter the field already rendered as a jsonLogic tree
+// ({"var":"path"}) and the value as a one-element array for cardinality-1 operators.
+const firstValue = (val: unknown): unknown =>
+  Array.isArray(val) ? val[0] : val;
+
 class JSONLogicSearchClassBase {
   baseConfig = OMConfig as Config;
   configTypes: Config['types'] = {
@@ -92,6 +97,22 @@ class JSONLogicSearchClassBase {
     },
     text: {
       ...this.baseConfig.types.text,
+      widgets: {
+        ...this.baseConfig.types.text.widgets,
+        // Registers the table_field_* operators (see configOperators) on the text widget's
+        // operator whitelist — RAQB only attaches a widget's value editor for operators listed
+        // here, so without this the operator is selectable but no value input renders.
+        text: {
+          ...(this.baseConfig.types.text.widgets?.text ?? {}),
+          operators: [
+            ...(this.baseConfig.types.text.widgets?.text?.operators ?? []),
+            'table_field_equal',
+            'table_field_not_equal',
+            'table_field_like',
+            'table_field_not_like',
+          ],
+        },
+      },
       valueSources: ['value'],
     },
     date: {
@@ -202,6 +223,55 @@ class JSONLogicSearchClassBase {
       valueTypes: ['multiselect', 'select'],
       valueSources: ['value'],
       reversedOp: 'array_contains',
+    },
+    // Operators for flat paths into an array-of-objects custom property such as
+    // `extension.dpTest.rows.<column>`. These emit an INTERNAL field-first form; the stored rule
+    // keeps the {"contains":[<val>,{"tableColumnValues":"<path>"}]} family that the rule engine
+    // evaluates. QueryBuilderWidget converts between the two — see TABLE_COLUMN_SHAPES and
+    // to/fromLegacyTableColumnJsonLogic in QueryBuilderPureUtils.
+    //
+    // The internal form exists only because RAQB's jsonLogic importer takes the field from
+    // argument zero and derives its parser by calling these emitters with sentinel markers: the
+    // stored form puts the value there and the path as a bare string, so it can be written but
+    // never read back, which is why a saved rule rendered as an empty builder. Each operator gets
+    // its own internal op rather than sharing one under `!`, so import stays unambiguous.
+    table_field_equal: {
+      label: t('label.is'),
+      labelForFormat: t('label.is'),
+      cardinality: 1,
+      valueSources: ['value'],
+      reversedOp: 'table_field_not_equal',
+      jsonLogic: (field, _op, val) => ({
+        __tcvContains: [field, firstValue(val)],
+      }),
+    },
+    table_field_not_equal: {
+      label: t('label.is-not'),
+      labelForFormat: t('label.is-not'),
+      cardinality: 1,
+      valueSources: ['value'],
+      reversedOp: 'table_field_equal',
+      jsonLogic: (field, _op, val) => ({
+        __tcvNotContains: [field, firstValue(val)],
+      }),
+    },
+    table_field_like: {
+      label: t('label.contains'),
+      labelForFormat: t('label.contains'),
+      cardinality: 1,
+      valueSources: ['value'],
+      reversedOp: 'table_field_not_like',
+      jsonLogic: (field, _op, val) => ({ __tcvLike: [field, firstValue(val)] }),
+    },
+    table_field_not_like: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      cardinality: 1,
+      valueSources: ['value'],
+      reversedOp: 'table_field_like',
+      jsonLogic: (field, _op, val) => ({
+        __tcvNotLike: [field, firstValue(val)],
+      }),
     },
   };
 

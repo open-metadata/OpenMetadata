@@ -44,7 +44,7 @@ public class RuleEngine {
       rule = unescapeFilter(rule);
       return jsonLogicThreadLocal.get().apply(rule, context);
     } catch (Exception e) {
-      // Return false, falls back to triggering workflow
+      LOG.warn("Failed to evaluate JsonLogic rule '{}': {}", rule, e.getMessage());
       return false;
     }
   }
