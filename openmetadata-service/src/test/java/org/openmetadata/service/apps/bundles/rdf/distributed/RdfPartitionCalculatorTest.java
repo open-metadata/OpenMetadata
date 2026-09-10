@@ -14,12 +14,14 @@
 package org.openmetadata.service.apps.bundles.rdf.distributed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -222,6 +224,66 @@ class RdfPartitionCalculatorTest {
   }
 
   @SuppressWarnings("unchecked")
+  /** Calculator with a fixed entity count so cap tests need no repository registry. */
+  private static final class FixedCountCalculator extends RdfPartitionCalculator {
+    private final long count;
+
+    private FixedCountCalculator(int partitionSize, long count) {
+      super(partitionSize);
+      this.count = count;
+    }
+
+    @Override
+    public long getEntityCount(String entityType) {
+      return count;
+    }
+  }
+
+  @Test
+  void perEntityCapWidensPartitionsInsteadOfTruncatingCoverage() {
+    long totalCount = 200_000_000L;
+    FixedCountCalculator calculator = new FixedCountCalculator(DEFAULT_PARTITION_SIZE, totalCount);
+
+    List<RdfIndexPartition> partitions =
+        calculator.calculatePartitionsForEntity(UUID.randomUUID(), TABLE);
+
+    assertTrue(
+        partitions.size() <= RdfPartitionCalculator.MAX_PARTITIONS_PER_ENTITY_TYPE,
+        "partition count must stay under the per-entity cap");
+    assertEquals(
+        totalCount,
+        partitions.getLast().getRangeEnd(),
+        "widening must preserve full coverage of the entity range");
+    assertEquals(0L, partitions.getFirst().getRangeStart());
+  }
+
+  @Test
+  void smallCountsAreUnaffectedByTheCaps() {
+    FixedCountCalculator calculator = new FixedCountCalculator(DEFAULT_PARTITION_SIZE, 25_000L);
+
+    List<RdfIndexPartition> partitions =
+        calculator.calculatePartitionsForEntity(UUID.randomUUID(), "topic");
+
+    assertEquals(3, partitions.size());
+    assertEquals(25_000L, partitions.getLast().getRangeEnd());
+  }
+
+  @Test
+  void jobExceedingTheTotalPartitionCapFailsLoudly() {
+    // Six types at the per-entity cap each would create 60k partition rows - enough
+    // claim/heartbeat traffic to hurt the database before indexing starts.
+    FixedCountCalculator calculator =
+        new FixedCountCalculator(DEFAULT_PARTITION_SIZE, 200_000_000L);
+    Set<String> entityTypes = Set.of("table", "topic", "dashboard", "pipeline", "mlmodel", "user");
+
+    IllegalStateException thrown =
+        assertThrows(
+            IllegalStateException.class,
+            () -> calculator.calculatePartitions(UUID.randomUUID(), entityTypes));
+
+    assertTrue(thrown.getMessage().contains("too many partitions"));
+  }
+
   private void stubEntityCount(MockedStatic<Entity> entityMock, String entityType, int count) {
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
     EntityDAO<EntityInterface> dao = mock(EntityDAO.class);

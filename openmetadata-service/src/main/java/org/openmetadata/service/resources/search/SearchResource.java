@@ -20,6 +20,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -82,6 +84,8 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -835,6 +839,40 @@ public class SearchResource {
   }
 
   @GET
+  @Path("/entityTypes")
+  @Operation(
+      operationId = "getIndexedEntityTypes",
+      summary = "List the entity types that have a search index",
+      description =
+          "Entity types registered in the index mapping for this deployment, sorted. Includes "
+              + "distribution-specific indexes (e.g. Collate-only entity types) because the "
+              + "registry is merged from the classpath at startup. This is the same set that "
+              + "reindexing expands \"all\" into, so clients can offer an entity picker without "
+              + "hardcoding a list that goes stale.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "No view permission on Application")
+      })
+  public List<String> getIndexedEntityTypes(@Context SecurityContext securityContext) {
+    // Gate on Application view, not admin: SettingsRouter renders the app details page for
+    // `isAdminUser || hasViewPermissions(APPLICATION)` and that page fetches the config schema on
+    // every mount, so an admin-only check here would 403 a legitimate viewer on a request they
+    // never triggered.
+    OperationContext operationContext =
+        new OperationContext(Entity.APPLICATION, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(
+        securityContext, operationContext, new ResourceContext<>(Entity.APPLICATION));
+
+    return List.copyOf(searchRepository.getIndexedEntityTypes());
+  }
+
+  @GET
   @Path("/entityTypeCounts")
   @Operation(
       operationId = "getEntityTypeCounts",
@@ -1160,10 +1198,10 @@ public class SearchResource {
 
       SearchStatsResponse$IndexStats indexStat = new SearchStatsResponse$IndexStats();
       indexStat.setName(stats.name());
-      indexStat.setDocuments((int) stats.documents());
+      indexStat.setDocuments(stats.documents());
       indexStat.setPrimaryShards(stats.primaryShards());
       indexStat.setReplicaShards(stats.replicaShards());
-      indexStat.setSizeInBytes((int) stats.sizeInBytes());
+      indexStat.setSizeInBytes(stats.sizeInBytes());
       indexStat.setSizeFormatted(formatBytes(stats.sizeInBytes()));
       indexStat.setHealth(stats.health());
       indexStat.setAliases(new java.util.ArrayList<>(stats.aliases()));
@@ -1186,7 +1224,7 @@ public class SearchResource {
                           .findFirst()
                           .map(IndexStats::sizeInBytes)
                           .orElse(0L);
-                  orphan.setSizeInBytes((int) size);
+                  orphan.setSizeInBytes(size);
                   orphan.setSizeFormatted(formatBytes(size));
                   return orphan;
                 })
@@ -1195,8 +1233,8 @@ public class SearchResource {
     SearchStatsResponse response = new SearchStatsResponse();
     response.setClusterHealth(clusterHealth);
     response.setTotalIndexes(allIndexStats.size());
-    response.setTotalDocuments((int) totalDocs);
-    response.setTotalSizeInBytes((int) totalSize);
+    response.setTotalDocuments(totalDocs);
+    response.setTotalSizeInBytes(totalSize);
     response.setTotalSizeFormatted(formatBytes(totalSize));
     response.setTotalPrimaryShards(totalPrimaryShards);
     response.setTotalReplicaShards(totalReplicaShards);

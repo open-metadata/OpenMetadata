@@ -37,6 +37,11 @@ public class RdfIndexPartition {
   private long processedCount;
   private long successCount;
   private long failedCount;
+  // Cumulative pipeline timing (ms): reader = keyset reads, process = RDF translation,
+  // sink = storage writes. The separate stages expose where indexing spends its time.
+  private long readerTimeMs;
+  private long processTimeMs;
+  private long sinkTimeMs;
   private String assignedServer;
   private Long claimedAt;
   private Long startedAt;

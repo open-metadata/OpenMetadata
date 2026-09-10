@@ -238,4 +238,22 @@ describe('Test FeedEditor Component', () => {
       jest.useRealTimers();
     }
   });
+
+  it('escapes HTML in entity names rendered in the mention suggestion list', async () => {
+    const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    await findByTestId(container, 'react-quill');
+
+    const payload = '<img src=x onerror=alert(1)>';
+    const wrapper = mentionModule().renderItem({
+      type: 'table',
+      name: payload,
+      breadcrumbs: [{ name: payload }],
+    });
+
+    // The payload must appear as literal text, never as parsed markup.
+    expect(wrapper.querySelector('img')).toBeNull();
+    expect(wrapper.textContent).toContain(payload);
+  });
 });
