@@ -12,9 +12,9 @@
  */
 import { expect, type Locator, type Page } from '@playwright/test';
 import {
-  redirectToHomePage,
-  toastNotification,
-  visitOwnProfilePage,
+    redirectToHomePage,
+    toastNotification,
+    visitOwnProfilePage
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
