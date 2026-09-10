@@ -601,17 +601,9 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     List<EntityReference> allowed = new ArrayList<>();
     List<BulkResponse> failures = new ArrayList<>();
     for (EntityReference requested : listOrEmpty(request.getAssets())) {
-      boolean authorized = true;
-      try {
-        for (EntityReference metric : repository.hierarchySubtree(requested)) {
-          if (!canAccessMetric(securityContext, metric, MetadataOperation.EDIT_ALL)) {
-            authorized = false;
-            break;
-          }
-        }
-      } catch (EntityNotFoundException | IllegalArgumentException exception) {
-        authorized = false;
-      }
+      boolean authorized =
+          !Entity.METRIC.equals(requested.getType())
+              || canEditCompleteHierarchy(securityContext, requested);
       if (authorized) {
         allowed.add(requested);
       } else {
@@ -623,6 +615,16 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     }
     return new AuthorizedBulk(
         new BulkAssets().withAssets(allowed).withDryRun(request.getDryRun()), failures);
+  }
+
+  private boolean canEditCompleteHierarchy(
+      SecurityContext securityContext, EntityReference requested) {
+    try {
+      return repository.hierarchySubtree(requested).stream()
+          .allMatch(metric -> canAccessMetric(securityContext, metric, MetadataOperation.EDIT_ALL));
+    } catch (EntityNotFoundException | IllegalArgumentException exception) {
+      return false;
+    }
   }
 
   private BulkOperationResult emptyBulkResult(BulkAssets request) {

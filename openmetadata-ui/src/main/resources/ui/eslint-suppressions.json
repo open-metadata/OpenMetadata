@@ -337,7 +337,7 @@
   },
   "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 21
+      "count": 20
     }
   },
   "playwright/e2e/Features/MultipleRename.spec.ts": {
