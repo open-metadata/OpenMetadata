@@ -761,6 +761,8 @@ jobs:
         run: |
           core_dir="openmetadata-ui-core-components/src/main/resources/ui"
           core_output="$RUNNER_TEMP/playwright-core"
+          # Docker cannot create nested mount targets inside the read-only checkout.
+          mkdir -p "$core_dir/node_modules" "$core_dir/dist"
           mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
           # Dependency installation can execute repository-controlled package-manager
           # configuration even with lifecycle scripts disabled. Keep it off the runner.
