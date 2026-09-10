@@ -54,6 +54,8 @@ export const configUtils = QbUtils.ConfigUtils as unknown as {
     type?: string;
     fieldSettings?: Record<string, unknown>;
     subfields?: Record<string, unknown>;
+    /** Subfield RAQB selects on the user's behalf when this field is picked. */
+    defaultField?: string;
   } | null;
 };
 
@@ -93,9 +95,6 @@ export const toFieldNodes = (
     }
   );
 
-const hasSubfields = (def: unknown): boolean =>
-  Object.keys((def as { subfields?: Record<string, unknown> })?.subfields ?? {})
-    .length > 0;
 
 export const getGroupDrillFields = (
   config: unknown,
@@ -105,16 +104,14 @@ export const getGroupDrillFields = (
     return undefined;
   }
 
-  const subfields = configUtils.getFieldConfig(config, field)?.subfields;
-  const keys = Object.keys(subfields ?? {});
+  const fieldConfig = configUtils.getFieldConfig(config, field);
+  const subfields = fieldConfig?.subfields;
 
-  if (!subfields || keys.length === 0) {
+  if (!subfields || Object.keys(subfields).length === 0) {
     return undefined;
   }
 
-  return keys.length > 1 || hasSubfields(subfields[keys[0]])
-    ? subfields
-    : undefined;
+  return fieldConfig?.defaultField ? undefined : subfields;
 };
 
 /**

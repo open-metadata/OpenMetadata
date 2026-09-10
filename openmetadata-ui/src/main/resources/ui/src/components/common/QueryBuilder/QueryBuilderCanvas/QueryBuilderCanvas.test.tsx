@@ -20,7 +20,10 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilder from '../QueryBuilder';
-import { EXPLORE_BUTTON_PRESET } from '../QueryBuilderButton/QueryBuilderButton.constants';
+import {
+  CONDITION_BUTTON_PRESET,
+  EXPLORE_BUTTON_PRESET,
+} from '../QueryBuilderButton/QueryBuilderButton.constants';
 import QueryBuilderCanvas from './QueryBuilderCanvas';
 import QueryBuilderControl from './QueryBuilderControl';
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';
@@ -333,7 +336,13 @@ describe('QueryBuilderCanvas – component contracts', () => {
         label: 'Custom Properties',
         subfields: { one: { label: 'One' }, two: { label: 'Two' } },
       },
-      tags: { label: 'Tags', subfields: { tagFQN: { label: 'Tag' } } },
+      // names a defaultField, so RAQB picks the subfield and the row keeps
+      // editing the group's own field
+      tags: {
+        defaultField: 'tagFQN',
+        label: 'Tags',
+        subfields: { tagFQN: { label: 'Tag' } },
+      },
     },
     operators: {},
     settings: { renderField: renderFieldStub },
@@ -597,6 +606,25 @@ describe('QueryBuilderCanvas – component contracts', () => {
     // rule beside it renders as a row
     expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(2);
     expect(screen.getAllByTestId(/^query-builder-rule-\d+$/)).toHaveLength(1);
+  });
+
+  it('should label the add-rule button the same on every surface', () => {
+    // One builder across the product means one word for its add button. Only
+    // the testids differ per screen; a per-caller relabel is what made the
+    // same control read two different ways.
+    render(
+      <QueryBuilderGroupCard
+        canRemove
+        context={{ ...context, preset: CONDITION_BUTTON_PRESET }}
+        depth={0}
+        group={{}}
+        path={['root']}
+      />
+    );
+
+    expect(screen.getByTestId('add-condition-button')).toHaveTextContent(
+      'label.add-new-entity'
+    );
   });
 
   it('should fall back to a generic add-field label when the preset carries none', () => {

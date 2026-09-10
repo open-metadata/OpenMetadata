@@ -28,9 +28,14 @@ export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
   },
 };
 
-/** Form-embedded builders: a labelled "Add condition" button. */
+/**
+ * Form-embedded builders. The label matches Explore's: one builder across the
+ * product means one word for its add button, whichever screen it sits on.
+ * Only the testids differ, because each screen's Playwright suite already
+ * locates by its own.
+ */
 export const CONDITION_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  addRuleLabel: () => t('label.add-entity', { entity: t('label.condition') }),
+  addRuleLabel: EXPLORE_BUTTON_PRESET.addRuleLabel,
   testIds: {
     addRule: 'add-condition-button',
     delRule: 'delete-condition-button',
@@ -43,22 +48,12 @@ export const CONDITION_BUTTON_PRESET: QueryBuilderButtonPreset = {
 /**
  * The same, at the tighter density the JSONLogic builders use.
  *
- * It carries the label too: an icon-only `+` beside a labelled "Add condition"
- * on the next screen reads as two different controls when it is the same one.
+ * It carries the label too: an icon-only `+` beside a labelled add button on
+ * the next screen reads as two different controls when it is the same one.
  */
 export const COMPACT_BUTTON_PRESET: QueryBuilderButtonPreset = {
   addRuleLabel: CONDITION_BUTTON_PRESET.addRuleLabel,
   testIds: CONDITION_BUTTON_PRESET.testIds,
-};
-
-/**
- * Add-automation: the same controls, labelled for a screen whose rules are a
- * list of fields rather than a set of conditions. The testids are the
- * form-embedded ones, which is what its Playwright suites locate.
- */
-export const AUTOMATION_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  ...CONDITION_BUTTON_PRESET,
-  addRuleLabel: () => t('label.add-new-entity', { entity: t('label.field') }),
 };
 
 /**

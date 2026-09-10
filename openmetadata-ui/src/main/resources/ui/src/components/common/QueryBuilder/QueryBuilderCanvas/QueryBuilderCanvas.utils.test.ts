@@ -143,8 +143,15 @@ describe('getRuleRowModel', () => {
       lone: {
         subfields: { table: { subfields: { prop: { label: 'Prop' } } } },
       },
-      // one subfield: RAQB fills it in, so it is not a choice
-      owners: { subfields: { name: { label: 'Name' } } },
+      // one leaf subfield and no defaultField: the persona editor's custom
+      // properties, scoped to one entity type, can look exactly like this
+      loneLeaf: { subfields: { onlyProp: { label: 'Only Prop' } } },
+      // names a defaultField: RAQB fills the subfield in, so it is not a
+      // choice — this is the shape a contract's semantic rule has
+      owners: {
+        defaultField: 'name',
+        subfields: { name: { label: 'Name' } },
+      },
     },
     settings: { fieldSeparator: '.' },
   };
@@ -279,5 +286,24 @@ describe('getRuleRowModel', () => {
       path: ['root', 'drill', 'r1'],
       prefix: 'lone',
     });
+  });
+
+  it('should still offer a level holding a single leaf nobody defaults to', () => {
+    // The regression: a persona rule scoped to one entity type with one
+    // custom property defined has exactly one leaf subfield. Treating a lone
+    // leaf as RAQB's own doing hid the only control that could reach it.
+    const model = getRuleRowModel(
+      CONFIG,
+      {
+        children1: [rule('r1')],
+        id: 'drill',
+        properties: { field: 'loneLeaf' },
+        type: 'rule_group',
+      },
+      ['root', 'drill']
+    );
+
+    expect(model?.cells).toHaveLength(2);
+    expect(model?.cells[1].fields).toEqual(CONFIG.fields.loneLeaf.subfields);
   });
 });

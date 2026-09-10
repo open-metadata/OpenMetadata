@@ -336,7 +336,7 @@ test.describe('Curated Assets Widget', () => {
     );
     await selectOption(page, ruleLocator1.getByTestId('advanced-search-operator-select'), 'Is Set');
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch to OR condition (AND is selected by default, click OR button)
     await page
@@ -436,7 +436,7 @@ test.describe('Curated Assets Widget', () => {
       .getByTestId('advanced-search-value').locator('label')
       .click();
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
     await page
       .getByTestId('advanced-search-conjunction')
       .getByTestId('advanced-search-conjunction-and')
@@ -553,7 +553,7 @@ test.describe('Curated Assets Widget', () => {
       true
     );
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch first group to OR condition (AND is default)
     await page
@@ -576,7 +576,7 @@ test.describe('Curated Assets Widget', () => {
     );
 
     // Add another condition
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     const ruleLocator3 = page.getByTestId('query-builder-rule-2');
     await selectOption(

@@ -949,13 +949,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await selectOption(
             page,
-            ruleLocator.getByTestId('advanced-search-field-select'),
+            ruleLocator.getByTestId('advanced-search-field-select-1'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.getByTestId('advanced-search-field-select'),
+            ruleLocator.getByTestId('advanced-search-field-select-2'),
             durationPropertyName,
             true
           );
@@ -1244,14 +1244,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await selectOption(
               page,
-              ruleLocator.getByTestId('advanced-search-field-select'),
+              ruleLocator.getByTestId('advanced-search-field-select-1'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.getByTestId('advanced-search-field-select'),
+              ruleLocator.getByTestId('advanced-search-field-select-2'),
               propertyName,
               true
             );
