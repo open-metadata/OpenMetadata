@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.openlineage.DatasetFacets;
 import org.openmetadata.schema.api.lineage.openlineage.DatasourceFacet;
@@ -45,6 +46,8 @@ import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.Dat
 
 @Slf4j
 public class OpenLineageEntityResolver {
+
+  private static final int MAX_LOGGED_AMBIGUOUS_MATCHES = 5;
 
   private final Map<String, EntityReference> tableCache = new ConcurrentHashMap<>();
   private final Map<String, EntityReference> pipelineCache = new ConcurrentHashMap<>();
@@ -248,6 +251,9 @@ public class OpenLineageEntityResolver {
     String database = parts.length >= 3 ? parts[parts.length - 3] : null;
     String schema = parts[parts.length - 2];
     String table = parts[parts.length - 1];
+    if (database == null) {
+      database = OpenLineageDatasetNameNormalizer.extractGlueCatalogId(namespace);
+    }
 
     String result = resolveViaNamespaceMapping(namespace, database, schema, table);
     if (result == null) {
@@ -338,11 +344,34 @@ public class OpenLineageEntityResolver {
 
       if (!tables.isEmpty()) {
         result = tables.getFirst().getFullyQualifiedName();
+        warnOnAmbiguousMatch(searchKey, result, tables);
       }
     } catch (Exception e) {
       LOG.debug("Error searching for table matching {}: {}", searchKey, e.getMessage());
     }
     return result;
+  }
+
+  /**
+   * A multi-match means the lookup was not selective enough to identify one entity - the pick is
+   * whatever the database returned first. Name the competing FQNs so the resulting lineage edge can
+   * be traced back to the ambiguity instead of looking like a deliberate resolution.
+   */
+  private void warnOnAmbiguousMatch(String searchKey, String resolved, List<Table> tables) {
+    if (tables.size() > 1) {
+      String competing =
+          tables.stream()
+              .limit(MAX_LOGGED_AMBIGUOUS_MATCHES)
+              .map(Table::getFullyQualifiedName)
+              .collect(Collectors.joining(", "));
+      LOG.warn(
+          "Ambiguous OpenLineage table match: {} tables match [{}], resolving to [{}]. Candidates: {}{}",
+          tables.size(),
+          searchKey,
+          resolved,
+          competing,
+          tables.size() > MAX_LOGGED_AMBIGUOUS_MATCHES ? ", …" : "");
+    }
   }
 
   private String extractDatasourceName(DatasetFacets facets) {

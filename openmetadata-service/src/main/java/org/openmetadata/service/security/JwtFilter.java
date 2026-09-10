@@ -444,7 +444,11 @@ public class JwtFilter implements ContainerRequestFilter {
             .getFreshSessionById(sessionId)
             .orElseThrow(
                 () -> AuthenticationException.getInvalidTokenException("Invalid session."));
-    if (session.getStatus() != SessionStatus.ACTIVE
+    // Existing access tokens remain usable while another request holds the refresh lease.
+    final boolean isAuthenticated =
+        session.getStatus() == SessionStatus.ACTIVE
+            || session.getStatus() == SessionStatus.REFRESHING;
+    if (!isAuthenticated
         || session.isExpired(System.currentTimeMillis())
         || nullOrEmpty(session.getUsername())
         || !session.getUsername().equalsIgnoreCase(userName)) {
