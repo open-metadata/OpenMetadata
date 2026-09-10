@@ -311,8 +311,8 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_SEMANTICS2.description
         );
         const ruleLocator3 = page
-          .getByTestId('query-builder-group-card')
-          .nth(2);
+          .getByTestId('contract-semantics-card-1')
+          .getByTestId('query-builder-group-card');
         await selectOption(
           page,
           ruleLocator3.getByTestId('advanced-search-field-select'),

@@ -136,4 +136,47 @@ describe('QueryBuilderCanvas – connector wiring', () => {
       expect(tree?.properties?.conjunction).toBe('OR');
     });
   });
+
+  it('should draw one card for a JSONLogic tree, whose wrapper is structural', () => {
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        groupMode="flat"
+        outputType={SearchOutputType.JSONLogic}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(1);
+    expect(screen.getAllByTestId(/^query-builder-rule-\d+$/)).toHaveLength(1);
+  });
+
+  it('should add a condition beside the existing one, not inside it', async () => {
+    const onChange = jest.fn();
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        groupMode="flat"
+        outputType={SearchOutputType.JSONLogic}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('add-condition-button'));
+
+    expect(screen.getAllByTestId(/^query-builder-rule-\d+$/)).toHaveLength(2);
+    expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(1);
+
+    await waitFor(() => {
+      const tree = onChange.mock.calls.at(-1)?.[1] as
+        | { children1?: unknown }
+        | undefined;
+      const children = tree?.children1;
+      const count = Array.isArray(children)
+        ? children.length
+        : Object.keys((children ?? {}) as object).length;
+
+      expect(count).toBe(2);
+    });
+  });
 });
