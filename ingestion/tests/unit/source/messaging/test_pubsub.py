@@ -126,13 +126,13 @@ class TestPubSubModels:
 class TestPubSubConnection:
     """Test Pub/Sub connection handling"""
 
-    @patch("metadata.ingestion.source.messaging.pubsub.connection.auth_default")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.get_gcp_default_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.SchemaServiceClient")
     def test_get_connection_with_project_id(
-        self, mock_schema_client, mock_subscriber, mock_publisher, mock_set_creds, mock_auth_default
+        self, mock_schema_client, mock_subscriber, mock_publisher, mock_set_creds, mock_get_default_creds
     ):
         """Test get_connection with explicit project ID"""
         from metadata.ingestion.source.messaging.pubsub.connection import (
@@ -140,7 +140,8 @@ class TestPubSubConnection:
             PubSubConnection,
         )
 
-        mock_auth_default.return_value = (MagicMock(), None)
+        default_creds = MagicMock()
+        mock_get_default_creds.return_value = default_creds
         mock_connection = MagicMock()
         mock_connection.projectId = "test-project"
         mock_connection.gcpConfig = MagicMock()
@@ -154,21 +155,22 @@ class TestPubSubConnection:
         assert isinstance(client, PubSubClient)
         assert client.project_id == "test-project"
         mock_set_creds.assert_called_once_with(mock_connection.gcpConfig)
-        mock_publisher.assert_called_once()
-        mock_subscriber.assert_called_once()
-        mock_schema_client.assert_called_once()
+        mock_get_default_creds.assert_called_once()
+        mock_publisher.assert_called_once_with(credentials=default_creds)
+        mock_subscriber.assert_called_once_with(credentials=default_creds)
+        mock_schema_client.assert_called_once_with(credentials=default_creds)
 
-    @patch("metadata.ingestion.source.messaging.pubsub.connection.auth_default")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.get_gcp_default_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
     def test_get_connection_without_schema_registry(
-        self, mock_subscriber, mock_publisher, mock_set_creds, mock_auth_default
+        self, mock_subscriber, mock_publisher, mock_set_creds, mock_get_default_creds
     ):
         """Test get_connection with schema registry disabled"""
         from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
 
-        mock_auth_default.return_value = (MagicMock(), None)
+        mock_get_default_creds.return_value = MagicMock()
         mock_connection = MagicMock()
         mock_connection.projectId = "test-project"
         mock_connection.gcpConfig = MagicMock()
@@ -207,17 +209,17 @@ class TestPubSubConnection:
         mock_set_creds.assert_not_called()
         assert PUBSUB_EMULATOR_HOST not in os.environ
 
-    @patch("metadata.ingestion.source.messaging.pubsub.connection.auth_default")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.get_gcp_default_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
     def test_get_connection_missing_project_id_raises(
-        self, mock_subscriber, mock_publisher, mock_set_creds, mock_auth_default
+        self, mock_subscriber, mock_publisher, mock_set_creds, mock_get_default_creds
     ):
         """Test get_connection raises ValueError when project ID is missing"""
         from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
 
-        mock_auth_default.return_value = (MagicMock(), None)
+        mock_get_default_creds.return_value = MagicMock()
         mock_connection = MagicMock()
         mock_connection.projectId = None
         mock_connection.gcpConfig = MagicMock()
@@ -230,8 +232,7 @@ class TestPubSubConnection:
         with pytest.raises(ValueError, match="Project ID is required"):
             PubSubConnection(mock_connection)._get_client()
 
-    @patch("metadata.ingestion.source.messaging.pubsub.connection.impersonated_credentials")
-    @patch("metadata.ingestion.source.messaging.pubsub.connection.auth_default")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.get_gcp_impersonate_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
@@ -242,8 +243,7 @@ class TestPubSubConnection:
         mock_subscriber,
         mock_publisher,
         mock_set_creds,
-        mock_auth_default,
-        mock_impersonated,
+        mock_get_impersonate_creds,
     ):
         """When gcpImpersonateServiceAccount is configured all Pub/Sub clients receive
         the impersonated credential so every API call runs under the target identity.
@@ -254,10 +254,8 @@ class TestPubSubConnection:
         """
         from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
 
-        source_creds = MagicMock()
-        mock_auth_default.return_value = (source_creds, None)
         impersonated_creds = MagicMock()
-        mock_impersonated.Credentials.return_value = impersonated_creds
+        mock_get_impersonate_creds.return_value = impersonated_creds
 
         mock_connection = MagicMock()
         mock_connection.projectId = "test-project"
@@ -273,11 +271,11 @@ class TestPubSubConnection:
 
         PubSubConnection(mock_connection)._get_client()
 
-        # Impersonated credentials must have been built from source_creds + target SA.
-        mock_impersonated.Credentials.assert_called_once()
-        call_kwargs = mock_impersonated.Credentials.call_args.kwargs
-        assert call_kwargs["source_credentials"] is source_creds
-        assert call_kwargs["target_principal"] == "robot@my-project.iam.gserviceaccount.com"
+        # Shared helper must have been called with the correct target SA and lifetime.
+        mock_get_impersonate_creds.assert_called_once_with(
+            impersonate_service_account="robot@my-project.iam.gserviceaccount.com",
+            lifetime=3600,
+        )
 
         # Every client must receive the impersonated credential — not None or ADC.
         mock_publisher.assert_called_once_with(credentials=impersonated_creds)
