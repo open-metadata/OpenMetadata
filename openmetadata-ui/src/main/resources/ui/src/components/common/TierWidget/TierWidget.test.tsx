@@ -67,16 +67,18 @@ let capturedOnOpenChange: ((visible: boolean) => void) | null = null;
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Popover: jest.fn().mockImplementation(({ content, onOpenChange, children }) => {
-    capturedOnOpenChange = onOpenChange;
+  Popover: jest
+    .fn()
+    .mockImplementation(({ content, onOpenChange, children }) => {
+      capturedOnOpenChange = onOpenChange;
 
-    return (
-      <>
-        {content}
-        {children}
-      </>
-    );
-  }),
+      return (
+        <>
+          {content}
+          {children}
+        </>
+      );
+    }),
 }));
 
 describe('TierCard stale selectedTier', () => {
@@ -101,6 +103,7 @@ describe('TierCard stale selectedTier', () => {
     });
 
     const tier3Radio = await screen.findByTestId('radio-btn-Tier3');
+
     expect(tier3Radio).toBeInTheDocument();
 
     // User selects Tier3 without saving.
