@@ -285,6 +285,25 @@ describe('ScheduleInterval', () => {
     expect(screen.queryByTestId('cron-container')).not.toBeInTheDocument();
   });
 
+  it('should restore the saved cron after an on-demand round-trip', async () => {
+    const { onChange } = renderControlled('30 8 * * 5', {
+      includePeriodOptions: ['week'],
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.ON_DEMAND}`)
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.SCHEDULE}`)
+      );
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith('30 8 * * 5');
+  });
+
   it('should render only the time picker for a daily cron value', async () => {
     await renderComponent({ value: '0 0 * * *' });
 
@@ -525,6 +544,30 @@ describe('ScheduleInterval', () => {
       'true'
     );
     expect(screen.getByTestId('day-options')).toHaveValue('1');
+  });
+
+  it('should restore the latest externally provided cron', async () => {
+    const { rerender } = render(
+      <ScheduleInterval includePeriodOptions={['week']} value="" />
+    );
+
+    await act(async () => {
+      rerender(
+        <ScheduleInterval includePeriodOptions={['week']} value="0 0 * * 3" />
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.ON_DEMAND}`)
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`schedular-${SchedularOptions.SCHEDULE}`)
+      );
+    });
+
+    expect(screen.getByTestId('day-options')).toHaveValue('3');
   });
 
   it('should render the human readable cron text when scheduled', async () => {
