@@ -23,6 +23,7 @@ const EN_LABELS: Record<string, string> = {
   'label.clear-all': 'Clear all',
   'label.loading': 'Loading…',
   'label.no-data-found': 'No data found',
+  'label.remove-filter': 'Remove filter',
   'label.search': 'Search',
   'label.select-all': 'Select all',
 };
@@ -210,9 +211,8 @@ describe('FilterSelect', () => {
       'data-testid': 'service-filter',
     });
 
-    expect(screen.getByTestId('service-filter')).toHaveTextContent(
-      'Service: (2)'
-    );
+    expect(screen.getByTestId('service-filter')).toHaveTextContent('Service');
+    expect(screen.getByTestId('filter-count-badge')).toHaveTextContent('2');
   });
 
   it('renders an already-rendered node icon and a helper text', () => {
@@ -285,5 +285,87 @@ describe('FilterSelect', () => {
     renderFilter({ options: [] });
 
     expect(screen.getByText('No data found')).toBeInTheDocument();
+  });
+
+  it('renders selected values as chips on the chips input trigger', () => {
+    renderFilter({
+      isOpen: false,
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+
+    const chips = screen.getAllByTestId('filter-chip');
+    expect(chips).toHaveLength(2);
+    expect(chips[0]).toHaveTextContent('Snowflake');
+    expect(chips[1]).toHaveTextContent('BigQuery');
+  });
+
+  it('removing a chip reports the remaining values', () => {
+    const { onChange } = renderFilter({
+      isOpen: false,
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+
+    const [removeSnowflake] = screen.getAllByRole('button', {
+      name: 'Remove filter',
+    });
+    fireEvent.click(removeSnowflake);
+
+    expect(onChange).toHaveBeenCalledWith(['bigquery']);
+  });
+
+  it('clear all empties the staged selection without committing', () => {
+    const { onChange } = renderFilter({
+      commitMode: 'staged',
+      selectedValues: ['snowflake', 'bigquery'],
+    });
+
+    fireEvent.click(screen.getByTestId('clear-filter-btn'));
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it('formats row counts with locale separators', () => {
+    renderFilter({
+      options: [{ value: 'snowflake', label: 'Snowflake', count: 1204 }],
+    });
+
+    expect(screen.getByText('1,204')).toBeInTheDocument();
+  });
+
+  it('regular typography drops the medium weight on the trigger', () => {
+    render(
+      <FilterSelect
+        data-testid="trigger-regular"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        triggerVariant="button"
+        typography="regular"
+        onChange={() => undefined}
+      />
+    );
+
+    expect(screen.getByTestId('trigger-regular').className).toContain(
+      'font-normal'
+    );
+  });
+
+  it('shows the placeholder on an empty input trigger', () => {
+    renderFilter({
+      isOpen: false,
+      placeholder: 'Choose services',
+      selectedValues: [],
+      triggerVariant: 'input',
+    });
+
+    expect(screen.getByText('Choose services')).toBeInTheDocument();
   });
 });

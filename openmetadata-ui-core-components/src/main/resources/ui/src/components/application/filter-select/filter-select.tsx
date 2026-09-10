@@ -19,7 +19,7 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
+import { Check, ChevronDown, SearchLg, XClose } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
@@ -28,6 +28,7 @@ import {
   type FC,
   type HTMLAttributes,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { Button as AriaButton, type Selection } from 'react-aria-components';
 import type {
@@ -47,9 +48,19 @@ const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
 
+const TriggerCountBadge = ({ count }: { count: number }) => (
+  <span
+    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:tabular-nums"
+    data-testid="filter-count-badge">
+    {count}
+  </span>
+);
+
 const TriggerButton = ({
   hasSelection,
   text,
+  count,
+  placeholder,
   testId,
   variant,
   className,
@@ -58,12 +69,19 @@ const TriggerButton = ({
 }: {
   hasSelection: boolean;
   text: string;
+  count?: number;
+  placeholder?: string;
   testId?: string;
   variant: FilterSelectTriggerVariant;
   className?: string;
   icon?: FC<{ className?: string }>;
   bordered?: boolean;
 }) => {
+  const countBadge =
+    count !== undefined && count > 0 ? (
+      <TriggerCountBadge count={count} />
+    ) : null;
+
   if (variant === 'button') {
     return (
       <Button
@@ -74,8 +92,8 @@ const TriggerButton = ({
           // fits on one row beside same-sized toolbar controls.
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
           hasSelection &&
-            !bordered &&
             'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
+          hasSelection && bordered && 'tw:after:outline-brand',
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
@@ -84,6 +102,7 @@ const TriggerButton = ({
         iconTrailing={ChevronDown}
         size={bordered ? 'md' : 'sm'}>
         {text}
+        {countBadge}
       </Button>
     );
   }
@@ -101,8 +120,9 @@ const TriggerButton = ({
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}>
-          {text}
+          {hasSelection ? text : (placeholder ?? text)}
         </span>
+        {countBadge}
         <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
       </AriaButton>
     );
@@ -118,8 +138,73 @@ const TriggerButton = ({
       )}
       data-testid={testId}>
       {text}
+      {countBadge}
       <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
     </AriaButton>
+  );
+};
+
+/**
+ * Input-variant trigger that echoes the selection as removable chips. The
+ * remove buttons are siblings of the menu trigger (never nested inside it),
+ * so each stays independently pressable and valid ARIA; the popover anchors
+ * to the whole field via `fieldRef`.
+ */
+const ChipsField = ({
+  chips,
+  placeholder,
+  testId,
+  className,
+  fieldRef,
+  onRemove,
+}: {
+  chips: { value: string; label: ReactNode }[];
+  placeholder: string;
+  testId?: string;
+  className?: string;
+  fieldRef: RefObject<HTMLDivElement>;
+  onRemove: (value: string) => void;
+}) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div
+      className={cx(
+        'tw:flex tw:min-h-10 tw:w-64 tw:flex-wrap tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:py-1 tw:pr-2.5 tw:pl-1.5 tw:shadow-xs',
+        className
+      )}
+      ref={fieldRef}>
+      {chips.map((chip) => (
+        <span
+          className="tw:flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:py-px tw:pr-0.5 tw:pl-2 tw:text-xs tw:font-medium tw:text-secondary"
+          data-testid="filter-chip"
+          key={chip.value}>
+          <span className="tw:truncate">{chip.label}</span>
+          <AriaButton
+            aria-label={t('label.remove-filter')}
+            className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary"
+            onPress={() => onRemove(chip.value)}>
+            <XClose
+              aria-hidden="true"
+              className="tw:size-3"
+              strokeWidth={2.5}
+            />
+          </AriaButton>
+        </span>
+      ))}
+      <AriaButton
+        className="tw:flex tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:items-center tw:justify-between tw:gap-2 tw:self-stretch tw:rounded-sm tw:pl-1.5 tw:outline-brand"
+        data-testid={testId}>
+        {chips.length === 0 ? (
+          <span className="tw:truncate tw:text-sm tw:font-normal tw:text-placeholder">
+            {placeholder}
+          </span>
+        ) : (
+          <span />
+        )}
+        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+      </AriaButton>
+    </div>
   );
 };
 
@@ -139,23 +224,39 @@ const OptionRow = ({
 
   return (
     <Dropdown.Item
-      addon={
-        !hideCounts && option.count !== undefined
-          ? String(option.count)
-          : undefined
+      checkboxSize="xs"
+      // Selection is conveyed by the checkbox alone — suppress the default
+      // selected background, keeping the hover/focus tint.
+      className={(state) =>
+        state.isSelected && !state.isFocused
+          ? 'tw:[&>div]:bg-transparent!'
+          : ''
       }
       icon={iconComponent}
       id={option.value}
       showCheckbox={showCheckbox}
       textValue={optionText(option)}>
       {(state) => (
-        <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:text-primary">
+        <span
+          className={cx(
+            'tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
+            state.isSelected ? 'tw:text-primary' : 'tw:text-secondary'
+          )}>
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
               {iconNode}
             </span>
           )}
           <span className="tw:grow tw:truncate">{option.label}</span>
+          {!hideCounts && option.count !== undefined && (
+            <span
+              className={cx(
+                'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
+                state.isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
+              )}>
+              {option.count.toLocaleString()}
+            </span>
+          )}
           {!showCheckbox && state.isSelected && (
             <Check
               aria-hidden="true"
@@ -192,13 +293,16 @@ export const FilterSelect = ({
   isLoading,
   isOpen: controlledIsOpen,
   nullOption,
+  placeholder,
   popoverClassName,
   resolveMissingLabel,
   searchable,
   selectionMode = 'multiple',
   showSelectAll,
+  triggerDisplay = 'count',
   triggerIcon,
   triggerVariant = 'chip',
+  typography = 'medium',
   onOpenChange,
   onSearch,
 }: FilterSelectProps) => {
@@ -208,9 +312,12 @@ export const FilterSelect = ({
   const [query, setQuery] = useState('');
   const [staged, setStaged] = useState<string[]>(selectedValues);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
+  const chipsFieldRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
   const isStaged = isMulti && commitMode === 'staged';
+  const isChips =
+    isMulti && triggerVariant === 'input' && triggerDisplay === 'chips';
   const current = isStaged ? staged : selectedValues;
 
   // A persisted selection (e.g. restored from the URL) may be absent from the
@@ -256,9 +363,8 @@ export const FilterSelect = ({
 
   const triggerText = useMemo(() => {
     if (isMulti) {
-      return selectedValues.length > 0
-        ? `${label}: (${selectedValues.length})`
-        : label;
+      // The selection count renders as a separate pill badge on the trigger.
+      return label;
     }
     const selected = [
       ...(nullOption ? [nullOption] : []),
@@ -267,6 +373,18 @@ export const FilterSelect = ({
 
     return selected ? optionText(selected) : label;
   }, [isMulti, selectedValues, label, mergedOptions, nullOption]);
+
+  const chips = useMemo(() => {
+    if (!isChips) {
+      return [];
+    }
+    const all = [...(nullOption ? [nullOption] : []), ...mergedOptions];
+
+    return selectedValues.map((value) => ({
+      value,
+      label: all.find((option) => option.value === value)?.label ?? value,
+    }));
+  }, [isChips, nullOption, mergedOptions, selectedValues]);
 
   const selectedKeySet = useMemo<Selection>(() => new Set(current), [current]);
 
@@ -354,18 +472,37 @@ export const FilterSelect = ({
 
   return (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
-      <TriggerButton
-        bordered={bordered}
-        className={className}
-        hasSelection={selectedValues.length > 0}
-        icon={triggerIcon}
-        testId={testId}
-        text={triggerText}
-        variant={triggerVariant}
-      />
+      {isChips ? (
+        <ChipsField
+          chips={chips}
+          className={className}
+          fieldRef={chipsFieldRef}
+          placeholder={placeholder ?? label}
+          testId={testId}
+          onRemove={(value) =>
+            onChange(selectedValues.filter((selected) => selected !== value))
+          }
+        />
+      ) : (
+        <TriggerButton
+          bordered={bordered}
+          className={cx(
+            typography === 'regular' && 'tw:font-normal',
+            className
+          )}
+          count={isMulti ? selectedValues.length : undefined}
+          hasSelection={selectedValues.length > 0}
+          icon={triggerIcon}
+          placeholder={placeholder}
+          testId={testId}
+          text={triggerText}
+          variant={triggerVariant}
+        />
+      )}
       <Dropdown.Popover
         className={cx('tw:w-80', popoverClassName)}
-        placement="bottom left">
+        placement="bottom left"
+        triggerRef={isChips ? chipsFieldRef : undefined}>
         {searchable && (
           <div className="tw:p-2" ref={searchWrapperRef}>
             <Input
@@ -386,7 +523,7 @@ export const FilterSelect = ({
               }
               isSelected={allDisplayedSelected}
               label={t('label.select-all')}
-              size="sm"
+              size="xs"
               onChange={handleSelectAll}
             />
           </div>
@@ -442,8 +579,9 @@ export const FilterSelect = ({
         )}
 
         {showFooter && (
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-2">
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
             <Button
+              className="tw:font-normal"
               color="tertiary"
               data-testid="clear-filter-btn"
               isDisabled={staged.length === 0}
