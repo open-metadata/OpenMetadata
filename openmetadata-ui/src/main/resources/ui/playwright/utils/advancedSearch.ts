@@ -316,6 +316,22 @@ export const fillRule = async (
   }
 };
 
+// Tag-like fields (tags, tier, certification, glossary) now apply the
+// original-cased value while other fields still apply the lowercased
+// aggregation key, so URL and chip expectations must be case-insensitive.
+const waitForSearchQueryWithValues = (page: Page, values: string[]) =>
+  page.waitForResponse((response) => {
+    const url = response.url().toLowerCase();
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=dataasset&from=0&size=15') &&
+      values.every((value) =>
+        url.includes(getEncodedFqn(value, true).toLowerCase())
+      )
+    );
+  });
+
 export const checkMustPaths = async (
   page: Page,
   {
@@ -339,17 +355,14 @@ export const checkMustPaths = async (
     index,
   });
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchData,
-      true
-    )}*`
-  );
+  const searchRes = waitForSearchQueryWithValues(page, [searchData]);
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(res.request().url().toLowerCase()).toContain(
+    getEncodedFqn(searchData, true).toLowerCase()
+  );
 
   const json = await res.json();
 
@@ -357,7 +370,7 @@ export const checkMustPaths = async (
 
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(searchData);
+  ).toContainText(searchData, { ignoreCase: true });
 };
 
 export const checkMustNotPaths = async (
@@ -383,16 +396,13 @@ export const checkMustNotPaths = async (
     index,
   });
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchData,
-      true
-    )}*`
-  );
+  const searchRes = waitForSearchQueryWithValues(page, [searchData]);
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(res.request().url().toLowerCase()).toContain(
+    getEncodedFqn(searchData, true).toLowerCase()
+  );
 
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
@@ -402,7 +412,7 @@ export const checkMustNotPaths = async (
 
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(searchData);
+  ).toContainText(searchData, { ignoreCase: true });
 };
 
 export const checkNullPaths = async (
@@ -577,12 +587,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id === 'Column') {
     await page.getByTestId('apply-btn').click();
   } else {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-        searchCriteria1.toLowerCase(),
-        true
-      )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
-    );
+    const searchRes = waitForSearchQueryWithValues(page, [
+      searchCriteria1,
+      searchCriteria2,
+    ]);
     await page.getByTestId('apply-btn').click();
     const res = await searchRes;
     const json = await res.json();

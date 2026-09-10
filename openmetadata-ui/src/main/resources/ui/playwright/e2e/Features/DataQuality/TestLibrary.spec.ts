@@ -27,6 +27,8 @@ const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition
 const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
+// Only for the multi-select combobox — its popup is typing-driven, so
+// chooseSelectOption's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -43,15 +45,11 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
   );
 };
 
-// React Aria's listbox is a non-modal popover, and a press on a trigger that
-// does not already hold focus both opens it and — via the focus transition that
-// same press produces — dismisses it a frame later. That leaves roughly 160ms to
-// pick an option, and nothing reopens the listbox afterwards, so a loaded runner
-// that misses the window retries the option click until the test times out.
-// Focusing the trigger first removes the transition, and with it the window.
+// Assert on the trigger, never on the Select root: the root also holds React
+// Aria's hidden <select>, whose <option> text makes toContainText on the root
+// pass for any value the field offers, selected or not.
 const selectEntityType = async (page: Page, entityType: string) => {
-  const entityTypeSelect = page.getByTestId('entity-type');
-  const entityTypeTrigger = entityTypeSelect.getByRole('button');
+  const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
 
   await entityTypeTrigger.focus();
   await expect(entityTypeTrigger).toBeFocused();

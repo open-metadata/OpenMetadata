@@ -14,12 +14,14 @@
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
-import { insertActivityEventForTest } from '../../utils/activityAPI';
+import {
+  insertActivityEventForTest,
+  visitTableActivityFeed,
+} from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForPageLoaded } from '../../utils/polling';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const test = base;
 
@@ -228,37 +230,14 @@ test.describe('Activity Stream on Entity Pages', () => {
     await expect(countBadge).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
   });
 
-  test(
-    'activity stream API is called when visiting entity page',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      const activityApiPromise = waitForResponseWithStatus(
-        page,
-        (response) =>
-          response.request().method() === 'GET' &&
-          response.url().includes('/api/v1/activity'),
-        200,
-        { timeout: 10000 }
-      );
+  test('activity stream API is called when visiting entity page', async ({
+    page,
+  }) => {
+    const responseBody = await visitTableActivityFeed(page, testTable);
 
-      await testTable.visitEntityPage(page);
-      await waitForAllLoadersToDisappear(page);
-
-      const activityFeedTab = page.getByRole('tab', {
-        name: 'Activity Feeds & Tasks',
-      });
-      await activityFeedTab.click();
-
-      const response = await activityApiPromise;
-
-      if (response) {
-        const responseBody = await response.json();
-
-        expect(responseBody).toHaveProperty('data');
-        expect(Array.isArray(responseBody.data)).toBe(true);
-      }
-    }
-  );
+    expect(responseBody).toHaveProperty('data');
+    expect(Array.isArray(responseBody.data)).toBe(true);
+  });
 
   test('activity feed left panel shows All and Tasks options', async ({
     page,

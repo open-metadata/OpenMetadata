@@ -951,6 +951,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               [
                 {
@@ -979,6 +980,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
           }),
           useAsyncSearch: true,
         },
@@ -992,6 +994,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               {
                 field: CLASSIFICATION_NAME_KEYWORD,
@@ -1012,6 +1015,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               {
                 field: CLASSIFICATION_NAME_KEYWORD,
@@ -1167,6 +1171,7 @@ class AdvancedSearchClassBase {
               asyncFetch: this.autocomplete({
                 searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
                 entityField: EntityFields.FULLY_QUALIFIED_NAME,
+                sourceFields: 'fullyQualifiedName',
               }),
               useAsyncSearch: true,
             },
