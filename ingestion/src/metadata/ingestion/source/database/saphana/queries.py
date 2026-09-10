@@ -38,3 +38,28 @@ FROM SYS.FUNCTIONS
 WHERE FUNCTION_USAGE_TYPE = 'TABLE'
   AND UPPER(SCHEMA_NAME) = UPPER(:schema_name)
 """
+
+# The plan cache is the only record of a statement that moved data between tables.
+# It holds execution plans, so DDL never enters it and CREATE TABLE ... AS SELECT
+# lineage cannot be recovered on HANA by any route.
+SAPHANA_QUERY_HISTORY_STATEMENT = """
+SELECT
+  NULL AS user_name,
+  NULL AS database_name,
+  SCHEMA_NAME AS schema_name,
+  NULL AS aborted,
+  STATEMENT_STRING AS query_text,
+  LAST_EXECUTION_TIMESTAMP AS start_time,
+  TOTAL_EXECUTION_TIME / 1000000 AS duration,
+  LAST_EXECUTION_TIMESTAMP AS end_time
+FROM SYS.M_SQL_PLAN_CACHE
+WHERE IS_VALID = 'TRUE'
+  AND LAST_EXECUTION_TIMESTAMP IS NOT NULL
+  {filters}
+  AND STATEMENT_STRING NOT LIKE '/* {{"app": "OpenMetadata", %}} */%'
+  AND STATEMENT_STRING NOT LIKE '/* {{"app": "dbt", %}} */%'
+  AND LAST_EXECUTION_TIMESTAMP >= TO_TIMESTAMP('{start_time}', 'YYYY-MM-DD HH24:MI:SS')
+  AND LAST_EXECUTION_TIMESTAMP < TO_TIMESTAMP('{end_time}', 'YYYY-MM-DD HH24:MI:SS')
+ORDER BY LAST_EXECUTION_TIMESTAMP DESC
+LIMIT {result_limit}
+"""

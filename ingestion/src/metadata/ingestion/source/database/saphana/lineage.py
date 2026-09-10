@@ -20,82 +20,99 @@ from sqlalchemy.exc import DBAPIError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
-    SapHanaConnection,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import test_connection_common
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ParsedLineage,
     parse_registry,
 )
 from metadata.ingestion.source.database.saphana.models import SapHanaLineageModel
-from metadata.ingestion.source.database.saphana.queries import SAPHANA_LINEAGE
+from metadata.ingestion.source.database.saphana.queries import (
+    SAPHANA_LINEAGE,
+    SAPHANA_QUERY_HISTORY_STATEMENT,
+)
+from metadata.ingestion.source.database.saphana.query_parser import (
+    SapHanaQueryParserSource,
+)
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = ingestion_logger()
 
 
-class SaphanaLineageSource(Source):
-    """
-    Get the lineage information of:
-    - calculationview
-    - analyticview
-    - attributeview
+class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
+    """SAP Hana lineage, from two passes covering disjoint kinds of object.
 
-    We support the following relationships:
+    The shared LineageSource handles everything expressed in SQL: view definitions
+    (with column-level lineage), query history, and stored procedures. This is the
+    only pass that produces anything on SAP HANA Cloud.
+
+    The CDATA pass handles the repository model types, which are XML rather than SQL
+    and exist only in _SYS_REPO on on-prem and HXE instances:
     - Analytic View and Attribute View based on a Table
-    - Calculation View based on an Analytic View, Attribute View, Calculation View or Table
+    - Calculation View based on an Analytic, Attribute or Calculation View, or a Table
 
-    Parse the CDATA XML definition from _SYS_REPO.ACTIVE_OBJECT
+    The two never describe the same object, so every edge has exactly one origin.
     """
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata: OpenMetadata,
-        get_engine: bool = True,
-    ):
-        super().__init__()
-        self.config = config
-        self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.root.config
-        self.source_config = self.config.sourceConfig.config
-        self.engine = get_ssl_connection(self.service_connection) if get_engine else None
+    sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
 
-        logger.info(
-            "Initializing SAP Hana Lineage Source. Note that we'll parse the lineage from CDATA XML definition "
-            + "from _SYS_REPO.ACTIVE_OBJECT and we won't use the time-specific input parameters."
+    # CREATE TABLE ... AS SELECT is absent by necessity, not oversight: the plan cache
+    # holds no DDL, so there is nothing for a pattern to match.
+    filters = """
+        AND (
+            UPPER(STATEMENT_STRING) LIKE 'INSERT INTO%%SELECT%%'
+            OR UPPER(STATEMENT_STRING) LIKE 'UPSERT%%SELECT%%'
+            OR UPPER(STATEMENT_STRING) LIKE 'REPLACE%%SELECT%%'
+            OR UPPER(STATEMENT_STRING) LIKE 'MERGE INTO%%'
+            OR UPPER(STATEMENT_STRING) LIKE 'UPDATE%%SET%%'
         )
-
-    def prepare(self):
-        """By default, there's nothing to prepare"""
-
-    @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
-        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: SapHanaConnection = config.serviceConnection.root.config
-        if not isinstance(connection, SapHanaConnection):
-            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
-        return cls(config, metadata)
+        """
 
     def close(self) -> None:
-        self.engine.dispose()
+        # The base class leaves engine as None when built with get_engine=False.
+        if self.engine is not None:
+            self.engine.dispose()
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
+        """Run the SQL-based passes, then the repository pass for calculation views.
+
+        Both passes report their own edge count, because "the run succeeded and
+        produced nothing" is the failure mode users actually hit, and it is
+        indistinguishable from success unless the counts are stated.
         """
-        Based on the query logs, prepare the lineage
-        and send it to the sink
+        sql_edges = 0
+        for either in super()._iter():
+            sql_edges += 1 if either.right else 0
+            yield either
+        logger.info(
+            "SAP HANA SQL lineage produced %d edges from view definitions, query history and stored procedures",
+            sql_edges,
+        )
+
+        cdata_edges = 0
+        for either in self.yield_cdata_lineage():
+            cdata_edges += 1 if either.right else 0
+            yield either
+        logger.info("SAP HANA repository lineage produced %d edges from _SYS_REPO models", cdata_edges)
+
+        if not sql_edges and not cdata_edges:
+            logger.warning(
+                "SAP HANA lineage finished with no edges. Check that the metadata workflow has already "
+                "ingested the tables and views, that processViewLineage or processQueryLineage is enabled, "
+                "and that the ingestion user can read SYS.VIEWS and SYS.M_SQL_PLAN_CACHE."
+            )
+
+    def yield_cdata_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """Lineage for calculation, analytic and attribute views, from _SYS_REPO.
+
+        On-prem and HXE only. HANA Cloud has no classic repository, so this yields
+        nothing there and the SQL passes above carry the whole result.
         """
         with self.engine.connect() as conn:
             try:
@@ -109,7 +126,12 @@ class SaphanaLineageSource(Source):
                 error_code = getattr(getattr(exc, "orig", None), "errorcode", None)
                 if error_code not in (362, 259):
                     raise
-                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")
+                logger.info(
+                    "_SYS_REPO is not present, so there are no repository models to read. This is normal on "
+                    "SAP HANA Cloud, where the classic repository was never carried over. View, query and "
+                    "stored-procedure lineage are unaffected. Cause: %s",
+                    exc,
+                )
                 result = []
             for row in result:
                 try:
@@ -125,7 +147,7 @@ class SaphanaLineageSource(Source):
                         )
                         continue
 
-                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
+                    logger.debug("Processing lineage for view: %s", lineage_model.name)
                     yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
                 except Exception as exc:
                     self.status.failed(

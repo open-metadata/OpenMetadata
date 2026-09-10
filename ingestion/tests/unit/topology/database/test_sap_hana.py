@@ -39,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
@@ -52,6 +53,12 @@ from metadata.ingestion.source.database.saphana.cdata_parser import (
 )
 from metadata.ingestion.source.database.saphana.lineage import SaphanaLineageSource
 from metadata.ingestion.source.database.saphana.models import SapHanaStoredProcedure
+from metadata.ingestion.source.database.saphana.queries import (
+    SAPHANA_QUERY_HISTORY_STATEMENT,
+)
+from metadata.ingestion.source.database.saphana.query_parser import (
+    SapHanaQueryParserSource,
+)
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -778,7 +785,12 @@ def test_sap_hana_lineage_filter_pattern() -> None:
         ),
     )
 
-    with patch("metadata.ingestion.source.database.saphana.lineage.get_ssl_connection") as mock_get_engine:
+    # The engine is built by QueryParserSource now that the source inherits the shared
+    # lineage framework, so patch it where it is actually looked up.
+    with (
+        patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection") as mock_get_engine,
+        patch.object(SaphanaLineageSource, "test_connection"),
+    ):
         mock_engine = MagicMock()
         mock_connection = MagicMock()
         mock_get_engine.return_value = mock_engine
@@ -853,7 +865,9 @@ def test_sap_hana_lineage_filter_pattern() -> None:
             return iter([])
 
         with patch.object(source, "parse_cdata", side_effect=mock_parse_cdata):
-            list(source._iter())
+            # Exercise the repository pass directly. _iter now also runs the shared
+            # SQL passes, which are covered by the framework's own tests.
+            list(source.yield_cdata_lineage())
 
         assert "CV_INCLUDE_VIEW" in processed_views
         assert "CV_INCLUDE_ANOTHER" in processed_views
@@ -1442,3 +1456,98 @@ def test_yield_stored_procedure_empty_definition() -> None:
     assert len(results) == 1
     request = results[0].right
     assert request.storedProcedureCode.code == ""
+
+
+# ---------------------------------------------------------------------------
+# SQL-based lineage via the shared LineageSource (issue #24764)
+#
+# SAP HANA Cloud has no _SYS_REPO, so the CDATA pass yields nothing there and
+# these SQL paths carry the entire result.
+# ---------------------------------------------------------------------------
+
+
+def test_lineage_source_uses_the_shared_framework() -> None:
+    """The source must inherit LineageSource, or Cloud gets no lineage at all.
+
+    The CDATA pass only reads _SYS_REPO, which does not exist on HANA Cloud.
+    """
+    assert issubclass(SaphanaLineageSource, LineageSource)
+    assert issubclass(SaphanaLineageSource, SapHanaQueryParserSource)
+    # QueryParserSource requires both to build the query-history statement.
+    assert SaphanaLineageSource.sql_stmt
+    assert SaphanaLineageSource.filters
+
+
+def test_query_history_statement_formats_into_valid_sql() -> None:
+    """The statement must survive .format() with the values the framework passes."""
+    sql = SAPHANA_QUERY_HISTORY_STATEMENT.format(
+        filters=SaphanaLineageSource.filters.replace("%%", "%"),
+        start_time="2026-09-09 00:00:00",
+        end_time="2026-09-10 00:00:00",
+        result_limit=100,
+    )
+
+    # The framework maps these aliases onto TableQuery, so all of them must survive.
+    for column in (
+        "user_name",
+        "database_name",
+        "schema_name",
+        "aborted",
+        "query_text",
+        "start_time",
+        "duration",
+        "end_time",
+    ):
+        assert f"AS {column}" in sql
+
+    assert "SYS.M_SQL_PLAN_CACHE" in sql
+    assert "LIMIT 100" in sql
+    # Escaped literal braces must not leak through as format placeholders.
+    assert '{"app": "OpenMetadata"' in sql
+
+
+def test_query_filters_select_only_data_movement() -> None:
+    """The filter must catch statements that move data and ignore plain reads.
+
+    HANA's plan cache holds no DDL at all, so CREATE TABLE AS SELECT is absent by
+    construction and is deliberately not matched here.
+    """
+    filters = SaphanaLineageSource.filters.replace("%%", "%")
+
+    assert "INSERT INTO%SELECT%" in filters
+    assert "MERGE INTO%" in filters
+    # A plain SELECT moves nothing and would only add noise.
+    assert "'SELECT%'" not in filters
+
+
+def test_iter_runs_both_passes() -> None:
+    """_iter must run the shared SQL passes and the repository pass.
+
+    Dropping either one silently halves lineage on the deployment that depends on it.
+    """
+    calls = []
+
+    with (
+        patch.object(LineageSource, "_iter", side_effect=lambda *a, **k: iter([]) or calls.append("sql") or iter([])),
+        patch.object(
+            SaphanaLineageSource, "yield_cdata_lineage", side_effect=lambda: calls.append("cdata") or iter([])
+        ),
+        patch.object(SaphanaLineageSource, "test_connection"),
+        patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection"),
+    ):
+        source = SaphanaLineageSource(
+            config=WorkflowSource(
+                type="saphana-lineage",
+                serviceName="test_sap_hana",
+                serviceConnection=DatabaseConnection(
+                    config=SapHanaConnection(
+                        connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
+                    )
+                ),
+                sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
+            ),
+            metadata=create_autospec(OpenMetadata),
+        )
+        list(source._iter())
+
+    assert "cdata" in calls
