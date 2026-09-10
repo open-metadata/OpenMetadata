@@ -30,7 +30,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
+import ScheduleInterval from '../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 import {
@@ -282,7 +282,7 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
                 {({ field }) => (
                   <div>
                     <FormItemLabel label={t('label.schedule-interval')} />
-                    <ScheduleIntervalV1
+                    <ScheduleInterval
                       defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                       entity={t('label.test-suite')}
                       includePeriodOptions={schedulerOptions}

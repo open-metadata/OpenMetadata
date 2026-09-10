@@ -12,7 +12,7 @@
  */
 
 /**
- * E2E tests for Settings → Personas → [persona] → AI Context → Rule builder.
+ * E2E tests for Context Center → AI Context → [persona] → Rule builder.
  *
  * Coverage:
  *  - Rule CRUD (create / edit / delete)
@@ -35,12 +35,11 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { toastNotification } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectOptionWithRetry, toastNotification } from '../../utils/common';
 import {
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-} from '../../utils/persona';
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 // ---------------------------------------------------------------------------
 // Fixtures and shared state
@@ -72,12 +71,8 @@ const comboboxField = (scope: Page | Locator, className: string): Locator =>
     .locator(className)
     .filter({ has: scope.locator('input[role="combobox"]') });
 
-const navigateToAIContextTab = async (page: Page) => {
-  await navigateToPersonaSettings(page);
-  await navigateToPersonaWithPagination(page, persona.data.name, true);
-  await page.getByRole('tab', { name: 'AI Context' }).click();
-  await waitForAllLoadersToDisappear(page);
-};
+const openPersonaContext = async (page: Page) =>
+  openPersonaAIContext(page, persona.data.name);
 
 /**
  * Opens the Add Rule drawer. Before any rules exist the empty-state button is
@@ -161,7 +156,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     const RULE_NAME = 'ai-context-crud-rule';
     const RULE_NAME_EDITED = 'ai-context-crud-rule-edited';
 
-    await navigateToAIContextTab(page);
+    await openPersonaContext(page);
 
     await test.step('empty state shows Add Rule button before any rules exist', async () => {
       await expect(page.getByTestId('empty-add-context-rule')).toBeVisible();
@@ -224,7 +219,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('incomplete condition (no field selected) blocks save with an error message', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
       await page
         .getByTestId('context-rule-name')
@@ -268,7 +263,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('fully-completed Description Contains condition allows save — regression #31564', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
       await page
         .getByTestId('context-rule-name')
@@ -325,7 +320,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('changing entity type clears an incomplete filter and unblocks save', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
       await page
         .getByTestId('context-rule-name')
@@ -342,12 +337,18 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       });
 
       await test.step('switch entity type — filter must reset and unblock save', async () => {
-        await page.getByTestId('context-rule-entity-type').click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: /metric/i })
-          .first()
-          .click();
+        // react-aria can close the listbox mid-click and detach the option,
+        // dropping the selection so the filter is never reset and the save stays
+        // blocked — the source of this test's flakiness. selectOptionWithRetry
+        // re-resolves the trigger's expanded state and reopens the popover before
+        // retrying the option click.
+        await selectOptionWithRetry(
+          page.getByTestId('context-rule-entity-type'),
+          page
+            .getByRole('listbox')
+            .getByRole('option', { name: /metric/i })
+            .first()
+        );
         await saveRule(page);
         await toastNotification(page, /AI context rule saved\./);
       });
@@ -360,7 +361,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     }) => {
       const DUPE_NAME = 'duplicate-name-test';
 
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
 
       await test.step('create first rule', async () => {
         await openAddRuleDrawer(page);
@@ -386,13 +387,18 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
   // -------------------------------------------------------------------------
 
   test.describe('Persona AI Context — Rule editor fields', () => {
-    test('max assets input clamps values above 1000 to 1000 on blur', async ({
+    test('max assets input clamps values above 1000 for preloaded rules', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
 
       const maxAssetsInput = page.getByTestId('context-rule-max-assets');
+
+      await test.step('switch the new rule from search-scoped to preloaded', async () => {
+        await enablePersonaRulePreloading(page);
+        await expect(maxAssetsInput).toBeEnabled();
+      });
 
       await test.step('type 9999 — displayed while typing', async () => {
         await maxAssetsInput.fill('9999');
@@ -410,51 +416,63 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('Always in context and Fully rendered toggles are visible and interactable', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
+      await enablePersonaRulePreloading(page);
 
-      const alwaysToggle = page.getByTestId('context-rule-always-in-context');
-      const fullyToggle = page.getByTestId('context-rule-fully-rendered');
+      const alwaysToggle = page
+        .getByTestId('context-rule-always-in-context')
+        .getByRole('switch');
+      const fullyToggle = page
+        .getByTestId('context-rule-fully-rendered')
+        .getByRole('switch');
 
       await expect(alwaysToggle).toBeVisible();
+      await expect(alwaysToggle).toBeEnabled();
       await expect(fullyToggle).toBeVisible();
+      await expect(fullyToggle).toBeEnabled();
 
-      // Toggle on then back off — verifies the controls are interactive
-      await alwaysToggle.click();
-      await alwaysToggle.click();
+      await alwaysToggle.press('Space');
+      await expect(alwaysToggle).toBeChecked();
+      await alwaysToggle.press('Space');
+      await expect(alwaysToggle).not.toBeChecked();
+
+      await fullyToggle.press('Space');
+      await expect(fullyToggle).toBeChecked();
+      await fullyToggle.press('Space');
+      await expect(fullyToggle).not.toBeChecked();
 
       await page.keyboard.press('Escape');
     });
 
-    test(
-      'knowledge entity type forces Fully rendered on and disables it',
-      { tag: '@quarantine' },
-      async ({ adminPage: page }) => {
-        await navigateToAIContextTab(page);
-        await openAddRuleDrawer(page);
+    test('knowledge entity type forces Fully rendered on and disables it', async ({
+      adminPage: page,
+    }) => {
+      await openPersonaContext(page);
+      await openAddRuleDrawer(page);
 
-        await test.step('switch to a knowledge entity type', async () => {
-          await page.getByTestId('context-rule-entity-type').click();
-          await page
-            .getByRole('listbox')
-            .getByText(/knowledge/i)
-            .first()
-            .click();
-        });
+      await test.step('switch to a knowledge entity type', async () => {
+        await page.getByTestId('context-rule-entity-type').click();
+        // Each option carries its EntityType as data-key. Matching the
+        // "Knowledge" supporting text instead would match all three knowledge
+        // types and leave DOM order to decide which one the test exercises.
+        await page
+          .getByRole('listbox')
+          .locator('[data-key="glossaryTerm"]')
+          .click();
+      });
 
-        await test.step('Fully rendered switch must be checked and disabled', async () => {
-          const fullyRenderedSwitch = page
-            .getByTestId('context-rule-fully-rendered')
-            .getByRole('switch')
-            .first();
-          // toBeChecked() reads the checkbox `checked` property — react-aria Switch
-          // does not always set the aria-checked attribute, so attribute checks fail
-          await expect(fullyRenderedSwitch).toBeChecked();
-          await expect(fullyRenderedSwitch).toBeDisabled();
-        });
+      await test.step('Fully rendered switch must be checked and disabled', async () => {
+        const fullyRenderedSwitch = page
+          .getByTestId('context-rule-fully-rendered')
+          .getByRole('switch');
+        // toBeChecked() reads the checkbox `checked` property — react-aria Switch
+        // does not always set the aria-checked attribute, so attribute checks fail
+        await expect(fullyRenderedSwitch).toBeChecked();
+        await expect(fullyRenderedSwitch).toBeDisabled();
+      });
 
-        await page.keyboard.press('Escape');
-      }
-    );
+      await page.keyboard.press('Escape');
+    });
   });
 });

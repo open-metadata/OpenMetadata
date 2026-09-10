@@ -18,32 +18,37 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { getTagsWithoutTier } from './TablePureUtils';
 import { getTableTags } from './TagsPureUtils';
 
+const TAGS_WITHOUT_TIER_ENTITY_TYPES: EntityType[] = [
+  EntityType.DASHBOARD,
+  EntityType.SEARCH_INDEX,
+  EntityType.PIPELINE,
+];
+
+const RAW_TAGS_ENTITY_TYPES: EntityType[] = [
+  EntityType.TOPIC,
+  EntityType.MLMODEL,
+  EntityType.STORED_PROCEDURE,
+  EntityType.DASHBOARD_DATA_MODEL,
+];
+
 export const getEntityTags = (
   type: string,
   entityDetail: EntityDetailUnion
 ): Array<TagLabel> => {
-  switch (type) {
-    case EntityType.TABLE: {
-      const tableTags: Array<TagLabel> = [
-        ...getTableTags((entityDetail as Table).columns ?? []),
-        ...(entityDetail.tags ?? []),
-      ];
-
-      return tableTags;
-    }
-    case EntityType.DASHBOARD:
-    case EntityType.SEARCH_INDEX:
-    case EntityType.PIPELINE:
-      return getTagsWithoutTier(entityDetail.tags ?? []);
-
-    case EntityType.TOPIC:
-    case EntityType.MLMODEL:
-    case EntityType.STORED_PROCEDURE:
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      return entityDetail.tags ?? [];
-    }
-
-    default:
-      return [];
+  if (type === EntityType.TABLE) {
+    return [
+      ...getTableTags((entityDetail as Table).columns ?? []),
+      ...(entityDetail.tags ?? []),
+    ];
   }
+
+  if (TAGS_WITHOUT_TIER_ENTITY_TYPES.includes(type as EntityType)) {
+    return getTagsWithoutTier(entityDetail.tags ?? []);
+  }
+
+  if (RAW_TAGS_ENTITY_TYPES.includes(type as EntityType)) {
+    return entityDetail.tags ?? [];
+  }
+
+  return [];
 };

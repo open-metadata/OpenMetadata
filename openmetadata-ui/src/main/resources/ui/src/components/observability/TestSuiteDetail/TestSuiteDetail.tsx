@@ -46,6 +46,7 @@ import Loader from '../../common/Loader/Loader';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
+import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
 import TestSuitePipelineTab from '../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
@@ -54,6 +55,105 @@ import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageS
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
+
+const TestSuiteTitle = ({
+  displayName,
+  name,
+}: {
+  displayName?: string;
+  name?: string;
+}) => (
+  <Box className="tw:min-w-0" direction="col">
+    {displayName && (
+      <Typography
+        as="h2"
+        className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
+        data-testid="entity-header-display-name"
+        ellipsis={{
+          tooltip: breakableTooltipText(displayName),
+        }}
+        size="text-lg"
+        weight="bold">
+        {displayName}
+      </Typography>
+    )}
+    <Typography
+      as={displayName ? 'span' : 'h2'}
+      className={classNames(
+        'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
+        {
+          'tw:text-primary': !displayName,
+          'tw:text-tertiary': displayName,
+        }
+      )}
+      data-testid="entity-header-name"
+      ellipsis={{
+        tooltip: breakableTooltipText(name),
+      }}
+      size={displayName ? 'text-sm' : 'text-lg'}
+      weight={displayName ? 'medium' : 'bold'}>
+      {name}
+    </Typography>
+  </Box>
+);
+
+interface TestSuiteAddTestCaseDialogProps {
+  editAll?: boolean;
+  editTests?: boolean;
+  isOpen: boolean;
+  existingTests?: AddTestCaseModalProps['existingTest'];
+  onOpenChange: (open: boolean) => void;
+  onSubmit?: AddTestCaseModalProps['onSubmit'];
+  onClose: () => void;
+}
+
+const TestSuiteAddTestCaseDialog = ({
+  editAll,
+  editTests,
+  isOpen,
+  existingTests,
+  onOpenChange,
+  onSubmit,
+  onClose,
+}: TestSuiteAddTestCaseDialogProps) => {
+  const { t } = useTranslation();
+
+  if (!editAll && !editTests) {
+    return null;
+  }
+
+  return (
+    <DialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Button color="primary" data-testid="add-test-case-btn" size="md">
+        {t('label.add-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+      </Button>
+      <ModalOverlay>
+        <Modal>
+          <Dialog
+            showCloseButton
+            title={t('label.add-entity', {
+              entity: t('label.test-case-plural'),
+            })}
+            onClose={onClose}>
+            <Dialog.Content>
+              <AddTestCaseList
+                existingTest={existingTests ?? []}
+                getPopupContainer={(trigger) =>
+                  (trigger.closest('[role="dialog"]') as HTMLElement) ??
+                  document.body
+                }
+                onCancel={onClose}
+                onSubmit={onSubmit}
+              />
+            </Dialog.Content>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
+    </DialogTrigger>
+  );
+};
 
 /**
  * App-mode (bundle) test suite details page. Follows the same design as the
@@ -254,38 +354,10 @@ const TestSuiteDetail = () => {
                   className="tw:min-w-0"
                   data-testid="entity-header-title"
                   gap={3}>
-                  <Box className="tw:min-w-0" direction="col">
-                    {testSuite?.displayName && (
-                      <Typography
-                        as="h2"
-                        className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-                        data-testid="entity-header-display-name"
-                        ellipsis={{
-                          tooltip: breakableTooltipText(testSuite.displayName),
-                        }}
-                        size="text-lg"
-                        weight="bold">
-                        {testSuite.displayName}
-                      </Typography>
-                    )}
-                    <Typography
-                      as={testSuite?.displayName ? 'span' : 'h2'}
-                      className={classNames(
-                        'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-                        {
-                          'tw:text-primary': !testSuite?.displayName,
-                          'tw:text-tertiary': testSuite?.displayName,
-                        }
-                      )}
-                      data-testid="entity-header-name"
-                      ellipsis={{
-                        tooltip: breakableTooltipText(testSuite?.name),
-                      }}
-                      size={testSuite?.displayName ? 'text-sm' : 'text-lg'}
-                      weight={testSuite?.displayName ? 'medium' : 'bold'}>
-                      {testSuite?.name}
-                    </Typography>
-                  </Box>
+                  <TestSuiteTitle
+                    displayName={testSuite?.displayName}
+                    name={testSuite?.name}
+                  />
                   <Tooltip
                     placement="top"
                     title={
@@ -310,44 +382,15 @@ const TestSuiteDetail = () => {
                 </Box>
               </Box>
               <Box align="center" className="tw:shrink-0" gap={2}>
-                {(testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditTests) && (
-                  <DialogTrigger
-                    isOpen={isTestCaseModalOpen}
-                    onOpenChange={setIsTestCaseModalOpen}>
-                    <Button
-                      color="primary"
-                      data-testid="add-test-case-btn"
-                      size="md">
-                      {t('label.add-entity', {
-                        entity: t('label.test-case-plural'),
-                      })}
-                    </Button>
-                    <ModalOverlay>
-                      <Modal>
-                        <Dialog
-                          showCloseButton
-                          title={t('label.add-entity', {
-                            entity: t('label.test-case-plural'),
-                          })}
-                          onClose={() => setIsTestCaseModalOpen(false)}>
-                          <Dialog.Content>
-                            <AddTestCaseList
-                              existingTest={testSuite?.tests ?? []}
-                              getPopupContainer={(trigger) =>
-                                (trigger.closest(
-                                  '[role="dialog"]'
-                                ) as HTMLElement) ?? document.body
-                              }
-                              onCancel={() => setIsTestCaseModalOpen(false)}
-                              onSubmit={handleAddTestCaseSubmit}
-                            />
-                          </Dialog.Content>
-                        </Dialog>
-                      </Modal>
-                    </ModalOverlay>
-                  </DialogTrigger>
-                )}
+                <TestSuiteAddTestCaseDialog
+                  editAll={testSuitePermissions.EditAll}
+                  editTests={testSuitePermissions.EditTests}
+                  existingTests={testSuite?.tests}
+                  isOpen={isTestCaseModalOpen}
+                  onClose={() => setIsTestCaseModalOpen(false)}
+                  onOpenChange={setIsTestCaseModalOpen}
+                  onSubmit={handleAddTestCaseSubmit}
+                />
                 <ManageButton
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}

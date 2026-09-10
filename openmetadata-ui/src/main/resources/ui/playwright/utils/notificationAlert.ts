@@ -31,7 +31,12 @@ import {
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
 } from './alert';
-import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from './common';
 import { selectComboBoxOption, selectDropdownOption } from './destination';
 import {
   addMultiOwner,
@@ -238,8 +243,8 @@ export const editSingleFilterAlert = async ({
   await visitEditAlertPage(page, alertDetails);
 
   // Update description
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(ALERT_UPDATED_DESCRIPTION);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
   await page.click('[data-testid="source-select"]');

@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
-import { Key, useEffect, useMemo, useState } from 'react';
+import { Key, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Provenance as UpdateProvenance,
@@ -60,6 +60,80 @@ const RelationField = ({ label, value }: RelationFieldProps) => (
     <Typography className="tw:text-primary" size="text-sm">
       {value}
     </Typography>
+  </div>
+);
+
+interface DeleteConfirmationProps {
+  readonly isSaving: boolean;
+  readonly t: ReturnType<typeof useTranslation>['t'];
+  readonly onCancel: () => void;
+  readonly onConfirm: () => void;
+}
+
+const DeleteConfirmation = ({
+  isSaving,
+  t,
+  onCancel,
+  onConfirm,
+}: DeleteConfirmationProps) => (
+  <div className="tw:flex tw:flex-col tw:gap-2">
+    <Typography className="tw:text-error-primary" size="text-sm">
+      {t('message.are-you-sure-delete-entity', {
+        entity: t('label.relationship'),
+      })}
+    </Typography>
+    <div className="tw:flex tw:justify-end tw:gap-2">
+      <Button color="secondary" isDisabled={isSaving} onClick={onCancel}>
+        {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary-destructive"
+        data-testid="confirm-delete-relation-btn"
+        isLoading={isSaving}
+        onClick={onConfirm}>
+        {t('label.delete')}
+      </Button>
+    </div>
+  </div>
+);
+
+interface DeleteTriggerProps {
+  readonly isDirty: boolean;
+  readonly isSaving: boolean;
+  readonly t: ReturnType<typeof useTranslation>['t'];
+  readonly onClose: () => void;
+  readonly onDeleteRequest: () => void;
+  readonly onSave: () => void;
+}
+
+const DeleteTrigger = ({
+  isDirty,
+  isSaving,
+  t,
+  onClose,
+  onDeleteRequest,
+  onSave,
+}: DeleteTriggerProps) => (
+  <div className="tw:flex tw:justify-between tw:gap-2">
+    <Button
+      color="tertiary-destructive"
+      data-testid="delete-relation-btn"
+      isDisabled={isSaving}
+      onClick={onDeleteRequest}>
+      {t('label.delete')}
+    </Button>
+    <div className="tw:flex tw:gap-2">
+      <Button color="secondary" onClick={onClose}>
+        {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        isDisabled={!isDirty}
+        isLoading={isSaving}
+        onClick={onSave}>
+        {t('label.save')}
+      </Button>
+    </div>
   </div>
 );
 
@@ -178,6 +252,23 @@ function getProvenanceLabel(
   }
 }
 
+function computeIsDirty(
+  edge: MergedEdge | null,
+  relationType: string,
+  provenance: UpdateProvenance,
+  status: UpdateEntityStatus
+): boolean {
+  if (!edge) {
+    return false;
+  }
+
+  return (
+    relationType !== edge.relationType ||
+    provenance !== toUpdateProvenance(edge.provenance) ||
+    status !== toUpdateStatus(edge.status)
+  );
+}
+
 function getStatusLabel(
   status: EntityStatus | undefined,
   t: ReturnType<typeof useTranslation>['t']
@@ -217,7 +308,7 @@ export const OntologyRelationDetailsPanel = ({
   const [status, setStatus] = useState(UpdateEntityStatus.Draft);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setRelationType(edge?.relationType ?? '');
     setProvenance(toUpdateProvenance(edge?.provenance));
     setStatus(toUpdateStatus(edge?.status));
@@ -259,11 +350,9 @@ export const OntologyRelationDetailsPanel = ({
     ],
     [t]
   );
-  const isDirty = Boolean(
-    edge &&
-      (relationType !== edge.relationType ||
-        provenance !== toUpdateProvenance(edge.provenance) ||
-        status !== toUpdateStatus(edge.status))
+  const isDirty = useMemo(
+    () => computeIsDirty(edge, relationType, provenance, status),
+    [edge, relationType, provenance, status]
   );
 
   const save = async () => {
@@ -278,10 +367,16 @@ export const OntologyRelationDetailsPanel = ({
     }
   };
 
-  const source = edge ? nodeLabels.get(edge.from) ?? edge.from : '';
-  const target = edge ? nodeLabels.get(edge.to) ?? edge.to : '';
-  const provenanceLabel = getProvenanceLabel(edge?.provenance, t);
-  const statusLabel = getStatusLabel(edge?.status, t);
+  const relationDetails = useMemo(
+    () => ({
+      source: edge ? nodeLabels.get(edge.from) ?? edge.from : '',
+      target: edge ? nodeLabels.get(edge.to) ?? edge.to : '',
+      provenanceLabel: getProvenanceLabel(edge?.provenance, t),
+      statusLabel: getStatusLabel(edge?.status, t),
+    }),
+    [edge, nodeLabels, t]
+  );
+  const { source, target, provenanceLabel, statusLabel } = relationDetails;
 
   if (!edge) {
     return null;
@@ -357,50 +452,21 @@ export const OntologyRelationDetailsPanel = ({
             {(item) => <Select.Item {...item} />}
           </Select>
           {isConfirmingDelete ? (
-            <div className="tw:flex tw:flex-col tw:gap-2">
-              <Typography className="tw:text-error-primary" size="text-sm">
-                {t('message.are-you-sure-delete-entity', {
-                  entity: t('label.relationship'),
-                })}
-              </Typography>
-              <div className="tw:flex tw:justify-end tw:gap-2">
-                <Button
-                  color="secondary"
-                  isDisabled={isSaving}
-                  onClick={() => setIsConfirmingDelete(false)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary-destructive"
-                  data-testid="confirm-delete-relation-btn"
-                  isLoading={isSaving}
-                  onClick={remove}>
-                  {t('label.delete')}
-                </Button>
-              </div>
-            </div>
+            <DeleteConfirmation
+              isSaving={isSaving}
+              t={t}
+              onCancel={() => setIsConfirmingDelete(false)}
+              onConfirm={remove}
+            />
           ) : (
-            <div className="tw:flex tw:justify-between tw:gap-2">
-              <Button
-                color="tertiary-destructive"
-                data-testid="delete-relation-btn"
-                isDisabled={isSaving}
-                onClick={() => setIsConfirmingDelete(true)}>
-                {t('label.delete')}
-              </Button>
-              <div className="tw:flex tw:gap-2">
-                <Button color="secondary" onClick={onClose}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary"
-                  isDisabled={!isDirty}
-                  isLoading={isSaving}
-                  onClick={save}>
-                  {t('label.save')}
-                </Button>
-              </div>
-            </div>
+            <DeleteTrigger
+              isDirty={isDirty}
+              isSaving={isSaving}
+              t={t}
+              onClose={onClose}
+              onDeleteRequest={() => setIsConfirmingDelete(true)}
+              onSave={save}
+            />
           )}
         </div>
       ) : null}

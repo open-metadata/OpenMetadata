@@ -142,7 +142,6 @@ def find_main_pod(
                 [
                     f"{LABEL_JOB_NAME}={job_name}",
                     f"{LABEL_OMJOB_NAME}={job_name},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
-                    f"{LABEL_OMJOB_NAME}={job_name}",
                 ]
             )
 
@@ -150,7 +149,6 @@ def find_main_pod(
             label_selectors.extend(
                 [
                     f"{LABEL_APP_RUN_ID}={pipeline_run_id},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
-                    f"{LABEL_APP_RUN_ID}={pipeline_run_id}",
                 ]
             )
 
@@ -167,6 +165,15 @@ def find_main_pod(
             for pod in pods.items:
                 try:
                     if pod.metadata and pod.metadata.name:
+                        labels = pod.metadata.labels or {}
+                        pod_type = labels.get(LABEL_POD_TYPE)
+                        if pod_type != POD_TYPE_MAIN:
+                            logger.info(
+                                "Skipping non-main pod %s (pod-type=%s)",
+                                pod.metadata.name,
+                                pod_type,
+                            )
+                            continue
                         logger.info(f"Found main pod: {pod.metadata.name} (selector: {label_selector})")
                         return pod
                 except Exception as pod_error:

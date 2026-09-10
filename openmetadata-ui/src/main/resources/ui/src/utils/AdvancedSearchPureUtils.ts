@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OldJsonTree } from '@react-awesome-query-builder/ui';
-import { isArray, isEmpty, toLower } from 'lodash';
+import type { OldJsonTree } from '@react-awesome-query-builder/antd';
+import { escapeRegExp, isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -23,6 +23,7 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
   QUICK_FILTER_SOURCE_FIELDS,
   TAG_ASSETS_DROPDOWN_ITEMS,
+  TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import {
@@ -64,19 +65,37 @@ export const getAssetsPageQuickFilters = (
     case AssetsOfEntity.LINEAGE:
       return [...LINEAGE_DROPDOWN_ITEMS];
 
+    case AssetsOfEntity.TEAM:
+      return [...TEAM_ASSETS_DROPDOWN_ITEMS];
+
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }
 };
 
 export const getSearchLabel = (itemLabel: string, searchKey: string) => {
-  const regex = new RegExp(searchKey, 'gi');
+  const htmlCharacterMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (character) => htmlCharacterMap[character]);
+
+  const escapedLabel = escapeHtml(itemLabel);
   if (searchKey) {
-    const result = itemLabel.replace(regex, (match) => `<mark>${match}</mark>`);
+    const escapedSearchKey = escapeHtml(searchKey);
+    const regex = new RegExp(escapeRegExp(escapedSearchKey), 'gi');
+    const result = escapedLabel.replace(
+      regex,
+      (match) => `<mark>${match}</mark>`
+    );
 
     return result;
   } else {
-    return itemLabel;
+    return escapedLabel;
   }
 };
 

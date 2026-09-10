@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { FieldOrGroup } from '@react-awesome-query-builder/ui';
+import { FieldOrGroup } from '@react-awesome-query-builder/antd';
+import { render } from '@testing-library/react';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -21,6 +22,7 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
   TAG_ASSETS_DROPDOWN_ITEMS,
+  TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import {
   EntityFields,
@@ -43,6 +45,7 @@ import {
   getTasksOptions,
 } from './AdvancedSearchPureUtils';
 import {
+  generateSearchDropdownLabel,
   getSearchDropdownLabels,
   processCustomPropertyField,
   processEntityTypeFields,
@@ -120,6 +123,21 @@ describe('AdvancedSearchUtils tests', () => {
     expect(resultMenuItems).toHaveLength(4);
   });
 
+  it('renders dropdown labels as text instead of executable HTML', () => {
+    const payload = '<img src=x onerror="alert(1)">';
+    const label = generateSearchDropdownLabel(
+      { key: 'malicious', label: payload },
+      false,
+      'img',
+      false
+    );
+    const { container } = render(label);
+
+    expect(container.querySelector('img')).not.toBeInTheDocument();
+    expect(container).toHaveTextContent(payload);
+    expect(container.querySelector('mark')).toHaveTextContent('img');
+  });
+
   it('Function getSelectedOptionLabelString should return all options if the length of resultant string is less than 15', () => {
     const resultOptionsString = getSelectedOptionLabelString(
       mockShortOptionsArray
@@ -159,6 +177,17 @@ describe('AdvancedSearchUtils tests', () => {
     const resultSearchLabel = getSearchLabel(mockItemLabel, '');
 
     expect(resultSearchLabel).toBe(mockItemLabel);
+  });
+
+  it('Function getSearchLabel should escape HTML before highlighting', () => {
+    const resultSearchLabel = getSearchLabel(
+      '<img src=x onerror="alert(1)">',
+      'img'
+    );
+
+    expect(resultSearchLabel).toBe(
+      '&lt;<mark>img</mark> src=x onerror=&quot;alert(1)&quot;&gt;'
+    );
   });
 
   it('Function getServiceOptions should return displayName of the service', () => {
@@ -695,6 +724,20 @@ describe('AdvancedSearchUtils tests', () => {
     it('should return TAG_ASSETS_DROPDOWN_ITEMS for TAG type', () => {
       expect(getAssetsPageQuickFilters(AssetsOfEntity.TAG)).toEqual(
         TAG_ASSETS_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return TEAM_ASSETS_DROPDOWN_ITEMS for TEAM type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.TEAM)).toEqual(
+        TEAM_ASSETS_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should include the entity type filter for TEAM type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.TEAM)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: EntityFields.ENTITY_TYPE }),
+        ])
       );
     });
 
