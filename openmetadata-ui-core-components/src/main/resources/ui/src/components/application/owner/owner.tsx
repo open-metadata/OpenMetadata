@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01 } from '@untitledui/icons';
+import { Edit01, User01 } from '@untitledui/icons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Popover, PopoverTrigger } from '../popover/popover';
@@ -99,6 +99,12 @@ export const Owner = ({
       <div
         className={cx('tw:flex tw:items-center tw:gap-1', className)}
         data-testid={dataTestId}>
+        {/* Matches the legacy NoOwnerFound placeholder: a user glyph the app
+            asserts on (data-testid="no-owner-icon") for the empty compact state. */}
+        <User01
+          className="tw:size-4 tw:shrink-0 tw:text-quaternary"
+          data-testid="no-owner-icon"
+        />
         <span className="tw:text-quaternary tw:text-xs">
           {placeHolder ?? t('label.no-owners')}
         </span>
