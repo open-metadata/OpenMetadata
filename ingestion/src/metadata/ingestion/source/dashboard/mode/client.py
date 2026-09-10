@@ -11,6 +11,8 @@
 """
 REST Auth & Client for Mode
 """
+
+import json
 import traceback
 from base64 import b64encode
 from typing import Any, Dict, List, Optional, cast
@@ -38,7 +40,14 @@ DESCRIPTION = "description"
 LINKS = "_links"
 SHARE = "share"
 HREF = "href"
-REPORTS_PAGE_SIZE = 30
+
+
+def _report_key(report: Dict[str, Any]) -> str:
+    """Identify a report for de-duplication, tolerating a missing token."""
+    token = report.get(TOKEN)
+    if token:
+        return str(token)
+    return json.dumps(report, sort_keys=True, default=str)
 
 
 class ModeApiClient:
@@ -69,11 +78,18 @@ class ModeApiClient:
         self, workspace_name: str, filter: Optional[str] = "all"
     ) -> List[Dict[str, Any]]:
         """Method to fetch all reports for Mode
+
+        Mode neither documents a stable report page size nor guarantees an empty page
+        past the last one: an out-of-range page may be clamped back to the last page,
+        and a page parameter the API ignores repeats page one indefinitely. Pagination
+        therefore stops once a page carries no unseen report, which terminates in all
+        of those cases without assuming how many records a full page holds.
+
         Args:
             workspace_name:
             filter:
         Returns:
-            dict
+            the report records of every visible space
         """
         if filter not in ["custom", "all"]:
             raise ValueError(
@@ -88,8 +104,8 @@ class ModeApiClient:
         )
         spaces = response_spaces[EMBEDDED][SPACES]
         for space in spaces:
+            seen_reports = set()
             page = 1
-            previous_reports = None
             while True:
                 response_reports = self.get_reports_for_space(
                     workspace_name=workspace_name,
@@ -97,15 +113,15 @@ class ModeApiClient:
                     page=page,
                 )
                 reports = response_reports[EMBEDDED][REPORTS]
-                if reports and reports == previous_reports:
-                    raise RuntimeError(
-                        f"Mode returned the same report page twice for space "
-                        f"[{space[TOKEN]}] at page [{page}]"
-                    )
-                all_reports.extend(reports)
-                if len(reports) < REPORTS_PAGE_SIZE:
+                new_reports = [
+                    report
+                    for report in reports
+                    if _report_key(report) not in seen_reports
+                ]
+                if not new_reports:
                     break
-                previous_reports = reports
+                seen_reports.update(_report_key(report) for report in new_reports)
+                all_reports.extend(new_reports)
                 page += 1
         return all_reports
 
