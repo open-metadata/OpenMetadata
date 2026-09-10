@@ -238,6 +238,8 @@ export interface PipelineConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
 export interface Connection {
@@ -541,6 +543,45 @@ export interface Connection {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Consumer key provided when you setup your Salesforce connected app
+     */
+    consumerKey?: string;
+    /**
+     * Consumer secret provided when you setup your Salesforce connected app
+     */
+    consumerSecret?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
+     */
+    paginationLimit?: number;
+    /**
+     * API version of the Salesforce instance
+     */
+    salesforceApiVersion?: string;
+    /**
+     * Domain of Salesforce instance
+     */
+    salesforceDomain?: string;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?:            string;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
@@ -1526,6 +1567,11 @@ export interface DatabaseConnectionClass {
      */
     hostPort?: string;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
@@ -1696,6 +1742,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",

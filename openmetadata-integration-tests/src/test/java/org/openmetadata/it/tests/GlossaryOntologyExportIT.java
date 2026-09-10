@@ -33,8 +33,6 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Integration tests for Glossary Ontology Export API.
@@ -78,9 +76,6 @@ public class GlossaryOntologyExportIT {
   private static final String UNSUPPORTED_FORMAT_ERROR =
       "Unsupported RDF serialization format: " + INVALID_FORMAT;
 
-  // See TestSuiteBootstrap for why we use secoresearch/fuseki:5.5.0 instead
-  // of the unmaintained stain/jena-fuseki image.
-  private static final String FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -93,19 +88,7 @@ public class GlossaryOntologyExportIT {
     if (TestSuiteBootstrap.isFusekiEnabled()) {
       fusekiEndpoint = TestSuiteBootstrap.getFusekiEndpoint();
     } else {
-      // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
-      // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
-      // tmpfs keeps TDB2 writes off the container's writable layer.
-      localFusekiContainer =
-          new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
-              .withExposedPorts(FUSEKI_PORT)
-              .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
-              .waitingFor(
-                  Wait.forHttp("/$/ping")
-                      .forPort(FUSEKI_PORT)
-                      .forStatusCode(200)
-                      .withStartupTimeout(Duration.ofMinutes(2)));
+      localFusekiContainer = TestSuiteBootstrap.createFusekiContainer();
       localFusekiContainer.start();
       fusekiEndpoint =
           String.format(

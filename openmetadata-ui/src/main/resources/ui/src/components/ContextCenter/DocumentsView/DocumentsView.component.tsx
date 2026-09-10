@@ -44,6 +44,7 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -514,6 +515,17 @@ const FileRow: FC<FileRowProps> = ({
             size="text-xs">
             {formattedFileSize}
           </Typography>
+          {Boolean(file.memoryCount) && (
+            <>
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography
+                className="tw:text-quaternary"
+                data-testid="document-memory-count"
+                size="text-xs">
+                {file.memoryCount} {t('label.memory-plural').toLowerCase()}
+              </Typography>
+            </>
+          )}
           {file.updatedBy && (
             <>
               <Dot className="tw:text-quaternary" size="micro" />
@@ -556,6 +568,11 @@ const FileRow: FC<FileRowProps> = ({
         gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
+        <DocumentStatusBadge
+          error={file.processingError}
+          stats={file.extractionStats}
+          status={file.processingStatus}
+        />
         <ButtonUtility
           className="tw:ml-1.5"
           color="tertiary"

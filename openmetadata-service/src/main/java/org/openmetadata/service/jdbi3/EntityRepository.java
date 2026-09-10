@@ -2862,30 +2862,79 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 page.cursorId(),
                 fetchLimit);
 
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
-    boolean hasMoreInCurrentDirection = entities.size() > limit;
+    List<T> pageRows = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
+    boolean hasMoreInCurrentDirection = pageRows.size() > limit;
     if (hasMoreInCurrentDirection) {
-      entities = new ArrayList<>(entities.subList(0, limit));
+      pageRows = new ArrayList<>(pageRows.subList(0, limit));
     }
     if (page.isBackward()) {
-      Collections.reverse(entities);
+      Collections.reverse(pageRows);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
+    // Cursors describe the rows the SQL page held, not the rows that survive hydration. Hydration
+    // drops an entity that was hard-deleted mid-request, and a cursor taken from the survivors
+    // would re-read those dropped rows on the next page -- or, when none survive, end the walk
+    // before its last page.
+    String firstCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getFirst());
+    String lastCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getLast());
+    List<T> entities = hydrateHistoryPage(pageRows);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
-    return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+    return historyPageResult(
+        entities, page, hasMoreInCurrentDirection, total, firstCursor, lastCursor);
+  }
+
+  private String historyCursor(T entity) {
+    return entity.getUpdatedAt() + ":" + entity.getId().toString();
+  }
+
+  /**
+   * Hydrate a history page, tolerating an entity hard-deleted between the version query (which
+   * takes no lock) and this call. {@link #setFieldsInBulk} resolves live relationships for the
+   * whole page in one go, so one vanished entity throws and takes every other row down with it:
+   * the reader gets a 404 for a window it never asked about. Retrying row by row keeps the page
+   * and drops only what actually vanished.
+   */
+  private List<T> hydrateHistoryPage(List<T> entities) {
+    try {
+      hydrateHistoryRows(entities);
+      return entities;
+    } catch (EntityNotFoundException e) {
+      return hydrateHistoryRowByRow(entities);
+    }
+  }
+
+  private void hydrateHistoryRows(List<T> entities) {
+    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
+  }
+
+  private List<T> hydrateHistoryRowByRow(List<T> entities) {
+    List<T> hydrated = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      try {
+        hydrateHistoryRows(new ArrayList<>(List.of(entity)));
+        hydrated.add(entity);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Dropping {} {} from history page, deleted mid-request: {}",
+            entityType,
+            entity.getId(),
+            e.getMessage());
+      }
+    }
+    return hydrated;
   }
 
   private ResultList<T> historyPageResult(
-      List<T> entities, HistoryPage page, boolean hasMoreInCurrentDirection, int total) {
-    if (entities.isEmpty()) {
+      List<T> entities,
+      HistoryPage page,
+      boolean hasMoreInCurrentDirection,
+      int total,
+      String firstCursor,
+      String lastCursor) {
+    if (firstCursor == null) {
       return getResultList(entities, null, null, total);
     }
-    T first = entities.getFirst();
-    T last = entities.getLast();
-    String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
-    String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
     boolean hasNewerVersions = page.isBackward() ? hasMoreInCurrentDirection : !page.isFirstPage();
     boolean hasOlderVersions = page.isBackward() || hasMoreInCurrentDirection;
     return getResultList(
@@ -8755,6 +8804,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
+    /**
+     * True while the diff pass being run has the persisted entity as its baseline — the state the
+     * search index and the stored lineage rows mirror. Consolidation replays the diff against
+     * reverted baselines (see {@link #flushUpdateBody}); side effects that reconcile an external
+     * store against {@code original} are only correct on a baseline pass. Defaults to true so the
+     * single-pass paths (no consolidation, bulk {@code updateWithDeferredStore}) need no opt-in.
+     */
+    private boolean indexBaselinePass = true;
+
     // Store the original FQN at construction time, before any modifications or revert.
     // This is needed because during change consolidation, revert() reassigns 'original' to
     // 'previous',
@@ -8856,6 +8914,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
       this.deferredReactExecuted = false;
+    }
+
+    /**
+     * Whether the diff pass currently running is baselined on the persisted entity. See {@link
+     * #indexBaselinePass}.
+     */
+    protected final boolean isIndexBaselinePass() {
+      return indexBaselinePass;
     }
 
     protected final void deferReactOperation(Runnable operation) {
@@ -8988,6 +9054,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // deferReactOperation; clear them so a deadlock replay does not double-enqueue.
       deferredReactOperations.clear();
       deferredReactExecuted = false;
+      indexBaselinePass = true;
       resetForRetryAttempt();
     }
 
@@ -9046,6 +9113,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
             incrementalChangeForImport();
           }
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevertImport")) {
             revertForImport();
           }
@@ -9053,6 +9121,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChange")) {
             incrementalChange();
           }
+          // Everything from here on diffs against a reverted baseline the external stores never
+          // saw: revert() inverts this request, replays it, then rebases original onto the
+          // pre-session version.
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevert")) {
             revert();
           }
@@ -10832,6 +10904,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<Column> origColumns,
         List<Column> updatedColumns,
         BiPredicate<Column, Column> columnMatch) {
+      ColumnLineageChanges lineageChanges = new ColumnLineageChanges();
+      updateColumns(fieldName, origColumns, updatedColumns, columnMatch, lineageChanges);
+      handleColumnLineageUpdates(
+          lineageChanges.deletedColumnFqns(), lineageChanges.renamedColumnFqns());
+    }
+
+    private void updateColumns(
+        String fieldName,
+        List<Column> origColumns,
+        List<Column> updatedColumns,
+        BiPredicate<Column, Column> columnMatch,
+        ColumnLineageChanges lineageChanges) {
       origColumns = listOrEmpty(origColumns);
       updatedColumns = listOrEmpty(updatedColumns);
       UUID entityId = updated.getId();
@@ -10881,7 +10965,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
-        // Find stored column matching name, data type and ordinal position
         Column stored =
             origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
@@ -10920,19 +11003,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          updateColumns(columnPrefix, stored.getChildren(), updated.getChildren(), columnMatch);
+          updateColumns(
+              columnPrefix,
+              stored.getChildren(),
+              updated.getChildren(),
+              columnMatch,
+              lineageChanges);
         }
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
-      List<String> deletedColumnFqnList =
-          deletedColumns.stream().map(Column::getFullyQualifiedName).toList();
-      handleColumnLineageUpdates(deletedColumnFqnList, originalUpdatedColumnFqns);
+      lineageChanges.include(deletedColumns, originalUpdatedColumnFqns);
     }
 
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    private static final class ColumnLineageChanges {
+      private final Set<String> deletedColumnFqns = new LinkedHashSet<>();
+      private final HashMap<String, String> renamedColumnFqns = new HashMap<>();
+
+      private void include(
+          List<Column> deletedColumns, HashMap<String, String> originalUpdatedColumnFqns) {
+        deletedColumns.stream()
+            .map(Column::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .forEach(deletedColumnFqns::add);
+        renamedColumnFqns.putAll(originalUpdatedColumnFqns);
+      }
+
+      private List<String> deletedColumnFqns() {
+        return List.copyOf(deletedColumnFqns);
+      }
+
+      private HashMap<String, String> renamedColumnFqns() {
+        return new HashMap<>(renamedColumnFqns);
+      }
     }
 
     private void updateColumnDescription(

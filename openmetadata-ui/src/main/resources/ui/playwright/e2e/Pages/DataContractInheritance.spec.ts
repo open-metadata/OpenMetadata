@@ -71,7 +71,8 @@ const DATA_PRODUCT_SLA = {
 const fillContractDetailsForm = async (
   page: Page,
   contractName: string,
-  description: string
+  description: string,
+  status?: 'Draft' | 'In Review' | 'Approved'
 ) => {
   await page.getByTestId('contract-name').fill(contractName);
   await page.fill('.om-block-editor[contenteditable="true"]', description);
@@ -82,6 +83,14 @@ const fillContractDetailsForm = async (
   await firstOwner.click();
 
   await expect(page.getByTestId('user-tag')).toBeVisible();
+
+  if (status) {
+    await page.getByTestId('contract-status').click();
+    await expect(
+      page.locator(`.contract-status-dropdown [title="${status}"]`)
+    ).toBeVisible();
+    await page.locator(`.contract-status-dropdown [title="${status}"]`).click();
+  }
 };
 
 const fillTermsOfServiceForm = async (page: Page, termsContent: string) => {
@@ -440,7 +449,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DATA_PRODUCT_CONTRACT_DETAILS.name,
-        DATA_PRODUCT_CONTRACT_DETAILS.description
+        DATA_PRODUCT_CONTRACT_DETAILS.description,
+        'Approved'
       );
     });
 
@@ -565,7 +575,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_partial_${uuid()}`,
-        'Data Product contract for partial inheritance'
+        'Data Product contract for partial inheritance',
+        'Approved'
       );
     });
 
@@ -683,7 +694,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_sla_edit_test_${uuid()}`,
-        'Data Product contract with SLA for edit test'
+        'Data Product contract with SLA for edit test',
+        'Approved'
       );
     });
 
@@ -860,7 +872,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
@@ -1000,7 +1013,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1069,7 +1083,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1150,7 +1165,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1250,7 +1266,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);

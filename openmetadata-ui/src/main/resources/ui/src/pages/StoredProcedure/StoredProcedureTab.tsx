@@ -20,8 +20,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,

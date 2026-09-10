@@ -58,8 +58,8 @@ import {
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { DataModelTableProps } from './DataModelDetails.interface';
 
 const DataModelTable = ({

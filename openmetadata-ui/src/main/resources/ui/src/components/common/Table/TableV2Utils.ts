@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
 import React, { ReactNode } from 'react';
 import type {
   ColumnsType,
@@ -37,9 +36,12 @@ export function flattenTreeRows<T>(
     const children = (record as Record<string, unknown>).children as
       | T[]
       | undefined;
+    // AntD parity: an empty `children` array is the lazy-load placeholder —
+    // the row is expandable and fetches its children on expand. Only an
+    // absent `children` key marks a leaf.
     const hasChildren = rowExpandable
       ? rowExpandable(record)
-      : !isEmpty(children);
+      : children !== undefined;
 
     rows.push({ record, depth, actualIndex, hasChildren, rowKey });
 
