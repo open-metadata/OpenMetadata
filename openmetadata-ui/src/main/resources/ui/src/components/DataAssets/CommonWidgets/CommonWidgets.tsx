@@ -373,7 +373,7 @@ export const CommonWidgets = ({
         activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
-        multiple={entityRules.canAddMultipleDataProducts}
+        multiple={isRulesLoaded && entityRules.canAddMultipleDataProducts}
         requireDomainForDataProduct={
           !isRulesLoaded || entityRules.requireDomainForDataProduct
         }

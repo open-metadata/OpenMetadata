@@ -12,6 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
+import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { PageProcessingStatus } from '../../../generated/entity/data/page';
 import {
@@ -235,7 +236,60 @@ const renderPanel = (knowledgePage?: KnowledgePage) =>
     />
   );
 
+const mockGenericContext = (
+  overrides: Partial<ReturnType<typeof useGenericContext>>
+) =>
+  (useGenericContext as jest.Mock).mockReturnValue({
+    entityRules: {},
+    isRulesLoaded: true,
+    data: {},
+    onUpdate: jest.fn(),
+    permissions: { EditAll: true },
+    ...overrides,
+  });
+
+const lastDataProductsProps = () =>
+  (DataProductsContainer as jest.Mock).mock.calls.at(-1)?.[0];
+
 describe('KnowledgePageDetailRightPanel', () => {
+  beforeEach(() => {
+    (DataProductsContainer as jest.Mock).mockClear();
+    mockGenericContext({});
+  });
+
+  it('holds single-select while entity rules are loading', () => {
+    mockGenericContext({
+      entityRules: { canAddMultipleDataProducts: true },
+      isRulesLoaded: false,
+    });
+
+    renderPanel(article);
+
+    expect(lastDataProductsProps()).toMatchObject({ multiple: false });
+  });
+
+  it('enables multi-select once rules are loaded and allow multiple products', () => {
+    mockGenericContext({
+      entityRules: { canAddMultipleDataProducts: true },
+      isRulesLoaded: true,
+    });
+
+    renderPanel(article);
+
+    expect(lastDataProductsProps()).toMatchObject({ multiple: true });
+  });
+
+  it('keeps single-select when loaded rules disallow multiple products', () => {
+    mockGenericContext({
+      entityRules: { canAddMultipleDataProducts: false },
+      isRulesLoaded: true,
+    });
+
+    renderPanel(article);
+
+    expect(lastDataProductsProps()).toMatchObject({ multiple: false });
+  });
+
   it('lists the memories extracted from the article', () => {
     renderPanel(article);
 

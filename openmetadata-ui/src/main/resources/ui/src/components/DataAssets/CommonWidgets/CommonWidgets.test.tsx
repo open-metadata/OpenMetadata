@@ -30,9 +30,11 @@ jest.mock(
   '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
   () => ({
     __esModule: true,
-    default: () => (
-      <div data-testid="data-products-widget">Data Products Widget</div>
-    ),
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="data-products-widget">Data Products Widget</div>
+      )),
   })
 );
 // Captures the `permission` prop directly instead of an opaque div — needed to verify the
@@ -467,6 +469,94 @@ describe('CommonWidgets', () => {
       expect(
         await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Products multi-select rule gating', () => {
+    const getDataProductsContainerMock = () =>
+      jest.requireMock(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      ).default as jest.Mock;
+
+    const dataProductsWidgetConfig = {
+      i: DetailPageWidgetKeys.DATA_PRODUCTS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    beforeEach(() => {
+      getDataProductsContainerMock().mockClear();
+    });
+
+    it('holds single-select (multiple=false) while entity rules are loading', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: false,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
+
+    it('enables multiple select when rules are loaded and multi-product rule is not enabled', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: true });
+    });
+
+    it('keeps single select when rules are loaded and multi-product rule is enabled', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: false,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
     });
   });
 });

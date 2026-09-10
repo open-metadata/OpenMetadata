@@ -100,7 +100,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
             activeDomains={data?.domains ?? []}
             dataProducts={data?.dataProducts ?? []}
             hasPermission={canEditAll}
-            multiple={entityRules?.canAddMultipleDataProducts}
+            multiple={isRulesLoaded && entityRules?.canAddMultipleDataProducts}
             requireDomainForDataProduct={
               !isRulesLoaded || entityRules?.requireDomainForDataProduct
             }
