@@ -12,8 +12,28 @@
  */
 import { Typography } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
-import { FC } from 'react';
+import classNames from 'classnames';
+import { FC, PropsWithChildren } from 'react';
 import type { QueryBuilderControlProps } from './QueryBuilderCanvas.types';
+
+/** A labelled column of the rule grid. */
+export const QueryBuilderCell: FC<
+  PropsWithChildren<{ label: string; className?: string }>
+> = ({ label, className, children }) => (
+  <div
+    className={classNames(
+      'tw:flex tw:min-w-0 tw:flex-col tw:gap-1.5',
+      className
+    )}>
+    <Typography
+      as="span"
+      className="tw:font-medium tw:text-secondary"
+      size="text-sm">
+      {label}
+    </Typography>
+    {children}
+  </div>
+);
 
 /**
  * A labelled field or operator control.
@@ -36,13 +56,7 @@ const QueryBuilderControl: FC<QueryBuilderControlProps> = ({
   dataTestId,
   onChange,
 }) => (
-  <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1.5">
-    <Typography
-      as="span"
-      className="tw:font-medium tw:text-secondary"
-      size="text-sm">
-      {label}
-    </Typography>
+  <QueryBuilderCell label={label}>
     {render?.({
       // Only when set: the renderer supplies its own default, and an explicit
       // `undefined` would win over it through the spread.
@@ -53,7 +67,7 @@ const QueryBuilderControl: FC<QueryBuilderControlProps> = ({
       selectedKey: selectedKey ?? undefined,
       setField: onChange,
     } as unknown as FieldProps)}
-  </div>
+  </QueryBuilderCell>
 );
 
 export default QueryBuilderControl;

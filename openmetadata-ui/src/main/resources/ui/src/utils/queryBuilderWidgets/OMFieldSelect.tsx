@@ -91,17 +91,47 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
     [selectItems, selectedKey]
   );
   const [inputValue, setInputValue] = useState(selectedLabel);
-  const lastSelectedKeyRef = useRef(selectedKey);
-  if (lastSelectedKeyRef.current !== selectedKey) {
-    lastSelectedKeyRef.current = selectedKey;
+  // Whether the text in the box is the user's own filter or just the label of
+  // whatever is selected. Only the former may narrow the list — see
+  // `filteredItems`.
+  const isUserFilterRef = useRef(false);
+  // The selection this box has already shown, kept in state rather than a ref.
+  // React may discard a render (it renders twice in development), and a ref
+  // mutated during render survives that while the `setInputValue` beside it
+  // does not — the box then reads as empty for a selection it had already
+  // marked as synced, which is how a contract's operator came up blank while
+  // its rule held one. Comparing state makes the adjustment replay.
+  //
+  // The label is tracked as well as the key: a control can mount with a
+  // selection whose options are not built yet, and its label arrives later.
+  const [shownSelection, setShownSelection] = useState({
+    key: selectedKey,
+    label: selectedLabel,
+  });
+  if (
+    shownSelection.key !== selectedKey ||
+    shownSelection.label !== selectedLabel
+  ) {
+    setShownSelection({ key: selectedKey, label: selectedLabel });
     setInputValue(selectedLabel);
+    isUserFilterRef.current = false;
   }
 
   // ComboBox now uses controlled `items` (not defaultItems) so React Aria no
   // longer applies a built-in contains-filter. Filter client-side so the user
   // still sees only items that match their typed text.
+  //
+  // Only text the user typed may filter. Choosing a field makes RAQB set a
+  // default operator and clear it again a render later; this box mounts
+  // holding that transient label, and filtering on it left the operator list
+  // showing nothing but the single option that label names (`==`) until a
+  // further render cleared the text.
   const filteredItems = useMemo(() => {
-    if (!inputValue || inputValue === selectedLabel) {
+    if (
+      !isUserFilterRef.current ||
+      !inputValue ||
+      inputValue === selectedLabel
+    ) {
       return selectItems;
     }
     const lower = inputValue.toLowerCase();
@@ -125,17 +155,23 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
       shortcut={false}
       showSearchIcon={false}
       size="sm"
-      onInputChange={setInputValue}
+      onInputChange={(next) => {
+        isUserFilterRef.current = true;
+        setInputValue(next);
+      }}
       onSelectionChange={(key) => {
         if (key == null) {
           return;
         }
         const id = String(key);
-        // Reflect the choice immediately: update the label and the sync ref so
-        // the render-time sync doesn't clobber it before RAQB propagates the
-        // new selectedKey back through props.
-        lastSelectedKeyRef.current = id;
-        setInputValue(selectItems.find((item) => item.id === id)?.label ?? id);
+        const label = selectItems.find((item) => item.id === id)?.label ?? id;
+        // Reflect the choice immediately, and record it as shown, so the
+        // adjustment above does not blank the box before RAQB propagates the
+        // new `selectedKey` back through props.
+        setShownSelection({ key: id, label });
+        // The box now shows a label, not a filter.
+        isUserFilterRef.current = false;
+        setInputValue(label);
         setField(id);
       }}>
       {(item) => (

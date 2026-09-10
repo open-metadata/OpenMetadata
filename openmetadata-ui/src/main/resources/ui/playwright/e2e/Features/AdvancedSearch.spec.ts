@@ -1646,6 +1646,8 @@ test.describe(
 
       const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+      // Each drill level gets its own control in the row, suffixed by depth:
+      // Custom Properties -> Table -> the property.
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1654,13 +1656,13 @@ test.describe(
       );
       await selectOption(
         page,
-        ruleLocator.getByTestId('advanced-search-field-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-1'),
         'Table',
         true
       );
       await selectOption(
         page,
-        ruleLocator.getByTestId('advanced-search-field-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         enumCPName,
         true
       );

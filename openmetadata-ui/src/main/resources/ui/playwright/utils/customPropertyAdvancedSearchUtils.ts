@@ -456,7 +456,9 @@ const handlePropertyValueInput = async (
   value: string | number | { start: string | number; end: string | number },
   propertyType?: string
 ) => {
-  const inputElement = ruleLocator.getByTestId('advanced-search-value').locator('input');
+  const inputElement = ruleLocator
+    .getByTestId('advanced-search-value')
+    .locator('input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
   // Fill the input only if it's visible
@@ -510,6 +512,8 @@ export const applyCustomPropertyFilter = async (
 ) => {
   const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+  // Each drill level gets its own control in the row, suffixed by depth:
+  // Custom Properties -> the entity -> the property.
   await selectOption(
     page,
     ruleLocator.getByTestId('advanced-search-field-select'),
@@ -519,14 +523,14 @@ export const applyCustomPropertyFilter = async (
 
   await selectOption(
     page,
-    ruleLocator.getByTestId('advanced-search-field-select'),
+    ruleLocator.getByTestId('advanced-search-field-select-1'),
     entityType,
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.getByTestId('advanced-search-field-select'),
+    ruleLocator.getByTestId('advanced-search-field-select-2'),
     propertyName,
     true
   );
@@ -544,8 +548,14 @@ export const applyCustomPropertyFilter = async (
         start: string | number;
         end: string | number;
       };
-      const startInput = ruleLocator.getByTestId('advanced-search-value').locator('input').first();
-      const endInput = ruleLocator.getByTestId('advanced-search-value').locator('input').last();
+      const startInput = ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .first();
+      const endInput = ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .last();
 
       await startInput.click();
       await fillPropertyValue(startInput, rangeValue.start);

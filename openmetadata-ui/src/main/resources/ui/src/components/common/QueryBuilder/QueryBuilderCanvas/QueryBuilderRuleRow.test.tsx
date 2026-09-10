@@ -23,6 +23,9 @@ import QueryBuilderRuleRow from './QueryBuilderRuleRow';
 // The row asks RAQB which operators and widget a field/operator pair takes.
 // Answering here keeps the test about the row rather than about RAQB's config
 // resolution, which `config.test.ts` already covers.
+/** Stands in for a field's async option loader. */
+const ASYNC_FETCH = jest.fn();
+
 jest.mock('./QueryBuilderCanvas.utils', () => ({
   ...jest.requireActual('./QueryBuilderCanvas.utils'),
   configUtils: {
@@ -45,9 +48,6 @@ jest.mock('./QueryBuilderCanvas.utils', () => ({
       operator === 'unwidgeted' ? undefined : 'text',
   },
 }));
-
-/** Stands in for a field's async option loader. */
-const ASYNC_FETCH = jest.fn();
 
 /** Every prop set the config's widget factory was called with. */
 const widgetProps: Record<string, unknown>[] = [];
@@ -126,9 +126,17 @@ afterEach(() => {
   widgetProps.length = 0;
 });
 
-const renderRow = (rule = {}, overrides = {}) =>
+const renderRow = (rule: Record<string, unknown> = {}, overrides = {}) =>
   render(
     <QueryBuilderRuleRow
+      cells={[
+        {
+          field: ((rule.properties as { field?: string } | undefined)?.field ??
+            null) as string | null,
+          prefix: '',
+          path: ['root', 'r1'],
+        },
+      ]}
       context={{ ...context, ...overrides }}
       path={['root', 'r1']}
       rule={rule}
@@ -136,12 +144,26 @@ const renderRow = (rule = {}, overrides = {}) =>
   );
 
 describe('QueryBuilderRuleRow', () => {
+  it('should keep a control in the value column before a widget is named', () => {
+    // An empty gap where a control belongs reads as a rendering fault, so the
+    // column holds a disabled stand-in until the field and operator pick one.
+    renderRow();
+
+    const value = screen.getByTestId('advanced-search-value');
+
+    expect(value).not.toBeEmptyDOMElement();
+    expect(value.querySelector('button')).toBeDisabled();
+  });
+
   it('should label its three columns and address them by testid', () => {
     renderRow();
 
     expect(screen.getByText('label.field')).toBeInTheDocument();
     expect(screen.getByText('label.operator')).toBeInTheDocument();
-    expect(screen.getByText('label.value')).toBeInTheDocument();
+    // the column label, not the placeholder the empty value control shows
+    expect(
+      screen.getByText('label.value', { selector: 'span' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('advanced-search-value')).toBeInTheDocument();
   });
 

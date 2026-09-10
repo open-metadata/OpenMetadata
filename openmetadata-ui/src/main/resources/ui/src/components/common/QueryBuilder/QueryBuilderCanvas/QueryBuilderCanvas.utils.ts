@@ -15,7 +15,20 @@ import {
   QUERY_BUILDER_SURFACE,
   type QueryBuilderSurface,
 } from '../../../../utils/queryBuilder/types';
-import type { QueryBuilderNode } from './QueryBuilderCanvas.types';
+import type {
+  QueryBuilderFieldCell,
+  QueryBuilderNode,
+  QueryBuilderRuleRowModel,
+} from './QueryBuilderCanvas.types';
+
+/** A bracket the user drew: it owns a conjunction and holds rules. */
+export const QUERY_BUILDER_GROUP_TYPE = 'group';
+
+/** RAQB's own node types; a group holds children, a rule is a leaf. */
+export const QUERY_BUILDER_GROUP_TYPES = [
+  QUERY_BUILDER_GROUP_TYPE,
+  'rule_group',
+];
 
 /** The shape RAQB hands its own `renderField`, and so what OMFieldSelect reads. */
 export interface QueryBuilderFieldNode {
@@ -77,6 +90,96 @@ export const toFieldNodes = (
       : { key, label, path };
   });
 
+/**
+ * Whether a `rule_group` is a level to drill into: its field owns several
+ * subfields, so the row shows a further Field control to pick among them
+ * (Custom Properties -> Table -> the property). A group owning a single
+ * subfield offers no choice, and the row keeps editing the group's own field.
+ */
+export const getGroupDrillFields = (
+  config: unknown,
+  field: string | undefined
+): Record<string, unknown> | undefined => {
+  if (!field) {
+    return undefined;
+  }
+
+  const subfields = (
+    configUtils.getFieldConfig(config, field) as {
+      subfields?: Record<string, unknown>;
+    } | null
+  )?.subfields;
+
+  return subfields && Object.keys(subfields).length > 1 ? subfields : undefined;
+};
+
+/**
+ * Flattens a chain of drill levels into the single row it describes.
+ *
+ * Choosing a field that owns subfields makes RAQB wrap the rule in a
+ * `rule_group` per level. The user is still naming one field, so the levels
+ * belong side by side in one row — drawing a card per level reads as a group
+ * appearing by itself, and folding them into one control hides the choice
+ * already made. Returns nothing for a group holding several rules: that is a
+ * card.
+ */
+export const getRuleRowModel = (
+  config: unknown,
+  node: QueryBuilderNode,
+  path: string[],
+  fields?: Record<string, unknown>,
+  prefix = ''
+): QueryBuilderRuleRowModel | undefined => {
+  if (node.type === 'group') {
+    return undefined;
+  }
+
+  const cells: QueryBuilderFieldCell[] = [];
+  let current = node;
+  let currentPath = path;
+  let available = fields;
+  let levelPrefix = prefix;
+  // Whether this level is the user's to pick, or one RAQB fills in itself.
+  let isChoice = true;
+
+  while (current.type === 'rule_group' && current.children1?.length === 1) {
+    if (isChoice) {
+      cells.push({
+        field: current.properties?.field ?? null,
+        fields: available,
+        path: currentPath,
+        prefix: levelPrefix,
+      });
+    }
+
+    const field = current.properties?.field ?? undefined;
+    const drill = getGroupDrillFields(config, field);
+    isChoice = Boolean(drill);
+    available = drill;
+    levelPrefix = field ?? '';
+
+    const [only] = current.children1;
+    currentPath = [...currentPath, String(only.id ?? 0)];
+    current = only;
+  }
+
+  // Several rules share this level, so it is a group with a header of its own.
+  if (QUERY_BUILDER_GROUP_TYPES.includes(current.type ?? '')) {
+    return undefined;
+  }
+
+  if (isChoice) {
+    cells.push({
+      field: current.properties?.field ?? null,
+      fields: available,
+      path: currentPath,
+      prefix: levelPrefix,
+    });
+  }
+
+  return { cells, path: currentPath, rule: current };
+};
+
 /** Rules at any depth. Root children would count a seeded wrapper as one. */
 export const countRules = (node?: QueryBuilderNode): number => {
   if (!node) {
@@ -87,9 +190,6 @@ export const countRules = (node?: QueryBuilderNode): number => {
     ? node.children1.reduce((total, child) => total + countRules(child), 0)
     : 1;
 };
-
-/** RAQB's own node types; a group holds children, a rule is a leaf. */
-export const QUERY_BUILDER_GROUP_TYPES = ['group', 'rule_group'];
 
 /**
  * Nested cards alternate between the two surfaces. Painting a card the colour

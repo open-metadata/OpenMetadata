@@ -18,12 +18,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderGroupHeaderProps } from './QueryBuilderCanvas.types';
+import { toFieldNodes } from './QueryBuilderCanvas.utils';
+import QueryBuilderControl from './QueryBuilderControl';
 
 const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
   conjunction,
+  groupField,
   path,
   context,
   canRemove,
@@ -35,6 +38,10 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
   // cannot change it. `buildQueryBuilderConfig` enforces that by handing over a
   // single-key `conjunctions` map, so its size is the whole test.
   const canSetConjunction = !readonly && conjunctions.length > 1;
+  const levelItems = useMemo(
+    () => (groupField ? toFieldNodes(config.fields) : []),
+    [config, groupField]
+  );
   // Nothing to choose between, or a caller that says its rules only ever
   // combine one way: the helper text still says which way that is.
   const hasConjunctionControl = showConjunction && conjunctions.length > 1;
@@ -63,6 +70,23 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
             ))}
           </TabList>
         </Tabs>
+      )}
+
+      {groupField && (
+        <div className="tw:w-56">
+          <QueryBuilderControl
+            dataTestId="advanced-search-group-field-select"
+            items={levelItems}
+            label={t('label.field')}
+            placeholder={t('label.field')}
+            readonly={readonly}
+            render={config.settings.renderField}
+            selectedKey={groupField.field}
+            onChange={(key: string) =>
+              actions.setField(groupField.path as never, key as never)
+            }
+          />
+        </div>
       )}
 
       <Typography className="tw:text-tertiary" size="text-xs">

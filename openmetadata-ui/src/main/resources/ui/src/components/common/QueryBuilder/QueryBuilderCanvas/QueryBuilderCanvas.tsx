@@ -15,7 +15,7 @@ import { FC, Fragment, useMemo } from 'react';
 import {
   buildRuleIndex,
   countRules,
-  QUERY_BUILDER_GROUP_TYPES,
+  QUERY_BUILDER_GROUP_TYPE,
 } from './QueryBuilderCanvas.utils';
 import QueryBuilderAddGroup from './QueryBuilderAddGroup';
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';
@@ -85,13 +85,17 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
   // user adds lands beside it. Those are peers, so they are drawn as a stack
   // of cards joined by the conjunction that combines them — not as cards
   // inside cards, which is what nesting them would look like.
+  //
+  // Only a `group` counts. A `rule_group` is the wrapper RAQB puts around a
+  // field that owns subfields — structural, not a bracket the user drew. Given
+  // a card of its own it took the rows' Add button with it, so a second
+  // condition landed inside that one field and rewrote the first instead of
+  // joining it.
   const rootPath = [String(root.id)];
   const rootChildren = root.children1 ?? [];
   const asSiblings =
     rootChildren.length > 0 &&
-    rootChildren.every((child) =>
-      QUERY_BUILDER_GROUP_TYPES.includes(child.type ?? '')
-    );
+    rootChildren.every((child) => child.type === QUERY_BUILDER_GROUP_TYPE);
   const conjunctions = Object.keys(config.conjunctions ?? {});
 
   const addGroup = (conjunction?: string) => {

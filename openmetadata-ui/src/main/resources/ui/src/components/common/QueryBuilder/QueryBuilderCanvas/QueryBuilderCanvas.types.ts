@@ -59,17 +59,35 @@ export interface QueryBuilderCanvasContext {
   canRemoveRule: boolean;
 }
 
+/** One Field control of a row: the node it edits and what it may choose. */
+export interface QueryBuilderFieldCell {
+  /** Node whose `field` this control sets. */
+  path: string[];
+  field: string | null;
+  /** Level to choose within; unset means the whole config. */
+  fields?: Record<string, unknown>;
+  /** Field the level hangs off, so option keys stay fully qualified. */
+  prefix: string;
+}
+
+export interface QueryBuilderRuleRowModel {
+  /** The rule the operator and value belong to — the end of the chain. */
+  path: string[];
+  rule: QueryBuilderNode;
+  cells: QueryBuilderFieldCell[];
+}
+
 export interface QueryBuilderRuleRowProps {
   rule: QueryBuilderNode;
   /** Path RAQB addresses this rule by, ancestors first. */
   path: string[];
   context: QueryBuilderCanvasContext;
   /**
-   * Set when this row belongs to a `rule_group`, which owns the field its
-   * children filter subfields of. The row then edits that field rather than
-   * its own, so the card shows one Field control instead of two.
+   * The Field controls this row shows, outermost level first. A plain rule has
+   * one; a field that owns subfields adds one per level, so the row reads
+   * `Custom Properties | Table | <property>` rather than nesting.
    */
-  groupField?: { path: string[]; field: string };
+  cells: QueryBuilderFieldCell[];
 }
 
 export interface QueryBuilderControlProps {
@@ -103,6 +121,13 @@ export interface QueryBuilderGroupConnectorProps {
 
 export interface QueryBuilderGroupHeaderProps {
   conjunction: string;
+  /**
+   * Set only for a group the rows drill into, where the rows show a subfield
+   * and this is the only place the level itself is named. A group whose rows
+   * already show its field leaves this unset, so the card never shows the
+   * same field twice.
+   */
+  groupField?: { field: string; path: string[] };
   path: string[];
   context: QueryBuilderCanvasContext;
   canRemove: boolean;

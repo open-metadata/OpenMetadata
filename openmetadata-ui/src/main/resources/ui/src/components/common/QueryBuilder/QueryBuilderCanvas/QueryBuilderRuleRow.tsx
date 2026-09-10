@@ -10,20 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button, Select } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import type { FieldProps } from '@react-awesome-query-builder/ui';
 import { X } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { QUERY_BUILDER_COLUMN_RATIOS } from './QueryBuilderCanvas.constants';
+import {
+  getQueryBuilderColumnRatios,
+  QUERY_BUILDER_FIELD_MIN_WIDTH,
+  QUERY_BUILDER_FIELD_TEST_ID,
+} from './QueryBuilderCanvas.constants';
 import type { QueryBuilderRuleRowProps } from './QueryBuilderCanvas.types';
 import { configUtils, toFieldNodes } from './QueryBuilderCanvas.utils';
-import QueryBuilderControl from './QueryBuilderControl';
+import QueryBuilderControl, { QueryBuilderCell } from './QueryBuilderControl';
 
 const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
   rule,
   path,
   context,
-  groupField,
+  cells,
 }) => {
   const { t } = useTranslation();
   const { actions, config, preset, readonly, canRemoveRule, ruleIndexById } =
@@ -31,7 +37,21 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
   const field = rule.properties?.field ?? null;
   const operator = rule.properties?.operator ?? null;
 
-  const fieldItems = useMemo(() => toFieldNodes(config.fields), [config]);
+  // One control per level the user has drilled through, each choosing within
+  // the level above it. Only the first keeps the renderer's own testid, so
+  // every rule — drilled or not — is still addressed the same way.
+  const fieldControls = useMemo(
+    () =>
+      cells.map((cell, index) => ({
+        dataTestId:
+          index === 0 ? undefined : `${QUERY_BUILDER_FIELD_TEST_ID}-${index}`,
+        items: toFieldNodes(cell.fields ?? config.fields, cell.prefix),
+        key: cell.path.join('.'),
+        path: cell.path,
+        selectedKey: cell.field,
+      })),
+    [cells, config]
+  );
 
   const operatorItems = useMemo(() => {
     if (!field) {
@@ -114,18 +134,36 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       data-testid={`query-builder-rule-${ruleIndexById[String(rule.id)] ?? 0}`}>
       <div
         className="tw:grid tw:min-w-0 tw:flex-1 tw:gap-3.5"
-        style={{ gridTemplateColumns: QUERY_BUILDER_COLUMN_RATIOS }}>
-        <QueryBuilderControl
-          items={fieldItems}
-          label={t('label.field')}
-          placeholder={t('label.field')}
-          readonly={readonly}
-          render={config.settings.renderField}
-          selectedKey={groupField?.field ?? field}
-          onChange={(key) =>
-            actions.setField((groupField?.path ?? path) as never, key as never)
-          }
-        />
+        style={{
+          gridTemplateColumns: getQueryBuilderColumnRatios(
+            fieldControls.length
+          ),
+        }}>
+        {/* Every level carries the Field label, so a drilled control is named
+            wherever it lands — including the second line it wraps onto. They
+            wrap rather than squeeze every control past reading width: a
+            drilled rule in a narrow panel (an automation form, the
+            curated-assets widget) has three where Explore has room for one. */}
+        <div className="tw:flex tw:flex-wrap tw:items-end tw:gap-2">
+          {fieldControls.map((control) => (
+            <QueryBuilderCell
+              className={classNames(QUERY_BUILDER_FIELD_MIN_WIDTH, 'tw:flex-1')}
+              key={control.key}
+              label={t('label.field')}>
+              {config.settings.renderField?.({
+                ...(control.dataTestId
+                  ? { dataTestId: control.dataTestId }
+                  : {}),
+                items: control.items,
+                placeholder: t('label.field'),
+                readonly,
+                selectedKey: control.selectedKey ?? undefined,
+                setField: (key: string) =>
+                  actions.setField(control.path as never, key as never),
+              } as unknown as FieldProps)}
+            </QueryBuilderCell>
+          ))}
+        </div>
 
         <QueryBuilderControl
           items={operatorItems}
@@ -137,23 +175,36 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           onChange={(key) => actions.setOperator(path, key)}
         />
 
-        <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1.5">
-          <Typography
-            as="span"
-            className="tw:font-medium tw:text-secondary"
-            size="text-sm">
-            {t('label.value')}
-          </Typography>
+        <QueryBuilderCell label={t('label.value')}>
           <div
             className="tw:flex tw:min-w-0 tw:gap-2"
             data-testid="advanced-search-value">
-            {valueCells.map((cell) => (
-              <div className="tw:min-w-0 tw:flex-1" key={cell.id}>
-                {cell.node}
-              </div>
-            ))}
+            {/* Until the field and operator name a widget there is nothing to
+                edit, but the column still reads as part of the row — an empty
+                gap where a control belongs looks like a rendering fault. */}
+            {valueCells.length === 0 ? (
+              <Select
+                isDisabled
+                aria-label={t('label.value')}
+                className="tw:min-w-0 tw:flex-1"
+                items={[]}
+                placeholder={t('label.value')}
+                size="sm">
+                {(item) => (
+                  <Select.Item id={String(item.id)} key={String(item.id)}>
+                    {String(item.id)}
+                  </Select.Item>
+                )}
+              </Select>
+            ) : (
+              valueCells.map((cell) => (
+                <div className="tw:min-w-0 tw:flex-1" key={cell.id}>
+                  {cell.node}
+                </div>
+              ))
+            )}
           </div>
-        </div>
+        </QueryBuilderCell>
       </div>
 
       {canRemoveRule && !readonly && (

@@ -284,7 +284,10 @@ describe('QueryBuilderCanvas – labels', () => {
     // canvas asks for — the locale files carry the wording.
     expect(screen.getByText('label.field')).toBeInTheDocument();
     expect(screen.getByText('label.operator')).toBeInTheDocument();
-    expect(screen.getByText('label.value')).toBeInTheDocument();
+    // the column label, not the placeholder the empty value control shows
+    expect(
+      screen.getByText('label.value', { selector: 'span' })
+    ).toBeInTheDocument();
   });
 });
 
@@ -325,6 +328,11 @@ describe('QueryBuilderCanvas – component contracts', () => {
     conjunctions: { AND: {}, OR: {} },
     fields: {
       description: { label: 'Description' },
+      // several subfields: a level the row drills into
+      extension: {
+        label: 'Custom Properties',
+        subfields: { one: { label: 'One' }, two: { label: 'Two' } },
+      },
       tags: { label: 'Tags', subfields: { tagFQN: { label: 'Tag' } } },
     },
     operators: {},
@@ -415,7 +423,11 @@ describe('QueryBuilderCanvas – component contracts', () => {
       />
     );
 
-    expect(offeredItems.at(-1)).toEqual(['Description', 'Tags']);
+    expect(offeredItems.at(-1)).toEqual([
+      'Description',
+      'Custom Properties',
+      'Tags',
+    ]);
   });
 
   it("should edit a rule_group's field from the row, not beside the conjunction", () => {
@@ -442,6 +454,115 @@ describe('QueryBuilderCanvas – component contracts', () => {
     fireEvent.click(screen.getByTestId('advanced-search-field-select'));
 
     expect(actions.setField).toHaveBeenCalledWith(['root', 'g1'], 'picked');
+  });
+
+  it('should give a drill level a Field control beside the one above it', () => {
+    // Picking a field with subfields makes RAQB wrap the rule in a group. The
+    // user is still naming one field, so the levels sit side by side in the
+    // row — a card per level reads as a group appearing by itself, and one
+    // control that narrows in place hides the choice already made.
+    render(
+      <QueryBuilderGroupCard
+        canRemove
+        context={context}
+        depth={0}
+        group={{
+          children1: [
+            {
+              children1: [{ id: 'r1' }],
+              id: 'drill',
+              properties: { field: 'extension' },
+              type: 'rule_group',
+            },
+          ],
+        }}
+        path={['root']}
+      />
+    );
+
+    // one card (the outer one) holding a single row
+    expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(1);
+    expect(screen.getAllByTestId(/^query-builder-rule-\d+$/)).toHaveLength(1);
+
+    // the level, then the choice within it
+    expect(screen.getByTestId('advanced-search-field-select')).toBeVisible();
+    expect(screen.getByTestId('advanced-search-field-select-1')).toBeVisible();
+  });
+
+  it('should point each drill control at the node whose field it sets', () => {
+    render(
+      <QueryBuilderGroupCard
+        canRemove
+        context={context}
+        depth={0}
+        group={{
+          children1: [
+            {
+              children1: [{ id: 'r1' }],
+              id: 'drill',
+              properties: { field: 'extension' },
+              type: 'rule_group',
+            },
+          ],
+        }}
+        path={['root']}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('advanced-search-field-select-1'));
+
+    expect(actions.setField).toHaveBeenCalledWith(
+      ['root', 'drill', 'r1'],
+      'picked'
+    );
+  });
+
+  it('should keep a level holding several rules as a card, not a row', () => {
+    // Two rules share the level, so it owns a conjunction and a header —
+    // that is a group, and folding it into one row would lose both.
+    render(
+      <QueryBuilderGroupCard
+        canRemove
+        context={context}
+        depth={0}
+        group={{
+          children1: [
+            {
+              children1: [{ id: 'r1' }, { id: 'r2' }],
+              id: 'drill',
+              properties: { field: 'extension' },
+              type: 'rule_group',
+            },
+          ],
+        }}
+        path={['root']}
+      />
+    );
+
+    expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(2);
+    expect(screen.getAllByTestId(/^query-builder-rule-\d+$/)).toHaveLength(2);
+  });
+
+  it('should keep a group holding several rules as its own card', () => {
+    render(
+      <QueryBuilderGroupCard
+        canRemove
+        context={context}
+        depth={0}
+        group={{
+          children1: [
+            {
+              children1: [{ id: 'r1' }, { id: 'r2' }],
+              id: 'g1',
+              type: 'group',
+            },
+          ],
+        }}
+        path={['root']}
+      />
+    );
+
+    expect(screen.getAllByTestId('query-builder-group-card')).toHaveLength(2);
   });
 
   it('should alternate the ground for a card genuinely inside another', () => {

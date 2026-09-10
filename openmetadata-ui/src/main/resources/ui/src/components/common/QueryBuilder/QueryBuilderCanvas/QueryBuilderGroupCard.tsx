@@ -18,8 +18,9 @@ import { useTranslation } from 'react-i18next';
 import { QUERY_BUILDER_SURFACE_CLASS } from '../../../../utils/queryBuilder/types';
 import type { QueryBuilderGroupCardProps } from './QueryBuilderCanvas.types';
 import {
+  getGroupDrillFields,
+  getRuleRowModel,
   getSurfaceForDepth,
-  QUERY_BUILDER_GROUP_TYPES,
 } from './QueryBuilderCanvas.utils';
 import QueryBuilderGroupHeader from './QueryBuilderGroupHeader';
 import QueryBuilderRuleRow from './QueryBuilderRuleRow';
@@ -35,10 +36,23 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
   const { actions, surface, preset, readonly } = context;
   const conjunction = group.properties?.conjunction ?? 'AND';
   const children = group.children1 ?? [];
-  // A `rule_group` owns the field its children filter subfields of. Its rows
-  // edit that field in their own Field column, so the card never shows two.
+  // A `rule_group` owns the field its children filter subfields of. When it
+  // holds several rules it keeps a card of its own, and the header names the
+  // level so the field the user picked appears somewhere.
   const ownField = group.properties?.field;
-  const groupField = ownField ? { field: ownField, path } : undefined;
+  const drillFields = getGroupDrillFields(
+    context.config,
+    ownField ?? undefined
+  );
+  const drilledLevel =
+    drillFields && ownField ? { field: ownField, path } : undefined;
+  // A `rule_group` owning a single subfield offers nothing to choose below
+  // it, so its rows edit the group's own field — a control over the subfield
+  // could not change anything. This is what a contract's semantic rule is.
+  const groupOwnedCell =
+    ownField && !drillFields
+      ? { field: ownField, path, prefix: '' }
+      : undefined;
 
   const surfaceClass =
     QUERY_BUILDER_SURFACE_CLASS[getSurfaceForDepth(surface, depth)];
@@ -56,6 +70,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
           canRemove={canRemove}
           conjunction={conjunction}
           context={context}
+          groupField={drilledLevel}
           path={path}
         />
       </div>
@@ -63,8 +78,25 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
       <div className="tw:flex tw:flex-col tw:gap-6 tw:px-5 tw:pt-4 tw:pb-5">
         {children.map((child, index) => {
           const childPath = [...path, String(child.id ?? index)];
+          // A chain of drill levels is one row with a Field control per level;
+          // anything else holding rules is a group, and gets a card.
+          const row = getRuleRowModel(
+            context.config,
+            child,
+            childPath,
+            drillFields,
+            ownField ?? ''
+          );
 
-          return QUERY_BUILDER_GROUP_TYPES.includes(child.type ?? '') ? (
+          return row ? (
+            <QueryBuilderRuleRow
+              cells={groupOwnedCell ? [groupOwnedCell] : row.cells}
+              context={context}
+              key={child.id ?? index}
+              path={row.path}
+              rule={row.rule}
+            />
+          ) : (
             <QueryBuilderGroupCard
               canRemove
               context={context}
@@ -72,14 +104,6 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
               group={child}
               key={child.id ?? index}
               path={childPath}
-            />
-          ) : (
-            <QueryBuilderRuleRow
-              context={context}
-              groupField={groupField}
-              key={child.id ?? index}
-              path={childPath}
-              rule={child}
             />
           );
         })}

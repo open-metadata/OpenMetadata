@@ -13,6 +13,7 @@
 import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
 import {
   countRules,
+  getRuleRowModel,
   getSurfaceForDepth,
   toFieldNodes,
 } from './QueryBuilderCanvas.utils';
@@ -91,4 +92,130 @@ describe('getSurfaceForDepth', () => {
       expect(getSurfaceForDepth(base, depth)).toBe(expected);
     }
   );
+});
+
+describe('getRuleRowModel', () => {
+  // Only `getFieldConfig` is consulted, and only for its subfields.
+  const CONFIG = {
+    fields: {
+      // several subfields: a level the user picks within
+      extension: {
+        subfields: { table: { label: 'Table' }, topic: { label: 'Topic' } },
+      },
+      // one subfield: RAQB fills it in, so it is not a choice
+      owners: { subfields: { name: { label: 'Name' } } },
+    },
+    settings: { fieldSeparator: '.' },
+  };
+
+  const rule = (id: string, field?: string) => ({
+    id,
+    ...(field ? { properties: { field } } : {}),
+  });
+
+  it('should give a plain rule the single cell it draws', () => {
+    const model = getRuleRowModel(CONFIG, rule('r1', 'name'), ['root', 'r1']);
+
+    expect(model?.rule.id).toBe('r1');
+    expect(model?.path).toEqual(['root', 'r1']);
+    expect(model?.cells).toEqual([
+      { field: 'name', fields: undefined, path: ['root', 'r1'], prefix: '' },
+    ]);
+  });
+
+  it('should add a cell per drill level, each choosing within the one above', () => {
+    const model = getRuleRowModel(
+      CONFIG,
+      {
+        children1: [rule('r1')],
+        id: 'drill',
+        properties: { field: 'extension' },
+        type: 'rule_group',
+      },
+      ['root', 'drill']
+    );
+
+    expect(model?.path).toEqual(['root', 'drill', 'r1']);
+    expect(model?.cells).toEqual([
+      {
+        field: 'extension',
+        fields: undefined,
+        path: ['root', 'drill'],
+        prefix: '',
+      },
+      {
+        field: null,
+        fields: CONFIG.fields.extension.subfields,
+        path: ['root', 'drill', 'r1'],
+        prefix: 'extension',
+      },
+    ]);
+  });
+
+  it('should not give a level with nothing to choose a cell of its own', () => {
+    // `owners` owns one subfield, so RAQB sets it — a control over it could
+    // not change anything, and the row keeps editing the group's field.
+    const model = getRuleRowModel(
+      CONFIG,
+      {
+        children1: [rule('r1', 'owners.name')],
+        id: 'g1',
+        properties: { field: 'owners' },
+        type: 'rule_group',
+      },
+      ['root', 'g1']
+    );
+
+    expect(model?.cells).toHaveLength(1);
+    expect(model?.cells[0].field).toBe('owners');
+    expect(model?.rule.id).toBe('r1');
+  });
+
+  it('should leave a group the user built to its card', () => {
+    expect(
+      getRuleRowModel(CONFIG, { children1: [rule('r1')], type: 'group' }, [
+        'root',
+      ])
+    ).toBeUndefined();
+  });
+
+  it('should leave a level holding several rules to its card', () => {
+    expect(
+      getRuleRowModel(
+        CONFIG,
+        {
+          children1: [rule('r1'), rule('r2')],
+          properties: { field: 'extension' },
+          type: 'rule_group',
+        },
+        ['root', 'g1']
+      )
+    ).toBeUndefined();
+  });
+
+  it('should address a child that carries no id by position', () => {
+    const model = getRuleRowModel(
+      CONFIG,
+      {
+        children1: [{}],
+        properties: { field: 'extension' },
+        type: 'rule_group',
+      },
+      ['root', 'drill']
+    );
+
+    expect(model?.path).toEqual(['root', 'drill', '0']);
+  });
+
+  it('should treat a level with no field as offering nothing to drill into', () => {
+    const model = getRuleRowModel(
+      CONFIG,
+      { children1: [rule('r1')], type: 'rule_group' },
+      ['root', 'g1']
+    );
+
+    expect(model?.cells).toEqual([
+      { field: null, fields: undefined, path: ['root', 'g1'], prefix: '' },
+    ]);
+  });
 });
