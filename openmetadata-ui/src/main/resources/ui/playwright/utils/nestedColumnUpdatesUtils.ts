@@ -142,6 +142,7 @@ const expandNestedColumn = async (
   childKey: string
 ) => {
   const childRow = page.locator(`[data-row-key="${childKey}"]`);
+  await expect(page.locator(`[data-row-key="${rowKey}"]`)).toBeVisible();
   const expandIcon = page.locator(
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
@@ -461,6 +462,13 @@ export const createTopicEntity = async (apiContext: APIRequestContext) => {
         searchTerm: fqn,
         dataTestId: `${service.name}-${entity.name}`,
       });
+      // Small topic schemas expand automatically after mounting. Wait for
+      // that state before a conditional expand click can collapse the row.
+      await expect(
+        page.locator(
+          `[data-row-key="${fqn}.default.${DUPLICATE_NAME}.${DUPLICATE_NAME}"]`
+        )
+      ).toBeVisible();
     },
     keys: {
       level0Key: `${fqn}.default`,

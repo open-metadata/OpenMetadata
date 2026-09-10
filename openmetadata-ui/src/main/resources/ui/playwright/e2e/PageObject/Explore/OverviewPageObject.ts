@@ -680,7 +680,6 @@ export class OverviewPageObject extends RightPanelBase {
       Teams: 'team',
     };
 
-    await this.editOwnersIcon.scrollIntoViewIfNeeded();
     await this.editOwnersIcon.click();
     await expect(this.selectOwnerTabs).toBeVisible();
 

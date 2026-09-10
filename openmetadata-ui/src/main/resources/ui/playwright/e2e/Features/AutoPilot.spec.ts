@@ -54,8 +54,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'on-first-retry' : 'retain-on-failure',
-  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
 test.beforeAll(async ({ browser }) => {
@@ -85,6 +83,8 @@ services.forEach((ServiceClass) => {
     process.env.PLAYWRIGHT_AUTOPILOT_MYSQL_HOST_PORT
       ? new MysqlIngestionClass({
           ...serviceOptions,
+          // Query-log permission also exposes the system schema in discovery.
+          excludeSchemas: ['openmetadata', 'mysql'],
           connection: {
             hostPort: process.env.PLAYWRIGHT_AUTOPILOT_MYSQL_HOST_PORT,
             username: process.env.PLAYWRIGHT_AUTOPILOT_MYSQL_USERNAME ?? '',

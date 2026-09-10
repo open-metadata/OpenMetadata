@@ -127,7 +127,6 @@ class ServiceBaseClass {
         .locator('.core-select-widget-popover')
         .getByRole('option', { name: runnerLabel, exact: true });
 
-      await trigger.scrollIntoViewIfNeeded();
       await trigger.focus();
       await trigger.click();
       await expect(option).toBeVisible();

@@ -73,7 +73,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
 const classification = new ClassificationClass({
-  provider: 'system',
+  provider: 'user',
 });
 const tag = new TagClass({
   classification: classification.data.name,
@@ -545,14 +545,21 @@ test('Search tag using classification display name should work', async ({
 
   await initialQueryResponse;
 
-  const tagSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(displayNameToSearch)}*`
-  );
+  const tagSearchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('q') === `*${displayNameToSearch}*`
+    );
+  });
 
   // Enter the display name in the search box
   await page.fill('[data-testid="tag-selector"] input', displayNameToSearch);
 
   const response = await tagSearchResponse;
+  expect(response.status()).toBe(200);
   const searchResults = await response.json();
 
   // Verify that we got search results

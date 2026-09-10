@@ -93,7 +93,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.describe('Tag Page with Admin Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -457,7 +457,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
 test.describe('Tag Page with Data Consumer Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -534,7 +534,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 
 test.describe('Tag Page with Data Steward Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -587,7 +587,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({

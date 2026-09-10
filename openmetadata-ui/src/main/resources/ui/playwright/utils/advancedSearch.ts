@@ -181,7 +181,6 @@ export const selectOption = async (
 
   const control = comboboxInput.or(triggerButton).first();
   await expect(control).toBeVisible();
-  await control.scrollIntoViewIfNeeded();
   await control.hover();
   await control.focus();
 
@@ -222,14 +221,13 @@ export const selectOption = async (
   if (await control.count()) {
     await control.blur();
   }
-  // Escape closes the react-aria listbox synchronously, so we do not rely on
-  // the blur → animated-hide race to settle before the assertion.
-  await page.keyboard.press('Escape');
+  // Selection/blur closes the popup. A subsequent page-level Escape can
+  // reach the enclosing search dialog after focus has been restored.
   await expect(listbox).toBeHidden({ timeout: 10_000 });
 };
 
 export const selectRange = async (
-  page: Page,
+  _page: Page,
   ruleLocator: Locator,
   startDate: string,
   endDate: string
@@ -289,7 +287,6 @@ export const fillRule = async (
           .count();
       };
 
-      await dropdownInput.scrollIntoViewIfNeeded();
       await dropdownInput.fill(searchData);
       await dropdownInput.press('ArrowDown');
       await expect

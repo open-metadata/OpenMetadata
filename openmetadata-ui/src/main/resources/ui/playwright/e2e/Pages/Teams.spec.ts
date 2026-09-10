@@ -1417,9 +1417,10 @@ test.describe('Teams Page action as Owner of Team', () => {
     await domain.delete(apiContext);
     await teamNoOwner.delete(apiContext);
     await team4.delete(apiContext);
-    await team3.delete(apiContext);
-    await team2.delete(apiContext);
-    await team.delete(apiContext);
+    // The owner scenarios create child teams under these unique fixture roots.
+    await team3.delete(apiContext, { recursive: true });
+    await team2.delete(apiContext, { recursive: true });
+    await team.delete(apiContext, { recursive: true });
     await role.delete(apiContext);
     await policy.delete(apiContext);
     await ownerUser.delete(apiContext);

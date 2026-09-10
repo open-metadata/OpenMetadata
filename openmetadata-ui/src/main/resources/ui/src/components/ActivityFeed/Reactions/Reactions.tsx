@@ -13,7 +13,7 @@
 
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
-import { groupBy, uniqueId } from 'lodash';
+import { groupBy } from 'lodash';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
@@ -70,7 +70,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
     return (
       <Reaction
         isReacted={isReacted(reaction.reaction)}
-        key={uniqueId()}
+        key={reaction.reaction}
         reaction={reaction}
         onHide={hide}
         onReactionSelect={onReactionSelect}

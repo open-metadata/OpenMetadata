@@ -301,7 +301,7 @@ const readLatestPipelineStatus = async (
   );
 
   if (!response.ok()) {
-    return undefined;
+    throw new Error(`HTTP ${response.status()} querying ${response.url()}`);
   }
 
   const body = await response.json();

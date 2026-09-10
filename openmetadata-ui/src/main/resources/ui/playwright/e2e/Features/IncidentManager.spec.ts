@@ -109,7 +109,9 @@ const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
           });
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();

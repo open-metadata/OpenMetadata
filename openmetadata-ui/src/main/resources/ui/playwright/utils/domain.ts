@@ -26,7 +26,10 @@ import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { SubDomain } from '../support/domain/SubDomain';
 import { DashboardClass } from '../support/entity/DashboardClass';
-import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+} from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
@@ -879,7 +882,7 @@ export const addAssetsToDomain = async (
 export const addServicesToDomain = async (
   page: Page,
   domain: Domain['data'],
-  assets: EntityClass[]
+  services: Pick<ResponseDataType, 'name' | 'fullyQualifiedName'>[]
 ) => {
   await goToAssetsTab(page, domain);
 
@@ -889,9 +892,8 @@ export const addServicesToDomain = async (
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
   await assetRes;
 
-  for (const asset of assets) {
-    const name = get(asset, 'name') ?? '';
-    const fqn = get(asset, 'fullyQualifiedName');
+  for (const service of services) {
+    const { name, fullyQualifiedName: fqn } = service;
 
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
@@ -1649,7 +1651,9 @@ export const verifyDataProductsCount = async (
           const response = await apiContext.get(searchUrl);
 
           if (!response.ok()) {
-            return -1;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const data = await response.json();

@@ -26,7 +26,6 @@ const selectOwnedOption = async ({
   optionName,
   page,
 }: SelectOwnedOptionArgs) => {
-  await control.scrollIntoViewIfNeeded();
   await control.focus();
   if ((await control.getAttribute('aria-expanded')) !== 'true') {
     await open();
@@ -53,7 +52,6 @@ export const selectComboBoxOption = async ({
 }) => {
   const input = page.getByTestId(testId).getByRole('combobox');
   await expect(input).toBeVisible();
-  await input.scrollIntoViewIfNeeded();
   await input.hover();
   await input.fill('');
   await selectOwnedOption({

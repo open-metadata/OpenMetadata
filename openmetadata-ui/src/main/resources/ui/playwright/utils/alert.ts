@@ -29,6 +29,7 @@ import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
+import { okJson } from './apiResponse';
 import {
   clickOutside,
   fillDescriptionBox,
@@ -1015,7 +1016,6 @@ export const inputBasicAlertInformation = async ({
     .getByTestId(`${sourceName}-option`);
   const sourceSelect = page.getByTestId('source-select');
   const sourceTrigger = page.getByTestId('add-source-button');
-  await sourceTrigger.scrollIntoViewIfNeeded();
   await sourceTrigger.click();
   await expect(sourceOption).toBeVisible();
   await waitForAntdPopupToSettle(page);
@@ -1133,29 +1133,45 @@ export const waitForRecentEventsToFinishExecution = async (
 ) => {
   const { apiContext } = await getApiContext(page);
 
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/events/subscriptions/name/${name}/eventsRecord?listCountOnly=true`
-          )
-          .then((res) => res.json());
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext
+            .get(
+              `/api/v1/events/subscriptions/name/${encodeURIComponent(
+                name
+              )}/eventsRecord?listCountOnly=true`
+            )
+            .then((res) =>
+              okJson<{ pendingEventsCount: number; totalEventsCount: number }>(
+                res,
+                `Subscription ${name} events`
+              )
+            );
 
-        return (
-          response.pendingEventsCount === 0 &&
-          response.totalEventsCount === totalEventsCount
-        );
-      },
-      {
-        // Custom expect message for reporting, optional.
-        message: 'Wait for pending events to complete',
-        intervals: [5_000, 10_000, 15_000, 20_000],
-        timeout: 900_000,
-      }
-    )
-    // Move ahead when the pending events count is 0
-    .toEqual(true);
+          if (
+            !Number.isFinite(response.pendingEventsCount) ||
+            !Number.isFinite(response.totalEventsCount)
+          ) {
+            throw new Error(`Invalid event counts for subscription ${name}`);
+          }
+
+          return (
+            response.pendingEventsCount === 0 &&
+            response.totalEventsCount === totalEventsCount
+          );
+        },
+        {
+          message: 'Wait for pending events to complete',
+          intervals: [5_000, 10_000, 15_000, 20_000],
+          timeout: 900_000,
+        }
+      )
+      .toEqual(true);
+  } finally {
+    await apiContext.dispose();
+  }
 };
 
 export const checkRecentEventDetails = async ({

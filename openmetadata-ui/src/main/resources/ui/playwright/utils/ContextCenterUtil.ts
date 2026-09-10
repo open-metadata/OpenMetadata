@@ -22,6 +22,7 @@ import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
@@ -717,19 +718,21 @@ export const deleteArticleByFqn = async (
     `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
   );
 
-  if (!res.ok()) {
+  if (res.status() === 404) {
     return;
   }
 
-  const data = await res.json();
-
-  if (data.id) {
-    await apiContext
-      .delete(
-        `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
-      )
-      .catch(() => undefined);
+  const data = await okJson<{ id: string }>(
+    res,
+    `Find article ${fqn} for cleanup`
+  );
+  if (!data.id) {
+    throw new Error(`Article ${fqn} cleanup response has no ID`);
   }
+  await deleteFixtureEntity(
+    apiContext,
+    `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
+  );
 };
 
 export const createArticleViaApi = async (
@@ -1073,7 +1076,7 @@ export const fetchFirstTable = async (page: Page) => {
     '/api/v1/search/query?q=*&index=table_search_index&from=0&size=1'
   );
   if (!res.ok()) {
-    return undefined;
+    throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
   }
   const data = await res.json();
 

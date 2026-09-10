@@ -49,7 +49,6 @@ test('add-service connector config form (RJSF) matches baseline', async ({
 test('delete confirmation modal matches baseline', async ({ page }) => {
   await gotoVisualGlossary(page);
 
-  await page.getByTestId('manage-button').scrollIntoViewIfNeeded();
   await page.getByTestId('manage-button').click();
   await expect(page.getByTestId('delete-button')).toBeVisible();
 

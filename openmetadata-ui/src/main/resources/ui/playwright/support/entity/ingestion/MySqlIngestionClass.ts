@@ -57,6 +57,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     shouldAddIngestion?: boolean;
     shouldAddDefaultFilters?: boolean;
     tableFilter?: string[];
+    excludeSchemas?: string[];
     connection?: MysqlConnection;
   }) {
     const {
@@ -64,6 +65,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       shouldAddIngestion = true,
       shouldAddDefaultFilters = false,
       tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+      excludeSchemas = ['openmetadata'],
       connection,
     } = extraParams ?? {};
 
@@ -79,7 +81,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     );
     this.name = serviceName;
     this.tableFilter = tableFilter;
-    this.excludeSchemas = ['openmetadata'];
+    this.excludeSchemas = excludeSchemas;
     this.connection = connection;
   }
 

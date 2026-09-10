@@ -170,7 +170,6 @@ export const addInternalDestination = async ({
         `[data-testid="${searchText}-option-label"]`
       );
 
-      await dropdownTrigger.scrollIntoViewIfNeeded();
       await dropdownTrigger.focus();
       await dropdownTrigger.click();
       const searchInput = resultsDropdown.getByTestId('search-input-field');

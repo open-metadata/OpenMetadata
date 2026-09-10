@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect } from '@playwright/test';
+import { ContractExecutionStatus } from '../../src/generated/entity/datacontract/dataContractResult';
 
 const TERMINAL_STATUSES = ['Aborted', 'Success', 'Failed', 'PartialSuccess'];
 
@@ -18,11 +19,17 @@ export const waitForContractResult = async (
   apiContext: APIRequestContext,
   contractId: string,
   resultId: string,
-  timeoutMs = 600_000
+  timeoutMs = 600_000,
+  expectedStatus: ContractExecutionStatus = ContractExecutionStatus.Success
 ) => {
   if (!resultId) {
     throw new Error(
       `Contract ${contractId} validation returned no execution ID`
+    );
+  }
+  if (!TERMINAL_STATUSES.includes(expectedStatus)) {
+    throw new Error(
+      `Expected contract result must be terminal: ${expectedStatus}`
     );
   }
 
@@ -53,14 +60,21 @@ export const waitForContractResult = async (
             `Contract ${contractId} execution ${resultId}: invalid status ${status}`
           );
         }
+        if (TERMINAL_STATUSES.includes(status) && status !== expectedStatus) {
+          throw new Error(
+            `Contract ${contractId} execution ${resultId} ended with ${status}; expected ${expectedStatus}. ${
+              result.result ?? ''
+            }`
+          );
+        }
 
         return status;
       },
       {
-        message: `Contract ${contractId} execution ${resultId} must reach a terminal result`,
+        message: `Contract ${contractId} execution ${resultId} must reach ${expectedStatus}`,
         timeout: timeoutMs,
         intervals: [1_000, 3_000, 5_000, 10_000],
       }
     )
-    .toMatch(/^(Aborted|Success|Failed|PartialSuccess)$/);
+    .toBe(expectedStatus);
 };

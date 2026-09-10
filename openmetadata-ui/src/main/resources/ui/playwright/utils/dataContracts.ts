@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ContractExecutionStatus } from '../../src/generated/entity/datacontract/dataContractResult';
 import {
   DataContractSecuritySlaData,
   DATA_CONTRACT_DETAILS,
@@ -26,7 +27,8 @@ import { waitForResponseWithStatus } from './waitHelpers';
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
-  isContractStatusNotVisible?: boolean
+  isContractStatusNotVisible?: boolean,
+  expectedStatus: ContractExecutionStatus = ContractExecutionStatus.Success
 ): Promise<object | undefined> => {
   const saveContractResponse = page.waitForResponse(
     (response) =>
@@ -51,7 +53,7 @@ export const saveAndTriggerDataContractValidation = async (
     ).not.toBeVisible();
   }
 
-  await triggerContractValidation(page, responseData.id);
+  await triggerContractValidation(page, responseData.id, expectedStatus);
 
   await page.reload();
 
@@ -110,22 +112,18 @@ export const validateDataContractInsideBundleTestSuites = async (
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
-  resultId?: string
+  resultId: string,
+  expectedStatus: ContractExecutionStatus = ContractExecutionStatus.Success
 ): Promise<void> => {
   const { apiContext, afterAction } = await getApiContext(page);
   try {
-    let executionId = resultId;
-    if (!executionId) {
-      const response = await apiContext.get(
-        `/api/v1/dataContracts/${contractId}`
-      );
-      expect(
-        response.ok(),
-        `Contract ${contractId}: HTTP ${response.status()}`
-      ).toBe(true);
-      executionId = (await response.json()).latestResult?.resultId;
-    }
-    await waitForContractResult(apiContext, contractId, executionId ?? '');
+    await waitForContractResult(
+      apiContext,
+      contractId,
+      resultId,
+      undefined,
+      expectedStatus
+    );
   } finally {
     await afterAction();
   }
@@ -461,7 +459,8 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
 
 export const triggerContractValidation = async (
   page: Page,
-  contractId?: string
+  contractId?: string,
+  expectedStatus: ContractExecutionStatus = ContractExecutionStatus.Success
 ): Promise<void> => {
   const runNowResponse = page.waitForResponse(
     (response) =>
@@ -485,7 +484,12 @@ export const triggerContractValidation = async (
   if (contractId) {
     expect(validatedContractId).toBe(contractId);
   }
-  await waitForDataContractExecution(page, validatedContractId, execution.id);
+  await waitForDataContractExecution(
+    page,
+    validatedContractId,
+    execution.id,
+    expectedStatus
+  );
 };
 
 export const exportContractYaml = async (

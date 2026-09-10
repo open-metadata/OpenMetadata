@@ -71,7 +71,6 @@ test.describe('Advanced Search Suggestions', () => {
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );
 
-      await dropdownInput.scrollIntoViewIfNeeded();
       const aggregateResponse = waitForAggregation(page, {
         field: field.fieldName,
         value: searchText,

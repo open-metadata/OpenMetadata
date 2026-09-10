@@ -90,8 +90,6 @@ for (const [
         const testTag = 'PII.Sensitive';
         const { level1Key } = getNestedColumnDetails(entityType, entity);
 
-        await expandNestedColumn(page, level1Key);
-
         await expect(
           page.locator(`[data-row-key="${level1Key}"]`)
         ).toBeVisible();
@@ -130,8 +128,6 @@ for (const [
           const newDisplayName = 'Customer Full Name';
           const { level1Key } = getNestedColumnDetails(entityType, entity);
 
-          await expandNestedColumn(page, level1Key);
-
           await expect(
             page.locator(`[data-row-key="${level1Key}"]`)
           ).toBeVisible();
@@ -169,8 +165,15 @@ for (const [
 
           await page.click(tabSelector);
         }
-        await expandNestedColumn(page, level0Key, level1Key);
-        await expandNestedColumn(page, level1Key, level2Key);
+        if (entityType === 'Topic') {
+          // Small topic schemas expand all levels after the initial render.
+          await expect(
+            page.locator(`[data-row-key="${level2Key}"]`)
+          ).toBeVisible();
+        } else {
+          await expandNestedColumn(page, level0Key, level1Key);
+          await expandNestedColumn(page, level1Key, level2Key);
+        }
       });
 
       test('should update nested column description immediately without page refresh', async ({
@@ -270,25 +273,18 @@ for (const [
 const expandNestedColumn = async (
   page: Page,
   nestedColumnFqn: string,
-  childKey?: string
+  childKey: string
 ) => {
-  const childRow = childKey
-    ? page.locator(`[data-row-key="${childKey}"]`)
-    : undefined;
+  const childRow = page.locator(`[data-row-key="${childKey}"]`);
+  await expect(
+    page.locator(`[data-row-key="${nestedColumnFqn}"]`)
+  ).toBeVisible();
   const expandIcon = page.locator(
     `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`
   );
-  // Topics can already be expanded when the schema finishes loading.
-  if (childRow && (await childRow.isVisible())) {
+  if (await childRow.isVisible()) {
     return;
   }
-  // The nested-column table re-renders on every children fetch, detaching the
-  // row locator between the scroll and the click. dispatchEvent bypasses
-  // Playwright's actionability check (which does the doomed scroll into view
-  // that races the re-render), so the click fires deterministically without
-  // needing a retry loop.
-  await expandIcon.dispatchEvent('click');
-  if (childRow) {
-    await expect(childRow).toBeVisible({ timeout: 15_000 });
-  }
+  await expandIcon.click();
+  await expect(childRow).toBeVisible({ timeout: 15_000 });
 };

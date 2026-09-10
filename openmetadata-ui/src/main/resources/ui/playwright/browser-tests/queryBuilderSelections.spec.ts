@@ -19,15 +19,26 @@ const bundle = buildSync({
   stdin: {
     contents: `import React, { useState } from 'react';
       import { createRoot } from 'react-dom/client';
+      import ConfirmationModal from './src/components/Modals/ConfirmationModal/ConfirmationModal';
       import OMFieldSelect from './src/utils/queryBuilderWidgets/OMFieldSelect';
+      import OMSelectWidget from './src/utils/queryBuilderWidgets/OMSelectWidget';
       function App() {
+        const [open, setOpen] = useState(true);
         const [group, setGroup] = useState(true);
         const [field, setField] = useState();
-        return <><div data-testid="rule" className={group ? 'group--field' : 'rule--field'}>
+        const [status, setStatus] = useState();
+        return <ConfirmationModal visible={open} header="Advanced Search"
+          cancelText="Cancel" confirmText="Apply"
+          onCancel={() => setOpen(false)} onConfirm={() => setOpen(false)} bodyText={<>
+          <div data-testid="rule" className={group ? 'group--field' : 'rule--field'}>
           <OMFieldSelect key={String(group)}
             items={group ? [{key:'extension', label:'Custom Properties'}] : [{key:'extension.count', label:'Count'}]}
             selectedKey={field} setField={key => group ? setGroup(false) : setField(key)} />
-        </div><output data-testid="selected-field">{field}</output></>;
+          </div><output data-testid="selected-field">{field}</output>
+          <div data-testid="status-widget"><OMSelectWidget listValues={{incomplete:'Incomplete',complete:'Complete'}}
+            value={status} setValue={setStatus} /></div>
+          <output data-testid="selected-status">{status}</output>
+        </>} />;
       }
       createRoot(document.getElementById('root')).render(<App />);`,
     loader: 'tsx',
@@ -61,4 +72,19 @@ test('query builder selection can replace a group control with its child field',
   await expect(page.getByTestId('selected-field')).toHaveText(
     'extension.count'
   );
+});
+
+test('selecting a static query value leaves the enclosing dialog open', async ({
+  page,
+}) => {
+  await page.setContent('<div id="root"></div>');
+  await page.addStyleTag({
+    path: 'node_modules/@openmetadata/ui-core-components/dist/ui-core-components.css',
+  });
+  await page.addScriptTag({ content: bundle });
+  await selectOption(page, page.getByTestId('status-widget'), 'Incomplete');
+  await expect(
+    page.getByRole('dialog', { name: 'Advanced Search' })
+  ).toBeVisible();
+  await expect(page.getByTestId('selected-status')).toHaveText('incomplete');
 });

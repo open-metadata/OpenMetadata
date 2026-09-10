@@ -125,7 +125,7 @@ test.describe('Domains', () => {
     user = new UserClass();
     domain = new Domain();
     classification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: true,
     });
     tag = new TagClass({ classification: classification.data.name });
@@ -696,7 +696,9 @@ test.describe('Domains', () => {
           );
 
           if (!response.ok()) {
-            return { owners: 0, experts: 0 };
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -2071,7 +2073,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const testClassification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: false,
     });
     const testTag = new TagClass({
@@ -2446,7 +2448,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
     const testClassification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: false,
     });
     const testTag = new TagClass({
@@ -2881,7 +2883,7 @@ test.describe('Data Consumer Domain Ownership', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     classification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: true,
     });
     tag = new TagClass({ classification: classification.data.name });
@@ -3303,7 +3305,7 @@ test.describe('Domain Tree View Functionality', () => {
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const testClassification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: false,
     });
     const testTag = new TagClass({

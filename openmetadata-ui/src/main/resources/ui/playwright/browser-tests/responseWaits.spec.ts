@@ -14,7 +14,52 @@
 import { expect, test } from '@playwright/test';
 import { createServer } from 'http';
 import { AddressInfo } from 'net';
+import { testTableSearch } from '../utils/common';
 import { waitForResponseWithStatus } from '../utils/waitHelpers';
+
+for (const queryLocation of ['q', 'query_filter'] as const) {
+  test(`table search waits for the term in ${queryLocation}`, async ({
+    page,
+  }) => {
+    const server = createServer((request, response) => {
+      if (request.url?.startsWith('/api/v1/search/query')) {
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end('{}');
+      } else {
+        response.writeHead(200, { 'Content-Type': 'text/html' });
+        response.end(`<input data-testid="searchbar" /><p>Fixture alpha</p><p id="other">Fixture beta</p>
+          <script>document.querySelector('input').oninput = async (event) => {
+            const term = event.target.value;
+            const params = new URLSearchParams({ index: 'table', q: '' });
+            if ('${queryLocation}' === 'q') params.set('q', '*' + term + '*');
+            else params.set('query_filter', JSON.stringify({ query: { bool: { must: [
+              { term: { 'service.fullyQualifiedName.keyword': 'test-service' } },
+              { bool: { should: [
+                { wildcard: { 'name.keyword': '*' + term + '*' } },
+                { wildcard: { 'displayName.keyword': '*' + term + '*' } }
+              ], minimum_should_match: 1 } }
+            ] } } }));
+            await fetch('/api/v1/search/query?' + params);
+            document.getElementById('other').remove();
+          };</script>`);
+      }
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve)
+    );
+    try {
+      await page.goto(
+        `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+      );
+      await testTableSearch(page, 'table', 'Fixture alpha', 'Fixture beta');
+      await expect(page.getByText('Fixture alpha')).toBeVisible();
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      );
+    }
+  });
+}
 
 for (const [firstStatus, expectedStatus] of [
   [200, 200],

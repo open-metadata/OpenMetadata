@@ -28,6 +28,7 @@ import {
   activateColumnLayer,
   addColumnLineage,
   addPipelineBetweenNodes,
+  clickEdgeBetweenColumns,
   clickEdgeBetweenNodes,
   clickLineageNode,
   connectEdgeBetweenNodesViaAPI,
@@ -231,11 +232,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await activateColumnLayer(page);
 
-        await page
-          .locator(
-            `[data-testid="column-edge-${sourceColName}-${targetColName}"]`
-          )
-          .dispatchEvent('click');
+        await clickEdgeBetweenColumns(page, sourceColName, targetColName);
 
         await page.locator('.sql-function-section').waitFor({
           state: 'visible',
@@ -259,13 +256,9 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await lineageReq1;
 
         await activateColumnLayer(page);
-        await page
-          .locator(
-            `[data-testid="column-edge-${sourceColName}-${targetColName}"]`
-          )
-          .dispatchEvent('click');
+        await clickEdgeBetweenColumns(page, sourceColName, targetColName);
 
-        await expect(page.locator('.edge-info-drawer')).toBeVisible();
+        await expect(page.getByTestId('edge-header-title')).toBeVisible();
 
         await expect(
           page.locator('[data-testid="sql-function"]')

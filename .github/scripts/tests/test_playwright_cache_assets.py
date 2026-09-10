@@ -144,6 +144,22 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
         assert fingerprints.fingerprint("fixture", root=tmp_path) != before
 
 
+def test_fixture_fingerprint_tracks_search_mappings(tmp_path: Path) -> None:
+    mapping = "openmetadata-spec/src/main/resources/elasticsearch/en/metric_index_mapping.json"
+    write(tmp_path, "pom.xml", "<project />")
+    write(tmp_path, mapping, '{"mappings":{"properties":{}}}')
+    initialize_repository(tmp_path)
+
+    initial = fingerprints.fingerprint("fixture", root=tmp_path)
+    write(
+        tmp_path,
+        mapping,
+        '{"mappings":{"properties":{"followers":{"type":"keyword"}}}}',
+    )
+
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
+
+
 def test_fixture_typescript_dependency_scan_follows_dynamic_imports(
     tmp_path: Path,
 ) -> None:

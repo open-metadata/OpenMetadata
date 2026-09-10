@@ -49,9 +49,9 @@ SEED_PREFIXES = (
 # 60 main commits).
 #
 # The narrower sets replace three old broad entries:
-#   1. `openmetadata-spec/`                    → `openmetadata-spec/src/main/resources/json/schema/`
+#   1. `openmetadata-spec/`                    → JSON schemas + search mappings
 #      (Java utils and generated code under openmetadata-spec/ are consumed
-#      at runtime; they don't shape the seeded rows.)
+#      at runtime; schemas and mappings shape the seeded database and indexes.)
 #   2. `openmetadata-service/src/main/resources/` → the two seed-shaped subtrees
 #      (`json/data/`, `applications/`). Every other resource
 #      subdirectory — logback.xml, openapi.yml, monitoring/, META-INF/,
@@ -71,6 +71,7 @@ FIXTURE_PREFIXES = (
     "pom.xml",
     "bootstrap/sql/",
     "openmetadata-spec/src/main/resources/json/schema/",
+    "openmetadata-spec/src/main/resources/elasticsearch/",
     *SEED_PREFIXES,
     "openmetadata-service/src/main/java/org/openmetadata/service/initialization/",
     "openmetadata-service/src/main/java/org/openmetadata/service/migration/",

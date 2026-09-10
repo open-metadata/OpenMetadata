@@ -14,7 +14,6 @@
 import '@github/g-emoji-element';
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
 import { createElement, FC } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { ReactionType } from '../../../generated/type/reaction';
@@ -69,7 +68,6 @@ const Reaction: FC<ReactionProps> = ({
         'ant-btn-popover-isReacted': isReacted,
       })}
       data-testid="reaction-button"
-      key={uniqueId()}
       size="small"
       title={reaction.reaction}
       type="text"

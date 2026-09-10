@@ -1519,7 +1519,6 @@ test.describe(
 
           // Ant Dropdown opens on hover, so a re-render that shifts the footer out
           // from under the pointer leaves the menu closed for good.
-          await pageSizeDropdown.scrollIntoViewIfNeeded();
           await pageSizeDropdown.hover();
           await expect(pageSizeMenu).toBeVisible();
           await waitForAntdPopupToSettle(page);

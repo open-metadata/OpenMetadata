@@ -115,7 +115,6 @@ const clickDropdownMenuItem = async ({
 }) => {
   const trigger = dropdown.locator('button[data-testid$="-trigger"]');
   await expect(trigger).toBeVisible();
-  await trigger.scrollIntoViewIfNeeded();
   await trigger.hover();
   await trigger.click();
   const menu = page.locator('.task-action-dropdown:visible');
@@ -332,7 +331,6 @@ export const openTaskEditModal = async (page: Page) => {
   if (await workflow.filter({ hasText: workflowAction }).count()) {
     await workflow.click();
   } else if (await primary.count()) {
-    await primary.scrollIntoViewIfNeeded();
     await primary.click();
   } else {
     const dropdown = panel.locator(

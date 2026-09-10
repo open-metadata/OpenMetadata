@@ -393,7 +393,9 @@ test.describe.serial(
               );
 
               if (!resolvedSchemaResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${resolvedSchemaResponse.status()} querying ${resolvedSchemaResponse.url()}`
+                );
               }
 
               const resolvedSchemaPayload = await resolvedSchemaResponse.json();
@@ -499,7 +501,9 @@ test.describe.serial(
               );
 
               if (!updatedTableResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${updatedTableResponse.status()} querying ${updatedTableResponse.url()}`
+                );
               }
 
               const updatedTable = await updatedTableResponse.json();

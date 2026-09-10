@@ -140,7 +140,9 @@ export const enableDisableSearchRBAC = async (
           '/api/v1/system/settings/searchSettings'
         );
         if (!response.ok()) {
-          return undefined;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
         const settings = await response.json();
 

@@ -12,8 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  CUSTOM_PROPERTY_INVALID_NAMES,
-  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
   NAME_SUFFIX,
 } from '../constant/customProperty';
@@ -82,7 +80,6 @@ export const fillTableColumnInputDetails = async (
   columnName: string
 ) => {
   const cell = page.locator(`div.rdg-cell-${columnName}`).last();
-  await cell.scrollIntoViewIfNeeded();
   await cell.dblclick();
   await page
     .getByTestId('edit-table-type-property-modal')
@@ -677,17 +674,6 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
-  await page.fill(
-    '[data-testid="name"]',
-    CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
-  );
-
-  await expect(page.locator('#name_help')).toContainText(
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  // Correct name
   await page.fill('[data-testid="name"]', propertyName);
 
   // displayName

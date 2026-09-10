@@ -92,7 +92,9 @@ const waitForInheritedDomainOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -185,7 +187,9 @@ const waitForDataProductsOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ContractExecutionStatus } from '../../../src/generated/entity/datacontract/dataContractResult';
 import {
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTIC_OPERATIONS,
@@ -145,7 +146,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -246,7 +251,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -317,7 +326,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -447,7 +460,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -504,7 +521,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -606,7 +627,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -694,7 +719,11 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -755,7 +784,11 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -841,13 +874,9 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         }
       )?.id;
 
-      await expect(async () => {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed', { timeout: 5_000 });
-      }).toPass({ timeout: 30_000, intervals: [5_000, 10_000] });
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
 
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
@@ -864,7 +893,11 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
       await waitForAllLoadersToDisappear(page);
@@ -920,7 +953,11 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -1073,7 +1110,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain1.responseData);
       await assignSingleSelectDomain(page, domain2.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1155,7 +1196,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain1.responseData);
       await assignSingleSelectDomain(page, domain2.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1238,7 +1283,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain1.responseData);
       await assignSingleSelectDomain(page, domain2.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1319,7 +1368,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain2.responseData);
       await assignSingleSelectDomain(page, domain1.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1393,7 +1446,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Domain with IsSet condition should failed', async () => {
       await removeSingleSelectDomain(page, domain1.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1466,7 +1523,11 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Domain with IsNotSet condition should failed', async () => {
       await assignSingleSelectDomain(page, domain1.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1541,7 +1602,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         .fill('99.9');
 
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -1587,7 +1652,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step('Non-Correct entity version should failed', async () => {
       await assignSingleSelectDomain(page, domain.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1709,7 +1778,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step('Contract with is_not condition for version should failed', async () => {
       await assignSingleSelectDomain(page, domain.responseData);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -1794,7 +1867,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await versionInput.clear();
       await versionInput.fill('0.01');
 
-      await saveAndTriggerDataContractValidation(page);
+      await saveAndTriggerDataContractValidation(
+        page,
+        false,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1850,7 +1927,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         )
         .fill('99.9');
 
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1959,7 +2040,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await versionInput.clear();
       await versionInput.fill('0.01');
 
-      await saveAndTriggerDataContractValidation(page);
+      await saveAndTriggerDataContractValidation(
+        page,
+        false,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2018,7 +2103,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         )
         .fill('99.9');
 
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2156,7 +2245,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2251,7 +2344,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2317,7 +2414,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -2438,7 +2539,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2472,7 +2577,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2557,7 +2666,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2642,7 +2755,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2731,7 +2848,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2794,7 +2915,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -2903,7 +3028,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -2965,7 +3094,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -3069,7 +3202,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await triggerContractValidation(page, contractId);
+      await triggerContractValidation(
+        page,
+        contractId,
+        ContractExecutionStatus.Failed
+      );
 
       await page.reload();
 
@@ -3125,7 +3262,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       // save and trigger contract validation
       contractId = (
-        (await saveAndTriggerDataContractValidation(page, true)) as {
+        (await saveAndTriggerDataContractValidation(
+          page,
+          true,
+          ContractExecutionStatus.Failed
+        )) as {
           id?: string;
         }
       )?.id;
@@ -3240,7 +3381,11 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       await page.getByTestId('query-date-value-0').fill(newStart);
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3297,7 +3442,11 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       await selectRange(page, ruleLocator, startDate, endDate);
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3378,7 +3527,11 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3467,7 +3620,11 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3589,7 +3746,11 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .fill(newDate);
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3681,7 +3842,11 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .fill(newDate);
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      await saveAndTriggerDataContractValidation(
+        page,
+        true,
+        ContractExecutionStatus.Failed
+      );
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')

@@ -408,7 +408,7 @@ export async function waitForTestCasesToBeIndexed(
           );
 
           if (!res.ok()) {
-            return false;
+            throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
           }
 
           const body = await res.json();
@@ -726,7 +726,7 @@ export async function waitForIncidentToBeIndexed(
         );
 
         if (!res.ok()) {
-          return false;
+          throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
         }
 
         const body = await res.json();

@@ -111,10 +111,13 @@ export class TeamClass {
     return data;
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(
+    apiContext: APIRequestContext,
+    { recursive = false }: { recursive?: boolean } = {}
+  ) {
     const response = await deleteFixtureEntity(
       apiContext,
-      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
+      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=${recursive}`
     );
 
     return await response.json();

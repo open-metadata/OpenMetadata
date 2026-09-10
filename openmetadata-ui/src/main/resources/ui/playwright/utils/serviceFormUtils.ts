@@ -52,7 +52,6 @@ export const selectOneOfOption = async (
       .locator('.core-one-of-field-select-popover')
       .getByRole('option', { name: optionName, exact: true });
 
-    await trigger.scrollIntoViewIfNeeded();
     await trigger.focus();
     await trigger.click();
     await expect(option).toBeVisible();
@@ -82,7 +81,6 @@ export const selectIngestionRunnerFromDropdown = async (
       .locator('.core-select-widget-popover')
       .getByRole('option', { name: runnerDisplayName, exact: true });
 
-    await trigger.scrollIntoViewIfNeeded();
     await trigger.focus();
     await trigger.click();
     await expect(option).toBeVisible();

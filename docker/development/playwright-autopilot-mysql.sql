@@ -3,6 +3,8 @@ CREATE DATABASE autopilot_secondary;
 CREATE USER 'playwright'@'%' IDENTIFIED BY 'playwright-fixture-only';
 GRANT SELECT, SHOW VIEW ON autopilot_source.* TO 'playwright'@'%';
 GRANT SELECT, SHOW VIEW ON autopilot_secondary.* TO 'playwright'@'%';
+-- AutoPilot's usage and lineage agents read query history as well as metadata.
+GRANT SELECT ON mysql.general_log TO 'playwright'@'%';
 
 CREATE TABLE autopilot_source.bot_entity (
   id INT PRIMARY KEY,

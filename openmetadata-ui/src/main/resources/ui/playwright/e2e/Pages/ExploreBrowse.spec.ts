@@ -344,7 +344,6 @@ test.describe(
           await expandTreeNode(page, 'Databases');
         }
         await expect(serviceTitle).toBeVisible();
-        await serviceTitle.scrollIntoViewIfNeeded();
         await serviceTitle.click();
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
 

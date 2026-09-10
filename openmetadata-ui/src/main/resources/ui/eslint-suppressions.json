@@ -109,7 +109,7 @@
   },
   "playwright/e2e/Features/ContextCenterDocument.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 24
+      "count": 20
     }
   },
   "playwright/e2e/Features/ContextCenterMemories.spec.ts": {
@@ -1036,7 +1036,7 @@
   },
   "playwright/utils/lineage.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 4
     }
   },
   "playwright/utils/logsViewer.ts": {

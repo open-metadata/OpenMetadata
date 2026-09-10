@@ -118,7 +118,6 @@ const openPipelineActions = async (page: Page) => {
 
   const actionsDropdown = page.getByTestId('actions-dropdown');
 
-  await actionButton.scrollIntoViewIfNeeded();
   await actionButton.click();
   await expect(actionsDropdown.getByTestId('re-deploy-button')).toBeVisible();
 };

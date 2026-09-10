@@ -272,7 +272,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
       const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
         name: '15 / Page',
       });
-      await pageSizeDropdown.scrollIntoViewIfNeeded();
       await pageSizeDropdown.hover();
       await expect(pageSizeMenu).toBeVisible();
       await waitForAntdPopupToSettle(page);

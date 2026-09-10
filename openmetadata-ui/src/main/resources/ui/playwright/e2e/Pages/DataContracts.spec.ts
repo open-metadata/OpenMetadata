@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ContractExecutionStatus } from '../../../src/generated/entity/datacontract/dataContractResult';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
@@ -347,7 +348,8 @@ test.describe('Data Contracts', () => {
         // below is reliable even when the backend is slow.
         const contractData = await saveAndTriggerDataContractValidation(
           page,
-          true
+          true,
+          ContractExecutionStatus.Failed
         );
         const contractId = (contractData as { id?: string })?.id;
 
@@ -483,7 +485,11 @@ test.describe('Data Contracts', () => {
           ).toBeChecked();
 
           // save and trigger contract validation
-          const response = await saveAndTriggerDataContractValidation(page);
+          const response = await saveAndTriggerDataContractValidation(
+            page,
+            false,
+            ContractExecutionStatus.Failed
+          );
 
           expect(response).toHaveProperty('id');
           await expect(
@@ -1106,7 +1112,8 @@ test.describe('Data Contracts', () => {
     // below is reliable even when the backend is slow.
     const contractData1104 = await saveAndTriggerDataContractValidation(
       page,
-      true
+      true,
+      ContractExecutionStatus.Failed
     );
     const contractId1104 = (contractData1104 as { id?: string })?.id;
 
@@ -1338,7 +1345,11 @@ test.describe('Data Contracts', () => {
 
     // Pass contractId so the utility polls for the terminal state before
     // returning, making the 'Failed' assertion below reliable.
-    await triggerContractValidation(page, contractId1289);
+    await triggerContractValidation(
+      page,
+      contractId1289,
+      ContractExecutionStatus.Failed
+    );
     await toastPromise;
 
     await page.reload();
@@ -2395,7 +2406,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               ).toContainText(DATA_CONTRACT_SEMANTICS1.name);
 
               // Save contract and validate for semantics - should fail initially
-              await saveAndTriggerDataContractValidation(page, true);
+              await saveAndTriggerDataContractValidation(
+                page,
+                true,
+                ContractExecutionStatus.Failed
+              );
 
               await expect(
                 page.getByTestId('contract-status-card-item-semantics-status')

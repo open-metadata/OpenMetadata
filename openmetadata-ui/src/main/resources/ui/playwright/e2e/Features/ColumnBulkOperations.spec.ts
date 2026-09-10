@@ -110,7 +110,9 @@ async function waitForColumnInGridIndex(
         );
 
         if (!response.ok()) {
-          return 0;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();

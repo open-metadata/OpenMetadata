@@ -1419,7 +1419,6 @@ export const testPaginationNavigation = async (
     }
     await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
     await pageSizeDropdown.hover();
     await expect(menuItem).toBeVisible();
     await waitForAntdPopupToSettle(page);
@@ -1472,31 +1471,45 @@ export const fetchCompletedCsvAsyncJobResult = async (
   apiContext: APIRequestContext,
   jobId: string
 ) => {
+  if (!jobId) {
+    throw new Error('CSV export returned no job ID');
+  }
+
+  const jobUrl = `/api/v1/csvAsyncJobs/${encodeURIComponent(jobId)}`;
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
-
-        if (!response.ok()) {
-          return undefined;
+        const response = await apiContext.get(jobUrl);
+        const job = await okJson<CsvAsyncJob>(response, `CSV export ${jobId}`);
+        if (job.jobId !== jobId) {
+          throw new Error(
+            `CSV export ${jobId}: received a different job ${job.jobId}`
+          );
+        }
+        if (!['QUEUED', 'RUNNING', 'COMPLETED'].includes(job.status)) {
+          throw new Error(
+            `CSV export ${jobId} ended with ${job.status}; expected COMPLETED`
+          );
         }
 
-        const jobs = (await response.json()) as CsvAsyncJob[];
-
-        return jobs.find((job) => job.jobId === jobId)?.status;
+        return job.status;
       },
-      { timeout: 90_000 }
+      {
+        timeout: 90_000,
+        message: `CSV export ${jobId} must complete successfully`,
+      }
     )
     .toBe('COMPLETED');
 
-  const resultResponse = await apiContext.get(
-    `/api/v1/csvAsyncJobs/${jobId}/result`,
-    {
-      headers: { Accept: 'text/csv' },
-    }
-  );
+  const resultResponse = await apiContext.get(`${jobUrl}/result`, {
+    headers: { Accept: 'text/csv' },
+  });
 
-  expect(resultResponse.ok()).toBeTruthy();
+  if (!resultResponse.ok()) {
+    throw new Error(
+      `CSV export ${jobId} result: HTTP ${resultResponse.status()}`
+    );
+  }
 
   return resultResponse.text();
 };
@@ -1645,7 +1658,6 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.scrollIntoViewIfNeeded();
   await pageSizeDropdown.hover();
   await expect(menuItem).toBeVisible();
   await waitForAntdPopupToSettle(page);
@@ -1839,6 +1851,35 @@ export const testTableSorting = async (
   expect(afterSecondClickValue).not.toBe(afterFirstClickValue);
 };
 
+const hasTableNameSearchFilter = (
+  filter: unknown,
+  searchTerm: string
+): boolean => {
+  if (!filter || typeof filter !== 'object') return false;
+  if (Array.isArray(filter)) {
+    return filter.some((clause) =>
+      hasTableNameSearchFilter(clause, searchTerm)
+    );
+  }
+  if (
+    'wildcard' in filter &&
+    filter.wildcard &&
+    typeof filter.wildcard === 'object'
+  ) {
+    const matchesName = Object.entries(filter.wildcard).some(
+      ([field, pattern]) =>
+        ['name.keyword', 'displayName.keyword'].includes(field) &&
+        typeof pattern === 'string' &&
+        pattern.replace(/\\(.)/g, '$1') === `*${searchTerm}*`
+    );
+    if (matchesName) return true;
+  }
+
+  return Object.values(filter).some((clause) =>
+    hasTableNameSearchFilter(clause, searchTerm)
+  );
+};
+
 export const testTableSearch = async (
   page: Page,
   searchIndex: string,
@@ -1849,11 +1890,8 @@ export const testTableSearch = async (
   const searchbar = page.getByTestId('searchbar');
   await expect(searchbar).toBeVisible();
 
-  // Wait on the search response for the entered term as a deterministic
-  // signal that the results grid has settled. The predicate accepts any
-  // request whose `q` param contains the search term (with or without Lucene
-  // wildcard/escape decoration) so a slight URL-encoding variation between
-  // entity types does not cause the wait to miss.
+  // Table listings use name/displayName wildcard filters; other lists use q.
+  // Match the entered term so an earlier unfiltered response cannot satisfy the wait.
   const responsePromise = page.waitForResponse(
     (response) => {
       const url = new URL(response.url());
@@ -1863,7 +1901,11 @@ export const testTableSearch = async (
         response.request().method() === 'GET' &&
         url.pathname === '/api/v1/search/query' &&
         url.searchParams.get('index') === searchIndex &&
-        query.includes(searchTerm)
+        (query.includes(searchTerm) ||
+          hasTableNameSearchFilter(
+            JSON.parse(url.searchParams.get('query_filter') ?? 'null'),
+            searchTerm
+          ))
       );
     },
     { timeout: 20_000 }
@@ -1885,7 +1927,6 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
     'input[role="combobox"], button[aria-haspopup="listbox"]'
   );
   const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
-  await control.scrollIntoViewIfNeeded();
   await control.focus();
   if ((await control.getAttribute('aria-expanded')) !== 'true') {
     if ((await control.getAttribute('role')) === 'combobox') {

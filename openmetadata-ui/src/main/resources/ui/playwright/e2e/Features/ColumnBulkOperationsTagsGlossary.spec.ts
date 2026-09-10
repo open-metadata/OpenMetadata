@@ -88,7 +88,9 @@ async function waitForColumnInGridIndex(
         );
 
         if (!response.ok()) {
-          return 0;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();
@@ -118,7 +120,9 @@ async function waitForGlossaryTermInSearch(
         );
 
         if (!response.ok()) {
-          return false;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();

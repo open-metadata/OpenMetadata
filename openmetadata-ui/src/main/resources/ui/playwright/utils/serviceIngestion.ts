@@ -395,7 +395,7 @@ export const setRemoteRunnerAsDefault = async (
 ): Promise<void> => {
   const runnersRes = await apiContext.get('/api/v1/ingestionRunners?limit=100');
   if (!runnersRes.ok()) {
-    return;
+    throw new Error(`HTTP ${runnersRes.status()} querying ${runnersRes.url()}`);
   }
 
   const runnersBody = await runnersRes.json();

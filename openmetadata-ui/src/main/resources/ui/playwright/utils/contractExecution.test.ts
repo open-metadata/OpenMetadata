@@ -13,6 +13,7 @@
 import { expect, test } from '@playwright/test';
 import { createServer } from 'http';
 import { AddressInfo } from 'net';
+import { ContractExecutionStatus } from '../../src/generated/entity/datacontract/dataContractResult';
 import { waitForContractResult } from './contractExecution';
 
 for (const scenario of [
@@ -21,6 +22,10 @@ for (const scenario of [
   'wrong-execution',
   'queued',
   'malformed',
+  'Failed',
+  'PartialSuccess',
+  'Aborted',
+  'expected-failure',
 ] as const) {
   test(`contract polling: ${scenario}`, async ({ playwright }) => {
     let requests = 0;
@@ -37,7 +42,11 @@ for (const scenario of [
           id:
             scenario === 'wrong-execution' ? 'previous-execution' : 'execution',
           contractExecutionStatus:
-            scenario === 'malformed'
+            scenario === 'expected-failure'
+              ? 'Failed'
+              : ['Failed', 'PartialSuccess', 'Aborted'].includes(scenario)
+              ? scenario
+              : scenario === 'malformed'
               ? undefined
               : scenario === 'queued'
               ? 'Queued'
@@ -58,11 +67,17 @@ for (const scenario of [
         context,
         'contract',
         'execution',
-        scenario === 'queued' ? 200 : 3_000
+        scenario === 'queued' ? 200 : 3_000,
+        scenario === 'expected-failure'
+          ? ContractExecutionStatus.Failed
+          : ContractExecutionStatus.Success
       );
       if (scenario === 'complete') {
         await result;
         expect(requests).toBe(2);
+      } else if (scenario === 'expected-failure') {
+        await result;
+        expect(requests).toBe(1);
       } else {
         const message =
           scenario === 'http-error'
@@ -71,7 +86,9 @@ for (const scenario of [
             ? /different execution ID/
             : scenario === 'malformed'
             ? /invalid status/
-            : /terminal result/;
+            : scenario === 'queued'
+            ? /Success/
+            : new RegExp(`execution.*${scenario}.*expected Success`);
         await expect(result).rejects.toThrow(message);
         if (scenario !== 'queued') {
           expect(requests).toBe(1);

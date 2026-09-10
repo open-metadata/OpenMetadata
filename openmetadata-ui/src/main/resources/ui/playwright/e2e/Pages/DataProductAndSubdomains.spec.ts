@@ -256,7 +256,7 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       await waitForSearchIndexed(
         apiContext,
-        user.getUserName(),
+        user.responseData.fullyQualifiedName,
         'user_search_index'
       );
       await searchBar.clear();

@@ -467,7 +467,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // inner content appears — `add-widget-modal` itself is the antd
         // `.ant-modal-root` wrapper (0×0), which always reports hidden.
         const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await addWidgetButton.scrollIntoViewIfNeeded();
         await addWidgetButton.click();
         await expect(widgetInfoTabs).toBeVisible();
 
@@ -619,7 +618,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // inner content appears — `add-widget-modal` itself is the antd
         // `.ant-modal-root` wrapper (0×0), which always reports hidden.
         const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await addWidgetButton.scrollIntoViewIfNeeded();
         await addWidgetButton.click();
         await expect(widgetInfoTabs).toBeVisible();
 

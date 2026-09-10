@@ -21,7 +21,11 @@ import { performUserLogin } from '../../utils/user';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 let userClassification = new ClassificationClass();
-let systemClassification = new ClassificationClass({ provider: 'system' });
+const systemClassification = new ClassificationClass({
+  name: 'PII',
+  displayName: 'PII',
+  provider: 'system',
+});
 let userTag = new TagClass({ classification: userClassification.data.name });
 let exportUser = new UserClass(undefined, true);
 
@@ -32,13 +36,11 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
     // pass already created and every create 409s. Rebuilding the fixtures here
     // means each pass owns a fresh set of names.
     userClassification = new ClassificationClass();
-    systemClassification = new ClassificationClass({ provider: 'system' });
     userTag = new TagClass({ classification: userClassification.data.name });
     exportUser = new UserClass(undefined, true);
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await userClassification.create(apiContext);
-    await systemClassification.create(apiContext);
     await userTag.create(apiContext);
     await exportUser.create(apiContext);
     await afterAction();
@@ -123,12 +125,8 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
     ).toBeVisible();
   });
 
-  // Without this the spec leaked two classifications, a tag and a user into the
-  // shard on every run; they then show up in every other spec's listings.
-  // Deletes are individually tolerant so a fixture that never got created (a
-  // failed beforeAll) cannot turn the run red from teardown.
   test.afterAll(
-    'Remove the classifications, tag and user',
+    'Remove the user classification, tag and user',
     async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -140,11 +138,7 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
           return;
         }
 
-        try {
-          await deletion();
-        } catch {
-          // Teardown must not turn a green run red.
-        }
+        await deletion();
       };
 
       await remove(Boolean(userTag.responseData?.id), () =>
@@ -152,9 +146,6 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
       );
       await remove(Boolean(userClassification.responseData?.id), () =>
         userClassification.delete(apiContext)
-      );
-      await remove(Boolean(systemClassification.responseData?.id), () =>
-        systemClassification.delete(apiContext)
       );
       await remove(Boolean(exportUser.responseData?.id), () =>
         exportUser.delete(apiContext)

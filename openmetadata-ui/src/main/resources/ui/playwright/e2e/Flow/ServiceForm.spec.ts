@@ -12,8 +12,6 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SERVICE_TYPE } from '../../constant/service';
 import {
@@ -93,24 +91,6 @@ test.describe(
     });
 
     test.describe('Superset', () => {
-      // Create the Certificate file for upload
-      const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
-
-      test.beforeAll(() => {
-        const fixturesDir = path.dirname(testCertPath);
-        if (!fs.existsSync(fixturesDir)) {
-          fs.mkdirSync(fixturesDir, { recursive: true });
-        }
-
-        fs.writeFileSync(testCertPath, CERT_FILE);
-      });
-
-      test.afterAll(() => {
-        if (fs.existsSync(testCertPath)) {
-          fs.unlinkSync(testCertPath);
-        }
-      });
-
       test('Verify form selects are working properly', async ({ page }) => {
         test.slow();
 
@@ -245,7 +225,11 @@ test.describe(
         const fileInput1 = page.locator(
           '[data-field-name="caCertificate"] input[type="file"]'
         );
-        await fileInput1.setInputFiles(testCertPath);
+        await fileInput1.setInputFiles({
+          name: CERT_FILE,
+          mimeType: 'application/x-pem-file',
+          buffer: Buffer.from(CERT_FILE),
+        });
 
         // Wait for file upload to complete
         await expect(

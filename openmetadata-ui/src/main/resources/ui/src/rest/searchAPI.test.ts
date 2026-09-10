@@ -87,6 +87,34 @@ describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
 
   it.each([
+    ['PW Tier Zebra4b1d4309', '*PW Tier Zebra4b1d4309*'],
+    ['Owner 100% ✓', '*Owner 100% ✓*'],
+    ['Literal %20 and %2F', '*Literal %20 and %2F*'],
+    ['R&D + finance#1', String.raw`*R\&D \+ finance#1*`],
+  ])('finds tag options without double encoding %s', async (search, query) => {
+    jest.doMock('./index', () => ({
+      get: jest.fn(async (url: string) => ({
+        data: {
+          hits: {
+            total: { value: 1, relation: 'eq' },
+            hits:
+              new URL(url, 'http://localhost').searchParams.get('q') === query
+                ? [{ _source: { fullyQualifiedName: `Test.${search}` } }]
+                : [],
+          },
+        },
+      })),
+    }));
+    const tagClassBase = require('../utils/TagClassBase').default;
+
+    const result = await tagClassBase.getTags(search, 1);
+
+    expect(result.data).toEqual([
+      expect.objectContaining({ value: `Test.${search}` }),
+    ]);
+  });
+
+  it.each([
     'PW%dataProduct.33599110',
     'R&D + finance#1',
     'name="Sales & Finance"',

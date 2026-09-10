@@ -47,7 +47,7 @@ cleanup_failed_start() {
   local exit_code=$?
   trap - EXIT
   if [[ "$startup_complete" != "true" ]]; then
-    "$workspace_root/.github/scripts/stop_playwright_fast_environment.sh" || true
+    PW_STARTUP_FAILED=true "$workspace_root/.github/scripts/stop_playwright_fast_environment.sh" || true
   fi
   exit "$exit_code"
 }
@@ -310,7 +310,6 @@ for _ in $(seq 1 90); do
     break
   fi
   if ! kill -0 "$server_pid" 2>/dev/null; then
-    tail -n 500 "$PW_SERVER_LOG" >&2
     echo "OpenMetadata exited before becoming healthy" >&2
     exit 1
   fi
@@ -318,7 +317,6 @@ for _ in $(seq 1 90); do
 done
 
 if ! curl -fsS http://127.0.0.1:8586/healthcheck >/dev/null; then
-  tail -n 500 "$PW_SERVER_LOG" >&2
   echo "OpenMetadata did not become healthy" >&2
   exit 1
 fi

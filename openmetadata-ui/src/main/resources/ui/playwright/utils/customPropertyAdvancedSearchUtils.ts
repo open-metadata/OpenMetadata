@@ -601,7 +601,9 @@ export const verifySearchResults = async (
               const retryResponse = await apiContext.get(response.url());
 
               if (!retryResponse.ok()) {
-                return false;
+                throw new Error(
+                  `HTTP ${retryResponse.status()} querying ${retryResponse.url()}`
+                );
               }
 
               const searchData =

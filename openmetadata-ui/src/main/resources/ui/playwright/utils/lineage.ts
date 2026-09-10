@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isEmpty } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
@@ -138,6 +138,21 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
   }
 };
 
+const clickCanvasEdge = async (page: Page, marker: Locator) => {
+  await expect(marker).toBeInViewport();
+  const bounds = await marker.boundingBox();
+  if (!bounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // Canvas edges receive real pointer events through the React Flow pane above
+  // the test-only midpoint marker, rather than through the marker's DOM button.
+  await page.mouse.click(
+    bounds.x + bounds.width / 2,
+    bounds.y + bounds.height / 2
+  );
+};
+
 export const clickEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -152,9 +167,7 @@ export const clickEdgeBetweenNodes = async (
       ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
       : `edge-${fromNodeFqn}-${toNodeFqn}`
   );
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
+  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -164,9 +177,7 @@ export const clickEdgeBetweenColumns = async (
 ) => {
   const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
+  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const deleteEdge = async (
@@ -176,37 +187,24 @@ export const deleteEdge = async (
 ) => {
   const addPipeline = page.getByTestId('add-pipeline');
 
-  // `clickEdgeBetweenNodes` dispatches a synthetic click on a react-flow edge
-  // label. `dispatchEvent` takes no actionability wait, so if the graph re-lays
-  // out between resolving the label and firing the event — which it does while
-  // nodes are still settling — the click lands on a node that is no longer wired
-  // up, the toolbar never opens, and the wait for `add-pipeline` below burns the
-  // whole test timeout on an action that silently did nothing. Retry the pair
-  // until the toolbar is actually there.
-  await expect(async () => {
-    await clickEdgeBetweenNodes(page, fromNode, toNode, true);
-    await expect(addPipeline).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
+  await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+  await addPipeline.click();
 
-  await addPipeline.dispatchEvent('click');
+  const edgeDialog = page.getByTestId('add-edge-modal');
+  await expect(edgeDialog).toBeVisible();
+  await edgeDialog.getByTestId('remove-edge-button').click();
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  const confirmation = page.getByTestId('delete-edge-confirmation-modal');
+  await expect(confirmation).toBeVisible();
 
-  await page
-    .locator(
-      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
-    )
-    .dispatchEvent('click');
-
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
-
-  const deleteRes = page.waitForResponse('/api/v1/lineage/**');
-  await page
-    .locator(
-      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
-    )
-    .click();
-  await deleteRes;
+  const deleteRes = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'DELETE' &&
+      new URL(response.url()).pathname.startsWith('/api/v1/lineage/')
+  );
+  await confirmation.getByTestId('confirm-button').click();
+  expect((await deleteRes).ok()).toBe(true);
+  await expect(confirmation).toBeHidden();
 };
 
 export const dragAndDropNode = async (

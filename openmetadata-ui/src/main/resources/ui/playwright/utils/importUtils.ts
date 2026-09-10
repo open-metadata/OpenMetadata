@@ -217,6 +217,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
     await scrollIntoViewCenter(cellByClass);
     // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
     await cellByClass.click({ force: true });
+    await expect(cellByClass).toHaveAttribute('aria-selected', 'true');
 
     return true;
   }
@@ -235,6 +236,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
       await scrollIntoViewCenter(cellByIndex);
       // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
       await cellByIndex.click({ force: true });
+      await expect(cellByIndex).toHaveAttribute('aria-selected', 'true');
 
       return true;
     }
@@ -266,11 +268,6 @@ const selectActiveRowCellByColumn = async (page: Page, columnKey: string) => {
 const openSelectedGridEditor = async (page: Page) => {
   const cell = page.locator('.rdg-cell[aria-selected="true"]');
   await expect(cell).toHaveCount(1);
-  await cell.scrollIntoViewIfNeeded();
-  // react-data-grid delegates focus asynchronously — .focus() alone does not
-  // always land on the DOM node before the assertion runs. A click at the
-  // cell origin sets focus and selection synchronously via RDG's own
-  // onCellClick handler, avoiding the async focus roundtrip entirely.
   await cell.click({ position: { x: 5, y: 5 } });
   await expect(cell).toBeFocused({ timeout: 5_000 });
   await cell.press('Enter');
@@ -542,12 +539,18 @@ const openActiveCellPopover = async (
   targetLocator: Locator,
   responseUrlPattern: string | undefined
 ) => {
-  if (await targetLocator.isVisible()) return;
-  const response = responseUrlPattern
-    ? page.waitForResponse(responseUrlPattern)
-    : undefined;
-  await openSelectedGridEditor(page);
-  if (response) expect((await response).status()).toBe(200);
+  // A bulk-edit click opens the editor before its options finish loading.
+  // Reopening that cell steals focus and can dismiss the pending picker.
+  const activeEditor = page.locator(
+    '.rdg-editor-container[aria-selected="true"]'
+  );
+  if ((await activeEditor.count()) === 0) {
+    const response = responseUrlPattern
+      ? page.waitForResponse(responseUrlPattern)
+      : undefined;
+    await openSelectedGridEditor(page);
+    if (response) expect((await response).status()).toBe(200);
+  }
   await expect(targetLocator).toBeVisible();
 };
 

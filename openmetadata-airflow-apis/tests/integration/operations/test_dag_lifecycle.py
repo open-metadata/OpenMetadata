@@ -54,7 +54,12 @@ def stored_dag(tmp_path, monkeypatch):
             session.add(DagBundleModel(name="dags-folder"))
             session.flush()
         session.add(
-            DagModel(dag_id=name, fileloc=str(dag_file), relative_fileloc=dag_file.name, bundle_name="dags-folder")
+            DagModel(
+                dag_id=name,
+                fileloc=str(dag_file),
+                relative_fileloc=dag_file.name,
+                bundle_name="dags-folder",
+            )
         )
         session.flush()
         version = dag_version_module.DagVersion(dag_id=name, bundle_name="dags-folder")
@@ -102,7 +107,10 @@ def test_running_dag_keeps_its_files_when_deletion_is_rejected(stored_dag):
         session.query(TaskInstance).filter_by(dag_id=name).update({"state": TaskInstanceState.RUNNING})
         session.commit()
 
-    with Flask(__name__).app_context(), pytest.raises(AirflowException, match="TaskInstances still running"):
+    with (
+        Flask(__name__).app_context(),
+        pytest.raises(AirflowException, match="TaskInstances still running"),
+    ):
         delete.delete_dag_id(name)
 
     assert dag_file.exists()
@@ -144,7 +152,10 @@ def test_concurrent_deployments_report_each_dag_result(invalid_second):
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(refresh, names))
 
-        assert [status for status, _ in results] == [200, 500 if invalid_second else 200]
+        assert [status for status, _ in results] == [
+            200,
+            500 if invalid_second else 200,
+        ]
         for name, (status, body) in zip(names, results, strict=True):
             if status == 200:
                 assert name in body["message"]
@@ -241,6 +252,32 @@ def test_deploy_is_triggerable_before_success_returns(deployable_dag, api_clock_
         assert status == 200
     with settings.Session() as session:
         assert session.query(DagRun).filter_by(dag_id=deployer.dag_id).count() == 1
+
+
+def test_trigger_in_the_start_second_creates_the_task(deployable_dag, monkeypatch):
+    deployer, path = deployable_dag
+    start = timezone.utcnow().replace(microsecond=100_000)
+    triggered_at = start + timedelta(microseconds=100_000)
+    path.write_text(
+        "from datetime import datetime\n"
+        "from airflow import DAG\n"
+        "from airflow.providers.standard.operators.empty import EmptyOperator\n"
+        f'dag = DAG("{deployer.dag_id}", schedule=None, is_paused_upon_creation=True, '
+        f'start_date=datetime.fromisoformat("{start.isoformat()}"))\n'
+        'EmptyOperator(task_id="ingest", dag=dag)\n'
+    )
+
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 200
+        monkeypatch.setattr(trigger.timezone, "utcnow", lambda: triggered_at)
+        _, status = trigger.trigger(deployer.dag_id, f"manual__{uuid4().hex}")
+        assert status == 200
+
+    with settings.Session() as session:
+        run = session.query(DagRun).filter_by(dag_id=deployer.dag_id).one()
+        tasks = session.query(TaskInstance).filter_by(dag_id=deployer.dag_id, run_id=run.run_id).all()
+        assert [task.task_id for task in tasks] == ["ingest"]
+        assert run.logical_date == triggered_at
 
 
 @pytest.mark.parametrize("processor_clock_offset", [-60, 0, 60], ids=["backward", "unchanged", "forward"])

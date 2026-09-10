@@ -53,7 +53,6 @@ const selectEntityType = async (page: Page, entityType: string) => {
   const entityTypeSelect = page.getByTestId('entity-type');
   const entityTypeTrigger = entityTypeSelect.getByRole('button');
 
-  await entityTypeTrigger.scrollIntoViewIfNeeded();
   await entityTypeTrigger.focus();
   await expect(entityTypeTrigger).toBeFocused();
   await entityTypeTrigger.click();
@@ -770,7 +769,6 @@ test.describe(
           exact: true,
         });
 
-        await dimensionTrigger.scrollIntoViewIfNeeded();
         await dimensionTrigger.focus();
         await expect(dimensionTrigger).toBeFocused();
         await dimensionTrigger.click();

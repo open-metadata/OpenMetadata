@@ -54,7 +54,6 @@ export const openAddTeamModal = async (
   await expect(page.getByTestId('alert-bar')).toHaveCount(0, {
     timeout: TOAST_DISMISS_TIMEOUT,
   });
-  await addButton.scrollIntoViewIfNeeded();
   await addButton.click();
   await expect(addTeamModal).toBeVisible({ timeout: MODAL_OPEN_TIMEOUT });
 
