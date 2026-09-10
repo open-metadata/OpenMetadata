@@ -714,9 +714,10 @@
           ]
         },
         "tokenValidity": {
-          "description": "Validity for the JWT Token created from SAML Response",
+          "description": "Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.",
           "type": "integer",
-          "default": "3600"
+          "default": 3600,
+          "minimum": 1
         },
         "customParams": {
           "description": "Custom Params.",

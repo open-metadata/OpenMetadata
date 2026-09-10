@@ -113,6 +113,7 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.OidcTokenValidity;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
@@ -551,6 +552,9 @@ public class SystemRepository {
     } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+      if (authConfig.getOidcConfiguration() != null) {
+        OidcTokenValidity.validate(authConfig.getOidcConfiguration().getTokenValidity());
+      }
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
@@ -1701,13 +1705,18 @@ public class SystemRepository {
   private FieldError validateOidcConfiguration(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
     try {
+      OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+      FieldError tokenValidityError = validateOidcTokenValidity(oidcConfig);
+      if (tokenValidityError != null) {
+        return tokenValidityError;
+      }
+
       String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
       if ("confidential".equals(clientType)) {
-        if (authConfig.getOidcConfiguration() == null) {
+        if (oidcConfig == null) {
           return ValidationErrorBuilder.createFieldError(
               FieldPaths.OIDC_CLIENT_ID, "OIDC configuration is required");
         }
-        OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
 
         if (nullOrEmpty(oidcConfig.getId())) {
           return ValidationErrorBuilder.createFieldError(
@@ -1819,6 +1828,15 @@ public class SystemRepository {
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
+  }
+
+  @VisibleForTesting
+  static FieldError validateOidcTokenValidity(OidcClientConfig oidcConfig) {
+    if (oidcConfig != null && !OidcTokenValidity.isValid(oidcConfig.getTokenValidity())) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.OIDC_TOKEN_VALIDITY, OidcTokenValidity.VALIDATION_MESSAGE);
+    }
+    return null;
   }
 
   /**

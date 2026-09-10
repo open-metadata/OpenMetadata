@@ -393,7 +393,7 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
      */
     tokenValidity?: number;
     /**

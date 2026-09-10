@@ -34,6 +34,8 @@ public class ValidationErrorBuilder {
     public static final String OIDC_SERVER_URL =
         "authenticationConfiguration.oidcConfiguration.serverUrl";
     public static final String OIDC_SCOPE = "authenticationConfiguration.oidcConfiguration.scope";
+    public static final String OIDC_TOKEN_VALIDITY =
+        "authenticationConfiguration.oidcConfiguration.tokenValidity";
     public static final String OIDC_CALLBACK_URL =
         "authenticationConfiguration.oidcConfiguration.callbackUrl";
     public static final String OIDC_TENANT = "authenticationConfiguration.oidcConfiguration.tenant";

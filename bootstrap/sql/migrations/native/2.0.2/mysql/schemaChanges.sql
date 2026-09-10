@@ -156,3 +156,13 @@ UPDATE change_event_consumers
 SET json = JSON_SET(json, '$.startingTimestamp', CAST(UNIX_TIMESTAMP(NOW(3)) * 1000 AS UNSIGNED))
 WHERE extension = 'eventSubscription.Offset'
   AND JSON_EXTRACT(json, '$.startingTimestamp') IS NULL;
+
+-- OpenMetadata issues this JWT itself; a non-positive lifetime makes every login token expire
+-- immediately. Repair persisted values accepted by older SSO forms before auth configuration loads.
+UPDATE openmetadata_settings
+SET json = JSON_SET(json, '$.oidcConfiguration.tokenValidity', 3600)
+WHERE configType = 'authenticationConfiguration'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.oidcConfiguration.tokenValidity')) IN ('INTEGER', 'DOUBLE')
+  AND CAST(
+    JSON_UNQUOTE(JSON_EXTRACT(json, '$.oidcConfiguration.tokenValidity')) AS DECIMAL(65, 10)
+  ) <= 0;

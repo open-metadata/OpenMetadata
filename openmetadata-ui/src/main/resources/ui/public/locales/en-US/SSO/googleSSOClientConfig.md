@@ -233,12 +233,14 @@ $$section
 $$
 
 $$section
-### OIDC Token Validity $(id="tokenValidity")
+### OpenMetadata Access Token Validity $(id="tokenValidity")
 
-- **Definition:** How long (in seconds) the issued tokens remain valid.
-- **Default:** 0 (use provider default)
+- **Definition:** How long (in seconds) the OpenMetadata access JWT remains valid.
+- **Default:** 3600 (1 hour)
+- **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
-- **Why it matters:** Controls token lifetime and security vs usability balance.
+- **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
+- **Note:** This value is not inherited from the Google token lifetime.
 $$
 
 $$section
