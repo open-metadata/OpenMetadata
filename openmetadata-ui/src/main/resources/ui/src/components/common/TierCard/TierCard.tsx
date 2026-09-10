@@ -55,6 +55,7 @@ const TierCard = ({
   );
   const [selectedTier, setSelectedTier] = useState<string>(currentTier ?? '');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(popoverProps?.open ?? false);
   const { t } = useTranslation();
 
   const getTierData = async () => {
@@ -121,6 +122,29 @@ const TierCard = ({
       getTierData();
     }
   }, [popoverProps?.open]);
+
+  // Re-syncs selectedTier when the persisted tier changes after a successful save.
+  // Guards with isOpen (internal state) rather than popoverProps?.open so that
+  // uncontrolled usages (no popoverProps) are covered correctly.
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedTier(currentTier ?? '');
+    }
+  }, [currentTier, isOpen]);
+
+  const handleOpenChange = (visible: boolean) => {
+    setIsOpen(visible);
+
+    if (visible && !tierCardData.length) {
+      getTierData();
+    }
+
+    if (!visible) {
+      setSelectedTier(currentTier ?? '');
+    }
+
+    popoverProps?.onOpenChange?.(visible);
+  };
 
   return (
     <Popover
@@ -221,10 +245,10 @@ const TierCard = ({
       ref={popoverRef}
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) =>
-        visible && !tierCardData.length && getTierData()
-      }
-      {...popoverProps}>
+      {...popoverProps}
+      // Intentionally overrides popoverProps.onOpenChange — handleOpenChange
+      // wraps it and delegates to popoverProps?.onOpenChange internally (line 146).
+      onOpenChange={handleOpenChange}>
       {children}
     </Popover>
   );
