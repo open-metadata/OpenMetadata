@@ -314,9 +314,9 @@ public final class CatalogExceptionMessage {
         "Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
-  public static String invalidTeamUpdateUsers(TeamType teamType) {
+  public static String invalidTeamDirectUserAssignment(TeamType teamType) {
     return String.format(
-        "Team is of type %s. Users can be updated only in team of type Group.", teamType);
+        "Team is of type %s. Direct users can only be assigned to teams of type Group.", teamType);
   }
 
   public static String invalidOwnerType(String entityType) {

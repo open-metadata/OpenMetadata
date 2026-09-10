@@ -18,7 +18,15 @@ import classNames from 'classnames';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
-import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Key,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -111,6 +119,46 @@ const renderExploreTreeTitle = (node: DataNode) => (
   <ExploreTreeTitle node={node as ExploreTreeNode} />
 );
 
+// Category visibility tracks the whole estate, not the filtered view, so it is
+// derived from an unfiltered aggregation cached per text query. Kept out of
+// fetchEntityCounts to keep its complexity down.
+const resolvePresenceBuckets = async ({
+  filterMust,
+  countBuckets,
+  presenceCacheKey,
+  presenceBucketsRef,
+  searchQueryParam,
+}: {
+  filterMust: unknown[];
+  countBuckets: Bucket[];
+  presenceCacheKey: string;
+  presenceBucketsRef: MutableRefObject<{
+    key: string;
+    buckets: Bucket[];
+  } | null>;
+  searchQueryParam: string;
+}): Promise<Bucket[]> => {
+  if (isEmpty(filterMust)) {
+    return countBuckets;
+  }
+  if (presenceBucketsRef.current?.key === presenceCacheKey) {
+    return presenceBucketsRef.current.buckets;
+  }
+
+  const res = await searchQuery({
+    query: searchQueryParam ?? '',
+    pageNumber: 0,
+    pageSize: 0,
+    queryFilter: {},
+    searchIndex: SearchIndex.DATA_ASSET,
+    includeDeleted: false,
+    trackTotalHits: true,
+    fetchSource: false,
+  });
+
+  return res.aggregations['entityType'].buckets;
+};
+
 const getServiceStyleIcon = (bucket: Bucket) => {
   const iconURL = get(
     bucket,
@@ -128,6 +176,78 @@ const getServiceStyleIcon = (bucket: Bucket) => {
   );
 
   return isString(iconURL) && !isEmpty(iconURL) ? iconURL : undefined;
+};
+
+// Resolves the icon/type pair for a single aggregation bucket while building
+// the tree's children — kept out of the map callback to keep its complexity down.
+const getBucketTypeAndLogo = (
+  bucketToFind: EntityFields,
+  bucket: Bucket,
+  isEntityType: boolean,
+  isServiceType: boolean,
+  // Typed loosely: the caller passes antd's TreeProps node icon (rc-tree's
+  // IconType), which is structurally incompatible with ExploreTreeNode['icon']
+  // even though both ultimately render fine as a tree node icon.
+  fallbackIcon: unknown,
+  t: (key: string) => string
+): { type: string | null; logo: unknown } => {
+  if (isEntityType) {
+    return {
+      type: null,
+      logo: searchClassBase.getEntityIcon(bucket.key, SERVICE_ICON_CLASS) ?? (
+        <></>
+      ),
+    };
+  }
+  if (isServiceType) {
+    const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
+
+    return {
+      type: null,
+      logo: (
+        <img
+          alt={t('label.service')}
+          src={serviceIcon}
+          style={{ width: 18, height: 18 }}
+        />
+      ),
+    };
+  }
+  if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+    return {
+      type: 'Database',
+      logo: searchClassBase.getEntityIcon('database', SERVICE_ICON_CLASS) ?? (
+        <></>
+      ),
+    };
+  }
+  if (bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME) {
+    return {
+      type: 'Database Schema',
+      logo: searchClassBase.getEntityIcon(
+        'databaseSchema',
+        SERVICE_ICON_CLASS
+      ) ?? <></>,
+    };
+  }
+  if (bucketToFind === EntityFields.SERVICE) {
+    const serviceIcon = getServiceStyleIcon(bucket);
+
+    return {
+      type: null,
+      logo: serviceIcon ? (
+        <img
+          alt={t('label.service')}
+          src={serviceIcon}
+          style={{ width: 18, height: 18 }}
+        />
+      ) : (
+        fallbackIcon
+      ),
+    };
+  }
+
+  return { type: null, logo: undefined };
 };
 
 export const getExploreTreeAggregationResponse = async ({
@@ -311,48 +431,14 @@ const ExploreTree = ({
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-          let type = null;
-          let logo = undefined;
-          if (isEntityType) {
-            const iconClass = SERVICE_ICON_CLASS;
-            logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
-              <></>
-            );
-          } else if (isServiceType) {
-            const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
-            logo = (
-              <img
-                alt={t('label.service')}
-                src={serviceIcon}
-                style={{ width: 18, height: 18 }}
-              />
-            );
-          } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
-            type = 'Database';
-            logo = searchClassBase.getEntityIcon(
-              'database',
-              SERVICE_ICON_CLASS
-            ) ?? <></>;
-          } else if (
-            bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
-          ) {
-            type = 'Database Schema';
-            logo = searchClassBase.getEntityIcon(
-              'databaseSchema',
-              SERVICE_ICON_CLASS
-            ) ?? <></>;
-          } else if (bucketToFind === EntityFields.SERVICE) {
-            const serviceIcon = getServiceStyleIcon(bucket);
-            logo = serviceIcon ? (
-              <img
-                alt={t('label.service')}
-                src={serviceIcon}
-                style={{ width: 18, height: 18 }}
-              />
-            ) : (
-              treeNode.icon
-            );
-          }
+          const { type, logo } = getBucketTypeAndLogo(
+            bucketToFind,
+            bucket,
+            isEntityType,
+            isServiceType,
+            treeNode.icon,
+            t
+          );
 
           if (bucket.key.toLowerCase() === defaultServiceType) {
             setSelectedKeys([id]);
@@ -521,25 +607,13 @@ const ExploreTree = ({
       // cached per query: a no-filter response is reused directly, and a filter
       // change reuses the cache instead of paying for a second aggregation.
       const presenceCacheKey = searchQueryParam ?? '';
-      let presenceBuckets: Bucket[];
-      if (isEmpty(filterMust)) {
-        presenceBuckets = countBuckets;
-      } else if (presenceBucketsRef.current?.key === presenceCacheKey) {
-        presenceBuckets = presenceBucketsRef.current.buckets;
-      } else {
-        presenceBuckets = (
-          await searchQuery({
-            query: searchQueryParam ?? '',
-            pageNumber: 0,
-            pageSize: 0,
-            queryFilter: {},
-            searchIndex: SearchIndex.DATA_ASSET,
-            includeDeleted: false,
-            trackTotalHits: true,
-            fetchSource: false,
-          })
-        ).aggregations['entityType'].buckets;
-      }
+      const presenceBuckets = await resolvePresenceBuckets({
+        filterMust,
+        countBuckets,
+        presenceCacheKey,
+        presenceBucketsRef,
+        searchQueryParam: searchQueryParam ?? '',
+      });
       // A newer filter change superseded this fetch while it was in flight —
       // drop its result so the tree reflects the latest filter, not this one.
       if (!isLatestFetch()) {

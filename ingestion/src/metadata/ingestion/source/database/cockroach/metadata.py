@@ -217,7 +217,10 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
 
     def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> tuple[bool, TablePartition]:
         with self.engine.connect() as conn:
-            result = conn.execute(text(COCKROACH_GET_PARTITION_DETAILS), {"table_name": table_name}).all()
+            result = conn.execute(
+                text(COCKROACH_GET_PARTITION_DETAILS),
+                {"table_name": table_name, "schema_name": schema_name},
+            ).all()
         if result:
             partition_details = TablePartition(
                 columns=[

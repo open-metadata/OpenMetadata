@@ -91,11 +91,13 @@ const NextPrevious: FC<NextPreviousProps> = ({
 
   return (
     <div
+      aria-label={t('label.page-plural')}
       className={classNames(
         'pagination-container flex-center gap-3',
         className
       )}
-      data-testid="pagination">
+      data-testid="pagination"
+      role="navigation">
       <Button
         className="pagination-button hover-button"
         data-testid="previous"

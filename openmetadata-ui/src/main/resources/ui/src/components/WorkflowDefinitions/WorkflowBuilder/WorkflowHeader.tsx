@@ -24,7 +24,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
@@ -33,6 +33,8 @@ import { WorkflowHeaderProps } from '../../../interface/workflow-builder-compone
 import { showErrorToast } from '../../../utils/ToastUtils';
 import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { WorkflowControls } from './WorkflowControls';
+
+const getInitialDisplayName = (title?: string) => title ?? '';
 
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   breadcrumb,
@@ -60,7 +62,9 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     isNoOp,
   } = useWorkflowModeContext();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [displayNameInput, setDisplayNameInput] = useState(title ?? '');
+  const [displayNameInput, setDisplayNameInput] = useState(
+    getInitialDisplayName(title)
+  );
 
   useEffect(() => {
     if (isEditModalOpen) {
@@ -68,17 +72,17 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     }
   }, [isEditModalOpen, title]);
 
-  const handleSaveAndEnterViewMode = async () => {
+  const handleSaveAndEnterViewMode = useCallback(async () => {
     try {
       await handleSaveWorkflow();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
+  }, [handleSaveWorkflow]);
 
-  const handleOpenEditModal = () => {
+  const handleOpenEditModal = useCallback(() => {
     setIsEditModalOpen(true);
-  };
+  }, []);
 
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
@@ -91,52 +95,80 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     setIsEditModalOpen(false);
   };
 
-  const workflowControls = (
-    <WorkflowControls
-      isRunLoading={isRunLoading}
-      onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
-      onDeleteWorkflow={showDeleteButton ? handleDeleteWorkflow : undefined}
-      onRevertAndCancel={showCancelButton ? handleRevertAndCancel : undefined}
-      onRunWorkflow={handleRunWorkflow}
-      onSaveWorkflow={showSaveButton ? handleSaveAndEnterViewMode : undefined}
-      onTestWorkflow={showTestButton ? handleTestWorkflow : undefined}
-    />
+  const workflowControls = useMemo(
+    () => (
+      <WorkflowControls
+        isRunLoading={isRunLoading}
+        onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
+        onDeleteWorkflow={showDeleteButton ? handleDeleteWorkflow : undefined}
+        onRevertAndCancel={showCancelButton ? handleRevertAndCancel : undefined}
+        onRunWorkflow={handleRunWorkflow}
+        onSaveWorkflow={showSaveButton ? handleSaveAndEnterViewMode : undefined}
+        onTestWorkflow={showTestButton ? handleTestWorkflow : undefined}
+      />
+    ),
+    [
+      isRunLoading,
+      showCancelButton,
+      enterViewMode,
+      showDeleteButton,
+      handleDeleteWorkflow,
+      handleRevertAndCancel,
+      handleRunWorkflow,
+      showSaveButton,
+      handleSaveAndEnterViewMode,
+      showTestButton,
+      handleTestWorkflow,
+    ]
   );
 
-  const editWorkflowButton = showEditButton && (
-    <Button
-      color="primary"
-      data-testid="edit-workflow-button"
-      size="sm"
-      onPress={enterEditMode}>
-      {t('label.edit-workflow')}
-    </Button>
-  );
-
-  const systemBadge = isNoOp && (
-    <Tooltip
-      placement="top"
-      title={t('message.system-workflow-edit-restriction')}>
-      <TooltipTrigger>
-        <Badge
-          color="gray"
-          data-testid="system-workflow-badge"
+  const editWorkflowButton = useMemo(
+    () =>
+      showEditButton && (
+        <Button
+          color="primary"
+          data-testid="edit-workflow-button"
           size="sm"
-          type="color">
-          {t('label.system')}
-        </Badge>
-      </TooltipTrigger>
-    </Tooltip>
+          onPress={enterEditMode}>
+          {t('label.edit-workflow')}
+        </Button>
+      ),
+    [showEditButton, enterEditMode, t]
   );
 
-  const editTitleButton = !isViewMode && !isNoOp && (
-    <Button
-      color="tertiary"
-      data-testid="edit-workflow-title-button"
-      iconLeading={EditIcon}
-      size="sm"
-      onPress={handleOpenEditModal}
-    />
+  const systemBadge = useMemo(
+    () =>
+      isNoOp && (
+        <Tooltip
+          placement="top"
+          title={t('message.system-workflow-edit-restriction')}>
+          <TooltipTrigger>
+            <Badge
+              color="gray"
+              data-testid="system-workflow-badge"
+              size="sm"
+              type="color">
+              {t('label.system')}
+            </Badge>
+          </TooltipTrigger>
+        </Tooltip>
+      ),
+    [isNoOp, t]
+  );
+
+  const editTitleButton = useMemo(
+    () =>
+      !isViewMode &&
+      !isNoOp && (
+        <Button
+          color="tertiary"
+          data-testid="edit-workflow-title-button"
+          iconLeading={EditIcon}
+          size="sm"
+          onPress={handleOpenEditModal}
+        />
+      ),
+    [isViewMode, isNoOp, handleOpenEditModal]
   );
 
   const workflowIcon = (

@@ -22,6 +22,20 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../ToastUtils';
 
+const PIPELINE_LOG_FIELD: Partial<
+  Record<string, keyof IngestionPipelineLogByIdInterface>
+> = {
+  [PipelineType.Metadata]: 'ingestion_task',
+  [PipelineType.Application]: 'application_task',
+  [PipelineType.Profiler]: 'profiler_task',
+  [PipelineType.Usage]: 'usage_task',
+  [PipelineType.Lineage]: 'lineage_task',
+  [PipelineType.Dbt]: 'dbt_task',
+  [PipelineType.TestSuite]: 'test_suite_task',
+  [PipelineType.DataInsight]: 'data_insight_task',
+  [PipelineType.ElasticSearchReindex]: 'elasticsearch_reindex_task',
+};
+
 export const getLogsFromResponse = (
   res: IngestionPipelineLogByIdInterface,
   pipelineType: string
@@ -31,37 +45,10 @@ export const getLogsFromResponse = (
   if (res.logs) {
     return res.logs;
   }
-  switch (pipelineType) {
-    case PipelineType.Metadata:
-      return res.ingestion_task || '';
 
-    case PipelineType.Application:
-      return res.application_task || '';
+  const field = PIPELINE_LOG_FIELD[pipelineType];
 
-    case PipelineType.Profiler:
-      return res.profiler_task || '';
-
-    case PipelineType.Usage:
-      return res.usage_task || '';
-
-    case PipelineType.Lineage:
-      return res.lineage_task || '';
-
-    case PipelineType.Dbt:
-      return res.dbt_task || '';
-
-    case PipelineType.TestSuite:
-      return res.test_suite_task || '';
-
-    case PipelineType.DataInsight:
-      return res.data_insight_task || '';
-
-    case PipelineType.ElasticSearchReindex:
-      return res.elasticsearch_reindex_task || '';
-
-    default:
-      return '';
-  }
+  return (field && res[field]) || '';
 };
 
 export const fetchLogsRecursively = async (

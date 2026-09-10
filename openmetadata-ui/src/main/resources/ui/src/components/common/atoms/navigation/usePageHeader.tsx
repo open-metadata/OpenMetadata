@@ -78,58 +78,56 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       </Button>
     ) : null;
 
-  const pageHeader = ((): ReactNode => {
-    if (variant === 'default') {
-      return (
-        <Card className="tw:mb-5 tw:p-5">
-          <div className="tw:flex tw:items-center tw:justify-between">
-            <div>
-              <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">
-                <Typography as="h3">{displayTitle}</Typography>
-                {config.learningPageId && (
-                  <LearningIcon pageId={config.learningPageId} />
-                )}
-              </div>
-              {displayDescription && (
-                <Typography className="tw:text-secondary" size="text-xs">
-                  {displayDescription}
-                </Typography>
-              )}
-            </div>
-            {config.actions || addButton}
+  const isGreeting = variant === 'greeting';
+
+  const renderDefaultHeader = (): ReactNode => (
+    <Card className="tw:mb-5 tw:p-5">
+      <div className="tw:flex tw:items-center tw:justify-between">
+        <div>
+          <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">
+            <Typography as="h3">{displayTitle}</Typography>
+            {config.learningPageId && (
+              <LearningIcon pageId={config.learningPageId} />
+            )}
           </div>
-        </Card>
+          {displayDescription && (
+            <Typography className="tw:text-secondary" size="text-xs">
+              {displayDescription}
+            </Typography>
+          )}
+        </div>
+        {config.actions || addButton}
+      </div>
+    </Card>
+  );
+
+  const renderLeading = (): ReactNode => {
+    if (isGreeting) {
+      return (
+        <ProfilePicture
+          displayName={currentUser?.displayName}
+          name={currentUser?.name ?? ''}
+          width="48"
+        />
       );
     }
 
-    const isGreeting = variant === 'greeting';
-    const showSearch = variant === 'search' || variant === 'beta';
-    const greetingName = startCase(
-      currentUser?.displayName || currentUser?.name || ''
-    );
+    if (config.icon) {
+      return (
+        <FeaturedIcon
+          color={config.iconColor ?? 'brand'}
+          icon={config.icon}
+          shape="square"
+          size="md"
+          theme="gradient"
+        />
+      );
+    }
 
-    const leading = isGreeting ? (
-      <ProfilePicture
-        displayName={currentUser?.displayName}
-        name={currentUser?.name ?? ''}
-        width="48"
-      />
-    ) : config.icon ? (
-      <FeaturedIcon
-        color={config.iconColor ?? 'brand'}
-        icon={config.icon}
-        shape="square"
-        size="md"
-        theme="gradient"
-      />
-    ) : undefined;
+    return undefined;
+  };
 
-    const title = isGreeting
-      ? t(config.greetingNameKey ?? 'label.hey-comma-name', {
-          name: greetingName,
-        })
-      : displayTitle;
-
+  const renderBadge = (): ReactNode => {
     const betaBadge =
       variant === 'beta' ? (
         <Badge color="brand" size="sm" type="color">
@@ -141,35 +139,60 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       <LearningIcon pageId={config.learningPageId} />
     ) : null;
 
-    const badge =
-      betaBadge || learningIcon ? (
-        <>
-          {betaBadge}
-          {learningIcon}
-        </>
-      ) : undefined;
+    if (!betaBadge && !learningIcon) {
+      return undefined;
+    }
 
-    const actions = isGreeting ? undefined : (
+    return (
+      <>
+        {betaBadge}
+        {learningIcon}
+      </>
+    );
+  };
+
+  const renderShellActions = (): ReactNode => {
+    if (isGreeting) {
+      return undefined;
+    }
+
+    const showSearch = variant === 'search' || variant === 'beta';
+
+    return (
       <>
         {showSearch && config.search}
         {config.actions ?? addButton}
       </>
     );
+  };
+
+  const renderShellHeader = (): ReactNode => {
+    const greetingName = startCase(
+      currentUser?.displayName || currentUser?.name || ''
+    );
+    const title = isGreeting
+      ? t(config.greetingNameKey ?? 'label.hey-comma-name', {
+          name: greetingName,
+        })
+      : displayTitle;
 
     return (
       <HeaderShell
-        actions={actions}
-        badge={badge}
+        actions={renderShellActions()}
+        badge={renderBadge()}
         breadcrumb={config.breadcrumb}
         className="tw:mb-5"
         data-testid="page-header-container"
-        leading={leading}
+        leading={renderLeading()}
         subtitle={displayDescription}
         title={title}
         variant="gradient"
       />
     );
-  })();
+  };
+
+  const pageHeader =
+    variant === 'default' ? renderDefaultHeader() : renderShellHeader();
 
   return { pageHeader };
 };

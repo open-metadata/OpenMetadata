@@ -165,42 +165,13 @@ export const getKeyValues = ({
         return renderFilterPattern(key, value, description, title);
       }
 
-      // Handle special service configurations
+      // Handle special, database, and default object configurations
       // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with getKeyValues
-      const specialConfig = handleSpecialServiceConfig(
+      return getNestedConfigValue({
         serviceType,
         key,
         value,
         schemaPropertyObject,
-        schema,
-        serviceCategory
-      );
-      if (specialConfig !== null) {
-        return specialConfig;
-      }
-
-      // Handle database config source
-      if (
-        serviceType === EntityType.DATABASE_SERVICE &&
-        key === 'configSource'
-      ) {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with getKeyValues
-        const configSource = handleDatabaseConfigSource(
-          key,
-          value,
-          schemaPropertyObject,
-          schema,
-          serviceCategory
-        );
-        if (configSource !== null) {
-          return configSource;
-        }
-      }
-
-      // Default object handling
-      return getKeyValues({
-        obj: value,
-        schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
         schema,
         serviceCategory,
       });
@@ -208,6 +179,35 @@ export const getKeyValues = ({
   } catch {
     return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
+};
+
+// Resolves a `oneOf` sub-schema by title and renders its key/values
+const renderOneOfSchema = ({
+  schemaProperty,
+  title,
+  value,
+  schema,
+  serviceCategory,
+}: {
+  schemaProperty: unknown;
+  title: string;
+  value: unknown;
+  schema: Record<string, unknown>;
+  serviceCategory: string;
+}): ReactNode => {
+  const subSchema = schemaProperty.oneOf.find(
+    (item: { title: string }) => item.title === title
+  )?.properties;
+
+  return (
+    subSchema &&
+    getKeyValues({
+      obj: value,
+      schemaPropertyObject: subSchema,
+      schema,
+      serviceCategory,
+    })
+  );
 };
 
 // Handles special service type configurations
@@ -225,19 +225,13 @@ const handleSpecialServiceConfig = (
     key === 'connection' &&
     value.type?.toLowerCase() === 'airflow'
   ) {
-    const airflowSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === `${value.type}Connection`
-    )?.properties;
-
-    return (
-      airflowSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: airflowSchema,
-        schema,
-        serviceCategory,
-      })
-    );
+    return renderOneOfSchema({
+      schemaProperty: schemaPropertyObject[key],
+      title: `${value.type}Connection`,
+      value,
+      schema,
+      serviceCategory,
+    });
   }
 
   // Database service - GCP credentials
@@ -254,19 +248,13 @@ const handleSpecialServiceConfig = (
 
   // Metadata service - Security config
   if (serviceType === EntityType.METADATA_SERVICE && key === 'securityConfig') {
-    const jwtSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === JWT_CONFIG
-    )?.properties;
-
-    return (
-      jwtSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: jwtSchema,
-        schema,
-        serviceCategory,
-      })
-    );
+    return renderOneOfSchema({
+      schemaProperty: schemaPropertyObject[key],
+      title: JWT_CONFIG,
+      value,
+      schema,
+      serviceCategory,
+    });
   }
 
   // Dashboard service - GitHub credentials
@@ -274,19 +262,13 @@ const handleSpecialServiceConfig = (
     serviceType === EntityType.DASHBOARD_SERVICE &&
     key === 'githubCredentials'
   ) {
-    const githubSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === 'GitHubCredentials'
-    )?.properties;
-
-    return (
-      githubSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: githubSchema,
-        schema,
-        serviceCategory,
-      })
-    );
+    return renderOneOfSchema({
+      schemaProperty: schemaPropertyObject[key],
+      title: 'GitHubCredentials',
+      value,
+      schema,
+      serviceCategory,
+    });
   }
 
   return null;
@@ -361,4 +343,53 @@ const handleDatabaseConfigSource = (
   }
 
   return null;
+};
+
+// Resolves special, database, or default object configurations for a key
+const getNestedConfigValue = ({
+  serviceType,
+  key,
+  value,
+  schemaPropertyObject,
+  schema,
+  serviceCategory,
+}: {
+  serviceType: string;
+  key: string;
+  value: unknown;
+  schemaPropertyObject: Record<string, unknown>;
+  schema: Record<string, unknown>;
+  serviceCategory: string;
+}): ReactNode => {
+  const specialConfig = handleSpecialServiceConfig(
+    serviceType,
+    key,
+    value,
+    schemaPropertyObject,
+    schema,
+    serviceCategory
+  );
+  if (specialConfig !== null) {
+    return specialConfig;
+  }
+
+  if (serviceType === EntityType.DATABASE_SERVICE && key === 'configSource') {
+    const configSource = handleDatabaseConfigSource(
+      key,
+      value,
+      schemaPropertyObject,
+      schema,
+      serviceCategory
+    );
+    if (configSource !== null) {
+      return configSource;
+    }
+  }
+
+  return getKeyValues({
+    obj: value,
+    schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
+    schema,
+    serviceCategory,
+  });
 };

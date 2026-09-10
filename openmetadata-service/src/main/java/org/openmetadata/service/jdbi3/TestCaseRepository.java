@@ -1556,16 +1556,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
-    @Override
     protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
       return false;
     }
@@ -1820,20 +1810,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(TestCase testCase) {
-    testCase =
-        Entity.getEntityByName(
-            Entity.TEST_CASE,
-            testCase.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        testCase.getFullyQualifiedName(),
-        new ArrayList<>(testCase.getReviewers()),
-        testCase.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {
