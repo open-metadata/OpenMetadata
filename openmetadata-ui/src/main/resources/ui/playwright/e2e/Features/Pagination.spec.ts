@@ -21,9 +21,9 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
-import { TableClass } from '../../support/entity/TableClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';

@@ -1672,7 +1672,9 @@ export const testCompletePaginationWithSearch = async (
 
   if (!skipUrlParamCheck) {
     const urlAfterSearch = new URL(page.url());
-    expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
+    expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(
+      searchTestTerm
+    );
   }
 
   await expect(page.getByTestId('previous')).toBeDisabled();
