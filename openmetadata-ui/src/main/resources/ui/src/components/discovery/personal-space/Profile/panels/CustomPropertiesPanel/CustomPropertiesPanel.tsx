@@ -31,7 +31,7 @@ import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
-import { HeaderOverride } from '../../profileNavConfig';
+import type { HeaderOverride } from '../../profileNavConfig';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
