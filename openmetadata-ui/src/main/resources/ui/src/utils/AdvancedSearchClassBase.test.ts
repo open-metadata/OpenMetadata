@@ -22,6 +22,7 @@ import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/Ad
 import {
   MULTISELECT_FIELD_OPERATORS,
   NUMBER_FIELD_OPERATORS,
+  SELECT_TEXT_FIELD_OPERATORS,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
@@ -1434,8 +1435,11 @@ describe('table-cp custom property sub-fields', () => {
       ].map(({ subfieldsKey, dataObject }) => [subfieldsKey, dataObject])
     );
 
+    // Derived from the class's own config rather than bare CoreConfig: the real
+    // types/operators/widgets are what decide whether a field's operator set is
+    // valid at all, and CoreConfig alone does not carry them.
     return {
-      ...CoreConfig,
+      ...new AdvancedSearchClassBase().getInitialConfigWithoutFields(false),
       fields: {
         extension: {
           label: 'label.custom-property-plural',
@@ -1488,30 +1492,34 @@ describe('table-cp custom property sub-fields', () => {
   it('should model rows as a some group holding one sub-field per column for JsonLogic output', () => {
     expect(subFieldsFor(mockField, SearchOutputType.JSONLogic)).toEqual([
       {
-        subfieldsKey: 'tableType',
+        subfieldsKey: 'tableType.rows',
         dataObject: {
           __omPropertyType: 'table-cp',
-          label: 'tableType',
-          type: '!struct',
+          label: 'tableType - label.row-plural',
+          type: '!group',
+          mode: 'some',
+          defaultField: 'name',
           subfields: {
-            rows: {
-              label: 'label.row-plural',
-              type: '!group',
-              mode: 'some',
-              defaultField: 'name',
-              subfields: {
-                name: {
-                  type: 'text',
-                  label: 'name',
-                  operators: TEXT_FIELD_OPERATORS,
-                  valueSources: ['value'],
-                },
-                age: {
-                  type: 'text',
-                  label: 'age',
-                  operators: TEXT_FIELD_OPERATORS,
-                  valueSources: ['value'],
-                },
+            name: {
+              type: 'select',
+              label: 'name',
+              operators: SELECT_TEXT_FIELD_OPERATORS,
+              valueSources: ['value'],
+              fieldSettings: {
+                allowCustomValues: true,
+                showSearch: true,
+                useAsyncSearch: false,
+              },
+            },
+            age: {
+              type: 'select',
+              label: 'age',
+              operators: SELECT_TEXT_FIELD_OPERATORS,
+              valueSources: ['value'],
+              fieldSettings: {
+                allowCustomValues: true,
+                showSearch: true,
+                useAsyncSearch: false,
               },
             },
           },
@@ -1520,16 +1528,39 @@ describe('table-cp custom property sub-fields', () => {
     ]);
   });
 
-  it('should rewrite a legacy flat rows rule into a some group', () => {
-    const legacyLogic = {
-      and: [{ '==': [{ var: `${ROWS_VAR}.name` }, 'karan'] }],
+  // migrateJsonLogic has to find the flat var wherever the operator puts it -
+  // `like` exports as `{in: [value, {var}]}`, so it is not always argument 0.
+  it.each([
+    [
+      'equal',
+      { '==': [{ var: `${ROWS_VAR}.name` }, 'karan'] },
+      { '==': [{ var: 'name' }, 'karan'] },
+    ],
+    [
+      'like',
+      { in: ['kar', { var: `${ROWS_VAR}.name` }] },
+      { in: ['kar', { var: 'name' }] },
+    ],
+    [
+      'is_not_null',
+      { '!=': [{ var: `${ROWS_VAR}.name` }, null] },
+      { '!=': [{ var: 'name' }, null] },
+    ],
+  ])(
+    'should rewrite a legacy flat %s rule into a some group',
+    (_name, legacyRule, expectedCondition) => {
+      expect(roundTrip({ and: [legacyRule] }, buildJsonLogicConfig())).toEqual({
+        and: [{ some: [{ var: ROWS_VAR }, expectedCondition] }],
+      });
+    }
+  );
+
+  it('should leave an already-migrated rule alone', () => {
+    const logic = {
+      and: [{ some: [{ var: ROWS_VAR }, { in: ['kar', { var: 'name' }] }] }],
     };
 
-    expect(roundTrip(legacyLogic, buildJsonLogicConfig())).toEqual({
-      and: [
-        { some: [{ var: ROWS_VAR }, { '==': [{ var: 'name' }, 'karan'] }] },
-      ],
-    });
+    expect(roundTrip(logic, buildJsonLogicConfig())).toEqual(logic);
   });
 
   it('should keep a scalar custom property usable alongside the rows group', () => {

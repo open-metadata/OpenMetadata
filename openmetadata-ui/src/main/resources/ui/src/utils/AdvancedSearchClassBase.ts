@@ -34,6 +34,7 @@ import {
   NULL_CHECK_OPERATORS,
   NUMBER_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
+  SELECT_TEXT_FIELD_OPERATORS,
   TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
@@ -1504,38 +1505,40 @@ class AdvancedSearchClassBase {
   }
 
   // `rows` is an array of objects, so it needs a `some` group - a flat
-  // `<prop>.rows.<column>` var never resolves against it and is always false.
+  // `<prop>.rows.<column>` var never resolves against it. Rules saved in the flat
+  // shape are rewritten by `migrateJsonLogic` when the builder loads them.
   private buildTableCustomPropertyGroup(
     field: CustomPropertySummary,
     label: string,
     columns: string[]
   ): { subfieldsKey: string; dataObject: OMFieldOrGroup } {
+    // A cell is free text, so there is no list to offer - `allowCustomValues`
+    // keeps the select widget while letting the value be typed.
     const columnSubfields: Fields = Object.fromEntries(
       columns.map((columnName) => [
         columnName,
         {
-          type: 'text',
+          type: 'select',
           label: columnName,
-          operators: TEXT_FIELD_OPERATORS,
+          operators: SELECT_TEXT_FIELD_OPERATORS,
           valueSources: ['value'],
+          fieldSettings: {
+            allowCustomValues: true,
+            showSearch: true,
+            useAsyncSearch: false,
+          },
         },
       ])
     );
 
     return {
-      subfieldsKey: field.name,
+      subfieldsKey: `${field.name}.rows`,
       dataObject: {
-        label,
-        type: '!struct',
-        subfields: {
-          rows: {
-            label: t('label.row-plural'),
-            type: '!group',
-            mode: 'some',
-            defaultField: columns[0],
-            subfields: columnSubfields,
-          },
-        },
+        label: `${label} - ${t('label.row-plural')}`,
+        type: '!group',
+        mode: 'some',
+        defaultField: columns[0],
+        subfields: columnSubfields,
       },
     };
   }
