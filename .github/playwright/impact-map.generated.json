@@ -122,6 +122,7 @@
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/Navbar.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -334,6 +335,7 @@
         "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts"
@@ -1805,6 +1807,7 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
@@ -1823,6 +1826,7 @@
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
@@ -1851,6 +1855,7 @@
       "specs": [
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
@@ -2073,6 +2078,7 @@
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -3158,6 +3164,7 @@
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/PlatformLineage.spec.ts",
@@ -3565,9 +3572,6 @@
         "playwright/e2e/Features/Permission.spec.ts",
         "playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts",
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
@@ -3609,6 +3613,7 @@
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
@@ -3943,9 +3948,6 @@
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
@@ -4121,6 +4123,7 @@
         "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts"
@@ -4149,6 +4152,7 @@
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -6518,7 +6522,6 @@
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
@@ -6840,8 +6843,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/StyleModal/StyleModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts"
       ]
     },
@@ -7449,7 +7450,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/AppSchedule/AppSchedule.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightSettings.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
@@ -7519,60 +7519,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/ContextPreviewModal/ContextPreviewModal.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/ContextRuleCard/ContextRuleCard.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/ContextRuleEditor/ContextRuleEditor.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/ContextRuleEditor/RuleQueryBuilderField.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/PersonaAIContext.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/VersionHistoryDrawer/VersionHistoryDrawer.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/AddIngestion.component.tsx"
       ],
       "specs": [
@@ -7584,31 +7530,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleInterval.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/CronValidations.spec.ts",
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
-        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
-        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
-        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleIntervalStep.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
-        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
-        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
-        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleIntervalV1.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/CronValidations.spec.ts",
-        "playwright/e2e/Pages/DataInsightSettings.spec.ts"
+        "playwright/e2e/Features/CronValidations.spec.ts"
       ]
     },
     {
@@ -7943,14 +7865,6 @@
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Tag/TagsViewer/TagsViewer.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -9864,6 +9778,7 @@
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/PlatformLineage.spec.ts",
@@ -10769,6 +10684,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/ServiceDetailsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/TestConnectionModal.spec.ts"
@@ -10999,14 +10915,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/TagsTabs.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Glossary.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/TeamsPage/AddTeamForm.tsx"
       ],
       "specs": [
@@ -11218,6 +11126,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/TestConnectionModal.spec.ts"
