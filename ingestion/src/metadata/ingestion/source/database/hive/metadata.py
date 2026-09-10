@@ -13,7 +13,6 @@ Hive source methods.
 """
 
 import traceback
-from collections import OrderedDict
 from typing import cast
 
 from pyhive.sqlalchemy_hive import HiveDialect
@@ -49,6 +48,7 @@ from metadata.ingestion.source.database.hive.utils import (
     get_view_names_older_versions,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = ingestion_logger()
 
@@ -76,25 +76,12 @@ class HiveSource(CommonDbSourceService):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _ensure_raw_columns_cache(
-        self,
-    ) -> OrderedDict[tuple[str, str], list[ReflectedColumn]]:
-        if not hasattr(self, "_raw_hive_columns") or self._raw_hive_columns is None:
-            self._raw_hive_columns = OrderedDict()
+    def _columns_cache(self) -> "LRUCache[list[ReflectedColumn]]":
+        # Bounded + thread-safe (table processing is multi-threaded). Lazily
+        # created so callers work even without prepare() (e.g. unit tests).
+        if getattr(self, "_raw_hive_columns", None) is None:
+            self._raw_hive_columns: LRUCache[list[ReflectedColumn]] = LRUCache(_RAW_COLUMNS_CACHE_MAX)
         return self._raw_hive_columns
-
-    def _store_raw_columns(
-        self,
-        schema_name: str,
-        table_name: str,
-        columns: list[ReflectedColumn],
-    ) -> list[ReflectedColumn]:
-        cache = self._ensure_raw_columns_cache()
-        key = (schema_name, table_name)
-        cache[key] = columns
-        while len(cache) > _RAW_COLUMNS_CACHE_MAX:
-            cache.popitem(last=False)
-        return columns
 
     def _get_columns_internal(
         self,
@@ -108,15 +95,16 @@ class HiveSource(CommonDbSourceService):
         Cache raw dialect column dicts (including ``is_partition``) so
         ``get_table_partition_details`` can reuse them without a second DESCRIBE.
         """
-        cache = self._ensure_raw_columns_cache()
-        key = (schema_name, table_name)
-        if key not in cache:
-            columns = cast(
-                "list[ReflectedColumn]",
-                inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name),
-            )
-            self._store_raw_columns(schema_name, table_name, columns)
-        return cache[key]
+        cache = self._columns_cache()
+        key = f"{schema_name}.{table_name}"
+        if key in cache:
+            return cache.get(key)
+        columns = cast(
+            "list[ReflectedColumn]",
+            inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name),
+        )
+        cache.put(key, columns)
+        return columns
 
     def _parse_version(self, version: str) -> tuple:
         if "-" in version:
@@ -145,7 +133,7 @@ class HiveSource(CommonDbSourceService):
                 HiveDialect.get_view_names = get_view_names_older_versions
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
-        self._ensure_raw_columns_cache()
+        self._columns_cache()
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -181,15 +169,16 @@ class HiveSource(CommonDbSourceService):
         with ``is_partition``) so yield_table does not DESCRIBE twice per table.
         """
         try:
-            cache = self._ensure_raw_columns_cache()
-            key = (schema_name, table_name)
-            columns = cache.get(key)
-            if columns is None:
+            cache = self._columns_cache()
+            key = f"{schema_name}.{table_name}"
+            if key in cache:
+                columns = cache.get(key)
+            else:
                 columns = cast(
                     "list[ReflectedColumn]",
                     inspector.get_columns(table_name=table_name, schema=schema_name),
                 )
-                self._store_raw_columns(schema_name, table_name, columns)
+                cache.put(key, columns)
 
             partition_columns = [col for col in columns if isinstance(col, dict) and col.get("is_partition")]
             if not partition_columns:
@@ -206,7 +195,7 @@ class HiveSource(CommonDbSourceService):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch partition details for {schema_name}.{table_name}: {exc}")
+            logger.warning("Failed to fetch partition details for %s.%s: %s", schema_name, table_name, exc)
             return False, None
         else:
             return True, partition_details

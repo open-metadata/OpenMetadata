@@ -628,7 +628,7 @@ class HiveUnitTest(TestCase):
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition_details)
         self.assertEqual(
-            [col.columnName.root for col in partition_details.columns],
+            [col.columnName for col in partition_details.columns],
             ["year", "country"],
         )
         mock_inspector.get_columns.assert_called_once_with(
@@ -663,7 +663,7 @@ class HiveUnitTest(TestCase):
 
         self.assertTrue(is_partitioned)
         self.assertEqual(
-            [col.columnName.root for col in partition_details.columns],
+            [col.columnName for col in partition_details.columns],
             ["year", "country"],
         )
         self.assertEqual(
@@ -671,6 +671,37 @@ class HiveUnitTest(TestCase):
             1,
             "get_table_partition_details should reuse cached raw columns",
         )
+
+    def test_get_table_partition_details_non_partitioned(self):
+        """No partition-flagged columns -> Regular table (False, None)."""
+        mock_inspector = Mock()
+        mock_inspector.get_columns.return_value = [
+            {"name": "id", "type": Integer, "is_partition": False},
+            {"name": "name", "type": String(), "is_partition": False},
+        ]
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="plain",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition_details)
+
+    def test_get_table_partition_details_handles_errors(self):
+        """A failure while fetching columns degrades to Regular, never raising."""
+        mock_inspector = Mock()
+        mock_inspector.get_columns.side_effect = Exception("boom")
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="broken",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition_details)
 
     def test_ssl_connection_configuration(self):
         """
