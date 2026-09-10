@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.common.sslCertPaths i
 from metadata.generated.schema.entity.services.connections.common.sslCertValues import (
     SslCertificatesByValues,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.generated.schema.entity.services.connections.common.sslConfig import (
     SslConfig,
 )
@@ -150,6 +151,18 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
         basic_auth = None
         api_key = None
         ssl_context = None
+
+        kwargs = connection.connectionArguments.root if connection.connectionArguments else {}
+        
+        if connection.verifySSL == VerifySSL.validate:
+            kwargs["verify_certs"] = True
+            kwargs["ssl_show_warn"] = False
+        elif connection.verifySSL == VerifySSL.ignore:
+            kwargs["verify_certs"] = False
+            kwargs["ssl_show_warn"] = True
+        elif connection.verifySSL == VerifySSL.no_ssl:
+            pass
+
         if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
             basic_auth = (
                 connection.authType.username,
@@ -180,7 +193,7 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
             basic_auth=basic_auth,
             api_key=api_key,
             ssl_context=ssl_context,
-            **connection.connectionArguments.root,  # pyright: ignore[reportCallIssue]
+            **kwargs,  # pyright: ignore[reportCallIssue]
         )
 
     def test_connection(
