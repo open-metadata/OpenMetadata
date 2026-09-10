@@ -48,7 +48,7 @@ jest.mock(
     jest.fn().mockImplementation(() => <div>ObservabilityFormTriggerItem</div>)
 );
 
-jest.mock('../../DestinationFormItem/DestinationFormItemFormBridge', () =>
+jest.mock('../../DestinationFormItem/DestinationFormItem.component', () =>
   jest.fn().mockImplementation(() => <div>DestinationFormItem</div>)
 );
 
