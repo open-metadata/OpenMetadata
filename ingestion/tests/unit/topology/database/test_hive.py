@@ -541,7 +541,7 @@ class HiveUnitTest(TestCase):
         with patch.object(
             hive_dialect,
             "_get_table_columns",
-            lambda connection, table_name, schema_name: table_columns,
+            return_value=table_columns,
             create=True,
         ):
             col_list = hive_dialect.get_columns(
