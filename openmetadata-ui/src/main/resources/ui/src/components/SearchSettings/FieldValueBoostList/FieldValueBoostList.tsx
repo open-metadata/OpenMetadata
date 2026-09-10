@@ -131,6 +131,9 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
       loading={isLoading}
       pagination={false}
       rowClassName={() => 'field-value-row'}
+      // AntD defaulted the row key to record.key; TableV2 falls back to the row
+      // index instead, so name the key column explicitly to keep data-row-key.
+      rowKey="field"
       scroll={{ x: 'max-content' }}
       size="small"
     />
