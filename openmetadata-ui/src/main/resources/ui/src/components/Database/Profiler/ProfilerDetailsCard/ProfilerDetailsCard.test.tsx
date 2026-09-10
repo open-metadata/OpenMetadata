@@ -16,6 +16,10 @@ import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
+}));
+
 // Mock utility functions
 jest.mock('../../../../utils/ChartUtils', () => ({
   axisTickFormatter: jest.fn(),

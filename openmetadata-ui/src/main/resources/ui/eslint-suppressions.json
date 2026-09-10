@@ -184,7 +184,7 @@
   },
   "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 9
     }
   },
   "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts": {
@@ -235,11 +235,6 @@
   "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
-    }
-  },
-  "playwright/e2e/Features/GlobalPageSize.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
@@ -392,7 +387,7 @@
   },
   "playwright/e2e/Features/PersonaAIContextRules.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 8
     }
   },
   "playwright/e2e/Features/QueryEntity.spec.ts": {
@@ -525,7 +520,7 @@
   },
   "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/Topic.spec.ts": {
@@ -658,7 +653,7 @@
   },
   "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/DataProducts.spec.ts": {
@@ -757,7 +752,7 @@
   },
   "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/LiveIndexingTab.spec.ts": {
@@ -897,7 +892,7 @@
   },
   "playwright/support/entity/ingestion/ServiceBaseClass.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/support/team/TeamClass.ts": {
@@ -1105,11 +1100,6 @@
   "playwright/utils/service.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/utils/serviceFormUtils.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/utils/sidebar.ts": {

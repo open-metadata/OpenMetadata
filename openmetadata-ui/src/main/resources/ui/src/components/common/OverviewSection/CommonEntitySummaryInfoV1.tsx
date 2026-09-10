@@ -63,7 +63,11 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
     if (info.isExternal && info.value !== '-') {
       return (
-        <a className="summary-item-link" href={info.url} target="_blank">
+        <a
+          className="summary-item-link"
+          href={info.url}
+          rel="noopener noreferrer"
+          target="_blank">
           {info.value}
           <Icon
             className="m-l-xs"

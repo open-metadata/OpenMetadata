@@ -58,7 +58,8 @@ class RdfPredicatePartitionTest {
   void testLineageHookPredicatesExcluded() {
     Set<String> lineagePredicates =
         Set.of(
-            "https://open-metadata.org/ontology/UPSTREAM",
+            "https://open-metadata.org/ontology/upstream",
+            "https://open-metadata.org/ontology/downstream",
             "http://www.w3.org/ns/prov#wasDerivedFrom",
             "https://open-metadata.org/ontology/hasLineageDetails");
     for (String pred : lineagePredicates) {

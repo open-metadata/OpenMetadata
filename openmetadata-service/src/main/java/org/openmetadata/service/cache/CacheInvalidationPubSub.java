@@ -192,9 +192,16 @@ public class CacheInvalidationPubSub {
     }
   }
 
-  /** Whether {@code type} names an entity type, as opposed to one of the out-of-band signals. */
+  /**
+   * Whether {@code type} names an entity type, as opposed to one of the out-of-band signals.
+   *
+   * <p>Null-safe on purpose: {@code Set.of(...).contains(null)} throws, and this runs inside the
+   * pub/sub handler ahead of the {@code Invalidatable} fan-out, so a malformed message with no type
+   * would otherwise abort the whole handler and skip every cache eviction it carried. A typeless
+   * message names no entity, so it is not an entity type.
+   */
   public static boolean isEntityType(String type) {
-    return !NON_ENTITY_TYPES.contains(type);
+    return type != null && !NON_ENTITY_TYPES.contains(type);
   }
 
   public record InvalidateMessage(String type, UUID id, String fqn, String op, String sender) {}

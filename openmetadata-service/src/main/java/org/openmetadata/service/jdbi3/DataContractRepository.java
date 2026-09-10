@@ -1338,6 +1338,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTestCaseResultSummary().stream()
             .filter(test -> currentTests.contains(test.getTestCaseName()))
             .toList();
+    if (testSummary.isEmpty()) {
+      return validation; // all referenced test cases filtered out (e.g. soft-deleted); avoid 0/0 ->
+      // NaN
+    }
 
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
@@ -1501,16 +1505,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         Operation operation,
         ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
-    }
-
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
     }
 
     @Override
@@ -1910,19 +1904,5 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataContract dataContract) {
-    dataContract =
-        Entity.getEntityByName(
-            Entity.DATA_CONTRACT,
-            dataContract.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataContract.getFullyQualifiedName(),
-        new ArrayList<>(dataContract.getReviewers()),
-        dataContract.getUpdatedBy());
   }
 }

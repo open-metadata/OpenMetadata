@@ -12,6 +12,7 @@
  */
 import type { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -1555,12 +1556,23 @@ export function useGraphDataBuilder({
   relationTypes,
   studioMode = false,
 }: BuildGraphDataProps) {
+  const { theme } = useTheme();
+  // G6 stores concrete canvas colors. Binding the resolver identity to the
+  // active theme rebuilds graph data after the provider updates its CSS tokens.
+  const themeCanvasResolver = useMemo(
+    () => ({ resolve: getCanvasColor, theme }),
+    [theme]
+  );
   const computeNodeColor = useCallback(
-    (node: OntologyNode): string =>
-      node.glossaryId && glossaryColorMap[node.glossaryId]
-        ? glossaryColorMap[node.glossaryId]
-        : COLOR_BLUE_600,
-    [glossaryColorMap]
+    (node: OntologyNode): string => {
+      const color =
+        node.glossaryId && glossaryColorMap[node.glossaryId]
+          ? glossaryColorMap[node.glossaryId]
+          : COLOR_BLUE_600;
+
+      return themeCanvasResolver.resolve(color, '#3b82f6');
+    },
+    [glossaryColorMap, themeCanvasResolver]
   );
 
   const mergedEdgesList = useMemo(
@@ -1759,6 +1771,7 @@ export function useGraphDataBuilder({
     glossaries,
     cardinalityMap,
     customRelationColorMap,
+    isEditMode,
     studioMode,
   ]);
 

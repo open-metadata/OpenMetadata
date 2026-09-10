@@ -16,6 +16,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -29,6 +30,14 @@ import org.openmetadata.service.jdbi3.UserRepository;
 
 /** Personal-access-token twin of {@link BotTokenCacheTest}. */
 class UserTokenCacheTest {
+
+  @AfterEach
+  void restoreCacheState() throws Exception {
+    // forceReinitialize() rebinds the cache's static repository to a mock that dies with this
+    // test. Put the statics back so a later test in the same JVM re-binds against the real one.
+    setStatic("tokenRepository", null);
+    setStatic("initialized", false);
+  }
 
   @Test
   void invalidateTokenTellsPeerPodsToDropTheirCopy() {
@@ -86,9 +95,13 @@ class UserTokenCacheTest {
    * Re-arm it so this test's stubbed {@code Entity.getTokenRepository()} is the one picked up.
    */
   private static void forceReinitialize() throws Exception {
-    Field initialized = UserTokenCache.class.getDeclaredField("initialized");
-    initialized.setAccessible(true);
-    initialized.set(null, false);
+    setStatic("initialized", false);
     UserTokenCache.initialize();
+  }
+
+  private static void setStatic(String name, Object value) throws Exception {
+    Field field = UserTokenCache.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(null, value);
   }
 }
