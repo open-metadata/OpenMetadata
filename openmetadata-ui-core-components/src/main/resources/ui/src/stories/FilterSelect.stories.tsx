@@ -49,6 +49,26 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Triggers: Story = {
+  args: {
+    label: 'Service',
+    options: SERVICE_OPTIONS,
+    selectedValues: [],
+    onChange: () => undefined,
+  },
+  render: () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <ControlledFilter label="Borderless (Explore)" />
+      <ControlledFilter bordered label="Bordered" />
+      <ControlledFilter
+        label="Input variant"
+        selectionMode="single"
+        triggerVariant="input"
+      />
+    </div>
+  ),
+};
+
 export const Immediate: Story = {
   args: {
     label: 'Service',
