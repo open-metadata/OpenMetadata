@@ -145,6 +145,7 @@ final class MetricMigrationTestSupport {
             + " (fromId VARCHAR(36) NOT NULL, toId VARCHAR(36) NOT NULL, "
             + "fromEntity VARCHAR(256) NOT NULL, toEntity VARCHAR(256) NOT NULL, "
             + "relation SMALLINT NOT NULL, relationType VARCHAR(64) NOT NULL DEFAULT '', "
+            + "deleted BOOLEAN NOT NULL DEFAULT FALSE, "
             + "PRIMARY KEY (fromId, toId, relation, relationType))");
   }
 
@@ -175,10 +176,30 @@ final class MetricMigrationTestSupport {
                 METRIC,
                 HAS_RELATION));
     insertRelationship(
+        handle,
+        fixture.relationshipTable(),
+        "deleted-group",
+        "metric-c",
+        METRIC_GROUP,
+        METRIC,
+        HAS_RELATION);
+    handle.execute(
+        "UPDATE "
+            + fixture.relationshipTable()
+            + " SET deleted = TRUE WHERE fromId = 'deleted-group'");
+    insertRelationship(
+        handle,
+        fixture.relationshipTable(),
+        "active-group",
+        "metric-c",
+        METRIC_GROUP,
+        METRIC,
+        HAS_RELATION);
+    insertRelationship(
         handle, fixture.relationshipTable(), "team-b", "metric-a", TEAM, METRIC, HAS_RELATION);
     insertRelationship(
         handle, fixture.relationshipTable(), "group-c", "metric-a", METRIC_GROUP, METRIC, 0);
-    assertEquals(6, countRows(handle, fixture.relationshipTable()));
+    assertEquals(8, countRows(handle, fixture.relationshipTable()));
   }
 
   private static void insertRelationship(
@@ -394,6 +415,7 @@ final class MetricMigrationTestSupport {
     assertTrue(normalized.contains("toentity"));
     assertTrue(normalized.contains("'metric'"));
     assertTrue(normalized.contains("relation = 10"));
+    assertTrue(normalized.contains("deleted = false"));
   }
 
   static List<String> metricSchemaStatements(MigrationScripts scripts) {

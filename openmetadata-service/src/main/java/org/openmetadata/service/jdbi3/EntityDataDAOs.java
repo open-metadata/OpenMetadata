@@ -247,6 +247,7 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = er.toId "
                 + "WHERE er.fromId = :groupId AND er.fromEntity = 'metricGroup' "
                 + "AND er.toEntity = 'metric' AND er.relation = :relation "
+                + "AND er.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_MYSQL
                 + " ORDER BY me.name, me.id LIMIT :limit OFFSET :offset",
@@ -257,6 +258,7 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = er.toId "
                 + "WHERE er.fromId = :groupId AND er.fromEntity = 'metricGroup' "
                 + "AND er.toEntity = 'metric' AND er.relation = :relation "
+                + "AND er.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_POSTGRES
                 + " ORDER BY me.name, me.id LIMIT :limit OFFSET :offset",
@@ -274,6 +276,7 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = er.toId "
                 + "WHERE er.fromId = :groupId AND er.fromEntity = 'metricGroup' "
                 + "AND er.toEntity = 'metric' AND er.relation = :relation "
+                + "AND er.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_MYSQL,
         connectionType = MYSQL)
@@ -283,6 +286,7 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = er.toId "
                 + "WHERE er.fromId = :groupId AND er.fromEntity = 'metricGroup' "
                 + "AND er.toEntity = 'metric' AND er.relation = :relation "
+                + "AND er.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_POSTGRES,
         connectionType = POSTGRES)
@@ -296,10 +300,12 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = group_rel.toId "
             + "WHERE group_rel.fromId = :groupId AND group_rel.fromEntity = 'metricGroup' "
             + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+            + "AND group_rel.deleted = FALSE "
             + "AND me.id <> :excludeId AND (me.deleted = FALSE OR me.deleted IS NULL) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
-            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation) "
+            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+            + "AND parent_rel.deleted = FALSE) "
             + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset")
     List<String> listRootMemberIds(
         @BindUUID("groupId") UUID groupId,
@@ -314,10 +320,12 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = group_rel.toId "
             + "WHERE group_rel.fromId = :groupId AND group_rel.fromEntity = 'metricGroup' "
             + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+            + "AND group_rel.deleted = FALSE "
             + "AND me.id <> :excludeId AND (me.deleted = FALSE OR me.deleted IS NULL) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
-            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation)")
+            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+            + "AND parent_rel.deleted = FALSE)")
     int countRootMembers(
         @BindUUID("groupId") UUID groupId,
         @BindUUID("excludeId") UUID excludeId,
@@ -329,6 +337,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = er.toId "
             + "WHERE er.fromId = :groupId AND er.fromEntity = 'metricGroup' "
             + "AND er.toEntity = 'metric' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
             + "AND (me.deleted = FALSE OR me.deleted IS NULL)")
     int countNonDeletedMembers(@BindUUID("groupId") UUID groupId, @Bind("relation") int relation);
 
@@ -337,6 +346,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = er.toId "
             + "WHERE er.fromId IN (<groupIds>) AND er.fromEntity = 'metricGroup' "
             + "AND er.toEntity = 'metric' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
             + "AND (me.deleted = FALSE OR me.deleted IS NULL) GROUP BY er.fromId")
     @RegisterRowMapper(EntityRelationshipDAO.ToRelationshipCountMapper.class)
     List<EntityRelationshipCount> countNonDeletedMembersBatch(
@@ -348,11 +358,13 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = group_rel.toId "
                 + "WHERE group_rel.fromId = :groupId AND group_rel.fromEntity = 'metricGroup' "
                 + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+                + "AND group_rel.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_MYSQL
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
-                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation) "
+                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+                + "AND parent_rel.deleted = FALSE) "
                 + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -361,11 +373,13 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = group_rel.toId "
                 + "WHERE group_rel.fromId = :groupId AND group_rel.fromEntity = 'metricGroup' "
                 + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+                + "AND group_rel.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_POSTGRES
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
-                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation) "
+                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+                + "AND parent_rel.deleted = FALSE) "
                 + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset",
         connectionType = POSTGRES)
     List<String> listRootMemberJsonsPage(
@@ -382,11 +396,13 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = group_rel.toId "
                 + "WHERE group_rel.fromId = :groupId AND group_rel.fromEntity = 'metricGroup' "
                 + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+                + "AND group_rel.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_MYSQL
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
-                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation)",
+                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+                + "AND parent_rel.deleted = FALSE)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -394,11 +410,13 @@ public interface EntityDataDAOs {
                 + "JOIN metric_entity me ON me.id = group_rel.toId "
                 + "WHERE group_rel.fromId = :groupId AND group_rel.fromEntity = 'metricGroup' "
                 + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+                + "AND group_rel.deleted = FALSE "
                 + "AND (me.deleted = FALSE OR me.deleted IS NULL) AND "
                 + MEMBER_MATCH_POSTGRES
                 + " AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
                 + "WHERE parent_rel.toId = me.id AND parent_rel.fromEntity = 'metric' "
-                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation)",
+                + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+                + "AND parent_rel.deleted = FALSE)",
         connectionType = POSTGRES)
     int countRootMembersPage(
         @BindUUID("groupId") UUID groupId,
@@ -414,11 +432,12 @@ public interface EntityDataDAOs {
             + "WHERE (root.deleted = FALSE OR root.deleted IS NULL) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = root.id AND parent_rel.fromEntity = 'metric' "
-            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation) "
+            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+            + "AND parent_rel.deleted = FALSE) "
             + "UNION SELECT tree.root_id, child.id FROM metric_tree tree "
             + "JOIN entity_relationship child_rel ON child_rel.fromId = tree.member_id "
             + "AND child_rel.fromEntity = 'metric' AND child_rel.toEntity = 'metric' "
-            + "AND child_rel.relation = :containsRelation "
+            + "AND child_rel.relation = :containsRelation AND child_rel.deleted = FALSE "
             + "JOIN metric_entity child ON child.id = child_rel.toId "
             + "WHERE (child.deleted = FALSE OR child.deleted IS NULL)) ";
     String HIERARCHY_GROUP_MEMBER_EXISTS =
@@ -426,6 +445,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity member ON member.id = group_member.toId "
             + "WHERE group_member.fromId = mg.id AND group_member.fromEntity = 'metricGroup' "
             + "AND group_member.toEntity = 'metric' AND group_member.relation = :hasRelation "
+            + "AND group_member.deleted = FALSE "
             + "AND (member.deleted = FALSE OR member.deleted IS NULL) AND ";
     String HIERARCHY_STANDALONE_ROOT =
         " UNION ALL SELECT m.id AS hierarchy_id, m.name AS hierarchy_name, "
@@ -433,11 +453,13 @@ public interface EntityDataDAOs {
             + "WHERE (m.deleted = FALSE OR m.deleted IS NULL) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = m.id AND parent_rel.fromEntity = 'metric' "
-            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation) "
+            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+            + "AND parent_rel.deleted = FALSE) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship group_rel "
             + "JOIN metric_group_entity active_group ON active_group.id = group_rel.fromId "
             + "WHERE group_rel.toId = m.id AND group_rel.fromEntity = 'metricGroup' "
             + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+            + "AND group_rel.deleted = FALSE "
             + "AND (active_group.deleted = FALSE OR active_group.deleted IS NULL)) "
             + "AND EXISTS (SELECT 1 FROM metric_tree tree "
             + "JOIN metric_entity member ON member.id = tree.member_id "
@@ -447,11 +469,13 @@ public interface EntityDataDAOs {
             + "WHERE (m.deleted = FALSE OR m.deleted IS NULL) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship parent_rel "
             + "WHERE parent_rel.toId = m.id AND parent_rel.fromEntity = 'metric' "
-            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation) "
+            + "AND parent_rel.toEntity = 'metric' AND parent_rel.relation = :containsRelation "
+            + "AND parent_rel.deleted = FALSE) "
             + "AND NOT EXISTS (SELECT 1 FROM entity_relationship group_rel "
             + "JOIN metric_group_entity active_group ON active_group.id = group_rel.fromId "
             + "WHERE group_rel.toId = m.id AND group_rel.fromEntity = 'metricGroup' "
             + "AND group_rel.toEntity = 'metric' AND group_rel.relation = :hasRelation "
+            + "AND group_rel.deleted = FALSE "
             + "AND (active_group.deleted = FALSE OR active_group.deleted IS NULL)) "
             + "AND EXISTS (SELECT 1 FROM metric_tree tree "
             + "JOIN metric_entity member ON member.id = tree.member_id "
@@ -481,6 +505,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_group_entity mg ON mg.id = er.fromId "
             + "WHERE er.toId = :metricId AND er.fromEntity = 'metricGroup' "
             + "AND er.toEntity = 'metric' AND er.relation = :hasRelation "
+            + "AND er.deleted = FALSE "
             + "AND (mg.deleted = FALSE OR mg.deleted IS NULL) LIMIT 1")
     String findActiveGroupId(
         @BindUUID("metricId") UUID metricId, @Bind("hasRelation") int hasRelation);
@@ -606,6 +631,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = er.toId "
             + "WHERE er.fromId = :parentId AND er.fromEntity = 'metric' "
             + "AND er.toEntity = 'metric' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
             + "AND (me.deleted = FALSE OR me.deleted IS NULL) "
             + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset")
     List<String> listChildIds(
@@ -619,6 +645,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = er.toId "
             + "WHERE er.fromId = :parentId AND er.fromEntity = 'metric' "
             + "AND er.toEntity = 'metric' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
             + "AND me.id <> :excludeId AND (me.deleted = FALSE OR me.deleted IS NULL) "
             + "ORDER BY me.name, me.id LIMIT :limit OFFSET :offset")
     List<String> listSiblingIds(
@@ -633,6 +660,7 @@ public interface EntityDataDAOs {
             + "JOIN metric_entity me ON me.id = er.toId "
             + "WHERE er.fromId = :parentId AND er.fromEntity = 'metric' "
             + "AND er.toEntity = 'metric' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
             + "AND me.id <> :excludeId AND (me.deleted = FALSE OR me.deleted IS NULL)")
     int countSiblings(
         @BindUUID("parentId") UUID parentId,
@@ -642,7 +670,8 @@ public interface EntityDataDAOs {
     @SqlQuery(
         "SELECT er.toId FROM entity_relationship er "
             + "WHERE er.fromId = :parentId AND er.fromEntity = 'metric' "
-            + "AND er.toEntity = 'metric' AND er.relation = :relation")
+            + "AND er.toEntity = 'metric' AND er.relation = :relation "
+            + "AND er.deleted = FALSE")
     List<String> listDescendantSeedIds(
         @BindUUID("parentId") UUID parentId, @Bind("relation") int relation);
 
@@ -655,7 +684,8 @@ public interface EntityDataDAOs {
 
     @SqlQuery(
         "SELECT fromId FROM entity_relationship WHERE toId = :metricId "
-            + "AND toEntity = 'metric' AND fromId IN (<assetIds>) AND relation = :relation")
+            + "AND toEntity = 'metric' AND fromId IN (<assetIds>) AND relation = :relation "
+            + "AND deleted = FALSE")
     List<String> findUpstreamAssetIds(
         @BindUUID("metricId") UUID metricId,
         @BindList("assetIds") List<String> assetIds,
@@ -663,7 +693,8 @@ public interface EntityDataDAOs {
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship WHERE fromId = :metricId "
-            + "AND fromEntity = 'metric' AND toId IN (<assetIds>) AND relation = :relation")
+            + "AND fromEntity = 'metric' AND toId IN (<assetIds>) AND relation = :relation "
+            + "AND deleted = FALSE")
     List<String> findDownstreamAssetIds(
         @BindUUID("metricId") UUID metricId,
         @BindList("assetIds") List<String> assetIds,
@@ -684,14 +715,14 @@ public interface EntityDataDAOs {
         result +=
             " AND metric_entity.id IN (SELECT er.toId FROM entity_relationship er"
                 + " WHERE er.fromId = :parentMetricId AND er.fromEntity = 'metric'"
-                + " AND er.toEntity = 'metric' AND er.relation = "
+                + " AND er.toEntity = 'metric' AND er.deleted = FALSE AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
                 + ")";
       } else if (Boolean.TRUE.toString().equals(rootMetrics)) {
         result +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er"
                 + " WHERE er.toId = metric_entity.id AND er.fromEntity = 'metric'"
-                + " AND er.toEntity = 'metric' AND er.relation = "
+                + " AND er.toEntity = 'metric' AND er.deleted = FALSE AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
                 + ")";
       }

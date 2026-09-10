@@ -84,11 +84,11 @@ CREATE TABLE IF NOT EXISTS metric_group_entity (
 CREATE INDEX IF NOT EXISTS metric_group_entity_name_index ON metric_group_entity (name);
 CREATE INDEX IF NOT EXISTS idx_metric_group_entity_deleted_name_id ON metric_group_entity (deleted, name, id);
 
--- A Metric can belong to only one Metric Group while every other HAS relationship remains
--- unconstrained by this partial index.
+-- A Metric can have only one active Metric Group membership. Soft-deleted memberships and every
+-- other HAS relationship remain unconstrained by this partial index.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_metric_group_single_membership
     ON entity_relationship (toId)
-    WHERE fromEntity = 'metricGroup' AND toEntity = 'metric' AND relation = 10;
+    WHERE fromEntity = 'metricGroup' AND toEntity = 'metric' AND relation = 10 AND deleted = FALSE;
 -- Ontology Studio: governed relationship types, OWL annex, drafts, and edit locks.
 CREATE TABLE IF NOT EXISTS relationship_type_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,

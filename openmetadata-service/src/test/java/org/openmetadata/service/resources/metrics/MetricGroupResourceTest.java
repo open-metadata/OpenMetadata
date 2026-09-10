@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -301,6 +302,34 @@ class MetricGroupResourceTest {
                       Boolean.TRUE.equals(authorized.getDryRun())
                           && authorized.getAssets().equals(List.of(metric))),
               eq("alice"));
+    }
+  }
+
+  @Test
+  void bulkAddFailsClosedWhenHierarchyResolutionFails() {
+    String groupName = "profitability";
+    EntityReference metric =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC).withName("margin");
+    BulkAssets request = new BulkAssets().withAssets(List.of(metric)).withDryRun(true);
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().getByName(any(), eq(groupName), any()))
+          .thenReturn(
+              new MetricGroup()
+                  .withId(UUID.randomUUID())
+                  .withName(groupName)
+                  .withFullyQualifiedName(groupName));
+      when(fixture.repository().hierarchySubtree(metric))
+          .thenThrow(EntityNotFoundException.byId(metric.getId().toString()));
+
+      Response response =
+          fixture.resource().bulkAddMetrics(null, securityContext("alice"), groupName, request);
+
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+      BulkOperationResult result = (BulkOperationResult) response.getEntity();
+      assertEquals(ApiStatus.FAILURE, result.getStatus());
+      assertEquals(1, result.getNumberOfRowsFailed());
+      verify(fixture.repository(), never())
+          .bulkAddMetrics(anyString(), any(BulkAssets.class), anyString());
     }
   }
 

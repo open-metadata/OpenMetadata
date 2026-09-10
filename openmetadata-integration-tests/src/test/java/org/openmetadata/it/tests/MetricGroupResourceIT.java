@@ -338,6 +338,44 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void inactiveMembershipIsIgnoredAndCanBeReassigned(TestNamespace ns) {
+    Metric metric = createMetric(ns, "inactive_membership_metric");
+    MetricGroup original =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("inactive_membership_original"))
+                .withMetrics(List.of(metric.getFullyQualifiedName())));
+    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
+    setMembershipDeleted(jdbi, original.getId(), metric.getId(), true);
+
+    try {
+      assertEquals(0, getGroup(original.getName(), "metricCount").getMetricCount());
+      assertEquals(0, getGroupMembers(original, 10, 0).path("paging").path("total").asInt());
+      assertNull(
+          SdkClients.adminClient()
+              .metrics()
+              .get(metric.getId().toString(), "metricGroup")
+              .getMetricGroup());
+
+      MetricGroup reassigned =
+          createGroup(
+              new CreateMetricGroup()
+                  .withName(ns.prefix("inactive_membership_reassigned"))
+                  .withMetrics(List.of(metric.getFullyQualifiedName())));
+      assertEquals(1, getGroup(reassigned.getName(), "metricCount").getMetricCount());
+      assertEquals(
+          reassigned.getId(),
+          SdkClients.adminClient()
+              .metrics()
+              .get(metric.getId().toString(), "metricGroup")
+              .getMetricGroup()
+              .getId());
+    } finally {
+      deleteMembership(jdbi, original.getId(), metric.getId());
+    }
+  }
+
+  @Test
   void delete_metricGroupLeavesItsMetricsAlive(TestNamespace ns) {
     Metric metric = createMetric(ns, "grp_survivor");
     MetricGroup group =
@@ -1379,6 +1417,43 @@ public class MetricGroupResourceIT {
                 .bind("relation", Relationship.HAS.ordinal())
                 .mapTo(Integer.class)
                 .one());
+  }
+
+  private static void setMembershipDeleted(
+      Jdbi jdbi, UUID groupId, UUID metricId, boolean deleted) {
+    jdbi.useHandle(
+        handle -> {
+          int updated =
+              handle
+                  .createUpdate(
+                      "UPDATE entity_relationship SET deleted = :deleted WHERE fromId = :groupId "
+                          + "AND toId = :metricId AND fromEntity = :groupType "
+                          + "AND toEntity = :metricType AND relation = :relation")
+                  .bind("deleted", deleted)
+                  .bind("groupId", groupId.toString())
+                  .bind("metricId", metricId.toString())
+                  .bind("groupType", METRIC_GROUP)
+                  .bind("metricType", METRIC)
+                  .bind("relation", Relationship.HAS.ordinal())
+                  .execute();
+          assertEquals(1, updated);
+        });
+  }
+
+  private static void deleteMembership(Jdbi jdbi, UUID groupId, UUID metricId) {
+    jdbi.useHandle(
+        handle ->
+            handle
+                .createUpdate(
+                    "DELETE FROM entity_relationship WHERE fromId = :groupId "
+                        + "AND toId = :metricId AND fromEntity = :groupType "
+                        + "AND toEntity = :metricType AND relation = :relation")
+                .bind("groupId", groupId.toString())
+                .bind("metricId", metricId.toString())
+                .bind("groupType", METRIC_GROUP)
+                .bind("metricType", METRIC)
+                .bind("relation", Relationship.HAS.ordinal())
+                .execute());
   }
 
   private static void awaitMetricSearchDocument(

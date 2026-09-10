@@ -281,6 +281,8 @@ PREPARE drop_conversation_activity_timestamp_stmt
 EXECUTE drop_conversation_activity_timestamp_stmt;
 DEALLOCATE PREPARE drop_conversation_activity_timestamp_stmt;
 
+-- Only active Metric Group HAS edges participate in the single-membership constraint so a
+-- soft-deleted membership does not block reassignment.
 SET @metric_group_membership_column_ddl = (
   SELECT IF(
     EXISTS (
@@ -291,7 +293,7 @@ SET @metric_group_membership_column_ddl = (
         AND column_name = 'metricGroupMetricId'
     ),
     'SELECT 1',
-    'ALTER TABLE entity_relationship ADD COLUMN metricGroupMetricId VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN fromEntity = ''metricGroup'' AND toEntity = ''metric'' AND relation = 10 THEN toId ELSE NULL END) STORED'
+    'ALTER TABLE entity_relationship ADD COLUMN metricGroupMetricId VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN fromEntity = ''metricGroup'' AND toEntity = ''metric'' AND relation = 10 AND deleted = FALSE THEN toId ELSE NULL END) STORED'
   )
 );
 PREPARE metric_group_membership_column_stmt FROM @metric_group_membership_column_ddl;

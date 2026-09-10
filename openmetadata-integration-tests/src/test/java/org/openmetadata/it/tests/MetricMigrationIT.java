@@ -95,6 +95,7 @@ class MetricMigrationIT {
     if (connectionType == ConnectionType.MYSQL) {
       assertTrue(ddl.contains("ADD COLUMN " + MEMBERSHIP_COLUMN));
       assertTrue(ddl.contains("GENERATED ALWAYS AS"));
+      assertTrue(ddl.contains("AND deleted = FALSE THEN toId"));
       assertTrue(ddl.contains(MYSQL_MEMBERSHIP_COLUMN_DDL_VARIABLE));
       assertTrue(ddl.contains(MYSQL_MEMBERSHIP_COLUMN_STATEMENT));
       assertTrue(ddl.contains(MYSQL_MEMBERSHIP_INDEX_DDL_VARIABLE));
@@ -102,6 +103,7 @@ class MetricMigrationIT {
     } else {
       assertTrue(ddl.contains("CREATE UNIQUE INDEX IF NOT EXISTS " + MEMBERSHIP_INDEX));
       assertTrue(ddl.contains("WHERE fromEntity = 'metricGroup'"));
+      assertTrue(ddl.contains("AND deleted = FALSE"));
     }
   }
 

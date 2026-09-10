@@ -1022,6 +1022,28 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     return response.getData().stream().anyMatch(m -> m.getId().equals(metric.getId()));
   }
 
+  private static void setRelationshipDeleted(
+      EntityReference from, EntityReference to, Relationship relationship, boolean deleted) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              int updated =
+                  handle
+                      .createUpdate(
+                          "UPDATE entity_relationship SET deleted = :deleted "
+                              + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+                              + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation")
+                      .bind("deleted", deleted)
+                      .bind("fromId", from.getId().toString())
+                      .bind("fromEntity", from.getType())
+                      .bind("toId", to.getId().toString())
+                      .bind("toEntity", to.getType())
+                      .bind("relation", relationship.ordinal())
+                      .execute();
+              assertEquals(1, updated);
+            });
+  }
+
   @Test
   void post_metricWithParent_establishesHierarchy(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("hier_parent"), ns));
@@ -1281,6 +1303,53 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     assertEquals(
         0, getWithHierarchy(parent).getChildrenCount(), "A soft-deleted child must not be counted");
+  }
+
+  @Test
+  void inactiveContainsEdgeIsExcludedFromHierarchyReads(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("inactive_edge_parent"), ns));
+    Metric child = createChild(ns, "inactive_edge_child", parent);
+    setRelationshipDeleted(
+        parent.getEntityReference(), child.getEntityReference(), Relationship.CONTAINS, true);
+
+    try {
+      Metric fetchedParent = getWithHierarchy(parent);
+      assertEquals(0, fetchedParent.getChildrenCount());
+      assertTrue(fetchedParent.getChildren().isEmpty());
+      assertFalse(containsMetric(listByParent(parent.getFullyQualifiedName()), child));
+      assertTrue(containsMetric(listByParent("null"), child));
+
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle -> {
+                CollectionDAO.EntityRelationshipDAO relationshipDAO =
+                    handle.attach(CollectionDAO.EntityRelationshipDAO.class);
+                CollectionDAO.MetricDAO metricDAO = handle.attach(CollectionDAO.MetricDAO.class);
+                assertTrue(
+                    relationshipDAO
+                        .findTo(
+                            parent.getId(),
+                            Entity.METRIC,
+                            Relationship.CONTAINS.ordinal(),
+                            Entity.METRIC)
+                        .isEmpty());
+                assertTrue(
+                    relationshipDAO
+                        .findFrom(
+                            child.getId(),
+                            Entity.METRIC,
+                            Relationship.CONTAINS.ordinal(),
+                            Entity.METRIC)
+                        .isEmpty());
+                assertTrue(
+                    metricDAO
+                        .listDescendantSeedIds(parent.getId(), Relationship.CONTAINS.ordinal())
+                        .isEmpty());
+              });
+    } finally {
+      setRelationshipDeleted(
+          parent.getEntityReference(), child.getEntityReference(), Relationship.CONTAINS, false);
+    }
   }
 
   @Test
@@ -2187,6 +2256,52 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void inactiveAppliedToEdgeIsExcludedFromAssetReads(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Metric metric = createEntity(createRequest(ns.prefix("inactive_asset_metric"), ns));
+    Table table = ShortStackFactory.table(ns);
+    BulkAssets request =
+        new BulkAssets().withAssets(List.of(table.getEntityReference().withType(Entity.TABLE)));
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics/" + metric.getFullyQualifiedName() + "/assets/add",
+            request,
+            BulkOperationResult.class);
+    setRelationshipDeleted(
+        metric.getEntityReference(), table.getEntityReference(), Relationship.APPLIED_TO, true);
+
+    try {
+      JsonNode assets = getMetricAssets(client, metric);
+      assertEquals(0, assets.get("paging").get("total").asInt());
+      assertTrue(assets.get("data").isEmpty());
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle -> {
+                CollectionDAO.EntityRelationshipDAO relationshipDAO =
+                    handle.attach(CollectionDAO.EntityRelationshipDAO.class);
+                assertEquals(
+                    0,
+                    relationshipDAO.countFindTo(
+                        metric.getId(), Entity.METRIC, List.of(Relationship.APPLIED_TO.ordinal())));
+                assertTrue(
+                    relationshipDAO
+                        .findToWithOffset(
+                            metric.getId(),
+                            Entity.METRIC,
+                            List.of(Relationship.APPLIED_TO.ordinal()),
+                            0,
+                            10)
+                        .isEmpty());
+              });
+    } finally {
+      setRelationshipDeleted(
+          metric.getEntityReference(), table.getEntityReference(), Relationship.APPLIED_TO, false);
+    }
+  }
+
+  @Test
   void get_metricAssets_annotatesDirection(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Metric metric = createEntity(createRequest(ns.prefix("direction_metric"), ns));
@@ -2290,6 +2405,27 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .path("paging")
             .path("total")
             .asInt());
+
+    setRelationshipDeleted(
+        upstream.getEntityReference(), metric.getEntityReference(), Relationship.UPSTREAM, true);
+    setRelationshipDeleted(
+        metric.getEntityReference(), downstream.getEntityReference(), Relationship.UPSTREAM, true);
+    try {
+      assertEquals(
+          2,
+          getMetricAssets(client, metric, "limit=10&offset=0&entityType=table&direction=unrelated")
+              .path("paging")
+              .path("total")
+              .asInt());
+    } finally {
+      setRelationshipDeleted(
+          upstream.getEntityReference(), metric.getEntityReference(), Relationship.UPSTREAM, false);
+      setRelationshipDeleted(
+          metric.getEntityReference(),
+          downstream.getEntityReference(),
+          Relationship.UPSTREAM,
+          false);
+    }
   }
 
   @Test

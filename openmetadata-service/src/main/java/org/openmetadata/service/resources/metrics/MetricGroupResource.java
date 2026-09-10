@@ -610,7 +610,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           }
         }
       } catch (EntityNotFoundException | IllegalArgumentException exception) {
-        authorized = true;
+        authorized = false;
       }
       if (authorized) {
         allowed.add(requested);

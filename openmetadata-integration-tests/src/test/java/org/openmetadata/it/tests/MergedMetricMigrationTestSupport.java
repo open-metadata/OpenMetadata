@@ -105,7 +105,8 @@ final class MergedMetricMigrationTestSupport {
             + fixture.relationshipTable()
             + " (fromId VARCHAR(36) NOT NULL, toId VARCHAR(36) NOT NULL, "
             + "fromEntity VARCHAR(256) NOT NULL, toEntity VARCHAR(256) NOT NULL, "
-            + "relation SMALLINT NOT NULL, relationType VARCHAR(64) NOT NULL DEFAULT '', json "
+            + "relation SMALLINT NOT NULL, relationType VARCHAR(64) NOT NULL DEFAULT '', "
+            + "deleted BOOLEAN NOT NULL DEFAULT FALSE, json "
             + jsonType
             + ", "
             + "PRIMARY KEY (fromId, toId, relation, relationType))");
