@@ -241,11 +241,6 @@ class AdvancedSearchClassBase {
       null;
     let latestRequest = 0;
     const debouncedFetch = debounce((search: string, request: number) => {
-      // An in-flight response must settle its own search, even if a newer
-      // search is queued. Capture the current pending resolver and clear the
-      // shared slot so the newer search does not steal it.
-      const resolve = pendingResolve;
-      pendingResolve = null;
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -254,7 +249,10 @@ class AdvancedSearchClassBase {
         sourceFields
       )
         .then((response) => {
-          // An older in-flight request must not resolve a newer search's promise.
+          // An older in-flight request must not resolve a newer search's
+          // promise; the newer search's outer wrapper already settled the
+          // older pendingResolve with an empty list before reassigning the
+          // slot, and this guard prevents it from being resolved twice.
           if (request !== latestRequest) {
             return;
           }
@@ -267,14 +265,18 @@ class AdvancedSearchClassBase {
             sourceFieldOptionType
           );
 
-          resolve?.({
-            values: bucketsData as ListItem[],
-            hasMore: false,
-          });
+          if (pendingResolve) {
+            pendingResolve({
+              values: bucketsData as ListItem[],
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
         })
         .catch(() => {
-          if (request === latestRequest) {
-            resolve?.({ values: [] as ListItem[], hasMore: false });
+          if (request === latestRequest && pendingResolve) {
+            pendingResolve({ values: [] as ListItem[], hasMore: false });
+            pendingResolve = null;
           }
         });
     }, 300);

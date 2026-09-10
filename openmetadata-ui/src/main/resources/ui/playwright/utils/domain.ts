@@ -1202,15 +1202,9 @@ export const addTagsAndGlossaryToDomain = async (
         : tag;
 
     await expect(async () => {
-      const searchTags = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(value))
-      );
       await input.fill('');
       await input.fill(value);
-      await searchTags;
-      await expect(clickTarget).toBeVisible();
+      await expect(clickTarget).toBeVisible({ timeout: 10000 });
       await clickTarget.click({ timeout: 5000 });
     }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
 

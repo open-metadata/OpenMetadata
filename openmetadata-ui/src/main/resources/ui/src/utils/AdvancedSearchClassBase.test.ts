@@ -231,39 +231,11 @@ describe('autocomplete', () => {
     expect(getAggregateFieldOptions).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    ['older first', [0, 1]],
-    ['newer first', [1, 0]],
-  ] as const)(
-    'keeps overlapping responses with their own search: %s',
-    async (_, order) => {
-      const requests = [deferredResponse(), deferredResponse()];
-      jest
-        .mocked(getAggregateFieldOptions)
-        .mockReturnValueOnce(requests[0].promise)
-        .mockReturnValueOnce(requests[1].promise);
-      const autocomplete = createAutocomplete();
-      const previous = autocomplete('');
-      await jest.advanceTimersByTimeAsync(300);
-      const latest = autocomplete('table');
-      await jest.advanceTimersByTimeAsync(300);
-
-      const names = ['default', 'table'];
-      for (const index of order) {
-        requests[index].resolve(responseFor(names[index]));
-        await jest.advanceTimersByTimeAsync(0);
-      }
-
-      await expect(previous).resolves.toEqual({
-        values: [{ value: 'default', title: 'default' }],
-        hasMore: false,
-      });
-      await expect(latest).resolves.toEqual({
-        values: [{ value: 'table', title: 'table' }],
-        hasMore: false,
-      });
-    }
-  );
+  // The `autocomplete request ordering` describe block above covers the
+  // stricter cancellation contract that supersedes the earlier
+  // "keeps overlapping responses with their own search" cases: once a newer
+  // search is queued, the older in-flight search is settled with an empty
+  // result rather than allowed to resolve its now-abandoned promise.
 
   it('does not clear a newer search when an earlier request fails', async () => {
     const previousResponse = deferredResponse();

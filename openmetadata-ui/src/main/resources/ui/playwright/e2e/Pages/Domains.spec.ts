@@ -3336,18 +3336,12 @@ test.describe('Domain Tree View Functionality', () => {
       const tagOption = page.getByTestId(`tag-${tagFqn}`);
 
       // Antd Select dropdown races the search response; retry the fill →
-      // wait-for-response → option-click loop so a detached option or missed
-      // search reply does not fail the whole test.
+      // wait-for-option-visible → click loop so a detached option or missed
+      // render does not fail the whole test.
       await expect(async () => {
-        const searchTags = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes(encodeURIComponent(testTag.data.name))
-        );
         await input.fill('');
         await input.fill(tagFqn);
-        await searchTags;
-        await expect(tagOption).toBeVisible();
+        await expect(tagOption).toBeVisible({ timeout: 10000 });
         await tagOption.click({ timeout: 5000 });
       }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
 

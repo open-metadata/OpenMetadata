@@ -869,19 +869,14 @@ export const assignTag = async (
     .first();
 
   // The Antd Select dropdown races the search response: the option may render
-  // stale from the previous open, then re-render when the ES query returns.
-  // Retry the fill → wait-for-response → option click loop so a detached click
-  // or missed search reply does not fail the whole test.
+  // stale from the previous open, then re-render when the ES query returns
+  // (or the click may lose its target when the list re-renders). Retry the
+  // fill → wait-for-option-visible → click loop so a detached click or missed
+  // render does not fail the whole test.
   await expect(async () => {
-    const searchTags = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(tag))
-    );
     await tagInput.fill('');
     await tagInput.fill(tag);
-    await searchTags;
-    await expect(tagOption).toBeVisible();
+    await expect(tagOption).toBeVisible({ timeout: 10000 });
     await tagOption.click({ timeout: 5000 });
   }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
 
@@ -936,18 +931,12 @@ export const assignTagToChildren = async ({
   const tagOption = page.getByTestId(`tag-${tag}`);
 
   // Antd Select dropdown races the search response; retry the fill →
-  // wait-for-response → option-click loop so a detached option or missed
-  // search reply does not fail the whole test.
+  // wait-for-option-visible → click loop so a detached option or missed
+  // render does not fail the whole test.
   await expect(async () => {
-    const searchTags = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(tag))
-    );
     await tagInput.fill('');
     await tagInput.fill(tag);
-    await searchTags;
-    await expect(tagOption).toBeVisible();
+    await expect(tagOption).toBeVisible({ timeout: 10000 });
     await tagOption.click({ timeout: 5000 });
   }).toPass({ timeout: 30000, intervals: [1000, 2000, 5000] });
   const patchRequest =
