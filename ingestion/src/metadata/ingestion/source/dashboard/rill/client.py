@@ -1,4 +1,4 @@
-#  Copyright 2025 OpenMetadata
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
 """REST client for the Rill runtime API."""
 
 import re
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 from metadata.generated.schema.entity.services.connections.dashboard.rillConnection import (
@@ -40,7 +40,7 @@ RILL_CLOUD_PROJECT_PATH = re.compile(
 )
 
 
-def get_rill_cloud_project(host_port: str) -> Optional[Tuple[str, str]]:  # noqa: UP006, UP045
+def get_rill_cloud_project(host_port: str) -> tuple[str, str] | None:
     """Extract the organization and project from a Rill Cloud API URL."""
     match = RILL_CLOUD_PROJECT_PATH.fullmatch(urlparse(host_port).path.rstrip("/"))
     if not match:
@@ -102,18 +102,18 @@ class RillApiClient:
             if not page_token:
                 break
 
-    def get_dashboards(self) -> List[RillResource]:  # noqa: UP006
+    def get_dashboards(self) -> list[RillResource]:
         """Return Explore and Canvas dashboards."""
         return [
             *self._paginate_resources(EXPLORE_KIND),
             *self._paginate_resources(CANVAS_KIND),
         ]
 
-    def get_components(self) -> List[RillResource]:  # noqa: UP006
+    def get_components(self) -> list[RillResource]:
         """Return chart-like components used by Canvas dashboards."""
         return list(self._paginate_resources(COMPONENT_KIND))
 
-    def get_datamodels(self) -> List[RillResource]:  # noqa: UP006
+    def get_datamodels(self) -> list[RillResource]:
         """Return SQL models and metrics views."""
         return [
             *self._paginate_resources(MODEL_KIND),

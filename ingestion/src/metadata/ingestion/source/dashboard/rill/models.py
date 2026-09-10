@@ -1,4 +1,4 @@
-#  Copyright 2025 OpenMetadata
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -12,9 +12,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterator, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class RillApiModel(BaseModel):
@@ -30,27 +33,27 @@ class RillResourceName(RillApiModel):
 
 class RillResourceMeta(RillApiModel):
     name: RillResourceName
-    refs: List[RillResourceName] = Field(default_factory=list)  # noqa: UP006
-    tags: List[str] = Field(default_factory=list)  # noqa: UP006
-    file_paths: List[str] = Field(default_factory=list, alias="filePaths")  # noqa: UP006
+    refs: list[RillResourceName] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    file_paths: list[str] = Field(default_factory=list, alias="filePaths")
 
 
 class RillExploreSpec(RillApiModel):
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    metrics_view: Optional[str] = Field(None, alias="metricsView")  # noqa: UP045
+    display_name: str | None = Field(None, alias="displayName")
+    description: str | None = None
+    metrics_view: str | None = Field(None, alias="metricsView")
 
 
 class RillExploreState(RillApiModel):
-    valid_spec: Optional[RillExploreSpec] = Field(None, alias="validSpec")  # noqa: UP045
+    valid_spec: RillExploreSpec | None = Field(None, alias="validSpec")
 
 
 class RillExplore(RillApiModel):
-    spec: Optional[RillExploreSpec] = None  # noqa: UP045
-    state: Optional[RillExploreState] = None  # noqa: UP045
+    spec: RillExploreSpec | None = None
+    state: RillExploreState | None = None
 
     @property
-    def effective_spec(self) -> Optional[RillExploreSpec]:  # noqa: UP045
+    def effective_spec(self) -> RillExploreSpec | None:
         return (self.state.valid_spec if self.state else None) or self.spec
 
 
@@ -61,18 +64,18 @@ class RillCanvasItem(RillApiModel):
 
 class RillCanvasTab(RillApiModel):
     name: str
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    rows: List[RillCanvasRow] = Field(default_factory=list)  # noqa: UP006
+    display_name: str | None = Field(None, alias="displayName")
+    rows: list[RillCanvasRow] = Field(default_factory=list)
 
 
 class RillCanvasTabGroup(RillApiModel):
     name: str
-    tabs: List[RillCanvasTab] = Field(default_factory=list)  # noqa: UP006
+    tabs: list[RillCanvasTab] = Field(default_factory=list)
 
 
 class RillCanvasRow(RillApiModel):
-    items: List[RillCanvasItem] = Field(default_factory=list)  # noqa: UP006
-    tab_group: Optional[RillCanvasTabGroup] = Field(None, alias="tabGroup")  # noqa: UP045
+    items: list[RillCanvasItem] = Field(default_factory=list)
+    tab_group: RillCanvasTabGroup | None = Field(None, alias="tabGroup")
 
     def iter_component_names(self) -> Iterator[str]:
         for item in self.items:
@@ -84,9 +87,9 @@ class RillCanvasRow(RillApiModel):
 
 
 class RillCanvasSpec(RillApiModel):
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    rows: List[RillCanvasRow] = Field(default_factory=list)  # noqa: UP006
+    display_name: str | None = Field(None, alias="displayName")
+    description: str | None = None
+    rows: list[RillCanvasRow] = Field(default_factory=list)
 
     def iter_component_names(self) -> Iterator[str]:
         for row in self.rows:
@@ -94,120 +97,120 @@ class RillCanvasSpec(RillApiModel):
 
 
 class RillCanvasState(RillApiModel):
-    valid_spec: Optional[RillCanvasSpec] = Field(None, alias="validSpec")  # noqa: UP045
+    valid_spec: RillCanvasSpec | None = Field(None, alias="validSpec")
 
 
 class RillCanvas(RillApiModel):
-    spec: Optional[RillCanvasSpec] = None  # noqa: UP045
-    state: Optional[RillCanvasState] = None  # noqa: UP045
+    spec: RillCanvasSpec | None = None
+    state: RillCanvasState | None = None
 
     @property
-    def effective_spec(self) -> Optional[RillCanvasSpec]:  # noqa: UP045
+    def effective_spec(self) -> RillCanvasSpec | None:
         return (self.state.valid_spec if self.state else None) or self.spec
 
 
 class RillComponentSpec(RillApiModel):
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    renderer: Optional[str] = None  # noqa: UP045
-    renderer_properties: Dict[str, Any] = Field(default_factory=dict, alias="rendererProperties")  # noqa: UP006
+    display_name: str | None = Field(None, alias="displayName")
+    description: str | None = None
+    renderer: str | None = None
+    renderer_properties: dict[str, Any] = Field(default_factory=dict, alias="rendererProperties")
 
 
 class RillComponentState(RillApiModel):
-    valid_spec: Optional[RillComponentSpec] = Field(None, alias="validSpec")  # noqa: UP045
+    valid_spec: RillComponentSpec | None = Field(None, alias="validSpec")
 
 
 class RillComponent(RillApiModel):
-    spec: Optional[RillComponentSpec] = None  # noqa: UP045
-    state: Optional[RillComponentState] = None  # noqa: UP045
+    spec: RillComponentSpec | None = None
+    state: RillComponentState | None = None
 
     @property
-    def effective_spec(self) -> Optional[RillComponentSpec]:  # noqa: UP045
+    def effective_spec(self) -> RillComponentSpec | None:
         return (self.state.valid_spec if self.state else None) or self.spec
 
 
 class RillDataType(RillApiModel):
-    code: Optional[str] = None  # noqa: UP045
-    nullable: Optional[bool] = None  # noqa: UP045
-    raw_type: Optional[str] = Field(None, alias="rawType")  # noqa: UP045
+    code: str | None = None
+    nullable: bool | None = None
+    raw_type: str | None = Field(None, alias="rawType")
 
 
 class RillMetricsViewDimension(RillApiModel):
     name: str
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    column: Optional[str] = None  # noqa: UP045
-    expression: Optional[str] = None  # noqa: UP045
-    data_type: Optional[RillDataType] = Field(None, alias="dataType")  # noqa: UP045
+    display_name: str | None = Field(None, alias="displayName")
+    description: str | None = None
+    column: str | None = None
+    expression: str | None = None
+    data_type: RillDataType | None = Field(None, alias="dataType")
 
 
 class RillMetricsViewMeasure(RillApiModel):
     name: str
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    expression: Optional[str] = None  # noqa: UP045
-    data_type: Optional[RillDataType] = Field(None, alias="dataType")  # noqa: UP045
+    display_name: str | None = Field(None, alias="displayName")
+    description: str | None = None
+    expression: str | None = None
+    data_type: RillDataType | None = Field(None, alias="dataType")
 
 
 class RillMetricsViewSpec(RillApiModel):
-    parent: Optional[str] = None  # noqa: UP045
-    connector: Optional[str] = None  # noqa: UP045
-    database: Optional[str] = None  # noqa: UP045
-    database_schema: Optional[str] = Field(None, alias="databaseSchema")  # noqa: UP045
-    table: Optional[str] = None  # noqa: UP045
-    model: Optional[str] = None  # noqa: UP045
-    display_name: Optional[str] = Field(None, alias="displayName")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    time_dimension: Optional[str] = Field(None, alias="timeDimension")  # noqa: UP045
-    dimensions: List[RillMetricsViewDimension] = Field(default_factory=list)  # noqa: UP006
-    measures: List[RillMetricsViewMeasure] = Field(default_factory=list)  # noqa: UP006
+    parent: str | None = None
+    connector: str | None = None
+    database: str | None = None
+    database_schema: str | None = Field(None, alias="databaseSchema")
+    table: str | None = None
+    model: str | None = None
+    display_name: str | None = Field(None, alias="displayName")
+    description: str | None = None
+    time_dimension: str | None = Field(None, alias="timeDimension")
+    dimensions: list[RillMetricsViewDimension] = Field(default_factory=list)
+    measures: list[RillMetricsViewMeasure] = Field(default_factory=list)
 
 
 class RillMetricsViewState(RillApiModel):
-    valid_spec: Optional[RillMetricsViewSpec] = Field(None, alias="validSpec")  # noqa: UP045
+    valid_spec: RillMetricsViewSpec | None = Field(None, alias="validSpec")
 
 
 class RillMetricsView(RillApiModel):
-    spec: Optional[RillMetricsViewSpec] = None  # noqa: UP045
-    state: Optional[RillMetricsViewState] = None  # noqa: UP045
+    spec: RillMetricsViewSpec | None = None
+    state: RillMetricsViewState | None = None
 
     @property
-    def effective_spec(self) -> Optional[RillMetricsViewSpec]:  # noqa: UP045
+    def effective_spec(self) -> RillMetricsViewSpec | None:
         return (self.state.valid_spec if self.state else None) or self.spec
 
 
 class RillModelSpec(RillApiModel):
-    input_connector: Optional[str] = Field(None, alias="inputConnector")  # noqa: UP045
-    input_properties: Dict[str, Any] = Field(default_factory=dict, alias="inputProperties")  # noqa: UP006
-    output_connector: Optional[str] = Field(None, alias="outputConnector")  # noqa: UP045
-    output_properties: Dict[str, Any] = Field(default_factory=dict, alias="outputProperties")  # noqa: UP006
+    input_connector: str | None = Field(None, alias="inputConnector")
+    input_properties: dict[str, Any] = Field(default_factory=dict, alias="inputProperties")
+    output_connector: str | None = Field(None, alias="outputConnector")
+    output_properties: dict[str, Any] = Field(default_factory=dict, alias="outputProperties")
 
 
 class RillModelState(RillApiModel):
-    result_table: Optional[str] = Field(None, alias="resultTable")  # noqa: UP045
+    result_table: str | None = Field(None, alias="resultTable")
 
 
 class RillModel(RillApiModel):
-    spec: Optional[RillModelSpec] = None  # noqa: UP045
-    state: Optional[RillModelState] = None  # noqa: UP045
+    spec: RillModelSpec | None = None
+    state: RillModelState | None = None
 
 
 class RillResource(RillApiModel):
     meta: RillResourceMeta
-    explore: Optional[RillExplore] = None  # noqa: UP045
-    canvas: Optional[RillCanvas] = None  # noqa: UP045
-    component: Optional[RillComponent] = None  # noqa: UP045
-    metrics_view: Optional[RillMetricsView] = Field(None, alias="metricsView")  # noqa: UP045
-    model: Optional[RillModel] = None  # noqa: UP045
+    explore: RillExplore | None = None
+    canvas: RillCanvas | None = None
+    component: RillComponent | None = None
+    metrics_view: RillMetricsView | None = Field(None, alias="metricsView")
+    model: RillModel | None = None
 
 
 class RillListResourcesResponse(RillApiModel):
-    resources: List[RillResource] = Field(default_factory=list)  # noqa: UP006
-    next_page_token: Optional[str] = Field(None, alias="nextPageToken")  # noqa: UP045
+    resources: list[RillResource] = Field(default_factory=list)
+    next_page_token: str | None = Field(None, alias="nextPageToken")
 
 
 class RillGetResourceResponse(RillApiModel):
-    resource: Optional[RillResource] = None  # noqa: UP045
+    resource: RillResource | None = None
 
 
 RillCanvasTab.model_rebuild()

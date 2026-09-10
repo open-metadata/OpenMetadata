@@ -1,4 +1,4 @@
-#  Copyright 2025 OpenMetadata
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -11,7 +11,8 @@
 """Rill dashboard source."""
 
 import traceback
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import NamedTuple, cast
 from urllib.parse import quote
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -46,6 +47,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.rill.client import (
     CANVAS_KIND,
@@ -76,10 +78,10 @@ DashboardSpec = RillExploreSpec | RillCanvasSpec
 
 
 class RillTableTarget(NamedTuple):
-    database: Optional[str]  # noqa: UP045
-    database_schema: Optional[str]  # noqa: UP045
+    database: str | None
+    database_schema: str | None
     table: str
-    sql: Optional[str] = None  # noqa: UP045
+    sql: str | None = None
 
 
 RILL_CHART_TYPE_OVERRIDES = {
@@ -125,17 +127,17 @@ class RillSource(DashboardServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.client = cast("RillApiClient", self.client)
-        self.components: Dict[str, RillResource] = {}  # noqa: UP006
-        self.models: Dict[str, RillResource] = {}  # noqa: UP006
-        self.metrics_views: Dict[str, RillResource] = {}  # noqa: UP006
-        self.lineage_edges: Set[Tuple[str, str]] = set()  # noqa: UP006
+        self.components: dict[str, RillResource] = {}
+        self.models: dict[str, RillResource] = {}
+        self.metrics_views: dict[str, RillResource] = {}
+        self.lineage_edges: set[tuple[str, str]] = set()
 
     @classmethod
     def create(
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "RillSource":
         config = WorkflowSource.model_validate(config_dict)
         connection: RillConnection = config.serviceConnection.root.config
@@ -148,7 +150,7 @@ class RillSource(DashboardServiceSource):
         self.components = {component.meta.name.name: component for component in components}
         logger.info(f"Found {len(self.components)} Rill components")
 
-    def get_dashboards_list(self) -> Optional[List[RillResource]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[RillResource] | None:
         return self.client.get_dashboards()
 
     def get_dashboard_name(self, dashboard: RillResource) -> str:
@@ -233,22 +235,22 @@ class RillSource(DashboardServiceSource):
             return f"https://ui.rilldata.com/{quote(org, safe='')}/{quote(project, safe='')}"
         return host_port
 
-    def _project_name(self) -> Optional[str]:  # noqa: UP045
+    def _project_name(self) -> str | None:
         cloud_project = get_rill_cloud_project(clean_uri(str(self.service_connection.hostPort)))
         return cloud_project[1] if cloud_project else None
 
-    def get_project_name(self, dashboard_details: RillResource) -> Optional[str]:  # noqa: UP045
+    def get_project_name(self, dashboard_details: RillResource) -> str | None:
         return self._project_name()
 
     @staticmethod
-    def _get_chart_type(renderer: Optional[str]) -> str:  # noqa: UP045
+    def _get_chart_type(renderer: str | None) -> str:
         normalized_renderer = (renderer or "other").lower().replace("-", "_")
         normalized_renderer = normalized_renderer.removesuffix("_chart")
         normalized_renderer = RILL_CHART_TYPE_OVERRIDES.get(normalized_renderer, normalized_renderer)
         return get_standard_chart_type(normalized_renderer).value
 
     @staticmethod
-    def _get_column_data_type(data_type: Optional[RillDataType]) -> DataType:  # noqa: UP045
+    def _get_column_data_type(data_type: RillDataType | None) -> DataType:
         if not data_type:
             return DataType.UNKNOWN
         if data_type.code in RILL_DATA_TYPE_MAP:
@@ -259,9 +261,9 @@ class RillSource(DashboardServiceSource):
 
     @staticmethod
     def _get_field_description(
-        description: Optional[str],  # noqa: UP045
-        expression: Optional[str],  # noqa: UP045
-    ) -> Optional[Markdown]:  # noqa: UP045
+        description: str | None,
+        expression: str | None,
+    ) -> Markdown | None:
         parts = []
         if expression:
             parts.append(f"Expression: `{expression}`")
@@ -271,17 +273,17 @@ class RillSource(DashboardServiceSource):
 
     @staticmethod
     def _get_resource_description(
-        description: Optional[str],  # noqa: UP045
-    ) -> Optional[Markdown]:  # noqa: UP045
+        description: str | None,
+    ) -> Markdown | None:
         return Markdown(description.strip()) if description and description.strip() else None
 
     @classmethod
     def _get_metrics_view_columns(
         cls,
         spec: RillMetricsViewSpec,
-    ) -> List[Column]:  # noqa: UP006
-        columns: List[Column] = []  # noqa: UP006
-        seen_names: Set[str] = set()  # noqa: UP006
+    ) -> list[Column]:
+        columns: list[Column] = []
+        seen_names: set[str] = set()
 
         def append_column(column: Column) -> None:
             name = column.name.root
@@ -444,7 +446,7 @@ class RillSource(DashboardServiceSource):
                     )
                 )
 
-    def _get_dashboard_metrics_views(self, dashboard: RillResource) -> List[str]:  # noqa: UP006
+    def _get_dashboard_metrics_views(self, dashboard: RillResource) -> list[str]:
         metrics_views = {}
         for reference in dashboard.meta.refs:
             if reference.kind == METRICS_VIEW_KIND:
@@ -474,7 +476,7 @@ class RillSource(DashboardServiceSource):
 
         return list(metrics_views)
 
-    def _get_datamodel_entity(self, datamodel_name: str) -> Optional[DashboardDataModel]:  # noqa: UP045
+    def _get_datamodel_entity(self, datamodel_name: str) -> DashboardDataModel | None:
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
@@ -484,14 +486,14 @@ class RillSource(DashboardServiceSource):
         return self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
 
     @staticmethod
-    def _matches_prefix(resource_name: Optional[str], prefix_name: Optional[str]) -> bool:  # noqa: UP045
+    def _matches_prefix(resource_name: str | None, prefix_name: str | None) -> bool:
         return not resource_name or not prefix_name or resource_name.lower() == prefix_name.lower()
 
     def _get_table_entities(
         self,
         target: RillTableTarget,
-        db_service_prefix: Optional[str],  # noqa: UP045
-    ) -> List[Table]:  # noqa: UP006
+        db_service_prefix: str | None,
+    ) -> list[Table]:
         (
             service_name,
             prefix_database_name,
@@ -530,7 +532,7 @@ class RillSource(DashboardServiceSource):
             or []
         )
 
-    def _get_physical_table_targets(self, resource: RillResource) -> List[RillTableTarget]:  # noqa: UP006
+    def _get_physical_table_targets(self, resource: RillResource) -> list[RillTableTarget]:
         internal_model_names = {reference.name for reference in resource.meta.refs if reference.kind == MODEL_KIND}
 
         if resource.meta.name.kind == METRICS_VIEW_KIND:
@@ -582,9 +584,9 @@ class RillSource(DashboardServiceSource):
     def _yield_physical_table_dependencies(
         self,
         resource: RillResource,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
+        downstream: DashboardDataModel | None,
     ) -> Iterable[Either[AddLineageRequest]]:
-        downstream = self._get_datamodel_entity(resource.meta.name.name)
         for target in self._get_physical_table_targets(resource):
             table_entities = self._get_table_entities(target, db_service_prefix)
             if not table_entities:
@@ -600,8 +602,8 @@ class RillSource(DashboardServiceSource):
                 continue
 
             for table_entity in table_entities:
-                table_fqn = getattr(getattr(table_entity, "fullyQualifiedName", None), "root", None)
-                table_key = table_fqn or target.table
+                entity_fqn = getattr(table_entity, "fullyQualifiedName", None)
+                table_key = model_str(entity_fqn) if entity_fqn else target.table
                 edge_key = (f"table:{table_key}", f"datamodel:{resource.meta.name.name}")
                 if edge_key in self.lineage_edges:
                     continue
@@ -618,8 +620,8 @@ class RillSource(DashboardServiceSource):
     def _yield_datamodel_dependencies(
         self,
         resource: RillResource,
-        visited: Set[Tuple[str, str]],  # noqa: UP006
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        visited: set[tuple[str, str]],
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         resource_key = (resource.meta.name.kind, resource.meta.name.name)
         if resource_key in visited:
@@ -627,7 +629,7 @@ class RillSource(DashboardServiceSource):
         visited.add(resource_key)
 
         downstream = self._get_datamodel_entity(resource.meta.name.name)
-        yield from self._yield_physical_table_dependencies(resource, db_service_prefix)
+        yield from self._yield_physical_table_dependencies(resource, db_service_prefix, downstream)
         for reference in resource.meta.refs:
             if reference.kind not in {MODEL_KIND, METRICS_VIEW_KIND}:
                 continue
@@ -659,7 +661,7 @@ class RillSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: RillResource,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         if not self.source_config.includeDataModels:
             return
