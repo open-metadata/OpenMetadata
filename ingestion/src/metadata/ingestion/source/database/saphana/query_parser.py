@@ -39,9 +39,9 @@ class SapHanaQueryParserSource(QueryParserSource, ABC):
     schema_field = "schema_name"
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):  # pyright: ignore[reportMissingTypeArgument]
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: SapHanaConnection = config.serviceConnection.root.config
+        connection: SapHanaConnection = config.serviceConnection.root.config  # pyright: ignore[reportAssignmentType, reportOptionalMemberAccess]
         if not isinstance(connection, SapHanaConnection):
             raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
         return cls(config, metadata)

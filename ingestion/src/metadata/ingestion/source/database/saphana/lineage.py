@@ -18,6 +18,7 @@ from collections.abc import Iterable
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -82,39 +83,62 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         if self.engine is not None:
             self.engine.dispose()
 
-    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Run the SQL-based passes, then the repository pass for calculation views.
 
         Both passes report their own edge count, because "the run succeeded and
         produced nothing" is the failure mode users actually hit, and it is
         indistinguishable from success unless the counts are stated.
         """
+        # The shared passes emit CreateQueryRequest alongside lineage, so count the
+        # two apart. Folding them together would report query records as edges and
+        # hide a run that parsed queries but resolved none of them into lineage.
         sql_edges = 0
+        sql_queries = 0
         for either in super()._iter():
-            sql_edges += 1 if either.right else 0
+            if isinstance(either.right, AddLineageRequest):
+                sql_edges += 1
+            elif isinstance(either.right, CreateQueryRequest):
+                sql_queries += 1
             yield either
-        logger.info("SAP HANA SQL lineage produced %d edges from view definitions and query history", sql_edges)
+        logger.info(
+            "SAP HANA SQL lineage produced %d edges from view definitions and query history, "
+            "alongside %d query records",
+            sql_edges,
+            sql_queries,
+        )
 
         cdata_edges = 0
         for either in self.yield_cdata_lineage():
-            cdata_edges += 1 if either.right else 0
+            cdata_edges += 1 if isinstance(either.right, AddLineageRequest) else 0
             yield either
         logger.info("SAP HANA repository lineage produced %d edges from _SYS_REPO models", cdata_edges)
 
-        if not sql_edges and not cdata_edges:
+        if sql_edges or cdata_edges:
+            return
+
+        if sql_queries:
             logger.warning(
-                "SAP HANA lineage finished with no edges. Check that the metadata workflow has already "
-                "ingested the tables and views, that processViewLineage or processQueryLineage is enabled, "
-                "and that the ingestion user can read SYS.VIEWS and SYS.M_SQL_PLAN_CACHE."
+                "SAP HANA lineage finished with no edges, though %d queries were read. The queries were "
+                "found but neither endpoint resolved to an ingested asset, so check that the metadata "
+                "workflow covers the schemas those queries reference.",
+                sql_queries,
+            )
+        else:
+            logger.warning(
+                "SAP HANA lineage finished with no edges and read no queries. Check that the metadata "
+                "workflow has already ingested the tables and views, that processViewLineage or "
+                "processQueryLineage is enabled, and that the ingestion user holds CATALOG READ, without "
+                "which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own statements."
             )
 
-    def yield_cdata_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def yield_cdata_lineage(self) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Lineage for calculation, analytic and attribute views, from _SYS_REPO.
 
         On-prem and HXE only. HANA Cloud has no classic repository, so this yields
         nothing there and the SQL passes above carry the whole result.
         """
-        with self.engine.connect() as conn:
+        with self.engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
             try:
                 result = conn.execution_options(stream_results=True, max_row_buffer=100).execute(text(SAPHANA_LINEAGE))
             except DBAPIError as exc:
@@ -148,7 +172,11 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                         continue
 
                     logger.debug("Processing lineage for view: %s", lineage_model.name)
-                    yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
+                    # Either is invariant, so parse_cdata's narrower Either[AddLineageRequest]
+                    # does not widen into the union the shared framework yields.
+                    yield from self.parse_cdata(  # pyright: ignore[reportReturnType]
+                        metadata=self.metadata, lineage_model=lineage_model
+                    )
                 except Exception as exc:
                     self.status.failed(
                         error=StackTraceError(
