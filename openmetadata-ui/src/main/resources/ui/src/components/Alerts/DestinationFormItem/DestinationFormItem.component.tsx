@@ -174,10 +174,12 @@ function DestinationFormItem({
               control={control}
               defaultValue={10}
               name="timeout"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <Input
+                  hint={fieldState.error?.message}
                   inputDataTestId="connection-timeout-input"
                   isDisabled={isViewMode}
+                  isInvalid={Boolean(fieldState.error)}
                   placeholder={`${t('label.connection-timeout')} (${t(
                     'label.second-plural'
                   )})`}
@@ -191,8 +193,14 @@ function DestinationFormItem({
                 />
               )}
               rules={{
-                required: true,
-                validate: (v) => Number.isFinite(Number(v)) && Number(v) > 0,
+                required: t('label.field-required', {
+                  field: t('label.connection-timeout'),
+                }),
+                validate: (v) =>
+                  (Number.isInteger(Number(v)) && Number(v) > 0) ||
+                  t('label.field-invalid', {
+                    field: t('label.connection-timeout'),
+                  }),
               }}
             />
           </Grid.Item>
@@ -214,10 +222,12 @@ function DestinationFormItem({
               control={control}
               defaultValue={DEFAULT_READ_TIMEOUT}
               name="readTimeout"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <Input
+                  hint={fieldState.error?.message}
                   inputDataTestId="read-timeout-input"
                   isDisabled={isViewMode}
+                  isInvalid={Boolean(fieldState.error)}
                   placeholder={`${t('label.read-type', {
                     type: t('label.timeout'),
                   })} (${t('label.second-plural')})`}
@@ -231,8 +241,14 @@ function DestinationFormItem({
                 />
               )}
               rules={{
-                required: true,
-                validate: (v) => Number.isFinite(Number(v)) && Number(v) > 0,
+                required: t('label.field-required', {
+                  field: t('label.read-type', { type: t('label.timeout') }),
+                }),
+                validate: (v) =>
+                  (Number.isInteger(Number(v)) && Number(v) > 0) ||
+                  t('label.field-invalid', {
+                    field: t('label.read-type', { type: t('label.timeout') }),
+                  }),
               }}
             />
           </Grid.Item>

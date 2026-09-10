@@ -122,6 +122,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Input: forwardRef<
       HTMLInputElement,
       {
+        hint?: ReactNode;
+        isInvalid?: boolean;
         onChange?: (val: string) => void;
         value?: string;
         type?: string;
@@ -131,6 +133,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
       }
     >(function MockInput(
       {
+        hint,
+        isInvalid,
         onChange,
         value,
         type,
@@ -141,15 +145,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ref
     ) {
       return (
-        <input
-          aria-label={inputDataTestId ?? tid}
-          data-testid={inputDataTestId ?? tid}
-          disabled={isDisabled}
-          ref={ref}
-          type={type}
-          value={value ?? ''}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
+        <>
+          <input
+            aria-invalid={isInvalid}
+            aria-label={inputDataTestId ?? tid}
+            data-testid={inputDataTestId ?? tid}
+            disabled={isDisabled}
+            ref={ref}
+            type={type}
+            value={value ?? ''}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+          {hint}
+        </>
       );
     }),
     Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -520,6 +528,11 @@ describe('DestinationFormItem', () => {
 
       expect(isValid).toBe(false);
       expect(methods.formState.errors.timeout).toBeDefined();
+      expect(screen.getByTestId('connection-timeout-input')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
     });
 
     it('rejects a cleared read timeout', async () => {
@@ -540,7 +553,38 @@ describe('DestinationFormItem', () => {
 
       expect(isValid).toBe(false);
       expect(methods.formState.errors.readTimeout).toBeDefined();
+      expect(screen.getByTestId('read-timeout-input')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
     });
+
+    it.each([
+      ['connection-timeout-input', 'timeout', '1.5'],
+      ['read-timeout-input', 'readTimeout', '2.5'],
+    ])(
+      'rejects a fractional value for %s',
+      async (testId, fieldName, value) => {
+        const { methods } = renderWithForm(<DestinationFormItem />, {
+          resources: ['container'],
+        });
+
+        await act(async () => {
+          fireEvent.change(screen.getByTestId(testId), {
+            target: { value },
+          });
+        });
+
+        let isValid = true;
+        await act(async () => {
+          isValid = await methods.trigger(fieldName);
+        });
+
+        expect(isValid).toBe(false);
+        expect(screen.getByText('label.field-invalid')).toBeInTheDocument();
+      }
+    );
 
     it('rejects zero and negative connection timeouts', async () => {
       const { methods } = renderWithForm(<DestinationFormItem />, {
