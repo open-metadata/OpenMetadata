@@ -35,6 +35,7 @@ import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
+  HeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
   ProfileNavItem,
@@ -61,6 +62,7 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
+  const [headerOverride, setHeaderOverride] = useState<HeaderOverride>({});
 
   const fetchUser = useCallback(async () => {
     if (!currentUser?.name) {
@@ -92,6 +94,11 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  // Reset dynamic header overrides whenever the user switches to a different tab.
+  useEffect(() => {
+    setHeaderOverride({});
+  }, [selectedId]);
 
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
@@ -165,6 +172,16 @@ const ProfilePage: React.FC = () => {
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
 
+  const baseHeaderProps = useMemo(
+    () => ({
+      title: t(activeItem.label),
+      description: t(activeItem.description),
+      icon: activeItem.icon,
+      breadcrumbRoot: t(PROFILE_NAV_GROUP_LABEL[activeItem.group]),
+    }),
+    [activeItem, t]
+  );
+
   return (
     <Box
       className="ai-profile-page tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden"
@@ -182,28 +199,23 @@ const ProfilePage: React.FC = () => {
           <Box
             className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
             direction="col">
-            {!activeItem.renderWithManagedHeader && (
-              <ProfileContentHeader
-                breadcrumbRoot={t(PROFILE_NAV_GROUP_LABEL[activeItem.group])}
-                description={t(activeItem.description)}
-                icon={activeItem.icon}
-                title={t(activeItem.label)}
-              />
-            )}
-            {activeItem.renderWithManagedHeader ? (
+            <ProfileContentHeader {...baseHeaderProps} {...headerOverride} />
+            {activeItem.selfContainedLayout ? (
               activeItem.render({
                 userData,
                 isProfileLoading,
                 updateUserDetails,
+                onHeaderChange: setHeaderOverride,
               })
             ) : (
               <div
-                className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0 "
+                className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
                 data-testid="profile-content-body">
                 {activeItem.render({
                   userData,
                   isProfileLoading,
                   updateUserDetails,
+                  onHeaderChange: setHeaderOverride,
                 })}
               </div>
             )}

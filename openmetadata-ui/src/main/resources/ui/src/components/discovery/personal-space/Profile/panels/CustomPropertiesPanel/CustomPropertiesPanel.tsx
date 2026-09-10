@@ -13,7 +13,6 @@
 
 import {
   Box,
-  Breadcrumbs,
   FeaturedIcon,
   Toggle,
   Typography,
@@ -21,7 +20,7 @@ import {
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { Settings02 } from '@untitledui/icons';
 import type { Key } from 'react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
@@ -32,6 +31,7 @@ import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
+import { HeaderOverride } from '../../profileNavConfig';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
@@ -40,11 +40,16 @@ import { CRUMB } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import {
   getBreadcrumbItems,
-  getContentClassName,
   getPageTitle,
 } from './CustomPropertiesPanel.utils';
 
-const CustomPropertiesPanel: React.FC = () => {
+interface CustomPropertiesPanelProps {
+  onHeaderChange: (overrides: HeaderOverride) => void;
+}
+
+const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
+  onHeaderChange,
+}) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
@@ -151,72 +156,69 @@ const CustomPropertiesPanel: React.FC = () => {
     [subView]
   );
 
+  // Push dynamic header state (breadcrumbs, icon, actions) up to ProfilePage
+  // so ProfileContentHeader reflects the current subView without this panel
+  // needing to render its own header.
+  useEffect(() => {
+    const iconNode =
+      subView.type === 'landing' ? (
+        <FeaturedIcon
+          className="tw:rounded-xl"
+          color="brand"
+          icon={Settings02}
+          shape="square"
+          size="md"
+          theme="dark"
+        />
+      ) : (
+        getEntityIconWithBg(
+          subView.entityType.fullyQualifiedName ?? '',
+          { className: 'tw:h-10 tw:w-10 tw:rounded-lg' },
+          { size: 25 }
+        )
+      );
+
+    const actions =
+      subView.type === 'add' || subView.type === 'edit' ? (
+        <Box align="center" direction="row" gap={2}>
+          <Hint className="tw:size-4.5 tw:text-secondary" />
+          <Typography size="text-sm" weight="medium">
+            {t('label.show-hint')}
+          </Typography>
+          <Toggle isSelected={showHint} onChange={setShowHint} />
+        </Box>
+      ) : undefined;
+
+    onHeaderChange({
+      title: pageTitle,
+      description: pageDescription,
+      breadcrumbs: breadcrumbItems,
+      onBreadcrumbAction: handleBreadcrumbAction,
+      iconNode,
+      actions,
+    });
+  }, [
+    subView,
+    breadcrumbItems,
+    handleBreadcrumbAction,
+    pageTitle,
+    pageDescription,
+    showHint,
+    t,
+    onHeaderChange,
+  ]);
+
+  const contentClassName =
+    subView.type === 'add' || subView.type === 'edit'
+      ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
+      : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0';
+
   return (
     <Box
       className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
       direction="col">
-      {/* Managed header — mirrors ProfileContentHeader layout */}
-      <Box
-        className="ai-profile-page__content-header tw:mb-7 tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:py-4"
-        data-testid="custom-properties-header"
-        direction="col"
-        gap={3}>
-        <Breadcrumbs
-          divider="chevron"
-          items={breadcrumbItems}
-          size="xs"
-          type="text"
-          onAction={handleBreadcrumbAction}
-        />
-        <Box align="center" direction="row" justify="between">
-          <Box align="center" direction="row" gap={3}>
-            {subView.type === 'landing' ? (
-              <FeaturedIcon
-                className="tw:rounded-xl"
-                color="brand"
-                icon={Settings02}
-                shape="square"
-                size="md"
-                theme="dark"
-              />
-            ) : (
-              getEntityIconWithBg(
-                subView.entityType.fullyQualifiedName ?? '',
-                { className: 'tw:h-10 tw:w-10 tw:rounded-lg' },
-                { size: 25 }
-              )
-            )}
-            <Box direction="col">
-              <Typography
-                className="tw:text-primary-900"
-                size="text-lg"
-                weight="bold">
-                {pageTitle}
-              </Typography>
-              <Typography
-                className="tw:text-tertiary"
-                size="text-sm"
-                weight="regular">
-                {pageDescription}
-              </Typography>
-            </Box>
-          </Box>
-
-          {(subView.type === 'add' || subView.type === 'edit') && (
-            <Box align="center" direction="row" gap={2}>
-              <Hint className="tw:size-4.5 tw:text-secondary" />
-              <Typography size="text-sm" weight="medium">
-                {t('label.show-hint')}
-              </Typography>
-              <Toggle isSelected={showHint} onChange={setShowHint} />
-            </Box>
-          )}
-        </Box>
-      </Box>
-
-      {/* Content body */}
       <div
-        className={getContentClassName(subView)}
+        className={contentClassName}
         data-testid="custom-properties-content">
         {subView.type === 'landing' && (
           <CustomPropertiesLandingPage

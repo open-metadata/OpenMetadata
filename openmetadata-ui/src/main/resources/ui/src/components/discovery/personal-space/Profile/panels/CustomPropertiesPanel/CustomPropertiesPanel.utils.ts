@@ -121,8 +121,3 @@ export function getPageTitle(
   return t('label.custom-property-plural');
 }
 
-export function getContentClassName(subView: CustomPropertiesSubView): string {
-  return subView.type === 'add' || subView.type === 'edit'
-    ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
-    : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0';
-}

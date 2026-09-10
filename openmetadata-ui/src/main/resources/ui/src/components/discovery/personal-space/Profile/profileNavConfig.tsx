@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
+import type { Key } from 'react';
 import React, { FC } from 'react';
 import { User } from '../../../../generated/entity/teams/user';
 import AccessTokenPanel from './components/AccessTokenPanel';
@@ -44,6 +46,19 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
 ];
 
 /**
+ * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
+ * can reflect the panel's internal state (e.g. multi-level breadcrumbs).
+ */
+export type HeaderOverride = {
+  title?: string;
+  description?: string;
+  breadcrumbs?: BreadcrumbItemType[];
+  onBreadcrumbAction?: (id: Key) => void;
+  iconNode?: React.ReactNode;
+  actions?: React.ReactNode;
+};
+
+/**
  * Context handed to each nav item's `render`. Mirrors the data ProfilePage
  * already fetches so the individual row / tab components keep their existing
  * props.
@@ -52,6 +67,12 @@ export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  /**
+   * Call this to push dynamic header state (breadcrumbs, icon, actions) up to
+   * ProfilePage so it can update ProfileContentHeader without the panel needing
+   * to render its own header.
+   */
+  onHeaderChange: (overrides: HeaderOverride) => void;
 }
 
 export interface ProfileNavItem {
@@ -65,11 +86,11 @@ export interface ProfileNavItem {
   icon: FC<{ className?: string }>;
   render: (ctx: ProfileNavRenderContext) => React.ReactNode;
   /**
-   * When true the parent ProfilePage skips rendering ProfileContentHeader and
-   * lets the panel's render() return its own managed header. Use for panels
-   * that need dynamic breadcrumbs (e.g. multi-level navigation).
+   * When true, ProfilePage skips the standard content scroll wrapper
+   * (`overflow-y-auto p-8`) and lets the panel manage its own layout.
+   * The header is still rendered by ProfilePage.
    */
-  renderWithManagedHeader?: boolean;
+  selfContainedLayout?: boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -122,8 +143,10 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
     icon: Settings02 as FC<{ className?: string }>,
-    renderWithManagedHeader: true,
-    render: () => <CustomPropertiesPanel />,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <CustomPropertiesPanel onHeaderChange={onHeaderChange} />
+    ),
   },
 ];
 

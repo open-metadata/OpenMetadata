@@ -17,14 +17,30 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import type { Key } from 'react';
 import React, { FC, useMemo } from 'react';
 
-interface ProfileContentHeaderProps {
+export interface ProfileContentHeaderProps {
   icon: FC<{ className?: string }>;
   title: string;
   description: string;
   /** Breadcrumb root crumb — the current item's group label (Account / Credentials). */
   breadcrumbRoot: string;
+  /**
+   * When provided, overrides the default `[breadcrumbRoot, title]` pair. Use
+   * for panels that need dynamic multi-level breadcrumbs (e.g. CustomPropertiesPanel).
+   */
+  breadcrumbs?: BreadcrumbItemType[];
+  /** Called when the user clicks a breadcrumb item. Only used with `breadcrumbs`. */
+  onBreadcrumbAction?: (id: Key) => void;
+  /**
+   * When provided, renders this node instead of the default `<FeaturedIcon>`.
+   * Use when the icon is dynamic (e.g. an entity-specific icon).
+   */
+  iconNode?: React.ReactNode;
+  /** Optional right-side slot in the title row (e.g. a toggle or action buttons). */
+  actions?: React.ReactNode;
 }
 
 /**
@@ -37,14 +53,20 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   title,
   description,
   breadcrumbRoot,
+  breadcrumbs,
+  onBreadcrumbAction,
+  iconNode,
+  actions,
 }) => {
-  const breadcrumbItems = useMemo(
+  const defaultBreadcrumbs = useMemo(
     () => [
       { id: 'root', label: breadcrumbRoot },
       { id: 'current', label: title },
     ],
     [breadcrumbRoot, title]
   );
+
+  const resolvedBreadcrumbs = breadcrumbs ?? defaultBreadcrumbs;
 
   return (
     <Box
@@ -54,33 +76,42 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       gap={3}>
       <Breadcrumbs
         divider="chevron"
-        items={breadcrumbItems}
+        items={resolvedBreadcrumbs}
         size="xs"
         type="text"
+        onAction={onBreadcrumbAction}
       />
-      <Box align="center" direction="row" gap={3}>
-        <FeaturedIcon
-          className="tw:rounded-xl"
-          color="brand"
-          icon={icon}
-          shape="square"
-          size="md"
-          theme="dark"
-        />
-        <Box direction="col">
-          <Typography
-            className="tw:text-primary-900"
-            size="text-lg"
-            weight="bold">
-            {title}
-          </Typography>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-sm"
-            weight="regular">
-            {description}
-          </Typography>
+      <Box
+        align="center"
+        direction="row"
+        justify={actions ? 'between' : undefined}>
+        <Box align="center" direction="row" gap={3}>
+          {iconNode ?? (
+            <FeaturedIcon
+              className="tw:rounded-xl"
+              color="brand"
+              icon={icon}
+              shape="square"
+              size="md"
+              theme="dark"
+            />
+          )}
+          <Box direction="col">
+            <Typography
+              className="tw:text-primary-900"
+              size="text-lg"
+              weight="bold">
+              {title}
+            </Typography>
+            <Typography
+              className="tw:text-tertiary"
+              size="text-sm"
+              weight="regular">
+              {description}
+            </Typography>
+          </Box>
         </Box>
+        {actions}
       </Box>
     </Box>
   );
