@@ -42,6 +42,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -697,7 +698,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         if (apiEndpointSegments == null) {
           List<String> detected = detectAirflowApiVersion();
           if (detected == null) {
-            throw new PipelineServiceClientException(
+            // Typed subclass, not the generic parent: an unreachable scheduler is exactly the
+            // condition callers tolerate via allowUnavailableRunner. Thrown as the parent it was
+            // uncatchable there, so a cascade hard-delete aborted whenever Airflow was down.
+            throw new IngestionRunnerUnavailableException(
                 String.format(
                     "Unable to connect to Airflow APIs at [%s]. None of the API versions (v3 pluginsv2, v2, v1) responded successfully. "
                         + "Airflow may still be starting up or the OpenMetadata plugin may not be installed. "

@@ -786,7 +786,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    */
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
-    postDelete(entity, hardDelete, false);
+    // Inside an ancestor's cascade the user asked to delete a service, not this DAG. Letting an
+    // unreachable Airflow propagate here aborted the entire subtree delete and rolled the rows
+    // back, so a service with any ingestion pipeline under it became undeletable whenever the
+    // scheduler was down. A direct delete of the pipeline itself still surfaces the failure.
+    boolean cascading = EntityRepository.isInHardDeleteCascade();
+    if (postDelete(entity, hardDelete, cascading) && cascading) {
+      LOG.warn(
+          "Ingestion runner unreachable during cascade delete; DAG left behind [pipelineFqn={}, pipelineId={}]",
+          entity.getFullyQualifiedName(),
+          entity.getId());
+    }
   }
 
   /**
