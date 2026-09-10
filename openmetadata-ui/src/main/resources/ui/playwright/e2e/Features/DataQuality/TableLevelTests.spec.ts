@@ -875,7 +875,7 @@ test.describe(
           .fill(testCase.sqlQuery);
         await selectOptionWithRetry(
           page.locator('#testCaseFormV1_params_strategy'),
-          page.getByRole('option').filter({ hasText: 'ROWS' }).first()
+          page.getByRole('option', { name: 'ROWS' })
         );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
