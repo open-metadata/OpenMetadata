@@ -28,6 +28,7 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -698,8 +699,10 @@ export const addCustomPropertiesForEntity = async ({
   await page.fill('[data-testid="display-name"]', propertyName);
 
   // Select custom type
-  await page.locator('[data-testid="propertyType"]').click();
-  await page.getByRole('option', { name: customType, exact: true }).click();
+  await selectOptionWithRetry(
+    page.locator('[data-testid="propertyType"]'),
+    page.getByRole('option', { name: customType, exact: true })
+  );
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
@@ -759,8 +762,10 @@ export const addCustomPropertiesForEntity = async ({
 
   // Format configuration
   if (['Date', 'Date Time', 'Time'].includes(customType) && formatConfig) {
-    await page.getByTestId('formatConfig').click();
-    await page.getByRole('option', { name: formatConfig, exact: true }).click();
+    await selectOptionWithRetry(
+      page.getByTestId('formatConfig'),
+      page.getByRole('option', { name: formatConfig, exact: true })
+    );
   }
 
   // Description

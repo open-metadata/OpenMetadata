@@ -17,6 +17,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import {
@@ -447,8 +448,10 @@ test.describe(
           .fill('This memory has all optional fields populated.');
 
         // Select type: Note
-        await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /note/i }).click();
+        await selectOptionWithRetry(
+          dialog.getByTestId('memory-type-select'),
+          page.getByRole('option', { name: /note/i })
+        );
 
         const createResPromise = page.waitForResponse(
           (res) =>
@@ -1518,8 +1521,10 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        await selectOptionWithRetry(
+          dialog.getByTestId('memory-visibility-select'),
+          page.getByRole('option', { name: /private/i })
+        );
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${visBadgeMemoryId}`)
