@@ -15,7 +15,7 @@ import {
   ConfigContext,
   CoreConfig,
   ImmutableTree,
-  Utils,
+  Utils as QbUtils,
 } from '@react-awesome-query-builder/core';
 import { AxiosHeaders } from 'axios';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -31,6 +31,7 @@ import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
 import { getEntityName } from './EntityNameUtils';
+import { migrateJsonLogic } from './QueryBuilderPureUtils';
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -1388,8 +1389,9 @@ describe('buildEnumAsyncFetch', () => {
   });
 });
 
-describe('table-cp custom property with JSONLogic output', () => {
+describe('table-cp custom property sub-fields', () => {
   const mockGetEntityName = getEntityName as jest.Mock;
+  const ROWS_VAR = 'extension.tableType.rows';
   const mockField = {
     name: 'tableType',
     type: 'table-cp',
@@ -1400,28 +1402,36 @@ describe('table-cp custom property with JSONLogic output', () => {
     },
   } as unknown as CustomPropertySummary;
 
-  // The rule shape the workflow rule engine evaluates against
-  // `extension.tableType.rows`, which is an array of `{ <column>: <cell> }`.
-  const expectedLogic = {
-    and: [
-      {
-        some: [
-          { var: 'extension.tableType.rows' },
-          { '==': [{ var: 'name' }, 'karan'] },
-        ],
-      },
-    ],
+  // A scalar custom property that has to keep working alongside the group.
+  const mockScalarField = {
+    name: 'stringProp',
+    type: 'string',
+  } as unknown as CustomPropertySummary;
+
+  const subFieldsFor = (
+    field: CustomPropertySummary,
+    searchOutputType: SearchOutputType
+  ) => {
+    const result = new AdvancedSearchClassBase().getCustomPropertiesSubFields(
+      field,
+      searchOutputType
+    );
+
+    return Array.isArray(result) ? result : [result];
   };
 
+  // Mirrors what QueryBuilderWidget builds for JsonLogic output: the custom
+  // property sub-fields hung off the `extension` struct.
   const buildJsonLogicConfig = () => {
-    const result = new AdvancedSearchClassBase().getCustomPropertiesSubFields(
-      mockField,
-      SearchOutputType.JSONLogic
+    mockGetEntityName.mockImplementation(
+      (field: CustomPropertySummary) => field.name
     );
+
     const subfields = Object.fromEntries(
-      (Array.isArray(result) ? result : [result]).map(
-        ({ subfieldsKey, dataObject }) => [subfieldsKey, dataObject]
-      )
+      [
+        ...subFieldsFor(mockField, SearchOutputType.JSONLogic),
+        ...subFieldsFor(mockScalarField, SearchOutputType.JSONLogic),
+      ].map(({ subfieldsKey, dataObject }) => [subfieldsKey, dataObject])
     );
 
     return {
@@ -1436,18 +1446,47 @@ describe('table-cp custom property with JSONLogic output', () => {
     } as unknown as Config;
   };
 
+  // Mirrors QueryBuilderWidget's load -> save cycle: migrateJsonLogic, then
+  // loadFromJsonLogic, then sanitizeTree, then jsonLogicFormat.
+  const roundTrip = (logic: Record<string, unknown>, config: Config) => {
+    const tree = QbUtils.loadFromJsonLogic(migrateJsonLogic(logic), config);
+
+    expect(tree).toBeDefined();
+
+    const { fixedTree } = QbUtils.Validation.sanitizeTree(
+      tree as ImmutableTree,
+      config
+    );
+    const { logic: exported, errors } = QbUtils.jsonLogicFormat(
+      fixedTree,
+      config
+    );
+
+    expect(errors).toEqual([]);
+
+    return exported;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetEntityName.mockReturnValue('tableType');
   });
 
-  it('should model rows as a some group holding one sub-field per column', () => {
-    const result = new AdvancedSearchClassBase().getCustomPropertiesSubFields(
-      mockField,
-      SearchOutputType.JSONLogic
-    );
+  it('should keep the flat rows sub-fields for ElasticSearch output', () => {
+    const result = subFieldsFor(mockField, SearchOutputType.ElasticSearch);
 
-    expect(result).toEqual([
+    expect(result.map(({ subfieldsKey }) => subfieldsKey)).toEqual([
+      'tableType.rows.name',
+      'tableType.rows.age',
+    ]);
+    expect(result.map(({ dataObject }) => dataObject.type)).toEqual([
+      'text',
+      'text',
+    ]);
+  });
+
+  it('should model rows as a some group holding one sub-field per column for JsonLogic output', () => {
+    expect(subFieldsFor(mockField, SearchOutputType.JSONLogic)).toEqual([
       {
         subfieldsKey: 'tableType',
         dataObject: {
@@ -1481,26 +1520,74 @@ describe('table-cp custom property with JSONLogic output', () => {
     ]);
   });
 
-  it('should export a rule that iterates the rows array with some', () => {
-    const config = buildJsonLogicConfig();
-    const tree = Utils.loadFromJsonLogic(expectedLogic, config);
+  it('should rewrite a legacy flat rows rule into a some group', () => {
+    const legacyLogic = {
+      and: [{ '==': [{ var: `${ROWS_VAR}.name` }, 'karan'] }],
+    };
 
-    expect(tree).toBeDefined();
-    expect(Utils.jsonLogicFormat(tree as ImmutableTree, config).logic).toEqual(
-      expectedLogic
-    );
+    expect(roundTrip(legacyLogic, buildJsonLogicConfig())).toEqual({
+      and: [
+        { some: [{ var: ROWS_VAR }, { '==': [{ var: 'name' }, 'karan'] }] },
+      ],
+    });
   });
 
-  it('should rewrite a legacy flat rows rule into a some group', () => {
-    const config = buildJsonLogicConfig();
-    const legacyLogic = {
-      and: [{ '==': [{ var: 'extension.tableType.rows.name' }, 'karan'] }],
+  it('should keep a scalar custom property usable alongside the rows group', () => {
+    const logic = {
+      and: [
+        { some: [{ var: ROWS_VAR }, { '==': [{ var: 'name' }, 'karan'] }] },
+        { '==': [{ var: 'extension.stringProp' }, 'x'] },
+      ],
     };
-    const tree = Utils.loadFromJsonLogic(legacyLogic, config);
 
-    expect(tree).toBeDefined();
-    expect(Utils.jsonLogicFormat(tree as ImmutableTree, config).logic).toEqual(
-      expectedLogic
-    );
+    expect(roundTrip(logic, buildJsonLogicConfig())).toEqual(logic);
+  });
+
+  // Every operator TEXT_FIELD_OPERATORS exposes on a column, plus the shapes
+  // the builder wraps them in, has to survive the widget's load/save cycle.
+  it.each([
+    ['equal', { '==': [{ var: 'name' }, 'karan'] }],
+    ['not_equal', { '!=': [{ var: 'name' }, 'karan'] }],
+    ['like', { in: ['kar', { var: 'name' }] }],
+    ['is_not_null', { '!=': [{ var: 'name' }, null] }],
+    ['is_null', { '==': [{ var: 'name' }, null] }],
+    [
+      'two columns',
+      {
+        and: [
+          { '==': [{ var: 'name' }, 'karan'] },
+          { '==': [{ var: 'age' }, '30'] },
+        ],
+      },
+    ],
+  ])('should round-trip a %s rule on a rows column', (_name, condition) => {
+    const logic = { and: [{ some: [{ var: ROWS_VAR }, condition] }] };
+
+    expect(roundTrip(logic, buildJsonLogicConfig())).toEqual(logic);
+  });
+
+  it('should round-trip a negated rows group', () => {
+    const logic = {
+      and: [
+        {
+          '!': {
+            some: [{ var: ROWS_VAR }, { '==': [{ var: 'name' }, 'karan'] }],
+          },
+        },
+      ],
+    };
+
+    expect(roundTrip(logic, buildJsonLogicConfig())).toEqual(logic);
+  });
+
+  it('should return no sub-fields when the property defines no columns', () => {
+    const noColumns = {
+      name: 'tableType',
+      type: 'table-cp',
+      customPropertyConfig: { config: { columns: [] } },
+    } as unknown as CustomPropertySummary;
+
+    expect(subFieldsFor(noColumns, SearchOutputType.JSONLogic)).toEqual([]);
+    expect(subFieldsFor(noColumns, SearchOutputType.ElasticSearch)).toEqual([]);
   });
 });
