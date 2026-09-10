@@ -133,4 +133,21 @@ describe('createStreamOpenHandler', () => {
       createStreamOpenHandler(state, jest.fn())(response(500))
     ).rejects.toBeInstanceOf(RetriableStreamError);
   });
+
+  // Regression guard for Copilot #2. A failing token refresh (no renewer
+  // registered, IdP transient blip) previously propagated the raw error
+  // and bypassed both `RetriableStreamError` / `FatalStreamError`
+  // branches the reconnect loop is keyed on. Swallow the refresh error
+  // and let the next 401 escalate via `consecutiveUnauthorized`.
+  it('still throws RetriableStreamError when the token refresh itself rejects', async () => {
+    const state = createStreamRetryState();
+    mockEnsureFreshToken.mockRejectedValueOnce(new Error('idp down'));
+
+    await expect(
+      createStreamOpenHandler(state, jest.fn())(response(401))
+    ).rejects.toBeInstanceOf(RetriableStreamError);
+
+    expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
+    expect(state.consecutiveUnauthorized).toBe(1);
+  });
 });

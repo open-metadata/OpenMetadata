@@ -163,12 +163,15 @@ describe('AuthCoordinator', () => {
     // renewer-registration timeout (see the dedicated timeout test below)
     // before rejecting — fast-forward fake timers instead of waiting 5s
     // of real time, which would race Jest's own default test timeout.
+    // Uses the async timer variant so the microtask flush needed to
+    // resolve the `await getOidcToken()` inside the fast-path happens
+    // BEFORE the timer advance reaches the awaitRenewer setTimeout.
     jest.useFakeTimers();
     try {
       const pending = coordinator.ensureFreshToken();
       const expectation = expect(pending).rejects.toThrow(/no renewer/i);
 
-      jest.advanceTimersByTime(5_000);
+      await jest.advanceTimersByTimeAsync(5_000);
       await expectation;
     } finally {
       jest.useRealTimers();
@@ -255,7 +258,9 @@ describe('AuthCoordinator', () => {
         /no renewer registered within timeout/i
       );
 
-      jest.advanceTimersByTime(5_000);
+      // Async advance flushes microtasks so the fast-path's storage
+      // read resolves before awaitRenewer's setTimeout is armed.
+      await jest.advanceTimersByTimeAsync(5_000);
       await expectation;
     } finally {
       jest.useRealTimers();
@@ -538,6 +543,87 @@ describe('AuthCoordinator', () => {
 
       expect(setOrder).toBeLessThan(notifyOrder);
       expect(mockNotifyDone).toHaveBeenCalledWith(payload);
+    });
+  });
+
+  // Copilot #4: another tab may have refreshed and persisted a fresh
+  // token before this tab's stale-header 401 reached ensureFreshToken().
+  // The CrossTabLock only guarantees exactly-one refresh across tabs
+  // per-cycle, not across time — without a pre-check the redundant tab
+  // would still hit the IdP for a token already sitting in shared
+  // storage. Fast-path short-circuits when the stored token's remaining
+  // lifetime is safely past the pre-expiry buffer.
+  describe('ensureFreshToken fast-path (skip refresh when storage is already fresh)', () => {
+    it('returns the stored token without calling the renewer when it is safely fresh', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('other-tab-fresh');
+      // Stored token expires 10 minutes out — well past the 60s buffer
+      // the tests use (EXPIRY_THRESHOLD_MILLES mock at the top).
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 600,
+        isExpired: false,
+        timeoutExpiry: 600_000,
+      });
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('other-tab-fresh');
+      expect(renewer).not.toHaveBeenCalled();
+      expect(mockRunExclusive).not.toHaveBeenCalled();
+    });
+
+    it('falls through to the full refresh when the stored token is inside the pre-expiry buffer', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('nearly-expired');
+      // 30 seconds out — inside the 60s buffer, MUST refresh.
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 30,
+        isExpired: false,
+        timeoutExpiry: 0,
+      });
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('renewer-fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats an exp-less stored token (Unlimited bot JWT) as usable and skips the refresh', async () => {
+      const renewer = jest.fn();
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('bot-token-no-exp');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: undefined,
+        isExpired: false,
+        timeoutExpiry: 0,
+      });
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('bot-token-no-exp');
+      expect(renewer).not.toHaveBeenCalled();
+    });
+
+    it('falls through to the full refresh when the storage read itself throws', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockRejectedValueOnce(new Error('sw not ready'));
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('renewer-fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
     });
   });
 });

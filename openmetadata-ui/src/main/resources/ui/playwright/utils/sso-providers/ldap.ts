@@ -105,6 +105,13 @@ export const ldapProviderFixture: SsoProviderFixture = {
   loginKind: 'form',
 
   supportsCrossTab: false,
+  // Fixture-capability flag, NOT the backend flag. Distinct meaning from
+  // `authenticationConfiguration.enableSelfSignup` above (which MUST be
+  // true because LDAP mints its OM `User` entity lazily on first login):
+  // this flag tells the scenario matrix whether to run the *explicit*
+  // signup UI scenarios against this fixture. LDAP has no signup form of
+  // its own — the /signin bind path is the only entry point — so those
+  // scenarios don't apply here.
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: true,

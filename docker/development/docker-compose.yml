@@ -635,8 +635,11 @@ services:
     # bitnami/openldap:2.6.7 was removed from the primary Docker Hub org
     # after Bitnami moved older tags to `bitnamilegacy`. Point at that
     # namespace so `docker pull` still succeeds in CI without a version
-    # bump.
-    image: bitnamilegacy/openldap:2.6.7
+    # bump. Pinned by multi-arch index digest — a floating `:2.6.7` tag
+    # could be silently retargeted by the registry, so reviewers see any
+    # future image change as an explicit compose diff rather than an
+    # invisible upstream shift.
+    image: bitnamilegacy/openldap:2.6.7@sha256:e1e9a6fb53bfd463f6bab31323ffa16c4a9fc0fb2de14647459491ba4c9e6bfb
     container_name: openmetadata_openldap
     environment:
       LDAP_ADMIN_USERNAME: admin

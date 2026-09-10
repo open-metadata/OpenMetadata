@@ -126,12 +126,50 @@ export class AuthCoordinator {
     if (this.inflight) {
       return this.inflight;
     }
-    this.inflight = this.doRefresh();
+    // Assign `this.inflight` synchronously (no await between the read
+    // above and this write) so concurrent callers in the same tick share
+    // a single in-flight promise — the storage read + full refresh both
+    // live inside `runEnsureFreshToken`.
+    this.inflight = this.runEnsureFreshToken();
     try {
       return await this.inflight;
     } finally {
       this.inflight = null;
     }
+  }
+
+  private async runEnsureFreshToken(): Promise<string> {
+    // Fast-path: another tab may have already refreshed and written the
+    // new token to shared storage between our stale-header 401 and this
+    // call — in that case the CrossTabLock would still funnel us through
+    // a redundant renewer() cycle (the lock guarantees exactly-one
+    // refresh across tabs, not exactly-one refresh across time), so we'd
+    // hit the IdP again for a token we already have. Read storage first
+    // and short-circuit when it already carries a token whose remaining
+    // lifetime is safely past the pre-expiry buffer. Opaque / non-JWT /
+    // Unlimited-bot tokens (exp missing or non-positive) are treated as
+    // usable — matches the guard in `onTabVisible` and
+    // `initializeAuthState`. Any storage read error falls through to the
+    // full refresh path.
+    try {
+      const stored = await getOidcToken();
+      if (stored) {
+        const { exp } = extractDetailsFromToken(stored);
+        if (typeof exp !== 'number' || exp <= 0) {
+          return stored;
+        }
+        const msRemaining = exp * 1000 - Date.now();
+        if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
+          return stored;
+        }
+      }
+    } catch {
+      // Fall through to doRefresh() — storage might be transiently
+      // unavailable (SW not ready yet), and the full refresh path has
+      // its own retry semantics.
+    }
+
+    return this.doRefresh();
   }
 
   pause(): void {
