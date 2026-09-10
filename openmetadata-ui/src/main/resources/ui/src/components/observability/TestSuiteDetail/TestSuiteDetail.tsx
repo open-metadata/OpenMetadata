@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { toString } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -154,6 +154,10 @@ const TestSuiteAddTestCaseDialog = ({
     </DialogTrigger>
   );
 };
+
+// Extracted so the empty-count fallback of the two tab badges doesn't add to
+// TestSuiteDetail's own cyclomatic complexity.
+const getTabBadge = (count?: number) => toString(count) || undefined;
 
 /**
  * App-mode (bundle) test suite details page. Follows the same design as the
@@ -313,6 +317,10 @@ const TestSuiteDetail = () => {
     );
   }
 
+  if (isUndefined(testSuite)) {
+    return <ErrorPlaceHolder />;
+  }
+
   return (
     <ObservabilityPageShell
       data-testid="test-suite-detail-page"
@@ -454,13 +462,13 @@ const TestSuiteDetail = () => {
             onSelectionChange={(key) => setActiveTab(String(key))}>
             <Tabs.List size="sm" type="underline">
               <Tabs.Item
-                badge={toString(pagingData.paging.total) || undefined}
+                badge={getTabBadge(pagingData.paging.total)}
                 data-testid={EntityTabs.TEST_CASES}
                 id={EntityTabs.TEST_CASES}
                 label={t('label.test-case-plural')}
               />
               <Tabs.Item
-                badge={toString(ingestionPipelineCount) || undefined}
+                badge={getTabBadge(ingestionPipelineCount)}
                 data-testid={EntityTabs.PIPELINE}
                 id={EntityTabs.PIPELINE}
                 label={t('label.pipeline-plural')}
