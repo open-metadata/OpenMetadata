@@ -13,6 +13,7 @@ import org.openmetadata.service.security.JwtFilter;
 public class AuthEnrichedMcpContextExtractor
     implements McpTransportContextExtractor<HttpServletRequest> {
   public static final String AUTHORIZATION_HEADER = "Authorization";
+  public static final String ACTIVE_PERSONA_HEADER = JwtFilter.ACTIVE_PERSONA_HEADER;
 
   /**
    * Context key carrying the resolved client name (Claude Desktop / Cursor / VS Code / etc.)
@@ -64,9 +65,13 @@ public class AuthEnrichedMcpContextExtractor
   @Override
   public McpTransportContext extract(HttpServletRequest request) {
     String token = JwtFilter.extractToken(request.getHeader(AUTHORIZATION_HEADER));
+    String activePersona = request.getHeader(ACTIVE_PERSONA_HEADER);
     String clientName = resolveClientName(request.getHeader(USER_AGENT_HEADER));
     Map<String, Object> values = new HashMap<>();
     values.put(AUTHORIZATION_HEADER, token != null ? token : "");
+    if (activePersona != null && !activePersona.isBlank()) {
+      values.put(ACTIVE_PERSONA_HEADER, activePersona);
+    }
     if (clientName != null) {
       values.put(CLIENT_NAME, clientName);
     }

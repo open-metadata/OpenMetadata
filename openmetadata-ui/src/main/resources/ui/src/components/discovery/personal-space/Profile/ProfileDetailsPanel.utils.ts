@@ -14,10 +14,7 @@
 import { AuthProvider } from '../../../../generated/settings/settings';
 
 /** Auth providers that keep the credential in OpenMetadata itself. */
-const PASSWORD_OWNING_PROVIDERS: readonly AuthProvider[] = [
-  AuthProvider.Basic,
-  AuthProvider.LDAP,
-];
+const PASSWORD_OWNING_PROVIDERS: readonly AuthProvider[] = [AuthProvider.Basic];
 
 /**
  * The SECURITY section is only meaningful for the signed-in user's own, live
