@@ -13,7 +13,6 @@
 import {
   Config,
   ConfigContext,
-  CoreConfig,
   ImmutableTree,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/core';
@@ -1403,7 +1402,6 @@ describe('table-cp custom property sub-fields', () => {
     },
   } as unknown as CustomPropertySummary;
 
-  // A scalar custom property that has to keep working alongside the group.
   const mockScalarField = {
     name: 'stringProp',
     type: 'string',
@@ -1421,8 +1419,6 @@ describe('table-cp custom property sub-fields', () => {
     return Array.isArray(result) ? result : [result];
   };
 
-  // Mirrors what QueryBuilderWidget builds for JsonLogic output: the custom
-  // property sub-fields hung off the `extension` struct.
   const buildJsonLogicConfig = () => {
     mockGetEntityName.mockImplementation(
       (field: CustomPropertySummary) => field.name
@@ -1435,9 +1431,6 @@ describe('table-cp custom property sub-fields', () => {
       ].map(({ subfieldsKey, dataObject }) => [subfieldsKey, dataObject])
     );
 
-    // Derived from the class's own config rather than bare CoreConfig: the real
-    // types/operators/widgets are what decide whether a field's operator set is
-    // valid at all, and CoreConfig alone does not carry them.
     return {
       ...new AdvancedSearchClassBase().getInitialConfigWithoutFields(false),
       fields: {
@@ -1450,8 +1443,6 @@ describe('table-cp custom property sub-fields', () => {
     } as unknown as Config;
   };
 
-  // Mirrors QueryBuilderWidget's load -> save cycle: migrateJsonLogic, then
-  // loadFromJsonLogic, then sanitizeTree, then jsonLogicFormat.
   const roundTrip = (logic: Record<string, unknown>, config: Config) => {
     const tree = QbUtils.loadFromJsonLogic(migrateJsonLogic(logic), config);
 
@@ -1539,8 +1530,6 @@ describe('table-cp custom property sub-fields', () => {
     expect(roundTrip(logic, buildJsonLogicConfig())).toEqual(logic);
   });
 
-  // Every operator TEXT_FIELD_OPERATORS exposes on a column, plus the shapes
-  // the builder wraps them in, has to survive the widget's load/save cycle.
   it.each([
     ['equal', { '==': [{ var: 'name' }, 'karan'] }],
     ['not_equal', { '!=': [{ var: 'name' }, 'karan'] }],

@@ -500,11 +500,6 @@ export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
 export const NULL_CHECK_OPERATORS = ['is_null', 'is_not_null'];
 
-// The `select` counterpart of TEXT_FIELD_OPERATORS. A select field takes
-// `select_equals` / `select_not_equals` rather than `equal` / `not_equal`, and
-// gets `like` / `not_like` from the text widget both query-builder configs add
-// to the select type. Using TEXT_FIELD_OPERATORS on a select leaves the field
-// with no valid operator, so it silently cannot build a rule at all.
 export const SELECT_TEXT_FIELD_OPERATORS = [
   ...LIST_VALUE_OPERATORS,
   'like',

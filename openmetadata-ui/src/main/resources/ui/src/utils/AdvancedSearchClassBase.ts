@@ -60,7 +60,6 @@ import { parseBucketsData } from './SearchPureUtils';
 const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
-// Sub-field config, plus the `!struct` / `!group` keys used by nested types.
 type OMFieldOrGroup = Field & {
   subfields?: Fields;
   mode?: RuleGroupMode;
@@ -1550,9 +1549,7 @@ class AdvancedSearchClassBase {
           return [];
         }
 
-        // `rows` is an array of objects, so a JsonLogic rule has to iterate it
-        // with `some` - a flat `<prop>.rows.<column>` var never resolves against
-        // an array. A cell is free text, hence `allowCustomValues` over a list.
+        // `rows` is an array, so the rule has to iterate it with `some`.
         if (searchOutputType === SearchOutputType.JSONLogic) {
           const columnSubfields: Fields = Object.fromEntries(
             columns.map((columnName) => [
@@ -1601,8 +1598,6 @@ class AdvancedSearchClassBase {
     }
   }
 
-  // One switch on the custom property type. Types with no special handling fall
-  // through to the scalar builder, which switches again on date / number / text.
   private buildCustomPropertiesSubFields(
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType
