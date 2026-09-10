@@ -610,6 +610,16 @@ class TestExternalLocationLineage:
         assert len(results) == 0
         lineage_source.metadata.get_by_name.assert_not_called()
 
+    def test_process_external_location_table_not_ingested(self, lineage_source):
+        """The container exists but nothing was ingested for the external table"""
+        lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
+        lineage_source.metadata.es_search_container_by_path.return_value = [a_container()]
+        resolve_tables(lineage_source, {})
+
+        results = list(lineage_source._process_external_location_lineage("cat.schema.test_table"))
+
+        assert len(results) == 0
+
     def test_external_tables_are_emitted_without_any_lineage_row(self, lineage_source):
         """An external table's container edge does not depend on the system lineage tables"""
         tables = {"cat.schema.ext": a_table("ext")}
@@ -991,6 +1001,11 @@ class TestLineageDrivenIteration:
         assert len(results) == 2
         resolved = [call.kwargs["fqn"] for call in lineage_source.metadata.get_by_name.call_args_list]
         assert resolved.count("local_unitycatalog.cat.schema.src") == 1
+
+    def test_a_name_that_is_not_three_parts_is_skipped(self, lineage_source):
+        """A target has to be catalog.schema.table to be filtered or resolved at all"""
+        assert lineage_source._is_filtered("system.access") is True
+        assert lineage_source.status.filtered == []
 
     def test_a_failing_lookup_is_not_cached(self, lineage_source):
         """A transient failure must not blind every later edge naming that table"""
