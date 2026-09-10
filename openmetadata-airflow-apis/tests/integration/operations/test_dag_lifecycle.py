@@ -12,6 +12,7 @@
 """Run against an initialized Airflow database (``airflow db migrate``)."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -135,18 +136,28 @@ def test_concurrent_deployments_report_each_dag_result(invalid_second):
             response = deployer.refresh_session_dag(str(dag_folder / f"{name}.py"))
             return response.status_code, response.get_json()
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(refresh, names))
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(refresh, names))
 
-    assert [status for status, _ in results] == [200, 500 if invalid_second else 200]
-    for name, (status, body) in zip(names, results, strict=True):
-        if status == 200:
-            assert name in body["message"]
-        else:
-            assert body == {"error": "An unexpected problem occurred"}
+        assert [status for status, _ in results] == [200, 500 if invalid_second else 200]
+        for name, (status, body) in zip(names, results, strict=True):
+            if status == 200:
+                assert name in body["message"]
+            else:
+                assert body == {"error": "An unexpected problem occurred"}
+    finally:
+        for name in names:
+            (dag_folder / f"{name}.py").unlink(missing_ok=True)
+        with settings.Session() as session:
+            for name in names:
+                if session.get(DagModel, name) is not None:
+                    airflow_delete_dag(name, session=session)
+            session.commit()
 
 
-def test_deploy_is_triggerable_before_success_returns():
+@pytest.fixture
+def deployable_dag():
     pytest.importorskip("airflow.models.dag_version")
     name = f"deploy_ready_{uuid4().hex}"
     path = Path(settings.DAGS_FOLDER) / f"{name}.py"
@@ -156,15 +167,93 @@ def test_deploy_is_triggerable_before_success_returns():
     deployer.dag_id = name
 
     try:
-        with Flask(__name__).app_context():
-            response = deployer.refresh_session_dag(str(path))
-            assert response.status_code == 200
-            _, status = trigger.trigger(name, f"manual__{uuid4().hex}")
-            assert status == 200
-        with settings.Session() as session:
-            assert session.query(DagRun).filter_by(dag_id=name).count() == 1
+        yield deployer, path
     finally:
+        path.unlink(missing_ok=True)
         with settings.Session() as session:
             if session.query(DagModel).filter_by(dag_id=name).count():
                 airflow_delete_dag(name, session=session)
                 session.commit()
+
+
+@pytest.mark.parametrize("api_clock_offset", [timedelta(0), timedelta(hours=1)], ids=["aligned", "api-ahead"])
+def test_deploy_is_triggerable_before_success_returns(deployable_dag, api_clock_offset, monkeypatch):
+    deployer, path = deployable_dag
+
+    class ApiClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.now(tz) + api_clock_offset
+
+    monkeypatch.setattr(deploy, "datetime", ApiClock)
+
+    with Flask(__name__).app_context():
+        response = deployer.refresh_session_dag(str(path))
+        assert response.status_code == 200
+        _, status = trigger.trigger(deployer.dag_id, f"manual__{uuid4().hex}")
+        assert status == 200
+    with settings.Session() as session:
+        assert session.query(DagRun).filter_by(dag_id=deployer.dag_id).count() == 1
+
+
+@pytest.mark.parametrize("processor_clock_offset", [-60, 0, 60], ids=["backward", "unchanged", "forward"])
+def test_registration_requires_a_changed_processor_marker(deployable_dag, processor_clock_offset):
+    deployer, path = deployable_dag
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 200
+
+    with settings.Session() as session:
+        model = session.get(DagModel, deployer.dag_id)
+        previous_parse = model.last_parsed_time
+        model.last_parsed_time += timedelta(seconds=processor_clock_offset)
+        session.commit()
+
+    assert deployer._wait_for_dag_registration(previous_parse, timeout_seconds=0) is (processor_clock_offset != 0)
+
+
+def test_identical_redeploy_does_not_require_a_new_dag_version(deployable_dag):
+    from airflow.models.serialized_dag import SerializedDagModel
+
+    deployer, path = deployable_dag
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 200
+    with settings.Session() as session:
+        previous_version = SerializedDagModel.get(deployer.dag_id, session=session).dag_version_id
+
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 200
+        _, status = trigger.trigger(deployer.dag_id, f"manual__{uuid4().hex}")
+        assert status == 200
+    with settings.Session() as session:
+        assert SerializedDagModel.get(deployer.dag_id, session=session).dag_version_id == previous_version
+
+
+def test_redeploy_rejects_unchanged_registration(deployable_dag, monkeypatch):
+    deployer, path = deployable_dag
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 200
+
+    monkeypatch.setattr(deploy, "scan_dags_job_background", lambda: None)
+    clock = iter([0, 60])
+    monkeypatch.setattr(deploy, "monotonic", lambda: next(clock))
+
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 500
+
+
+@pytest.mark.parametrize("incomplete_state", ["import-error", "missing-serialization"])
+def test_registration_rejects_incomplete_dag_metadata(deployable_dag, incomplete_state):
+    from airflow.models.serialized_dag import SerializedDagModel
+
+    deployer, path = deployable_dag
+    with Flask(__name__).app_context():
+        assert deployer.refresh_session_dag(str(path)).status_code == 200
+
+    with settings.Session() as session:
+        if incomplete_state == "import-error":
+            session.get(DagModel, deployer.dag_id).has_import_errors = True
+        else:
+            session.query(SerializedDagModel).filter_by(dag_id=deployer.dag_id).delete()
+        session.commit()
+
+    assert not deployer._wait_for_dag_registration(None, timeout_seconds=0)

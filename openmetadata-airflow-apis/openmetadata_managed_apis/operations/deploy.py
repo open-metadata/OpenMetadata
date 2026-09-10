@@ -11,7 +11,7 @@
 import json
 import pkgutil
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from time import monotonic, sleep
 
@@ -146,10 +146,12 @@ class DagDeployer:
         to the Scheduler job, to make sure that all
         the pieces are being properly picked up.
         """
-        parsed_after = datetime.now(timezone.utc)
         requires_scheduler_sync = False
         with settings.Session() as session:
             try:
+                previous_parse = (
+                    session.query(DagModel.last_parsed_time).filter(DagModel.dag_id == self.dag_id).scalar()
+                )
                 dag_bag = get_dagbag()
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))  # noqa: UP032
@@ -170,15 +172,17 @@ class DagDeployer:
                 return ApiResponse.server_error()
 
         scan_dags_job_background()
-        if requires_scheduler_sync and not self._wait_for_dag_registration(parsed_after):
+        if requires_scheduler_sync and not self._wait_for_dag_registration(previous_parse):
             logger.error("Workflow [%s] was parsed but not registered for triggering within 60 seconds", self.dag_id)
             return ApiResponse.server_error()
 
         return ApiResponse.success({"message": f"Workflow [{escape(self.dag_id)}] has been created"})
 
-    def _wait_for_dag_registration(self, parsed_after: datetime, timeout_seconds: float = 60) -> bool:
+    def _wait_for_dag_registration(self, previous_parse: datetime | None, timeout_seconds: float = 60) -> bool:
         # Airflow 3 persists DAGs asynchronously. Returning success before that
         # commit makes an immediate trigger fail, or run an older DAG on redeploy.
+        # Treat the persisted parse time as an opaque marker: process clocks may
+        # differ, and an identical redeploy can reuse the DAG version and hash.
         deadline = monotonic() + timeout_seconds
         while True:
             with settings.Session() as session:
@@ -186,7 +190,7 @@ class DagDeployer:
                 if (
                     model is not None
                     and model.last_parsed_time is not None
-                    and model.last_parsed_time >= parsed_after
+                    and model.last_parsed_time != previous_parse
                     and not model.has_import_errors
                     and SerializedDagModel.get(self.dag_id, session=session) is not None
                 ):
