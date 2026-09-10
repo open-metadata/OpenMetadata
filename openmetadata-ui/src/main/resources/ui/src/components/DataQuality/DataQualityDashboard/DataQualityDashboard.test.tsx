@@ -129,28 +129,30 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/common/FilterSelectDropdown/FilterSelectDropdown', () =>
-  jest
-    .fn()
-    .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
-      <div>
-        <button
-          data-testid={`search-dropdown-${label}`}
-          onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
-          {label} SearchDropdown
-        </button>
-        {onSearch && (
+jest.mock(
+  '../../../components/common/FilterSelectDropdown/FilterSelectDropdown',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
+        <div>
           <button
-            data-testid={`search-dropdown-search-${label}`}
-            onClick={() => onSearch('pii')}>
-            Search {label}
+            data-testid={`search-dropdown-${label}`}
+            onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
+            {label} SearchDropdown
           </button>
-        )}
-        {selectedKeys
-          .map((option: SearchDropdownOption) => option.label)
-          .join(', ')}
-      </div>
-    ))
+          {onSearch && (
+            <button
+              data-testid={`search-dropdown-search-${label}`}
+              onClick={() => onSearch('pii')}>
+              Search {label}
+            </button>
+          )}
+          {selectedKeys
+            .map((option: SearchDropdownOption) => option.label)
+            .join(', ')}
+        </div>
+      ))
 );
 jest.mock('../../../utils/AdvancedSearchUtils', () => {
   return {

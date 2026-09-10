@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -18,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
 import { ROUTES } from '../../../constants/constants';

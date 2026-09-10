@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
 import { DqFilterBar } from './DqFilterBar';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -42,14 +41,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onOpenChange,
     onSearch,
   }: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const ReactLib = require('react');
     const [staged, setStaged] = ReactLib.useState(selectedValues);
     ReactLib.useEffect(() => {
       if (isOpen) {
         setStaged(selectedValues);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
     return (
@@ -69,9 +66,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           data-testid="search-input"
           onChange={(e) => onSearch?.(e.target.value)}
         />
-        <button
-          data-testid="select-opt-1"
-          onClick={() => setStaged(['opt-1'])}>
+        <button data-testid="select-opt-1" onClick={() => setStaged(['opt-1'])}>
           select opt-1
         </button>
         <button data-testid="clear-filter-btn" onClick={() => setStaged([])}>

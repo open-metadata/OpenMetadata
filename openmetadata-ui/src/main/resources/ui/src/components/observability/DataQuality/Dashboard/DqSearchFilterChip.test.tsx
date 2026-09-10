@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
 import type { FilterSelectProps } from '@openmetadata/ui-core-components';
+import { fireEvent, render, screen } from '@testing-library/react';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -50,9 +50,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button data-testid="open-btn" onClick={() => onOpenChange?.(true)}>
         open
       </button>
-      <button
-        data-testid="commit-opt-1"
-        onClick={() => onChange(['opt-1'])}>
+      <button data-testid="commit-opt-1" onClick={() => onChange(['opt-1'])}>
         commit opt-1
       </button>
       <button data-testid="commit-empty" onClick={() => onChange([])}>

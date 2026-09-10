@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   Card,
   Grid,
@@ -25,6 +24,7 @@ import { UserTeamSelectableList } from '../../../components/common/UserTeamSelec
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import DqDashboardSectionContent, {

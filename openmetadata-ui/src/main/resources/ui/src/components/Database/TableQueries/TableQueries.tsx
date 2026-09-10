@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   CloseCircleOutlined,
   SortAscendingOutlined,
@@ -70,6 +69,7 @@ import DatePicker, {
   RangePickerProps,
 } from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';

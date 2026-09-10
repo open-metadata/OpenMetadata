@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 import { Space } from 'antd';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 
 import { useTranslation } from 'react-i18next';
 import { AUDIT_LOG_TIME_FILTER_RANGE } from '../../constants/auditLog.constant';
