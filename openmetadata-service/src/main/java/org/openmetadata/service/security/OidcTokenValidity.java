@@ -25,10 +25,4 @@ public final class OidcTokenValidity {
   public static int resolveOrDefault(Integer validitySeconds) {
     return isValid(validitySeconds) ? validitySeconds : DEFAULT_VALIDITY_SECONDS;
   }
-
-  public static void validate(Integer validitySeconds) {
-    if (!isValid(validitySeconds)) {
-      throw new IllegalArgumentException(VALIDATION_MESSAGE);
-    }
-  }
 }

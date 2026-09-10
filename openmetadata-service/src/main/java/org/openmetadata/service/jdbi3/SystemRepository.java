@@ -354,6 +354,8 @@ public class SystemRepository {
 
     try {
       updateSetting(setting);
+    } catch (BadRequestException ex) {
+      throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
@@ -370,6 +372,8 @@ public class SystemRepository {
   public Response createNewSetting(Settings setting) {
     try {
       updateSetting(setting);
+    } catch (BadRequestException ex) {
+      throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
@@ -485,6 +489,8 @@ public class SystemRepository {
       String updatedJson = prepareSettingForUpdate(setting);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
+    } catch (BadRequestException ex) {
+      throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(
@@ -505,7 +511,7 @@ public class SystemRepository {
             "Setting changed while the JSON Patch was being applied");
       }
       settingUpdated(setting.getConfigType());
-    } catch (PreconditionFailedException ex) {
+    } catch (BadRequestException | PreconditionFailedException ex) {
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -552,8 +558,9 @@ public class SystemRepository {
     } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-      if (authConfig.getOidcConfiguration() != null) {
-        OidcTokenValidity.validate(authConfig.getOidcConfiguration().getTokenValidity());
+      if (authConfig.getOidcConfiguration() != null
+          && !OidcTokenValidity.isValid(authConfig.getOidcConfiguration().getTokenValidity())) {
+        throw new BadRequestException(OidcTokenValidity.VALIDATION_MESSAGE);
       }
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {

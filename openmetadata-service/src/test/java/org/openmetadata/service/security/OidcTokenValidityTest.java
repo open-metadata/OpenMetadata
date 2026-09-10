@@ -12,10 +12,8 @@
  */
 package org.openmetadata.service.security;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.validation.Validation;
@@ -46,7 +44,6 @@ class OidcTokenValidityTest {
   void positiveValuesArePreserved() {
     assertTrue(OidcTokenValidity.isValid(1));
     assertEquals(900, OidcTokenValidity.resolveOrDefault(900));
-    assertDoesNotThrow(() -> OidcTokenValidity.validate(900));
   }
 
   @Test
@@ -54,7 +51,6 @@ class OidcTokenValidityTest {
     assertFalse(OidcTokenValidity.isValid(null));
     assertFalse(OidcTokenValidity.isValid(0));
     assertFalse(OidcTokenValidity.isValid(-1));
-    assertThrows(IllegalArgumentException.class, () -> OidcTokenValidity.validate(0));
   }
 
   @Test
