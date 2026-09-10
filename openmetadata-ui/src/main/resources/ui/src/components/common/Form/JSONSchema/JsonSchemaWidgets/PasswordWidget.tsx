@@ -13,7 +13,7 @@
 import { CredentialFileInput } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Input } from 'antd';
-import { FC, useMemo } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import {
@@ -30,17 +30,21 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const isFileOrInput =
     props.schema.uiFieldType === CredentialFileFieldType.FILE_OR_INPUT;
 
-  // The API returns the mask in place of the stored secret, so it must never
-  // reach an editable control: leaving `formData` untouched lets an unmodified
-  // field round-trip the mask back and the backend keeps the existing secret.
-  const isMasked = ALL_ASTERISKS_REGEX.test(props.value);
-  const passwordWidgetValue = useMemo(
-    () => (isMasked ? undefined : props.value),
-    [isMasked, props.value]
-  );
+  const handleChange = (nextValue?: string) =>
+    props.onChange(
+      nextValue === '' || nextValue === undefined
+        ? props.options.emptyValue ?? undefined
+        : nextValue
+    );
 
   if (isCredentialFile) {
     const acceptedFileTypes = props.schema.accept as string[] | undefined;
+
+    // The API returns the mask in place of the stored secret. A credential file
+    // field stands for it with a chip rather than putting it in an editable
+    // control, and removing that chip is what clears it — the same outcome
+    // #32945 gives a plain password field through `allowClear`.
+    const isMasked = ALL_ASTERISKS_REGEX.test(props.value);
 
     return (
       <CredentialFileInput
@@ -58,9 +62,9 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
           t,
           acceptedFileTypes
         )}
-        value={passwordWidgetValue}
+        value={isMasked ? undefined : props.value}
         onBlur={() => props.onBlur(props.id, props.value)}
-        onChange={(nextValue) => props.onChange(nextValue)}
+        onChange={handleChange}
         onFocus={() => props.onFocus(props.id, props.value)}
       />
     );
@@ -68,6 +72,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
 
   return (
     <Input.Password
+      allowClear
       autoComplete="off"
       // eslint-disable-next-line jsx-a11y/no-autofocus -- focus is driven by the RJSF widget schema
       autoFocus={props.autofocus}
@@ -78,9 +83,9 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
       placeholder={props.placeholder}
       readOnly={props.readonly}
       required={props.required}
-      value={passwordWidgetValue}
+      value={props.value}
       onBlur={() => props.onBlur(props.id, props.value)}
-      onChange={(e) => props.onChange(e.target.value)}
+      onChange={(e) => handleChange(e.target.value)}
       onFocus={() => props.onFocus(props.id, props.value)}
     />
   );
