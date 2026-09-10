@@ -784,20 +784,31 @@ const readLandingWidgetCount = async (
 
 // Poll a landing-page widget's asset count until it equals `expectedCount`.
 //
-// The Domains and Data Products widgets fetch their asset-count map exactly once
-// per page load and never refetch in the background. Asset add/remove mutations
-// also return before Elasticsearch is refreshed, so the *first* page load after a
-// mutation can snapshot a stale count — and because the widget never refetches, a
-// plain DOM poll would then re-read that same stale value until it times out
-// (passing only on the next run once the index caught up: the flake). Reloading
-// the landing page whenever the rendered count doesn't match yet forces a fresh
-// fetch, so the assertion self-heals as soon as the index propagates instead of
-// depending on the read landing after propagation.
+// Each iteration reveals the widget itself: `readLandingWidgetCount` scrolls the
+// deferred slot into view (via `isLandingPageWidgetVisible`) so a below-the-fold
+// widget mounts and paints before it is read — that reveal is independent of the
+// reload below.
+//
+// `reloadOnMismatch` (default true): the Domains and Data Products widgets fetch
+// their asset-count map exactly once per page load and never refetch in the
+// background. Asset add/remove mutations also return before Elasticsearch is
+// refreshed, so the *first* page load after a mutation can snapshot a stale count
+// — and because the widget never refetches, a plain DOM poll would then re-read
+// that same stale value until it times out (passing only on the next run once the
+// index caught up: the flake). Reloading the landing page whenever the rendered
+// count doesn't match yet forces a fresh fetch, so the assertion self-heals as
+// soon as the index propagates.
+//
+// Pass `false` when asserting the count already rendered on the current page (no
+// mutation preceded it): a wrong value must then fail rather than self-heal via a
+// reload, so a real UI regression is not masked — and the helper must not silently
+// navigate a non-home caller to `/my-data`.
 const pollLandingWidgetCount = async (
   page: Page,
   widgetKey: string,
   cardSelector: string,
-  expectedCount: number
+  expectedCount: number,
+  reloadOnMismatch = true
 ) => {
   const expected = expectedCount.toString();
 
@@ -813,7 +824,7 @@ const pollLandingWidgetCount = async (
         // A settled-but-wrong read means the widget already loaded a stale count;
         // reload so the next iteration reads a freshly fetched value. A null read
         // (still loading) needs no reload — just wait it out.
-        if (value !== null && value !== expected) {
+        if (reloadOnMismatch && value !== null && value !== expected) {
           await redirectToHomePage(page, false);
           await waitForAllLoadersToDisappear(page).catch(() => undefined);
         }
@@ -868,5 +879,5 @@ export const verifyWidgetCountOnCurrentPage = async (
   selector: string,
   expectedCount: number
 ) => {
-  await pollLandingWidgetCount(page, widgetKey, selector, expectedCount);
+  await pollLandingWidgetCount(page, widgetKey, selector, expectedCount, false);
 };
