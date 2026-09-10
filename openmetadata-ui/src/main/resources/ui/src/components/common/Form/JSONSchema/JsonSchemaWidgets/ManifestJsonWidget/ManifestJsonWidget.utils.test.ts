@@ -15,8 +15,8 @@ import { ValidationError } from './ManifestJsonWidget.interface';
 import {
   checkArrayMismatch,
   checkPrimitiveMismatch,
-  ENTRY_FIELDS,
   EntryFieldName,
+  ENTRY_FIELDS,
   findEntryTypeMismatch,
   findMissingRequiredField,
   findUnknownTopLevelField,
