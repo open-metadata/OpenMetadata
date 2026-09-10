@@ -34,7 +34,6 @@ import {
   NULL_CHECK_OPERATORS,
   NUMBER_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
-  SELECT_TEXT_FIELD_OPERATORS,
   TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
@@ -1555,15 +1554,10 @@ class AdvancedSearchClassBase {
             columns.map((columnName) => [
               columnName,
               {
-                type: 'select',
-                label: columnName,
-                operators: SELECT_TEXT_FIELD_OPERATORS,
+                type: 'text',
+                label: `${label} - ${columnName}`,
+                operators: TEXT_FIELD_OPERATORS,
                 valueSources: ['value'],
-                fieldSettings: {
-                  allowCustomValues: true,
-                  showSearch: true,
-                  useAsyncSearch: false,
-                },
               },
             ])
           );
