@@ -41,7 +41,7 @@ test.describe('TierWidget stale state regression', () => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
 
-  await test.step('Bug A — radio resets to persisted tier after cancelling a change', async () => {
+  await test.step('Radio resets to persisted tier after cancelling a change', async () => {
     // Set Tier1 as the starting state.
     await addTierWidget(page, 'Tier1', 'tables', true);
 
@@ -69,7 +69,7 @@ test.describe('TierWidget stale state regression', () => {
     await closeTierDropdown(page);
   });
 
-  await test.step('Bug B — radio shows newly saved tier on reopen after a successful save', async () => {
+  await test.step('Radio shows newly saved tier on reopen after a successful save', async () => {
     // Ensure Tier1 is set (carried over from step A).
     await addTierWidget(page, 'Tier1', 'tables', true);
 
