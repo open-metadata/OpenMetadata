@@ -35,6 +35,7 @@ const FilterSelectDropdown: FC<SearchDropdownProps> = ({
   hideCounts,
   hideSearchBar,
   hasNullOption,
+  showSelectAll,
   immediateApply,
   helperText,
   onChange,
@@ -101,6 +102,7 @@ const FilterSelectDropdown: FC<SearchDropdownProps> = ({
       searchable={!(hideSearchBar ?? false)}
       selectedValues={selectedKeys.map((option) => option.key)}
       selectionMode={singleSelect ? 'single' : 'multiple'}
+      showSelectAll={Boolean(showSelectAll) && !singleSelect}
       triggerVariant="button"
       onChange={handleChange}
       onOpenChange={(open) => {

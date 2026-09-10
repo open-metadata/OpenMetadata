@@ -142,6 +142,7 @@ const DataQualityDashboard = ({
             return (
               <FilterSelectDropdown
                 hideCounts
+                showSelectAll
                 key={filter.key}
                 label={filter.label}
                 searchKey={filter.searchKey}
