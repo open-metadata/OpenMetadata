@@ -55,6 +55,7 @@ const TierCard = ({
   );
   const [selectedTier, setSelectedTier] = useState<string>(currentTier ?? '');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(popoverProps?.open ?? false);
   const { t } = useTranslation();
 
   const getTierData = async () => {
@@ -123,15 +124,17 @@ const TierCard = ({
   }, [popoverProps?.open]);
 
   // Re-syncs selectedTier when the persisted tier changes after a successful save.
-  // handleOpenChange resets on close but captures a stale closure when popoverRef.current.close()
-  // fires before React propagates the updated currentTier prop from the entity context.
+  // Guards with isOpen (internal state) rather than popoverProps?.open so that
+  // uncontrolled usages (no popoverProps) are covered correctly.
   useEffect(() => {
-    if (!popoverProps?.open) {
+    if (!isOpen) {
       setSelectedTier(currentTier ?? '');
     }
-  }, [currentTier]);
+  }, [currentTier, isOpen]);
 
   const handleOpenChange = (visible: boolean) => {
+    setIsOpen(visible);
+
     if (visible && !tierCardData.length) {
       getTierData();
     }
