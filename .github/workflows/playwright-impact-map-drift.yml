@@ -51,8 +51,22 @@
 name: Playwright impact-map drift
 
 on:
+  # Same-repo PRs use `pull_request` (runs in the head-branch context with
+  # limited permissions — safe for checkout + auto-commit back to the branch).
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/**/*.spec.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/**/*.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/**/*.tsx'
+      - '.github/scripts/generate_playwright_impact_map.py'
+      - '.github/playwright/impact-map.generated.json'
+  # Fork PRs use `pull_request_target` so the `safe to test` label gate can
+  # fire (fork PRs are a no-op past fork detection — no secrets are used on
+  # untrusted code). The `labeled` type is fork-only since same-repo PRs
+  # auto-run on `pull_request` above.
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+    types: [labeled]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/**/*.spec.ts'
       - 'openmetadata-ui/src/main/resources/ui/src/**/*.ts'
@@ -68,7 +82,7 @@ on:
 
 concurrency:
   group: playwright-impact-map-drift-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   impact-map-drift:
@@ -78,7 +92,7 @@ jobs:
     # Gate on the same `safe to test` label as typescript-type-generation
     # for fork PRs, so an untrusted fork cannot execute the generator
     # against base-repo secrets before a maintainer has looked at the diff.
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'safe to test')) }}
     permissions:
       contents: write
       pull-requests: write
@@ -105,7 +119,10 @@ jobs:
           HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
         run: |
-          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            # `pull_request` only fires for same-repo branches — always safe
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
             if [ "$FULL_REPO" != "$BASE_REPO" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
@@ -143,7 +160,9 @@ jobs:
           PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
           GITHUB_SHA_VAL: ${{ github.sha }}
         run: |
-          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
