@@ -12,12 +12,20 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
+import {
+  ThemeProvider,
+  useTheme,
+} from '../../context/UntitledUIThemeProvider/theme-provider';
 import { KnowledgeGraph3DSceneProps } from './KnowledgeGraph3D.interface';
 import KnowledgeGraph3DScene from './KnowledgeGraph3DScene';
+import { buildNodeObject, disposeTextureCaches } from './nodeRendering';
 import { Graph3DData } from './types';
 
 interface MockForceGraphProps {
+  graphData?: Graph3DData;
   height?: number;
+  nodeThreeObject?: (node: Graph3DData['nodes'][number]) => unknown;
   width?: number;
   onEngineStop?: () => void;
   onEngineTick?: () => void;
@@ -46,6 +54,7 @@ const mockGraphMethods = {
 let mockForceGraphProps: MockForceGraphProps = {};
 let mockClientWidth = 800;
 let mockClientHeight = 600;
+let setSceneTheme: ReturnType<typeof useTheme>['setTheme'] | undefined;
 
 jest.mock('react-force-graph-3d', () => {
   const React = jest.requireActual<typeof import('react')>('react');
@@ -107,6 +116,24 @@ const sceneProps = (data: Graph3DData): KnowledgeGraph3DSceneProps => ({
   onSelectNode: jest.fn(),
 });
 
+const ThemeCapture = () => {
+  setSceneTheme = useTheme().setTheme;
+
+  return null;
+};
+
+const SceneThemeProvider = ({ children }: { children: ReactNode }) => (
+  <ThemeProvider defaultTheme="light" storageKey="knowledge-graph-3d-test">
+    <ThemeCapture />
+    {children}
+  </ThemeProvider>
+);
+
+const renderScene = (data: Graph3DData) =>
+  render(<KnowledgeGraph3DScene {...sceneProps(data)} />, {
+    wrapper: SceneThemeProvider,
+  });
+
 describe('KnowledgeGraph3DScene', () => {
   const originalClientWidth = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
@@ -150,20 +177,28 @@ describe('KnowledgeGraph3DScene', () => {
     mockForceGraphProps = {};
     mockClientWidth = 800;
     mockClientHeight = 600;
+    localStorage.setItem('knowledge-graph-3d-test', 'light');
+    setSceneTheme = undefined;
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('knowledge-graph-3d-test');
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.removeProperty('color-scheme');
   });
 
   it('waits for a measured viewport before mounting the force graph', () => {
     mockClientWidth = 0;
     mockClientHeight = 0;
 
-    render(<KnowledgeGraph3DScene {...sceneProps(graphData())} />);
+    renderScene(graphData());
 
     expect(screen.queryByTestId('force-graph')).not.toBeInTheDocument();
   });
 
   it('waits for finite layout coordinates before fitting and recovers the camera', () => {
     const data = graphData();
-    const { unmount } = render(<KnowledgeGraph3DScene {...sceneProps(data)} />);
+    const { unmount } = renderScene(data);
 
     expect(screen.getByTestId('force-graph')).toBeInTheDocument();
     expect(mockGraphMethods.d3ReheatSimulation).not.toHaveBeenCalled();
@@ -192,9 +227,7 @@ describe('KnowledgeGraph3DScene', () => {
 
   it('reheats the initialized simulation when graph data changes', () => {
     const initialData = graphData();
-    const { rerender } = render(
-      <KnowledgeGraph3DScene {...sceneProps(initialData)} />
-    );
+    const { rerender } = renderScene(initialData);
 
     act(() => mockForceGraphProps.onEngineTick?.());
     const updatedData = graphData();
@@ -209,5 +242,26 @@ describe('KnowledgeGraph3DScene', () => {
     );
 
     expect(mockGraphMethods.d3ReheatSimulation).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuilds theme-sensitive presentation without resetting graph state', () => {
+    const data = graphData();
+    renderScene(data);
+    const initialNodeObject = mockForceGraphProps.nodeThreeObject;
+    jest.clearAllMocks();
+
+    act(() => setSceneTheme?.('dark'));
+
+    mockForceGraphProps.nodeThreeObject?.(data.nodes[0]);
+    mockForceGraphProps.nodeThreeObject?.(data.nodes[1]);
+
+    expect(disposeTextureCaches).toHaveBeenCalledTimes(1);
+    expect(buildNodeObject).toHaveBeenCalledTimes(2);
+    expect(mockGraphMethods.refresh).toHaveBeenCalledTimes(1);
+    expect(mockForceGraphProps.nodeThreeObject).not.toBe(initialNodeObject);
+    expect(mockForceGraphProps.graphData).toBe(data);
+    expect(mockGraphMethods.d3ReheatSimulation).not.toHaveBeenCalled();
+    expect(mockGraphMethods.cameraPosition).not.toHaveBeenCalled();
+    expect(mockGraphMethods.zoomToFit).not.toHaveBeenCalled();
   });
 });

@@ -19,6 +19,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
+import { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -35,6 +36,45 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { EntityTitleSectionProps } from './EntityTitleSection.interface';
+
+const updateColumnDisplayName = async (
+  fullyQualifiedName: string,
+  displayName: string | undefined,
+  onDisplayNameUpdate?: (name: string) => void
+): Promise<void> => {
+  const res = await updateTableColumn(fullyQualifiedName, { displayName });
+  onDisplayNameUpdate?.(res.displayName ?? displayName ?? '');
+};
+
+const patchEntityDisplayName = async (
+  id: string,
+  entityType: EntityType,
+  displayName: string | undefined,
+  isReplace: boolean,
+  t: TFunction,
+  onDisplayNameUpdate?: (name: string) => void
+): Promise<void> => {
+  const jsonPatch = [
+    {
+      op: isReplace ? 'replace' : 'add',
+      path: '/displayName',
+      value: displayName,
+    },
+  ];
+
+  const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
+  const response = await patchAPI(id, jsonPatch as Operation[]);
+
+  showSuccessToast(
+    t('server.update-entity-success', {
+      entity: t('label.display-name'),
+    })
+  );
+
+  if (onDisplayNameUpdate) {
+    onDisplayNameUpdate(response.displayName || displayName || '');
+  }
+};
 
 export const EntityTitleSection = ({
   entityDetails,
@@ -69,40 +109,23 @@ export const EntityTitleSection = ({
 
       try {
         if (entityType === EntityType.TABLE_COLUMN) {
-          const res = await updateTableColumn(
+          await updateColumnDisplayName(
             entityDetails.fullyQualifiedName ?? '',
-            {
-              displayName: data.displayName,
-            }
+            data.displayName,
+            onDisplayNameUpdate
           );
-          onDisplayNameUpdate?.(res.displayName ?? data.displayName ?? '');
 
           return;
         }
 
-        const jsonPatch = [
-          {
-            op: entityDisplayName ? 'replace' : 'add',
-            path: '/displayName',
-            value: data.displayName,
-          },
-        ];
-
-        const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
-        const response = await patchAPI(
+        await patchEntityDisplayName(
           entityDetails.id,
-          jsonPatch as Operation[]
+          entityType,
+          data.displayName,
+          Boolean(entityDisplayName),
+          t,
+          onDisplayNameUpdate
         );
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.display-name'),
-          })
-        );
-
-        if (onDisplayNameUpdate) {
-          onDisplayNameUpdate(response.displayName || data.displayName || '');
-        }
       } catch (error) {
         showErrorToast(
           error as AxiosError,

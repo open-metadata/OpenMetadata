@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
+import { HelpCircle } from '@untitledui/icons';
+import { Tooltip } from '../components/base/tooltip/tooltip';
 import { Button } from '../components/base/buttons/button';
 
 const meta = {
@@ -29,9 +30,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <Tooltip title="This is a tooltip">
-      <TooltipTrigger>
-        <Button color="secondary">Hover me</Button>
-      </TooltipTrigger>
+      <Button color="secondary">Hover me</Button>
     </Tooltip>
   ),
 };
@@ -41,9 +40,7 @@ export const WithDescription: StoryObj = {
     <Tooltip
       description="This is a longer description that provides more context."
       title="Tooltip title">
-      <TooltipTrigger>
-        <Button color="secondary">With description</Button>
-      </TooltipTrigger>
+      <Button color="secondary">With description</Button>
     </Tooltip>
   ),
 };
@@ -51,10 +48,34 @@ export const WithDescription: StoryObj = {
 export const WithArrow: StoryObj = {
   render: () => (
     <Tooltip arrow title="Tooltip with arrow">
-      <TooltipTrigger>
-        <Button color="secondary">With arrow</Button>
-      </TooltipTrigger>
+      <Button color="secondary">With arrow</Button>
     </Tooltip>
+  ),
+};
+
+export const OnSpan: StoryObj = {
+  render: () => (
+    <Tooltip title="Tooltip on a plain span">
+      <span>Hover over this text</span>
+    </Tooltip>
+  ),
+};
+
+export const OnIcon: StoryObj = {
+  render: () => (
+    <Tooltip
+      title="Help tooltip on an icon"
+      triggerClassName="tw:flex tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-quaternary_hover">
+      <HelpCircle className="tw:size-5" />
+    </Tooltip>
+  ),
+};
+
+export const ButtonWithTooltip: StoryObj = {
+  render: () => (
+    <Button color="secondary" tooltip="Built-in tooltip via the tooltip prop">
+      Button with tooltip
+    </Button>
   ),
 };
 
@@ -68,32 +89,24 @@ export const Placements: StoryObj = {
         padding: 80,
       }}>
       <Tooltip placement="top" title="Top tooltip">
-        <TooltipTrigger>
-          <Button color="secondary" size="sm">
-            Top
-          </Button>
-        </TooltipTrigger>
+        <Button color="secondary" size="sm">
+          Top
+        </Button>
       </Tooltip>
       <Tooltip placement="bottom" title="Bottom tooltip">
-        <TooltipTrigger>
-          <Button color="secondary" size="sm">
-            Bottom
-          </Button>
-        </TooltipTrigger>
+        <Button color="secondary" size="sm">
+          Bottom
+        </Button>
       </Tooltip>
       <Tooltip placement="left" title="Left tooltip">
-        <TooltipTrigger>
-          <Button color="secondary" size="sm">
-            Left
-          </Button>
-        </TooltipTrigger>
+        <Button color="secondary" size="sm">
+          Left
+        </Button>
       </Tooltip>
       <Tooltip placement="right" title="Right tooltip">
-        <TooltipTrigger>
-          <Button color="secondary" size="sm">
-            Right
-          </Button>
-        </TooltipTrigger>
+        <Button color="secondary" size="sm">
+          Right
+        </Button>
       </Tooltip>
     </div>
   ),
@@ -102,9 +115,7 @@ export const Placements: StoryObj = {
 export const AlwaysVisible: StoryObj = {
   render: () => (
     <Tooltip isOpen title="Always visible tooltip">
-      <TooltipTrigger>
-        <Button color="secondary">Always visible</Button>
-      </TooltipTrigger>
+      <Button color="secondary">Always visible</Button>
     </Tooltip>
   ),
 };

@@ -81,6 +81,55 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const rowFilterContent = SUPPORTED_ROW_FILTER_ENTITIES.includes(
+    entityType
+  ) ? (
+    <Form.List name={[policyField.name, 'rowFilters']}>
+      {(rowFilterFields) => {
+        return (
+          <div className="contract-consumer-security-card-rule-container">
+            {rowFilterFields.map((rowFilterField, rowFilterIndex) => {
+              return (
+                <Row align="middle" gutter={[16, 16]} key={rowFilterField.key}>
+                  <Col span={11}>
+                    <Form.Item
+                      label={t('label.column-name')}
+                      name={[rowFilterField.name, 'columnName']}>
+                      <Input
+                        disabled
+                        data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
+                        placeholder={t('label.please-enter-entity-name', {
+                          entity: t('label.column'),
+                        })}
+                      />
+                    </Form.Item>
+                  </Col>
+
+                  <Col span={11}>
+                    <Form.Item
+                      label={t('label.value-plural')}
+                      name={[rowFilterField.name, 'values']}>
+                      <Select
+                        disabled
+                        data-testid={`values-${policyIndex}-${rowFilterIndex}`}
+                        id={`values-${policyIndex}-${rowFilterIndex}`}
+                        mode="tags"
+                        open={false}
+                        placeholder={t('label.please-enter-value', {
+                          name: t('label.column-plural'),
+                        })}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              );
+            })}
+          </div>
+        );
+      }}
+    </Form.List>
+  ) : null;
+
   return (
     <ExpandableCard
       cardProps={{
@@ -299,55 +348,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
             )}
           </Col>
         </Row>
-      ) : SUPPORTED_ROW_FILTER_ENTITIES.includes(entityType) ? (
-        <Form.List name={[policyField.name, 'rowFilters']}>
-          {(rowFilterFields) => {
-            return (
-              <div className="contract-consumer-security-card-rule-container">
-                {rowFilterFields.map((rowFilterField, rowFilterIndex) => {
-                  return (
-                    <Row
-                      align="middle"
-                      gutter={[16, 16]}
-                      key={rowFilterField.key}>
-                      <Col span={11}>
-                        <Form.Item
-                          label={t('label.column-name')}
-                          name={[rowFilterField.name, 'columnName']}>
-                          <Input
-                            disabled
-                            data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
-                            placeholder={t('label.please-enter-entity-name', {
-                              entity: t('label.column'),
-                            })}
-                          />
-                        </Form.Item>
-                      </Col>
-
-                      <Col span={11}>
-                        <Form.Item
-                          label={t('label.value-plural')}
-                          name={[rowFilterField.name, 'values']}>
-                          <Select
-                            disabled
-                            data-testid={`values-${policyIndex}-${rowFilterIndex}`}
-                            id={`values-${policyIndex}-${rowFilterIndex}`}
-                            mode="tags"
-                            open={false}
-                            placeholder={t('label.please-enter-value', {
-                              name: t('label.column-plural'),
-                            })}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                  );
-                })}
-              </div>
-            );
-          }}
-        </Form.List>
-      ) : null}
+      ) : (
+        rowFilterContent
+      )}
     </ExpandableCard>
   );
 };

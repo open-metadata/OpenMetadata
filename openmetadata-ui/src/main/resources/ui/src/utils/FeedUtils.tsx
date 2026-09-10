@@ -189,6 +189,78 @@ export const getEntityFieldDisplay = (entityField: string) => {
   return null;
 };
 
+const renderFieldActionHeader = (field: string, action: string): ReactNode => (
+  <Transi18next
+    i18nKey="message.feed-field-action-entity-header"
+    renderElement={
+      <Typography.Text className="font-bold" style={{ fontSize: '14px' }} />
+    }
+    values={{ field, action }}
+  />
+);
+
+const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
+  Record<ActivityEventType, () => ReactNode>
+> = {
+  [ActivityEventType.EntityCreated]: () => (
+    <Typography.Text className="font-bold">
+      {t('label.created-lowercase')}
+    </Typography.Text>
+  ),
+  [ActivityEventType.EntityDeleted]: () => (
+    <Typography.Text className="font-bold">
+      {t('label.deleted-lowercase')}
+    </Typography.Text>
+  ),
+  [ActivityEventType.EntitySoftDeleted]: () => (
+    <Typography.Text className="font-bold">
+      {t('label.deleted-lowercase')}
+    </Typography.Text>
+  ),
+  [ActivityEventType.EntityRestored]: () => (
+    <Typography.Text className="font-bold">
+      {t('label.restored-lowercase')}
+    </Typography.Text>
+  ),
+  [ActivityEventType.DescriptionUpdated]: () =>
+    renderFieldActionHeader(
+      t('label.description'),
+      t('label.updated-lowercase')
+    ),
+  [ActivityEventType.ColumnDescriptionUpdated]: () =>
+    renderFieldActionHeader(
+      t('label.description'),
+      t('label.updated-lowercase')
+    ),
+  [ActivityEventType.TagsUpdated]: () =>
+    renderFieldActionHeader(t('label.tag-plural'), t('label.added-lowercase')),
+  [ActivityEventType.ColumnTagsUpdated]: () =>
+    renderFieldActionHeader(t('label.tag-plural'), t('label.added-lowercase')),
+  [ActivityEventType.OwnerUpdated]: () =>
+    renderFieldActionHeader(t('label.owner'), t('label.updated-lowercase')),
+  [ActivityEventType.DomainUpdated]: () =>
+    renderFieldActionHeader(t('label.domain'), t('label.updated-lowercase')),
+  [ActivityEventType.TierUpdated]: () =>
+    renderFieldActionHeader(t('label.tier'), t('label.updated-lowercase')),
+  [ActivityEventType.CustomPropertyUpdated]: () => (
+    <Transi18next
+      i18nKey="message.feed-custom-property-header"
+      renderElement={<Typography.Text className="font-bold" />}
+    />
+  ),
+  [ActivityEventType.TestCaseStatusChanged]: () => (
+    <Transi18next
+      i18nKey="message.feed-test-case-header"
+      renderElement={<Typography.Text className="font-bold" />}
+    />
+  ),
+  [ActivityEventType.PipelineStatusChanged]: () => (
+    <Typography.Text className="font-bold">
+      {t('label.pipeline-status-changed')}
+    </Typography.Text>
+  ),
+};
+
 export const getActivityEventHeaderText = (
   eventType?: ActivityEventType,
   fieldName?: string,
@@ -198,142 +270,22 @@ export const getActivityEventHeaderText = (
     return t('label.posted-on-lowercase');
   }
 
-  switch (eventType) {
-    case ActivityEventType.EntityCreated:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.created-lowercase')}
-        </Typography.Text>
-      );
-    case ActivityEventType.EntityDeleted:
-    case ActivityEventType.EntitySoftDeleted:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.deleted-lowercase')}
-        </Typography.Text>
-      );
-    case ActivityEventType.EntityRestored:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.restored-lowercase')}
-        </Typography.Text>
-      );
-    case ActivityEventType.DescriptionUpdated:
-    case ActivityEventType.ColumnDescriptionUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.description'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.TagsUpdated:
-    case ActivityEventType.ColumnTagsUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.tag-plural'),
-            action: t('label.added-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.OwnerUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.owner'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.DomainUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.domain'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.TierUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t('label.tier'),
-            action: t('label.updated-lowercase'),
-          }}
-        />
-      );
-    case ActivityEventType.CustomPropertyUpdated:
-      return (
-        <Transi18next
-          i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case ActivityEventType.TestCaseStatusChanged:
-      return (
-        <Transi18next
-          i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case ActivityEventType.PipelineStatusChanged:
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.pipeline-status-changed')}
-        </Typography.Text>
-      );
-    case ActivityEventType.EntityUpdated:
-    default:
-      if (fieldName) {
-        return (
-          <Typography.Text className="font-bold">
-            {t('label.updated-field-for-lowercase', { field: fieldName })}
-          </Typography.Text>
-        );
-      }
-
-      return (
-        <Typography.Text className="font-bold">
-          {t('label.updated-lowercase')}
-        </Typography.Text>
-      );
+  const renderHeader = ACTIVITY_EVENT_HEADER_RENDERERS[eventType];
+  if (renderHeader) {
+    return renderHeader();
   }
+
+  if (fieldName) {
+    return (
+      <Typography.Text className="font-bold">
+        {t('label.updated-field-for-lowercase', { field: fieldName })}
+      </Typography.Text>
+    );
+  }
+
+  return (
+    <Typography.Text className="font-bold">
+      {t('label.updated-lowercase')}
+    </Typography.Text>
+  );
 };

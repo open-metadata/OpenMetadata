@@ -61,6 +61,134 @@ const DomainSelectorPlaceholder = () => (
   <div className="border-radius-sm p-x-md bg-white domain-selector" />
 );
 
+const resolveHeaderBackgroundColor = (
+  backgroundColor?: string,
+  adminPanelBackgroundColor?: string
+): string =>
+  backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
+
+const getCanDisplayAnnouncements = (
+  isPreviewHeader: boolean,
+  showAnnouncements: boolean,
+  isAnnouncementLoading: boolean
+): boolean => !isPreviewHeader && showAnnouncements && !isAnnouncementLoading;
+
+const resolveAnnouncementsState = (
+  announcementsFromParent: AnnouncementEntity[] | undefined,
+  internalAnnouncements: AnnouncementEntity[],
+  isAnnouncementLoadingFromParent: boolean | undefined,
+  internalIsAnnouncementLoading: boolean
+) => ({
+  announcements: announcementsFromParent ?? internalAnnouncements,
+  isAnnouncementLoading:
+    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading,
+});
+
+interface CustomiseHeaderButtonProps {
+  hidden: boolean;
+  onClick: () => void;
+}
+
+const CustomiseHeaderButton = ({
+  hidden,
+  onClick,
+}: CustomiseHeaderButtonProps) =>
+  hidden ? null : (
+    <Button
+      className="customise-header-btn"
+      data-testid="customise-header-btn"
+      icon={
+        <Icon
+          component={FilterIcon}
+          style={{ fontSize: '16px', color: 'white' }}
+        />
+      }
+      onClick={onClick}
+    />
+  );
+
+interface LandingPageRecentlyViewedProps {
+  isPreviewHeader: boolean;
+  onHomePage: boolean;
+  showAnnouncements: boolean;
+}
+
+const LandingPageRecentlyViewed = ({
+  isPreviewHeader,
+  onHomePage,
+  showAnnouncements,
+}: LandingPageRecentlyViewedProps) =>
+  isPreviewHeader ? null : (
+    <Suspense fallback={null}>
+      <RecentlyViewedCarousel
+        disabled={!onHomePage}
+        showAnnouncements={showAnnouncements}
+      />
+    </Suspense>
+  );
+
+interface LandingPageAnnouncementsProps {
+  canDisplay: boolean;
+  announcements: AnnouncementEntity[];
+  bgColor: string;
+  onHomePage: boolean;
+  onClose: () => void;
+}
+
+const LandingPageAnnouncements = ({
+  canDisplay,
+  announcements,
+  bgColor,
+  onHomePage,
+  onClose,
+}: LandingPageAnnouncementsProps) =>
+  canDisplay && announcements.length > 0 ? (
+    <div className="announcements-container">
+      <AnnouncementsWidgetV1
+        announcements={announcements}
+        currentBackgroundColor={bgColor}
+        disabled={!onHomePage}
+        onClose={onClose}
+      />
+    </div>
+  ) : null;
+
+interface LandingPageCustomiseModalProps {
+  hideCustomiseButton: boolean;
+  showCustomiseHomeModal: boolean;
+  addedWidgetsList?: CustomiseLandingPageHeaderProps['addedWidgetsList'];
+  bgColor: string;
+  handleAddWidget: CustomiseLandingPageHeaderProps['handleAddWidget'];
+  placeholderWidgetKey?: string;
+  onBackgroundColorUpdate: CustomiseLandingPageHeaderProps['onBackgroundColorUpdate'];
+  onClose: () => void;
+  onHomePage: boolean;
+}
+
+const LandingPageCustomiseModal = ({
+  hideCustomiseButton,
+  showCustomiseHomeModal,
+  addedWidgetsList,
+  bgColor,
+  handleAddWidget,
+  placeholderWidgetKey,
+  onBackgroundColorUpdate,
+  onClose,
+  onHomePage,
+}: LandingPageCustomiseModalProps) =>
+  !hideCustomiseButton && showCustomiseHomeModal ? (
+    <CustomiseHomeModal
+      addedWidgetsList={addedWidgetsList}
+      currentBackgroundColor={bgColor}
+      handleAddWidget={handleAddWidget}
+      open={showCustomiseHomeModal}
+      placeholderWidgetKey={placeholderWidgetKey}
+      onBackgroundColorUpdate={onBackgroundColorUpdate}
+      onClose={onClose}
+      onHomePage={onHomePage}
+    />
+  ) : null;
+
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
   backgroundColor,
@@ -87,14 +215,19 @@ const CustomiseLandingPageHeader = ({
   >([]);
   const [internalIsAnnouncementLoading, setInternalIsAnnouncementLoading] =
     useState(true);
-  const announcements = announcementsFromParent ?? internalAnnouncements;
-  const isAnnouncementLoading =
-    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading;
+  const { announcements, isAnnouncementLoading } = resolveAnnouncementsState(
+    announcementsFromParent,
+    internalAnnouncements,
+    isAnnouncementLoadingFromParent,
+    internalIsAnnouncementLoading
+  );
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const adminPanelBackgroundColor =
     applicationConfig?.customTheme?.panelBackgroundColor;
-  const bgColor =
-    backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
+  const bgColor = resolveHeaderBackgroundColor(
+    backgroundColor,
+    adminPanelBackgroundColor
+  );
 
   const landingPageStyle = useMemo(() => {
     const backgroundImage = isLinearGradient(bgColor)
@@ -142,8 +275,11 @@ const CustomiseLandingPageHeader = ({
     fetchAnnouncements();
   }, [announcementsFromParent, fetchAnnouncements]);
 
-  const canDisplayAnnouncements =
-    !isPreviewHeader && showAnnouncements && !isAnnouncementLoading;
+  const canDisplayAnnouncements = getCanDisplayAnnouncements(
+    isPreviewHeader,
+    showAnnouncements,
+    isAnnouncementLoading
+  );
 
   return (
     <div
@@ -161,19 +297,10 @@ const CustomiseLandingPageHeader = ({
                 name: currentUser?.displayName || currentUser?.name,
               })}
             </Typography.Text>
-            {!hideCustomiseButton && (
-              <Button
-                className="customise-header-btn"
-                data-testid="customise-header-btn"
-                icon={
-                  <Icon
-                    component={FilterIcon}
-                    style={{ fontSize: '16px', color: 'white' }}
-                  />
-                }
-                onClick={handleOpenCustomiseHomeModal}
-              />
-            )}
+            <CustomiseHeaderButton
+              hidden={hideCustomiseButton}
+              onClick={handleOpenCustomiseHomeModal}
+            />
           </div>
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
@@ -182,44 +309,37 @@ const CustomiseLandingPageHeader = ({
                 <LandingPageDomainSelector disabled={!onHomePage} />
               </Suspense>
             </div>
-            {!isPreviewHeader && (
-              <Suspense fallback={null}>
-                <RecentlyViewedCarousel
-                  disabled={!onHomePage}
-                  showAnnouncements={showAnnouncements}
-                />
-              </Suspense>
-            )}
+            <LandingPageRecentlyViewed
+              isPreviewHeader={isPreviewHeader}
+              showAnnouncements={showAnnouncements}
+              onHomePage={onHomePage}
+            />
           </div>
         </div>
 
-        {canDisplayAnnouncements && announcements.length > 0 && (
-          <div className="announcements-container">
-            <AnnouncementsWidgetV1
-              announcements={announcements}
-              currentBackgroundColor={bgColor}
-              disabled={!onHomePage}
-              onClose={() => {
-                setShowAnnouncements(false);
-              }}
-            />
-          </div>
-        )}
+        <LandingPageAnnouncements
+          announcements={announcements}
+          bgColor={bgColor}
+          canDisplay={canDisplayAnnouncements}
+          onClose={() => {
+            setShowAnnouncements(false);
+          }}
+          onHomePage={onHomePage}
+        />
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 
-      {!hideCustomiseButton && showCustomiseHomeModal && (
-        <CustomiseHomeModal
-          addedWidgetsList={addedWidgetsList}
-          currentBackgroundColor={bgColor}
-          handleAddWidget={handleAddWidget}
-          open={showCustomiseHomeModal}
-          placeholderWidgetKey={placeholderWidgetKey}
-          onBackgroundColorUpdate={onBackgroundColorUpdate}
-          onClose={handleCloseCustomiseHomeModal}
-          onHomePage={onHomePage}
-        />
-      )}
+      <LandingPageCustomiseModal
+        addedWidgetsList={addedWidgetsList}
+        bgColor={bgColor}
+        handleAddWidget={handleAddWidget}
+        hideCustomiseButton={hideCustomiseButton}
+        placeholderWidgetKey={placeholderWidgetKey}
+        showCustomiseHomeModal={showCustomiseHomeModal}
+        onBackgroundColorUpdate={onBackgroundColorUpdate}
+        onClose={handleCloseCustomiseHomeModal}
+        onHomePage={onHomePage}
+      />
     </div>
   );
 };

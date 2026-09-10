@@ -1,6 +1,6 @@
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { HelpCircle, InfoCircle } from '@untitledui/icons';
@@ -188,16 +188,16 @@ export const InputBase = ({
 
       {/* Tooltip and help icon */}
       {tooltip && !isInvalid && (
-        <Tooltip placement="top" title={tooltip}>
-          <TooltipTrigger
-            className={cx(
-              'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
-              sizes[inputSize].iconTrailing,
-              context?.tooltipClassName,
-              tooltipClassName
-            )}>
-            <HelpCircle className="tw:size-4" />
-          </TooltipTrigger>
+        <Tooltip
+          placement="top"
+          title={tooltip}
+          triggerClassName={cx(
+            'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
+            sizes[inputSize].iconTrailing,
+            context?.tooltipClassName,
+            tooltipClassName
+          )}>
+          <HelpCircle className="tw:size-4" />
         </Tooltip>
       )}
 

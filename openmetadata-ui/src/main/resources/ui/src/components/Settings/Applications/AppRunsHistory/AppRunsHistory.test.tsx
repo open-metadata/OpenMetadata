@@ -146,7 +146,7 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/Table/Table', () => {
+jest.mock('../../../common/Table/TableV2', () => {
   return jest
     .fn()
     .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
