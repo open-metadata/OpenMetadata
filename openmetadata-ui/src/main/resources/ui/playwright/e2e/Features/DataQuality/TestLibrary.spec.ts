@@ -15,6 +15,7 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
@@ -409,8 +410,10 @@ test.describe(
           ).toHaveCount(0);
 
           // Add dbt
-          await page.getByTestId('test-platforms').click();
-          await page.getByRole('option', { name: 'dbt', exact: true }).click();
+          await selectOptionWithRetry(
+            page.getByTestId('test-platforms'),
+            page.getByRole('option', { name: 'dbt', exact: true })
+          );
 
           // Close dropdown
           await page.keyboard.press('Escape');

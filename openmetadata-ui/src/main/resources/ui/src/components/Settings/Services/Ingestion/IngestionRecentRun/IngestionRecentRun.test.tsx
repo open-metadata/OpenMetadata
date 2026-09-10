@@ -269,8 +269,9 @@ describe('Test IngestionRecentRun component', () => {
       fireEvent.click(await screen.findByText(/label.log-plural/));
     });
 
-    expect(ConnectionStepCard).toHaveBeenNthCalledWith(
-      2,
+    // Call-index-free: AntD re-rendered the expanded row a second time and
+    // the old assertion pinned that incidental index; TableV2 renders once.
+    expect(ConnectionStepCard).toHaveBeenCalledWith(
       {
         isTestingConnection: false,
         testConnectionStep: {

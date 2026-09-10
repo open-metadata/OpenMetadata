@@ -60,6 +60,16 @@ describe('TagBadgeList', () => {
     expect(screen.getByText('-')).toBeInTheDocument();
   });
 
+  it('renders a custom emptyPlaceholder when provided and tags are empty', () => {
+    render(
+      <MemoryRouter>
+        <TagBadgeList emptyPlaceholder="--" tags={[]} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('--')).toBeInTheDocument();
+  });
+
   it('should render a single tag as TagChip', () => {
     render(
       <MemoryRouter>

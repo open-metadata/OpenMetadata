@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -63,6 +65,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
+  private final long snapshotTimestamp;
   private final int batchSize;
   private final SearchRepository searchRepository;
   private final CollectionDAO collectionDAO;
@@ -74,6 +77,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
+  private DataInsightsExtensions extensions;
   @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
 
   private volatile boolean stopped = false;
@@ -116,6 +120,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     }
 
     this.batchSize = batchSize;
+    this.snapshotTimestamp = timestamp;
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityTypes = entityTypes;
@@ -224,6 +229,30 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     }
     LOG.info("[Data Insights] Processing Data Assets Insights.");
     initialize();
+    DataInsightsExtension.RunContext runContext =
+        new DataInsightsExtension.RunContext(
+            UUID.randomUUID().toString(),
+            System.currentTimeMillis(),
+            snapshotTimestamp,
+            collectionDAO,
+            searchRepository,
+            dataAssetsConfig,
+            () -> stopped);
+    try (DataInsightsExtensions runExtensions = DataInsightsExtensions.open(runContext)) {
+      this.extensions = runExtensions;
+      processSources();
+      if (!stopped && !workflowStats.hasFailed()) {
+        runExtensions.complete();
+      }
+    } catch (CancellationException ex) {
+      stopped = true;
+      LOG.info("[Data Insights] Data Assets workflow stopped: {}", ex.getMessage());
+    } finally {
+      this.extensions = null;
+    }
+  }
+
+  private void processSources() throws SearchIndexException {
     Map<String, Object> contextData = new HashMap<>();
 
     contextData.put(START_TIMESTAMP_KEY, startTimestamp);
@@ -264,6 +293,8 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       throws SearchIndexException {
     Semaphore concurrencyLimit = new Semaphore(budget);
     ConcurrentLinkedQueue<TaggedOperation<?>> opsQueue = new ConcurrentLinkedQueue<>();
+    int sinkFailuresBefore = searchIndexSink.getStats().getFailedRecords();
+    String terminalFailure = null;
 
     try (ExecutorService sourceExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
       this.executor = sourceExecutor;
@@ -276,7 +307,8 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
 
           if (batch.getData().isEmpty()) {
             if (!batch.getErrors().isEmpty()) {
-              source.updateStats(0, batch.getErrors().size());
+              int readErrorCount = batch.getErrors().size();
+              source.updateStats(0, readErrorCount);
             }
             if (keysetCursor == null) {
               break;
@@ -284,6 +316,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
             continue;
           }
 
+          extensions.beforeBatch(batch.getData());
           record EntityFuture(EntityInterface entity, Future<Void> future) {}
           List<EntityFuture> entityFutures = new ArrayList<>();
           for (EntityInterface entity : batch.getData()) {
@@ -296,6 +329,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
                           try {
                             List<Map<String, Object>> enriched =
                                 entityEnricher.enrichSingle(entity, contextData);
+                            enriched.forEach(extensions::enrich);
                             List<?> bulkOps =
                                 (List<?>) entityProcessor.process(enriched, contextData);
                             EntityReference ref = entity.getEntityReference();
@@ -334,12 +368,12 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage =
-              String.format("Failed processing Data from %s: %s", source.getName(), ex);
-          workflowStats.addFailure(errorMessage);
+          terminalFailure = "search indexing error: " + ex.getMessage();
           break;
         } catch (InterruptedException ex) {
           Thread.currentThread().interrupt();
+          stopped = true;
+          terminalFailure = "asset scan was interrupted";
           break;
         }
       }
@@ -350,9 +384,24 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     try {
       drainAndFlush(opsQueue);
     } finally {
+      recordSourceFailure(source, sinkFailuresBefore, terminalFailure);
       updateWorkflowStats(source.getName(), source.getStats());
       mergeEnricherStepStats();
     }
+  }
+
+  private void recordSourceFailure(
+      PaginatedEntitiesSource source, int sinkFailuresBefore, String terminalFailure) {
+    int sourceFailures = source.getStats().getFailedRecords();
+    int searchRejections =
+        Math.max(0, searchIndexSink.getStats().getFailedRecords() - sinkFailuresBefore);
+    if (sourceFailures == 0 && searchRejections == 0 && terminalFailure == null) {
+      return;
+    }
+    String detail = terminalFailure == null ? "" : "; " + terminalFailure;
+    workflowStats.addFailure(
+        "Data Insights source %s failed (%d source/process errors, %d search rejections%s)"
+            .formatted(source.getName(), sourceFailures, searchRejections, detail));
   }
 
   /**
