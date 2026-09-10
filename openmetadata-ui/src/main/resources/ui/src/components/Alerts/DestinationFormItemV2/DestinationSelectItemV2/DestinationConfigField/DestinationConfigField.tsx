@@ -16,51 +16,32 @@ import {
   AccordionHeader,
   AccordionItem,
   AccordionPanel,
-  Badge,
   BadgeWithButton,
-  Button,
   Grid,
   Input,
-  Label,
   PasswordInput,
-  RadioButton,
-  RadioGroup,
   Select,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
-import {
-  Controller,
-  useFieldArray,
-  useFormContext,
-  useWatch,
-} from 'react-hook-form';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { ReactComponent as ConfigIcon } from '../../../../../assets/svg/configuration-icon.svg';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../../../constants/Alerts.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import {
-  HTTPMethod,
   SubscriptionCategory,
   SubscriptionType,
   Type,
 } from '../../../../../generated/events/eventSubscription';
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
-import TeamAndUserSelectItem from '../../TeamAndUserSelectItem/TeamAndUserSelectItem';
-import {
-  getExpandedConfigKeys,
-  isValidEmailAddress,
-} from './DestinationConfigField.utils';
+import TeamAndUserSelectItemV2 from '../../TeamAndUserSelectItemV2/TeamAndUserSelectItemV2';
 
 interface DestinationConfigFieldProps {
   type: SubscriptionType | SubscriptionCategory;
   fieldName: number;
-  isConfigExpanded?: boolean;
-  isViewMode?: boolean;
-  onConfigExpandedChange?: (isExpanded: boolean) => void;
 }
 
 const getUserOptions = async (searchText: string) =>
@@ -83,17 +64,10 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-function EmailTagInput({
-  fieldName,
-  isDisabled,
-}: {
-  fieldName: number;
-  isDisabled: boolean;
-}) {
+function EmailTagInput({ fieldName }: { fieldName: number }) {
   const { t } = useTranslation();
   const { setValue, control } = useFormContext();
   const [inputValue, setInputValue] = useState('');
-  const [emailError, setEmailError] = useState<string>();
 
   const receivers: string[] =
     useWatch({
@@ -105,30 +79,21 @@ function EmailTagInput({
     const trimmed = inputValue.trim();
     if (!trimmed || receivers.includes(trimmed)) {
       setInputValue('');
-      setEmailError(undefined);
 
       return;
     }
-    if (!isValidEmailAddress(trimmed)) {
-      setEmailError(t('message.email-is-invalid'));
-
-      return;
-    }
-    setValue(
-      `destinations.${fieldName}.config.receivers`,
-      [...receivers, trimmed],
-      { shouldValidate: true }
-    );
+    setValue(`destinations.${fieldName}.config.receivers`, [
+      ...receivers,
+      trimmed,
+    ]);
     setInputValue('');
-    setEmailError(undefined);
-  }, [inputValue, receivers, fieldName, setValue, t]);
+  }, [inputValue, receivers, fieldName, setValue]);
 
   const removeEmail = useCallback(
     (email: string) => {
       setValue(
         `destinations.${fieldName}.config.receivers`,
-        receivers.filter((r) => r !== email),
-        { shouldValidate: true }
+        receivers.filter((r) => r !== email)
       );
     },
     [receivers, fieldName, setValue]
@@ -139,15 +104,11 @@ function EmailTagInput({
       <Input
         data-testid={`email-input-${fieldName}`}
         inputDataTestId={`email-input-field-${fieldName}`}
-        isDisabled={isDisabled}
         placeholder={
           DESTINATION_TYPE_BASED_PLACEHOLDERS[SubscriptionType.Email] ?? ''
         }
         value={inputValue}
-        onChange={(val) => {
-          setInputValue(val);
-          setEmailError(undefined);
-        }}
+        onChange={(val) => setInputValue(val)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
@@ -155,142 +116,23 @@ function EmailTagInput({
           }
         }}
       />
-      <FieldError message={emailError} />
       {!isEmpty(receivers) && (
         <div
           className="tw:flex tw:flex-wrap tw:gap-1.5"
           data-testid={`email-tags-${fieldName}`}>
-          {receivers.map((email) =>
-            isDisabled ? (
-              <Badge
-                color="gray"
-                data-testid={`email-tag-${email}`}
-                key={email}
-                type="pill-color">
-                {email}
-              </Badge>
-            ) : (
-              <BadgeWithButton
-                buttonLabel={t('label.remove')}
-                color="gray"
-                data-testid={`email-tag-${email}`}
-                key={email}
-                type="pill-color"
-                onButtonClick={() => removeEmail(email)}>
-                {email}
-              </BadgeWithButton>
-            )
-          )}
+          {receivers.map((email) => (
+            <BadgeWithButton
+              buttonLabel={t('label.remove')}
+              color="gray"
+              data-testid={`email-tag-${email}`}
+              key={email}
+              type="pill-color"
+              onButtonClick={() => removeEmail(email)}>
+              {email}
+            </BadgeWithButton>
+          ))}
         </div>
       )}
-    </div>
-  );
-}
-
-interface KeyValueListProps {
-  fieldName: number;
-  isDisabled: boolean;
-  name: 'headers' | 'queryParams';
-}
-
-function KeyValueList({
-  fieldName,
-  isDisabled,
-  name,
-}: Readonly<KeyValueListProps>) {
-  const { t } = useTranslation();
-  const { control } = useFormContext();
-  const fieldPath = `destinations.${fieldName}.config.${name}` as const;
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: fieldPath as never,
-  });
-  const isHeaders = name === 'headers';
-  const testIdPrefix = isHeaders ? 'header' : 'query-param';
-
-  return (
-    <div className="tw:flex tw:flex-col tw:gap-2">
-      <div className="tw:flex tw:items-center tw:justify-between">
-        <span className="tw:text-sm tw:font-medium tw:text-primary">
-          {isHeaders
-            ? t('label.header-plural')
-            : t('label.query-parameter-plural')}
-        </span>
-        {!isDisabled && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
-            data-testid={`add-${testIdPrefix}-button-${fieldName}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => append({ key: '', value: '' } as never)}
-          />
-        )}
-      </div>
-      {fields.map((field, index) => (
-        <div className="tw:flex tw:items-center tw:gap-2" key={field.id}>
-          <div className="tw:grid tw:flex-1 tw:grid-cols-2 tw:gap-2">
-            <Controller
-              control={control}
-              name={`${fieldPath}.${index}.key`}
-              render={({ field: controllerField, fieldState }) => (
-                <div>
-                  <Input
-                    data-testid={`${testIdPrefix}-key-input-${fieldName}-${index}`}
-                    inputDataTestId={`${testIdPrefix}-key-input-field-${fieldName}-${index}`}
-                    isDisabled={isDisabled}
-                    placeholder={t('label.key')}
-                    ref={controllerField.ref}
-                    value={controllerField.value ?? ''}
-                    onBlur={controllerField.onBlur}
-                    onChange={controllerField.onChange}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-              rules={{
-                required: t('message.field-text-is-required', {
-                  fieldText: t('label.key'),
-                }),
-              }}
-            />
-            <Controller
-              control={control}
-              name={`${fieldPath}.${index}.value`}
-              render={({ field: controllerField, fieldState }) => (
-                <div>
-                  <Input
-                    data-testid={`${testIdPrefix}-value-input-${fieldName}-${index}`}
-                    inputDataTestId={`${testIdPrefix}-value-input-field-${fieldName}-${index}`}
-                    isDisabled={isDisabled}
-                    placeholder={t('label.value')}
-                    ref={controllerField.ref}
-                    value={controllerField.value ?? ''}
-                    onBlur={controllerField.onBlur}
-                    onChange={controllerField.onChange}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-              rules={{
-                required: t('message.field-text-is-required', {
-                  fieldText: t('label.value'),
-                }),
-              }}
-            />
-          </div>
-          {!isDisabled && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
-              data-testid={`remove-${testIdPrefix}-button-${fieldName}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => remove(index)}
-            />
-          )}
-        </div>
-      ))}
     </div>
   );
 }
@@ -298,9 +140,6 @@ function KeyValueList({
 function DestinationConfigField({
   type,
   fieldName,
-  isConfigExpanded = false,
-  isViewMode = false,
-  onConfigExpandedChange,
 }: Readonly<DestinationConfigFieldProps>) {
   const { t } = useTranslation();
   const { control } = useFormContext();
@@ -317,8 +156,6 @@ function DestinationConfigField({
     type === SubscriptionType.Webhook;
 
   if (isWebhookType) {
-    const advancedConfigId = `advanced-config-${fieldName}`;
-
     return (
       <>
         <Grid.Item span={12}>
@@ -330,7 +167,6 @@ function DestinationConfigField({
                 <Input
                   data-testid={`endpoint-input-${fieldName}`}
                   inputDataTestId={`endpoint-input-field-${fieldName}`}
-                  isDisabled={isViewMode}
                   placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
                   ref={field.ref}
                   value={field.value ?? ''}
@@ -349,15 +185,8 @@ function DestinationConfigField({
         </Grid.Item>
 
         <Grid.Item span={24}>
-          <Accordion
-            expandedKeys={getExpandedConfigKeys(
-              isConfigExpanded,
-              advancedConfigId
-            )}
-            onExpandedChange={(keys) =>
-              onConfigExpandedChange?.(keys.has(advancedConfigId))
-            }>
-            <AccordionItem id={advancedConfigId}>
+          <Accordion>
+            <AccordionItem id={`advanced-config-${fieldName}`}>
               <AccordionHeader>
                 <span className="tw:flex tw:items-center tw:gap-2">
                   <ConfigIcon className="tw:size-4" />
@@ -373,7 +202,6 @@ function DestinationConfigField({
                       render={({ field }) => (
                         <Select
                           data-testid={`auth-type-select-${fieldName}`}
-                          isDisabled={isViewMode}
                           label={`${t('label.authentication-type')}:`}
                           placeholder={t('label.authentication-type')}
                           selectedKey={field.value ?? null}
@@ -401,7 +229,6 @@ function DestinationConfigField({
                           <div>
                             <PasswordInput
                               data-testid={`secret-key-input-${fieldName}`}
-                              isDisabled={isViewMode}
                               label={`${t('label.secret-key')}:`}
                               placeholder={t('label.secret-key')}
                               ref={field.ref}
@@ -432,7 +259,6 @@ function DestinationConfigField({
                               <Input
                                 data-testid={`token-url-input-${fieldName}`}
                                 inputDataTestId={`token-url-input-field-${fieldName}`}
-                                isDisabled={isViewMode}
                                 label={`${t('label.token-url')}:`}
                                 placeholder="https://auth.example.com/oauth/token"
                                 ref={field.ref}
@@ -458,7 +284,6 @@ function DestinationConfigField({
                             <div>
                               <PasswordInput
                                 data-testid={`client-id-input-${fieldName}`}
-                                isDisabled={isViewMode}
                                 label={`${t('label.client-id')}:`}
                                 placeholder={t('label.client-id')}
                                 ref={field.ref}
@@ -484,7 +309,6 @@ function DestinationConfigField({
                             <div>
                               <PasswordInput
                                 data-testid={`client-secret-input-${fieldName}`}
-                                isDisabled={isViewMode}
                                 label={`${t('label.client-secret')}:`}
                                 placeholder={t('label.client-secret')}
                                 ref={field.ref}
@@ -502,71 +326,8 @@ function DestinationConfigField({
                           }}
                         />
                       </Grid.Item>
-                      <Grid.Item span={24}>
-                        <Controller
-                          control={control}
-                          name={`destinations.${fieldName}.config.authType.scope`}
-                          render={({ field }) => (
-                            <Input
-                              data-testid={`scope-input-${fieldName}`}
-                              inputDataTestId={`scope-input-field-${fieldName}`}
-                              isDisabled={isViewMode}
-                              label={`${t('label.scope')}:`}
-                              placeholder={`${t('label.scope')} (${t(
-                                'label.optional'
-                              )})`}
-                              ref={field.ref}
-                              value={field.value ?? ''}
-                              onBlur={field.onBlur}
-                              onChange={field.onChange}
-                            />
-                          )}
-                        />
-                      </Grid.Item>
                     </>
                   )}
-
-                  <Grid.Item span={24}>
-                    <KeyValueList
-                      fieldName={fieldName}
-                      isDisabled={isViewMode}
-                      name="headers"
-                    />
-                  </Grid.Item>
-                  <Grid.Item span={24}>
-                    <KeyValueList
-                      fieldName={fieldName}
-                      isDisabled={isViewMode}
-                      name="queryParams"
-                    />
-                  </Grid.Item>
-                  <Grid.Item span={24}>
-                    <Controller
-                      control={control}
-                      defaultValue={HTTPMethod.Post}
-                      name={`destinations.${fieldName}.config.httpMethod`}
-                      render={({ field }) => (
-                        <RadioGroup
-                          className="tw:flex tw:flex-col tw:gap-1.5"
-                          data-testid={`http-method-${fieldName}`}
-                          isDisabled={isViewMode}
-                          value={field.value ?? HTTPMethod.Post}
-                          onChange={field.onChange}>
-                          <Label>{`${t('label.http-method')}:`}</Label>
-                          <div className="tw:flex tw:gap-4">
-                            <RadioButton
-                              label={HTTPMethod.Post}
-                              value={HTTPMethod.Post}
-                            />
-                            <RadioButton
-                              label={HTTPMethod.Put}
-                              value={HTTPMethod.Put}
-                            />
-                          </div>
-                        </RadioGroup>
-                      )}
-                    />
-                  </Grid.Item>
                 </Grid>
               </AccordionPanel>
             </AccordionItem>
@@ -579,61 +340,32 @@ function DestinationConfigField({
   if (type === SubscriptionType.Email) {
     return (
       <Grid.Item span={24}>
-        <Controller
-          control={control}
-          name={`destinations.${fieldName}.config.receivers`}
-          render={({ fieldState }) => (
-            <>
-              <EmailTagInput fieldName={fieldName} isDisabled={isViewMode} />
-              <FieldError message={fieldState.error?.message} />
-            </>
-          )}
-          rules={{
-            validate: (receivers) =>
-              !isEmpty(receivers) ||
-              t('message.field-text-is-required', {
-                fieldText: t('label.email'),
-              }),
-          }}
+        <EmailTagInput fieldName={fieldName} />
+      </Grid.Item>
+    );
+  }
+
+  if (type === SubscriptionCategory.Teams) {
+    return (
+      <Grid.Item span={24}>
+        <TeamAndUserSelectItemV2
+          destinationNumber={fieldName}
+          entityType={t('label.team-lowercase')}
+          fieldName={[fieldName, 'config', 'receivers']}
+          onSearch={getTeamOptions}
         />
       </Grid.Item>
     );
   }
 
-  if (
-    type === SubscriptionCategory.Teams ||
-    type === SubscriptionCategory.Users
-  ) {
-    const isTeam = type === SubscriptionCategory.Teams;
-
+  if (type === SubscriptionCategory.Users) {
     return (
       <Grid.Item span={24}>
-        <Controller
-          control={control}
-          name={`destinations.${fieldName}.config.receivers`}
-          render={({ fieldState }) => (
-            <>
-              <TeamAndUserSelectItem
-                destinationNumber={fieldName}
-                entityType={
-                  isTeam ? t('label.team-lowercase') : t('label.user-lowercase')
-                }
-                fieldName={[fieldName, 'config', 'receivers']}
-                isDisabled={isViewMode}
-                onSearch={isTeam ? getTeamOptions : getUserOptions}
-              />
-              <FieldError message={fieldState.error?.message} />
-            </>
-          )}
-          rules={{
-            validate: (receivers) =>
-              !isEmpty(receivers) ||
-              t('message.field-text-is-required', {
-                fieldText: isTeam
-                  ? t('label.team-lowercase')
-                  : t('label.user-lowercase'),
-              }),
-          }}
+        <TeamAndUserSelectItemV2
+          destinationNumber={fieldName}
+          entityType={t('label.user-lowercase')}
+          fieldName={[fieldName, 'config', 'receivers']}
+          onSearch={getUserOptions}
         />
       </Grid.Item>
     );

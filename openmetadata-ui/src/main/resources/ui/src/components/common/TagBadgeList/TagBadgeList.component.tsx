@@ -22,11 +22,16 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 interface TagBadgeListProps {
   tags: TagLabel[];
   size?: 'sm' | 'lg';
+  emptyPlaceholder?: string;
 }
 
-const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
+const TagBadgeList = ({
+  tags,
+  size = 'sm',
+  emptyPlaceholder = NO_DATA,
+}: TagBadgeListProps) => {
   if (!tags.length) {
-    return <Typography size="text-sm">{NO_DATA}</Typography>;
+    return <Typography size="text-sm">{emptyPlaceholder}</Typography>;
   }
 
   const firstTag = tags[0];

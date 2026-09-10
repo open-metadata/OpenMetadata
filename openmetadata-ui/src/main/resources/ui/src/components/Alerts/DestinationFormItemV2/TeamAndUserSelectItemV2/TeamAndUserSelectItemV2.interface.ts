@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Destination } from '../../../../generated/events/eventSubscription';
+import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 
-export interface DestinationSelectItemProps {
-  selectorKey: number;
-  id: number;
-  remove: (index: number | number[]) => void;
-  destinationsWithStatus?: Destination[];
-  isDestinationStatusLoading: boolean;
-  isViewMode?: boolean;
+export interface TeamAndUserSelectItemV2Props {
+  entityType: string;
+  onSearch: (value: string) => Promise<SelectOption[]>;
+  fieldName: (string | number)[];
+  destinationNumber: number;
 }
