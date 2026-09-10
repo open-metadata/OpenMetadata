@@ -207,7 +207,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
-              {schema_clause}
+              AND n.nspname = :schema
             UNION
             SELECT
               view_schema as "schema",
@@ -231,7 +231,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
               col_name name,
               col_type varchar,
               col_num int)
-            WHERE 1 {schema_clause}
+            WHERE view_schema = :schema
             UNION
             SELECT schemaname AS "schema",
                tablename AS "table_name",
@@ -265,6 +265,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
                null AS "schema_oid",
                null AS "table_oid"
             FROM svv_external_columns
+            WHERE schemaname = :schema
             ORDER BY "schema", "table_name", "attnum";
             """
 )
@@ -272,7 +273,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
 REDSHIFT_EXTERNAL_TABLE_LOCATION = """
   SELECT schemaname, tablename, location
     FROM svv_external_tables
-    where redshift_database_name='{database_name}'
+    where redshift_database_name = :database_name
 """
 
 
@@ -546,8 +547,8 @@ WHERE status = 'success'
     (query_type = 'UTILITY' AND query_text ilike '%%COMMENT ON%%') OR
     (query_type = 'CTAS' AND query_text ilike '%%CREATE TABLE%%')
   )
-  and database_name = '{database}'
-  and end_time >= '{start_date}'
+  and database_name = :database
+  and end_time >= :start_date
 ORDER BY end_time DESC
 """
 
