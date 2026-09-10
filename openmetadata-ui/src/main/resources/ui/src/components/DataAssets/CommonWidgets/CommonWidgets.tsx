@@ -21,7 +21,7 @@ import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Directory } from '../../../generated/entity/data/directory';
@@ -46,6 +46,7 @@ import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.i
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getEntityVersionByField,
@@ -512,7 +513,7 @@ export const CommonWidgets = ({
 
     return (
       <WidgetCard
-        dataTestId="owner-widget"
+        dataTestId="glossary-right-panel-owner-link"
         headerExtra={
           !isVersionView && editOwnerPermission ? (
             <UserTeamSelectableList
@@ -544,12 +545,25 @@ export const CommonWidgets = ({
         }
         isExpandDisabled={isEmpty(owners)}
         title={t('label.owner-plural')}>
-        <Owner
-          isCompactView={false}
-          owners={toOwnersWithHref(owners ?? [])}
-          renderOwnerContent={renderOwnerContent}
-          showLabel={false}
-        />
+        {isVersionView ? (
+          // Version view needs the added/removed diff highlighting
+          // (data-testid="diff-added"/"diff-removed") that getOwnerVersionLabel
+          // computes from the changeDescription. The plain <Owner> below only
+          // renders the current owners with links/hover cards.
+          getOwnerVersionLabel(
+            data,
+            isVersionView,
+            TabSpecificField.OWNERS,
+            editOwnerPermission
+          )
+        ) : (
+          <Owner
+            isCompactView={false}
+            owners={toOwnersWithHref(owners ?? [])}
+            renderOwnerContent={renderOwnerContent}
+            showLabel={false}
+          />
+        )}
       </WidgetCard>
     );
   }, [

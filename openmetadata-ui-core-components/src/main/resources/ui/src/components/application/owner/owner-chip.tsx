@@ -87,13 +87,13 @@ export const OwnerChip = ({
     // The owner name carries its own data-testid nested inside the `owner-link`
     // wrapper so tests can target either the link (`owner-link`) or the owner by
     // name, and `owner-link` → name chains both resolve.
-    const nameNode = (
-      <span
-        data-testid={nameStr}
-        title={typeof displayName === 'string' ? displayName : owner.name}>
-        {displayName}
-      </span>
-    );
+    //
+    // No `title` attribute: the pre-refactor owner display never set one, and a
+    // `title=displayName` collides with `getByTitle()` selectors used to pick an
+    // owner inside filter dropdowns (case-insensitive substring match), breaking
+    // Lineage/Impact-analysis owner-filter tests. The accessible name is carried
+    // by the avatar's `alt` and the surrounding UserPopOverCard hover card.
+    const nameNode = <span data-testid={nameStr}>{displayName}</span>;
 
     return (
       <span
@@ -123,8 +123,7 @@ export const OwnerChip = ({
   return (
     <span
       className={cx('tw:flex tw:items-center tw:gap-1 tw:min-w-0', className)}
-      data-testid={nameStr}
-      title={typeof displayName === 'string' ? displayName : owner.name}>
+      data-testid={nameStr}>
       {avatar}
     </span>
   );

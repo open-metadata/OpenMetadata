@@ -108,14 +108,11 @@ export const AvatarGroup = ({
       />
     );
 
+    // No `title`: a title matching the display name collides with
+    // `getByTitle()` owner-filter selectors (see owner-chip.tsx). Identity is
+    // carried by `data-testid` and the avatar's `alt`.
     const chip = (
-      <span
-        className="tw:block"
-        data-testid={nameStr}
-        key={owner.id}
-        title={
-          typeof rawDisplayName === 'string' ? rawDisplayName : owner.name
-        }>
+      <span className="tw:block" data-testid={nameStr} key={owner.id}>
         {avatar}
       </span>
     );

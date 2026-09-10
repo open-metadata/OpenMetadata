@@ -23,10 +23,11 @@ import {
 import WidgetCard from '../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import { getOwnerVersionLabel } from '../EntityVersionUtils';
 
 const CommonWidgets = withSuspenseFallback(
   lazy(() =>
@@ -140,12 +141,23 @@ const GlossaryTermOwnerWidget = () => {
       }
       isExpandDisabled={isEmpty(data.owners)}
       title={t('label.owner-plural')}>
-      <Owner
-        isCompactView={false}
-        owners={toOwnersWithHref(data.owners ?? [])}
-        renderOwnerContent={renderOwnerContent}
-        showLabel={false}
-      />
+      {isVersionView ? (
+        // Version view needs the added/removed diff highlighting from the
+        // changeDescription; the plain <Owner> only shows current owners.
+        getOwnerVersionLabel(
+          data,
+          isVersionView,
+          TabSpecificField.OWNERS,
+          Boolean(hasPermission)
+        )
+      ) : (
+        <Owner
+          isCompactView={false}
+          owners={toOwnersWithHref(data.owners ?? [])}
+          renderOwnerContent={renderOwnerContent}
+          showLabel={false}
+        />
+      )}
     </WidgetCard>
   );
 };
