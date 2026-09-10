@@ -81,7 +81,7 @@ describe('autocomplete request ordering', () => {
     jest.useRealTimers();
   });
 
-  it.each(['older first', 'newer first', 'older fails'])(
+  it.each(['older first', 'newer first', 'older fails', 'newer fails'])(
     'keeps each response associated with its search when %s',
     async (order) => {
       const older = deferredResponse();
@@ -103,15 +103,12 @@ describe('autocomplete request ordering', () => {
       const newerResult = search('new');
       jest.advanceTimersByTime(300);
 
-      await expect(olderResult).resolves.toEqual({
-        values: [],
-        hasMore: false,
-      });
-
       if (order === 'older first') {
         older.resolve(responseFor('old'));
       } else if (order === 'older fails') {
         older.reject(new Error('Older request failed'));
+      } else if (order === 'newer fails') {
+        newer.reject(new Error('Newer request failed'));
       } else {
         newer.resolve(responseFor('new'));
       }
@@ -120,8 +117,12 @@ describe('autocomplete request ordering', () => {
       newer.resolve(responseFor('new'));
       older.resolve(responseFor('old'));
 
+      await expect(olderResult).resolves.toEqual({
+        values: order === 'older fails' ? [] : [{ value: 'old', title: 'old' }],
+        hasMore: false,
+      });
       await expect(newerResult).resolves.toEqual({
-        values: [{ value: 'new', title: 'new' }],
+        values: order === 'newer fails' ? [] : [{ value: 'new', title: 'new' }],
         hasMore: false,
       });
     }
@@ -231,11 +232,36 @@ describe('autocomplete', () => {
     expect(getAggregateFieldOptions).toHaveBeenCalledTimes(1);
   });
 
-  // The `autocomplete request ordering` describe block above covers the
-  // stricter cancellation contract that supersedes the earlier
-  // "keeps overlapping responses with their own search" cases: once a newer
-  // search is queued, the older in-flight search is settled with an empty
-  // result rather than allowed to resolve its now-abandoned promise.
+  it('cancels only debounced searches while an earlier request is in flight', async () => {
+    const earlierResponse = deferredResponse();
+    jest
+      .mocked(getAggregateFieldOptions)
+      .mockReturnValueOnce(earlierResponse.promise)
+      .mockResolvedValueOnce(responseFor('table'));
+    const autocomplete = createAutocomplete();
+    const earlier = autocomplete('old');
+    await jest.advanceTimersByTimeAsync(300);
+    const superseded = autocomplete('ta');
+    await jest.advanceTimersByTimeAsync(150);
+    const latest = autocomplete('table');
+
+    await expect(superseded).resolves.toEqual({ values: [], hasMore: false });
+
+    earlierResponse.resolve(responseFor('old'));
+
+    await expect(earlier).resolves.toEqual({
+      values: [{ value: 'old', title: 'old' }],
+      hasMore: false,
+    });
+
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(latest).resolves.toEqual({
+      values: [{ value: 'table', title: 'table' }],
+      hasMore: false,
+    });
+    expect(getAggregateFieldOptions).toHaveBeenCalledTimes(2);
+  });
 
   it('does not clear a newer search when an earlier request fails', async () => {
     const previousResponse = deferredResponse();

@@ -239,8 +239,11 @@ class AdvancedSearchClassBase {
   }) => {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
-    let latestRequest = 0;
-    const debouncedFetch = debounce((search: string, request: number) => {
+    const debouncedFetch = debounce((search: string) => {
+      // Started requests own their resolvers; only queued searches share this slot.
+      const resolve = pendingResolve;
+      pendingResolve = null;
+
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -249,13 +252,6 @@ class AdvancedSearchClassBase {
         sourceFields
       )
         .then((response) => {
-          // An older in-flight request must not resolve a newer search's
-          // promise; the newer search's outer wrapper already settled the
-          // older pendingResolve with an empty list before reassigning the
-          // slot, and this guard prevents it from being resolved twice.
-          if (request !== latestRequest) {
-            return;
-          }
           const buckets =
             response.data.aggregations[`sterms#${entityField}`].buckets;
 
@@ -265,32 +261,24 @@ class AdvancedSearchClassBase {
             sourceFieldOptionType
           );
 
-          if (pendingResolve) {
-            pendingResolve({
-              values: bucketsData as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({
+            values: bucketsData as ListItem[],
+            hasMore: false,
+          });
         })
         .catch(() => {
-          if (request === latestRequest && pendingResolve) {
-            pendingResolve({ values: [] as ListItem[], hasMore: false });
-            pendingResolve = null;
-          }
+          resolve?.({ values: [] as ListItem[], hasMore: false });
         });
     }, 300);
 
     return (search) => {
-      const request = ++latestRequest;
-
       return new Promise((resolve) => {
         // Settle searches cancelled before their debounced request starts.
         if (pendingResolve) {
           pendingResolve({ values: [] as ListItem[], hasMore: false });
         }
         pendingResolve = resolve;
-        debouncedFetch((search as string) ?? '', request);
+        debouncedFetch((search as string) ?? '');
       });
     };
   };
