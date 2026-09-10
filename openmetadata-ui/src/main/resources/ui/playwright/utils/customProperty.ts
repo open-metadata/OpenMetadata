@@ -341,7 +341,11 @@ export const validateValueForProperty = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page
+        .getByRole('row')
+        .filter({ hasText: values[0] })
+        .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"
@@ -1142,7 +1146,10 @@ export const validateColumnCustomProperty = async (
     await expect(card.getByTestId('property-value')).toContainText(end);
   } else if (propertyType === 'table-cp') {
     await expect(
-      page.getByRole('row', { name: `${testValue} row1col2` })
+      page
+        .getByRole('row')
+        .filter({ hasText: testValue })
+        .filter({ hasText: 'row1col2' })
     ).toBeVisible();
   } else if (propertyType === 'entityReference') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
@@ -1521,7 +1528,11 @@ export const updateCustomPropertyInRightPanel = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page
+        .getByRole('row')
+        .filter({ hasText: values[0] })
+        .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters
