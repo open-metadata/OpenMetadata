@@ -8743,7 +8743,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/OwnersSection/OwnersSection.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts"
+        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
+        "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts"
       ]
     },
     {
@@ -9218,6 +9219,7 @@
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
