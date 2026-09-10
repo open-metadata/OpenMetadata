@@ -24,7 +24,9 @@ from sqlalchemy import (
     Column,
     DateTime,
     LargeBinary,
+    MetaData,
     String,
+    Table,
     create_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Session
@@ -37,6 +39,9 @@ except ImportError:
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
@@ -198,6 +203,72 @@ class Airflow2DagModel(Airflow2Base):
 
     dag_id = Column(String(250), primary_key=True)
     is_paused = Column(Boolean)
+
+
+@pytest.mark.parametrize("date_column", ["logical_date", "execution_date"])
+@pytest.mark.parametrize(
+    "dates",
+    [
+        [(None, 1), (None, 4), (None, 2), (None, 3)],
+        [(1, 6), (None, 4), (2, 2), (None, 3)],
+        [(1, 6), (4, 4), (2, 2), (3, 3)],
+    ],
+    ids=["asset-triggered", "mixed", "scheduled"],
+)
+def test_get_pipeline_status_selects_latest_runs(date_column, dates):
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
+    config.source.serviceConnection.root.config.connection = SQLiteConnection(
+        databaseMode=":memory:"
+    )
+    config.source.serviceConnection.root.config.numberOfStatus = 2
+    with patch.object(AirflowSource, "test_connection"):
+        source = AirflowSource(
+            config.source, OpenMetadata(config.workflowConfig.openMetadataServerConfig)
+        )
+
+    dag_run = Table(
+        "dag_run",
+        MetaData(),
+        Column("dag_id", String),
+        Column("run_id", String),
+        Column("queued_at", DateTime),
+        Column(date_column, DateTime),
+        Column("start_date", DateTime),
+        Column("state", String),
+    )
+    try:
+        dag_run.create(source.connection)
+        with Session(source.connection) as session:
+            rows = [
+                {
+                    "dag_id": "my_dag",
+                    "run_id": run_id,
+                    date_column: datetime(2026, 1, date_day) if date_day else None,
+                    "start_date": datetime(2026, 1, start_day),
+                    "state": "success",
+                }
+                for run_id, (date_day, start_day) in zip(
+                    ["run_1", "run_4", "run_2", "run_3"], dates, strict=True
+                )
+            ]
+            rows.append(
+                {
+                    "dag_id": "other_dag",
+                    "run_id": "other_run",
+                    date_column: datetime(2026, 1, 7),
+                    "start_date": datetime(2026, 1, 7),
+                    "state": "success",
+                }
+            )
+            session.execute(dag_run.insert(), rows)
+            session.commit()
+            source._session = session
+
+            runs = source.get_pipeline_status("my_dag")
+
+            assert [run.run_id for run in runs] == ["run_4", "run_3"]
+    finally:
+        source.connection.dispose()
 
 
 class TestAirflow(TestCase):
