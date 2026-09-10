@@ -97,8 +97,12 @@ class HiveSource(CommonDbSourceService):
         """
         cache = self._columns_cache()
         key = f"{schema_name}.{table_name}"
-        if key in cache:
+        try:
+            # Read in one locked operation: a check-then-get would let a concurrent
+            # eviction drop the key in between and raise on the read.
             return cache.get(key)
+        except KeyError:
+            pass
         columns = cast(
             "list[ReflectedColumn]",
             inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name),
@@ -171,9 +175,11 @@ class HiveSource(CommonDbSourceService):
         try:
             cache = self._columns_cache()
             key = f"{schema_name}.{table_name}"
-            if key in cache:
+            try:
+                # Single locked read: a check-then-get would let a concurrent
+                # eviction drop the key between the check and the read.
                 columns = cache.get(key)
-            else:
+            except KeyError:
                 columns = cast(
                     "list[ReflectedColumn]",
                     inspector.get_columns(table_name=table_name, schema=schema_name),
