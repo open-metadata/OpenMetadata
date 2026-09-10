@@ -28,7 +28,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { uniq } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, UseFormReturn } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_REFERENCE_OPTIONS,
@@ -48,41 +48,16 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import {
+  CustomPropertiesEditPageProps,
+  DescriptionFormFieldProps,
+  EditCustomPropertyFormValues,
+} from './CustomPropertiesPanel.types';
+import { toId } from './CustomPropertiesPanel.utils';
 
-/** FieldTypes.SELECT / MULTI_SELECT from core-components stores FormSelectItem objects, not raw strings. */
-interface FormSelectItem {
-  id: string;
-  label?: string;
-}
-
-/** Extract the id string from a FormSelectItem (or return as-is if already a string). */
-const toId = (v: FormSelectItem | string | undefined): string => {
-  if (!v) {
-    return '';
-  }
-
-  return typeof v === 'string' ? v : v.id;
-};
-
-interface EditCustomPropertyFormValues {
-  displayName?: string;
-  description: string;
-  enumConfig?: FormSelectItem[];
-  multiSelect?: boolean;
-  entityReferenceConfig?: FormSelectItem[];
-}
-
-interface DescriptionFormFieldProps {
-  form: UseFormReturn<EditCustomPropertyFormValues>;
-  descriptionKey: number;
-  initialValue: string;
-}
-
-const DescriptionFormField: React.FC<DescriptionFormFieldProps> = ({
-  form,
-  descriptionKey,
-  initialValue,
-}) => {
+const DescriptionFormField: React.FC<
+  DescriptionFormFieldProps<EditCustomPropertyFormValues>
+> = ({ form, descriptionKey, initialValue = '' }) => {
   const { t } = useTranslation();
   const descriptionDocProps = useFieldDoc({
     name: 'description',
@@ -120,14 +95,6 @@ const DescriptionFormField: React.FC<DescriptionFormFieldProps> = ({
     </FormField>
   );
 };
-
-interface CustomPropertiesEditPageProps {
-  entityType: Type;
-  property: CustomProperty;
-  showHint?: boolean;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
 
 const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
   entityType,

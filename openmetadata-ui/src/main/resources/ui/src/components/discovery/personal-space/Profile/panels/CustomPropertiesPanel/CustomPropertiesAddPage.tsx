@@ -27,7 +27,7 @@ import {
 import { AxiosError } from 'axios';
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, UseFormReturn, useWatch } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
   CUSTOM_PROPERTIES_ICON_MAP,
@@ -50,71 +50,19 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import {
+  AddCustomPropertyFormValues,
+  CustomPropertiesAddPageProps,
+  DescriptionFormFieldProps,
+} from './CustomPropertiesPanel.types';
+import {
+  buildCustomPropertyConfig,
+  toId,
+} from './CustomPropertiesPanel.utils';
 
-/** FieldTypes.SELECT / MULTI_SELECT from core-components stores FormSelectItem objects, not raw strings. */
-interface FormSelectItem {
-  id: string;
-  label?: string;
-}
-
-interface AddCustomPropertyFormValues {
-  name: string;
-  displayName?: string;
-  propertyType: FormSelectItem | null;
-  description: string;
-  enumConfig?: FormSelectItem[];
-  multiSelect?: boolean;
-  formatConfig?: FormSelectItem | null;
-  entityReferenceConfig?: FormSelectItem[];
-  columns?: FormSelectItem[];
-}
-
-/** Extract the id string from a FormSelectItem (or return as-is if already a string). */
-const toId = (v: FormSelectItem | string | undefined): string => {
-  if (!v) {
-    return '';
-  }
-
-  return typeof v === 'string' ? v : v.id;
-};
-
-function buildCustomPropertyConfig(
-  data: AddCustomPropertyFormValues,
-  hasEnumConfig: boolean,
-  hasFormatConfig: boolean,
-  hasEntityReferenceConfig: boolean,
-  hasTableTypeConfig: boolean
-) {
-  if (hasEnumConfig) {
-    return {
-      config: {
-        multiSelect: Boolean(data.multiSelect),
-        values: (data.enumConfig ?? []).map(toId),
-      },
-    };
-  }
-  if (hasFormatConfig && data.formatConfig) {
-    return { config: toId(data.formatConfig) };
-  }
-  if (hasEntityReferenceConfig && data.entityReferenceConfig) {
-    return { config: data.entityReferenceConfig.map(toId) };
-  }
-  if (hasTableTypeConfig && data.columns) {
-    return { config: { columns: data.columns.map(toId) } };
-  }
-
-  return undefined;
-}
-
-interface DescriptionFormFieldProps {
-  form: UseFormReturn<AddCustomPropertyFormValues>;
-  descriptionKey: number;
-}
-
-const DescriptionFormField: React.FC<DescriptionFormFieldProps> = ({
-  form,
-  descriptionKey,
-}) => {
+const DescriptionFormField: React.FC<
+  DescriptionFormFieldProps<AddCustomPropertyFormValues>
+> = ({ form, descriptionKey, initialValue = '' }) => {
   const { t } = useTranslation();
   const descriptionDocProps = useFieldDoc({
     name: 'description',
@@ -140,7 +88,7 @@ const DescriptionFormField: React.FC<DescriptionFormFieldProps> = ({
           <FormItemLabel required label={t('label.description')} />
           <RichTextEditor
             className="description-text-area new-form-style"
-            initialValue=""
+            initialValue={initialValue}
             key={descriptionKey}
             onTextChange={field.onChange}
           />
@@ -152,13 +100,6 @@ const DescriptionFormField: React.FC<DescriptionFormFieldProps> = ({
     </FormField>
   );
 };
-
-interface CustomPropertiesAddPageProps {
-  entityType: Type;
-  showHint?: boolean;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
 
 const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
   entityType,
@@ -343,7 +284,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
       placeholder: t('label.format'),
       doc: t('message.custom-property-format-config-help'),
       rules: {
-        validate: (value: FormSelectItem | null) => {
+        validate: (value: AddCustomPropertyFormValues['formatConfig']) => {
           const id = toId(value ?? undefined);
           if (id && !supportedFormats.includes(id)) {
             return t('label.field-invalid', { field: t('label.format') });
@@ -395,7 +336,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
         required: t('label.field-required', {
           field: t('label.column-plural'),
         }),
-        validate: (value: FormSelectItem[]) => {
+        validate: (value: AddCustomPropertyFormValues['columns']) => {
           if (isArray(value) && value.length > 3) {
             return t('message.maximum-count-allowed', {
               count: 3,

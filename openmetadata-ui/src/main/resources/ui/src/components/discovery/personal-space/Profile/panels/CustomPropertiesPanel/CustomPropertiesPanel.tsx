@@ -22,7 +22,7 @@ import { Hint } from '@openmetadata/ui-core-components/icons';
 import { Settings02 } from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
-import { TFunction, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -30,90 +30,19 @@ import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
 import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
+import { CRUMB } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
-
-const CRUMB = {
-  WORKSPACE: 'workspace',
-  LANDING: 'landing',
-  DETAIL: 'detail',
-  ACTION: 'action',
-} as const;
-
-function getBreadcrumbItems(
-  subView: CustomPropertiesSubView,
-  t: TFunction,
-  matchingSettingsItem: SettingMenuItem | undefined
-): { id: string; label: string }[] {
-  const base = [
-    { id: CRUMB.WORKSPACE, label: t('label.workspace') },
-    { id: CRUMB.LANDING, label: t('label.custom-property-plural') },
-  ];
-
-  if (subView.type === 'detail') {
-    const entityLabel =
-      matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-
-    return [...base, { id: CRUMB.DETAIL, label: entityLabel }];
-  }
-
-  if (subView.type === 'add') {
-    const entityLabel =
-      matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-
-    return [
-      ...base,
-      { id: CRUMB.DETAIL, label: entityLabel },
-      {
-        id: CRUMB.ACTION,
-        label: t('label.add-entity', { entity: t('label.custom-property') }),
-      },
-    ];
-  }
-
-  if (subView.type === 'edit') {
-    const entityLabel =
-      matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-
-    return [
-      ...base,
-      { id: CRUMB.DETAIL, label: entityLabel },
-      { id: CRUMB.ACTION, label: getEntityName(subView.property) },
-    ];
-  }
-
-  return base;
-}
-
-function getPageTitle(
-  subView: CustomPropertiesSubView,
-  t: TFunction,
-  matchingSettingsItem: SettingMenuItem | undefined
-): string {
-  if (subView.type === 'detail') {
-    return matchingSettingsItem?.label ?? getEntityName(subView.entityType);
-  }
-  if (subView.type === 'add') {
-    return t('label.add-entity', { entity: t('label.custom-property') });
-  }
-  if (subView.type === 'edit') {
-    return getEntityName(subView.property);
-  }
-
-  return t('label.custom-property-plural');
-}
-
-function getContentClassName(subView: CustomPropertiesSubView): string {
-  return subView.type === 'add' || subView.type === 'edit'
-    ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
-    : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0';
-}
+import {
+  getBreadcrumbItems,
+  getContentClassName,
+  getPageTitle,
+} from './CustomPropertiesPanel.utils';
 
 const CustomPropertiesPanel: React.FC = () => {
   const { t } = useTranslation();
