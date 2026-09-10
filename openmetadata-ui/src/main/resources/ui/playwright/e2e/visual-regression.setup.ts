@@ -13,6 +13,7 @@
 import { expect, test as setup } from '@playwright/test';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { deleteFixtureEntity } from '../utils/apiResponse';
 import { getDefaultAdminAPIContext } from '../utils/common';
 import {
   VISUAL_GLOSSARY_DISPLAY_NAME,
@@ -24,6 +25,11 @@ setup('create stable visual regression data', async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   try {
+    // An interrupted run can leave this fixed-name screenshot fixture behind.
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/glossaries/name/${VISUAL_GLOSSARY_NAME}?recursive=true&hardDelete=true`
+    );
     // Project dependencies keep this immutable fixture alive across workers
     // and repetitions until every visual assertion has completed.
     const glossary = new Glossary(VISUAL_GLOSSARY_NAME);

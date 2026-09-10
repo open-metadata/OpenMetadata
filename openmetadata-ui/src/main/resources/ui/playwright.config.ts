@@ -299,7 +299,7 @@ export default defineConfig({
     {
       name: 'visual-regression-setup',
       testMatch: '**/visual-regression.setup.ts',
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: entityDependencies,
       teardown: 'visual-regression-teardown',
     },
     {
