@@ -240,6 +240,9 @@ class AdvancedSearchClassBase {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
     const debouncedFetch = debounce((search: string) => {
+      // An in-flight response must settle its own search, even if a newer search is queued.
+      const resolve = pendingResolve;
+      pendingResolve = null;
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -257,28 +260,19 @@ class AdvancedSearchClassBase {
             sourceFieldOptionType
           );
 
-          if (pendingResolve) {
-            pendingResolve({
-              values: bucketsData as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({
+            values: bucketsData as ListItem[],
+            hasMore: false,
+          });
         })
         .catch(() => {
-          if (pendingResolve) {
-            pendingResolve({
-              values: [] as ListItem[],
-              hasMore: false,
-            });
-            pendingResolve = null;
-          }
+          resolve?.({ values: [] as ListItem[], hasMore: false });
         });
     }, 300);
 
     return (search) => {
       return new Promise((resolve) => {
-        // Resolve previous promise to prevent hanging
+        // Settle searches cancelled before their debounced request starts.
         if (pendingResolve) {
           pendingResolve({ values: [] as ListItem[], hasMore: false });
         }
@@ -956,6 +950,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               [
                 {
@@ -984,6 +979,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
           }),
           useAsyncSearch: true,
         },
@@ -997,6 +993,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               {
                 field: CLASSIFICATION_NAME_KEYWORD,
@@ -1017,6 +1014,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            sourceFields: 'fullyQualifiedName',
             q: buildTermQuery(
               {
                 field: CLASSIFICATION_NAME_KEYWORD,
@@ -1172,6 +1170,7 @@ class AdvancedSearchClassBase {
               asyncFetch: this.autocomplete({
                 searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
                 entityField: EntityFields.FULLY_QUALIFIED_NAME,
+                sourceFields: 'fullyQualifiedName',
               }),
               useAsyncSearch: true,
             },
