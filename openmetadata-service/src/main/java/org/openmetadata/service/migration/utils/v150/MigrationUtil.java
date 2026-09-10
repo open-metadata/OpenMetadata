@@ -249,8 +249,7 @@ public class MigrationUtil {
                 try {
                   TestDefinition testCaseDefinition =
                       JsonUtils.readValue(row.get("json").toString(), TestDefinition.class);
-                  String dimension =
-                      fqnToDimension.get(testCaseDefinition.getFullyQualifiedName());
+                  String dimension = fqnToDimension.get(testCaseDefinition.getFullyQualifiedName());
                   if (dimension == null) {
                     LOG.warn(
                         "No dimension found for test case {}",

@@ -84,8 +84,7 @@ public class SearchListFilterTest {
   @Test
   void testDataQualityDimensionNoDimensionCondition() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", "NoDimension");
+    searchListFilter.addQueryParam("dataQualityDimension", "NoDimension");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"dataQualityDimension\"}}]}}]}}}";
@@ -95,8 +94,7 @@ public class SearchListFilterTest {
   @Test
   void testDataQualityDimensionConditionForTestCaseResult() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", "Completeness");
+    searchListFilter.addQueryParam("dataQualityDimension", "Completeness");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testDefinition.dataQualityDimension\": \"Completeness\"}}]}}}";
@@ -106,8 +104,7 @@ public class SearchListFilterTest {
   @Test
   void testDataQualityDimensionNoDimensionConditionForTestCaseResult() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", "NoDimension");
+    searchListFilter.addQueryParam("dataQualityDimension", "NoDimension");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"testDefinition.dataQualityDimension\"}}]}}]}}}";
@@ -251,8 +248,7 @@ public class SearchListFilterTest {
     searchListFilter.addQueryParam("testCaseStatus", "Success");
     searchListFilter.addQueryParam("testCaseType", Entity.TABLE);
     searchListFilter.addQueryParam("testSuiteId", "suite-id");
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", "Completeness");
+    searchListFilter.addQueryParam("dataQualityDimension", "Completeness");
 
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
 
