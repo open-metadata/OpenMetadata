@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   ButtonUtility,
   Card,
@@ -20,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { OwnerType } from '../../../enums/user.enum';
@@ -130,22 +130,23 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
       <span className="tw:flex-1" />
       <Box align="center" className="tw:gap-1.5">
         {tagList.slice(0, 2).map((tag) => (
-          <Badge
-            className="tw:max-w-30"
+          <TagChip
+            icon={tag.style?.iconURL}
             key={String(tag.tagFQN ?? '')}
-            size="md"
-            type="modern">
-            <Typography ellipsis className="tw:text-secondary" size="text-xs">
-              {getEntityName(tag)}
-            </Typography>
-          </Badge>
+            label={getEntityName(tag)}
+            maxWidth={120}
+            size="small"
+            tagColor={tag.style?.color}
+            variant="blueGray"
+          />
         ))}
         {tagList.length > 2 && (
-          <Badge size="md" type="modern">
-            <Typography className="tw:text-secondary" size="text-xs">
-              +{tagList.length - 2}
-            </Typography>
-          </Badge>
+          <Typography
+            className="tw:text-secondary tw:whitespace-nowrap"
+            size="text-xs"
+            weight="medium">
+            +{tagList.length - 2}
+          </Typography>
         )}
       </Box>
     </Box>

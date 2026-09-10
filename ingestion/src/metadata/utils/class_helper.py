@@ -153,7 +153,7 @@ def get_service_type_from_source_type(source_type: str) -> ServiceType:
 def get_reference_type_from_service_type(service_type: ServiceType) -> str:
     """Get the type to build the EntityReference from the service type"""
     service_reference = SERVICE_TYPE_REF.get(service_type.value)
-    if not service_type:
+    if not service_reference:
         raise ValueError(f"Cannot find Service Type reference for service {service_type}")
     return service_reference
 

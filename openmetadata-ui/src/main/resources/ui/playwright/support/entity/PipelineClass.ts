@@ -179,7 +179,9 @@ export class PipelineClass extends EntityClass {
             type: 'pipelineService',
           },
           sourceConfig: {
-            config: {},
+            config: {
+              type: 'PipelineMetadata',
+            },
           },
         },
       }

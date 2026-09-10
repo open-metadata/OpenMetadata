@@ -16,6 +16,18 @@ import '../../../test/unit/mocks/recharts.mock';
 import { CustomBarChartProps } from './Chart.interface';
 import CustomBarChart from './CustomBarChart';
 
+const mockedRecharts = jest.requireMock('recharts') as {
+  CartesianGrid: jest.Mock;
+  Tooltip: jest.Mock;
+};
+
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    cursorFill: '#123456',
+    grid: '#234567',
+  }),
+}));
+
 const mockCustomBarChartProp: CustomBarChartProps = {
   chartCollection: {
     information: [
@@ -87,6 +99,22 @@ describe('CustomBarChart component test', () => {
     expect(YAxis).toBeInTheDocument();
     expect(noData).not.toBeInTheDocument();
     expect(screen.queryByText('Brush')).not.toBeInTheDocument();
+  });
+
+  it('uses active theme colors for the chart grid and cursor', () => {
+    render(<CustomBarChart {...mockCustomBarChartProp} />);
+
+    expect(mockedRecharts.CartesianGrid.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ stroke: '#234567' })
+    );
+    expect(mockedRecharts.Tooltip.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        cursor: expect.objectContaining({
+          fill: '#123456',
+          stroke: '#234567',
+        }),
+      })
+    );
   });
 
   it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {

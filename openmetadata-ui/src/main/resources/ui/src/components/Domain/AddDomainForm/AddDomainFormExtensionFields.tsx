@@ -1054,11 +1054,14 @@ const ExtensionField = ({
     propertyName
   )}` as const;
   const dataTestId = `extension-${propertyName}`;
-  const label = formField.fieldLabel;
+  // Prefer the custom property's current displayName so the field shows the
+  // human-friendly name (e.g. "Owner Team") rather than the raw property name
+  // captured in fieldLabel at design time; fall back to fieldLabel when the
+  // definition is missing or has no displayName.
+  const label = definition?.displayName || formField.fieldLabel;
   const isRequired = Boolean(formField.required);
   const requiredMessage =
-    formField.errorMessage ||
-    t('label.field-required', { field: formField.fieldLabel });
+    formField.errorMessage || t('label.field-required', { field: label });
   // Without the definition we cannot pick the right widget or serialize the
   // value, so a text input here would submit an untyped string and the backend
   // would reject it. Surface the failure instead of collecting a bad value.

@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { GREY_200 } from '../../../constants/Color.constants';
 import { SummaryDonut } from './SummaryDonut.component';
 import { ChartData } from './SummaryPanel.interface';
+
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ emptyFill: '#123456' }),
+}));
 
 jest.mock('recharts', () => {
   const PieChart = ({
@@ -21,9 +24,9 @@ jest.mock('recharts', () => {
     height,
     width,
   }: React.PropsWithChildren<{ height?: number; width?: number }>) => (
-    <div data-height={height} data-testid="pie-chart" data-width={width}>
+    <svg data-height={height} data-testid="pie-chart" data-width={width}>
       {children}
-    </div>
+    </svg>
   );
 
   const Pie = ({
@@ -36,20 +39,20 @@ jest.mock('recharts', () => {
     innerRadius?: number;
     outerRadius?: number;
   }>) => (
-    <div
+    <g
       data-inner-radius={innerRadius}
       data-length={(data || []).length}
       data-outer-radius={outerRadius}
       data-testid="pie">
       {children}
-    </div>
+    </g>
   );
 
   const Cell = ({ fill }: { fill?: string }) => (
-    <div data-fill={fill} data-testid="cell" />
+    <rect data-fill={fill} data-testid="cell" />
   );
 
-  const Tooltip = () => <div data-testid="tooltip" />;
+  const Tooltip = () => <g data-testid="tooltip" />;
 
   return { Cell, Pie, PieChart, Tooltip };
 });
@@ -94,7 +97,7 @@ describe('SummaryDonut component', () => {
     // 1 grey track cell + 2 data cells
     expect(cells).toHaveLength(chartData.length + 1);
 
-    const greyCells = cells.filter((cell) => cell.dataset.fill === GREY_200);
+    const greyCells = cells.filter((cell) => cell.dataset.fill === '#123456');
 
     expect(greyCells).toHaveLength(1);
 
@@ -112,7 +115,7 @@ describe('SummaryDonut component', () => {
 
     // only the grey track cell remains
     expect(cells).toHaveLength(1);
-    expect(cells[0].dataset.fill).toBe(GREY_200);
+    expect(cells[0].dataset.fill).toBe('#123456');
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
