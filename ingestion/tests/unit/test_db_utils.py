@@ -63,6 +63,11 @@ class TestDbUtils(TestCase):
         search_cache.clear()
 
         self.metadata = MagicMock()
+        # Default to "no alias match": an unconfigured MagicMock call returns a
+        # truthy MagicMock, which search_table_entities' alias fallback would
+        # otherwise mistake for a real resolved alias. Individual tests override
+        # this when they intend to exercise the alias-match path.
+        self.metadata.es_search_from_alias.return_value = None
         self.service_name = "test_service"
         self.connection_type = "postgres"
         self.timeout_seconds = 30
