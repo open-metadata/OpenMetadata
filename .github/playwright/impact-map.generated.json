@@ -50,7 +50,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
-        "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/EntityDataConsumer.spec.ts",
         "playwright/e2e/Pages/EntityDataSteward.spec.ts",
@@ -667,7 +666,6 @@
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
@@ -1938,6 +1936,7 @@
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -2132,7 +2131,9 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/serverLoad.ts"
       ],
       "specs": [
-        "playwright/e2e/Flow/Collect.spec.ts"
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Flow/Collect.spec.ts",
+        "playwright/e2e/Flow/IngestionBot.spec.ts"
       ]
     },
     {
@@ -2483,6 +2484,7 @@
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
@@ -2688,6 +2690,7 @@
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
         "playwright/e2e/Features/ChangeSummaryBadge.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
@@ -9315,7 +9318,9 @@
         "openmetadata-ui/src/main/resources/ui/src/enums/search.enum.ts"
       ],
       "specs": [
-        "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
+        "playwright/e2e/Features/TableConstraint.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts"
       ]
     },
     {
@@ -10119,6 +10124,15 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/datacontract/dataContractResult.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/policies/accessControl/rule.ts"
       ],
       "specs": [
@@ -10702,7 +10716,6 @@
         "playwright/e2e/Features/MultipleRename.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/EditClassification.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
@@ -11001,7 +11014,6 @@
         "playwright/e2e/Features/MultipleRename.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/EditClassification.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
