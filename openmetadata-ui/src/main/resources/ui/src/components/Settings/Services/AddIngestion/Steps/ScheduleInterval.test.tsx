@@ -285,10 +285,18 @@ describe('ScheduleInterval', () => {
     expect(screen.queryByTestId('cron-container')).not.toBeInTheDocument();
   });
 
-  it('should restore the saved cron after an on-demand round-trip', async () => {
+  it('should restore the externally saved cron after an on-demand round-trip', async () => {
     const { onChange } = renderControlled('30 8 * * 5', {
       includePeriodOptions: ['week'],
     });
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('time-picker'), {
+        target: { value: '9:0' },
+      });
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith('0 9 * * 5');
 
     await act(async () => {
       fireEvent.click(

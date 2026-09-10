@@ -60,6 +60,8 @@ const getScheduleRestoreValue = (
   savedCron ||
   getDefaultScheduleValue({ defaultSchedule, includePeriodOptions });
 
+/* eslint-disable sonarjs/cyclomatic-complexity -- This shared form predates the
+complexity budget; keep the exception scoped to it to avoid an unrelated UI refactor. */
 const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   value,
   onChange,
@@ -527,5 +529,6 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
     </div>
   );
 };
+/* eslint-enable sonarjs/cyclomatic-complexity */
 
 export default ScheduleInterval;
