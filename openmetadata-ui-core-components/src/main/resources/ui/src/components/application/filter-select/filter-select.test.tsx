@@ -358,6 +358,39 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('removing a chip does not open the popover', () => {
+    const { onChange } = renderFilter({
+      isOpen: undefined,
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+
+    const [removeSnowflake] = screen.getAllByRole('button', {
+      name: 'Remove filter',
+    });
+    fireEvent.click(removeSnowflake);
+
+    expect(onChange).toHaveBeenCalledWith(['bigquery']);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('clicking the chips field trigger opens the popover', () => {
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'chips-trigger',
+      selectedValues: ['snowflake'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('chips-trigger'));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
   it('shows the placeholder on an empty input trigger', () => {
     renderFilter({
       isOpen: false,
