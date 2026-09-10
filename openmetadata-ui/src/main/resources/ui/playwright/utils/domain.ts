@@ -1202,14 +1202,14 @@ export const addTagsAndGlossaryToDomain = async (
         ? tag.locator('.ant-select-tree-checkbox')
         : tag;
 
-    const searchIndexToken =
-      containerType === 'glossary'
-        ? 'glossary_term_search_index'
-        : 'tag_search_index';
+    const indexParam = containerType === 'glossary' ? 'glossaryTerm' : 'tag';
+    const indexRegex = new RegExp(`[?&]index=${indexParam}(&|$)`);
     const searchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(searchIndexToken),
+      (response) => {
+        const url = response.url();
+
+        return url.includes('/api/v1/search/query') && indexRegex.test(url);
+      },
       { timeout: 15_000 }
     );
     await input.fill(value);

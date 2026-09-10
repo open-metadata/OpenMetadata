@@ -876,7 +876,7 @@ export const assignTag = async (
   const tagSearchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('tag_search_index'),
+      /[?&]index=tag(&|$)/.test(response.url()),
     { timeout: 15_000 }
   );
   await tagInput.fill(tag);
@@ -941,7 +941,7 @@ export const assignTagToChildren = async ({
   const tagSearchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('tag_search_index'),
+      /[?&]index=tag(&|$)/.test(response.url()),
     { timeout: 15_000 }
   );
   await tagInput.fill(tag);

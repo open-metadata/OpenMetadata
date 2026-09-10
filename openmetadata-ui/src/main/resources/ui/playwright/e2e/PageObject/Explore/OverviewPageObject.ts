@@ -239,9 +239,13 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the ES search response as a deterministic signal that the
     // list has settled with its final options.
     const tagSearchResponse = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('tag_search_index'),
+      (response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') && /[?&]index=tag(&|$)/.test(url)
+        );
+      },
       { timeout: 20_000 }
     );
     await this.tagSearchBar.fill(tagName);
@@ -293,9 +297,14 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the ES search response as a deterministic signal that the
     // list has settled with its final options.
     const termSearchResponse = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('glossary_term_search_index'),
+      (response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          /[?&]index=glossaryTerm(&|$)/.test(url)
+        );
+      },
       { timeout: 20_000 }
     );
     await this.glossaryTermSearchBar.fill(termName);

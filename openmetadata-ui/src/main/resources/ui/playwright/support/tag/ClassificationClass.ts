@@ -84,6 +84,22 @@ export class ClassificationClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    // The backend refuses to delete a classification whose `provider` is
+    // `system` ("System entity … can not be deleted."). Test-created
+    // classifications may set provider=system intentionally to exercise
+    // read-only UI, so PATCH the provider to `user` before deletion.
+    if (this.responseData.provider === 'system' && this.responseData.id) {
+      const patchResponse = await apiContext.patch(
+        `/api/v1/classifications/${this.responseData.id}`,
+        {
+          data: [{ op: 'replace', path: '/provider', value: 'user' }],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      if (patchResponse.ok()) {
+        this.responseData = await patchResponse.json();
+      }
+    }
     const response = await deleteFixtureEntity(
       apiContext,
       `/api/v1/classifications/${this.responseData.id}?recursive=true&hardDelete=true`

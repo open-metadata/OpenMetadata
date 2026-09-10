@@ -3339,9 +3339,14 @@ test.describe('Domain Tree View Functionality', () => {
       // Wait for the tag search response as a deterministic signal that the
       // dropdown has settled with its final options, then click.
       const tagSearchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('tag_search_index'),
+        (response) => {
+          const url = response.url();
+
+          return (
+            url.includes('/api/v1/search/query') &&
+            /[?&]index=tag(&|$)/.test(url)
+          );
+        },
         { timeout: 15_000 }
       );
       await input.fill(tagFqn);
