@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +69,9 @@ public class DataQualityDimensionResource
   private final DataQualityDimensionMapper mapper = new DataQualityDimensionMapper();
   public static final String COLLECTION_PATH = "/v1/dataQuality/dimensions/";
   static final String FIELDS = "owners";
+
+  /** Upper bound of the list endpoint, used by the count endpoints to read the collection whole. */
+  private static final int MAX_DIMENSIONS = 1000000;
 
   public DataQualityDimensionResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_QUALITY_DIMENSION, authorizer, limits);
@@ -150,12 +154,12 @@ public class DataQualityDimensionResource
       })
   public Map<String, Integer> getTestCaseCounts(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    ResultList<DataQualityDimension> dimensions =
-        super.listInternal(
-            uriInfo, securityContext, "", new ListFilter(Include.NON_DELETED), 1000000, null, null);
+    List<DataQualityDimension> dimensions = listAllDimensions(uriInfo, securityContext);
+    Map<UUID, Integer> countsById =
+        repository.getTestCaseCounts(dimensions.stream().map(DataQualityDimension::getId).toList());
     Map<String, Integer> counts = new LinkedHashMap<>();
-    for (DataQualityDimension dimension : dimensions.getData()) {
-      counts.put(dimension.getId().toString(), repository.getTestCaseCount(dimension.getId()));
+    for (DataQualityDimension dimension : dimensions) {
+      counts.put(dimension.getId().toString(), countsById.getOrDefault(dimension.getId(), 0));
     }
     return counts;
   }
@@ -178,15 +182,31 @@ public class DataQualityDimensionResource
       })
   public Map<String, Integer> getTestDefinitionCounts(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    ResultList<DataQualityDimension> dimensions =
-        super.listInternal(
-            uriInfo, securityContext, "", new ListFilter(Include.NON_DELETED), 1000000, null, null);
+    List<DataQualityDimension> dimensions = listAllDimensions(uriInfo, securityContext);
     Map<String, Integer> countsByName = repository.getTestDefinitionCountsByDimensionName();
     Map<String, Integer> counts = new LinkedHashMap<>();
-    for (DataQualityDimension dimension : dimensions.getData()) {
+    for (DataQualityDimension dimension : dimensions) {
       counts.put(dimension.getId().toString(), countsByName.getOrDefault(dimension.getName(), 0));
     }
     return counts;
+  }
+
+  /**
+   * Every dimension there is, which is what both count endpoints key their result by. Dimensions
+   * are a small hand-curated set — the seven shipped ones plus whatever the user added — so a
+   * single unpaged read is the whole collection rather than an unbounded scan.
+   */
+  private List<DataQualityDimension> listAllDimensions(
+      UriInfo uriInfo, SecurityContext securityContext) {
+    return super.listInternal(
+            uriInfo,
+            securityContext,
+            "",
+            new ListFilter(Include.NON_DELETED),
+            MAX_DIMENSIONS,
+            null,
+            null)
+        .getData();
   }
 
   @GET
