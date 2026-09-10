@@ -23,6 +23,10 @@ operators_path = Path(__file__).parent.parent.parent / "operators" / "docker"
 sys.path.insert(0, str(operators_path))
 
 from exit_handler import (  # noqa: E402
+    LABEL_APP_RUN_ID,
+    LABEL_OMJOB_NAME,
+    LABEL_POD_TYPE,
+    POD_TYPE_MAIN,
     FailureDiagnostics,
     create_pod_diagnostics,
     find_main_pod,
@@ -31,6 +35,14 @@ from exit_handler import (  # noqa: E402
     get_main_pod_description,
     get_main_pod_logs,
 )
+
+
+def make_pod(name: str, pod_type: str) -> MagicMock:
+    """Build a mock pod with the given name and ``pod-type`` label."""
+    pod = MagicMock()
+    pod.metadata.name = name
+    pod.metadata.labels = {LABEL_POD_TYPE: pod_type}
+    return pod
 
 
 class TestFailureDiagnostics:
@@ -125,10 +137,9 @@ class TestFindMainPod:
         assert result is None
 
     def test_finds_pod_by_job_name_label(self):
-        """Test finding pod by job-name label."""
+        """Test finding a main pod by its label selector."""
         mock_client = MagicMock()
-        mock_pod = MagicMock()
-        mock_pod.metadata.name = "test-pod"
+        mock_pod = make_pod("test-pod", "main")
 
         mock_pod_list = MagicMock()
         mock_pod_list.items = [mock_pod]
@@ -158,6 +169,88 @@ class TestFindMainPod:
         result = find_main_pod(mock_client, "test-job", "test-namespace")
 
         assert result is None
+
+    def test_returns_none_when_only_exit_handler_pod_matches_broad_selector(self):
+        """Main pod gone: must return None, not the exit-handler pod (regression test).
+
+        The OMJob operator labels the exit-handler pod with the same
+        ``omjob.pipelines.openmetadata.org/name`` label as the main pod. A broad
+        unfiltered selector must not be used to resolve the main pod, otherwise the
+        exit handler ships its own logs as the pipeline's failure diagnostics.
+        """
+        mock_client = MagicMock()
+        exit_pod = make_pod("om-job-test-pipeline-a1b2c3d4-exit", "exit-handler")
+
+        def list_pods(namespace, label_selector):
+            if POD_TYPE_MAIN in label_selector or label_selector.startswith("job-name"):
+                return MagicMock(items=[])
+            return MagicMock(items=[exit_pod])
+
+        mock_client.list_namespaced_pod.side_effect = list_pods
+
+        result = find_main_pod(mock_client, "om-job-test-pipeline-a1b2c3d4", "openmetadata-pipelines")
+
+        assert result is None
+
+    def test_filters_out_non_main_pod_returned_for_main_selector(self):
+        """Defensively skip a non-main pod even if the API returns one for a pod-type=main selector."""
+        mock_client = MagicMock()
+        exit_pod = make_pod("om-job-test-pipeline-a1b2c3d4-exit", "exit-handler")
+
+        mock_pod_list = MagicMock()
+        mock_pod_list.items = [exit_pod]
+        mock_client.list_namespaced_pod.return_value = mock_pod_list
+
+        result = find_main_pod(mock_client, "om-job-test-pipeline-a1b2c3d4", "openmetadata-pipelines")
+
+        assert result is None
+
+    def test_skips_exit_handler_pod_and_returns_main_pod_in_same_list(self):
+        """When a list contains both an exit-handler pod and a main pod, return the main pod."""
+        mock_client = MagicMock()
+        exit_pod = make_pod("om-job-test-pipeline-a1b2c3d4-exit", "exit-handler")
+        main_pod = make_pod("om-job-test-pipeline-a1b2c3d4", "main")
+
+        mock_pod_list = MagicMock()
+        mock_pod_list.items = [exit_pod, main_pod]
+        mock_client.list_namespaced_pod.return_value = mock_pod_list
+
+        result = find_main_pod(mock_client, "om-job-test-pipeline-a1b2c3d4", "openmetadata-pipelines")
+
+        assert result is main_pod
+
+    def test_returns_none_when_main_pod_gone_and_only_exit_handler_present_for_run_id(self):
+        """pipeline_run_id path: when only the exit-handler pod is present, return None."""
+        mock_client = MagicMock()
+        exit_pod = make_pod("om-job-test-pipeline-a1b2c3d4-exit", "exit-handler")
+
+        def list_pods(namespace, label_selector):
+            if POD_TYPE_MAIN in label_selector:
+                return MagicMock(items=[])
+            return MagicMock(items=[exit_pod])
+
+        mock_client.list_namespaced_pod.side_effect = list_pods
+
+        result = find_main_pod(mock_client, None, "openmetadata-pipelines", pipeline_run_id="run-123")
+
+        assert result is None
+
+    def test_does_not_use_unfiltered_broad_selectors(self):
+        """find_main_pod must never query with the broad selectors that match the exit-handler pod."""
+        mock_client = MagicMock()
+        mock_pod_list = MagicMock()
+        mock_pod_list.items = []
+        mock_client.list_namespaced_pod.return_value = mock_pod_list
+
+        find_main_pod(mock_client, "test-job", "test-namespace", pipeline_run_id="run-123")
+
+        used_selectors = [
+            call.kwargs.get("label_selector", "") for call in mock_client.list_namespaced_pod.call_args_list
+        ]
+        assert f"{LABEL_OMJOB_NAME}=test-job" not in used_selectors
+        assert f"{LABEL_APP_RUN_ID}=run-123" not in used_selectors
+        assert f"{LABEL_OMJOB_NAME}=test-job,{LABEL_POD_TYPE}={POD_TYPE_MAIN}" in used_selectors
+        assert f"{LABEL_APP_RUN_ID}=run-123,{LABEL_POD_TYPE}={POD_TYPE_MAIN}" in used_selectors
 
 
 class TestGetMainPodLogs:
@@ -306,6 +399,32 @@ class TestGatherFailureDiagnostics:
         assert result.has_diagnostics is True
         assert result.pod_logs is None
         assert result.pod_description == "pod description"
+
+    @patch("exit_handler.get_kubernetes_client")
+    def test_returns_empty_when_main_pod_gone_only_exit_handler_present(self, mock_get_client):
+        """End-to-end: when only the exit-handler pod is present, no diagnostics are gathered.
+
+        Regression test ensuring the exit handler does not report its own pod's
+        logs/description as the failed pipeline's diagnostics when the main pod has
+        been removed after completion.
+        """
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        exit_pod = make_pod("om-job-test-pipeline-a1b2c3d4-exit", "exit-handler")
+
+        def list_pods(namespace, label_selector):
+            if POD_TYPE_MAIN in label_selector or label_selector.startswith("job-name"):
+                return MagicMock(items=[])
+            return MagicMock(items=[exit_pod])
+
+        mock_client.list_namespaced_pod.side_effect = list_pods
+
+        result = gather_failure_diagnostics("om-job-test-pipeline-a1b2c3d4", "openmetadata-pipelines")
+
+        assert result.has_diagnostics is False
+        assert result.pod_logs is None
+        assert result.pod_description is None
+        mock_client.read_namespaced_pod_log.assert_not_called()
 
 
 class TestCreatePodDiagnostics:

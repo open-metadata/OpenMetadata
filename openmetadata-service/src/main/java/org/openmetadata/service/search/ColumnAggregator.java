@@ -16,9 +16,13 @@ package org.openmetadata.service.search;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -113,6 +117,107 @@ public interface ColumnAggregator {
       return 0;
     }
     return (int) value;
+  }
+
+  /**
+   * True if a request carries a row-level filter — one that acts on the aggregate status of a
+   * grouped column (metadataStatus, hasConflicts, hasMissingMetadata) rather than on individual
+   * documents. These cannot be pushed into the search query (the aggregate status is only known
+   * after grouping occurrences), so they are applied via {@link #paginateFilteredItems}.
+   */
+  static boolean hasRowLevelFilter(ColumnAggregationRequest request) {
+    return !nullOrEmptyStr(request.getMetadataStatus())
+        || Boolean.TRUE.equals(request.getHasConflicts())
+        || Boolean.TRUE.equals(request.getHasMissingMetadata());
+  }
+
+  /** True if the grouped column satisfies every active row-level filter on the request. */
+  static boolean matchesRowFilters(ColumnGridItem item, ColumnAggregationRequest request) {
+    if (Boolean.TRUE.equals(request.getHasConflicts())
+        && !Boolean.TRUE.equals(item.getHasVariations())) {
+      return false;
+    }
+    if (Boolean.TRUE.equals(request.getHasMissingMetadata()) && !itemHasMissingMetadata(item)) {
+      return false;
+    }
+    String status = request.getMetadataStatus();
+    if (!nullOrEmptyStr(status)) {
+      String itemStatus = item.getMetadataStatus() != null ? item.getMetadataStatus().value() : "";
+      return status.trim().equalsIgnoreCase(itemStatus);
+    }
+    return true;
+  }
+
+  /**
+   * Drop columns whose name doesn't contain the request's {@code columnNamePattern}
+   * (case-insensitive). The name wildcard in the search query only scopes which entities are
+   * scanned; flat-object mapping can't isolate the matching column, so the pattern is enforced per
+   * column here. Shared by the ES and OS row-filter scans so their pattern semantics can't drift.
+   */
+  static void applyColumnNamePattern(
+      Map<String, ?> columnsByName, ColumnAggregationRequest request) {
+    if (nullOrEmptyStr(request.getColumnNamePattern())) {
+      return;
+    }
+    String pattern = request.getColumnNamePattern().toLowerCase(Locale.ROOT);
+    columnsByName.keySet().removeIf(name -> !name.toLowerCase(Locale.ROOT).contains(pattern));
+  }
+
+  /** A column has missing metadata if any of its groups lacks a description or tags. */
+  static boolean itemHasMissingMetadata(ColumnGridItem item) {
+    if (item.getGroups() == null) {
+      return true;
+    }
+    return item.getGroups().stream()
+        .anyMatch(
+            group ->
+                (group.getDescription() == null || group.getDescription().isEmpty())
+                    || (group.getTags() == null || group.getTags().isEmpty()));
+  }
+
+  /**
+   * Apply row-level filters to the fully-grouped column list and paginate the result in memory.
+   * Filtering the aggregate items (not documents) is what makes a "Complete"/"Incomplete"/… filter
+   * return only rows whose displayed status matches, and computing totals from the filtered set is
+   * what keeps the page count and per-page size correct (issue #26824). Ordering is by column name
+   * (case-insensitive) so the offset cursor is stable across pages.
+   */
+  static ColumnGridResponse paginateFilteredItems(
+      List<ColumnGridItem> allItems, ColumnAggregationRequest request) {
+    List<ColumnGridItem> filtered =
+        allItems.stream()
+            .filter(item -> matchesRowFilters(item, request))
+            .sorted(
+                Comparator.comparing(
+                    ColumnGridItem::getColumnName,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+            .toList();
+
+    int totalUniqueColumns = filtered.size();
+    int totalOccurrences =
+        filtered.stream()
+            .mapToInt(item -> item.getTotalOccurrences() != null ? item.getTotalOccurrences() : 0)
+            .sum();
+
+    int offset = decodeSearchOffset(request.getCursor());
+    int pageSize = request.getSize();
+    int fromIndex = Math.min(offset, totalUniqueColumns);
+    int toIndex = Math.min(offset + pageSize, totalUniqueColumns);
+
+    List<ColumnGridItem> page = new ArrayList<>(filtered.subList(fromIndex, toIndex));
+    boolean hasMore = toIndex < totalUniqueColumns;
+    String cursor = hasMore ? encodeSearchOffset(toIndex) : null;
+
+    ColumnGridResponse response = new ColumnGridResponse();
+    response.setColumns(page);
+    response.setTotalUniqueColumns(totalUniqueColumns);
+    response.setTotalOccurrences(totalOccurrences);
+    response.setCursor(cursor);
+    return response;
+  }
+
+  private static boolean nullOrEmptyStr(String s) {
+    return s == null || s.isBlank();
   }
 
   /** Phase 1 result: matching column names and the total doc_count summed across buckets. */

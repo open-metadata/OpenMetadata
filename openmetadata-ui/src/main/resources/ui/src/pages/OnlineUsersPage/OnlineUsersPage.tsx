@@ -18,8 +18,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -264,7 +264,6 @@ const OnlineUsersPage = () => {
 
         <Col span={24}>
           <Table
-            bordered
             className="user-list-table"
             columns={columns}
             data-testid="online-users-table"

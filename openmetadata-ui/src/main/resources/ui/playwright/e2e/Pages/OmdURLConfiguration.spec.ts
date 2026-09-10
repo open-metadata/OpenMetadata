@@ -47,4 +47,22 @@ test.describe('OM URL configuration', () => {
       'http://localhost:8080'
     );
   });
+
+  test('url without a scheme is rejected before saving', async ({ page }) => {
+    await page.click('[data-testid="edit-button"]');
+
+    let settingsUpdated = false;
+    page.on('request', (request) => {
+      settingsUpdated =
+        settingsUpdated ||
+        (request.method() === 'PUT' &&
+          request.url().includes('/api/v1/system/settings'));
+    });
+
+    await page.fill('[data-testid="open-metadata-url-input"]', 'example.org');
+    await page.click('[data-testid="save-button"]');
+
+    await expect(page.getByText('Invalid URL format')).toBeVisible();
+    expect(settingsUpdated).toBe(false);
+  });
 });

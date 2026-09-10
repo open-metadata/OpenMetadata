@@ -10,155 +10,219 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
-import { EntityTags } from 'Models';
+
+import { render, screen } from '@testing-library/react';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
+import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { PageProcessingStatus } from '../../../generated/entity/data/page';
+import {
+  KnowledgePage,
+  PageType,
+} from '../../../interface/knowledge-center.interface';
 import KnowledgePageDetailRightPanel from './KnowledgePageDetailRightPanel';
 
-jest.mock('@openmetadata/ui-core-components', () => {
-  const Card: React.FC<{ children: React.ReactNode }> & {
-    Content: React.FC<{ children: React.ReactNode }>;
-  } = Object.assign(
-    ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="card">{children}</div>
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Card: Object.assign(
+    jest.fn(
+      ({
+        children,
+        'data-testid': testId,
+      }: {
+        children: React.ReactNode;
+        'data-testid'?: string;
+      }) => <div data-testid={testId}>{children}</div>
     ),
     {
-      Content: ({ children }: { children: React.ReactNode }) => (
-        <div data-testid="card-content">{children}</div>
-      ),
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
     }
-  );
-
-  return { Card };
-});
-
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn(),
-}));
-
-jest.mock('../../DataAssets/ReviewerLabelV2/ReviewerLabelV2', () => ({
-  ReviewerLabelV2: () => <div data-testid="reviewer-label" />,
+  ),
+  Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
 }));
 
 jest.mock(
-  '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
+  '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="data-products-container" />),
+    useGenericContext: jest.fn(() => ({
+      entityRules: {},
+      isRulesLoaded: true,
+      data: {},
+      onUpdate: jest.fn(),
+      permissions: { EditAll: true },
+    })),
   })
 );
 
-jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
-  __esModule: true,
-  default: () => <div data-testid="tags-container" />,
+jest.mock(
+  '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2',
+  () => ({
+    ReviewerLabelV2: jest.fn(() => <div data-testid="reviewer-label" />),
+  })
+);
+
+jest.mock(
+  '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component',
+  () => jest.fn(() => <div data-testid="data-products" />)
+);
+
+jest.mock('../../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
+  jest.fn(() => <div data-testid="tags-container" />)
+);
+
+jest.mock('../RelatedDataAssets/RelatedDataAssets', () =>
+  jest.fn(() => <div data-testid="related-data-assets" />)
+);
+
+jest.mock('../AttachmentWidget/AttachmentWidget', () =>
+  jest.fn(() => <div data-testid="attachment-widget" />)
+);
+
+jest.mock('../ArticleStatusBadge/ArticleStatusBadge.component', () =>
+  jest.fn(({ status, error }: { status?: string; error?: string }) => (
+    <span data-error={error} data-status={status} data-testid="status-badge" />
+  ))
+);
+
+jest.mock(
+  '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component',
+  () =>
+    jest.fn(({ sourceId }: { sourceId: string }) => (
+      <div data-source-id={sourceId} data-testid="extracted-memories-card" />
+    ))
+);
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../AttachmentWidget/AttachmentWidget', () => ({
-  __esModule: true,
-  default: () => <div data-testid="attachment-widget" />,
-}));
+const article = {
+  id: 'page-1',
+  name: 'gdpr',
+  fullyQualifiedName: 'gdpr',
+  version: 0.1,
+  updatedAt: 1,
+  updatedBy: 'admin',
+  href: 'http://x',
+  pageType: PageType.ARTICLE,
+  page: { publicationDate: new Date(), relatedArticles: [] },
+  deleted: false,
+} as KnowledgePage;
 
-jest.mock('../RelatedDataAssets/RelatedDataAssets', () => ({
-  __esModule: true,
-  default: () => <div data-testid="related-data-assets" />,
-}));
+const renderPanel = (knowledgePage?: KnowledgePage) =>
+  render(
+    <KnowledgePageDetailRightPanel
+      handleRelatedEntitiesUpdate={jest.fn()}
+      knowledgePage={knowledgePage}
+      permissions={{ EditAll: true } as OperationPermission}
+      tags={[]}
+      updatePageTag={jest.fn()}
+    />
+  );
 
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
+const mockGenericContext = (
+  overrides: Partial<ReturnType<typeof useGenericContext>>
+) =>
+  (useGenericContext as jest.Mock).mockReturnValue({
+    entityRules: {},
+    isRulesLoaded: true,
+    data: {},
+    onUpdate: jest.fn(),
+    permissions: { EditAll: true },
+    ...overrides,
+  });
 
-const baseGenericContext = {
-  data: {
-    id: 'kp-1',
-    fullyQualifiedName: 'kp.fqn',
-    domains: [],
-    dataProducts: [],
-    deleted: false,
-  },
-  onUpdate: jest.fn(),
-  permissions: { EditAll: true },
-  entityRules: {
-    canAddMultipleDataProducts: true,
-    requireDomainForDataProduct: false,
-  },
-  isRulesLoaded: true,
-};
-
-const defaultProps = {
-  permissions: { EditAll: true, EditTags: true } as OperationPermission,
-  tags: [] as EntityTags[],
-  updatePageTag: jest.fn(),
-  handleRelatedEntitiesUpdate: jest.fn(),
-};
+const lastDataProductsProps = () =>
+  (DataProductsContainer as jest.Mock).mock.calls.at(-1)?.[0];
 
 describe('KnowledgePageDetailRightPanel', () => {
-  const getDataProductsContainerMock = () =>
-    jest.requireMock(
-      '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
-    ).default as jest.Mock;
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useGenericContext as jest.Mock).mockReturnValue(baseGenericContext);
+    (DataProductsContainer as jest.Mock).mockClear();
+    mockGenericContext({});
   });
 
-  it('renders the data products container', () => {
-    render(<KnowledgePageDetailRightPanel {...defaultProps} />);
-
-    expect(getDataProductsContainerMock()).toHaveBeenCalled();
-  });
-
-  it('holds single-select (multiple=false) while entity rules are loading', () => {
-    (useGenericContext as jest.Mock).mockReturnValue({
-      ...baseGenericContext,
-      entityRules: {
-        canAddMultipleDataProducts: true,
-        requireDomainForDataProduct: false,
-      },
+  it('holds single-select while entity rules are loading', () => {
+    mockGenericContext({
+      entityRules: { canAddMultipleDataProducts: true },
       isRulesLoaded: false,
     });
 
-    render(<KnowledgePageDetailRightPanel {...defaultProps} />);
+    renderPanel(article);
 
-    expect(getDataProductsContainerMock().mock.calls.at(-1)?.[0]).toMatchObject(
-      { multiple: false }
-    );
+    expect(lastDataProductsProps()).toMatchObject({ multiple: false });
   });
 
-  it('enables multiple select when rules are loaded and multi-product rule is not enabled', () => {
-    (useGenericContext as jest.Mock).mockReturnValue({
-      ...baseGenericContext,
-      entityRules: {
-        canAddMultipleDataProducts: true,
-        requireDomainForDataProduct: false,
-      },
+  it('enables multi-select once rules are loaded and allow multiple products', () => {
+    mockGenericContext({
+      entityRules: { canAddMultipleDataProducts: true },
       isRulesLoaded: true,
     });
 
-    render(<KnowledgePageDetailRightPanel {...defaultProps} />);
+    renderPanel(article);
 
-    expect(getDataProductsContainerMock().mock.calls.at(-1)?.[0]).toMatchObject(
-      { multiple: true }
-    );
+    expect(lastDataProductsProps()).toMatchObject({ multiple: true });
   });
 
-  it('keeps single select when rules are loaded and multi-product rule is enabled', () => {
-    (useGenericContext as jest.Mock).mockReturnValue({
-      ...baseGenericContext,
-      entityRules: {
-        canAddMultipleDataProducts: false,
-        requireDomainForDataProduct: false,
-      },
+  it('keeps single-select when loaded rules disallow multiple products', () => {
+    mockGenericContext({
+      entityRules: { canAddMultipleDataProducts: false },
       isRulesLoaded: true,
     });
 
-    render(<KnowledgePageDetailRightPanel {...defaultProps} />);
+    renderPanel(article);
 
-    expect(getDataProductsContainerMock().mock.calls.at(-1)?.[0]).toMatchObject(
-      { multiple: false }
+    expect(lastDataProductsProps()).toMatchObject({ multiple: false });
+  });
+
+  it('lists the memories extracted from the article', () => {
+    renderPanel(article);
+
+    expect(screen.getByTestId('extracted-memories-card')).toHaveAttribute(
+      'data-source-id',
+      'page-1'
     );
+  });
+
+  it('shows the extraction status badge once the article has a status', () => {
+    renderPanel({
+      ...article,
+      processingStatus: PageProcessingStatus.Queued,
+    });
+
+    expect(screen.getByTestId('status-badge')).toHaveAttribute(
+      'data-status',
+      'Queued'
+    );
+  });
+
+  it('passes the processing error through to the badge', () => {
+    renderPanel({
+      ...article,
+      processingStatus: PageProcessingStatus.Failed,
+      processingError: 'provider exploded',
+    });
+
+    expect(screen.getByTestId('status-badge')).toHaveAttribute(
+      'data-error',
+      'provider exploded'
+    );
+  });
+
+  it('hides the status row until an extraction run has been recorded', () => {
+    renderPanel(article);
+
+    expect(screen.queryByTestId('status-badge')).not.toBeInTheDocument();
+  });
+
+  it('renders neither the status row nor the memories card without a page', () => {
+    renderPanel();
+
+    expect(screen.queryByTestId('status-badge')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('extracted-memories-card')
+    ).not.toBeInTheDocument();
   });
 });

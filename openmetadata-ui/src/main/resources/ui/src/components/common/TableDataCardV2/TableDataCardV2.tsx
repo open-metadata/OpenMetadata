@@ -96,13 +96,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         source.entityType !== EntityType.GLOSSARY_TERM &&
         source.entityType !== EntityType.TAG
       ) {
+        const tierName = isString(source.tier)
+          ? source.tier
+          : getEntityName(source.tier);
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : getEntityName(source.tier)
-            : '',
+          value: source.tier ? tierName : '',
         });
       }
 

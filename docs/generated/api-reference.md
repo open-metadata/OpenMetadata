@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1881 endpoints** across 75 resource packages · 1871 carry a summary.
+**1862 endpoints** across 75 resource packages · 1852 carry a summary.
 
 ## (root)
 
@@ -1480,6 +1480,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/queries/saved` | List the authenticated user's saved SPARQL queries |
 | `PUT` | `/v1/rdf/queries/saved` | Replace the authenticated user's saved SPARQL queries |
 | `GET` | `/v1/rdf/queries/templates` | List administrator-managed installation query templates |
+| `GET` | `/v1/rdf/reindex/failures` | Get RDF reindex failures |
 | `GET` | `/v1/rdf/rules` | List durable inference rules and materialization state |
 | `POST` | `/v1/rdf/rules/materialize` | Materialize dirty inference rules inside Fuseki |
 | `POST` | `/v1/rdf/rules/validate` | Validate a candidate inference rule without persisting it |

@@ -36,6 +36,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
 } from './common';
@@ -56,6 +57,24 @@ export const waitForAllLoadersToDisappear = async (
 
   // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
+};
+
+/**
+ * Wait for the lazily-mounted entity-detail widgets to replace their Suspense
+ * fallback.
+ *
+ * The right-panel widgets — tags, glossary terms, owners, domain — are behind
+ * `React.lazy`, and while their chunk loads the boundary renders
+ * `EntityDetailWidgetSkeleton`. That skeleton is *not* `data-testid="loader"`, so
+ * `waitForAllLoadersToDisappear` returns straight past it and a test can reach
+ * for something inside those widgets before they exist. Anything the widgets own
+ * — `request-entity-tags`, for one — is simply absent until this clears, so the
+ * click waits out the whole test timeout rather than racing by a few frames.
+ */
+export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+  await expect(
+    page.locator('[data-testid="entity-detail-widget-skeleton"]')
+  ).toHaveCount(0, { timeout });
 };
 
 export const visitEntityPage = async (data: {
@@ -151,6 +170,7 @@ export const visitEntityPageByFqn = async (data: {
   });
   await entityDetailsResponse;
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };
 
 export const addOwner = async ({
@@ -702,9 +722,19 @@ export const updateDescription = async (
   validationContainerTestId = 'asset-description-container',
   endpoint?: EntityTypeEndpoint
 ) => {
+  // The description widget is lazy-loaded behind a Suspense skeleton that is
+  // not a [data-testid="loader"], so the generic loader wait does not cover it
+  // -- on Metric in particular the edit affordance was looked for before the
+  // widget had mounted.
+  await waitForWidgetsToRender(page);
+
   const editDescriptionButton = page.getByTestId('edit-description');
   const editButton = page.getByTestId('edit-button');
 
+  // Prefer the dedicated affordance and fall back to the generic one. These
+  // must NOT be combined with .or(): a page carries one `edit-description` but
+  // several `edit-button`s, so the union is ambiguous under strict mode where
+  // each locator alone is not.
   try {
     await expect(editDescriptionButton).toBeVisible();
     await editDescriptionButton.click();
@@ -713,9 +743,8 @@ export const updateDescription = async (
     await editButton.click();
   }
 
-  // Wait for description box to be visible and ready
-  const descBox = page.locator(descriptionBox).first();
-  await expect(descBox).toBeVisible();
+  const descBox = await resolveDescriptionBox(page);
+
   await descBox.click();
   await descBox.clear();
   await descBox.fill(description);
@@ -1589,7 +1618,16 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.locator(descriptionBox).fill(data.description);
+  // Scoped to the announcement dialog, not the page: this form opens over an
+  // entity page that has description editors of its own, and an unscoped
+  // `descriptionBox` matches those too.
+  const announcementDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: page.locator('#announcement-submit') });
+  const announcementDescription = announcementDialog.locator(descriptionBox);
+
+  await expect(announcementDescription).toHaveCount(1);
+  await announcementDescription.fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(

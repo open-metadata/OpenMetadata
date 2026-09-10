@@ -1,5 +1,10 @@
 package org.openmetadata.schema.utils;
 
+/**
+ * Quoting helpers for entity names. A name is quoted only when it contains a {@code .}, because an
+ * unquoted dot would otherwise be read as a separator when the name is composed into a fully
+ * qualified name.
+ */
 public final class EntityInterfaceUtil {
   /** Adds quotes to name as required */
   // TODO change this FullyQualifiedName
