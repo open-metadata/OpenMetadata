@@ -52,7 +52,6 @@ import {
   EXPLORE_BUTTON_PRESET,
 } from './QueryBuilderButton/QueryBuilderButton.constants';
 import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
-import '../QueryBuilderWidgetV1/query-builder-widget-v1.less';
 import QueryBuilderCountBanner from './QueryBuilderCountBanner/QueryBuilderCountBanner';
 import type { QueryBuilderProps } from './QueryBuilder.types';
 
