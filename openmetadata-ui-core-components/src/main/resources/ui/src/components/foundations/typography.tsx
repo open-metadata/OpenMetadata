@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
+import type { PressEvent } from 'react-aria-components';
+
+// Tooltip's auto-generated focusable wrapper uses react-aria's AriaButton,
+// whose usePress hook stops press events from propagating to ancestor DOM
+// listeners by default. For the ellipsis tooltip we wrap non-interactive text,
+// so a click should still reach any ancestor onClick (e.g. a selectable card).
+// Calling continuePropagation() restores that, scoped to this call site only.
+const allowEllipsisTooltipPressToPropagate = (e: PressEvent) => {
+  e.continuePropagation();
+};
 
 const lineClampClasses: Record<number, string> = {
   1: 'tw:line-clamp-1',
@@ -131,32 +141,26 @@ export const Typography = (props: TypographyProps) => {
     ellipsisClassName
   );
 
-  if (ellipsisTooltip) {
-    return (
-      <Tooltip title={ellipsisTooltip}>
-        <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
-          <div
-            className={cx(
-              'prose',
-              quoteStyles[quoteVariant],
-              ellipsisClassName
-            )}>
-            <Component {...otherProps} className={innerClassName} style={style}>
-              {children}
-            </Component>
-          </div>
-        </TooltipTrigger>
-      </Tooltip>
-    );
-  }
-
-  return (
+  const content = (
     <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
       <Component {...otherProps} className={innerClassName} style={style}>
         {children}
       </Component>
     </div>
   );
+
+  if (ellipsisTooltip) {
+    return (
+      <Tooltip
+        title={ellipsisTooltip}
+        triggerClassName="tw:block tw:w-full tw:min-w-0"
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
+  }
+
+  return content;
 };
 
 export type {
