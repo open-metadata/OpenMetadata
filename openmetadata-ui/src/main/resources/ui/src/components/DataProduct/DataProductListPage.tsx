@@ -184,6 +184,7 @@ const DataProductListPage = ({
             <Box
               align="center"
               className={NAME_CELL_CLIP_CLASS}
+              data-testid="entity-name"
               direction="row"
               gap={3}
               onClick={handleNameClick}>
