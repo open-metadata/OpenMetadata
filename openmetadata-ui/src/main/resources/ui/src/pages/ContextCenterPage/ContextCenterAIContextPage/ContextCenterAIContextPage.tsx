@@ -81,7 +81,7 @@ const ContextCenterAIContextPage = () => {
 
   const renderPersona = (persona: Persona) => {
     const rules = persona.contextDefinition?.rules ?? [];
-    const scopedCount = getScopedRuleCount(rules);
+    const scopedCount = getScopedRuleCount(persona.contextDefinition);
 
     return (
       <Card
