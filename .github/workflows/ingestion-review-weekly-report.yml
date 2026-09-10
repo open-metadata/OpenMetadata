@@ -1,0 +1,58 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+name: Ingestion Weekly Review Report
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build the report without posting to Slack.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ingestion-review-weekly-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: github.repository == 'open-metadata/OpenMetadata'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build open PR report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Team and private organization membership require read:org / Members:read.
+          GH_ORG_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+          SLACK_CHANNEL: C03EYBDDX17
+        run: |
+          python3 .github/scripts/ingestion_review_report.py build \
+            --repository "$GITHUB_REPOSITORY" \
+            --channel "$SLACK_CHANNEL" \
+            --output ingestion-review-report.json
+
+      - name: Post report to Slack
+        if: ${{ inputs.dry_run != true }}
+        env:
+          SLACK_TOKEN: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+        run: python3 .github/scripts/ingestion_review_report.py post --input ingestion-review-report.json
