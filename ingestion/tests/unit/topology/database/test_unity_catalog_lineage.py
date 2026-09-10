@@ -13,8 +13,8 @@
 Test Unity Catalog lineage functionality
 """
 
+import json
 from collections import namedtuple
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -37,9 +37,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.unitycatalog.lineage import (
     UnitycatalogLineageSource,
+)
+from metadata.ingestion.source.database.unitycatalog.queries import (
+    unity_catalog_native_lineage_query,
 )
 
 MOCK_CONFIG = {
@@ -71,30 +75,72 @@ MOCK_CONFIG = {
 
 TableRow = namedtuple(
     "TableRow",
-    ["source_table_full_name", "source_path", "target_table_full_name", "target_path"],
-)
-ColumnRow = namedtuple(
-    "ColumnRow",
     [
         "source_table_full_name",
         "source_path",
-        "source_column_name",
         "target_table_full_name",
         "target_path",
-        "target_column_name",
+        "column_pairs",
+        "statement_text",
     ],
 )
 ExternalRow = namedtuple("ExternalRow", ["table_catalog", "table_schema", "table_name", "storage_path"])
 
 
-def table_row(source=None, target=None, source_path=None, target_path=None):
-    """A system.access.table_lineage row, named or path based on either side"""
-    return TableRow(source, source_path, target, target_path)
+def pairs_json(column_pairs):
+    """The JSON array `to_json(collect_set(struct(...)))` aggregates an edge's mappings into"""
+    if column_pairs is None:
+        return None
+    return json.dumps([{"source": source, "target": target} for source, target in column_pairs])
 
 
-def column_row(source, source_column, target, target_column, source_path=None, target_path=None):
-    """A system.access.column_lineage row"""
-    return ColumnRow(source, source_path, source_column, target, target_path, target_column)
+def table_row(
+    source=None,
+    target=None,
+    source_path=None,
+    target_path=None,
+    column_pairs=None,
+    statement_text=None,
+):
+    """A native lineage row: one table edge with its column mappings and its SQL"""
+    return TableRow(source, source_path, target, target_path, pairs_json(column_pairs), statement_text)
+
+
+def stub_rows(lineage_source, rows=(), external_rows=(), probe_error=None):
+    """
+    Answer every query the connector runs: the query history probe, the external
+    location query and the native lineage query.
+
+    Returns the list executed statements are recorded into, so a test can assert what
+    was actually asked of the warehouse.
+    """
+    executed = []
+
+    def execute(statement, *_args, **_kwargs):
+        sql = str(statement)
+        executed.append(sql)
+        if "WHERE 1=0" in sql:
+            if probe_error:
+                raise probe_error
+            return []
+        if "information_schema.tables" in sql:
+            return external_rows
+        return rows
+
+    mock_conn = MagicMock()
+    mock_conn.execute.side_effect = execute
+    lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+    lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+    return executed
+
+
+def resolve_tables(lineage_source, tables):
+    """Resolve `catalog.schema.table` names, keyed the way the connector asks for them"""
+
+    def get_by_name(entity=None, fqn=None, **_kwargs):
+        return tables.get(str(fqn).split(".", 1)[1] if fqn else None)
+
+    lineage_source.metadata.get_by_name.side_effect = get_by_name
 
 
 def a_table(name="test_table", columns=None):
@@ -103,6 +149,14 @@ def a_table(name="test_table", columns=None):
         name=EntityName(root=name),
         fullyQualifiedName=FullyQualifiedEntityName(root=f"service.db.schema.{name}"),
         columns=columns or [],
+    )
+
+
+def a_column(name, column_fqn):
+    return Column(
+        name=ColumnName(root=name),
+        dataType=DataType.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root=column_fqn),
     )
 
 
@@ -130,16 +184,14 @@ def lineage_source():
 
 class TestCacheLineage:
     def test_cache_table_lineage(self, lineage_source):
-        mock_rows = [
-            table_row("cat.schema.source1", "cat.schema.target1"),
-            table_row("cat.schema.source2", "cat.schema.target1"),
-            table_row("cat.schema.source1", "cat.schema.target2"),
-        ]
-
-        mock_conn = MagicMock()
-        mock_conn.execute.return_value = mock_rows
-        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+        stub_rows(
+            lineage_source,
+            [
+                table_row("cat.schema.source1", "cat.schema.target1"),
+                table_row("cat.schema.source2", "cat.schema.target1"),
+                table_row("cat.schema.source1", "cat.schema.target2"),
+            ],
+        )
 
         lineage_source._cache_lineage()
 
@@ -153,22 +205,17 @@ class TestCacheLineage:
         }
 
     def test_cache_column_lineage(self, lineage_source):
-        call_count = 0
-
-        def mock_execute(query):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return [table_row("cat.schema.src", "cat.schema.tgt")]
-            return [
-                column_row("cat.schema.src", "col_a", "cat.schema.tgt", "col_x"),
-                column_row("cat.schema.src", "col_b", "cat.schema.tgt", "col_y"),
-            ]
-
-        mock_conn = MagicMock()
-        mock_conn.execute.side_effect = mock_execute
-        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+        """The mappings of an edge travel on the edge's own row"""
+        stub_rows(
+            lineage_source,
+            [
+                table_row(
+                    "cat.schema.src",
+                    "cat.schema.tgt",
+                    column_pairs=[("col_b", "col_y"), ("col_a", "col_x")],
+                )
+            ],
+        )
 
         lineage_source._cache_lineage()
 
@@ -179,6 +226,19 @@ class TestCacheLineage:
             ("col_b", "col_y"),
         ]
 
+    def test_lineage_is_read_in_a_single_query(self, lineage_source):
+        """
+        One query returns table edges, column mappings and SQL. A second query per
+        result set, or per batch of edges, re-scans the whole lineage window.
+        """
+        executed = stub_rows(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")])
+
+        lineage_source._cache_lineage()
+
+        lineage_queries = [sql for sql in executed if "system.access.table_lineage" in sql and "WHERE 1=0" not in sql]
+        assert len(lineage_queries) == 1
+        assert "system.access.column_lineage" in lineage_queries[0]
+
     def test_cache_lineage_handles_query_failure(self, lineage_source):
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("Access denied")
@@ -188,6 +248,131 @@ class TestCacheLineage:
         lineage_source._cache_lineage()
 
         assert len(lineage_source.table_lineage_map) == 0
+        assert len(lineage_source.column_lineage_map) == 0
+        assert len(lineage_source.edge_sql) == 0
+
+    def test_a_row_without_column_pairs_leaves_no_entry_behind(self, lineage_source):
+        stub_rows(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")])
+
+        lineage_source._cache_lineage()
+
+        assert len(lineage_source.column_lineage_map) == 0
+
+
+class TestNativeLineageSql:
+    """The statement that wrote an edge, joined in the same query as the edge itself."""
+
+    def test_sql_is_attached_to_the_edge(self, lineage_source):
+        stub_rows(
+            lineage_source,
+            [
+                table_row(
+                    "cat.schema.src",
+                    "cat.schema.tgt",
+                    statement_text="INSERT INTO tgt SELECT * FROM src",
+                )
+            ],
+        )
+        lineage_source._cache_lineage()
+
+        target = a_table("tgt")
+        resolve_tables(lineage_source, {"cat.schema.src": a_table("src")})
+
+        results = list(lineage_source._process_table_lineage(target, "cat.schema.tgt"))
+
+        assert len(results) == 1
+        assert results[0].right.edge.lineageDetails.sqlQuery.root == "INSERT INTO tgt SELECT * FROM src"
+
+    def test_an_edge_without_sql_is_still_emitted(self, lineage_source):
+        stub_rows(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")])
+        lineage_source._cache_lineage()
+
+        resolve_tables(lineage_source, {"cat.schema.src": a_table("src")})
+
+        results = list(lineage_source._process_table_lineage(a_table("tgt"), "cat.schema.tgt"))
+
+        assert len(results) == 1
+        assert results[0].right.edge.lineageDetails.sqlQuery is None
+
+    def test_one_statement_is_stored_once_for_all_of_its_edges(self, lineage_source):
+        """A statement writing many edges must not be held once per edge"""
+        statement = "INSERT INTO tgt SELECT * FROM a JOIN b"
+        stub_rows(
+            lineage_source,
+            [
+                table_row("cat.schema.a", "cat.schema.tgt", statement_text=statement),
+                # the driver hands out an equal but distinct string per row
+                table_row("cat.schema.b", "cat.schema.tgt", statement_text=str(statement)),
+            ],
+        )
+
+        lineage_source._cache_lineage()
+
+        stored = list(lineage_source.edge_sql.values())
+        assert len(stored) == 2
+        assert stored[0] is stored[1]
+
+    def test_column_mappings_and_sql_ride_the_same_edge(self, lineage_source):
+        stub_rows(
+            lineage_source,
+            [
+                table_row(
+                    "cat.schema.src",
+                    "cat.schema.tgt",
+                    column_pairs=[("col_a", "col_x")],
+                    statement_text="INSERT INTO tgt SELECT col_a FROM src",
+                )
+            ],
+        )
+        lineage_source._cache_lineage()
+
+        target = a_table("tgt", columns=[a_column("col_x", "svc.cat.schema.tgt.col_x")])
+        resolve_tables(
+            lineage_source,
+            {"cat.schema.src": a_table("src", columns=[a_column("col_a", "svc.cat.schema.src.col_a")])},
+        )
+
+        results = list(lineage_source._process_table_lineage(target, "cat.schema.tgt"))
+
+        details = results[0].right.edge.lineageDetails
+        assert details.sqlQuery.root == "INSERT INTO tgt SELECT col_a FROM src"
+        assert details.columnsLineage[0].fromColumns[0].root == "svc.cat.schema.src.col_a"
+        assert details.columnsLineage[0].toColumn.root == "svc.cat.schema.tgt.col_x"
+
+    def test_unreadable_query_history_keeps_the_lineage(self, lineage_source):
+        """
+        A missing grant on system.query.history must cost the SQL text, not the edges,
+        so the statement columns and the join are left out of the query entirely.
+        """
+        executed = stub_rows(
+            lineage_source,
+            [table_row("cat.schema.src", "cat.schema.tgt")],
+            probe_error=Exception("permission denied on system.query.history"),
+        )
+
+        lineage_source._cache_lineage()
+
+        lineage_query = next(sql for sql in executed if "table_edges" in sql)
+        assert "system.query.history" not in lineage_query
+        assert "latest_statement" not in lineage_query
+        assert lineage_source.table_lineage_map["cat.schema.tgt"] == {"cat.schema.src"}
+        assert len(lineage_source.edge_sql) == 0
+
+    def test_readable_query_history_is_joined(self, lineage_source):
+        executed = stub_rows(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")])
+
+        lineage_source._cache_lineage()
+
+        lineage_query = next(sql for sql in executed if "table_edges" in sql)
+        assert "system.query.history" in lineage_query
+        assert "latest_statement" in lineage_query
+
+    def test_unreadable_column_pairs_are_skipped(self, lineage_source):
+        stub_rows(lineage_source, [TableRow("cat.schema.src", None, "cat.schema.tgt", None, "not json", None)])
+
+        lineage_source._cache_lineage()
+
+        assert lineage_source.table_lineage_map["cat.schema.tgt"] == {"cat.schema.src"}
         assert len(lineage_source.column_lineage_map) == 0
 
 
@@ -383,12 +568,8 @@ class TestExternalLocationLineage:
     def test_process_external_location_lineage_from_cache(self, lineage_source):
         lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
 
-        table_entity = Table(
-            id=uuid4(),
-            name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
-            columns=[],
-        )
+        table_entity = a_table("test_table")
+        resolve_tables(lineage_source, {"cat.schema.test_table": table_entity})
 
         container_entity = Container(
             id=uuid4(),
@@ -398,7 +579,7 @@ class TestExternalLocationLineage:
 
         lineage_source.metadata.es_search_container_by_path.return_value = [container_entity]
 
-        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
+        results = list(lineage_source._process_external_location_lineage("cat.schema.test_table"))
 
         assert len(results) == 1
         assert isinstance(results[0], Either)
@@ -415,12 +596,7 @@ class TestExternalLocationLineage:
     def test_process_external_location_strips_trailing_slash(self, lineage_source):
         lineage_source.external_location_map = {"cat.schema.test_table": "s3://test-bucket/data/"}
 
-        table_entity = Table(
-            id=uuid4(),
-            name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
-            columns=[],
-        )
+        resolve_tables(lineage_source, {"cat.schema.test_table": a_table("test_table")})
 
         container_entity = Container(
             id=uuid4(),
@@ -430,7 +606,7 @@ class TestExternalLocationLineage:
 
         lineage_source.metadata.es_search_container_by_path.return_value = [container_entity]
 
-        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
+        results = list(lineage_source._process_external_location_lineage("cat.schema.test_table"))
 
         assert len(results) == 1
         lineage_source.metadata.es_search_container_by_path.assert_called_once_with(
@@ -440,32 +616,24 @@ class TestExternalLocationLineage:
     def test_process_external_location_no_cache_entry(self, lineage_source):
         lineage_source.external_location_map = {}
 
-        table_entity = Table(
-            id=uuid4(),
-            name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
-            columns=[],
-        )
-
-        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
+        results = list(lineage_source._process_external_location_lineage("cat.schema.test_table"))
 
         assert len(results) == 0
+        lineage_source.metadata.es_search_container_by_path.assert_not_called()
 
     def test_process_external_location_no_container_found(self, lineage_source):
+        """
+        Every external table in the metastore reaches here, so one whose storage was
+        never ingested must not cost a request to resolve the table itself.
+        """
         lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
-
-        table_entity = Table(
-            id=uuid4(),
-            name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
-            columns=[],
-        )
 
         lineage_source.metadata.es_search_container_by_path.return_value = []
 
-        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
+        results = list(lineage_source._process_external_location_lineage("cat.schema.test_table"))
 
         assert len(results) == 0
+        lineage_source.metadata.get_by_name.assert_not_called()
 
 
 class TestContainerColumnLineage:
@@ -544,18 +712,8 @@ class TestPathBasedLineage:
     """
 
     @staticmethod
-    def _cache_rows(lineage_source, table_rows, column_rows=None):
-        call_count = 0
-
-        def mock_execute(query):
-            nonlocal call_count
-            call_count += 1
-            return table_rows if call_count == 1 else (column_rows or [])
-
-        mock_conn = MagicMock()
-        mock_conn.execute.side_effect = mock_execute
-        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+    def _cache_rows(lineage_source, table_rows):
+        stub_rows(lineage_source, table_rows)
         lineage_source._cache_lineage()
 
     def test_path_source_resolves_to_external_table(self, lineage_source):
@@ -645,10 +803,12 @@ class TestPathBasedLineage:
 
         self._cache_rows(
             lineage_source,
-            [table_row(target="cat.schema.tgt", source_path="s3://bucket/data")],
             [
-                column_row(None, "col_a", "cat.schema.tgt", "col_x", source_path="s3://bucket/data"),
-                column_row(None, "col_b", "cat.schema.tgt", "col_y", source_path="s3://bucket/data/"),
+                table_row(
+                    target="cat.schema.tgt",
+                    source_path="s3://bucket/data",
+                    column_pairs=[("col_a", "col_x"), ("col_b", "col_y")],
+                )
             ],
         )
 
@@ -658,18 +818,25 @@ class TestPathBasedLineage:
         ]
 
     def test_column_pair_reported_by_both_name_and_path_is_not_duplicated(self, lineage_source):
-        """Widening the GROUP BY lets one edge arrive twice"""
+        """
+        One edge arrives twice when Databricks names its source by table on one row
+        and by path on another, and both rows resolve to the same pair.
+        """
         lineage_source.path_to_table_map["s3://bucket/data"] = {"cat.schema.ext"}
 
         self._cache_rows(
             lineage_source,
-            [table_row("cat.schema.ext", "cat.schema.tgt")],
             [
-                column_row("cat.schema.ext", "col_a", "cat.schema.tgt", "col_x"),
-                column_row(None, "col_a", "cat.schema.tgt", "col_x", source_path="s3://bucket/data"),
+                table_row("cat.schema.ext", "cat.schema.tgt", column_pairs=[("col_a", "col_x")]),
+                table_row(
+                    target="cat.schema.tgt",
+                    source_path="s3://bucket/data",
+                    column_pairs=[("col_a", "col_x")],
+                ),
             ],
         )
 
+        assert lineage_source.table_lineage_map["cat.schema.tgt"] == {"cat.schema.ext"}
         assert lineage_source.column_lineage_map[("cat.schema.ext", "cat.schema.tgt")] == {("col_a", "col_x"): None}
 
     def test_cache_external_locations_builds_the_inverse_map(self, lineage_source):
@@ -749,7 +916,6 @@ class TestPathBasedLineage:
         calls = []
         lineage_source._cache_external_locations = lambda: calls.append("locations")
         lineage_source._cache_lineage = lambda: calls.append("lineage")
-        lineage_source.metadata.list_all_entities.return_value = []
 
         list(lineage_source._iter())
 
@@ -807,18 +973,18 @@ class TestPathBasedLineage:
         external_table = "bronze_ns.deltalake_ns.external_table"
         managed_table = "bronze_ns.deltalake_ns.managed_table_ns"
 
-        def mock_execute(statement):
-            sql = str(statement)
-            if "information_schema.tables" in sql:
-                return [ExternalRow("bronze_ns", "deltalake_ns", "external_table", raw_path)]
-            if "table_lineage" in sql:
-                return [table_row(target=managed_table, source_path=raw_path)]
-            return [column_row(None, "id", managed_table, "id", source_path=raw_path)]
-
-        mock_conn = MagicMock()
-        mock_conn.execute.side_effect = mock_execute
-        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+        stub_rows(
+            lineage_source,
+            rows=[
+                table_row(
+                    target=managed_table,
+                    source_path=raw_path,
+                    column_pairs=[("id", "id")],
+                    statement_text="CREATE TABLE managed_table_ns AS SELECT id FROM delta.`" + raw_path + "`",
+                )
+            ],
+            external_rows=[ExternalRow("bronze_ns", "deltalake_ns", "external_table", raw_path)],
+        )
 
         target_entity = Table(
             id=uuid4(),
@@ -847,20 +1013,11 @@ class TestPathBasedLineage:
             ],
         )
 
-        database = SimpleNamespace(
-            name=SimpleNamespace(root="bronze_ns"),
-            fullyQualifiedName=SimpleNamespace(root="svc.bronze_ns"),
+        resolve_tables(
+            lineage_source,
+            {managed_table: target_entity, external_table: upstream_entity},
         )
-        schema = SimpleNamespace(
-            name=SimpleNamespace(root="deltalake_ns"),
-            fullyQualifiedName=SimpleNamespace(root="svc.bronze_ns.deltalake_ns"),
-        )
-        lineage_source.metadata.list_all_entities.side_effect = [[database], [schema], [target_entity]]
-        lineage_source.metadata.get_by_name.return_value = upstream_entity
         lineage_source.metadata.es_search_container_by_path.return_value = []
-        lineage_source.source_config.databaseFilterPattern = None
-        lineage_source.source_config.schemaFilterPattern = None
-        lineage_source.source_config.tableFilterPattern = None
 
         results = list(lineage_source._iter())
 
@@ -870,3 +1027,186 @@ class TestPathBasedLineage:
         assert edge.toEntity.id == target_entity.id
         assert edge.lineageDetails.columnsLineage[0].fromColumns[0].root == f"svc.{external_table}.id"
         assert edge.lineageDetails.columnsLineage[0].toColumn.root == f"svc.{managed_table}.id"
+        assert edge.lineageDetails.sqlQuery.root.startswith("CREATE TABLE managed_table_ns")
+        lineage_source.metadata.list_all_entities.assert_not_called()
+
+
+class TestLineageDrivenIteration:
+    """
+    The system tables name every table an edge can end at, so those are the tables
+    looked up. Walking the whole service instead pages through every table of every
+    schema of every catalog to find the few an edge mentions.
+    """
+
+    def test_the_service_is_not_walked(self, lineage_source):
+        stub_rows(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")])
+        resolve_tables(lineage_source, {"cat.schema.src": a_table("src"), "cat.schema.tgt": a_table("tgt")})
+
+        results = list(lineage_source._iter())
+
+        assert len(results) == 1
+        lineage_source.metadata.list_all_entities.assert_not_called()
+
+    def test_targets_cover_lineage_paths_and_external_locations(self, lineage_source):
+        lineage_source.table_lineage_map["cat.schema.from_lineage"] = {"cat.schema.src"}
+        lineage_source.path_lineage_map["cat.schema.from_path"] = {"s3://bucket/data"}
+        lineage_source.external_location_map["cat.schema.external"] = "s3://bucket/ext"
+
+        assert lineage_source._lineage_targets() == [
+            "cat.schema.external",
+            "cat.schema.from_lineage",
+            "cat.schema.from_path",
+        ]
+
+    def test_an_upstream_named_by_two_targets_is_resolved_once(self, lineage_source):
+        stub_rows(
+            lineage_source,
+            [
+                table_row("cat.schema.src", "cat.schema.tgt1"),
+                table_row("cat.schema.src", "cat.schema.tgt2"),
+            ],
+        )
+        resolve_tables(
+            lineage_source,
+            {
+                "cat.schema.src": a_table("src"),
+                "cat.schema.tgt1": a_table("tgt1"),
+                "cat.schema.tgt2": a_table("tgt2"),
+            },
+        )
+
+        results = list(lineage_source._iter())
+
+        assert len(results) == 2
+        resolved = [call.kwargs["fqn"] for call in lineage_source.metadata.get_by_name.call_args_list]
+        assert resolved.count("local_unitycatalog.cat.schema.src") == 1
+
+    def test_a_target_that_was_never_ingested_is_skipped(self, lineage_source):
+        stub_rows(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")])
+        resolve_tables(lineage_source, {"cat.schema.src": a_table("src")})
+
+        assert list(lineage_source._iter()) == []
+
+    def test_a_failing_lookup_is_not_cached(self, lineage_source):
+        """A transient failure must not blind every later edge naming that table"""
+        lineage_source.metadata.get_by_name.side_effect = RuntimeError("connection reset")
+
+        assert lineage_source._get_table_entity("cat.schema.tgt") is None
+        assert "cat.schema.tgt" not in lineage_source._table_cache
+
+    def test_filters_apply_to_the_names_the_system_tables_report(self, lineage_source):
+        stub_rows(
+            lineage_source,
+            [
+                table_row("cat.schema.src", "excluded_cat.schema.tgt"),
+                table_row("cat.schema.src", "cat.excluded_schema.tgt"),
+                table_row("cat.schema.src", "cat.schema.excluded_table"),
+                table_row("cat.schema.src", "cat.schema.tgt"),
+            ],
+        )
+        resolve_tables(
+            lineage_source,
+            {
+                "cat.schema.src": a_table("src"),
+                "excluded_cat.schema.tgt": a_table("tgt"),
+                "cat.excluded_schema.tgt": a_table("tgt"),
+                "cat.schema.excluded_table": a_table("excluded_table"),
+                "cat.schema.tgt": a_table("tgt"),
+            },
+        )
+        lineage_source.source_config.databaseFilterPattern = FilterPattern(excludes=["excluded_cat"])
+        lineage_source.source_config.schemaFilterPattern = FilterPattern(excludes=["excluded_schema"])
+        lineage_source.source_config.tableFilterPattern = FilterPattern(excludes=["excluded_table"])
+
+        results = list(lineage_source._iter())
+
+        assert len(results) == 1
+        assert results[0].right.edge.toEntity.id is not None
+        assert lineage_source.status.filtered == [
+            {"local_unitycatalog.cat.excluded_schema.tgt": "Schema Filtered Out"},
+            {"local_unitycatalog.cat.schema.excluded_table": "Table Filtered Out"},
+            {"local_unitycatalog.excluded_cat.schema.tgt": "Catalog Filtered Out"},
+        ]
+
+
+class TestNativeLineageQuery:
+    """The single query both system tables and the statement text are read with."""
+
+    def test_both_system_tables_are_read_in_one_query(self):
+        query = unity_catalog_native_lineage_query(7, include_query_history=True)
+
+        assert query.count("FROM system.access.table_lineage") == 1
+        assert query.count("FROM system.access.column_lineage") == 1
+        assert query.count("INTERVAL 7 DAYS") == 4
+
+    def test_column_mappings_join_on_null_safe_equality(self):
+        """
+        `source_path` is NULL on every edge reported by table name and `=` on NULL
+        never matches, so a plain join would drop those edges' column mappings.
+        """
+        query = unity_catalog_native_lineage_query(1, include_query_history=True)
+
+        join = query.split("LEFT JOIN column_edges")[1].split("LEFT JOIN system.query.history")[0]
+        assert join.count("<=>") == 4
+        assert " = " not in join
+
+    def test_history_reaches_one_day_further_back_than_lineage(self):
+        """A statement that ran just before the oldest lineage day still wrote that edge"""
+        query = unity_catalog_native_lineage_query(2, include_query_history=True)
+
+        assert "history.start_time >= current_date() - INTERVAL 3 DAYS" in query
+
+    def test_unusable_statement_text_is_left_out(self):
+        query = unity_catalog_native_lineage_query(1, include_query_history=True)
+
+        assert "UPPER(TRIM(history.statement_text)) <> '<REDACTED>'" in query
+
+    def test_without_query_history_the_query_does_not_name_it(self):
+        query = unity_catalog_native_lineage_query(1, include_query_history=False)
+
+        assert "system.query.history" not in query
+        assert "statement_id" not in query
+        assert "CAST(NULL AS STRING) AS statement_text" in query
+
+
+class TestExternalTablesWithoutLineage:
+    def test_an_external_table_with_no_lineage_still_gets_its_container_edge(self, lineage_source):
+        stub_rows(
+            lineage_source,
+            external_rows=[ExternalRow("cat", "schema", "ext", "s3://bucket/data")],
+        )
+        table_entity = a_table("ext")
+        resolve_tables(lineage_source, {"cat.schema.ext": table_entity})
+        container_entity = a_container()
+        lineage_source.metadata.es_search_container_by_path.return_value = [container_entity]
+
+        results = list(lineage_source._iter())
+
+        assert len(results) == 1
+        assert results[0].right.edge.fromEntity.id == container_entity.id
+        assert results[0].right.edge.toEntity.id == table_entity.id
+
+    def test_a_table_with_no_upstream_is_never_resolved(self, lineage_source):
+        """Resolving it would spend a request per external table in the metastore"""
+        stub_rows(
+            lineage_source,
+            external_rows=[ExternalRow("cat", "schema", "ext", "s3://bucket/data")],
+        )
+        lineage_source.metadata.es_search_container_by_path.return_value = []
+
+        assert list(lineage_source._iter()) == []
+        lineage_source.metadata.get_by_name.assert_not_called()
+
+    def test_an_external_table_that_was_never_ingested_yields_nothing(self, lineage_source):
+        lineage_source.external_location_map = {"cat.schema.ext": "s3://bucket/data"}
+        lineage_source.metadata.es_search_container_by_path.return_value = [a_container()]
+        resolve_tables(lineage_source, {})
+
+        assert list(lineage_source._process_external_location_lineage("cat.schema.ext")) == []
+
+    def test_a_malformed_target_name_is_dropped(self, lineage_source):
+        """A name that is not `catalog.schema.table` cannot be resolved or filtered"""
+        stub_rows(lineage_source, [table_row("cat.schema.src", "two.parts")])
+
+        assert list(lineage_source._iter()) == []
+        lineage_source.metadata.get_by_name.assert_not_called()

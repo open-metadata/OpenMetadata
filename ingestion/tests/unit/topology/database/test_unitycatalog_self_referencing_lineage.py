@@ -17,6 +17,7 @@ Those rows must not reach the lineage map, or the table ends up in its own
 upstream set and is later emitted as an edge pointing at itself.
 """
 
+import json
 from collections import defaultdict
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -30,27 +31,22 @@ EVENT_LOG = f"{CATALOG}.{SCHEMA}.orders_event_log"
 SNAPSHOT = f"{CATALOG}.{SCHEMA}.orders_snapshot"
 
 
-def _row(source_table: str, target_table: str) -> SimpleNamespace:
+def _row(source_table: str, target_table: str, column_pairs=None) -> SimpleNamespace:
     return SimpleNamespace(
         source_table_full_name=source_table,
         target_table_full_name=target_table,
         source_path=None,
         target_path=None,
+        column_pairs=(
+            None
+            if column_pairs is None
+            else json.dumps([{"source": source, "target": target} for source, target in column_pairs])
+        ),
+        statement_text=None,
     )
 
 
-def _column_row(source_table: str, target_table: str, column: str) -> SimpleNamespace:
-    return SimpleNamespace(
-        source_table_full_name=source_table,
-        target_table_full_name=target_table,
-        source_path=None,
-        target_path=None,
-        source_column_name=column,
-        target_column_name=column,
-    )
-
-
-def _source(rows, column_rows=None):
+def _source(rows):
     """The real caching method, with only the SQL connection stubbed."""
     with patch.object(UnitycatalogLineageSource, "__init__", lambda s: None):
         source = UnitycatalogLineageSource()
@@ -62,10 +58,15 @@ def _source(rows, column_rows=None):
     source.column_lineage_map = defaultdict(dict)
     source.path_to_table_map = defaultdict(set)
     source.path_lineage_map = defaultdict(set)
+    source.edge_sql = {}
 
     connection = MagicMock()
-    # _cache_lineage runs the table query first, then the column query
-    connection.execute.side_effect = [rows, column_rows if column_rows is not None else []]
+
+    def execute(statement, *_args, **_kwargs):
+        # the query history probe runs first and scans nothing
+        return [] if "WHERE 1=0" in str(statement) else rows
+
+    connection.execute.side_effect = execute
     engine = MagicMock()
     engine.connect.return_value.__enter__ = MagicMock(return_value=connection)
     engine.connect.return_value.__exit__ = MagicMock(return_value=False)
@@ -103,18 +104,12 @@ class TestSelfReferencingColumnLineageCache:
     """A self-pair's columns are unreadable once its table pair is dropped."""
 
     def test_self_referencing_columns_are_not_cached(self):
-        source = _source(
-            [_row(EVENT_LOG, EVENT_LOG)],
-            column_rows=[_column_row(EVENT_LOG, EVENT_LOG, "id")],
-        )
+        source = _source([_row(EVENT_LOG, EVENT_LOG, column_pairs=[("id", "id")])])
         source._cache_lineage()
         assert (EVENT_LOG, EVENT_LOG) not in source.column_lineage_map
         assert sum(len(v) for v in source.column_lineage_map.values()) == 0
 
     def test_normal_columns_are_still_cached(self):
-        source = _source(
-            [_row(EVENT_LOG, SNAPSHOT)],
-            column_rows=[_column_row(EVENT_LOG, SNAPSHOT, "id")],
-        )
+        source = _source([_row(EVENT_LOG, SNAPSHOT, column_pairs=[("id", "id")])])
         source._cache_lineage()
         assert source.column_lineage_map[(EVENT_LOG, SNAPSHOT)] == {("id", "id"): None}
