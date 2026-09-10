@@ -18,7 +18,6 @@ import type { QueryBuilderButtonPreset } from './QueryBuilderButton.types';
  * the only one whose addGroup/delGroup testids are driven by Playwright.
  */
 export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  iconClassName: 'tw:size-4',
   addRuleLabel: () => t('label.add-new-entity', { entity: t('label.field') }),
   testIds: {
     addRule: 'advanced-search-add-rule',
@@ -31,7 +30,6 @@ export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
 
 /** Form-embedded builders: a labelled "Add condition" button. */
 export const CONDITION_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  iconClassName: 'tw:size-4',
   addRuleLabel: () => t('label.add-entity', { entity: t('label.condition') }),
   testIds: {
     addRule: 'add-condition-button',
@@ -49,7 +47,6 @@ export const CONDITION_BUTTON_PRESET: QueryBuilderButtonPreset = {
  * on the next screen reads as two different controls when it is the same one.
  */
 export const COMPACT_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  iconClassName: 'tw:size-3.5',
   addRuleLabel: CONDITION_BUTTON_PRESET.addRuleLabel,
   testIds: CONDITION_BUTTON_PRESET.testIds,
 };

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import type {
-  JsonItem,
   Config,
   ImmutableTree,
   OldJsonTree,
@@ -303,47 +302,4 @@ export const loadQueryBuilderTree = ({
   } catch {
     return emptyTree();
   }
-};
-
-/**
- * How many rules the tree holds, at any depth.
- *
- * Used to suppress `delRule` at the last remaining rule, so a builder can
- * never be emptied into a state the user cannot recover from.
- *
- * This deliberately walks the whole tree rather than counting the root's
- * direct children. RAQB seeds a wrapper group beneath the root, so a builder
- * showing five rules still has exactly one root child — counting those made
- * the suppression permanent, and the delete button only reappeared once a
- * second top-level group existed.
- *
- * `children1` comes back from `QbUtils.getTree` as an array.
- */
-export const getRuleCount = (tree: ImmutableTree): number => {
-  const countRules = (node?: JsonItem): number => {
-    if (!node) {
-      return 0;
-    }
-
-    if (node.type === 'rule') {
-      return 1;
-    }
-
-    const children = node.children1;
-
-    if (!children) {
-      return 0;
-    }
-
-    // `QbUtils.getTree` returns `children1` as an array, which is the only
-    // shape this walk ever sees.
-    const list = children as JsonItem[];
-
-    return list.reduce(
-      (total: number, child) => total + countRules(child as JsonItem),
-      0
-    );
-  };
-
-  return countRules(QbUtils.getTree(tree) as JsonItem);
 };

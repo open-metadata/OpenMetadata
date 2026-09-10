@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ButtonProps } from '@react-awesome-query-builder/ui';
-
 export type QueryBuilderButtonKind =
   | 'addRule'
   | 'delRule'
@@ -20,24 +18,13 @@ export type QueryBuilderButtonKind =
   | 'delRuleGroup';
 
 /**
- * The per-caller differences between the four button renderers this component
+ * The per-caller differences between the four button renderers the canvas
  * replaced. They had drifted rather than been designed, so they are data now
  * instead of four implementations.
  */
 export interface QueryBuilderButtonPreset {
-  /**
-   * Icon sizing for the row the builder sits in. The old renderers disagreed
-   * here (`tw:size-4` vs `tw:size-3.5`), which is why the Elasticsearch and
-   * JSONLogic builders looked subtly different.
-   */
-  iconClassName: string;
   /** Omit for an icon-only add button. */
   addRuleLabel?: () => string;
   /** Load-bearing in Playwright — see playwright/utils/advancedSearch.ts. */
   testIds: Record<QueryBuilderButtonKind, string>;
-}
-
-export interface QueryBuilderButtonProps {
-  preset: QueryBuilderButtonPreset;
-  buttonProps?: ButtonProps;
 }

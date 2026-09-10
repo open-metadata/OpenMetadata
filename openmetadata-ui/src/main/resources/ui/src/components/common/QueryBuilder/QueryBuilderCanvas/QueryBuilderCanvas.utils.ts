@@ -25,10 +25,7 @@ import type {
 export const QUERY_BUILDER_GROUP_TYPE = 'group';
 
 /** RAQB's own node types; a group holds children, a rule is a leaf. */
-export const QUERY_BUILDER_GROUP_TYPES = [
-  QUERY_BUILDER_GROUP_TYPE,
-  'rule_group',
-];
+const QUERY_BUILDER_GROUP_TYPES = [QUERY_BUILDER_GROUP_TYPE, 'rule_group'];
 
 /** The shape RAQB hands its own `renderField`, and so what OMFieldSelect reads. */
 export interface QueryBuilderFieldNode {
@@ -53,15 +50,11 @@ export const configUtils = QbUtils.ConfigUtils as unknown as {
   getFieldConfig: (
     config: unknown,
     field: string
-  ) => { type?: string; fieldSettings?: Record<string, unknown> } | null;
-  /** The merged widget config RAQB hands its own widgets. */
-  getFieldWidgetConfig: (
-    config: unknown,
-    field: string,
-    operator: string,
-    widget?: string | null,
-    valueSrc?: string | null
-  ) => Record<string, unknown> | null;
+  ) => {
+    type?: string;
+    fieldSettings?: Record<string, unknown>;
+    subfields?: Record<string, unknown>;
+  } | null;
 };
 
 type RawFields = Record<string, Record<string, unknown>> | undefined;
@@ -112,11 +105,7 @@ export const getGroupDrillFields = (
     return undefined;
   }
 
-  const subfields = (
-    configUtils.getFieldConfig(config, field) as {
-      subfields?: Record<string, unknown>;
-    } | null
-  )?.subfields;
+  const subfields = configUtils.getFieldConfig(config, field)?.subfields;
   const keys = Object.keys(subfields ?? {});
 
   if (!subfields || keys.length === 0) {

@@ -103,9 +103,6 @@ export const QUERY_BUILDER_CONJUNCTION = {
   OR: 'OR',
 } as const;
 
-export type QueryBuilderConjunction =
-  (typeof QUERY_BUILDER_CONJUNCTION)[keyof typeof QUERY_BUILDER_CONJUNCTION];
-
 export const QUERY_BUILDER_CONJUNCTION_MODE = {
   EDITABLE: 'editable',
   AND: 'and',

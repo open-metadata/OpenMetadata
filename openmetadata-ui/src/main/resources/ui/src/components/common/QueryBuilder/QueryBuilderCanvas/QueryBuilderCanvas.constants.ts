@@ -40,9 +40,6 @@ export const getQueryBuilderColumnRatios = (fieldCells: number): string =>
       }fr minmax(${QUERY_BUILDER_OPERATOR_MIN_WIDTH}px, 41fr) 80fr`
     : QUERY_BUILDER_COLUMN_RATIOS;
 
-/** Widget-less operators (`is null`) still occupy their column, empty. */
-export const QUERY_BUILDER_OPERATOR_NO_VALUE = 0;
-
 /**
  * Base testid of a row's Field control. Levels beyond the first are suffixed
  * with their depth (`-1`, `-2`), so a drilled rule stays addressable without

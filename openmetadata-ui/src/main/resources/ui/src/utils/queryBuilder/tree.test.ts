@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { JsonTree } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
@@ -22,7 +21,6 @@ import {
   getEmptyJsonTree,
   getEmptyJsonTreeForQueryBuilder,
   getEmptyQueryBuilderTree,
-  getRuleCount,
   loadQueryBuilderTree,
 } from './tree';
 
@@ -299,75 +297,6 @@ describe('getEmptyQueryBuilderTree', () => {
   });
 });
 
-describe('getRuleCount', () => {
-  const RULE = {
-    type: 'rule',
-    properties: {
-      field: 'owners.displayName.keyword',
-      operator: 'select_any_in',
-      value: [],
-    },
-  };
-  const treeWith = (ruleCount: number) =>
-    QbUtils.loadTree({
-      id: 'root',
-      type: 'group',
-      children1: [
-        {
-          id: 'wrapper',
-          type: 'group',
-          children1: Array.from({ length: ruleCount }, (_, i) => ({
-            id: `rule-${i}`,
-            ...RULE,
-          })),
-        },
-      ],
-    } as unknown as JsonTree);
-
-  it('should count a single rule', () => {
-    expect(getRuleCount(treeWith(1))).toBe(1);
-  });
-
-  // The regression this replaced: RAQB seeds a wrapper group under the root, so
-  // counting the root's direct children returns 1 no matter how many rules are
-  // on screen — which permanently suppressed every rule's delete button.
-  it('should count rules nested under the wrapper group, not root children', () => {
-    expect(getRuleCount(treeWith(3))).toBe(3);
-  });
-
-  it('should count rules across sibling groups', () => {
-    const tree = QbUtils.loadTree({
-      id: 'root',
-      type: 'group',
-      children1: [
-        { id: 'g1', type: 'group', children1: [{ id: 'r1', ...RULE }] },
-        {
-          id: 'g2',
-          type: 'group',
-          children1: [
-            { id: 'r2', ...RULE },
-            { id: 'r3', ...RULE },
-          ],
-        },
-      ],
-    } as unknown as JsonTree);
-
-    expect(getRuleCount(tree)).toBe(3);
-  });
-
-  // A group with no rules must not be mistaken for one rule, or the last
-  // rule's delete would stay hidden after the rule is gone.
-  it('should report 0 when the tree holds no rules', () => {
-    const tree = QbUtils.loadTree({
-      id: 'root',
-      type: 'group',
-      children1: [{ id: 'wrapper', type: 'group', children1: [] }],
-    } as unknown as JsonTree);
-
-    expect(getRuleCount(tree)).toBe(0);
-  });
-});
-
 describe('loadQueryBuilderTree – fallbacks', () => {
   const esConfig = jest.requireActual('./config').buildQueryBuilderConfig({
     outputType: SearchOutputType.ElasticSearch,
@@ -492,26 +421,5 @@ describe('loadQueryBuilderTree – fallbacks', () => {
     });
 
     expect(rootType(loaded)).toBe('group');
-  });
-});
-
-describe('getRuleCount – defensive shapes', () => {
-  it('should report 0 for a group with no children at all', () => {
-    const tree = QbUtils.loadTree({
-      id: 'root',
-      type: 'group',
-    } as unknown as JsonTree);
-
-    expect(getRuleCount(tree)).toBe(0);
-  });
-
-  it('should ignore an absent child node', () => {
-    const tree = QbUtils.loadTree({
-      id: 'root',
-      type: 'group',
-      children1: [undefined as never],
-    } as unknown as JsonTree);
-
-    expect(getRuleCount(tree)).toBe(0);
   });
 });
