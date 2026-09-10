@@ -171,8 +171,21 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
       // via the coordinator so `isAuthenticated` only flips true once a
       // usable token is guaranteed.
       const { exp } = extractDetailsFromToken(token);
-      const isExpired =
-        !exp || exp * 1000 - Date.now() < EXPIRY_THRESHOLD_MILLES;
+
+      // A missing / non-positive `exp` means the token is opaque, a
+      // non-JWT, or an Unlimited bot JWT (the ingestion-bot's
+      // JWTTokenExpiry.Unlimited path emits `.withExpiresAt(null)`, so
+      // the payload has no `exp` claim at all). None of these are
+      // refreshable proactively — treat them as usable and let the axios
+      // interceptor drive a refresh on a real 401 if one ever arrives.
+      // Same reasoning as AuthCoordinator.onTabVisible's exp guard.
+      if (typeof exp !== 'number' || exp <= 0) {
+        set({ isAuthenticated: true, isAuthenticating: false });
+
+        return;
+      }
+
+      const isExpired = exp * 1000 - Date.now() < EXPIRY_THRESHOLD_MILLES;
 
       if (!isExpired) {
         set({ isAuthenticated: true, isAuthenticating: false });

@@ -35,6 +35,17 @@ const buildFakeJwt = (expSeconds: number) => {
   return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.signature`;
 };
 
+// Mirrors the payload the OpenMetadata backend emits for the ingestion-bot
+// (and every other JWTTokenExpiry.Unlimited bot): a valid JWT with claims
+// but no `exp` at all. See JWTTokenGenerator.getExpiryDate — the Unlimited
+// case returns null which becomes .withExpiresAt(null).
+const buildFakeJwtWithoutExp = () => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({ sub: 'ingestion-bot' })}.signature`;
+};
+
 // Focused coverage for `applicationsLoaded` — the gate that downstream
 // effects (e.g. Collate's AI-mode register/unregister) rely on to avoid
 // firing against an empty `applications` array before
@@ -154,6 +165,25 @@ describe('useApplicationStore.initializeAuthState (Bug 1 — cold-load refresh)'
   it('skips the refresh for a valid, non-expired token', async () => {
     const validToken = buildFakeJwt(Math.floor(Date.now() / 1000) + 3600);
     (getOidcToken as jest.Mock).mockResolvedValue(validToken);
+    const ensureFreshToken = jest.spyOn(authCoordinator, 'ensureFreshToken');
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(ensureFreshToken).not.toHaveBeenCalled();
+    expect(useApplicationStore.getState().isAuthenticated).toBe(true);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+  });
+
+  // Regression guard for the Playwright IngestionBot cold-load failure:
+  // the ingestion-bot's JWTTokenExpiry.Unlimited token has no `exp` claim
+  // at all. The original `!exp || …` guard treated that as expired and
+  // sent it through ensureFreshToken(), which then hung waiting for a
+  // renewer that never registers (no login flow ran — the token was
+  // seeded straight into IndexedDB), leaving the app on the sign-in page.
+  it('treats an exp-less token (Unlimited bot JWT) as authenticated without refreshing', async () => {
+    (getOidcToken as jest.Mock).mockResolvedValue(buildFakeJwtWithoutExp());
     const ensureFreshToken = jest.spyOn(authCoordinator, 'ensureFreshToken');
 
     await act(async () => {
