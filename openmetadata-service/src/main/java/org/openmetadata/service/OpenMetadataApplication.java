@@ -1323,6 +1323,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
+      // Before RDF teardown: closing the engine can still fire workflow listeners that write
+      // through to repositories, and those writes may fan out to the RDF updater.
       WorkflowHandler.shutDown();
       RdfUpdater.disable();
       LOG.info("Stopping the application");
