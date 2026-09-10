@@ -248,9 +248,9 @@ test.describe('Teams Page', () => {
 
       // Select the user to remove
       await page
-        .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-        )
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
         .click();
 
       const updateTeamResponse = page.waitForResponse('/api/v1/users*');

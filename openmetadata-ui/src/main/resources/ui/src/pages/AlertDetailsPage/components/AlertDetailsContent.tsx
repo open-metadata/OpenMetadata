@@ -99,10 +99,12 @@ function AlertDetailsContent({
                     ) : (
                       <Owner
                         hasPermission={editOwnersPermission}
+                        isCompactView={false}
                         owners={toOwnerRefs(alertDetails?.owners ?? [])}
                         selectorContent={
                           <UserTeamSelectableList
                             hasPermission={Boolean(editOwnersPermission)}
+                            multiple={{ user: true, team: false }}
                             owner={alertDetails?.owners}
                             onUpdate={onOwnerUpdate}
                           />
