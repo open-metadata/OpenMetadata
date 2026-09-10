@@ -463,26 +463,20 @@ test('KPI Widget', async ({ page, persona }) => {
 
     await expect(kpiWidgetContent).toBeVisible();
 
-    // Check if there's either a chart or empty state
-    const hasChart = await widget
-      .locator('.recharts-responsive-container')
-      .isVisible()
-      .catch(() => false);
+    // The KPI widget settles into exactly one terminal state — a rendered chart
+    // or an empty state — and both mount a frame or two after the skeleton
+    // clears (recharts measures its container on a debounced ResizeObserver
+    // tick before it paints). Reading `isVisible()` the instant the skeleton
+    // disappears can observe neither node yet and fail a run that just needed
+    // one more frame, so wait for whichever one arrives with a web-first
+    // assertion instead of a pair of point-in-time reads.
+    const kpiChart = widget.locator('.recharts-responsive-container');
+    const kpiEmptyState = widget.locator('[data-testid="widget-empty-state"]');
 
-    const hasEmptyState = await widget
-      .locator('[data-testid="widget-empty-state"]')
-      .isVisible()
-      .catch(() => false);
+    await expect(kpiChart.or(kpiEmptyState)).toBeVisible();
 
-    expect(hasChart || hasEmptyState).toBeTruthy();
-
-    if (hasChart) {
-      // If chart exists, verify it's rendered properly
-      await expect(
-        widget.locator('.recharts-responsive-container')
-      ).toBeVisible();
-
-      // Verify chart elements are present
+    if (await kpiChart.isVisible()) {
+      // Chart rendered — verify its area path painted too.
       await expect(widget.locator('.recharts-area')).toBeVisible();
     }
   });
