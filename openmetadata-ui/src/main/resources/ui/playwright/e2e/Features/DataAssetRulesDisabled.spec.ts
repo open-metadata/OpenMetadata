@@ -730,8 +730,11 @@ test.describe(
           page.getByTestId('certification-Certification.Gold')
         ).toBeVisible();
 
+        // Scoped to the entity's own glossary panel: a term on a table is inherited by every one
+        // of its columns, so an unscoped link lookup also matches the chip rendered on each column
+        // row and trips strict mode.
         await expect(
-          page.getByRole('link', {
+          page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
             name: glossaryTerm.data.displayName,
           })
         ).toBeVisible();

@@ -234,8 +234,11 @@ const AsyncSelectList: FC<
       event.stopPropagation();
     };
 
+    // A propagated label is inherited from a parent, so it cannot be removed here — allowing the
+    // × would delete nothing server-side and the label would reappear on the next read.
+    const labelType = (selectedTag?.data as TagLabel).labelType;
     const isDerived =
-      (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
+      labelType === LabelType.Derived || labelType === LabelType.Propagated;
 
     const tagProps = {
       closable: !isDerived,

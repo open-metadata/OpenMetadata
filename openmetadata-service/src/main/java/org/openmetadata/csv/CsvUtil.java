@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 public final class CsvUtil {
   public static final String SEPARATOR = ",";
@@ -292,7 +293,7 @@ public final class CsvUtil {
                     tagLabel ->
                         tagLabel.getSource().equals(TagLabel.TagSource.CLASSIFICATION)
                             && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
-                            && !tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED))
+                            && !TagLabelUtil.isSystemGenerated(tagLabel))
                 .map(TagLabel::getTagFQN)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
 
@@ -307,7 +308,11 @@ public final class CsvUtil {
                 .filter(
                     tagLabel ->
                         tagLabel.getSource().equals(TagLabel.TagSource.GLOSSARY)
-                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier"))
+                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
+                            // A projected or recomputed label is not the entity's own. Exporting it
+                            // and re-importing would store it as MANUAL in tag_usage, pinning a
+                            // label that should vanish when its source is removed.
+                            && !TagLabelUtil.isSystemGenerated(tagLabel))
                 .map(TagLabel::getTagFQN)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
 
