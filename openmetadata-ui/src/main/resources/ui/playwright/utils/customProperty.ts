@@ -1150,8 +1150,6 @@ export const validateColumnCustomProperty = async (
         .getByRole('row')
         .filter({ hasText: testValue })
         .filter({ hasText: 'row1col2' })
-        // eslint-disable-next-line om-playwright/no-positional-locator -- already filtered to the target row; first() only guards strict mode
-        .first()
     ).toBeVisible();
   } else if (propertyType === 'entityReference') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
