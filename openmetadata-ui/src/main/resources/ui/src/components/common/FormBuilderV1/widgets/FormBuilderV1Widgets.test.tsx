@@ -745,6 +745,21 @@ describe('FormBuilderV1 widgets', () => {
       );
     });
 
+    it('surfaces a validation error from the form', () => {
+      // The field takes part in RJSF validation like any other widget: a
+      // required credential left empty has to say so, not fail silently at save.
+      renderCredentialWidget('fileOrInput', {
+        rawErrors: ['must have required property Private Key'],
+        required: true,
+      });
+
+      expect(screen.getByTestId('cfi-invalid')).toHaveTextContent('true');
+      expect(screen.getByTestId('cfi-hint')).toHaveTextContent(
+        'must have required property Private Key'
+      );
+      expect(screen.getByTestId('cfi-required')).toHaveTextContent('true');
+    });
+
     it('submits file content as the field value', () => {
       const onChange = jest.fn();
       renderCredentialWidget('file', { onChange });

@@ -378,6 +378,41 @@ describe('CredentialFileInput', () => {
     });
   });
 
+  describe('validation driven by the host form', () => {
+    it('shows a form-level error and marks the field invalid', () => {
+      // RJSF passes its errors down as `isInvalid` + `hint`; a required
+      // credential left empty has to say so rather than fail at save.
+      render(
+        <CredentialFileInput
+          isInvalid
+          hint="must have required property Private Key"
+        />
+      );
+
+      expect(
+        screen.getByText('must have required property Private Key')
+      ).toBeInTheDocument();
+    });
+
+    it('lets a rejection replace the form error while it is showing', async () => {
+      render(
+        <CredentialFileInput
+          isInvalid
+          acceptedFileTypes={['.pem']}
+          hint="must have required property Private Key"
+          validationMessages={{ unacceptedType: 'Bad type' }}
+        />
+      );
+
+      dropFiles([pemFile('notes.txt')]);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Bad type');
+      expect(
+        screen.queryByText('must have required property Private Key')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('accessibility and disabled state', () => {
     it('exposes the drop zone as a keyboard-reachable button', () => {
       render(<CredentialFileInput />);
