@@ -24,57 +24,20 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { Type } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-
-interface CustomPropertiesLandingPageProps {
-  onSelectEntityType: (entityType: Type) => void;
-}
-
-const GROUP_DATABASE_STORAGE = 'DATABASE & STORAGE';
-const GROUP_DASHBOARDS_REPORTING = 'DASHBOARDS & REPORTING';
-const GROUP_PIPELINES_ML = 'PIPELINES & ML';
-const GROUP_API = 'API';
-const GROUP_GOVERNANCE = 'GOVERNANCE';
-
-const ENTITY_GROUP_MAP: Record<string, string> = {
-  container: GROUP_DATABASE_STORAGE,
-  database: GROUP_DATABASE_STORAGE,
-  databaseSchema: GROUP_DATABASE_STORAGE,
-  directory: GROUP_DATABASE_STORAGE,
-  file: GROUP_DATABASE_STORAGE,
-  storedProcedure: GROUP_DATABASE_STORAGE,
-  table: GROUP_DATABASE_STORAGE,
-  tableColumn: GROUP_DATABASE_STORAGE,
-  chart: GROUP_DASHBOARDS_REPORTING,
-  dashboard: GROUP_DASHBOARDS_REPORTING,
-  dashboardDataModel: GROUP_DASHBOARDS_REPORTING,
-  searchIndex: GROUP_PIPELINES_ML,
-  spreadsheet: GROUP_DASHBOARDS_REPORTING,
-  worksheet: GROUP_DASHBOARDS_REPORTING,
-  mlmodel: GROUP_PIPELINES_ML,
-  pipeline: GROUP_PIPELINES_ML,
-  topic: GROUP_PIPELINES_ML,
-  apiCollection: GROUP_API,
-  apiEndpoint: GROUP_API,
-  dataProduct: GROUP_GOVERNANCE,
-  domain: GROUP_GOVERNANCE,
-  glossaryTerm: GROUP_GOVERNANCE,
-  metric: GROUP_GOVERNANCE,
-};
-
-const GROUP_ORDER = [
-  GROUP_DATABASE_STORAGE,
-  GROUP_DASHBOARDS_REPORTING,
-  GROUP_PIPELINES_ML,
-  GROUP_API,
-  GROUP_GOVERNANCE,
-];
+import {
+  ENTITY_GROUP_MAP,
+  GROUP_LABEL_KEYS,
+  GROUP_ORDER,
+} from './CustomPropertiesPanel.constants';
+import {
+  CustomPropertiesLandingPageProps,
+} from './CustomPropertiesPanel.types';
 
 const CustomPropertiesLandingPage: React.FC<
   CustomPropertiesLandingPageProps
@@ -154,7 +117,7 @@ const CustomPropertiesLandingPage: React.FC<
             className="tw:text-text-secondary tw:uppercase"
             size="text-xs"
             weight="semibold">
-            {groupName}
+            {t(GROUP_LABEL_KEYS[groupName])}
           </Typography>
           <div className="tw:grid tw:grid-cols-3 tw:gap-4">
             {groupItems.map((item: SettingMenuItem) => {

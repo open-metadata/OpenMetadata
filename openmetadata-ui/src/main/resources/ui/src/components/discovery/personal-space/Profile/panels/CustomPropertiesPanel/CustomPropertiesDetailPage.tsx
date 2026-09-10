@@ -46,6 +46,8 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import { getTableColumns } from './CustomPropertiesPanel.constants';
+import { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
@@ -57,20 +59,6 @@ const RichTextEditorPreviewerNew = withSuspenseFallback(
       import('../../../../../common/RichTextEditor/RichTextEditorPreviewNew')
   )
 );
-
-interface CustomPropertiesDetailPageProps {
-  entityType: Type;
-  onAddProperty: () => void;
-  onEditProperty: (property: CustomProperty) => void;
-}
-
-const TABLE_COLUMNS = [
-  { id: 'name', name: 'Name' },
-  { id: 'type', name: 'Type' },
-  { id: 'config', name: 'Config' },
-  { id: 'description', name: 'Description' },
-  { id: 'actions', name: 'Actions' },
-];
 
 const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
   entityType,
@@ -117,6 +105,8 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     () => typeDetail?.customProperties ?? [],
     [typeDetail]
   );
+
+  const tableColumns = useMemo(() => getTableColumns(t), [t]);
 
   const hasEditPermission = permission.EditAll;
 
@@ -303,7 +293,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
             <Table
               aria-label={t('label.custom-property-plural')}
               data-testid="custom-property-table">
-              <Table.Header columns={TABLE_COLUMNS}>
+              <Table.Header columns={tableColumns}>
                 {(col) => (
                   <Table.Head
                     id={col.id}
