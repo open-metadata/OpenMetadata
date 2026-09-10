@@ -150,7 +150,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           !isVersionPage &&
           !dimensionKey && (
             <div
-              className="tw:pt-4"
+              className="tw:pt-4 tw:pb-2.5"
               data-testid="test-case-last-run-banner-tab-container">
               <TestCaseLastRunBanner
                 incidentTask={incidentHeaderData.incidentTask}
