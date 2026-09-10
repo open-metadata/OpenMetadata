@@ -96,9 +96,18 @@ jest.mock(
 );
 const mockBannerComponent = () => <div>BannerComponent</div>;
 const mockAdditionalComponent = () => <div>DataDiffResults</div>;
+const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
 jest.mock('./TestCaseResultTabClassBase', () => ({
-  getAdditionalComponents: jest.fn().mockReturnValue([]),
-  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+  __esModule: true,
+  default: {
+    getAdditionalComponents: jest.fn().mockReturnValue([]),
+    getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+    shouldRenderDefaultGraph: jest
+      .fn()
+      .mockImplementation((...args: unknown[]) =>
+        mockShouldRenderDefaultGraph(...args)
+      ),
+  },
 }));
 jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
@@ -185,6 +194,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
     mockUseTestCaseStore.isTabExpanded = false;
+    mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
 
   it('Should render component', async () => {
@@ -205,6 +215,17 @@ describe('TestCaseResultTab', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Description')).toBeInTheDocument();
     expect(await screen.findByText('TestSummary')).toBeInTheDocument();
+  });
+
+  it('should not mount the default graph when the class base suppresses it', async () => {
+    mockShouldRenderDefaultGraph.mockReturnValue(false);
+
+    render(<TestCaseResultTab />);
+
+    expect(
+      await screen.findByTestId('test-case-result-tab-container')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
   });
 
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {
@@ -706,9 +727,13 @@ describe('TestCaseResultTab', () => {
   // Collate mounts extra components into the main column through
   // `getAdditionalComponents`. The reflow must not drop that seam.
   describe('class base extension components', () => {
-    const classBase = jest.requireMock('./TestCaseResultTabClassBase') as {
-      getAdditionalComponents: jest.Mock;
-    };
+    // main #32982 moved the class base behind a `default` export, so the mock
+    // is nested one level deeper than it used to be.
+    const classBase = (
+      jest.requireMock('./TestCaseResultTabClassBase') as {
+        default: { getAdditionalComponents: jest.Mock };
+      }
+    ).default;
 
     afterEach(() => {
       classBase.getAdditionalComponents.mockReturnValue([]);

@@ -13,6 +13,7 @@ Test Mssql using the topology
 """
 
 import types
+from collections import namedtuple
 from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -244,7 +245,7 @@ class MssqlUnitTest(TestCase):
         self.mssql._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
+        assert [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)] == EXPECTED_DATABASE
 
         self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
@@ -271,7 +272,7 @@ class MssqlUnitTest(TestCase):
         self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
-        assert EXPECTED_TABLE == [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))]  # noqa: SIM300
+        assert [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))] == EXPECTED_TABLE
 
     def test_get_stored_procedures(self):
         """
@@ -659,11 +660,19 @@ class TestMssqlTemporalPeriodColumns:
 class TestMssqlQueryStoreSelection:
     """Auto-detection of Query Store vs plan-cache DMVs for MSSQL lineage and usage."""
 
-    @staticmethod
-    def _engine_with_query_store_state(actual_state):
+    _QueryStoreRow = namedtuple("_QueryStoreRow", ["actual_state", "readonly_reason"])
+
+    @classmethod
+    def _engine_with_query_store_state(cls, actual_state, readonly_reason=0):
         engine = MagicMock()
         conn = engine.connect.return_value.__enter__.return_value
-        conn.execute.return_value.scalar.return_value = actual_state
+        # None actual_state simulates an empty result set (no rows).
+        if actual_state is None:
+            conn.execute.return_value.fetchone.return_value = None
+        else:
+            # A namedtuple mirrors the real sqlalchemy Row: supports both row[0]
+            # and row.actual_state, like the code under test relies on.
+            conn.execute.return_value.fetchone.return_value = cls._QueryStoreRow(actual_state, readonly_reason)
         return engine
 
     def test_query_store_enabled_when_read_write(self):
@@ -689,6 +698,35 @@ class TestMssqlQueryStoreSelection:
         engine.connect.side_effect = Exception("VIEW DATABASE STATE denied")
 
         assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    def test_query_store_disabled_on_ag_secondary(self):
+        # readonly_reason == 8 means this is a readable AG secondary.  The replica's
+        # Query Store contains only the primary's workload, so we must not use it.
+        engine = self._engine_with_query_store_state(1, readonly_reason=8)
+        assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    def test_query_store_disabled_on_ag_secondary_combined_bits(self):
+        # readonly_reason may have the AG-secondary bit (8) combined with other bits.
+        # e.g. 8 | 4 = 12.  The bitwise check must catch this; equality would not.
+        engine = self._engine_with_query_store_state(1, readonly_reason=12)
+        assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    def test_query_store_enabled_on_read_write_ag_secondary_false(self):
+        # readonly_reason == 0 — normal read-write database, Query Store is usable.
+        engine = self._engine_with_query_store_state(2, readonly_reason=0)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
+
+    def test_query_store_enabled_when_readonly_reason_is_null(self):
+        # On some SQL Server editions/configs, readonly_reason is SQL NULL for a healthy
+        # READ_WRITE database.  None & 8 raises TypeError; (None or 0) & 8 == 0 (not AG secondary).
+        engine = self._engine_with_query_store_state(2, readonly_reason=None)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
+
+    def test_query_store_enabled_on_read_only_non_ag(self):
+        # readonly_reason == 1 — explicit SET READ_ONLY, not an AG secondary.
+        # Query Store still reflects this database's own workload.
+        engine = self._engine_with_query_store_state(1, readonly_reason=1)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
 
     @staticmethod
     def _lineage_source(query_store_enabled):
