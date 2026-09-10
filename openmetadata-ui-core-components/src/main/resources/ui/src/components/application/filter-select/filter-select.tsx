@@ -149,7 +149,7 @@ const OptionRow = ({
       showCheckbox={showCheckbox}
       textValue={optionText(option)}>
       {(state) => (
-        <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2">
+        <span className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs">
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
               {iconNode}
@@ -364,7 +364,7 @@ export const FilterSelect = ({
         variant={triggerVariant}
       />
       <Dropdown.Popover
-        className={cx('tw:w-64', popoverClassName)}
+        className={cx('tw:w-80', popoverClassName)}
         placement="bottom left">
         {searchable && (
           <div className="tw:p-2" ref={searchWrapperRef}>
