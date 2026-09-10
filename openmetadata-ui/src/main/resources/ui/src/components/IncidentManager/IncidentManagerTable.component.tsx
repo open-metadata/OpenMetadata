@@ -121,9 +121,9 @@ const IncidentManagerTable = ({
     return (
       <div data-testid="assignee">
         <Owner
-          isCompactView
           className="m-0"
           hasPermission={hasIncidentEditPermission(hasPermission)}
+          isCompactView={false}
           multiple={{
             user: false,
             team: false,
