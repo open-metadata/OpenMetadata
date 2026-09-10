@@ -1554,6 +1554,23 @@ class AdvancedSearchClassBase {
         // with `some` - a flat `<prop>.rows.<column>` var never resolves against
         // an array. A cell is free text, hence `allowCustomValues` over a list.
         if (searchOutputType === SearchOutputType.JSONLogic) {
+          const columnSubfields: Fields = Object.fromEntries(
+            columns.map((columnName) => [
+              columnName,
+              {
+                type: 'select',
+                label: columnName,
+                operators: SELECT_TEXT_FIELD_OPERATORS,
+                valueSources: ['value'],
+                fieldSettings: {
+                  allowCustomValues: true,
+                  showSearch: true,
+                  useAsyncSearch: false,
+                },
+              },
+            ])
+          );
+
           return [
             {
               subfieldsKey: `${field.name}.rows`,
@@ -1562,22 +1579,7 @@ class AdvancedSearchClassBase {
                 type: '!group',
                 mode: 'some',
                 defaultField: columns[0],
-                subfields: Object.fromEntries(
-                  columns.map((columnName) => [
-                    columnName,
-                    {
-                      type: 'select',
-                      label: columnName,
-                      operators: SELECT_TEXT_FIELD_OPERATORS,
-                      valueSources: ['value'],
-                      fieldSettings: {
-                        allowCustomValues: true,
-                        showSearch: true,
-                        useAsyncSearch: false,
-                      },
-                    },
-                  ])
-                ),
+                subfields: columnSubfields,
               },
             },
           ];
