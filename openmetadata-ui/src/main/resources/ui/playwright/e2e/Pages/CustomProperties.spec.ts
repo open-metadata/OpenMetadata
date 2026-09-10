@@ -75,8 +75,8 @@ import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomPropert
 import {
   clickOutside,
   createNewPage,
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -856,7 +856,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await container.getByTestId('edit-icon').click();
 
           // Move to a new paragraph at the end, then insert a table via slash command
-          const editor = page.locator(descriptionBox);
+          const editor = getDescriptionBox(page);
           await editor.click();
           await page.keyboard.press('Control+End');
           await page.keyboard.press('Enter');
@@ -881,7 +881,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           // Regression for #32477: edit button must not be hidden by horizontal overflow
           await editButton.click();
-          await expect(page.locator(descriptionBox)).toBeVisible();
+          await expect(getDescriptionBox(page)).toBeVisible();
         });
       });
 

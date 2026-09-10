@@ -12,8 +12,11 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { act, ReactNode } from 'react';
+import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
+import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
 import TestCaseDetail from './TestCaseDetail';
 
 const INCIDENT_MANAGER_PAGE_HEADER_TEST_ID = 'incident-manager-page-header';
@@ -22,12 +25,22 @@ const BREADCRUMB_COUNT_ATTR = 'data-item-count';
 const BREADCRUMB_LABELS_ATTR = 'data-labels';
 const BREADCRUMB_HREFS_ATTR = 'data-hrefs';
 const ASSET_TRAIL_LABELS = '|service|db|schema|table|test_case_name';
+const LAST_RUN_BANNER_CONTAINER_TEST_ID =
+  'test-case-last-run-banner-tab-container';
+const LAST_RUN_BANNER_TEST_ID = 'test-case-last-run-banner';
 const mockUseTestCaseDetailPage = jest.fn();
 const mockUseTestCaseIncidentHeader = jest.fn();
 const mockNavigate = jest.fn();
 const mockHandleTabChange = jest.fn();
 const mockOnVersionClick = jest.fn();
 const mockToggleTabExpanded = jest.fn();
+const mockTestCaseLastRunBanner = jest.fn(({ nextRunTimestamp }: any) => (
+  <div
+    data-next-run={String(nextRunTimestamp)}
+    data-testid={LAST_RUN_BANNER_TEST_ID}>
+    last-run-banner
+  </div>
+));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -132,6 +145,14 @@ jest.mock(
 );
 
 jest.mock(
+  'components/DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component',
+  () => ({
+    __esModule: true,
+    default: (props: any) => mockTestCaseLastRunBanner(props),
+  })
+);
+
+jest.mock(
   'components/common/EntityPageInfos/ManageButton/ManageButton',
   () => ({
     __esModule: true,
@@ -194,6 +215,14 @@ jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Case Display Name'),
 }));
 
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn(),
+}));
+
+jest.mock('../../../utils/CronUtils', () => ({
+  getNextCronRunTimestamp: jest.fn(),
+}));
+
 const MockResultTab = jest.fn(({ showSidePanel }: any) => (
   <div
     data-show-side-panel={String(showSidePanel)}
@@ -217,6 +246,7 @@ const baseHookReturn = {
     version: 0.2,
     entityLink: '<#E::table::service.db.schema.table>',
   },
+  testCaseFQN: 'service.db.schema.table.test_case_name',
   isLoading: false,
   hasViewPermission: true,
   hasDeletePermission: true,
@@ -259,6 +289,21 @@ const baseHookReturn = {
 const baseIncidentHeaderData = {
   testCaseData: baseHookReturn.testCase,
 };
+
+const Wrapper = ({ children }: { children: ReactNode }) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: Wrapper });
 
 describe('TestCaseDetail', () => {
   beforeEach(() => {
@@ -465,6 +510,172 @@ describe('TestCaseDetail', () => {
 
     expect(screen.getByTestId('incident-tab-body')).toBeInTheDocument();
     expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
+  });
+
+  describe('last run banner', () => {
+    const incidentHeaderWithTask = {
+      ...baseIncidentHeaderData,
+      incidentTask: { id: 'task-1', type: 'Task', taskId: 'TID-1' },
+      taskLinkInfo: { path: '/task-path', label: '#TID-1' },
+      testCaseStatusData: {
+        id: 'tcrs-1',
+        testCaseResolutionStatusType: 'Failed',
+      },
+    };
+
+    it('should render the last run banner above the results tab body', () => {
+      render(<TestCaseDetail />);
+
+      expect(
+        screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
+      ).toBeInTheDocument();
+      expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toBeInTheDocument();
+      expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
+    });
+
+    it('should not render the last run banner on the incident tab', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(
+        screen.queryByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(LAST_RUN_BANNER_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render the last run banner on version pages', () => {
+      render(<TestCaseDetail isVersionPage />);
+
+      expect(
+        screen.queryByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render the last run banner on dimension pages', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        isDimensionPage: true,
+        dimensionKey: 'completeness',
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(
+        screen.queryByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should forward the incident header data, test case fields and next run timestamp to the banner', () => {
+      mockUseTestCaseIncidentHeader.mockReturnValue(incidentHeaderWithTask);
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        testCase: {
+          ...baseHookReturn.testCase,
+          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCaseResult: {
+            timestamp: 1703570591595,
+            testCaseStatus: 'Success',
+            result: 'Found 10 columns',
+            testResultValue: [{ name: 'columnCount', value: '10' }],
+          },
+          testCaseStatus: 'Success',
+        },
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(mockTestCaseLastRunBanner).toHaveBeenCalledWith(
+        expect.objectContaining({
+          incidentTask: incidentHeaderWithTask.incidentTask,
+          taskLinkInfo: incidentHeaderWithTask.taskLinkInfo,
+          testCaseStatusData: incidentHeaderWithTask.testCaseStatusData,
+          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCaseResult: expect.objectContaining({
+            testCaseStatus: 'Success',
+          }),
+          testCaseStatus: 'Success',
+          nextRunTimestamp: undefined,
+        })
+      );
+    });
+
+    it('should fetch and forward the next run timestamp when the results tab is active and a test suite exists', async () => {
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            airflowConfig: {
+              pausePipeline: false,
+              pipelineTimezone: 'UTC',
+              scheduleInterval: '10 * * * *',
+            },
+            enabled: true,
+          },
+        ],
+        paging: { total: 1 },
+      });
+      (getNextCronRunTimestamp as jest.Mock).mockResolvedValue(
+        1_786_002_200_000
+      );
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        testCase: {
+          ...baseHookReturn.testCase,
+          testSuite: {
+            id: 'suite-1',
+            type: 'testSuite',
+            name: 'service.db.schema.table.testSuite',
+            fullyQualifiedName: 'service.db.schema.table.testSuite',
+          },
+        },
+      });
+
+      await act(async () => {
+        render(<TestCaseDetail />);
+      });
+
+      expect(getIngestionPipelines).toHaveBeenCalledWith({
+        arrQueryFields: ['airflowConfig'],
+        limit: 100,
+        pipelineType: ['TestSuite'],
+        testSuite: 'service.db.schema.table.testSuite',
+      });
+      expect(getNextCronRunTimestamp).toHaveBeenCalledWith('10 * * * *', 'UTC');
+      expect(
+        await screen.findByTestId(LAST_RUN_BANNER_TEST_ID)
+      ).toHaveAttribute('data-next-run', '1786002200000');
+    });
+
+    it('should not fetch the next run timestamp when not on the results tab', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        testCase: {
+          ...baseHookReturn.testCase,
+          testSuite: {
+            id: 'suite-1',
+            type: 'testSuite',
+            name: 'service.db.schema.table.testSuite',
+            fullyQualifiedName: 'service.db.schema.table.testSuite',
+          },
+        },
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(getIngestionPipelines).not.toHaveBeenCalled();
+    });
+
+    it('should not fetch the next run timestamp when there is no test suite', () => {
+      render(<TestCaseDetail />);
+
+      expect(getIngestionPipelines).not.toHaveBeenCalled();
+    });
   });
 
   it('should render the loader while loading', () => {

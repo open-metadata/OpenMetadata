@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -124,6 +124,7 @@ describe('TableClassBase', () => {
         [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
         [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+        [DetailPageWidgetKeys.TABLE_ALIASES]: 2,
         [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
       });
     });
@@ -286,7 +287,7 @@ describe('TableClassBase', () => {
     it('should return default layout for SCHEMA tab', () => {
       const result = tableClass.getDefaultLayout(EntityTabs.SCHEMA);
 
-      expect(result).toHaveLength(10);
+      expect(result).toHaveLength(11);
 
       const leftPanel = result[0];
 
@@ -299,7 +300,7 @@ describe('TableClassBase', () => {
     it('should return default layout for undefined tab', () => {
       const result = tableClass.getDefaultLayout(undefined);
 
-      expect(result).toHaveLength(10);
+      expect(result).toHaveLength(11);
       expect(result[0].i).toBe(DetailPageWidgetKeys.LEFT_PANEL);
     });
 
@@ -560,10 +561,34 @@ describe('TableClassBase', () => {
       ).toBe(2);
     });
 
+    it('should return correct height for TABLE_ALIASES widget', () => {
+      expect(
+        tableClass.getWidgetHeight(DetailPageWidgetKeys.TABLE_ALIASES)
+      ).toBe(2);
+    });
+
     it('should return correct height for ASSET_HEALTH widget', () => {
       expect(
         tableClass.getWidgetHeight(DetailPageWidgetKeys.ASSET_HEALTH)
       ).toBe(3);
+    });
+
+    it('should fall back to height 1 for CUSTOM_PROPERTIES widget', () => {
+      expect(
+        tableClass.getWidgetHeight(DetailPageWidgetKeys.CUSTOM_PROPERTIES)
+      ).toBe(1);
+    });
+
+    it('should fall back to height 1 for KNOWLEDGE_ARTICLE widget', () => {
+      expect(
+        tableClass.getWidgetHeight(DetailPageWidgetKeys.KNOWLEDGE_ARTICLE)
+      ).toBe(1);
+    });
+
+    it('should fall back to height 1 for DIRECTORY_CHILDREN widget', () => {
+      expect(
+        tableClass.getWidgetHeight(DetailPageWidgetKeys.DIRECTORY_CHILDREN)
+      ).toBe(1);
     });
 
     it('should return default height for unknown widget', () => {

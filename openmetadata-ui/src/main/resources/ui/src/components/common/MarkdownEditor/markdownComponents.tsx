@@ -18,6 +18,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import EntityMarkdownLink from './EntityMarkdownLink/EntityMarkdownLink';
 import EntityPill from './EntityPill/EntityPill';
+import MarkdownCaveat from './MarkdownCaveat/MarkdownCaveat';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
@@ -88,6 +89,14 @@ export const preprocessMarkdownText = (text: string): string => {
     (_, content) => `\`\`\`card\n${content.trim()}\n\`\`\``
   );
 
+  // Convert :::caveat[type] ... ::: directive blocks into fenced code blocks, carrying the
+  // caveat kind in the fence info string so the custom `pre` renderer can style by it.
+  processedText = processedText.replace(
+    /:::caveat\[(\w+)\]([\s\S]*?):::/g,
+    (_, caveatType, content) =>
+      `\`\`\`caveat-${caveatType}\n${content.trim()}\n\`\`\``
+  );
+
   // Convert :::pills ... ::: directive blocks into fenced code blocks
   // so the custom `pre` renderer can detect and render them as entity pill rows.
   // Handles both multi-line (:::pills\n...\n:::) and inline (:::pills ... :::) forms.
@@ -99,10 +108,128 @@ export const preprocessMarkdownText = (text: string): string => {
   return processedText;
 };
 
-export const getCustomMarkdownComponents = (
+type CodeElement = React.ReactElement<{
+  className?: string;
+  children: React.ReactNode;
+}>;
+
+const getCodeStringFromElement = (codeElement: CodeElement): string => {
+  const codeChildren = codeElement.props?.children;
+
+  return Array.isArray(codeChildren)
+    ? codeChildren.join('')
+    : String(codeChildren || '');
+};
+
+const renderPillsBlock = (codeString: string): React.ReactNode => {
+  // Parse markdown links: [label](#entityType/fqn)
+  const linkPattern = /\[([^\]]+)\]\(#([^/]+)\/([^)]+)\)/g;
+  const pills: React.ReactNode[] = [];
+  let match;
+
+  while ((match = linkPattern.exec(codeString)) !== null) {
+    const [, label, entityTypeStr, fqn] = match;
+    const entityType = Object.values(EntityType).find(
+      (type) => type === entityTypeStr
+    );
+
+    if (entityType) {
+      pills.push(
+        <EntityPill
+          entityType={entityType}
+          fullyQualifiedName={decodeURIComponent(fqn)}
+          key={`${entityTypeStr}/${fqn}`}
+          label={label}
+        />
+      );
+    }
+  }
+
+  if (pills.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">{pills}</div>
+  );
+};
+
+const renderCaveatBlock = (
+  codeString: string,
+  caveatType: string,
+  depth: number,
+  getComponents: (
+    additionalComponents: Partial<Components> | undefined,
+    depth: number
+  ) => Partial<Components>
+): React.ReactNode => {
+  if (!codeString.trim()) {
+    return null;
+  }
+
+  return (
+    <MarkdownCaveat caveatType={caveatType}>
+      {depth >= 3 ? (
+        codeString.trim()
+      ) : (
+        <ReactMarkdown components={getComponents(undefined, depth + 1)}>
+          {codeString.trim()}
+        </ReactMarkdown>
+      )}
+    </MarkdownCaveat>
+  );
+};
+
+const renderCardBlock = (
+  codeString: string,
+  depth: number,
+  getComponents: (
+    additionalComponents: Partial<Components> | undefined,
+    depth: number
+  ) => Partial<Components>
+): React.ReactNode => {
+  if (depth >= 3) {
+    return <div className="markdown-card">{codeString.trim()}</div>;
+  }
+
+  return (
+    <div className="sub-thinking-step tw:px-2.5 tw:py-2 tw:rounded-xl bg-grey markdown-card">
+      <ReactMarkdown components={getComponents(undefined, depth + 1)}>
+        {codeString.trim()}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
+const renderSqlBlock = (codeString: string): React.ReactNode => (
+  <div className="markdown-sql-editor">
+    <SchemaEditor
+      readOnly
+      showCopyButton
+      mode={{ name: CSMode.SQL }}
+      options={{
+        readOnly: 'nocursor',
+        lineWrapping: true,
+        scrollbarStyle: 'null',
+        gutters: ['CodeMirror-linenumbers'],
+      }}
+      value={codeString.replace(/\n$/, '')}
+    />
+  </div>
+);
+
+const LANGUAGE_BLOCK_RENDERERS: Record<
+  string,
+  (codeString: string) => React.ReactNode
+> = {
+  pills: renderPillsBlock,
+  sql: renderSqlBlock,
+};
+
+export function getCustomMarkdownComponents(
   additionalComponents?: Partial<Components>,
   depth = 0
-): Partial<Components> => {
+): Partial<Components> {
   return {
     // Custom link component for entity references
     a: ({ href, children, ...props }) => (
@@ -116,96 +243,40 @@ export const getCustomMarkdownComponents = (
       const { children, ...restProps } = props;
       // Check if this is a SQL code block
       if (React.isValidElement(children)) {
-        const codeElement = children as React.ReactElement<{
-          className?: string;
-          children: React.ReactNode;
-        }>;
+        const codeElement = children as CodeElement;
         const className = codeElement.props?.className || '';
         const match = /language-(\w+)/.exec(className);
         const language = match ? match[1] : '';
 
-        if (language === 'pills') {
-          const codeChildren = codeElement.props?.children;
-          const codeString = Array.isArray(codeChildren)
-            ? codeChildren.join('')
-            : String(codeChildren || '');
+        if (language === 'caveat') {
+          const codeString = getCodeStringFromElement(codeElement);
+          // `language-(\w+)` stops at the hyphen, so the kind is read off the full class.
+          const caveatType =
+            /language-caveat-(\w+)/.exec(className)?.[1] ?? 'assumption';
 
-          // Parse markdown links: [label](#entityType/fqn)
-          const linkPattern = /\[([^\]]+)\]\(#([^/]+)\/([^)]+)\)/g;
-          const pills: React.ReactNode[] = [];
-          let match;
-
-          while ((match = linkPattern.exec(codeString)) !== null) {
-            const [, label, entityTypeStr, fqn] = match;
-            const entityType = Object.values(EntityType).find(
-              (type) => type === entityTypeStr
-            );
-
-            if (entityType) {
-              pills.push(
-                <EntityPill
-                  entityType={entityType}
-                  fullyQualifiedName={decodeURIComponent(fqn)}
-                  key={`${entityTypeStr}/${fqn}`}
-                  label={label}
-                />
-              );
-            }
-          }
-
-          if (pills.length === 0) {
-            return null;
-          }
-
-          return (
-            <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
-              {pills}
-            </div>
+          return renderCaveatBlock(
+            codeString,
+            caveatType,
+            depth,
+            getCustomMarkdownComponents
           );
         }
 
         if (language === 'card') {
-          const codeChildren = codeElement.props?.children;
-          const codeString = Array.isArray(codeChildren)
-            ? codeChildren.join('')
-            : String(codeChildren || '');
+          const codeString = getCodeStringFromElement(codeElement);
 
-          if (depth >= 3) {
-            return <div className="markdown-card">{codeString.trim()}</div>;
-          }
-
-          return (
-            <div className="sub-thinking-step tw:px-2.5 tw:py-2 tw:rounded-xl bg-grey markdown-card">
-              <ReactMarkdown
-                components={getCustomMarkdownComponents(undefined, depth + 1)}>
-                {codeString.trim()}
-              </ReactMarkdown>
-            </div>
+          return renderCardBlock(
+            codeString,
+            depth,
+            getCustomMarkdownComponents
           );
         }
 
-        if (language === 'sql') {
-          const codeChildren = codeElement.props?.children;
-          const codeString = Array.isArray(codeChildren)
-            ? codeChildren.join('')
-            : String(codeChildren || '');
+        const renderer = LANGUAGE_BLOCK_RENDERERS[language];
+        if (renderer) {
+          const codeString = getCodeStringFromElement(codeElement);
 
-          return (
-            <div className="markdown-sql-editor">
-              <SchemaEditor
-                readOnly
-                showCopyButton
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  readOnly: 'nocursor',
-                  lineWrapping: true,
-                  scrollbarStyle: 'null',
-                  gutters: ['CodeMirror-linenumbers'],
-                }}
-                value={codeString.replace(/\n$/, '')}
-              />
-            </div>
-          );
+          return renderer(codeString);
         }
       }
 
@@ -231,4 +302,4 @@ export const getCustomMarkdownComponents = (
     // Merge with any additional components
     ...additionalComponents,
   };
-};
+}

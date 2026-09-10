@@ -56,7 +56,7 @@ class AirflowIngestionClass extends ServiceBaseClass {
       page,
       'root/connection',
       'select-widget-root/connection__oneof_select',
-      'BackendConnection'
+      'Backend Connection'
     );
   }
 

@@ -197,8 +197,8 @@ class KafkaconnectSource(PipelineServiceSource):
                 # Extract hostPort from service config
                 # Different services use different field names
                 host_port = None
-                if hasattr(service_config, "hostPort") and service_config.hostPort:
-                    host_port = service_config.hostPort
+                if hasattr(service_config, "hostPort") and service_config.hostPort:  # pyright: ignore[reportAttributeAccessIssue]
+                    host_port = service_config.hostPort  # pyright: ignore[reportAttributeAccessIssue]
                 elif hasattr(service_config, "host") and service_config.host:  # pyright: ignore[reportAttributeAccessIssue]
                     host_port = service_config.host  # pyright: ignore[reportAttributeAccessIssue]
 
