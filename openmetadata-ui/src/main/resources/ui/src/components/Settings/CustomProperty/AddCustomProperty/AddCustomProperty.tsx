@@ -76,12 +76,12 @@ interface AddCustomPropertyProps {
 }
 
 /**
- * Column names that are reserved for internal use by the table-type custom
- * property editor (the grid edit controller's rowIdKey) and must not be used as
- * user-defined columns. Allowing them would collide with the internal row
- * identifier and silently overwrite/strip user data on save.
+ * Column names reserved for internal use by the table-type custom property
+ * editor: this is the grid edit controller's rowIdKey (see EditTableTypePropertyModal
+ * ROW_ID_KEY). Allowing it as a user-defined column would collide with the internal
+ * row identifier and silently overwrite/strip user data on save.
  */
-const RESERVED_TABLE_COLUMN_NAMES = ['id', '__row_id__'];
+const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
 
 const AddCustomProperty = ({
   formRef,

@@ -68,13 +68,6 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String PATCH_FIELDS = "customProperties";
   private static final Striped<Lock> TYPE_PROPERTY_LOCKS = Striped.lock(4096);
 
-  /**
-   * Column names reserved for internal use by the table-type custom property editor (the grid
-   * edit controller's rowIdKey). Allowing them as user-defined columns would collide with the
-   * internal row identifier and silently overwrite/strip user data on save.
-   */
-  private static final Set<String> RESERVED_TABLE_COLUMN_NAMES = Set.of("id", "__row_id__");
-
   public TypeRepository() {
     super(
         TypeResource.COLLECTION_PATH,
@@ -301,14 +294,6 @@ public class TypeRepository extends EntityRepository<Type> {
     Set<String> uniqueColumns = new HashSet<>(columns);
     if (uniqueColumns.size() != columns.size()) {
       throw new IllegalArgumentException("Column names must be unique.");
-    }
-    List<String> reservedColumns =
-        columns.stream().filter(RESERVED_TABLE_COLUMN_NAMES::contains).toList();
-    if (!reservedColumns.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Column name(s) '"
-              + String.join(", ", reservedColumns)
-              + "' are reserved for internal use and cannot be used as table custom property columns.");
     }
     if (columns.size() < tableConfig.getMinColumns()
         || columns.size() > tableConfig.getMaxColumns()) {

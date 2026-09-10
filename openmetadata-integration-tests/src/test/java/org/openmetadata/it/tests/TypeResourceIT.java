@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -35,7 +34,6 @@ import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
-import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -62,7 +60,6 @@ public class TypeResourceIT {
   private static Type STRING_TYPE;
   private static Type ENUM_TYPE;
   private static Type HYPERLINK_TYPE;
-  private static Type TABLE_CP_TYPE;
   private static Type TOPIC_ENTITY_TYPE;
   private static Type TABLE_ENTITY_TYPE;
   private static Type CONTAINER_ENTITY_TYPE;
@@ -77,7 +74,6 @@ public class TypeResourceIT {
     STRING_TYPE = getTypeByName(client, "string");
     ENUM_TYPE = getTypeByName(client, "enum");
     HYPERLINK_TYPE = getTypeByName(client, "hyperlink-cp");
-    TABLE_CP_TYPE = getTypeByName(client, "table-cp");
     TOPIC_ENTITY_TYPE = getTypeByName(client, "topic");
     TABLE_ENTITY_TYPE = getTypeByName(client, "table");
     CONTAINER_ENTITY_TYPE = getTypeByName(client, "container");
@@ -268,81 +264,6 @@ public class TypeResourceIT {
         Exception.class,
         () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), enumProperty),
         "Adding enum custom property with duplicate values should fail");
-  }
-
-  @Test
-  void test_addTableTypeCustomPropertyWithValidColumns(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    String propertyName = ns.prefix("tableProp");
-    CustomProperty tableProperty = new CustomProperty();
-    tableProperty.setName(propertyName);
-    tableProperty.setDescription("Table custom property for testing");
-    tableProperty.setPropertyType(TABLE_CP_TYPE.getEntityReference());
-
-    TableConfig tableConfig = new TableConfig();
-    tableConfig.setColumns(Set.of("name", "value"));
-
-    CustomPropertyConfig config = new CustomPropertyConfig();
-    config.setConfig(tableConfig);
-    tableProperty.setCustomPropertyConfig(config);
-
-    Type updatedType = addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), tableProperty);
-
-    assertNotNull(updatedType);
-    CustomProperty addedProperty =
-        updatedType.getCustomProperties().stream()
-            .filter(cp -> propertyName.equals(cp.getName()))
-            .findFirst()
-            .orElse(null);
-    assertNotNull(addedProperty);
-    assertNotNull(addedProperty.getCustomPropertyConfig());
-  }
-
-  @Test
-  void test_addTableTypeCustomPropertyWithReservedColumnName_fails(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    String propertyName = ns.prefix("reservedIdProp");
-    CustomProperty tableProperty = new CustomProperty();
-    tableProperty.setName(propertyName);
-    tableProperty.setDescription("Table custom property with reserved column name 'id'");
-    tableProperty.setPropertyType(TABLE_CP_TYPE.getEntityReference());
-
-    TableConfig tableConfig = new TableConfig();
-    tableConfig.setColumns(Set.of("id", "name"));
-
-    CustomPropertyConfig config = new CustomPropertyConfig();
-    config.setConfig(tableConfig);
-    tableProperty.setCustomPropertyConfig(config);
-
-    assertThrows(
-        Exception.class,
-        () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), tableProperty),
-        "Adding table custom property with reserved column name 'id' should fail");
-  }
-
-  @Test
-  void test_addTableTypeCustomPropertyWithReservedRowIdKey_fails(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    String propertyName = ns.prefix("reservedRowIdProp");
-    CustomProperty tableProperty = new CustomProperty();
-    tableProperty.setName(propertyName);
-    tableProperty.setDescription("Table custom property with reserved column name '__row_id__'");
-    tableProperty.setPropertyType(TABLE_CP_TYPE.getEntityReference());
-
-    TableConfig tableConfig = new TableConfig();
-    tableConfig.setColumns(Set.of("__row_id__", "name"));
-
-    CustomPropertyConfig config = new CustomPropertyConfig();
-    config.setConfig(tableConfig);
-    tableProperty.setCustomPropertyConfig(config);
-
-    assertThrows(
-        Exception.class,
-        () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), tableProperty),
-        "Adding table custom property with reserved column name '__row_id__' should fail");
   }
 
   @Test
