@@ -60,11 +60,12 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
             try {
               if (table.testSuiteResponseData?.id) {
                 const response = await apiContext.delete(
-                  `/api/v1/dataQuality/testSuites/${table.testSuiteResponseData.id}?recursive=true&hardDelete=true`
+                  `/api/v1/dataQuality/testSuites/basic/${table.testSuiteResponseData.id}?recursive=true&hardDelete=true`
                 );
-                expect([200, 404], 'fixture test suite cleanup').toContain(
-                  response.status()
-                );
+                expect(
+                  [200, 404],
+                  `fixture test suite cleanup: ${await response.text()}`
+                ).toContain(response.status());
               }
             } finally {
               if (table.serviceResponseData?.id) {

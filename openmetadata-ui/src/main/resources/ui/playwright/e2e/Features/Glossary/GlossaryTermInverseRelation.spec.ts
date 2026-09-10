@@ -15,6 +15,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getDefaultAdminAPIContext } from '../../../utils/common';
 import { addTermRelation } from '../../../utils/ontologyStudio';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -97,10 +98,12 @@ test.describe('Glossary Term — Inverse Relation Display (#29687)', () => {
         .getByText('Broader', { exact: true })
     ).toBeVisible();
 
-    const reloadRes = page.waitForResponse(
+    const reloadRes = waitForResponseWithStatus(
+      page,
       (res) =>
-        res.url().includes('/api/v1/glossaryTerms/name/') &&
-        res.status() === 200
+        res.request().method() === 'GET' &&
+        res.url().includes('/api/v1/glossaryTerms/name/'),
+      200
     );
     await page.reload();
     await reloadRes;

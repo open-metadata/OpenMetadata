@@ -26,29 +26,20 @@ const selectOwnedOption = async ({
   optionName,
   page,
 }: SelectOwnedOptionArgs) => {
-  await expect(async () => {
-    if ((await control.getAttribute('aria-expanded')) !== 'true') {
-      await open();
-    }
-
-    const listboxId = await control.getAttribute('aria-controls');
-    if (!listboxId) {
-      throw new Error('Destination popup did not expose aria-controls');
-    }
-
-    // Destination selection replaces its RHF object, which can remount the
-    // React Aria popup during a click. Re-resolving the popup on each retry
-    // also prevents options from another open destination being selected.
-    await page
-      .locator(`[role="listbox"][id="${listboxId}"]`)
-      .getByRole('option', { exact: true, name: optionName })
-      .click({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
-
-  // A remounted control can leave its previous portal open even after the
-  // selection lands. Moving focus out prevents that popup polluting the next
-  // destination interaction without sending Escape to the surrounding form.
-  await control.blur().catch(() => undefined);
+  await control.scrollIntoViewIfNeeded();
+  await control.focus();
+  if ((await control.getAttribute('aria-expanded')) !== 'true') {
+    await open();
+  }
+  await expect(control).toHaveAttribute('aria-expanded', 'true');
+  const listboxId = await control.getAttribute('aria-controls');
+  if (!listboxId) {
+    throw new Error('Destination popup did not expose aria-controls');
+  }
+  await page
+    .locator(`[role="listbox"][id="${listboxId}"]`)
+    .getByRole('option', { exact: true, name: optionName })
+    .click();
 };
 
 export const selectComboBoxOption = async ({
@@ -62,15 +53,17 @@ export const selectComboBoxOption = async ({
 }) => {
   const input = page.getByTestId(testId).getByRole('combobox');
   await expect(input).toBeVisible();
+  await input.scrollIntoViewIfNeeded();
+  await input.hover();
+  await input.fill('');
   await selectOwnedOption({
     control: input,
-    open: async () => {
-      await input.fill('');
-      await input.press('ArrowDown');
-    },
+    open: () => input.press('ArrowDown'),
     optionName,
     page,
   });
+  await expect(input).toHaveValue(optionName);
+  await input.blur();
   await expect(input).toHaveValue(optionName);
 };
 
@@ -92,6 +85,7 @@ export const selectDropdownOption = async ({
     page,
   });
   await expect(trigger).toContainText(optionName);
+  await trigger.blur();
 };
 
 export const ensureAccordionExpanded = async (

@@ -55,20 +55,15 @@ test('delete confirmation modal matches baseline', async ({ page }) => {
   // `/glossary/<first-glossary-fqn>`, remounting GlossaryHeader in the
   // process. A click landed before that remount opens the dropdown on a
   // component instance that is about to be thrown away, leaving the menu
-  // permanently closed — so wait for the redirected URL first, then retry
-  // the open until the menu actually shows.
+  // permanently closed, so wait for the redirected page before opening it.
   await page.waitForURL('**/glossary/**');
   await page.getByTestId('entity-header-display-name').waitFor({
     state: 'visible',
   });
 
-  await expect(async () => {
-    await page.getByTestId('manage-button').click();
-
-    await expect(page.getByTestId('delete-button')).toBeVisible({
-      timeout: 2000,
-    });
-  }).toPass();
+  await page.getByTestId('manage-button').scrollIntoViewIfNeeded();
+  await page.getByTestId('manage-button').click();
+  await expect(page.getByTestId('delete-button')).toBeVisible();
 
   // FREEZE_CSS (applied by gotoForScreenshot) sets `animation: none`, so
   // rc-motion never receives its animationend event and leaves the dropdown

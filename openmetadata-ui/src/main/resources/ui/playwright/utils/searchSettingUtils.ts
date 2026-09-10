@@ -89,25 +89,61 @@ export async function setSliderValue(
   min = 0,
   max = 100
 ) {
-  const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
-  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
+  const step = 0.1;
+  if (value < min || value > max || !Number.isFinite(value)) {
+    throw new Error(`Slider value ${value} is outside [${min}, ${max}]`);
+  }
+  const slider = page.getByTestId(testId);
+  const sliderHandle = slider.getByRole('slider');
 
-  // Get slider track dimensions
-  const box = await sliderTrack.boundingBox();
-  if (!box) {
-    throw new Error('Slider track not found');
+  await expect(sliderHandle).toBeVisible();
+  await expect(sliderHandle).toHaveAttribute('aria-valuemin', String(min));
+  await expect(sliderHandle).toHaveAttribute('aria-valuemax', String(max));
+
+  if (value === min || value === max) {
+    await sliderHandle.press(value === min ? 'Home' : 'End');
+    await expect(sliderHandle).toHaveAttribute('aria-valuenow', String(value));
+
+    return;
   }
 
-  const { x, width } = box;
-
-  // Calculate the exact x-position for the value
-  const valuePosition = x + ((value - min) / (max - min)) * width;
-
-  // Move the slider handle to the calculated position
-  await sliderHandle.hover(); // Ensure visibility
+  await expect(
+    page.locator('.ant-motion-collapse').filter({ has: slider })
+  ).toHaveCount(0);
+  const track = slider.locator('.ant-slider');
+  await sliderHandle.hover();
+  const box = await track.boundingBox();
+  if (!box || box.width <= 0) {
+    throw new Error('Slider track has no width');
+  }
   await page.mouse.down();
-  await page.mouse.move(valuePosition, box.y);
-  await page.mouse.up();
+  try {
+    await page.mouse.move(
+      box.x + ((value - min) / (max - min)) * box.width,
+      box.y + box.height / 2
+    );
+  } finally {
+    await page.mouse.up();
+  }
+
+  // A tenth of a unit is narrower than a pixel. One pointer selection gets
+  // within a pixel, then keyboard fine adjustment reaches the exact value.
+  // Stepping across the entire range would issue hundreds of preview requests.
+  const pixelValue = (max - min) / box.width;
+  await expect
+    .poll(async () =>
+      Math.abs(Number(await sliderHandle.getAttribute('aria-valuenow')) - value)
+    )
+    .toBeLessThanOrEqual(pixelValue);
+  const selectedValue = Number(
+    await sliderHandle.getAttribute('aria-valuenow')
+  );
+  const steps = Math.round((value - selectedValue) / step);
+  for (let index = 0; index < Math.abs(steps); index++) {
+    await sliderHandle.press(steps < 0 ? 'ArrowLeft' : 'ArrowRight');
+  }
+
+  await expect(sliderHandle).toHaveAttribute('aria-valuenow', String(value));
 }
 
 // The entity search settings page opens with the "Ranking Details" accordion
@@ -115,21 +151,15 @@ export async function setSliderValue(
 // configuration rows) is collapsed and not mounted. Expand it before
 // interacting with any field-configuration control.
 export const openMatchingFieldsPanel = async (page: Page) => {
-  const firstFieldHeader = page.getByTestId('field-container-header').first();
-
-  const isMatchingFieldsPanelOpen = await firstFieldHeader
-    .isVisible()
-    .catch(() => false);
-
-  if (!isMatchingFieldsPanelOpen) {
-    await page
-      .locator('.ant-collapse-header')
-      .filter({ hasText: 'Matching Fields' })
-      .getByText('Matching Fields')
-      .click();
-
-    await firstFieldHeader.waitFor({ state: 'visible' });
+  const panel = page.getByRole('button', {
+    name: 'Matching Fields',
+    exact: true,
+  });
+  await expect(panel).toBeVisible();
+  if ((await panel.getAttribute('aria-expanded')) !== 'true') {
+    await panel.click();
   }
+  await expect(panel).toHaveAttribute('aria-expanded', 'true');
 };
 
 export const restoreDefaultSearchSettings = async (page: Page) => {

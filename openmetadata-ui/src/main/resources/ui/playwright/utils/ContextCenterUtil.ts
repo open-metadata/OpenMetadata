@@ -25,6 +25,7 @@ import { UserClass } from '../support/user/UserClass';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 // ─── Document types ───────────────────────────────────────────────────────────
 
@@ -1052,12 +1053,12 @@ export const waitForArticleInFollows = async (
 };
 
 export const navigateToArticle = async (page: Page, articleFqn: string) => {
-  const getArticleResponse = page.waitForResponse(
+  const getArticleResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response
-        .url()
-        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes(`/api/v1/contextCenter/pages/name/${articleFqn}`),
+    200
   );
 
   const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);

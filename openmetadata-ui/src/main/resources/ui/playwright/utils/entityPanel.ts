@@ -74,8 +74,6 @@ const findOptionByScrolling = async (page: Page, endpoint: string) => {
     element.scrollTop = 0;
   });
 
-  // Returned rather than thrown: the caller runs this inside an expect.poll,
-  // and a thrown error aborts that poll outright instead of letting it retry.
   return false;
 };
 
@@ -94,6 +92,23 @@ export const openEntitySummaryPanel = async ({
   exploreTab?: string;
   dataAssetTypeLeftPanelTestId?: string;
 }) => {
+  if (!dataAssetTypeLeftPanelTestId) {
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await waitForSearchIndexed(
+        apiContext,
+        fullyQualifiedName ?? entityName,
+        endpoint ? getEntityTypeSearchIndexMapping(endpoint) : 'dataAsset',
+        {
+          matchBy: fullyQualifiedName
+            ? 'fullyQualifiedName'
+            : 'nameOrDisplayName',
+        }
+      );
+    } finally {
+      await afterAction();
+    }
+  }
   const runSearch = async () => {
     if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
       await page.getByTestId('global-search-selector').waitFor({
@@ -115,10 +130,6 @@ export const openEntitySummaryPanel = async ({
     await page.getByTestId('searchBox').press('Enter');
     await waitForAllLoadersToDisappear(page);
 
-    // Select the entity-type tab as part of each search attempt: for callers that
-    // pass an exploreTab without an endpoint filter (e.g. Column), the result card
-    // only renders under its tab, so the poll's visibility check must run after the
-    // tab is selected — not once, after the poll.
     if (exploreTab) {
       const tab = page
         .getByTestId('explore-left-panel')
@@ -140,41 +151,12 @@ export const openEntitySummaryPanel = async ({
         })
         .first();
 
-  if (dataAssetTypeLeftPanelTestId) {
-    // The knowledge-center card is only revealed after selecting the KC item
-    // below, so it cannot gate the retry — issue a single search here. No poll
-    // wraps this branch, so a filter option that never rendered is fatal.
-    expect(
-      await runSearch(),
-      `Unable to select global search filter for endpoint "${endpoint}"`
-    ).toBe(true);
-  } else {
-    // Search indexing is eventually consistent and lags further under CI load, so
-    // a freshly created entity may not surface on the first query. Retry the
-    // search — reloading between attempts to force a fresh fetch — until the
-    // entity's result card appears, rather than assuming one query surfaces it.
-    let hasSearched = false;
-    await expect
-      .poll(
-        async () => {
-          if (hasSearched) {
-            await page.reload();
-            await waitForAllLoadersToDisappear(page);
-          }
-          hasSearched = true;
-
-          // A filter option that has not rendered yet is transient: let the
-          // poll reload and retry rather than failing the test outright.
-          if (!(await runSearch())) {
-            return false;
-          }
-
-          return entityResultCard.isVisible();
-        },
-        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
-      )
-      .toBe(true);
-  }
+  expect(
+    await runSearch(),
+    `Unable to select global search filter for endpoint "${endpoint}"`
+  ).toBe(true);
+  if (!dataAssetTypeLeftPanelTestId)
+    await expect(entityResultCard).toBeVisible();
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
@@ -720,3 +702,6 @@ export const editDisplayNameFromPanel = async (
 
   await modal.waitFor({ state: 'hidden' });
 };
+
+import { getApiContext, getEntityTypeSearchIndexMapping } from './common';
+import { waitForSearchIndexed } from './polling';

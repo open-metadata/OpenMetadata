@@ -22,9 +22,8 @@ import { BrowserContext, Request, Route } from '@playwright/test';
  * execution budget, and that spread is the contention behind the timeout
  * failures — the server does more work than the tests have time for.
  *
- * Everything here is per-worker and read-through: the first request still hits
- * the real server, so a cached response can never drift from it the way a
- * hand-written stub body would.
+ * Everything here is per-worker and read-through. Correctness also depends on
+ * excluding server-driven values and invalidating overlapping reads and writes.
  */
 
 /** Analytics collection is a write, and no test asserts on the stored events. */
@@ -113,6 +112,7 @@ type CacheEntry = {
 // that account for most boots.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
+let writeGeneration = 0;
 
 const remember = (key: string, value: CacheEntry) => {
   if (bootCache.size >= MAX_CACHED_RESPONSES) {
@@ -145,6 +145,7 @@ const familyPrefix = (pathname: string) => {
  * which is why CACHEABLE_BOOT_PATHS excludes anything with an API writer.
  */
 const invalidateFamily = (pathname: string) => {
+  writeGeneration++;
   const prefix = familyPrefix(pathname);
 
   if (!prefix) {
@@ -259,6 +260,7 @@ const serveBootConfig = async (route: Route) => {
     return;
   }
 
+  const generation = writeGeneration;
   const response = await route.fetch();
   const payload: CachedResponse = {
     status: response.status(),
@@ -273,7 +275,7 @@ const serveBootConfig = async (route: Route) => {
   // handler fails the test just as readily and consistency is one line.
   const pathname = pathnameOf(request.url());
 
-  if (response.ok() && pathname) {
+  if (response.ok() && pathname && generation === writeGeneration) {
     remember(key, { pathname, response: payload });
   }
 
@@ -384,8 +386,8 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
 
   // Passive listener rather than another route, so observing writes costs
   // nothing on the request path.
-  context.on('request', (request) => {
-    if (request.method() === 'GET') {
+  const invalidateWrite = (request: Request) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
       return;
     }
 
@@ -394,7 +396,13 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
     if (pathname?.startsWith('/api/v1/')) {
       invalidateFamily(pathname);
     }
-  });
+  };
+  context.on('request', invalidateWrite);
+  // A GET during an outstanding write can still read the pre-commit value.
+  // Clear it when the write completes; generation checks also prevent an older
+  // in-flight GET from repopulating the cache after either invalidation.
+  context.on('response', (response) => invalidateWrite(response.request()));
+  context.on('requestfailed', invalidateWrite);
 };
 
 /**

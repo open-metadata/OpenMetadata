@@ -71,35 +71,21 @@ test.describe('Advanced Search Suggestions', () => {
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );
 
+      await dropdownInput.scrollIntoViewIfNeeded();
+      const aggregateResponse = waitForAggregation(page, {
+        field: field.fieldName,
+        value: searchText,
+      });
+      await dropdownInput.fill(searchText);
+      await dropdownInput.press('ArrowDown');
+      expect((await aggregateResponse).status()).toBe(200);
+      await expect(dropdownInput).toHaveAttribute('aria-expanded', 'true');
+      const listboxId = await dropdownInput.getAttribute('aria-controls');
       const suggestionOption = page
-        .locator('[role="listbox"]:visible [role="option"]')
+        .locator(`[role="listbox"][id="${listboxId}"]`)
+        .getByRole('option')
         .filter({ hasText: searchText });
-
-      // The ComboBox popover re-mounts under load and the isMounting gate can
-      // drop the aggregate request — the listbox then opens empty. Retry the
-      // fill until at least one matching option renders; each attempt re-arms
-      // waitForAggregation so we don't block forever on a dropped request, and
-      // the helper matches the typed-value aggregate specifically so the wait
-      // cannot resolve early on the dropdown-open request.
-      await expect(async () => {
-        // .catch at construction: the exact dropped-aggregate case this fix
-        // targets leaves the underlying waitForResponse pending, so it will
-        // reject with a Playwright timeout ~30s later once the 5s fallback
-        // timer has already won the race. Without the catch, every toPass
-        // attempt orphans a fresh promise and Playwright surfaces them as
-        // unhandled rejections that can fail the test.
-        const aggregateResponse = waitForAggregation(page, {
-          field: field.fieldName,
-          value: searchText,
-        }).catch(() => undefined);
-        await dropdownInput.fill('');
-        await dropdownInput.fill(searchText);
-        await Promise.race([
-          aggregateResponse,
-          new Promise((resolve) => setTimeout(resolve, 5_000)),
-        ]);
-        await expect(suggestionOption).not.toHaveCount(0, { timeout: 5_000 });
-      }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+      await expect(suggestionOption).not.toHaveCount(0);
     });
   });
 });

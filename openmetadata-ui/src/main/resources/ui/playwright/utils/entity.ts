@@ -47,6 +47,7 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -163,12 +164,16 @@ export const visitEntityPageByFqn = async (data: {
 
   const encodedFqn = encodeURIComponent(fqn);
   const entityDetailsResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/name/${encodedFqn}?**`
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/${endpoint}/name/${encodedFqn}`
   );
   await page.goto(`/${routeSegment}/${encodedFqn}`, {
     waitUntil: 'domcontentloaded',
   });
-  await entityDetailsResponse;
+  const response = await entityDetailsResponse;
+  expect(response.status(), `Load ${endpoint} ${fqn}`).toBe(200);
   await waitForAllLoadersToDisappear(page);
   await waitForWidgetsToRender(page);
 };
@@ -188,6 +193,17 @@ export const addOwner = async ({
   dataTestId?: string;
   initiatorId?: string;
 }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      owner,
+      type === 'Users' ? 'user' : 'team',
+      { matchBy: 'nameOrDisplayName' }
+    );
+  } finally {
+    await afterAction();
+  }
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
@@ -201,25 +217,7 @@ export const addOwner = async ({
   const ownerSearchInput = page.getByTestId(
     `owner-select-${lowerCase(type)}-search-bar`
   );
-  await expect
-    .poll(
-      async () => {
-        const searchBarVisible = await ownerSearchInput
-          .isVisible()
-          .catch(() => false);
-        if (!searchBarVisible) {
-          await page.getByRole('tab', { name: type }).click();
-        }
-
-        return await ownerSearchInput.isVisible().catch(() => false);
-      },
-      {
-        timeout: 60000,
-        intervals: [500, 1000, 2000],
-        message: `Timed out waiting for ${type} owner search input`,
-      }
-    )
-    .toBe(true);
+  await expect(ownerSearchInput).toBeVisible();
   await ownerSearchInput.scrollIntoViewIfNeeded();
 
   const searchUser = page.waitForResponse(
@@ -235,33 +233,7 @@ export const addOwner = async ({
   } else {
     const ownerItem = page.getByRole('listitem', { name: owner });
 
-    await expect
-      .poll(
-        async () => {
-          const visible = await ownerItem.isVisible().catch(() => false);
-          if (visible) {
-            return true;
-          }
-
-          const searchRetry = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes(encodeURIComponent(owner))
-          );
-          await ownerSearchInput.fill('');
-          await ownerSearchInput.fill(owner);
-          await searchRetry;
-          await waitForAllLoadersToDisappear(page);
-
-          return await ownerItem.isVisible().catch(() => false);
-        },
-        {
-          timeout: 60000,
-          intervals: [2000, 3000, 5000],
-          message: `Timed out waiting for owner ${owner} to appear`,
-        }
-      )
-      .toBe(true);
+    await expect(ownerItem).toBeVisible();
     await ownerItem.click();
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -292,11 +264,13 @@ export const addOwnerWithoutValidation = async ({
 
     if (!isTabAlreadySelected) {
       // The call with size > 0 only fires after the tab click.
-      const userListResponse = page.waitForResponse(
+      const userListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query?q=&index=user') &&
-          !response.url().includes('size=0') &&
-          response.status() === 200
+          !response.url().includes('size=0'),
+        200
       );
       await usersTab.click();
       await expect(usersTab).toHaveAttribute('aria-selected', 'true');
@@ -757,9 +731,10 @@ export const updateDescription = async (
   // Always wait for the PATCH request, not just when endpoint is provided
   const patchRequest = endpoint
     ? page.waitForResponse(`/api/v1/${endpoint}/*`)
-    : page.waitForResponse(
-        (response) =>
-          response.request().method() === 'PATCH' && response.status() === 200
+    : waitForResponseWithStatus(
+        page,
+        (response) => response.request().method() === 'PATCH',
+        200
       );
 
   await saveButton.click();
@@ -1586,10 +1561,12 @@ export const validateFollowedEntityToWidget = async (
   }
 
   if (isFollowing) {
-    await followingWidget.isVisible();
-    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+    await expect(followingWidget).toBeVisible();
+    await expect(
+      followingWidget.getByTestId(`following-${entity}`)
+    ).toBeVisible();
   } else {
-    await followingWidget.isVisible();
+    await expect(followingWidget).toBeVisible();
     await expect(
       followingWidget.getByTestId(`following-${entity}`)
     ).not.toBeVisible();
@@ -2505,6 +2482,12 @@ export const checkExploreSearchFilter = async (
   searchEntityType = false
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  const clearFilters = page.getByTestId('clear-all-chips');
+  if (await clearFilters.isVisible()) {
+    await clearFilters.click();
+    await expect(clearFilters).toBeHidden();
+    await waitForAllLoadersToDisappear(page);
+  }
   if (entity?.type && searchEntityType) {
     const entityTypeId = (
       getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
@@ -2593,17 +2576,26 @@ export const checkExploreSearchFilter = async (
   await queryRes;
   await waitForAllLoadersToDisappear(page);
 
+  const resultCard = page.getByTestId(
+    `table-data-card_${
+      (entity as TableClass)?.entityResponseData?.fullyQualifiedName
+    }`
+  );
+  await expect(resultCard).toBeVisible();
+  const entityLink = resultCard.getByTestId('entity-link');
   await expect(
-    page.getByTestId(
-      `table-data-card_${
-        (entity as TableClass)?.entityResponseData?.fullyQualifiedName
-      }`
-    )
-  ).toBeVisible();
-
-  await page.click('[data-testid="clear-all-chips"]');
-
-  await entity?.visitEntityPage(page);
+    entityLink,
+    'search result must link to its entity'
+  ).toHaveAttribute('href', /.+/);
+  const href = await entityLink.getAttribute('href');
+  if (!href) {
+    throw new Error('Search result lost its entity link before navigation');
+  }
+  const entityUrl = new URL(href, page.url()).toString();
+  await entityLink.click();
+  await expect(page).toHaveURL(entityUrl);
+  await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };
 
 export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
@@ -2820,3 +2812,6 @@ export const fillDeleteConfirmationIfPresent = async (page: Page) => {
     await confirmInput.fill('DELETE');
   }
 };
+
+import { getApiContext } from './common';
+import { waitForSearchIndexed } from './polling';

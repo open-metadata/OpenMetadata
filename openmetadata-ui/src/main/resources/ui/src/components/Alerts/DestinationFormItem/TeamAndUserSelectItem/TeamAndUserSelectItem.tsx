@@ -45,6 +45,7 @@ function TeamAndUserSelectItem({
   const { setValue, control } = useFormContext();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const searchVersion = useRef(0);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -55,15 +56,21 @@ function TeamAndUserSelectItem({
     useWatch({ name: fieldPath, control }) ?? [];
 
   const handleSearch = useCallback(
-    async (value: string) => {
+    async (value: string, version: number) => {
       try {
         setIsLoadingOptions(true);
         const results = await onSearch(value);
-        setOptions(results);
+        if (version === searchVersion.current) {
+          setOptions(results);
+        }
       } catch {
-        setOptions([]);
+        if (version === searchVersion.current) {
+          setOptions([]);
+        }
       } finally {
-        setIsLoadingOptions(false);
+        if (version === searchVersion.current) {
+          setIsLoadingOptions(false);
+        }
       }
     },
     [onSearch]
@@ -109,9 +116,15 @@ function TeamAndUserSelectItem({
 
       return;
     }
-    debouncedSearch(searchText);
+    const version = ++searchVersion.current;
+    debouncedSearch(searchText, version);
 
-    return () => debouncedSearch.cancel();
+    return () => {
+      // Invalidate in-flight results as soon as the query or picker changes,
+      // including the debounce interval before the replacement request starts.
+      searchVersion.current = version + 1;
+      debouncedSearch.cancel();
+    };
   }, [searchText, entityType, debouncedSearch, isDisabled]);
 
   useEffect(() => {

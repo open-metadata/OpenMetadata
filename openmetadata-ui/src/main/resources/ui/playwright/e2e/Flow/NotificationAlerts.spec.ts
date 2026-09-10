@@ -45,6 +45,7 @@ import {
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();
@@ -204,11 +205,12 @@ test('Single Filter Alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -286,11 +288,12 @@ test('Multiple Filters Alert', async ({ page }) => {
     }
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -395,11 +398,12 @@ test('Conversation source alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -545,11 +549,12 @@ test('destination should work properly', async ({ page }) => {
   await expect(testButton).toBeVisible();
   await expect(testButton).toBeEnabled();
 
-  const testDestinations = page.waitForResponse(
+  const testDestinations = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/events/subscriptions/testDestination') &&
-      response.request().method() === 'POST' &&
-      response.status() === 200
+      response.request().method() === 'POST',
+    200
   );
 
   await testButton.click();

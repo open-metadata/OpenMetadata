@@ -365,8 +365,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     // Default order renders Data Quality above Incident Manager
     expect(await isDataQualityBelowIncidentManager()).toBe(false);
 
-    // Drag Data Quality just below Incident Manager, retrying until the tree reorders
-    await expect(async () => {
+    await test.step('Reorder Data Quality below Incident Manager', async () => {
       const dataQualityBox = await dataQualityItem.boundingBox();
       const incidentManagerBox = await incidentManagerItem.boundingBox();
 
@@ -384,14 +383,18 @@ test.describe.serial('Settings Navigation Page Tests', () => {
         },
       });
 
-      expect(await isDataQualityBelowIncidentManager()).toBe(true);
-    }).toPass({ timeout: 30_000 });
+      await expect.poll(isDataQualityBelowIncidentManager).toBe(true);
+    });
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const saveResponse = page.waitForResponse(
+    const saveResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('/api/v1/docStore') &&
-        [200, 201].includes(response.status())
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
     );
     await page.getByTestId('save-button').click();
     await saveResponse;
@@ -417,10 +420,14 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const resetResponse = page.waitForResponse(
+    const resetResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('/api/v1/docStore') &&
-        [200, 201].includes(response.status())
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
     );
     await page.getByTestId('save-button').click();
     await resetResponse;
@@ -452,9 +459,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // Move Test Library (an Observability child) into the Data Marketplace
     // group by dropping it just after Overview (between two of its children).
-    // HTML5 drag-and-drop is occasionally dropped by the browser, so retry the
-    // drag until Test Library actually renders below the Data Marketplace header.
-    await expect(async () => {
+    await test.step('Move Test Library into Data Marketplace', async () => {
       const testLibraryBox = await testLibraryItem.boundingBox();
       const overviewBox = await overviewItem.boundingBox();
 
@@ -472,19 +477,25 @@ test.describe.serial('Settings Navigation Page Tests', () => {
         },
       });
 
-      const testLibraryY = (await testLibraryItem.boundingBox())?.y ?? 0;
-      const dataMarketplaceY =
-        (await dataMarketplaceItem.boundingBox())?.y ?? 0;
-
-      expect(testLibraryY).toBeGreaterThan(dataMarketplaceY);
-    }).toPass({ timeout: 30000 });
+      await expect
+        .poll(async () => {
+          const item = await testLibraryItem.boundingBox();
+          const parent = await dataMarketplaceItem.boundingBox();
+          return item !== null && parent !== null && item.y > parent.y;
+        })
+        .toBe(true);
+    });
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const saveResponse = page.waitForResponse(
+    const saveResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('/api/v1/docStore') &&
-        [200, 201].includes(response.status())
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
     );
     await page.getByTestId('save-button').click();
     await saveResponse;
@@ -521,12 +532,18 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const resetResponseAfterMove = page.waitForResponse(
+    const resetResponseAfterMove = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('/api/v1/docStore') &&
-        [200, 201].includes(response.status())
+        ['POST', 'PATCH'].includes(response.request().method()) &&
+        /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+          new URL(response.url()).pathname
+        ),
+      [200, 201]
     );
     await page.getByTestId('save-button').click();
     await resetResponseAfterMove;
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

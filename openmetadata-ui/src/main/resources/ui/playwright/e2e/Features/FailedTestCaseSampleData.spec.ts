@@ -27,6 +27,7 @@ import {
   verifyTestCaseLastRunBanner,
   visitDataQualityTab,
 } from '../../utils/testCases';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({
@@ -208,10 +209,12 @@ test.describe('Failed rows sample fetch gating', () => {
           await route.continue();
         });
 
-        const testCaseDetails = page.waitForResponse(
+        const testCaseDetails = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-            res.status() === 200
+            res.request().method() === 'GET' &&
+            res.url().includes('/api/v1/dataQuality/testCases/name/'),
+          200
         );
         // The results tab loads its own testCaseResults on the same mount that
         // would have fired the sample fetch — awaiting it is a deterministic

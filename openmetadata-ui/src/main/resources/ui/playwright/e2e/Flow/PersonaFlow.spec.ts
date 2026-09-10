@@ -41,6 +41,7 @@ import {
   updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
@@ -619,11 +620,12 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId('users').click();
 
       // Wait for list to load and click on the specific user
-      const userProfileResponse = adminPage.waitForResponse(
+      const userProfileResponse = waitForResponseWithStatus(
+        adminPage,
         (response) =>
           response.url().includes('/api/v1/users/name/') &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
+          response.request().method() === 'GET',
+        200
       );
       await adminPage.getByTestId(teamUser.responseData.name).click();
       await userProfileResponse;

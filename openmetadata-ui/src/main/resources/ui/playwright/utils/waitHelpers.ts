@@ -13,6 +13,33 @@
 
 import { Locator, Page, Response } from '@playwright/test';
 
+/** Match the request first so a later HTTP 200 cannot hide its earlier failure. */
+export const waitForResponseWithStatus = (
+  page: Page,
+  matchesRequest: (response: Response) => boolean | Promise<boolean>,
+  expectedStatus: number | number[] | 'ok',
+  options?: { timeout?: number }
+): Promise<Response> => {
+  const statuses = Array.isArray(expectedStatus)
+    ? expectedStatus
+    : [expectedStatus];
+  const label = expectedStatus === 'ok' ? '2xx' : statuses.join(' or ');
+  return page.waitForResponse(matchesRequest, options).then((response) => {
+    if (
+      expectedStatus === 'ok'
+        ? !response.ok()
+        : !statuses.includes(response.status())
+    ) {
+      throw new Error(
+        `${response.request().method()} ${
+          new URL(response.url()).pathname
+        }: expected HTTP ${label}, received ${response.status()}`
+      );
+    }
+    return response;
+  });
+};
+
 /**
  * Registers the response listener *before* triggering the click, which is the
  * only ordering that cannot race: a response fired between the click and a

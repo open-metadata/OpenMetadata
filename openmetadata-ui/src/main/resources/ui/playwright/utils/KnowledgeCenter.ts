@@ -20,6 +20,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
@@ -892,12 +893,12 @@ export const typeInTableCell = async (
 
 export const navigateToArticle = async (page: Page, articleFqn: string) => {
   // Wait for GET API response when navigating to the article
-  const getArticleResponse = page.waitForResponse(
+  const getArticleResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response
-        .url()
-        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes(`/api/v1/contextCenter/pages/name/${articleFqn}`),
+    200
   );
 
   const articlePath = ARTICLE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);

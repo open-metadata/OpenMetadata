@@ -204,11 +204,15 @@ export class EntityDataClass {
       const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
 
       if (!isUndefined(typeData)) {
-        await apiContext.put(
+        const response = await apiContext.put(
           `/api/v1/metadata/types/${createdMetadataType.id}`,
           {
             data: typeData,
           }
+        );
+        await okJson(
+          response,
+          `Create ${type.name} custom property for ${entityType}`
         );
       }
     }
@@ -275,7 +279,7 @@ export class EntityDataClass {
       this.worksheet2.create(apiContext),
     ];
 
-    await Promise.allSettled(promises);
+    await settleAll(promises);
 
     // Keeping these creations separate as they depend on
     // Entity creation above
@@ -288,7 +292,7 @@ export class EntityDataClass {
       this.tag1.create(apiContext),
     ];
 
-    await Promise.allSettled(dependentEntityCreationPromises);
+    await settleAll(dependentEntityCreationPromises);
 
     const entityTypesToSetup = Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
       (entity) => entity.name
@@ -360,7 +364,7 @@ export class EntityDataClass {
       this.worksheet2.delete(apiContext),
     ];
 
-    return await Promise.allSettled(promises);
+    return await settleAll(promises);
   }
 
   static saveResponseData() {
@@ -652,10 +656,12 @@ export class EntityDataClass {
         }
       }
     } catch (error) {
-      // Silently fail if file doesn't exist or can't be read
+      throw new Error(`Unable to load shared fixture data: ${String(error)}`);
     }
   }
 }
 
 // Load response data from file when the module is imported
 EntityDataClass.loadResponseData();
+
+import { settleAll } from '../../utils/apiResponse';

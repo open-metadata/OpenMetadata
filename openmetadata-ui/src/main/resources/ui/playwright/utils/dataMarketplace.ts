@@ -16,6 +16,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const navigateToMarketplace = async (page: Page) => {
   await redirectToHomePage(page);
@@ -30,10 +31,12 @@ export const searchMarketplace = async (page: Page, term: string) => {
   await searchInput.clear();
   await searchInput.fill(term);
 
-  const searchResponse = page.waitForResponse(
+  const searchResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/search/query'),
+    200
   );
   await searchInput.press('Enter');
   await searchResponse;

@@ -130,23 +130,14 @@ const createTagTaskViaUI = async (
 // click was then skipped and the resolve step ran against whatever panel was
 // open — the source of this spec's intermittent failures. Wait for the card.
 //
-// The remaining race: clicking the card is the ONLY thing that mounts the task
-// detail panel — selectedTask is set solely in ActivityFeedTab's handleTaskClick,
-// there is no auto-selection. A click that lands while the feed list is still
-// re-rendering is dropped, the panel never opens, and the downstream
-// approve/close helpers then wait out their full timeout on buttons that never
-// appear (fails, passes on retry). Retry the click until the detail panel
-// (#task-panel → [data-testid="task-tab"]) is actually mounted before returning.
 const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
   const taskDetailTab = page.locator('[data-testid="task-tab"]');
 
   await expect(taskCard).toBeVisible({ timeout: 30_000 });
 
-  await expect(async () => {
-    await taskCard.click();
-    await expect(taskDetailTab).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
+  await taskCard.click();
+  await expect(taskDetailTab).toBeVisible();
 
   await waitForPageLoaded(page);
 };
@@ -189,6 +180,9 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   > = [];
 
   test.beforeAll(async () => {
+    // Fully parallel groups can run this hook again in the same worker. Old
+    // entries refer to entities deleted by that group's afterAll hook.
+    entities.length = 0;
     const { apiContext, afterAction } = await createAdminApiContext();
 
     try {

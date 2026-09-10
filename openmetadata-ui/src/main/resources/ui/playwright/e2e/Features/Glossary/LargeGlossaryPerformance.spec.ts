@@ -104,6 +104,7 @@ test.describe('Large Glossary Performance Tests', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -399,6 +400,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   const glossaryTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);

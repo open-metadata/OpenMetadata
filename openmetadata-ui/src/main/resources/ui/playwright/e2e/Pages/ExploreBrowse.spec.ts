@@ -339,20 +339,14 @@ test.describe(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
 
-        // The browse rebuild collapses the tree and can detach the row
-        // mid-click; retry expand → click until the chip confirms the select.
-        await expect(async () => {
-          if (!(await serviceTitle.isVisible())) {
-            await expandTreeNode(page, 'Databases');
-          }
-          await expect(serviceTitle).toBeVisible({ timeout: 10_000 });
-          await serviceTitle.click({ timeout: 10_000 });
-          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
-            {
-              timeout: 5000,
-            }
-          );
-        }).toPass({ timeout: 60000 });
+        await waitForAllLoadersToDisappear(page);
+        if (!(await serviceTitle.isVisible())) {
+          await expandTreeNode(page, 'Databases');
+        }
+        await expect(serviceTitle).toBeVisible();
+        await serviceTitle.scrollIntoViewIfNeeded();
+        await serviceTitle.click();
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
 
         await waitForAllLoadersToDisappear(page);
 

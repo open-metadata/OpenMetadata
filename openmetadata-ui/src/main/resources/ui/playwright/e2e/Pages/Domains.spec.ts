@@ -91,6 +91,7 @@ import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin } from '../../utils/user';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 let user: UserClass;
 let domain: Domain;
 let classification: ClassificationClass;
@@ -1732,11 +1733,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await selectDomain(page, domain.data);
 
       // Verify subdomain exists before rename
-      const subdomainSearchResponse = page.waitForResponse(
+      const subdomainSearchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
@@ -1761,11 +1764,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify subdomain is still accessible after parent domain rename
-      const subdomainSearchResponseAfterRename = page.waitForResponse(
+      const subdomainSearchResponseAfterRename = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab = page
@@ -1846,11 +1851,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Navigate to subDomain1
-      const subdomainSearchResponse1 = page.waitForResponse(
+      const subdomainSearchResponse1 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab1 = page
@@ -1876,11 +1883,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ).toContainText(subDomain1.data.displayName);
 
       // Navigate to subDomain2 from subDomain1
-      const subdomainSearchResponse2 = page.waitForResponse(
+      const subdomainSearchResponse2 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab2 = page
@@ -1906,11 +1915,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ).toContainText(subDomain2.data.displayName);
 
       // Navigate to subDomain3 from subDomain2
-      const subdomainSearchResponse3 = page.waitForResponse(
+      const subdomainSearchResponse3 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab3 = page
@@ -2319,11 +2330,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await selectDomain(page, domain.data);
 
       // Navigate to subDomain1
-      const subdomainSearchResponse1 = page.waitForResponse(
+      const subdomainSearchResponse1 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab = page
@@ -2344,11 +2357,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ]);
 
       // Verify subDomain2 exists under subDomain1 before rename
-      const subdomainSearchResponse2 = page.waitForResponse(
+      const subdomainSearchResponse2 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab2 = page
@@ -2376,11 +2391,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify subDomain2 is still accessible after parent subdomain rename
-      const subdomainSearchResponse3 = page.waitForResponse(
+      const subdomainSearchResponse3 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab3 = page
@@ -2531,11 +2548,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // 2. Verify subdomain
-      const subdomainSearchResponse = page.waitForResponse(
+      const subdomainSearchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab = page
@@ -2650,11 +2669,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
           newDomainName
         );
 
-        const subdomainSearchResponse = page.waitForResponse(
+        const subdomainSearchResponse = waitForResponseWithStatus(
+          page,
           (response) =>
+            response.request().method() === 'GET' &&
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes('index=domain') &&
-            response.status() === 200
+            response.url().includes('index=domain'),
+          200
         );
 
         const subDomainsTab = page
@@ -3241,18 +3262,22 @@ test.describe('Domain Tree View Functionality', () => {
       await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse((response) => {
-        const url = response.url();
-        if (
-          url.includes('/api/v1/domains/name/') &&
-          url.includes('fields=') &&
-          response.status() === 200
-        ) {
-          apiRequestUrl = url;
-          return true;
-        }
-        return false;
-      });
+      const responsePromise = waitForResponseWithStatus(
+        page,
+        (response) => {
+          if (response.request().method() !== 'GET') return false;
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=')
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        },
+        200
+      );
 
       await page.getByTestId('assets').click();
       await responsePromise;
@@ -3323,18 +3348,22 @@ test.describe('Domain Tree View Functionality', () => {
       await testTag.visitPage(page);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse((response) => {
-        const url = response.url();
-        if (
-          url.includes('/api/v1/domains/name/') &&
-          url.includes('fields=') &&
-          response.status() === 200
-        ) {
-          apiRequestUrl = url;
-          return true;
-        }
-        return false;
-      });
+      const responsePromise = waitForResponseWithStatus(
+        page,
+        (response) => {
+          if (response.request().method() !== 'GET') return false;
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=')
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        },
+        200
+      );
 
       await page.getByTestId('assets').click();
       await responsePromise;

@@ -41,6 +41,7 @@ import {
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
@@ -462,11 +463,13 @@ test.describe('Right Panel Test Suite', () => {
                 if (firstField && secondField) {
                   // 1. Search for first field
                   const searchRes = usesServerSideSearch
-                    ? adminPage.waitForResponse(
+                    ? waitForResponseWithStatus(
+                        adminPage,
                         (res) =>
+                          res.request().method() === 'GET' &&
                           res.url().includes('columns/search?offset=') &&
-                          res.url().includes('q=') &&
-                          res.status() === 200
+                          res.url().includes('q='),
+                        200
                       )
                     : undefined;
                   await schema.searchFor(firstField);
@@ -477,10 +480,12 @@ test.describe('Right Panel Test Suite', () => {
 
                   // 2. Clear search
                   const clearRes = usesServerSideSearch
-                    ? adminPage.waitForResponse(
+                    ? waitForResponseWithStatus(
+                        adminPage,
                         (res) =>
-                          res.url().includes('/columns?offset=') &&
-                          res.status() === 200
+                          res.request().method() === 'GET' &&
+                          res.url().includes('/columns?offset='),
+                        200
                       )
                     : undefined;
                   await schema.clearSearch();
@@ -491,11 +496,13 @@ test.describe('Right Panel Test Suite', () => {
 
                   // 3. Search for non-existent field
                   const noMatchRes = usesServerSideSearch
-                    ? adminPage.waitForResponse(
+                    ? waitForResponseWithStatus(
+                        adminPage,
                         (res) =>
+                          res.request().method() === 'GET' &&
                           res.url().includes('columns/search?offset=') &&
-                          res.url().includes('q=') &&
-                          res.status() === 200
+                          res.url().includes('q='),
+                        200
                       )
                     : undefined;
                   await schema.searchFor('zzz_no_match_xyz');
@@ -927,11 +934,13 @@ test.describe('Right Panel Test Suite', () => {
             await localDQ.shouldShowTestCaseCardsCount(2);
 
             // 3. Search for non-existent test case
-            const noMatchRes = adminPage.waitForResponse(
+            const noMatchRes = waitForResponseWithStatus(
+              adminPage,
               (res) =>
+                res.request().method() === 'GET' &&
                 res.url().includes('dataQuality/testCases/search/list') &&
-                res.url().includes('q=') &&
-                res.status() === 200
+                res.url().includes('q='),
+              200
             );
             await localDQ.searchFor('zzz_non_existent_search');
             await noMatchRes;

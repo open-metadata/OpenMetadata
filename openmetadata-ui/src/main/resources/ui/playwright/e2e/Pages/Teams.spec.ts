@@ -66,6 +66,7 @@ import {
   verifyTeamListingAssetCount,
   waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -236,12 +237,13 @@ test.describe('Teams Page', () => {
       await page.locator('[data-testid="users"]').click();
 
       // Click on add new user
-      const fetchUsersResponse = page.waitForResponse(
+      const fetchUsersResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/users') &&
           response.url().includes('limit=25') &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
+          response.request().method() === 'GET',
+        200
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
@@ -860,12 +862,13 @@ test.describe('Teams Page', () => {
     // Navigate to users tab and add new user
     await page.locator('[data-testid="users"]').click();
 
-    const fetchUsersResponse = page.waitForResponse(
+    const fetchUsersResponse = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/users') &&
         response.url().includes('limit=25') &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
+        response.request().method() === 'GET',
+      200
     );
     await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;

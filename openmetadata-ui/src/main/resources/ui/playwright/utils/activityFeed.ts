@@ -98,13 +98,15 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
  * activity events.
  */
 export const waitForReactionResponse = (page: Page, reaction: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
+      ['PUT', 'DELETE'].includes(response.request().method()) &&
       (response.url().includes('/api/v1/activity') ||
         response.url().includes('/api/v1/conversations') ||
         response.url().includes('/api/v1/feed')) &&
-      response.url().includes(`/reaction/${reaction}`) &&
-      response.ok()
+      response.url().includes(`/reaction/${reaction}`),
+    'ok'
   );
 
 /**
@@ -300,3 +302,5 @@ export const postActivityComment = async (page: Page, commentText: string) => {
   // Verify comment appears
   await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
 };
+
+import { waitForResponseWithStatus } from './waitHelpers';

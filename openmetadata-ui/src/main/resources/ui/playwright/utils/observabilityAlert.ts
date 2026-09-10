@@ -57,37 +57,19 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
   await waitForAllLoadersToDisappear(page);
 
-  // Set up the response promise before navigation. Armed once, outside the retry
-  // below, so whichever attempt actually triggers the request is the one it sees
-  // — re-arming per attempt would miss a response that already landed. Its
-  // timeout must outlive the retry budget, otherwise it rejects mid-loop.
-  const getAlerts = page.waitForResponse(
-    (response) => {
-      const url = response.url();
-
-      return (
-        url.includes('/api/v1/events/subscriptions') &&
-        url.includes('alertType=Observability')
-      );
-    },
-    { timeout: 45_000 }
-  );
-
-  // `sidebarClick` targets an antd menu item, so the click can be dispatched
-  // successfully and still be lost — same mechanism as the source dropdown in
-  // `inputBasicAlertInformation` (utils/alert.ts). When that happens the app
-  // never navigates, and a one-shot `waitForURL` then spends the entire test
-  // budget waiting on a navigation that was never going to start. Retry the
-  // click until the URL actually changes.
-  await expect(async () => {
-    if (!page.url().includes('/observability/alerts')) {
-      await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
-    }
-
-    await page.waitForURL('**/observability/alerts', { timeout: 10_000 });
-  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000] });
-
-  await getAlerts;
+  const getAlerts = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/events/subscriptions' &&
+      url.searchParams.get('alertType') === 'Observability'
+    );
+  });
+  await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
+  await page.waitForURL('**/observability/alerts', {
+    waitUntil: 'domcontentloaded',
+  });
+  expect((await getAlerts).status()).toBe(200);
 };
 
 export const addExternalDestination = async ({

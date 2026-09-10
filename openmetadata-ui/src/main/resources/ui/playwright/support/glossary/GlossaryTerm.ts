@@ -12,8 +12,9 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { okJson } from '../../utils/apiResponse';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Glossary } from './Glossary';
@@ -82,11 +83,13 @@ export class GlossaryTerm extends EntityClass {
     if (!(await glossaryTerm.isVisible())) {
       const glossaryId =
         this.responseData.glossary?.id ?? this.glossary.responseData.id;
-      const glossaryTermListResponse = page.waitForResponse(
+      const glossaryTermListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/glossaryTerms?') &&
-          response.url().includes(`glossary=${glossaryId}`) &&
-          response.status() === 200
+          response.url().includes(`glossary=${glossaryId}`),
+        200
       );
       await expandCollapseButton.click();
       await glossaryTermListResponse;
@@ -124,13 +127,14 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(`/api/v1/glossaryTerms/${this.responseData.id}`, {
+    const response = await apiContext.patch(
+      `/api/v1/glossaryTerms/${this.responseData.id}`,
+      {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      })
+      }
     );
 
     if (!response.ok()) {
@@ -152,7 +156,8 @@ export class GlossaryTerm extends EntityClass {
   async delete(apiContext: APIRequestContext) {
     const fqn =
       this.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
         fqn
       )}?recursive=true&hardDelete=true`
@@ -170,3 +175,5 @@ export class GlossaryTerm extends EntityClass {
     this.responseData.fullyQualifiedName = newTermFqn;
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

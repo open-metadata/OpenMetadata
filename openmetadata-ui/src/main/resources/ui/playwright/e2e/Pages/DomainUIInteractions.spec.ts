@@ -71,41 +71,37 @@ test.describe('Domain Owner Management', () => {
       await page.getByRole('tab', { name: 'Users' }).click();
       await waitForAllLoadersToDisappear(page);
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
       const ownerItem = page.getByRole('listitem', {
         name: user.getUserDisplayName(),
         exact: true,
       });
-      const maxRetries = 5;
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await ownerItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          await waitForSearchIndexed(
-            apiContext,
-            user.getUserName(),
-            'user_search_index',
-            { timeout: 3000 }
-          ).catch(() => undefined);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.getUserName(),
+        'user_search_index'
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
@@ -221,44 +217,37 @@ test.describe('Domain Expert Management', () => {
         state: 'visible',
       });
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
       const expertItem = page.getByRole('listitem', {
         name: user.getUserDisplayName(),
         exact: true,
       });
-      const maxRetries = 5;
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        // Clear and fill search bar
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        // Check if user is visible
-        const isVisible = await expertItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        // Wait before retry (ES indexing delay)
-        if (retry < maxRetries - 1) {
-          await waitForSearchIndexed(
-            apiContext,
-            user.getUserName(),
-            'user_search_index',
-            { timeout: 3000 }
-          ).catch(() => undefined);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.getUserName(),
+        'user_search_index'
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await expertItem.waitFor({ state: 'visible', timeout: 5000 });
       await expertItem.click();
@@ -410,41 +399,37 @@ test.describe('Data Product UI Operations', () => {
       await page.getByRole('tab', { name: 'Users' }).click();
       await waitForAllLoadersToDisappear(page);
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
       const ownerItem = page.getByRole('listitem', {
         name: user.getUserDisplayName(),
         exact: true,
       });
-      const maxRetries = 5;
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await ownerItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          await waitForSearchIndexed(
-            apiContext,
-            user.getUserName(),
-            'user_search_index',
-            { timeout: 3000 }
-          ).catch(() => undefined);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.getUserName(),
+        'user_search_index'
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
@@ -909,3 +894,5 @@ test.describe('Copy FQN Functionality', () => {
     }
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

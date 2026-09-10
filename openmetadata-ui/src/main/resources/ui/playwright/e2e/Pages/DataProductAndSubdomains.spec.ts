@@ -246,41 +246,37 @@ test.describe('Data Product Comprehensive Tests', () => {
         state: 'visible',
       });
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
       const expertItem = page.getByRole('listitem', {
         name: user.getUserDisplayName(),
         exact: true,
       });
-      const maxRetries = 5;
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        await searchBar.clear();
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await expertItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          await waitForSearchIndexed(
-            apiContext,
-            user.getUserName(),
-            'user_search_index',
-            { timeout: 3000 }
-          ).catch(() => undefined);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.getUserName(),
+        'user_search_index'
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await expertItem.waitFor({ state: 'visible', timeout: 5000 });
       await expertItem.click();
@@ -398,16 +394,27 @@ test.describe('Data Product Comprehensive Tests', () => {
         .or(assetModal.getByText(assetName))
         .first();
 
-      // The modal re-queries only when the search text changes, and a table
-      // created moments ago may not be in the search index yet -- so a single
-      // fill can settle on an empty result set that never refreshes. Re-type
-      // to re-issue the query until the asset actually shows up.
-      await expect(async () => {
-        await assetModal.getByTestId('searchbar').fill('');
-        await assetModal.getByTestId('searchbar').fill(assetName);
-
-        await expect(assetCard).toBeVisible({ timeout: 5_000 });
-      }).toPass({ timeout: 60_000 });
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table',
+        { minVersion: table.entityResponseData.version }
+      );
+      const assetSearch = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            (url.searchParams.get('q') ?? '').includes(assetName)
+          );
+        },
+        200
+      );
+      await assetModal.getByTestId('searchbar').fill(assetName);
+      await assetSearch;
+      await expect(assetCard).toBeVisible();
 
       await assetCard.click();
 
@@ -1004,3 +1011,5 @@ test.describe('Data Product Name in Entity Name Cell', () => {
     }
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

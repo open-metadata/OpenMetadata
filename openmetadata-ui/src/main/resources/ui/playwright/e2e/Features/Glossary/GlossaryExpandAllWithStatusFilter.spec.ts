@@ -18,6 +18,7 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -36,10 +37,12 @@ const applyStatusFilter = async (page: Page, statuses: string[]) => {
     await statusDropdown.getByText(status, { exact: true }).click();
   }
 
-  const apiResponse = page.waitForResponse(
+  const apiResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/glossaryTerms') &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200
   );
   await page.getByRole('button', { name: /save/i }).click();
   const response = await apiResponse;
@@ -52,10 +55,12 @@ const clickExpandAll = async (page: Page) => {
   const expandButton = page.getByTestId('expand-collapse-all-button');
   await expect(expandButton).toBeEnabled();
 
-  const termRes = page.waitForResponse(
+  const termRes = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/glossaryTerms') &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200
   );
   await expandButton.click();
   const response = await termRes;
@@ -68,10 +73,12 @@ const clickCollapseAll = async (page: Page) => {
   const collapseButton = page.getByTestId('expand-collapse-all-button');
   await expect(collapseButton).toBeEnabled();
 
-  const termRes = page.waitForResponse(
+  const termRes = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/glossaryTerms') &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200
   );
   await collapseButton.click();
   await termRes;

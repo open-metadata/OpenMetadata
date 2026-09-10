@@ -2067,6 +2067,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   const createdDataProducts: DataProduct[] = [];
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    createdDataProducts.length = 0;
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.create(apiContext);
     for (const dp of testDataProducts) {

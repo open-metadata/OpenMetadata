@@ -32,10 +32,10 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import {
+  chooseSelectOption,
   clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
-  selectOptionWithRetry,
   toastNotification,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -498,7 +498,7 @@ export const editPipelineEdgeDescription = async (
   await page.click(
     `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
   );
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.locator('.edge-info-drawer')).toBeVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
   await page.locator('.ProseMirror').first().click();
@@ -885,7 +885,7 @@ export const verifyExportLineagePNG = async (
     });
 
   if (!isPNGSelected) {
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       page.getByTestId('export-type-select'),
       page.getByRole('option', { name: 'PNG' })
     );

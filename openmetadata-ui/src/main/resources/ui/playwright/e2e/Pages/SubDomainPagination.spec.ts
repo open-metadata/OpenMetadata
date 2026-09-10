@@ -33,6 +33,7 @@ const PAGE_SIZE = 9;
 
 test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
+    subDomains.length = 0;
     test.slow(true);
 
     const { apiContext, afterAction } = await createNewPage(browser);

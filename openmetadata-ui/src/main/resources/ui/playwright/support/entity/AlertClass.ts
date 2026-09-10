@@ -99,7 +99,8 @@ export class AlertClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/events/subscriptions/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
@@ -110,3 +111,5 @@ export class AlertClass {
     return this.responseData;
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

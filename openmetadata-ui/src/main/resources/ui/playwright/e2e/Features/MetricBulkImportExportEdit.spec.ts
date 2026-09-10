@@ -25,6 +25,7 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
+import { assertFulfilled } from '../../utils/apiResponse';
 import {
   redirectToHomePage,
   uuid,
@@ -522,12 +523,12 @@ const cleanupFixtures = async () => {
     return;
   }
 
-  await Promise.allSettled(
+  const metricResults = await Promise.allSettled(
     fixtures.metrics.map((metric) =>
       deleteByName('/api/v1/metrics', metric.fullyQualifiedName)
     )
   );
-  await Promise.allSettled([
+  const referenceResults = await Promise.allSettled([
     deleteByName(
       '/api/v1/dataProducts',
       fixtures.dataProduct.fullyQualifiedName
@@ -535,11 +536,11 @@ const cleanupFixtures = async () => {
     deleteById('/api/v1/tags', fixtures.tag.id),
     deleteById('/api/v1/tags', fixtures.secondTag.id),
   ]);
-  await deleteByName('/api/v1/domains', fixtures.domain.fullyQualifiedName);
-  await deleteByName(
-    '/api/v1/glossaries',
-    fixtures.glossary.fullyQualifiedName
-  );
+  const parentResults = await Promise.allSettled([
+    deleteByName('/api/v1/domains', fixtures.domain.fullyQualifiedName),
+    deleteByName('/api/v1/glossaries', fixtures.glossary.fullyQualifiedName),
+  ]);
+  assertFulfilled([...metricResults, ...referenceResults, ...parentResults]);
 };
 
 const waitForMetricsPage = async (page: Page) => {
@@ -1017,7 +1018,7 @@ test.describe(
 
     test.afterAll(async () => {
       test.setTimeout(120_000);
-      await Promise.allSettled([
+      const userResults = await Promise.allSettled([
         viewOnlyUser?.delete(apiContext),
         viewOnlyRole?.delete(apiContext),
         viewOnlyPolicy?.delete(apiContext),
@@ -1026,9 +1027,19 @@ test.describe(
         metricEditorPolicy?.delete(apiContext),
         metricExportUser?.delete(apiContext),
       ]);
-      await cleanupFixtures();
-      await cleanupMetricCustomProperty();
-      await disposeApiContext?.();
+      try {
+        const fixtureResults = await Promise.allSettled([cleanupFixtures()]);
+        const propertyResults = await Promise.allSettled([
+          cleanupMetricCustomProperty(),
+        ]);
+        assertFulfilled([
+          ...userResults,
+          ...fixtureResults,
+          ...propertyResults,
+        ]);
+      } finally {
+        await disposeApiContext?.();
+      }
     });
 
     test('Admin starts exactly one async export job from the metrics listing', async ({

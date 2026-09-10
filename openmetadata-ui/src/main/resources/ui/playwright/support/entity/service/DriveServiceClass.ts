@@ -13,11 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
-import {
-  createOrFetch,
-  okJson,
-  withNotFoundRetry,
-} from '../../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -74,16 +70,14 @@ export class DriveServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/${EntityTypeEndpoint.DriveService}/${this.entityResponseData?.['id']}`,
-        {
-          data: payload,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/${EntityTypeEndpoint.DriveService}/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     const service = await okJson(serviceResponse, 'DriveServiceClass.patch');
@@ -113,7 +107,8 @@ export class DriveServiceClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/${EntityTypeEndpoint.DriveService}/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
@@ -122,3 +117,5 @@ export class DriveServiceClass extends EntityClass {
     return await serviceResponse.json();
   }
 }
+
+import { deleteFixtureEntity } from '../../../utils/apiResponse';

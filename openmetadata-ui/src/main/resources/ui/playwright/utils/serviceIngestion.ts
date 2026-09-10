@@ -11,21 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  APIResponse,
-  expect,
-  Page,
-  Response,
-} from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import {
-  getApiContext,
-  toastNotification,
-  waitForToastStackToClear,
-} from './common';
+import { toastNotification, waitForToastStackToClear } from './common';
 import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 
 export enum Services {
@@ -395,33 +385,6 @@ export const advanceToServiceConnectionStep = async (
     await waitForServiceConnectionForm(page);
   } else {
     await target.waitFor({ state: 'visible' });
-  }
-};
-
-type RetryRequestData = {
-  page: Page;
-  retries?: number;
-} & (
-  | { url: string; fn?: never }
-  | { fn: () => Promise<APIResponse>; url?: never }
-);
-
-export const makeRetryRequest = async (data: RetryRequestData) => {
-  const { url, page, retries = 3, fn } = data;
-  const { apiContext } = await getApiContext(page);
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await (fn ? fn() : apiContext.get(url));
-
-      return response.json();
-    } catch (error) {
-      if (i === retries - 1) {
-        throw error;
-      }
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- exponential backoff for retry
-      await page.waitForTimeout(1000 * (i + 1));
-    }
   }
 };
 

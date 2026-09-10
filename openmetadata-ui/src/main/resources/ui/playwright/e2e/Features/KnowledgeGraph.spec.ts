@@ -292,7 +292,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       ).toHaveText(/[1-9]\d* linked assets · [1-9]\d* derived relationships/);
       await expectRendererHealthy(page, pageErrors);
     } finally {
-      await Promise.allSettled([
+      await settleAll([
         ontologyTable.delete(apiContext),
         relatedTable.delete(apiContext),
         glossary.delete(apiContext),
@@ -357,3 +357,5 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expectRendererHealthy(page, pageErrors);
   });
 });
+
+import { settleAll } from '../../utils/apiResponse';

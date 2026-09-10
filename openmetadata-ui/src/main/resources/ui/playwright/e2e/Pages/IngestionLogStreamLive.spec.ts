@@ -16,13 +16,12 @@ import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../constant/config';
-import { LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS } from '../../constant/logsViewer';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
+import { triggerIngestionPipeline } from '../../utils/ingestionExecution';
 import {
   getLogViewerLineCount,
-  SchedulerDidNotStartError,
   waitForRunningPipelineStatus,
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
@@ -55,10 +54,6 @@ const KAFKA_BOOTSTRAP_SERVERS =
 const KAFKA_SCHEMA_REGISTRY_URL =
   process.env.PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL ?? '';
 
-const PIPELINE_TRIGGER_ATTEMPTS = 3;
-const PIPELINE_TRIGGER_RETRY_DELAY_MS = 5_000;
-const DEPLOY_SETTLE_MS = 5_000;
-
 const serviceName = `pw-kafka-live-logs-${uuid()}`;
 const pipelineName = `pw-live-logs-agent-${uuid()}`;
 
@@ -67,37 +62,6 @@ let serviceFqn = '';
 let pipelineId = '';
 let pipelineFqn = '';
 let runId = '';
-
-const triggerPipeline = async (
-  apiContext: APIRequestContext,
-  id: string
-): Promise<void> => {
-  let lastStatus: number | undefined;
-  let lastBody = '';
-
-  for (let attempt = 1; attempt <= PIPELINE_TRIGGER_ATTEMPTS; attempt++) {
-    const triggerResponse = await apiContext.post(
-      `/api/v1/services/ingestionPipelines/trigger/${id}`
-    );
-    lastStatus = triggerResponse.status();
-
-    if (triggerResponse.ok()) {
-      return;
-    }
-
-    lastBody = await triggerResponse.text();
-
-    if (attempt < PIPELINE_TRIGGER_ATTEMPTS) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, PIPELINE_TRIGGER_RETRY_DELAY_MS)
-      );
-    }
-  }
-
-  throw new Error(
-    `Failed to trigger pipeline ${id} after ${PIPELINE_TRIGGER_ATTEMPTS} attempts: ${lastStatus} ${lastBody}`
-  );
-};
 
 const deployAndTrigger = async (
   apiContext: APIRequestContext,
@@ -112,11 +76,7 @@ const deployAndTrigger = async (
     `Deploying pipeline ${id} failed with ${deployResponse.status()}`
   ).toBeTruthy();
 
-  // The DAG file is written by the deploy call but the scheduler needs a moment
-  // to pick it up; triggering immediately returns a 404 for an unknown DAG.
-  await new Promise((resolve) => setTimeout(resolve, DEPLOY_SETTLE_MS));
-
-  await triggerPipeline(apiContext, id);
+  await triggerIngestionPipeline(apiContext, id);
 };
 
 test.describe(
@@ -203,33 +163,10 @@ test.describe(
 
         await deployAndTrigger(apiContext, pipelineId);
 
-        // A run still `queued` after the wait means the trigger raced the
-        // scheduler serializing a freshly deployed DAG; re-triggering is what
-        // unsticks it, the same way IncidentManager re-triggers. A terminal state
-        // is a real signal and rethrows immediately.
-        for (
-          let attempt = 1;
-          attempt <= LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS;
-          attempt++
-        ) {
-          try {
-            ({ runId } = await waitForRunningPipelineStatus(
-              apiContext,
-              pipelineFqn
-            ));
-
-            break;
-          } catch (error) {
-            if (
-              !(error instanceof SchedulerDidNotStartError) ||
-              attempt === LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS
-            ) {
-              throw error;
-            }
-
-            await triggerPipeline(apiContext, pipelineId);
-          }
-        }
+        ({ runId } = await waitForRunningPipelineStatus(
+          apiContext,
+          pipelineFqn
+        ));
       } finally {
         await afterAction();
       }

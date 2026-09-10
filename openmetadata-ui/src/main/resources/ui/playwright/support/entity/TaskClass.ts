@@ -85,9 +85,13 @@ export class TaskClass {
     if (!this.responseData?.id) {
       return;
     }
-    await apiContext.delete(`/api/v1/tasks/${this.responseData.id}`, {
-      params: { hardDelete: 'true' },
-    });
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/tasks/${this.responseData.id}`,
+      {
+        params: { hardDelete: 'true' },
+      }
+    );
   }
 
   async resolve(
@@ -136,3 +140,5 @@ export class TaskClass {
     await page.waitForLoadState('load');
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

@@ -55,6 +55,9 @@ test.describe('Input Output Ports', () => {
   const dashboards: DashboardClass[] = [];
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    tables.length = 0;
+    topics.length = 0;
+    dashboards.length = 0;
     const { apiContext } = await performAdminLogin(browser);
 
     await domain.create(apiContext);

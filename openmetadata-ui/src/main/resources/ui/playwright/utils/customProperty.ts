@@ -25,12 +25,12 @@ import {
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
+  chooseSelectOption,
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getDescriptionBox,
-  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -39,6 +39,7 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -80,15 +81,9 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
-
-  const isInputVisible = await page
-    .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
-    .isVisible();
-
-  if (!isInputVisible) {
-    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
-  }
+  const cell = page.locator(`div.rdg-cell-${columnName}`).last();
+  await cell.scrollIntoViewIfNeeded();
+  await cell.dblclick();
   await page
     .getByTestId('edit-table-type-property-modal')
     .getByRole('textbox')
@@ -106,14 +101,11 @@ const addTablePropertyRow = async (page: Page) => {
   const firstColumnCell = modal.locator('div.rdg-cell-pw-column1').last();
   const secondColumnCell = modal.locator('div.rdg-cell-pw-column2').last();
 
-  await expect(async () => {
-    if (!(await firstColumnCell.isVisible())) {
-      await expect(addRowButton).toBeEnabled();
-      await addRowButton.click();
-    }
-    await expect(firstColumnCell).toBeVisible({ timeout: 5_000 });
-    await expect(secondColumnCell).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
+  if (!(await firstColumnCell.isVisible())) {
+    await addRowButton.click();
+  }
+  await expect(firstColumnCell).toBeVisible();
+  await expect(secondColumnCell).toBeVisible();
 };
 
 export const setValueForProperty = async (data: {
@@ -702,7 +694,7 @@ export const addCustomPropertiesForEntity = async ({
   await page.fill('[data-testid="display-name"]', propertyName);
 
   // Select custom type
-  await selectOptionWithRetry(
+  await chooseSelectOption(
     page.locator('[data-testid="propertyType"]'),
     page.getByRole('option', { name: customType, exact: true })
   );
@@ -765,7 +757,7 @@ export const addCustomPropertiesForEntity = async ({
 
   // Format configuration
   if (['Date', 'Date Time', 'Time'].includes(customType) && formatConfig) {
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       page.getByTestId('formatConfig'),
       page.getByRole('option', { name: formatConfig, exact: true })
     );
@@ -1077,10 +1069,12 @@ export const editColumnCustomProperty = async (
     const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
-    const assetSearchResponse = page.waitForResponse(
+    const assetSearchResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
+        response.request().method() === 'GET' &&
+        response.url().includes('/api/v1/search/query'),
+      200
     );
     await input.fill(value);
     await assetSearchResponse;
@@ -1217,11 +1211,12 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   await card.getByTestId('edit-icon-right-panel').click();
 
   // Define wait for response
-  const updateColumnResponse = page.waitForResponse(
+  const updateColumnResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/columns/name') &&
-      response.request().method() === 'PUT' &&
-      response.ok()
+      response.request().method() === 'PUT',
+    'ok'
   );
 
   // Edit logic

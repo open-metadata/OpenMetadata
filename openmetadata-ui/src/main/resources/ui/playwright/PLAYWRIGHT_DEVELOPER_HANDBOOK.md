@@ -821,8 +821,11 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | `om-playwright/justified-rule-disable` | error | Require a justification comment when disabling a playwright lint rule |
 | `om-playwright/no-awaited-wait-for-response` | error | Disallow awaiting page.waitForResponse() directly — register the listener before the action instead |
 | `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
+| `om-playwright/no-discarded-state-query` | error | Require locator state queries to be asserted or used; awaiting a boolean alone does not assert or wait for readiness |
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
+| `om-playwright/no-status-filtered-response` | error | Assert the status of the first matching response instead of filtering out HTTP failures |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
+| `om-playwright/reset-fixture-arrays` | error | Reset arrays populated by beforeAll before appending fixtures from a new test group |
 | `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
 | `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
 | `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |

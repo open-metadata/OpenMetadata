@@ -179,7 +179,11 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  const control = comboboxInput.or(triggerButton).first();
+  await expect(control).toBeVisible();
+  await control.scrollIntoViewIfNeeded();
+  await control.hover();
+  await control.focus();
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -205,55 +209,23 @@ export const selectOption = async (
     await triggerButton.click();
   }
 
-  // Scope the popup to THIS control via aria-controls (react-aria sets it
-  // while expanded). Popovers portal to <body>, so a global
-  // [role="listbox"]:visible could match a popup left open by a previous
-  // interaction (MultiSelect keeps its popup open by design). The popup can
-  // also close and reopen under a new id while the builder re-renders, so
-  // re-resolve it (and reopen if needed) on every retry.
-  const control = comboboxInput.or(triggerButton).first();
-  await expect(async () => {
-    if ((await control.getAttribute('aria-expanded')) !== 'true') {
-      await control.press('ArrowDown');
-    }
-    const listboxId = await control.getAttribute('aria-controls');
-    if (!listboxId) {
-      throw new Error('Combobox popup did not open (aria-controls not set)');
-    }
-    const option = page
-      .locator(`[role="listbox"][id="${listboxId}"]`)
-      .getByRole('option', { name: optionTitle, exact: true })
-      .first();
-    if (isSearchable && (await option.count()) === 0) {
-      await comboboxInput.fill('');
-      await comboboxInput.fill(optionTitle);
-      throw new Error(`Option "${optionTitle}" not present yet; re-searched`);
-    }
-    await option.click({ timeout: 2000 });
-  }).toPass({ timeout: 30000 });
-
-  // Close the popup if the click didn't: re-selecting the current value emits
-  // no selection change (so the popup stays open) and MultiSelect popups stay
-  // open by design — either would pollute the next interaction's locators.
-  // The control itself may be GONE by now (selecting a field can morph the
-  // whole rule row), which also unmounts its popup — tolerate that.
-  const openListboxId = await control
-    .getAttribute('aria-controls', { timeout: 1000 })
-    .catch(() => null);
-  if (openListboxId) {
-    const openListbox = page.locator(`[role="listbox"][id="${openListboxId}"]`);
-    await openListbox
-      .waitFor({ state: 'hidden', timeout: 2000 })
-      .catch(async () => {
-        // Blur the control — react-aria comboboxes close their popup when
-        // focus leaves. NEVER send Escape here: surrounding antd modals and
-        // forms handle Escape in the capture phase and dismiss themselves.
-        await control.blur({ timeout: 1000 }).catch(() => undefined);
-        await openListbox
-          .waitFor({ state: 'hidden', timeout: 1000 })
-          .catch(() => undefined);
-      });
+  await expect(control).toHaveAttribute('aria-expanded', 'true');
+  const listboxId = await control.getAttribute('aria-controls');
+  if (!listboxId) {
+    throw new Error('Combobox popup did not expose aria-controls');
   }
+  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+  await listbox.getByRole('option', { name: optionTitle, exact: true }).click();
+
+  if ((await comboboxInput.count()) > 0 && (await triggerButton.count()) > 0) {
+    await expect(comboboxInput).toHaveValue(optionTitle);
+  } else {
+    await expect(dropdownLocator).toContainText(optionTitle);
+  }
+  if (await control.count()) {
+    await control.blur();
+  }
+  await expect(listbox).toBeHidden();
 };
 
 export const selectRange = async (
@@ -317,24 +289,11 @@ export const fillRule = async (
           .count();
       };
 
+      await dropdownInput.scrollIntoViewIfNeeded();
+      await dropdownInput.fill(searchData);
+      await dropdownInput.press('ArrowDown');
       await expect
-        .poll(
-          async () => {
-            await dropdownInput.fill('');
-            await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
-
-            return countMatchingOptions();
-          },
-          { timeout: 30_000, intervals: [1_000, 2_000, 3_000] }
-        )
+        .poll(countMatchingOptions, { timeout: 30_000 })
         .toBeGreaterThan(0);
 
       const listboxId = await dropdownInput.getAttribute('aria-controls');
@@ -720,9 +679,6 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
   await expect(listbox).toBeVisible();
-
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-  await page.waitForTimeout(1000);
 
   // allowsEmptyCollection keeps the popup open and renders the "No data"
   // empty state (as an option row) instead of an empty listbox.

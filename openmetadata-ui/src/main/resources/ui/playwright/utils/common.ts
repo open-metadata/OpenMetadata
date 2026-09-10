@@ -21,12 +21,14 @@ import {
 import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
-import { toLower } from 'lodash';
+import { escapeRegExp, toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
+import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
@@ -249,8 +251,8 @@ export const redirectToHomePage = async (
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -442,9 +444,7 @@ export const toastNotification = async (
     .filter({ hasText: message })
     .first();
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  await expect(toast).toBeVisible({ timeout });
 };
 
 /**
@@ -785,6 +785,42 @@ export const removeSingleSelectDomain = async (
   );
 };
 
+export const searchDataProductOptions = async (
+  page: Page,
+  dataProduct: { displayName: string; fullyQualifiedName?: string }
+): Promise<Locator> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      dataProduct.fullyQualifiedName,
+      'dataProduct'
+    );
+  } finally {
+    await afterAction();
+  }
+  const input = page.locator('[data-testid="data-product-selector"] input');
+  if ((await input.inputValue()) === dataProduct.displayName) {
+    await input.clear();
+  }
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'dataProduct' &&
+      url.searchParams.get('q') ===
+        dataProduct.displayName.replaceAll('"', '\\"')
+    );
+  });
+  await input.fill(dataProduct.displayName);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  return page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
+};
+
 export const assignDataProduct = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
@@ -839,26 +875,7 @@ export const assignDataProduct = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
-
-    await expect(async () => {
-      // Match any Data Product search response. The dropdown filters by the
-      // asset's domain only when the "Data Product Domain Validation" rule is
-      // enabled; when it is disabled the query carries no domain, so we cannot
-      // key the wait on the domain name. The tag visibility check below is the
-      // real synchronization guard.
-      const searchDataProduct = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/query')
-      );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
-      await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    const tagLocator = await searchDataProductOptions(page, dataProduct);
 
     await tagLocator.click();
   }
@@ -1045,46 +1062,69 @@ export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
   result: Locator,
-  tabSelector?: Locator
+  tabSelector: Locator,
+  indexedReferences: { owners?: string[]; domains?: string[] }
 ) => {
-  let hasSubmittedSearch = false;
-
-  await expect
-    .poll(
-      async () => {
-        // Swallow the timeout: this wait only exists to let the search settle
-        // before checking the result, and the enclosing poll is what decides
-        // success. Left unhandled, a single slow search rejects and the
-        // exception aborts the whole poll instead of counting as "not yet" —
-        // so a 45s budget could fail after one 15s iteration.
-        const searchResponse = page
-          .waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.request().method() === 'GET',
-            { timeout: 15_000 }
-          )
-          .catch(() => null);
-
-        if (hasSubmittedSearch) {
-          await Promise.all([searchResponse, page.reload()]);
-        } else {
-          await page.getByTestId('searchBox').fill(searchTerm);
-          await Promise.all([
-            searchResponse,
-            page.getByTestId('searchBox').press('Enter'),
-          ]);
-          hasSubmittedSearch = true;
-        }
-        await waitForAllLoadersToDisappear(page);
-        await tabSelector?.click();
-        await waitForAllLoadersToDisappear(page);
-
-        return result.isVisible();
-      },
-      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(true);
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get('/api/v1/search/query', {
+            params: {
+              q: `fullyQualifiedName:${JSON.stringify(searchTerm)}`,
+              index: 'table',
+              size: 1,
+            },
+          });
+          const body = await okJson<{
+            hits: {
+              hits: {
+                _source: {
+                  fullyQualifiedName: string;
+                  owners?: {
+                    name?: string;
+                    displayName?: string;
+                    fullyQualifiedName?: string;
+                  }[];
+                  domains?: {
+                    name?: string;
+                    displayName?: string;
+                    fullyQualifiedName?: string;
+                  }[];
+                };
+              }[];
+            };
+          }>(response, `Indexed references for ${searchTerm}`);
+          const source = body.hits.hits.find(
+            (hit) => hit._source.fullyQualifiedName === searchTerm
+          )?._source;
+          return Boolean(
+            source &&
+              Object.entries(indexedReferences).every(([field, names]) =>
+                names.every((name) =>
+                  source[field as keyof typeof indexedReferences]?.some(
+                    (reference) =>
+                      [
+                        reference.name,
+                        reference.displayName,
+                        reference.fullyQualifiedName,
+                      ].includes(name)
+                  )
+                )
+              )
+          );
+        },
+        { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+  await page.getByTestId('searchBox').fill(searchTerm);
+  await page.getByTestId('searchBox').press('Enter');
+  await tabSelector.click();
+  await expect(result).toBeVisible();
 };
 
 export const verifyDomainPropagation = async (
@@ -1114,7 +1154,7 @@ export const verifyDomainPropagation = async (
             fullyQualifiedName?: string;
             domains?: { name?: string; fullyQualifiedName?: string }[];
           };
-        }[] = response.ok() ? (await response.json())?.hits?.hits ?? [] : [];
+        }[] = (await okJson(response, 'Domain propagation search')).hits.hits;
         const source = hits.find(
           (hit) =>
             hit._source?.fullyQualifiedName === childFqnSearchTerm ||
@@ -1180,22 +1220,13 @@ export const waitForDeletionFromSearchIndex = async (
           )}&index=${searchIndex}&from=0&size=10`
         );
 
-        // This poll resolves on `false` ("entity gone"), the OPPOSITE
-        // polarity of verifyDomainPropagation — so a transient search error
-        // must read as "still present" (keep polling), never as an empty
-        // result set, or a single flaky 5xx would pass the gate against a
-        // stale index.
-        if (!response.ok()) {
-          return true;
-        }
-
         const hits: {
           _source?: {
             name?: string;
             displayName?: string;
             fullyQualifiedName?: string;
           };
-        }[] = (await response.json())?.hits?.hits ?? [];
+        }[] = (await okJson(response, 'Search deletion readiness')).hits.hits;
 
         return hits.some((hit) =>
           matchNames.some(
@@ -1231,62 +1262,6 @@ export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
 
   await waitForAllLoadersToDisappear(page);
-};
-
-/**
- * Utility function to handle API calls with retry logic for connection-related errors.
- * This is particularly useful for cleanup operations that might fail due to network issues.
- *
- * @param apiCall - The API call function to execute
- * @param operationName - Name of the operation for logging purposes
- * @param maxRetries - Maximum number of retry attempts (default: 3)
- * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
- * @returns The result of the API call if successful
- */
-export const executeWithRetry = async <T>(
-  apiCall: () => Promise<T>,
-  operationName: string,
-  maxRetries = 3,
-  baseDelay = 1000
-): Promise<T | void> => {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await apiCall();
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      // Check if it's a retriable error (connection-related issues)
-      const isRetriableError =
-        errorMessage.includes('socket hang up') ||
-        errorMessage.includes('ECONNRESET') ||
-        errorMessage.includes('ENOTFOUND') ||
-        errorMessage.includes('ETIMEDOUT') ||
-        errorMessage.includes('Connection refused') ||
-        errorMessage.includes('ECONNREFUSED');
-
-      if (isRetriableError && attempt < maxRetries - 1) {
-        // Exponential backoff: 1s, 2s, 4s
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.log(
-          `${operationName} attempt ${
-            attempt + 1
-          } failed with retriable error: ${errorMessage}. Retrying in ${delay}ms...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-
-        continue;
-      } else {
-        console.error(
-          `Failed to ${operationName} after ${attempt + 1} attempts:`,
-          errorMessage
-        );
-
-        // Don't throw the error to prevent test failures - just log it
-        break;
-      }
-    }
-  }
 };
 
 export const readElementInListWithScroll = async (
@@ -1334,24 +1309,26 @@ export const readElementInListWithScroll = async (
 
 export const testPaginationNavigation = async (
   page: Page,
+  navigate: () => Promise<unknown>,
   apiEndpointPattern: string,
   waitForLoadSelector?: string,
   validateUrl = true,
   validateRowCount = true
 ) => {
-  const responseMatcher = (response: { url: () => string }) => {
-    const url = response.url();
+  const responseMatcher = (response: ResponseWithRequest) => {
+    const url = new URL(response.url());
     return (
-      url.includes(apiEndpointPattern) &&
-      !url.includes('limit=0') &&
-      (url.includes('limit=') ||
-        url.includes('after=') ||
-        url.includes('before='))
+      response.request().method() === 'GET' &&
+      url.pathname.endsWith(apiEndpointPattern) &&
+      url.searchParams.get('limit') !== '0' &&
+      (url.searchParams.has('limit') ||
+        url.searchParams.has('after') ||
+        url.searchParams.has('before'))
     );
   };
 
   const page1ResponsePromise = page.waitForResponse(responseMatcher);
-
+  await navigate();
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
 
@@ -1442,19 +1419,18 @@ export const testPaginationNavigation = async (
     }
     await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await expect(async () => {
-      await pageSizeDropdown.hover();
-      if (!(await menuItem.isVisible())) {
-        await pageSizeDropdown.click();
-      }
-      await expect(menuItem).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
+    await pageSizeDropdown.hover();
+    await expect(menuItem).toBeVisible();
+    await waitForAntdPopupToSettle(page);
 
-    const pageSizeChangePromise = page.waitForResponse((response) =>
-      response.url().includes(apiEndpointPattern)
+    const pageSizeChangePromise = page.waitForResponse(
+      (response) =>
+        responseMatcher(response) &&
+        new URL(response.url()).searchParams.get('limit') === '25'
     );
     await menuItem.click();
-    await pageSizeChangePromise;
+    expect((await pageSizeChangePromise).status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
     await expect(pageSizeDropdown).toHaveText('25 / Page');
@@ -1669,13 +1645,10 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await expect(async () => {
-    await pageSizeDropdown.hover();
-    if (!(await menuItem.isVisible())) {
-      await pageSizeDropdown.click();
-    }
-    await expect(menuItem).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+  await pageSizeDropdown.scrollIntoViewIfNeeded();
+  await pageSizeDropdown.hover();
+  await expect(menuItem).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   await menuItem.click();
   await waitForAllLoadersToDisappear(page);
 
@@ -1874,32 +1847,39 @@ export const testTableSearch = async (
 ) => {
   await waitForAllLoadersToDisappear(page);
 
-  await expect(async () => {
-    const waitForSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*index=${searchIndex}*`
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === searchIndex &&
+      url.searchParams.get('q') === searchTerm.replaceAll('"', '\\"')
     );
-    await page.getByTestId('searchbar').fill(searchTerm);
-    await waitForSearchResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
-      timeout: 5_000,
-    });
-  }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+  });
+  await page.getByTestId('searchbar').fill(searchTerm);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i'))
+  ).toBeVisible();
+  await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden();
 };
 
-export const selectOptionWithRetry = async (
-  trigger: Locator,
-  option: Locator
-) => {
-  await expect(async () => {
-    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-      await trigger.click();
+export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+  await expect(trigger).toBeVisible();
+  const nestedControl = trigger.locator(
+    'input[role="combobox"], button[aria-haspopup="listbox"]'
+  );
+  const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
+  await control.scrollIntoViewIfNeeded();
+  await control.focus();
+  if ((await control.getAttribute('aria-expanded')) !== 'true') {
+    if ((await control.getAttribute('role')) === 'combobox') {
+      await control.press('ArrowDown');
+    } else {
+      await control.click();
     }
-
-    await option.click({ timeout: 2000 });
-  }).toPass({ timeout: 15000 });
+  }
+  await expect(option).toBeVisible();
+  await option.click();
 };

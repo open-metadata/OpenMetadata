@@ -21,6 +21,7 @@ import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { visitUserProfilePage } from './user';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const PANEL_SELECTOR = '[data-testid="entity-summary-panel-container"]';
 
@@ -157,10 +158,12 @@ export async function navigateToTeamAssetsAndOpenPanel(
 ): Promise<void> {
   await redirectToHomePage(page);
   await team.visitTeamPage(page);
-  const assetsRes = page.waitForResponse(
+  const assetsRes = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/search/query'),
+    200
   );
   await page.getByTestId('assets').click();
   await assetsRes;

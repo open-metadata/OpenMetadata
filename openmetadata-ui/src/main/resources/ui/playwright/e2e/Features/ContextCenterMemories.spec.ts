@@ -72,6 +72,7 @@ test.describe(
     const PAGINATION_COUNT = 11;
 
     test.beforeAll(async ({ browser }) => {
+      globalMemoryIds.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);
@@ -188,6 +189,33 @@ test.describe(
       globalMemoryIds.push(entityMemoryId);
 
       await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        const results = await Promise.allSettled(
+          globalMemoryIds.map(async (id) => {
+            const response = await apiContext.delete(
+              `${MEMORIES_API}/${id}?hardDelete=true`
+            );
+            expect(
+              [200, 404],
+              `memory fixture cleanup: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
+        await linkedTable.delete(apiContext);
+        const errors = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+        if (errors.length) {
+          throw new AggregateError(errors, 'Memory fixture cleanup failed');
+        }
+      } finally {
+        globalMemoryIds.length = 0;
+        await afterAction();
+      }
     });
 
     test.beforeEach(async ({ page }) => {

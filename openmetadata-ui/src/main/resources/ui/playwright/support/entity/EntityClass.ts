@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import {
@@ -336,11 +336,12 @@ export class EntityClass {
     }
     await removeTag(page, [tag1]);
 
-    await page
-      .getByTestId('KnowledgePanel.Tags')
-      .getByTestId('tags-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId('tags-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async tagChildren({
@@ -388,11 +389,12 @@ export class EntityClass {
       entityEndpoint,
     });
 
-    await page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('tags-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('tags-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async glossaryTerm(
@@ -414,11 +416,12 @@ export class EntityClass {
     await assignGlossaryTerm(page, glossaryTerm2, 'Edit', this.endpoint);
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
-    await page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('glossary-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.GlossaryTerms')
+        .getByTestId('glossary-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async glossaryTermChildren({
@@ -460,11 +463,12 @@ export class EntityClass {
       rowSelector,
     });
 
-    await page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('glossary-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('glossary-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async upVote(page: Page) {
@@ -503,7 +507,8 @@ export class EntityClass {
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
-      const deleteResponse = await apiContext.delete(
+      const deleteResponse = await deleteFixtureEntity(
+        apiContext,
         `/api/v1/announcements/${announcementId}`
       );
 
@@ -598,3 +603,5 @@ export class EntityClass {
     });
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

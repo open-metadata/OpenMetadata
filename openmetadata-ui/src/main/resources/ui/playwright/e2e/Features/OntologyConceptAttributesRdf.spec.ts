@@ -23,6 +23,7 @@ import {
   releaseOntologyEditLease,
   waitForGraphLoaded,
 } from '../../utils/ontologyStudio';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_attributes_${suffix}`);
@@ -260,11 +261,12 @@ test.describe(
           .locator('input')
           .fill(authored);
 
-        const saved = page.waitForResponse(
+        const saved = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/glossaryTerms/') &&
-            response.request().method() === 'PATCH' &&
-            response.status() === 200
+            response.request().method() === 'PATCH',
+          200
         );
         await page.getByTestId('save-attribute').click();
         await saved;

@@ -25,6 +25,7 @@ import {
   navigateToBundleSuiteWithPagination,
   waitForFirstPipelineStatusNotQueued,
 } from '../../utils/logsViewer';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 let table: TableClass;
@@ -70,10 +71,12 @@ test.describe(
       await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
         await redirectToHomePage(page);
 
-        const listResponse = page.waitForResponse(
+        const listResponse = waitForResponseWithStatus(
+          page,
           (r) =>
-            r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
-            r.status() === 200
+            r.request().method() === 'GET' &&
+            r.url().includes('/api/v1/dataQuality/testSuites/search/list'),
+          200
         );
         await page.goto('/data-quality/test-suites/bundle-suites');
         await listResponse;
@@ -92,10 +95,12 @@ test.describe(
       await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
         await waitForFirstPipelineStatusNotQueued(page);
 
-        const pipelinesResponse = page.waitForResponse(
+        const pipelinesResponse = waitForResponseWithStatus(
+          page,
           (r) =>
-            r.url().includes('/api/v1/services/ingestionPipelines') &&
-            r.status() === 200
+            r.request().method() === 'GET' &&
+            r.url().includes('/api/v1/services/ingestionPipelines'),
+          200
         );
         await expect(page.getByTestId('logs-button').first()).toBeVisible();
         await page.getByTestId('logs-button').first().click();

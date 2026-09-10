@@ -394,26 +394,13 @@ export class OverviewPageObject extends RightPanelBase {
     await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
 
     if (type === 'Users') {
-      await expect
-        .poll(
-          async () => {
-            const isAlreadyActive =
-              (await this.selectOwnerUsersTab.getAttribute('aria-selected')) ===
-              'true';
-            if (!isAlreadyActive) {
-              await this.selectOwnerUsersTab.click();
-            }
-
-            return await this.userSearchBar.isVisible().catch(() => false);
-          },
-          {
-            timeout: 120000,
-            intervals: [500, 1000, 2000],
-            message:
-              'Timed out waiting for owner search input to become visible',
-          }
-        )
-        .toBe(true);
+      if (
+        (await this.selectOwnerUsersTab.getAttribute('aria-selected')) !==
+        'true'
+      ) {
+        await this.selectOwnerUsersTab.click();
+      }
+      await expect(this.userSearchBar).toBeVisible();
     }
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);

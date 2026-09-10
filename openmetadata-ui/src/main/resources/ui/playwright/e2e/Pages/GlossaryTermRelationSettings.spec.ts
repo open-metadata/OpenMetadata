@@ -14,10 +14,10 @@
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { authenticateAdminPage } from '../../utils/admin';
 import {
+  chooseSelectOption,
   getApiContext,
   getAuthContext,
   getSavedAdminToken,
-  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -91,7 +91,7 @@ const fillInput = async (page: Page, testId: string, value: string) => {
 };
 
 const selectOption = async (page: Page, testId: string, option: string) => {
-  await selectOptionWithRetry(
+  await chooseSelectOption(
     page.getByTestId(testId),
     page.getByRole('option', { name: option, exact: true })
   );

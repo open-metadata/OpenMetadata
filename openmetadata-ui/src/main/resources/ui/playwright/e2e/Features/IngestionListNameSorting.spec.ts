@@ -17,6 +17,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -73,12 +74,14 @@ const renderedNames = (body: {
   (body.data ?? []).map((pipeline) => pipeline.displayName ?? pipeline.name);
 
 const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/services/ingestionPipelines?') &&
       response.url().includes('sortField=displayName') &&
-      (!cursored || response.url().includes('after=')) &&
-      response.status() === 200
+      (!cursored || response.url().includes('after=')),
+    200
   );
 
 /**
@@ -93,12 +96,14 @@ const expectSortDelegatedToServer = async (
   nameHeader: Locator,
   sortOrder: SORT_ORDER
 ) => {
-  const sortedResponse = page.waitForResponse(
+  const sortedResponse = waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/services/ingestionPipelines?') &&
       response.url().includes(`sortField=displayName`) &&
-      response.url().includes(`sortOrder=${sortOrder}`) &&
-      response.status() === 200
+      response.url().includes(`sortOrder=${sortOrder}`),
+    200
   );
 
   await nameHeader.click();

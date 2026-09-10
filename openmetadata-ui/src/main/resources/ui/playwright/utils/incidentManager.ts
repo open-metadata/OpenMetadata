@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import {
-  PipelineState,
-  PipelineStatus,
-} from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { getCurrentMillis } from './dateTime';
 import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
+import {
+  triggerIngestionPipeline,
+  waitForIngestionResult,
+} from './ingestionExecution';
 import { sidebarClick } from './sidebar';
 import { waitForTaskResolveResponse } from './task';
 
@@ -339,238 +339,21 @@ export const assignIncident = async (data: {
   ).toContainText('Assigned');
 };
 
-// Attempts at 0s, +1s, +2s, +3s — the 6s worst case covers the settling time
-// the previous fixed sleep was guessing at, without paying it on every run.
-const PIPELINE_REQUEST_ATTEMPTS = 4;
-
-// Airflow 3.x accepts a trigger (HTTP 200) even when its dag-processor has not
-// serialized the freshly deployed DAG yet. That trigger produces an empty
-// DagRun that finishes instantly and never writes a pipelineStatus back, so the
-// caller would poll forever. We can't detect the empty run positively — only
-// its absence — so after triggering we wait this long for a genuinely new run
-// to appear; if none does, the DAG was unserialized and we trigger again (by
-// then it is parsed). Real runs surface a status within a few seconds, so this
-// window only ever elapses in the race case.
-const NEW_RUN_APPEARANCE_TIMEOUT = 60_000;
-const NEW_RUN_POLL_INTERVAL = 2_000;
-const TRIGGER_ATTEMPTS = 3;
-
-// Default budget the poll waits for a triggered run to reach `success`. Heavier
-// suites (many test cases) validate for longer and queue behind other pipelines
-// under load, so callers can raise it. The calling test's own timeout must
-// exceed whatever is used here, or the test dies before the poll can finish.
-const DEFAULT_PIPELINE_SUCCESS_TIMEOUT = 300_000;
-
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
   pipeline: ResponseDataType;
   successTimeout?: number;
 }) => {
-  const {
-    page,
+  const { apiContext, pipeline, successTimeout = 300_000 } = data;
+  const startedAfter = await triggerIngestionPipeline(apiContext, pipeline.id);
+  await waitForIngestionResult(
     apiContext,
-    pipeline,
-    successTimeout = DEFAULT_PIPELINE_SUCCESS_TIMEOUT,
-  } = data;
-  const encodedPipelineFqn = encodeURIComponent(
-    pipeline?.['fullyQualifiedName']
+    pipeline.fullyQualifiedName,
+    startedAfter,
+    {
+      timeout: successTimeout,
+      intervals: [2_000, 5_000, 10_000],
+    }
   );
-
-  // `fetched` separates "the pipeline has not run yet" from "the status read
-  // failed" — both yield no run, but only the former is a safe baseline.
-  const fetchLatestPipelineStatus = async (): Promise<{
-    fetched: boolean;
-    run?: PipelineStatus;
-  }> => {
-    const pipelineStatusResponse = await apiContext.get(
-      `/api/v1/services/ingestionPipelines/${encodedPipelineFqn}/pipelineStatus?limit=1`
-    );
-
-    if (pipelineStatusResponse.ok()) {
-      const body = await pipelineStatusResponse.json();
-      const statuses: PipelineStatus[] = Array.isArray(body?.data)
-        ? body.data
-        : [];
-
-      if (statuses[0]) {
-        return { fetched: true, run: statuses[0] };
-      }
-    }
-
-    const ingestionPipelineResponse = await apiContext.get(
-      `/api/v1/services/ingestionPipelines/name/${encodedPipelineFqn}?fields=pipelineStatuses`
-    );
-
-    if (!ingestionPipelineResponse.ok()) {
-      return { fetched: false };
-    }
-
-    const ingestionPipeline = await ingestionPipelineResponse.json();
-
-    return { fetched: true, run: ingestionPipeline?.pipelineStatuses?.[0] };
-  };
-
-  const requestWithRetry = async (
-    request: () => Promise<Awaited<ReturnType<APIRequestContext['post']>>>
-  ) => {
-    let response = await request();
-
-    for (
-      let attempt = 1;
-      attempt < PIPELINE_REQUEST_ATTEMPTS && !response.ok();
-      attempt++
-    ) {
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- bounded backoff before retrying a rejected request
-      await page.waitForTimeout(1000 * attempt);
-      response = await request();
-    }
-
-    return response;
-  };
-
-  const executePipelineRequest = async (
-    label: string,
-    request: () => Promise<Awaited<ReturnType<APIRequestContext['post']>>>
-  ) => {
-    const response = await requestWithRetry(request);
-
-    if (!response.ok()) {
-      throw new Error(
-        `${label} failed for ingestion pipeline ${pipeline?.['id']} (${
-          pipeline?.['fullyQualifiedName']
-        }): HTTP ${response.status()} ${await response.text()}`
-      );
-    }
-
-    return response;
-  };
-
-  const triggerPipeline = () =>
-    apiContext.post(
-      `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
-    );
-
-  // Airflow queues the DAG asynchronously, so the previous run's `success`
-  // record stays the latest one for a while after triggering. Remember it here
-  // so the poll below waits for a genuinely new run instead of reading the old
-  // one and letting the caller assert on stale results. A baseline we failed to
-  // read would defeat that, so retry and then fail loudly rather than silently
-  // treating the previous run as new.
-  const fetchBaselineRun = async () => {
-    for (let attempt = 1; attempt <= PIPELINE_REQUEST_ATTEMPTS; attempt++) {
-      const { fetched, run } = await fetchLatestPipelineStatus();
-
-      if (fetched) {
-        return run;
-      }
-
-      if (attempt < PIPELINE_REQUEST_ATTEMPTS) {
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- bounded backoff before re-reading the baseline status
-        await page.waitForTimeout(1000 * attempt);
-      }
-    }
-
-    throw new Error(
-      `Unable to read the status baseline for ingestion pipeline ${pipeline?.['id']} (${pipeline?.['fullyQualifiedName']})`
-    );
-  };
-
-  const previousRun = await fetchBaselineRun();
-  // Either signal alone is enough: `runId` is optional in the schema, so a
-  // conjunction deadlocks the poll when neither record carries one.
-  const isNewRun = (latestRun: PipelineStatus) =>
-    latestRun.runId !== previousRun?.runId ||
-    (latestRun.timestamp ?? 0) > (previousRun?.timestamp ?? 0);
-
-  // Wait for a genuinely new run to actually START after a trigger. Returns
-  // false if none does within the window, which means the trigger raced an
-  // unserialized DAG.
-  //
-  // The race has two shapes: the trigger produces no status at all, OR it
-  // produces a transient `queued` run that then vanishes because the empty DAG
-  // finished instantly and wrote nothing. A plain "a run exists" check is
-  // fooled by that transient `queued` and skips the re-trigger, so require the
-  // run to have LEFT the queue (running/success/…) — a real run does so within
-  // seconds, the empty-DAG run never does.
-  const waitForNewRunToAppear = async () => {
-    const startedAt = Date.now();
-
-    while (Date.now() - startedAt < NEW_RUN_APPEARANCE_TIMEOUT) {
-      const { run } = await fetchLatestPipelineStatus();
-
-      if (
-        run &&
-        isNewRun(run) &&
-        run.pipelineState !== undefined &&
-        run.pipelineState !== PipelineState.Queued
-      ) {
-        return true;
-      }
-
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- poll for a newly triggered run to be recorded
-      await page.waitForTimeout(NEW_RUN_POLL_INTERVAL);
-    }
-
-    return false;
-  };
-
-  // First trigger. A rejected trigger still means the DAG is not registered, so
-  // re-deploy then trigger; an accepted trigger may still have raced
-  // serialization, which the appearance check below catches.
-  const response = await requestWithRetry(triggerPipeline);
-
-  if (!response.ok()) {
-    // re-deploy the pipeline then trigger it
-    await executePipelineRequest('Pipeline deploy', () =>
-      apiContext.post(
-        `/api/v1/services/ingestionPipelines/deploy/${pipeline?.['id']}`
-      )
-    );
-
-    await executePipelineRequest('Pipeline trigger', triggerPipeline);
-  }
-
-  // Re-trigger until a run actually materializes. The empty-run race only
-  // happens on the first trigger of a freshly deployed DAG; once the
-  // dag-processor has serialized it, a re-trigger runs for real.
-  let runAppeared = await waitForNewRunToAppear();
-
-  for (
-    let attempt = 2;
-    attempt <= TRIGGER_ATTEMPTS && !runAppeared;
-    attempt++
-  ) {
-    await executePipelineRequest('Pipeline trigger', triggerPipeline);
-    runAppeared = await waitForNewRunToAppear();
-  }
-
-  if (!runAppeared) {
-    throw new Error(
-      `No run materialized for ingestion pipeline ${pipeline?.['id']} (${pipeline?.['fullyQualifiedName']}) after ${TRIGGER_ATTEMPTS} triggers; the deployed DAG never produced a run`
-    );
-  }
-
-  await expect
-    .poll(
-      async () => {
-        const { run: latestRun } = await fetchLatestPipelineStatus();
-
-        if (!latestRun || !isNewRun(latestRun)) {
-          return PipelineState.Queued;
-        }
-
-        return latestRun.pipelineState ?? PipelineState.Queued;
-      },
-      {
-        message: `Wait for a new run of ingestion pipeline ${
-          pipeline?.['fullyQualifiedName']
-        } to be successful (run recorded before trigger: ${
-          previousRun?.runId ?? 'none'
-        })`,
-        timeout: successTimeout,
-        intervals: [2_000, 5_000, 10_000],
-      }
-    )
-    .toBe(PipelineState.Success);
 };

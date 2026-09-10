@@ -126,7 +126,8 @@ export class DataProduct extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/dataProducts/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}`
@@ -304,3 +305,5 @@ export class DataProduct extends EntityClass {
     return response.json();
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

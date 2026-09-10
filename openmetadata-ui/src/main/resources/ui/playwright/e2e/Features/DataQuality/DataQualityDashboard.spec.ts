@@ -101,6 +101,7 @@ test.describe(
   },
   () => {
     test.beforeAll('setup pre-test', async ({ browser }) => {
+      dimTestDefIds.length = 0;
       test.slow();
       table1 = new TableClass();
       table2 = new TableClass();

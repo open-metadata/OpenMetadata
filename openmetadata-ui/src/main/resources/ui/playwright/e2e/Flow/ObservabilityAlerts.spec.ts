@@ -255,11 +255,12 @@ test('Pipeline Alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -441,7 +442,7 @@ test('delivers table schema changes to an external webhook', async ({
         await deleteAlert(page, webhookAlertDetails, false);
       }
     } finally {
-      await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
+      await settleAll([afterAction(), stopWebhookReceiver()]);
     }
   }
 });
@@ -676,3 +677,6 @@ test('Alert operations for a user with and without permissions', async ({
     await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
   });
 });
+
+import { settleAll } from '../../utils/apiResponse';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

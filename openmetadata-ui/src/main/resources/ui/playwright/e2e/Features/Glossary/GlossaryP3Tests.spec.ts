@@ -23,6 +23,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { selectActiveGlossary } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -493,10 +494,12 @@ test.describe('Glossary P3 Tests', () => {
     try {
       await glossary.create(apiContext);
 
-      const glossariesPromise = page.waitForResponse(
+      const glossariesPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/glossaries') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/glossaries'),
+        200
       );
 
       await sidebarClick(page, SidebarItem.GLOSSARY);

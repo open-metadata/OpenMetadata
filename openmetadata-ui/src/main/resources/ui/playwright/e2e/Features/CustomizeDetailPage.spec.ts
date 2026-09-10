@@ -44,6 +44,7 @@ import {
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
@@ -466,10 +467,9 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // inner content appears — `add-widget-modal` itself is the antd
         // `.ant-modal-root` wrapper (0×0), which always reports hidden.
         const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await expect(async () => {
-          await addWidgetButton.click();
-          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
-        }).toPass({ timeout: 30000 });
+        await addWidgetButton.scrollIntoViewIfNeeded();
+        await addWidgetButton.click();
+        await expect(widgetInfoTabs).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -619,10 +619,9 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // inner content appears — `add-widget-modal` itself is the antd
         // `.ant-modal-root` wrapper (0×0), which always reports hidden.
         const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await expect(async () => {
-          await addWidgetButton.click();
-          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
-        }).toPass({ timeout: 30000 });
+        await addWidgetButton.scrollIntoViewIfNeeded();
+        await addWidgetButton.click();
+        await expect(widgetInfoTabs).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -929,10 +928,12 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await test.step('validate applied label change for Domain Documentation tab', async () => {
       await redirectToHomePage(userPage);
 
-      const domainResponse = userPage.waitForResponse(
+      const domainResponse = waitForResponseWithStatus(
+        userPage,
         (response) =>
-          response.url().includes('/api/v1/domains/name/') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/domains/name/'),
+        200
       );
       await entity?.visitEntityPage(userPage);
       await domainResponse;

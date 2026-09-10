@@ -17,6 +17,7 @@ import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
   id: string;
@@ -45,24 +46,26 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
 
   await page.getByTestId('search-dropdown-glossaryIds').click();
   await page.getByTestId(glossaryId).click();
-  const termsResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms') &&
-        response.status() === 200,
-      { timeout: 30000 }
-    )
-    .catch(() => null);
+  const termsResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200,
+    { timeout: 30000 }
+  );
   await page.getByTestId('update-btn').click();
   await termsResponse;
 }
 
 export async function navigateToOntologyStudio(page: Page) {
   await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse(
+  const glossaryResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/glossaries') &&
-      response.status() === 200,
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaries'),
+    200,
     { timeout: 30000 }
   );
 
@@ -547,14 +550,14 @@ export async function applyMultiGlossaryFilter(
   for (const id of glossaryIds) {
     await page.getByTestId(id).click();
   }
-  const termsResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms') &&
-        response.status() === 200,
-      { timeout: 30000 }
-    )
-    .catch(() => null);
+  const termsResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200,
+    { timeout: 30000 }
+  );
   await page.getByTestId('update-btn').click();
   await termsResponse;
 }

@@ -170,10 +170,6 @@ test.describe(
     });
 
     test.describe('Token renewal', () => {
-      test.describe.configure({
-        retries: process.env.PLAYWRIGHT_IS_OSS ? 0 : 2,
-      });
-
       test('Refresh should work', async ({ page: page1, browser }) => {
         test.slow();
 

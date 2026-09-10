@@ -17,7 +17,7 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { okJson } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -138,19 +138,20 @@ export class UserClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(`/api/v1/users/${this.responseData.id}`, {
+    const response = await apiContext.patch(
+      `/api/v1/users/${this.responseData.id}`,
+      {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      })
+      }
     );
 
     this.responseData = await okJson(response, 'UserClass.patch');
 
     return {
-      entity: response.body,
+      entity: this.responseData,
     };
   }
 
@@ -240,7 +241,8 @@ export class UserClass {
       await this.dataStewardTeam?.delete(apiContext);
     }
 
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=${hardDelete}`
     );
 
@@ -357,3 +359,5 @@ export class UserClass {
     await page.unroute('**/analytics/web/events/collect');
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

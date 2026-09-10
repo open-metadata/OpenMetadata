@@ -222,9 +222,10 @@ export const deleteAlertSteps = async (
 ) => {
   await page.getByTestId(`alert-delete-${name}`).click();
 
-  const deleteAlert = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'DELETE' && response.status() === 200
+  const deleteAlert = waitForResponseWithStatus(
+    page,
+    (response) => response.request().method() === 'DELETE',
+    200
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteAlert;
@@ -1009,36 +1010,16 @@ export const inputBasicAlertInformation = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_DESCRIPTION);
 
-  // Select the alert source.
-  //
-  // The antd Dropdown opens with a slide-up motion. Playwright's `stable`
-  // actionability check clears once the bounding box holds for two animation
-  // frames, which the tail of the cubic-bezier ease satisfies while the
-  // transform is still running — so mousedown and mouseup can land on different
-  // nodes and the browser never synthesises a `click`. rc-menu's handler then
-  // never runs, `source-select` is never rendered, and because `locator.click()`
-  // retries actionability but never the *effect*, the assertion below would
-  // spend its whole budget on an element that can no longer appear. Retry the
-  // selection itself instead. The `isVisible()` calls are branch conditions for
-  // that retry, not assertions — the assertion is `toBeVisible` below them.
   const sourceOption = page
     .getByTestId('drop-down-menu')
     .getByTestId(`${sourceName}-option`);
   const sourceSelect = page.getByTestId('source-select');
-
-  await expect(async () => {
-    if (!(await sourceSelect.isVisible())) {
-      // Gate on the option rather than the menu: `drop-down-menu` is also used
-      // by SearchDropdown, so probing it unscoped risks a strict-mode violation.
-      if (!(await sourceOption.isVisible())) {
-        await page.click('[data-testid="add-source-button"]');
-      }
-
-      await sourceOption.click();
-    }
-
-    await expect(sourceSelect).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+  const sourceTrigger = page.getByTestId('add-source-button');
+  await sourceTrigger.scrollIntoViewIfNeeded();
+  await sourceTrigger.click();
+  await expect(sourceOption).toBeVisible();
+  await waitForAntdPopupToSettle(page);
+  await sourceOption.click();
 
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
@@ -1197,15 +1178,15 @@ export const checkRecentEventDetails = async ({
   );
 
   // Verify Recent Events tab
-  const getRecentEvents = page.waitForResponse(
+  const getRecentEvents = waitForResponseWithStatus(
+    page,
     (response) =>
       response
         .url()
         .includes(
           `/api/v1/events/subscriptions/id/${alertDetails.id}/listEvents?limit=15&paginationOffset=0`
-        ) &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+        ) && response.request().method() === 'GET',
+    200
   );
 
   await page.getByRole('tab').getByText('Recent Events').click();
@@ -1247,15 +1228,15 @@ export const checkRecentEventDetails = async ({
     .locator('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]')
     .waitFor();
 
-  const getFailedEvents = page.waitForResponse(
+  const getFailedEvents = waitForResponseWithStatus(
+    page,
     (response) =>
       response
         .url()
         .includes(
           `/api/v1/events/subscriptions/id/${alertDetails.id}/listEvents?status=failed&limit=15&paginationOffset=0`
-        ) &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+        ) && response.request().method() === 'GET',
+    200
   );
 
   await page.click('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]');
@@ -1266,3 +1247,6 @@ export const checkRecentEventDetails = async ({
     expect(failedEvents).toHaveLength(0);
   });
 };
+
+import { waitForAntdPopupToSettle } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';

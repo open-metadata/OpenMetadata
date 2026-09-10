@@ -162,11 +162,12 @@ test.describe(
         .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
         .fill('Updated dimension description.');
 
-      const patchPromise = page.waitForResponse(
+      const patchPromise = waitForResponseWithStatus(
+        page,
         (response) =>
           response.request().method() === 'PATCH' &&
-          response.url().includes('/api/v1/metrics/') &&
-          response.ok()
+          response.url().includes('/api/v1/metrics/'),
+        'ok'
       );
 
       await page
@@ -187,3 +188,5 @@ test.describe(
     });
   }
 );
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

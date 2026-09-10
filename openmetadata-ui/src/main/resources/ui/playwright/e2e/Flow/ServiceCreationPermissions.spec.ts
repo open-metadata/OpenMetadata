@@ -118,31 +118,9 @@ const openPipelineActions = async (page: Page) => {
 
   const actionsDropdown = page.getByTestId('actions-dropdown');
 
-  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
-  // every render, but the async per-FQN permission fetch can still be in
-  // flight when the menu is first opened — some items (edit-gated: redeploy,
-  // edit, pause/resume) are briefly absent. Close and reopen until the
-  // permission-gated items are present instead of polling a single stale
-  // open instance.
-  await expect
-    .poll(
-      async () => {
-        await actionButton.click();
-        await actionsDropdown.waitFor();
-        const hasReDeploy = await actionsDropdown
-          .getByTestId('re-deploy-button')
-          .isVisible()
-          .catch(() => false);
-        if (!hasReDeploy) {
-          await page.keyboard.press('Escape');
-          await actionsDropdown.waitFor({ state: 'hidden' });
-        }
-
-        return hasReDeploy;
-      },
-      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
-    )
-    .toBe(true);
+  await actionButton.scrollIntoViewIfNeeded();
+  await actionButton.click();
+  await expect(actionsDropdown.getByTestId('re-deploy-button')).toBeVisible();
 };
 
 test.describe(
@@ -638,32 +616,18 @@ test.describe(
 
       await expect(actionsDropdown).toBeHidden();
 
-      // The pipeline deployed in beforeAll may still be registering in
-      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
-      await expect
-        .poll(
-          async () => {
-            const triggerResponse = page.waitForResponse(
-              (response) =>
-                response
-                  .url()
-                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-                response.request().method() === 'POST'
-            );
-
-            await agentCard.getByTestId('run-agent-button').click();
-
-            const response = await triggerResponse;
-
-            if (response.status() !== 200) {
-              agentCard = await visitAgentCard(page);
-            }
-
-            return response.status();
-          },
-          { intervals: [3_000], timeout: 90_000 }
-        )
-        .toBe(200);
+      const triggerResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+          response.request().method() === 'POST'
+      );
+      await agentCard.getByTestId('run-agent-button').click();
+      const response = await triggerResponse;
+      expect(response.status(), 'The first pipeline trigger must succeed').toBe(
+        200
+      );
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({

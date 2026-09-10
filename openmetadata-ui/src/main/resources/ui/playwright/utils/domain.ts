@@ -34,6 +34,7 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
+  chooseSelectOption,
   clickOutside,
   closeFirstPopupAlert,
   fillDescriptionBox,
@@ -43,26 +44,10 @@ import {
   NAME_VALIDATION_ERROR,
   readElementInListWithScroll,
   redirectToHomePage,
-  selectOptionWithRetry,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-
-const waitForSearchDebounce = async (page: Page) => {
-  // Wait for loader to appear and disappear after search
-  // This ensures search debounce completed and results are stable
-  try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
-      timeout: 999,
-    });
-    await waitForAllLoadersToDisappear(page);
-  } catch (e) {
-    // Loader never appeared - search was instant, which is fine
-    // Just continue without waiting
-  }
-};
 
 // A widget shows the add button when the value is unset and the edit button
 // once it is assigned. The caller knows which state the entity is in, so it
@@ -403,54 +388,55 @@ export const validateDomainForm = async (page: Page) => {
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
-export const selectDomain = async (page: Page, domain: Domain['data']) => {
-  const searchBox = page
-    .getByTestId('page-layout-v1')
-    .getByPlaceholder('Search');
-  const domainRow = page.getByTestId(domain.name);
-
-  await waitForAllLoadersToDisappear(page);
-
-  // The domain listing is search-backed, and search indexing is eventually
-  // consistent — a domain created moments ago can legitimately be missing from
-  // the first query. Retry the search, reloading between attempts, so the row
-  // is only clicked once it is actually there; otherwise the click auto-waits
-  // against a list that will never contain it and burns the test timeout.
-  let hasSearched = false;
-  await expect
-    .poll(
-      async () => {
-        if (hasSearched) {
-          await page.reload();
-          await waitForAllLoadersToDisappear(page);
-        }
-        hasSearched = true;
-
-        await Promise.all([
-          searchBox.fill(domain.name),
-          page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-        ]);
-
-        await waitForSearchDebounce(page);
-
-        return domainRow.isVisible();
+const searchEntityListing = async (
+  page: Page,
+  name: string,
+  index: 'domain' | 'dataProduct'
+) => {
+  if (!name) throw new Error('Listing search requires the fixture name');
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(apiContext, name, index, {
+      matchBy: 'nameOrDisplayName',
+    });
+  } finally {
+    await afterAction();
+  }
+  const search = page.getByTestId('page-layout-v1').getByPlaceholder('Search');
+  await expect(search).toBeVisible();
+  if ((await search.inputValue()) !== name) {
+    const response = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === index &&
+          (url.searchParams.get('q') ?? '')
+            .replace(/\\(.)/g, '$1')
+            .includes(name)
+        );
       },
-      {
-        message: `Wait for domain "${domain.name}" to appear in the domain listing`,
-        timeout: 60_000,
-        intervals: [2_000, 3_000, 5_000],
-      }
-    )
-    .toBe(true);
+      200
+    );
+    await search.fill(name);
+    await response;
+  }
+  await expect(page.getByTestId(name)).toBeVisible();
+};
 
-  // Click the domain name cell, not the row center — the row's center column is
-  // the glossary-terms cell whose tags are their own links, so a row-center
-  // click lands on a tag instead of triggering the domain navigation.
-  await Promise.all([
-    domainRow.getByTestId('entity-name').click(),
-    page.waitForResponse('/api/v1/domains/name/*'),
-  ]);
-
+export const selectDomain = async (page: Page, domain: Domain['data']) => {
+  await searchEntityListing(page, domain.name, 'domain');
+  const details = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname.startsWith('/api/v1/domains/name/'),
+    200
+  );
+  await page.getByTestId(domain.name).getByTestId('entity-name').click();
+  await details;
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -516,68 +502,16 @@ export const selectDataProduct = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  if (!dataProduct?.name) {
-    throw new Error(
-      `selectDataProduct: dataProduct.name is undefined. Ensure create() succeeded. Got: ${JSON.stringify(
-        dataProduct
-      )}`
-    );
-  }
-
-  const searchBox = page
-    .getByTestId('page-layout-v1')
-    .getByPlaceholder('Search');
-
-  await waitForAllLoadersToDisappear(page);
-  await searchBox.waitFor({ state: 'visible' });
-
-  const dataProductRow = page.getByTestId(dataProduct.name);
-
-  // Same eventual consistency as the domain listing above: a data product
-  // created moments ago can be missing from the first query, and the listing
-  // re-queries only when the search text changes. Retry the search, reloading
-  // between attempts, so the row is clicked only once it is really there.
-  //
-  // The response wait deliberately lives outside this callback -- waits here
-  // are test-bound, so a `waitForResponse` that never matches would hang the
-  // callback and the poll could never retry it.
-  let hasSearched = false;
-  await expect
-    .poll(
-      async () => {
-        if (hasSearched) {
-          await page.reload();
-          await waitForAllLoadersToDisappear(page);
-          await searchBox.waitFor({ state: 'visible' });
-        }
-        hasSearched = true;
-
-        await searchBox.fill('');
-        await searchBox.fill(dataProduct.name);
-
-        await waitForSearchDebounce(page);
-
-        return dataProductRow.isVisible();
-      },
-      {
-        message: `Wait for data product "${dataProduct.name}" to appear in the data product listing`,
-        // Deliberately well under the default 60s test budget: most callers of
-        // this helper do not set test.slow(), and a poll sized to the whole
-        // budget would starve the rest of the test instead of failing it.
-        timeout: 30_000,
-        intervals: [1_000, 2_000, 3_000, 5_000],
-      }
-    )
-    .toBe(true);
-
-  // Click the data product name cell, not the row center — the row's center
-  // column can be the glossary-terms cell whose tags are their own links, so a
-  // row-center click lands on a tag instead of triggering navigation.
-  await Promise.all([
-    page.waitForResponse('/api/v1/dataProducts/name/*'),
-    dataProductRow.getByTestId('entity-name').click(),
-  ]);
-
+  await searchEntityListing(page, dataProduct.name, 'dataProduct');
+  const details = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname.startsWith('/api/v1/dataProducts/name/'),
+    200
+  );
+  await page.getByTestId(dataProduct.name).getByTestId('entity-name').click();
+  await details;
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -668,9 +602,9 @@ export const fillDomainForm = async (
   });
 
   // React Aria can close the listbox mid-click and detach the option
-  // ("element was detached from the DOM"); selectOptionWithRetry re-resolves the
+  // ("element was detached from the DOM"); selectOption re-resolves the
   // trigger's expanded state and reopens the popover before retrying the click.
-  await selectOptionWithRetry(domainTypeTrigger, domainTypeOption);
+  await chooseSelectOption(domainTypeTrigger, domainTypeOption);
 };
 
 /**
@@ -2047,11 +1981,12 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  const patchRes = page.waitForResponse(
+  const patchRes = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/domains/') &&
-      response.request().method() === 'PATCH' &&
-      response.ok()
+      response.request().method() === 'PATCH',
+    'ok'
   );
   await page.getByTestId('save-button').click();
   await patchRes;
@@ -2337,3 +2272,7 @@ export const addAssetToDomainViaApi = async (
 
   return response.json();
 };
+
+import { waitForResponseWithStatus } from './waitHelpers';
+
+import { waitForSearchIndexed } from './polling';

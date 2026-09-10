@@ -6,6 +6,10 @@ changes, test regressions, manual removals, and conflicts must remain visible.
 Queue concurrency stays at five. Test selection stays unchanged; Playwright test
 retries are zero in PR and merge-queue checks.
 
+The subsequent [full-suite design audit](merge-queue-playwright-audit.md)
+covers every Playwright source file, confirmed defects and regression results,
+and the remaining checks that require a complete CI environment.
+
 ## Current failures on September 9
 
 The supplied September 2–9 weekday totals count candidate merge-group builds,
@@ -401,10 +405,10 @@ redeploy HTTP 500. The separate DagContext race fix already exists in
   no introduced diagnostics against the same checkout and dependency set; the
   existing full type check has baseline errors.
 
-The current result-by-ID endpoint returns the latest contract result. Polling
-checks its identity and fails explicitly if a newer execution supersedes the one
-being tested. Reproduce overlapping validations before deciding whether historical
-result lookup needs a separate backend correction.
+The result-by-ID endpoint now honors `resultId`. Two new integration tests
+reproduced the previous wrong-result behavior and verify historical execution
+lookup, unknown IDs, and IDs belonging to another contract. All four targeted
+contract-result integration tests pass against PostgreSQL and Elasticsearch.
 
 For a controlled latency comparison, pin the commit, full shard plan, runner
 resources, worker counts, fixture fingerprint, and data population. Compare cold

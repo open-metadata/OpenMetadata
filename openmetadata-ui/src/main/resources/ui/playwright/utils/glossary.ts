@@ -57,6 +57,7 @@ import {
   waitForTaskListResponse,
   waitForTaskResolveResponse,
 } from './task';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
@@ -512,11 +513,12 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
     glossary.displayName
   );
 
-  const deleteGlossary = page.waitForResponse(
+  const deleteGlossary = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/glossaries/') &&
-      response.request().method() === 'DELETE' &&
-      response.status() === 200
+      response.request().method() === 'DELETE',
+    200
   );
 
   await page.click('[data-testid="confirm-button"]');

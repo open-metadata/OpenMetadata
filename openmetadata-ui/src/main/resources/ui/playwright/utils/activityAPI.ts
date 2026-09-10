@@ -78,11 +78,12 @@ export const openActivityFeedAndWaitForApi = async (
   entityFqn: string
 ) => {
   const expectedActivityPath = `/api/v1/activity/entity/table/name/${entityFqn}`;
-  const activityResponsePromise = page.waitForResponse(
+  const activityResponsePromise = waitForResponseWithStatus(
+    page,
     (response) =>
       response.request().method() === 'GET' &&
-      decodeURIComponent(response.url()).includes(expectedActivityPath) &&
-      response.ok(),
+      decodeURIComponent(response.url()).includes(expectedActivityPath),
+    'ok',
     { timeout: ACTIVITY_FEED_RESPONSE_TIMEOUT }
   );
 
@@ -395,3 +396,5 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   expect(response.ok()).toBeTruthy();
   await waitForAllLoadersToDisappear(page);
 };
+
+import { waitForResponseWithStatus } from './waitHelpers';

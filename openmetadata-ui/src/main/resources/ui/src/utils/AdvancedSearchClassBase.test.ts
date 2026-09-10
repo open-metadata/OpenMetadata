@@ -20,6 +20,7 @@ import {
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -42,6 +43,89 @@ jest.mock('./EntityNameUtils', () => ({
 jest.mock('./AdvancedSearchPureUtils', () => ({
   getCustomPropertyAdvanceSearchEnumOptions: jest.fn(),
 }));
+
+describe('autocomplete request ordering', () => {
+  type AggregateResponse = Awaited<ReturnType<typeof getAggregateFieldOptions>>;
+
+  const deferredResponse = () => {
+    let resolve!: (response: AggregateResponse) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<AggregateResponse>(
+      (resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+      }
+    );
+
+    return { promise, resolve, reject };
+  };
+
+  const responseFor = (value: string) =>
+    ({
+      data: {
+        aggregations: {
+          [`sterms#${EntityFields.NAME_KEYWORD}`]: {
+            buckets: [{ key: value, doc_count: 1 }],
+          },
+        },
+      },
+    } as AggregateResponse);
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.mocked(getAggregateFieldOptions).mockReset();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it.each(['older first', 'newer first', 'older fails'])(
+    'keeps each response associated with its search when %s',
+    async (order) => {
+      const older = deferredResponse();
+      const newer = deferredResponse();
+      jest
+        .mocked(getAggregateFieldOptions)
+        .mockReturnValueOnce(older.promise)
+        .mockReturnValueOnce(newer.promise);
+      const search = new AdvancedSearchClassBase().autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        entityField: EntityFields.NAME_KEYWORD,
+      });
+      if (!search) {
+        throw new Error('Autocomplete must provide an async fetch function');
+      }
+
+      const olderResult = search('old');
+      jest.advanceTimersByTime(300);
+      const newerResult = search('new');
+      jest.advanceTimersByTime(300);
+
+      await expect(olderResult).resolves.toEqual({
+        values: [],
+        hasMore: false,
+      });
+
+      if (order === 'older first') {
+        older.resolve(responseFor('old'));
+      } else if (order === 'older fails') {
+        older.reject(new Error('Older request failed'));
+      } else {
+        newer.resolve(responseFor('new'));
+      }
+      await Promise.resolve();
+      await Promise.resolve();
+      newer.resolve(responseFor('new'));
+      older.resolve(responseFor('old'));
+
+      await expect(newerResult).resolves.toEqual({
+        values: [{ value: 'new', title: 'new' }],
+        hasMore: false,
+      });
+    }
+  );
+});
 
 describe('AdvancedSearchClassBase', () => {
   let advancedSearchClassBase: AdvancedSearchClassBase;

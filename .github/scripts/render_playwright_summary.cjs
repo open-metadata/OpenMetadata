@@ -886,7 +886,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 
   // PR results cannot attest coverage of a different, tentative merge commit.
-  // Transport is retried separately; exhausted recovery never waives integrity.
+  // Missing transport evidence never waives execution integrity.
   const isMergeGroup = context.eventName === 'merge_group';
   const upstreamGreen = upstreamResult === 'success';
   const shouldFail = totalFailed > 0 || infrastructureIssues.length > 0 ||

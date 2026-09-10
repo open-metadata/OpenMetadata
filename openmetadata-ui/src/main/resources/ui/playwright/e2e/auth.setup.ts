@@ -188,8 +188,7 @@ setup('authenticate all users', async ({ browser }) => {
       }
     }
 
-    // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
-    await Promise.allSettled([
+    await settleAll([
       dataConsumer.create(apiContext, false),
       dataSteward.create(apiContext, false),
       editDescriptionUser.create(apiContext, false),
@@ -199,8 +198,7 @@ setup('authenticate all users', async ({ browser }) => {
       ownerUser.create(apiContext, false),
     ]);
 
-    // Set up roles and policies, Using allSettled to avoid failing the setup if one of the users fails to create
-    await Promise.allSettled([
+    await settleAll([
       dataConsumer.setDataConsumerRole(apiContext),
       dataSteward.setDataStewardRole(apiContext),
       editDescriptionUser.setCustomRulePolicy(
@@ -315,3 +313,5 @@ setup('authenticate all users', async ({ browser }) => {
     }
   }
 });
+
+import { settleAll } from '../utils/apiResponse';

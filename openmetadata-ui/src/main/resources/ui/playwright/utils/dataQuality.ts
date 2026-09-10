@@ -18,6 +18,7 @@ import { waitForAllLoadersToDisappear } from './entity';
 import { expectScheduleFrequencySelected } from './scheduleInterval';
 import { sidebarClick } from './sidebar';
 import { submitTestCaseForm } from './testCases';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 /** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
@@ -280,11 +281,13 @@ export const addTestSuitePipeline = async (page: Page) => {
   const pipelineTab = page.getByRole('tab', { name: 'Pipeline' });
   await expect(pipelineTab).toBeVisible();
   await pipelineTab.click();
-  const testSuiteByNameResponse = page.waitForResponse(
+  const testSuiteByNameResponse = waitForResponseWithStatus(
+    page,
     (res) =>
+      res.request().method() === 'GET' &&
       res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.url().includes('fields=owners') &&
-      res.status() === 200
+      res.url().includes('fields=owners'),
+    200
   );
   const emptyStateAddButton = page
     .getByTestId('empty-placeholder')
@@ -303,11 +306,12 @@ export const addTestSuitePipeline = async (page: Page) => {
 
   await expectScheduleFrequencySelected(page, 'day');
 
-  const deployResponse = page.waitForResponse(
+  const deployResponse = waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
-      res.request().method() === 'POST' &&
-      res.status() === 200
+      res.request().method() === 'POST',
+    200
   );
   await page.getByTestId('deploy-button').click();
   await deployResponse;
@@ -317,10 +321,12 @@ export const addTestSuitePipeline = async (page: Page) => {
     /has been created and deployed successfully/
   );
 
-  const testSuiteDetailsResponse = page.waitForResponse(
+  const testSuiteDetailsResponse = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/name/'),
+    200
   );
   await page.getByTestId('view-service-button').click();
   await testSuiteDetailsResponse;
@@ -438,11 +444,13 @@ export const searchAndSelectTestCase = async (
   page: Page,
   testCase: OwnedTestCase
 ) => {
-  const searchResponse = page.waitForResponse(
+  const searchResponse = waitForResponseWithStatus(
+    page,
     (res) =>
+      res.request().method() === 'GET' &&
       res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.url().includes(testCase.searchTerm) &&
-      res.status() === 200
+      res.url().includes(testCase.searchTerm),
+    200
   );
   await page.getByTestId('searchbar').fill(testCase.searchTerm);
   await searchResponse;

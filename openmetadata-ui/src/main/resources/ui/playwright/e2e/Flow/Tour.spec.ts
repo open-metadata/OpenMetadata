@@ -19,31 +19,6 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
-const waitForTourBadgeWithRetry = async (
-  page: Page,
-  maxAttempts = 3,
-  timeout = 20000
-) => {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await page.locator('[data-tour-elem="badge"]').waitFor({
-        state: 'visible',
-        timeout,
-      });
-
-      return; // Success
-    } catch (e) {
-      if (attempt < maxAttempts) {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      } else {
-        throw e;
-      }
-    }
-  }
-};
-
 const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
   // A single web-first assertion. The badge re-renders on every step transition,
   // so a separate visibility wait followed by a text poll gave the transition two
@@ -55,8 +30,6 @@ const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
 };
 
 const validateTourSteps = async (page: Page) => {
-  await waitForTourBadgeWithRetry(page);
-
   await expectTourBadge(page, '1');
 
   // step 1
@@ -222,7 +195,7 @@ test.describe(
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page);
+      await expectTourBadge(page, '1');
     });
 
     test('Tour should work from URL directly', async ({ page }) => {
@@ -242,7 +215,7 @@ test.describe(
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page);
+      await expectTourBadge(page, '1');
     });
   }
 );

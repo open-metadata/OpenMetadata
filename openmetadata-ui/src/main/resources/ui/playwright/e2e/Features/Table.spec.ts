@@ -272,13 +272,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
       const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
         name: '15 / Page',
       });
-      await expect(async () => {
-        await pageSizeDropdown.hover();
-        if (!(await pageSizeMenu.isVisible())) {
-          await pageSizeDropdown.click();
-        }
-        await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
-      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+      await pageSizeDropdown.scrollIntoViewIfNeeded();
+      await pageSizeDropdown.hover();
+      await expect(pageSizeMenu).toBeVisible();
+      await waitForAntdPopupToSettle(page);
 
       await pageSizeOption.click();
       await waitForAllLoadersToDisappear(page);
@@ -505,11 +502,12 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
       .click();
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/columns/name/') &&
-          ['PUT', 'PATCH'].includes(response.request().method()) &&
-          response.ok()
+          ['PUT', 'PATCH'].includes(response.request().method()),
+        'ok'
       ),
       page.getByTestId('saveAssociatedTag').click(),
     ]);
@@ -564,11 +562,12 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .click();
 
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/columns/name/') &&
-          ['PUT', 'PATCH'].includes(response.request().method()) &&
-          response.ok()
+          ['PUT', 'PATCH'].includes(response.request().method()),
+        'ok'
       ),
       page.getByTestId('saveAssociatedTag').click(),
     ]);
@@ -1019,3 +1018,7 @@ test.describe('Table open-task header stat', () => {
     await expect(page).toHaveURL(/\/activity_feed\/tasks/);
   });
 });
+
+import { waitForAntdPopupToSettle } from '../../utils/common';
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

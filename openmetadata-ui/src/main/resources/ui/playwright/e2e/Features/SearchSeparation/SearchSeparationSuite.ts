@@ -182,7 +182,7 @@ export function registerFilterSeparationSuite(
 
       await afterAction();
       await redirectToHomePage(page);
-      await assertAllFourFiltersWorkWithRetry(
+      await assertAllFourFiltersWork(
         page,
         entity,
         classificationTag,
@@ -343,34 +343,6 @@ async function assertReindexedDocPreservesSeparation(
     });
 
   return { serviceDisplayName };
-}
-
-async function assertAllFourFiltersWorkWithRetry(
-  page: Page,
-  entity: FilterSeparationEntity,
-  classificationTag: TagClass,
-  glossaryTerm: GlossaryTerm,
-  serviceDisplayName?: string,
-  maxAttempts = 3
-): Promise<void> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await assertAllFourFiltersWork(
-        page,
-        entity,
-        classificationTag,
-        glossaryTerm,
-        serviceDisplayName
-      );
-
-      return;
-    } catch (err) {
-      if (attempt === maxAttempts) {
-        throw err;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 8_000));
-    }
-  }
 }
 
 async function checkExploreFilterWithServiceBase(

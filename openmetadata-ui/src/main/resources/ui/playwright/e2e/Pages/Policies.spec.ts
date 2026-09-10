@@ -147,7 +147,7 @@ test.describe(
           POLICY_NAME
         );
 
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify policy description
         await expect(
@@ -226,7 +226,7 @@ test.describe(
         await addRule(page, NEW_RULE_NAME, NEW_RULE_DESCRIPTION, 0);
 
         // Validate added rule
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify other details
         await page.getByText(RULE_NAME, { exact: true }).click();
@@ -267,7 +267,9 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(POLICY_NAME));
 
         // Verify the rule name is updated
-        await page.getByText(UPDATED_RULE_NAME, { exact: true }).isVisible();
+        await expect(
+          page.getByText(UPDATED_RULE_NAME, { exact: true })
+        ).toBeVisible();
       });
 
       await test.step('Delete new rule', async () => {

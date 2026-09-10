@@ -17,6 +17,7 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 let table: TableClass;
@@ -63,9 +64,10 @@ test.describe('BlockEditor math equations', { tag: ['@Discovery'] }, () => {
     await expect(editor.locator('.block-math-equation')).toBeVisible();
 
     // Hoist waitForResponse above the click that triggers it (Playwright lint rule)
-    const patchRequest = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' && response.status() === 200
+    const patchRequest = waitForResponseWithStatus(
+      page,
+      (response) => response.request().method() === 'PATCH',
+      200
     );
     await page.getByTestId('save').click();
     await patchRequest;

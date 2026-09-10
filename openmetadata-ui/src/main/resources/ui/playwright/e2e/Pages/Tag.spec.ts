@@ -252,11 +252,12 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse(
+    const createTagResponse = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().includes('/api/v1/tags') &&
-        response.request().method() === 'POST' &&
-        response.ok()
+        response.request().method() === 'POST',
+      'ok'
     );
 
     await submitForm(adminPage);
@@ -660,3 +661,5 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     }
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

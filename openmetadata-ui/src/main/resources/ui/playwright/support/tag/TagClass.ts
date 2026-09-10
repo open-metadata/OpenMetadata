@@ -131,7 +131,8 @@ export class TagClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/tags/${this.responseData.id}?recursive=true&hardDelete=true`
     );
 
@@ -142,3 +143,5 @@ export class TagClass {
     return this.responseData.displayName;
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

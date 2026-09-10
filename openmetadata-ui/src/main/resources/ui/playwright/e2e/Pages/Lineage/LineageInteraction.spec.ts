@@ -265,7 +265,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           )
           .dispatchEvent('click');
 
-        await page.locator('.edge-info-drawer').isVisible();
+        await expect(page.locator('.edge-info-drawer')).toBeVisible();
 
         await expect(
           page.locator('[data-testid="sql-function"]')

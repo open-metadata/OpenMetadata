@@ -104,6 +104,13 @@ const patchDataProduct = async (
   );
 
   expect(response.status()).toBe(200);
+  const updated = await response.json();
+  await waitForSearchIndexed(
+    apiContext,
+    updated.fullyQualifiedName,
+    'dataProduct',
+    { minVersion: updated.version }
+  );
 };
 
 const assignCertification = (
@@ -117,12 +124,6 @@ const assignCertification = (
     certificationPatch(certification.responseData.fullyQualifiedName)
   );
 
-/**
- * Types the value into the filter dropdown until the aggregation returns a
- * matching bucket, then returns that bucket key — which is also the option's
- * test id. The data product has to be indexed first, so this is retried rather
- * than asserted once.
- */
 const resolveFilterOptionKey = async (
   page: Page,
   filter: QuickFilter,
@@ -131,39 +132,37 @@ const resolveFilterOptionKey = async (
   const menu = page.getByTestId('drop-down-menu');
   let resolvedKey = '';
 
-  await expect(async () => {
-    const isMenuOpen = await menu.isVisible().catch(() => false);
-    if (!isMenuOpen) {
-      await page.getByTestId(`search-dropdown-${filter.label}`).click();
-      await menu.waitFor({ state: 'visible' });
-    }
+  const isMenuOpen = await menu.isVisible().catch(() => false);
+  if (!isMenuOpen) {
+    await page.getByTestId(`search-dropdown-${filter.label}`).click();
+    await menu.waitFor({ state: 'visible' });
+  }
 
-    const aggregateResponse = waitForAggregation(page, {
-      field: filter.field,
-      value: searchText,
-    });
-    await menu.getByTestId('search-input').fill(searchText);
-    const body = await (await aggregateResponse).json();
-    const buckets: Array<{ key: string }> =
-      body?.aggregations?.[`sterms#${filter.field}`]?.buckets ?? [];
-    // Buckets are lowercased by the index normalizer, so the match has to be.
-    const match = buckets.find((bucket) =>
-      bucket.key.includes(searchText.toLowerCase())
+  const aggregateResponse = waitForAggregation(page, {
+    field: filter.field,
+    value: searchText,
+  });
+  await menu.getByTestId('search-input').fill(searchText);
+  const body = await (await aggregateResponse).json();
+  const buckets: Array<{ key: string }> =
+    body?.aggregations?.[`sterms#${filter.field}`]?.buckets ?? [];
+  // Buckets are lowercased by the index normalizer, so the match has to be.
+  const match = buckets.find((bucket) =>
+    bucket.key.includes(searchText.toLowerCase())
+  );
+
+  if (!match) {
+    throw new Error(
+      `No ${
+        filter.field
+      } bucket matched "${searchText}". Server returned keys: ${JSON.stringify(
+        buckets.map((bucket) => bucket.key)
+      )}`
     );
+  }
 
-    if (!match) {
-      throw new Error(
-        `No ${
-          filter.field
-        } bucket matched "${searchText}". Server returned keys: ${JSON.stringify(
-          buckets.map((bucket) => bucket.key)
-        )}`
-      );
-    }
-
-    resolvedKey = match.key;
-    await menu.getByTestId(resolvedKey).waitFor({ state: 'visible' });
-  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+  resolvedKey = match.key;
+  await menu.getByTestId(resolvedKey).waitFor({ state: 'visible' });
 
   return resolvedKey;
 };
@@ -396,3 +395,5 @@ test.describe('Data Products - quick filters', { tag: '@Governance' }, () => {
     });
   });
 });
+
+import { waitForSearchIndexed } from '../../utils/polling';

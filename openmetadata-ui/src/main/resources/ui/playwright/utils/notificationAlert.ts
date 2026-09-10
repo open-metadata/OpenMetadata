@@ -170,27 +170,24 @@ export const addInternalDestination = async ({
         `[data-testid="${searchText}-option-label"]`
       );
 
-      await expect(async () => {
-        if (!(await resultsDropdown.isVisible())) {
-          await dropdownTrigger.click();
-        }
-
-        const searchInput = resultsDropdown.getByTestId('search-input-field');
-        await expect(searchInput).toBeVisible();
-
-        // The controlled portal clears its search when React Aria closes it.
-        // Repeat the query after reopening so a late close cannot strand this
-        // helper waiting on an option from an already unmounted popup.
-        if ((await searchInput.inputValue()) !== searchText) {
-          const getSearchResult = page.waitForResponse(
-            '/api/v1/search/query?q=*'
-          );
-          await searchInput.fill(searchText);
-          await getSearchResult;
-        }
-
-        await option.click({ timeout: 3_000 });
-      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+      await dropdownTrigger.scrollIntoViewIfNeeded();
+      await dropdownTrigger.focus();
+      await dropdownTrigger.click();
+      const searchInput = resultsDropdown.getByTestId('search-input-field');
+      await expect(searchInput).toBeVisible();
+      const getSearchResult = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('q') === searchText &&
+          url.searchParams.get('index') ===
+            (category === 'Teams' ? 'team' : 'user')
+        );
+      });
+      await searchInput.fill(searchText);
+      expect((await getSearchResult).status()).toBe(200);
+      await option.click();
 
       await expect(
         dropdownTrigger.getByTestId('placeholder-text')

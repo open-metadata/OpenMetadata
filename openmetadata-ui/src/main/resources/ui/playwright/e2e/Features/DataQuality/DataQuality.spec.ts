@@ -1519,13 +1519,10 @@ test.describe(
 
           // Ant Dropdown opens on hover, so a re-render that shifts the footer out
           // from under the pointer leaves the menu closed for good.
-          await expect(async () => {
-            await pageSizeDropdown.hover();
-            if (!(await pageSizeMenu.isVisible())) {
-              await pageSizeDropdown.click();
-            }
-            await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
-          }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+          await pageSizeDropdown.scrollIntoViewIfNeeded();
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await waitForAntdPopupToSettle(page);
 
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
@@ -1637,12 +1634,14 @@ test.describe(
         await waitForIncidentToBeIndexed(apiContext, testCaseFqn, failedAt);
 
         const detailsResponse = waitForTestCaseDetailsResponse(page);
-        const resultsResponse = page.waitForResponse(
+        const resultsResponse = waitForResponseWithStatus(
+          page,
           (response) =>
+            response.request().method() === 'GET' &&
             response
               .url()
-              .includes('/api/v1/dataQuality/testCases/testCaseResults/') &&
-            response.status() === 200
+              .includes('/api/v1/dataQuality/testCases/testCaseResults/'),
+          200
         );
 
         await page.goto(
@@ -1706,3 +1705,6 @@ test.describe(
     });
   }
 );
+
+import { waitForAntdPopupToSettle } from '../../../utils/common';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

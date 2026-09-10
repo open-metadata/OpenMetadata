@@ -124,6 +124,7 @@ test.describe('Data asset lineage', () => {
   test.beforeAll(
     'setup lineage creation with other entity creation',
     async ({ browser }) => {
+      entities.length = 0;
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );

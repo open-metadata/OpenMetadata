@@ -27,6 +27,7 @@ import {
   removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const policies = {
   dataConsumerPolicy: 'Data Consumer Policy',
@@ -121,10 +122,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await Promise.all([
         // Wait for API call to complete
-        page.waitForResponse(
+        waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/roles') &&
-            response.status() === 201
+            response.request().method() === 'POST' &&
+            response.url().includes('/api/v1/roles'),
+          201
         ),
         submitButton.click(),
       ]);
@@ -277,10 +280,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await Promise.all([
         // Wait for API call to complete
-        page.waitForResponse(
+        waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/roles') &&
-            (response.status() === 200 || response.status() === 201)
+            response.request().method() === 'PATCH' &&
+            response.url().includes('/api/v1/roles'),
+          [200, 201]
         ),
         saveButton.click(),
       ]);
@@ -320,10 +325,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await Promise.all([
         // Wait for API call to complete
-        page.waitForResponse(
+        waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/roles') &&
-            (response.status() === 200 || response.status() === 201)
+            response.request().method() === 'PATCH' &&
+            response.url().includes('/api/v1/roles'),
+          [200, 201]
         ),
         saveButton.click(),
       ]);
@@ -371,10 +378,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await Promise.all([
         // Wait for API call to complete
-        page.waitForResponse(
+        waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/roles') &&
-            (response.status() === 200 || response.status() === 201)
+            response.request().method() === 'PATCH' &&
+            response.url().includes('/api/v1/roles'),
+          [200, 201]
         ),
         submitButton.click(),
       ]);
@@ -479,10 +488,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await Promise.all([
         // Wait for API call to complete
-        page.waitForResponse(
+        waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/roles') &&
-            response.status() === 200
+            response.request().method() === 'DELETE' &&
+            response.url().includes('/api/v1/roles'),
+          200
         ),
         confirmButton.click(),
       ]);
@@ -538,9 +549,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await Promise.all([
       // Wait for API call to complete
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/roles') && response.status() === 200
+          response.request().method() === 'DELETE' &&
+          response.url().includes('/api/v1/roles'),
+        200
       ),
       confirmButton.click(),
     ]);

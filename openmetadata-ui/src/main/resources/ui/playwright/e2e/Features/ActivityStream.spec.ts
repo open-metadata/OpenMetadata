@@ -19,6 +19,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForPageLoaded } from '../../utils/polling';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const test = base;
 
@@ -231,14 +232,14 @@ test.describe('Activity Stream on Entity Pages', () => {
     'activity stream API is called when visiting entity page',
     { tag: '@quarantine' },
     async ({ page }) => {
-      const activityApiPromise = page
-        .waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/activity') &&
-            response.status() === 200,
-          { timeout: 10000 }
-        )
-        .catch(() => null);
+      const activityApiPromise = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/activity'),
+        200,
+        { timeout: 10000 }
+      );
 
       await testTable.visitEntityPage(page);
       await waitForAllLoadersToDisappear(page);

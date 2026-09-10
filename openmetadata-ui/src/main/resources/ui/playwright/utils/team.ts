@@ -33,6 +33,7 @@ import {
 import { validateFormNameFieldInput } from './form';
 import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
@@ -40,20 +41,9 @@ const ADD_TEAM_MODAL = '[role="dialog"].ant-modal';
 // A success toast self-dismisses after 3.5s; give it a beat past that.
 const TOAST_DISMISS_TIMEOUT = 6_000;
 const MODAL_OPEN_TIMEOUT = 10_000;
-const MODAL_RETRY_TIMEOUT = 60_000;
 
 type AddTeamTrigger = 'add-team' | 'add-placeholder-button';
 
-/**
- * Click an add-team trigger and return the modal it opens.
- *
- * The backend fans async-delete/job notifications out to every socket of the
- * logged-in user, so a parallel worker's toast can drop over the button in the
- * window between Playwright's hit-target check and the dispatched click — the
- * toast swallows the click and the modal never opens. Success toasts carry no
- * close button, so let them expire and click again; clicking with `force` only
- * dispatches INTO the toast.
- */
 export const openAddTeamModal = async (
   page: Page,
   trigger: AddTeamTrigger = 'add-team'
@@ -61,18 +51,12 @@ export const openAddTeamModal = async (
   const addButton = page.getByTestId(trigger);
   const addTeamModal = page.locator(ADD_TEAM_MODAL).last();
 
-  await expect(async () => {
-    await page
-      .getByTestId('alert-bar')
-      .first()
-      .waitFor({ state: 'detached', timeout: TOAST_DISMISS_TIMEOUT })
-      .catch(() => undefined);
-
-    await expect(addButton).toBeEnabled();
-    await addButton.click();
-
-    await expect(addTeamModal).toBeVisible({ timeout: MODAL_OPEN_TIMEOUT });
-  }).toPass({ timeout: MODAL_RETRY_TIMEOUT, intervals: [1_000] });
+  await expect(page.getByTestId('alert-bar')).toHaveCount(0, {
+    timeout: TOAST_DISMISS_TIMEOUT,
+  });
+  await addButton.scrollIntoViewIfNeeded();
+  await addButton.click();
+  await expect(addTeamModal).toBeVisible({ timeout: MODAL_OPEN_TIMEOUT });
 
   return addTeamModal;
 };
@@ -86,13 +70,19 @@ export const openAddTeamModal = async (
  * calls that gate the first paint, then on the table itself.
  */
 export const visitTeamsPage = async (page: Page) => {
-  const organizationResponse = page.waitForResponse(
+  const organizationResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/teams/name/') && response.ok()
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/teams/name/'),
+    'ok'
   );
-  const permissionResponse = page.waitForResponse(
+  const permissionResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/permissions/team/name/') && response.ok()
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/permissions/team/name/'),
+    'ok'
   );
 
   await settingClick(page, GlobalSettingOptions.TEAMS);
@@ -441,11 +431,12 @@ export const addTeamHierarchy = async (
   await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
-  const saveTeamResponse = page.waitForResponse(
+  const saveTeamResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/teams') &&
-      response.request().method() === 'POST' &&
-      response.ok()
+      response.request().method() === 'POST',
+    'ok'
   );
   const teamsListResponse = page.waitForResponse(
     (response) =>
@@ -619,12 +610,13 @@ export const verifyTeamListingAssetCount = async (
 
 export const addUserInTeam = async (page: Page, user: UserClass) => {
   const userName = user.data.email.split('@')[0];
-  const fetchUsersResponse = page.waitForResponse(
+  const fetchUsersResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/users') &&
       response.url().includes('limit=25') &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+      response.request().method() === 'GET',
+    200
   );
   await page.locator('[data-testid="add-new-user"]').click();
   await fetchUsersResponse;
@@ -706,12 +698,13 @@ export const addUserTeam = async (
   // Navigate to users tab and add new user
   await page.locator('[data-testid="users"]').click();
 
-  const fetchUsersResponse = page.waitForResponse(
+  const fetchUsersResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/users') &&
       response.url().includes('limit=25') &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+      response.request().method() === 'GET',
+    200
   );
   await page.locator('[data-testid="add-new-user"]').click();
   await fetchUsersResponse;

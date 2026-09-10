@@ -99,11 +99,11 @@ test(
     // Wait for the API call which should return an error
     const errorResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/columns/name/') &&
-        response.status() >= 400
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/v1/columns/name/')
     );
     await page.click('[data-testid="saveAssociatedTag"]');
-    await errorResponse;
+    expect((await errorResponse).status()).toBe(400);
 
     await toastNotification(page, /mutually exclusive/i);
 

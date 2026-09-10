@@ -22,6 +22,7 @@ import { getApiContext } from './common';
 import { waitForContractResult } from './contractExecution';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
@@ -71,11 +72,12 @@ export const validateDataContractInsideBundleTestSuites = async (
   await page.getByTestId('test-suites').click();
   await testSuiteResponse;
 
-  const bundleSuitesResponse = page.waitForResponse(
+  const bundleSuitesResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+      response.request().method() === 'GET',
+    200
   );
 
   await page.getByTestId('bundle-suite-radio-btn').click();

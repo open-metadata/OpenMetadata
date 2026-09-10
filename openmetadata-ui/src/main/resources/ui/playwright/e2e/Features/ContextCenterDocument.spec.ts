@@ -35,6 +35,7 @@ import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
@@ -72,6 +73,8 @@ test.describe('Context Center - Documents Page', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ browser }) => {
+    contextFileIdsToCleanup.clear();
+    contextFolderIdsToCleanup.clear();
     const { apiContext, afterAction } = await createNewPage(browser);
     await uploadDocument(
       apiContext,
@@ -103,6 +106,42 @@ test.describe('Context Center - Documents Page', () => {
     );
 
     await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    try {
+      const deleteIds = (collection: string, ids: Set<string>) =>
+        Promise.allSettled(
+          [...ids].map(async (id) => {
+            const response = await apiContext.delete(
+              `/api/v1/contextCenter/drive/${collection}/${id}?hardDelete=true`
+            );
+            expect(
+              [200, 202, 404],
+              `Delete ${collection}/${id}: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
+      const results = [
+        ...(await deleteIds('files', contextFileIdsToCleanup)),
+        ...(await deleteIds('folders', contextFolderIdsToCleanup)),
+      ];
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      );
+      if (failures.length) {
+        throw new AggregateError(
+          failures.map((failure) => failure.reason),
+          'Document fixture cleanup failed'
+        );
+      }
+    } finally {
+      contextFileIdsToCleanup.clear();
+      contextFolderIdsToCleanup.clear();
+      await afterAction();
+    }
   });
 
   test.beforeEach(async ({ page }) => {
@@ -1576,10 +1615,12 @@ test.describe('Context Center - Documents Page', () => {
     await expect(tryAgainBtn).toBeVisible();
 
     // Retry — the route now passes through, so the real server handles it.
-    const retryResPromise = page.waitForResponse(
+    const retryResPromise = waitForResponseWithStatus(
+      page,
       (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
+        res.request().method() === 'POST' &&
+        res.url().includes('/api/v1/contextCenter/drive/files/upload'),
+      201
     );
     await tryAgainBtn.click();
     const retryRes = await retryResPromise;
@@ -1634,10 +1675,12 @@ test.describe('Context Center - Documents Page', () => {
     await expect(modal.getByText(file2).first()).toBeVisible();
 
     // Capture the successful upload response for cleanup.
-    const successResPromise = page.waitForResponse(
+    const successResPromise = waitForResponseWithStatus(
+      page,
       (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
+        res.request().method() === 'POST' &&
+        res.url().includes('/api/v1/contextCenter/drive/files/upload'),
+      201
     );
 
     await modal.getByRole('button', { name: /attach/i }).click();
@@ -1715,10 +1758,12 @@ test.describe('Context Center - Documents Page', () => {
     await expect(modal.getByText(newFile).first()).toBeVisible();
 
     // Upload the new file — it succeeds.
-    const secondSuccessRes = page.waitForResponse(
+    const secondSuccessRes = waitForResponseWithStatus(
+      page,
       (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
+        res.request().method() === 'POST' &&
+        res.url().includes('/api/v1/contextCenter/drive/files/upload'),
+      201
     );
     await modal.getByRole('button', { name: /attach/i }).click();
     const uploadRes = await secondSuccessRes;

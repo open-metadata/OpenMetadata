@@ -113,11 +113,12 @@ test.describe.serial('Task Form Settings', () => {
       await page.getByTestId('task-form-stage-id-0').fill('open');
       await selectAntOption(page, 'task-form-stage-status-0', 'Open');
 
-      const createResponse = page.waitForResponse(
+      const createResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/taskFormSchemas') &&
-          response.request().method() === 'POST' &&
-          response.ok()
+          response.request().method() === 'POST',
+        'ok'
       );
 
       await page.getByTestId('task-form-save-button').click();
@@ -145,11 +146,12 @@ test.describe.serial('Task Form Settings', () => {
         schemaName
       );
 
-      const updateResponse = page.waitForResponse(
+      const updateResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/taskFormSchemas') &&
-          response.request().method() === 'PUT' &&
-          response.ok()
+          response.request().method() === 'PUT',
+        'ok'
       );
 
       await page
@@ -199,3 +201,5 @@ test.describe.serial('Task Form Settings', () => {
     }
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

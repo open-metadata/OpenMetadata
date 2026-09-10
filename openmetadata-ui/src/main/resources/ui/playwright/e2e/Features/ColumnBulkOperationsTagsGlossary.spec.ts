@@ -18,14 +18,17 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const GRID_API_URL = '/api/v1/columns/grid';
 
 async function waitForGridResponse(page: Page) {
-  return page.waitForResponse(
-    (r) => r.url().includes(GRID_API_URL) && r.status() === 200
+  return waitForResponseWithStatus(
+    page,
+    (r) => r.request().method() === 'GET' && r.url().includes(GRID_API_URL),
+    200
   );
 }
 

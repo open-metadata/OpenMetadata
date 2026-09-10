@@ -1482,13 +1482,24 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               dataContract.getFullyQualifiedName()));
     }
 
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    String resultJson =
-        timeSeriesDAO.getLatestExtensionByKey(
-            RESULT_EXTENSION_KEY,
-            dataContract.getLatestResult().getResultId().toString(),
-            dataContract.getFullyQualifiedName(),
-            RESULT_EXTENSION);
+    return getResult(dataContract, dataContract.getLatestResult().getResultId());
+  }
+
+  public DataContractResult getResult(DataContract dataContract, UUID resultId) {
+    final String resultJson =
+        Entity.getCollectionDAO()
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtensionByKey(
+                RESULT_EXTENSION_KEY,
+                resultId.toString(),
+                dataContract.getFullyQualifiedName(),
+                RESULT_EXTENSION);
+    if (resultJson == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format(
+              "Data contract result %s not found for %s",
+              resultId, dataContract.getFullyQualifiedName()));
+    }
     return JsonUtils.readValue(resultJson, DataContractResult.class);
   }
 

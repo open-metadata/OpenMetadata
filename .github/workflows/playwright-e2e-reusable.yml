@@ -1531,6 +1531,12 @@ jobs:
           fi
           npx playwright install chromium
 
+      - name: Verify browser helper behavior
+        id: verify-browser-helpers
+        if: ${{ !inputs.ref }}
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn playwright test --config=playwright/browser-helper-tests.config.ts --output="$RUNNER_TEMP/browser-helper-results"
+
       - name: Verify the restored authenticated application bundle
         id: verify-bundle
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -1749,6 +1755,7 @@ jobs:
           RESTORE_BROWSER_OUTCOME: ${{ steps.restore-browser.outcome }}
           INSTALL_BROWSERS_OUTCOME: ${{ steps.install-browsers.outcome }}
           BUNDLE_SMOKE_OUTCOME: ${{ steps.verify-bundle.outcome }}
+          BROWSER_HELPERS_OUTCOME: ${{ steps.verify-browser-helpers.outcome }}
           TEST_OUTCOME: ${{ steps.run-tests.outcome }}
         run: |
           STATUS_DIR="openmetadata-ui/src/main/resources/ui/playwright/output"
@@ -1770,6 +1777,7 @@ jobs:
             --arg restoreBrowser "$RESTORE_BROWSER_OUTCOME" \
             --arg installBrowsers "$INSTALL_BROWSERS_OUTCOME" \
             --arg bundleSmoke "$BUNDLE_SMOKE_OUTCOME" \
+            --arg browserHelpers "$BROWSER_HELPERS_OUTCOME" \
             --arg tests "$TEST_OUTCOME" \
             '{
               headSha: $headSha,
@@ -1789,6 +1797,7 @@ jobs:
                 restoreBrowser: $restoreBrowser,
                 installBrowsers: $installBrowsers,
                 bundleSmoke: $bundleSmoke,
+                browserHelpers: $browserHelpers,
                 tests: $tests
               }
             }' > "$STATUS_DIR/ci-status.json"
@@ -1834,6 +1843,9 @@ jobs:
         id: upload-results-json
         uses: actions/upload-artifact@v6
         if: ${{ always() && github.event_name != 'merge_group' }}
+        # Preserve the shard's test outcome when transport fails. The summary
+        # still fails closed if complete, valid execution evidence is unavailable.
+        continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}
           overwrite: true

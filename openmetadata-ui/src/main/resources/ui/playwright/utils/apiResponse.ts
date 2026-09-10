@@ -12,6 +12,38 @@
  */
 import { APIRequestContext, APIResponse } from '@playwright/test';
 
+export const assertFulfilled = (results: PromiseSettledResult<unknown>[]) => {
+  const failures = results.filter(
+    (result): result is PromiseRejectedResult => result.status === 'rejected'
+  );
+  if (failures.length) {
+    const errors = failures.map((failure) => failure.reason);
+    throw new AggregateError(
+      errors,
+      `Parallel fixture operations failed:\n${errors.map(String).join('\n')}`
+    );
+  }
+};
+
+export const settleAll = async (operations: Iterable<unknown>) => {
+  assertFulfilled(await Promise.allSettled(operations));
+};
+
+/** Cleanup is idempotent, but an HTTP error must not silently leak a fixture. */
+export const deleteFixtureEntity = async (
+  apiContext: APIRequestContext,
+  url: string,
+  options?: Parameters<APIRequestContext['delete']>[1]
+): Promise<APIResponse> => {
+  const response = await apiContext.delete(url, options);
+  if (!response.ok() && response.status() !== 404) {
+    throw new Error(
+      `Fixture DELETE ${url}: HTTP ${response.status()}: ${await response.text()}`
+    );
+  }
+  return response;
+};
+
 /**
  * Fallback for the response body when a caller does not name a type.
  *
@@ -80,50 +112,6 @@ export const buildFqn = (...segments: string[]): string =>
   segments.map(quoteFqnSegment).join('.');
 
 /**
- * A dependency committed moments earlier can still be invisible to the create
- * that references it. A nightly AUT run recorded `POST /policies` answering 201,
- * `POST /roles` referencing that exact id answering 404 `policy instance ... not
- * found` 15ms later, and a `DELETE` of the same id answering 200 a further 58ms
- * on — so the row was committed the whole time and only the reference lookup
- * lagged. Retry briefly instead of losing the try; a reference that is genuinely
- * wrong still fails, just ~1.8s later.
- */
-const NOT_FOUND_RETRY_ATTEMPTS = 3;
-const NOT_FOUND_RETRY_BASE_DELAY_MS = 300;
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-/**
- * Re-send a request while the server answers 404.
- *
- * A 404 means the request was rejected outright, so nothing was partially
- * applied and re-sending is safe. This covers the mirror image of the 409 race:
- * a nightly shard recorded `ApiServiceClass.patch failed (404): apiService
- * instance ... not found` against the very id its own create had just returned.
- * Callers keep their own {@link okJson} handling — this only decides whether the
- * request is worth sending again.
- */
-export const withNotFoundRetry = async (
-  send: () => Promise<APIResponse>
-): Promise<APIResponse> => {
-  let response = await send();
-
-  for (
-    let attempt = 1;
-    attempt <= NOT_FOUND_RETRY_ATTEMPTS && response.status() === 404;
-    attempt++
-  ) {
-    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
-    response = await send();
-  }
-
-  return response;
-};
-
-/**
  * POST that treats "already exists" as success.
  *
  * The nightly topology runs many Playwright processes against a single server,
@@ -157,22 +145,7 @@ export const createOrFetch = async <T = ResponseBody>(
   }
 ): Promise<T> => {
   const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
-  let createResponse = await apiContext.post(createPath, { data });
-
-  // 404 and 5xx are both "the server did not apply this", so re-sending is
-  // safe in either case — nothing was partially written. The 5xx arm covers a
-  // create whose parent reference is not resolvable yet: DashboardDataModelClass
-  // carried its own copy of this loop for exactly that, and can now drop it.
-  // A genuine failure still surfaces, just after the bounded retries.
-  for (
-    let attempt = 1;
-    attempt <= NOT_FOUND_RETRY_ATTEMPTS &&
-    (createResponse.status() === 404 || createResponse.status() >= 500);
-    attempt++
-  ) {
-    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
-    createResponse = await apiContext.post(createPath, { data });
-  }
+  const createResponse = await apiContext.post(createPath, { data });
 
   if (createResponse.status() === 409) {
     const entityFqn = buildFqn(...fqnSegments);

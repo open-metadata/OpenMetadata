@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { okJson } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
@@ -112,7 +112,8 @@ export class TeamClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
@@ -124,13 +125,14 @@ export class TeamClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(`/api/v1/teams/${this.responseData.id}`, {
+    const response = await apiContext.patch(
+      `/api/v1/teams/${this.responseData.id}`,
+      {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      })
+      }
     );
 
     this.responseData = await okJson(response, 'TeamClass.patch');
@@ -151,3 +153,5 @@ export class TeamClass {
     ]);
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

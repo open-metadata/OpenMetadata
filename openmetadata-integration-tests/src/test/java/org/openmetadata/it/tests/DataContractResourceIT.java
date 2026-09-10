@@ -2720,6 +2720,87 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testGetContractResultUsesRequestedExecution(TestNamespace ns) {
+    final DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .create(
+                new CreateDataContract()
+                    .withName(ns.prefix("execution_identity"))
+                    .withEntity(createTestTable(ns).getEntityReference()));
+    final long timestamp = System.currentTimeMillis();
+    final DataContractResult earlier =
+        addExecutionResult(contract, timestamp, ContractExecutionStatus.Failed);
+    final DataContractResult latest =
+        addExecutionResult(contract, timestamp + 1, ContractExecutionStatus.Success);
+
+    assertEquals(
+        latest.getId(),
+        SdkClients.adminClient().dataContracts().getLatestResult(contract.getId()).getId());
+    final DataContractResult requested = getExecutionResult(contract.getId(), earlier.getId());
+    assertEquals(earlier.getId(), requested.getId());
+    assertEquals(ContractExecutionStatus.Failed, requested.getContractExecutionStatus());
+    assertEquals(latest.getId(), getExecutionResult(contract.getId(), latest.getId()).getId());
+  }
+
+  @Test
+  void testGetContractResultRejectsUnknownOrOtherContractExecution(TestNamespace ns) {
+    final DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .create(
+                new CreateDataContract()
+                    .withName(ns.prefix("result_scope"))
+                    .withEntity(createTestTable(ns).getEntityReference()));
+    final DataContract otherContract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .create(
+                new CreateDataContract()
+                    .withName(ns.prefix("other_result_scope"))
+                    .withEntity(createTestTable(ns).getEntityReference()));
+    final DataContractResult result =
+        addExecutionResult(contract, System.currentTimeMillis(), ContractExecutionStatus.Success);
+    addExecutionResult(otherContract, System.currentTimeMillis(), ContractExecutionStatus.Success);
+
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> getExecutionResult(contract.getId(), UUID.randomUUID()))
+            .getStatusCode());
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> getExecutionResult(otherContract.getId(), result.getId()))
+            .getStatusCode());
+  }
+
+  private DataContractResult addExecutionResult(
+      DataContract contract, long timestamp, ContractExecutionStatus status) {
+    return SdkClients.adminClient()
+        .dataContracts()
+        .addResult(
+            contract.getId(),
+            new DataContractResult()
+                .withId(UUID.randomUUID())
+                .withDataContractFQN(contract.getFullyQualifiedName())
+                .withTimestamp(timestamp)
+                .withContractExecutionStatus(status));
+  }
+
+  private DataContractResult getExecutionResult(UUID contractId, UUID resultId) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataContracts/" + contractId + "/results/" + resultId,
+            null,
+            DataContractResult.class);
+  }
+
+  @Test
   void testDataContractIsDeletedWhenTableIsDeleted(TestNamespace ns) {
     Table table = createTestTable(ns);
 

@@ -25,6 +25,7 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const ENTITY_ROUTE_PATHS: Partial<Record<EntityTypeEndpoint, string>> = {
   [EntityTypeEndpoint.API_COLLECTION]: 'apiCollection',
@@ -106,10 +107,12 @@ export const openEntityVersion = async (page: Page, version: string) => {
     )
     .toContain(version);
 
-  const versionDetailResponse = page.waitForResponse(
+  const versionDetailResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes(`/versions/${version}`) &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes(`/versions/${version}`),
+    200
   );
   await page.getByTestId('version-button').click();
   await versionDetailResponse;

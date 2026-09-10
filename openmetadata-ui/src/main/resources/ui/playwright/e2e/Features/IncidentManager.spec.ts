@@ -34,7 +34,7 @@ import {
   verifyIncidentStatus,
   visitProfilerTab,
 } from '../../utils/incidentManager';
-import { makeRetryRequest } from '../../utils/serviceIngestion';
+
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
@@ -475,13 +475,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const pipeline = await table1.createTestSuitePipeline(apiContext);
 
-    await makeRetryRequest({
-      page,
-      fn: () =>
-        apiContext.post(
-          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-        ),
-    });
+    const deployResponse = await apiContext.post(
+      `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+    );
+    expect(deployResponse.ok(), await deployResponse.text()).toBe(true);
 
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,

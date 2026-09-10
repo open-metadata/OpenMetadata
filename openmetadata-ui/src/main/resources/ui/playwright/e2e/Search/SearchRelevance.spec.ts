@@ -20,6 +20,7 @@ import test, {
 import { SidebarItem } from '../../constant/sidebar';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const RELEVANCE_QUERY = 'provider address texas';
 const STOPWORD_RELEVANCE_QUERY = 'provider address in texas';
@@ -295,13 +296,15 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
   await page.getByTestId('global-search-selector').click();
   await page.getByTestId('global-search-select-option-Table').click();
 
-  const searchResponse = page.waitForResponse(
+  const searchResponse = waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=table') &&
       response.url().includes('q=provider_address_texas') &&
-      response.url().includes('explain=true') &&
-      response.status() === 200
+      response.url().includes('explain=true'),
+    200
   );
 
   const searchBox = page

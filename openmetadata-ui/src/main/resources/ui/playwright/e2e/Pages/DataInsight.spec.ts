@@ -18,6 +18,7 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -141,13 +142,16 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     test.slow();
 
     await test.step('Capture and validate API response', async () => {
-      const chartResponsePromise = page.waitForResponse(
+      const chartResponsePromise = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response
             .url()
             .includes(
               '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_data_asset_with_description/data'
-            ) && response.status() === 200
+            ),
+        200
       );
 
       await sidebarClick(page, SidebarItem.DATA_INSIGHT);

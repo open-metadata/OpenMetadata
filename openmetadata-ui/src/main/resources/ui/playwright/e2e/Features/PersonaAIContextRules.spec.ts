@@ -35,11 +35,12 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { selectOptionWithRetry, toastNotification } from '../../utils/common';
+import { chooseSelectOption, toastNotification } from '../../utils/common';
 import {
   enablePersonaRulePreloading,
   openPersonaAIContext,
 } from '../../utils/personaAIContext';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // ---------------------------------------------------------------------------
 // Fixtures and shared state
@@ -94,12 +95,13 @@ const openAddRuleDrawer = async (page: Page) => {
 
 /** Clicks Save Rule and waits for the API to respond with 200. */
 const saveRule = async (page: Page) => {
-  const saved = page.waitForResponse(
+  const saved = waitForResponseWithStatus(
+    page,
     (r) =>
       r.url().includes('/api/v1/personas/') &&
       r.url().includes('/aiContext/rules') &&
-      ['POST', 'PUT'].includes(r.request().method()) &&
-      r.status() === 200
+      ['POST', 'PUT'].includes(r.request().method()),
+    200
   );
   await page.getByRole('button', { name: 'Save Rule' }).click();
   await saved;
@@ -113,12 +115,13 @@ const deleteRuleByName = async (page: Page, ruleName: string) => {
     .getByTestId('delete-context-rule')
     .click();
   await expect(page.getByTestId('delete-modal')).toBeVisible();
-  const deleted = page.waitForResponse(
+  const deleted = waitForResponseWithStatus(
+    page,
     (r) =>
       r.url().includes('/api/v1/personas/') &&
       r.url().includes('/aiContext/rules/') &&
-      r.request().method() === 'DELETE' &&
-      r.status() === 200
+      r.request().method() === 'DELETE',
+    200
   );
   await page.getByTestId('confirm-button').click();
   await deleted;
@@ -339,10 +342,10 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('switch entity type — filter must reset and unblock save', async () => {
         // react-aria can close the listbox mid-click and detach the option,
         // dropping the selection so the filter is never reset and the save stays
-        // blocked — the source of this test's flakiness. selectOptionWithRetry
+        // blocked — the source of this test's flakiness. selectOption
         // re-resolves the trigger's expanded state and reopens the popover before
         // retrying the option click.
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           page.getByTestId('context-rule-entity-type'),
           page
             .getByRole('listbox')

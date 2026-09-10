@@ -23,6 +23,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
+import { okJson, settleAll } from '../../utils/apiResponse';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAndVerifyWidget,
@@ -146,54 +147,38 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
 
-  // Set adminUser as owner for entities created by entityDetails config
-  // Only domains and glossaries from entityDetails typically support owners
-  const entitiesToPatch = [];
-
-  // Since creationConfig has entityDetails: true, these entities are created:
-  // domains, glossaries, users, teams, tags, classifications
-  // Only domains and glossaries support ownership
-
-  entitiesToPatch.push(
-    { entity: EntityDataClass.domain1, endpoint: 'domains' },
-    { entity: EntityDataClass.domain2, endpoint: 'domains' },
-    { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
-    { entity: EntityDataClass.glossary2, endpoint: 'glossaries' }
-  );
-
-  // Patch entities with owner in parallel
-  const ownerPatchPromises = entitiesToPatch.map(
-    async ({ entity, endpoint }) => {
-      // Check for the appropriate id property based on entity type
-      const entityId = (entity as Domain).responseData?.id;
-
-      if (entityId) {
-        try {
-          await apiContext.patch(`/api/v1/${endpoint}/${entityId}`, {
-            data: [
-              {
-                op: 'add',
-                path: '/owners',
-                value: [
-                  {
-                    id: adminUser.responseData.id,
-                    type: 'user',
-                  },
-                ],
-              },
-            ],
-            headers: {
-              'Content-Type': 'application/json-patch+json',
-            },
-          });
-        } catch {
-          // Some entities may not support owners, skip silently
-        }
+  await settleAll(
+    [
+      { entity: EntityDataClass.domain1, endpoint: 'domains' },
+      { entity: EntityDataClass.domain2, endpoint: 'domains' },
+      { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
+      { entity: EntityDataClass.glossary2, endpoint: 'glossaries' },
+    ].map(async ({ entity, endpoint }) => {
+      const entityId = entity.responseData.id;
+      if (!entityId) {
+        throw new Error(
+          'Widget fixture is missing its ' + endpoint + ' entity ID'
+        );
       }
-    }
+      const response = await apiContext.patch(
+        '/api/v1/' + endpoint + '/' + entityId,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/owners',
+              value: [{ id: adminUser.responseData.id, type: 'user' }],
+            },
+          ],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      await okJson(
+        response,
+        'Widget fixture owner for ' + endpoint + '/' + entityId
+      );
+    })
   );
-
-  await Promise.allSettled(ownerPatchPromises);
 
   // Create test domain first
   await testDomain.create(apiContext);

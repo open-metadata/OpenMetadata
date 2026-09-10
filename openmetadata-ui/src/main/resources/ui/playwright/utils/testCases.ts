@@ -31,6 +31,7 @@ import {
   startCsvPreviewAndWaitForGrid,
   suppressCsvJobsTray,
 } from './importUtils';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -140,46 +141,54 @@ export const submitTestCaseForm = async (page: Page) => {
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
-  page.waitForResponse((res) => {
-    const url = res.url();
-    return (
-      url.includes('/api/v1/permissions') &&
-      !url.includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
-    );
-  });
+  waitForResponseWithStatus(
+    page,
+    (res) => {
+      const url = res.url();
+      return (
+        url.includes('/api/v1/permissions') &&
+        !url.includes('/api/v1/permissions/table/name/') &&
+        res.request().method() === 'GET'
+      );
+    },
+    200
+  );
 
 export const waitForTableEntityPermissionsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestCaseListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testCases/search/list'),
+    200
   );
 
 export const waitForTestCaseDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestSuiteListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       (res.url().includes('/api/v1/dataQuality/testSuites') ||
         res.url().includes('/api/v1/dataQuality/testSuites/search/list')) &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 /**
@@ -214,10 +223,12 @@ export const visitTestSuitesPage = async (page: Page) => {
 };
 
 export const waitForTestSuiteDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/'),
+    200
   );
 
 export const visitTestSuiteDetailsPage = async (
@@ -230,11 +241,12 @@ export const visitTestSuiteDetailsPage = async (
 };
 
 export const waitForFailedRowsSampleResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/failedRowsSample') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
@@ -296,11 +308,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
 
   await page.keyboard.press('Escape');
 
-  const tableResponsePromise = page.waitForResponse(
+  const tableResponsePromise = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/tables/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.url().includes('/api/v1/tables/') && res.request().method() === 'GET',
+    200
   );
   const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'

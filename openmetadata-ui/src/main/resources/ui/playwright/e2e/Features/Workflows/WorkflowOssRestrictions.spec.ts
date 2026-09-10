@@ -390,11 +390,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await sidebar.getByTestId('save-node-configuration-button').click();
         await expect(sidebar).not.toBeVisible();
 
-        const saveResponse = page.waitForResponse(
+        const saveResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
-            response.request().method() === 'PUT' &&
-            response.ok()
+            response.request().method() === 'PUT',
+          'ok'
         );
 
         await page.getByTestId('save-workflow-button').click();
@@ -413,11 +414,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await navigateToWorkflowDetailPage(page, workflowName);
         await enterEditMode(page);
 
-        const saveResponse = page.waitForResponse(
+        const saveResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
-            response.request().method() === 'PUT' &&
-            response.ok()
+            response.request().method() === 'PUT',
+          'ok'
         );
 
         await page.getByTestId('save-workflow-button').click();
@@ -670,3 +672,5 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
     });
   });
 }
+
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

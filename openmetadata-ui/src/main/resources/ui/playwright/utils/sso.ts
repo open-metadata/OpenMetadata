@@ -73,8 +73,8 @@ export const enableSSOEditMode = async (page: Page) => {
     if (await editButton.isVisible()) {
       await editButton.click();
       // Wait for form to be in edit mode
-      await page.getByTestId('save-sso-configuration').isVisible();
-      await page.getByTestId('cancel-sso-configuration').isVisible();
+      await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+      await expect(page.getByTestId('cancel-sso-configuration')).toBeVisible();
     }
   }
   // If provider selector exists, we're already in configuration mode
@@ -265,17 +265,17 @@ export const resetToProviderSelector = async (page: Page) => {
  * Verify SSO configuration form is in read-only mode
  */
 export const verifyReadOnlyMode = async (page: Page) => {
-  await page.getByTestId('edit-sso-configuration').isVisible();
-  await page.locator('input[disabled]').first().isVisible();
+  await expect(page.getByTestId('edit-sso-configuration')).toBeVisible();
+  await expect(page.locator('input[disabled]').first()).toBeVisible();
 };
 
 /**
  * Verify SSO configuration form is in edit mode
  */
 export const verifyEditMode = async (page: Page) => {
-  await page.getByTestId('save-sso-configuration').isVisible();
-  await page.getByTestId('cancel-sso-configuration').isVisible();
-  await page.locator('input:not([disabled])').first().isVisible();
+  await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+  await expect(page.getByTestId('cancel-sso-configuration')).toBeVisible();
+  await expect(page.locator('input:not([disabled])').first()).toBeVisible();
 };
 
 /**
@@ -295,7 +295,7 @@ export const verifyGoogleSSOFields = async (page: Page) => {
   ];
 
   for (const field of expectedFields) {
-    await page.getByText(field).isVisible();
+    await expect(page.getByText(field)).toBeVisible();
   }
 };
 
@@ -307,7 +307,7 @@ export const verifyValidationErrors = async (
   expectedErrors: string[]
 ) => {
   for (const error of expectedErrors) {
-    await page.getByText(error).isVisible();
+    await expect(page.getByText(error)).toBeVisible();
   }
 };
 

@@ -54,11 +54,6 @@ const ownerPatch = (): Operation => ({
   },
 });
 
-/**
- * Facet options are aggregated once when the dropdown opens, so a freshly
- * indexed fixture can miss the first fetch. Retry by closing and reopening
- * the dropdown (each open re-fetches the facet aggregation).
- */
 const ensureFilterOptionVisible = async (
   page: Page,
   label: string,
@@ -66,24 +61,12 @@ const ensureFilterOptionVisible = async (
   searchText?: string
 ) => {
   const menu = page.getByTestId('drop-down-menu');
-  const option = menu.getByTestId(optionKey);
-
-  await expect(async () => {
-    const isMenuOpen = await menu.isVisible().catch(() => false);
-    if (!isMenuOpen) {
-      await page.getByTestId(`search-dropdown-${label}`).click();
-      await menu.waitFor({ state: 'visible' });
-    }
-    if (searchText) {
-      await menu.getByTestId('search-input').fill(searchText);
-    }
-    try {
-      await option.waitFor({ state: 'visible', timeout: 5_000 });
-    } catch (error) {
-      await page.keyboard.press('Escape');
-      throw error;
-    }
-  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+  if (!(await menu.isVisible())) {
+    await page.getByTestId(`search-dropdown-${label}`).click();
+  }
+  await expect(menu).toBeVisible();
+  if (searchText) await menu.getByTestId('search-input').fill(searchText);
+  await expect(menu.getByTestId(optionKey)).toBeVisible();
 };
 
 const selectOptionAndWaitForQuery = async (
@@ -168,6 +151,16 @@ test.beforeAll('Setup url-state fixtures', async ({ browser }) => {
     patchData: [classificationTagPatch('Tier.Tier2')],
   });
 
+  await Promise.all(
+    [tier1Table, tier2Dashboard].map((entity) =>
+      waitForSearchIndexed(
+        apiContext,
+        entity.entityResponseData.fullyQualifiedName,
+        'dataAsset',
+        { minVersion: entity.entityResponseData.version }
+      )
+    )
+  );
   await afterAction();
 });
 
@@ -443,3 +436,5 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     await searchAndExpectEntityVisible(page, tier1Table);
   });
 });
+
+import { waitForSearchIndexed } from '../../utils/polling';

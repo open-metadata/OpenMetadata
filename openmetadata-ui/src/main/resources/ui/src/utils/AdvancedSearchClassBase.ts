@@ -239,7 +239,8 @@ class AdvancedSearchClassBase {
   }) => {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
-    const debouncedFetch = debounce((search: string) => {
+    let latestRequest = 0;
+    const debouncedFetch = debounce((search: string, request: number) => {
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -248,6 +249,10 @@ class AdvancedSearchClassBase {
         sourceFields
       )
         .then((response) => {
+          // An older in-flight request must not resolve a newer search's promise.
+          if (request !== latestRequest) {
+            return;
+          }
           const buckets =
             response.data.aggregations[`sterms#${entityField}`].buckets;
 
@@ -266,7 +271,7 @@ class AdvancedSearchClassBase {
           }
         })
         .catch(() => {
-          if (pendingResolve) {
+          if (request === latestRequest && pendingResolve) {
             pendingResolve({
               values: [] as ListItem[],
               hasMore: false,
@@ -277,13 +282,15 @@ class AdvancedSearchClassBase {
     }, 300);
 
     return (search) => {
+      const request = ++latestRequest;
+
       return new Promise((resolve) => {
         // Resolve previous promise to prevent hanging
         if (pendingResolve) {
           pendingResolve({ values: [] as ListItem[], hasMore: false });
         }
         pendingResolve = resolve;
-        debouncedFetch((search as string) ?? '');
+        debouncedFetch((search as string) ?? '', request);
       });
     };
   };
