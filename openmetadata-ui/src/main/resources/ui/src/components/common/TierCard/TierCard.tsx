@@ -122,6 +122,27 @@ const TierCard = ({
     }
   }, [popoverProps?.open]);
 
+  // Re-syncs selectedTier when the persisted tier changes after a successful save.
+  // handleOpenChange resets on close but captures a stale closure when popoverRef.current.close()
+  // fires before React propagates the updated currentTier prop from the entity context.
+  useEffect(() => {
+    if (!popoverProps?.open) {
+      setSelectedTier(currentTier ?? '');
+    }
+  }, [currentTier]);
+
+  const handleOpenChange = (visible: boolean) => {
+    if (visible && !tierCardData.length) {
+      getTierData();
+    }
+
+    if (!visible) {
+      setSelectedTier(currentTier ?? '');
+    }
+
+    popoverProps?.onOpenChange?.(visible);
+  };
+
   return (
     <Popover
       className="p-0"
@@ -221,10 +242,8 @@ const TierCard = ({
       ref={popoverRef}
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) =>
-        visible && !tierCardData.length && getTierData()
-      }
-      {...popoverProps}>
+      {...popoverProps}
+      onOpenChange={handleOpenChange}>
       {children}
     </Popover>
   );
