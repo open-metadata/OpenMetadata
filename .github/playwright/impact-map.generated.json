@@ -4420,6 +4420,7 @@
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/PlatformLineage.spec.ts",
@@ -5187,6 +5188,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/ServiceDetailsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts"
       ]
