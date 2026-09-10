@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   Button,
   Select,
@@ -20,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   FilterToolbarProps,

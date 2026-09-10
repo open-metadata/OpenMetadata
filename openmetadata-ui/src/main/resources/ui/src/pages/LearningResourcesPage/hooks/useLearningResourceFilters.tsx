@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import {
   Badge,
   Box,
@@ -23,6 +22,7 @@ import { XClose } from '@untitledui/icons';
 import { Space } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import {
   CATEGORIES,

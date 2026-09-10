@@ -37,9 +37,6 @@ const FILTER_OPTION_ICONS: Partial<Record<string, typeof Table>> = {
 /** `chip` = pill button (dashboard/Test Cases); `input` = labeled input box. */
 export type FilterChipVariant = 'chip' | 'input';
 
-
-
-
 const toValueArray = (value: FilterValue): string[] => {
   if (Array.isArray(value)) {
     return value.map((item) => item);

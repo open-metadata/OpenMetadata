@@ -37,13 +37,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onSearch,
   }: any) => {
     const single = selectionMode === 'single';
-    const selectedLabel =
-      single && selectedValues[0]
-        ? options.find((option: any) => option.value === selectedValues[0])
-            ?.label ??
-          resolveMissingLabel?.(selectedValues[0]) ??
-          selectedValues[0]
-        : undefined;
+    const selectedValue = single ? selectedValues[0] : undefined;
+    const selectedOption = options.find(
+      (option: any) => option.value === selectedValue
+    );
+    let selectedLabel;
+    if (selectedValue) {
+      selectedLabel =
+        selectedOption?.label ??
+        resolveMissingLabel?.(selectedValue) ??
+        selectedValue;
+    }
 
     return (
       <div
@@ -53,11 +57,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         data-testid={testId}
         data-variant={triggerVariant}>
         <span data-testid="trigger-text">
-          {single
-            ? selectedLabel ?? label
-            : selectedValues.length > 0
-            ? `${label} · ${selectedValues.length}`
-            : label}
+          {(() => {
+            if (single) {
+              return selectedLabel ?? label;
+            }
+
+            return selectedValues.length > 0
+              ? `${label} · ${selectedValues.length}`
+              : label;
+          })()}
         </span>
         {options.map((option: any) => (
           <div data-testid="filter-option" key={option.value}>
@@ -68,7 +76,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <button data-testid="open-filter" onClick={() => onOpenChange?.(true)}>
           open
         </button>
-        <button data-testid="commit-success" onClick={() => onChange(['success'])}>
+        <button
+          data-testid="commit-success"
+          onClick={() => onChange(['success'])}>
           commit success
         </button>
         <button

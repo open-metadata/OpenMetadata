@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import { Space, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import {
   AddTestCaseListFilterKey,
