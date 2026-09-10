@@ -48,6 +48,23 @@ import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import './global-search-bar.less';
 
+// Pure helpers pulled out of the component body so the branches they need
+// (parsing the querystring, deciding whether to show search content) don't
+// accumulate in the component's own cyclomatic complexity.
+const parseSearchQueryFromLocationSearch = (search: string): string => {
+  const parsedQueryString = Qs.parse(
+    search.startsWith('?') ? search.substring(1) : search
+  );
+
+  return isString(parsedQueryString.search) ? parsedQueryString.search : '';
+};
+
+const getShouldShowSearchContent = (
+  isTourOpen: boolean,
+  searchValue: string,
+  isNLPActive: boolean
+): boolean => !isTourOpen && (Boolean(searchValue) || isNLPActive);
+
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { searchCriteria, updateSearchCriteria, currentUser } =
@@ -68,14 +85,7 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-  const parsedQueryString = Qs.parse(
-    location.search.startsWith('?')
-      ? location.search.substring(1)
-      : location.search
-  );
-  const searchQuery = isString(parsedQueryString.search)
-    ? parsedQueryString.search
-    : '';
+  const searchQuery = parseSearchQueryFromLocationSearch(location.search);
   const [searchValue, setSearchValue] = useState<string>(searchQuery);
 
   const renderSearchDropdown = useCallback(
@@ -193,65 +203,110 @@ export const GlobalSearchBar = () => {
     }
   }, [currentUser]);
 
-  const shouldShowSearchContent = !isTourOpen && (searchValue || isNLPActive);
+  const shouldShowSearchContent = getShouldShowSearchContent(
+    isTourOpen,
+    searchValue,
+    isNLPActive
+  );
+
+  const renderNlpToggle = () => {
+    if (!isNLPEnabled) {
+      return null;
+    }
+
+    return (
+      <>
+        <Tooltip
+          title={
+            isNLPActive
+              ? t('message.natural-language-search-active')
+              : t('label.use-natural-language-search')
+          }>
+          <Button
+            className={classNames('nav-search-button', 'w-6', 'h-6', {
+              active: isNLPActive,
+            })}
+            data-testid="nlp-suggestions-button"
+            icon={
+              <Icon
+                component={
+                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
+                }
+              />
+            }
+            type="text"
+            onClick={() => setNLPActive(!isNLPActive)}
+          />
+        </Tooltip>
+        <Divider className="h-5" type="vertical" />
+      </>
+    );
+  };
+
+  const renderPopoverContent = () => {
+    if (!shouldShowSearchContent) {
+      return false;
+    }
+
+    return isInPageSearchAllowed(pathname) ? (
+      <SearchOptions
+        isOpen={isSearchBoxOpen}
+        options={inPageSearchOptions(pathname)}
+        searchText={searchValue}
+        selectOption={handleSelectOption}
+        setIsOpen={setIsSearchBoxOpen}
+      />
+    ) : (
+      <Suggestions
+        isNLPActive={isNLPActive}
+        isOpen={isSearchBoxOpen}
+        searchCriteria={searchCriteria === '' ? undefined : searchCriteria}
+        searchText={suggestionSearch}
+        setIsOpen={setIsSearchBoxOpen}
+        onSearchTextUpdate={handleSearchChange}
+      />
+    );
+  };
+
+  const renderSearchIcon = () =>
+    searchValue ? (
+      <Icon
+        alt="icon-cancel"
+        className={classNames('align-middle', {
+          'text-primary': !isSearchBlur,
+        })}
+        component={IconCloseCircleOutlined}
+        data-testid="cancel-icon"
+        style={{ fontSize: '16px' }}
+        onClick={handleClear}
+      />
+    ) : (
+      <Icon
+        alt="icon-search"
+        className={classNames('align-middle', {
+          'text-color': isSearchBlur,
+          'text-primary': !isSearchBlur,
+        })}
+        component={IconSearch}
+        data-testid="search-icon"
+        style={{ fontSize: '16px' }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleOnClick();
+        }}
+      />
+    );
 
   return (
     <div
       className="flex-center search-container relative"
       data-testid="navbar-search-container"
       ref={searchContainerRef}>
-      {isNLPEnabled && (
-        <>
-          <Tooltip
-            title={
-              isNLPActive
-                ? t('message.natural-language-search-active')
-                : t('label.use-natural-language-search')
-            }>
-            <Button
-              className={classNames('nav-search-button', 'w-6', 'h-6', {
-                active: isNLPActive,
-              })}
-              data-testid="nlp-suggestions-button"
-              icon={
-                <Icon
-                  component={
-                    isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                  }
-                />
-              }
-              type="text"
-              onClick={() => setNLPActive(!isNLPActive)}
-            />
-          </Tooltip>
-          <Divider className="h-5" type="vertical" />
-        </>
-      )}
+      {renderNlpToggle()}
       <Popover
         align={{ offset: [0, 12] }}
-        content={
-          shouldShowSearchContent &&
-          (isInPageSearchAllowed(pathname) ? (
-            <SearchOptions
-              isOpen={isSearchBoxOpen}
-              options={inPageSearchOptions(pathname)}
-              searchText={searchValue}
-              selectOption={handleSelectOption}
-              setIsOpen={setIsSearchBoxOpen}
-            />
-          ) : (
-            <Suggestions
-              isNLPActive={isNLPActive}
-              isOpen={isSearchBoxOpen}
-              searchCriteria={
-                searchCriteria === '' ? undefined : searchCriteria
-              }
-              searchText={suggestionSearch}
-              setIsOpen={setIsSearchBoxOpen}
-              onSearchTextUpdate={handleSearchChange}
-            />
-          ))
-        }
+        content={renderPopoverContent()}
         getPopupContainer={() => searchContainerRef.current || document.body}
         open={isSearchBoxOpen}
         overlayClassName="global-search-overlay"
@@ -288,34 +343,7 @@ export const GlobalSearchBar = () => {
 
       {entitiesSelect}
       <Divider className="h-5 m-r-md" type="vertical" />
-      {searchValue ? (
-        <Icon
-          alt="icon-cancel"
-          className={classNames('align-middle', {
-            'text-primary': !isSearchBlur,
-          })}
-          component={IconCloseCircleOutlined}
-          data-testid="cancel-icon"
-          style={{ fontSize: '16px' }}
-          onClick={handleClear}
-        />
-      ) : (
-        <Icon
-          alt="icon-search"
-          className={classNames('align-middle', {
-            'text-color': isSearchBlur,
-            'text-primary': !isSearchBlur,
-          })}
-          component={IconSearch}
-          data-testid="search-icon"
-          style={{ fontSize: '16px' }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleOnClick();
-          }}
-        />
-      )}
+      {renderSearchIcon()}
     </div>
   );
 };

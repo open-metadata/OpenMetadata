@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfReindexFailuresResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "rdfReindexFailuresResponse",
+  "description": "Paginated failures from the most recent RDF indexing run.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfReindexFailuresResponse",
+  "definitions": {
+    "rdfIndexFailure": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.RdfIndexFailure",
+      "properties": {
+        "id": {"type": "string"},
+        "jobId": {"type": "string"},
+        "serverId": {"type": "string"},
+        "entityType": {"type": "string"},
+        "entityId": {"type": "string"},
+        "entityFqn": {"type": "string"},
+        "failureStage": {"type": "string"},
+        "errorMessage": {"type": "string"},
+        "stackTrace": {"type": "string"},
+        "timestamp": {"$ref": "../../type/basic.json#/definitions/timestamp"}
+      },
+      "required": ["id", "jobId", "entityType", "failureStage", "timestamp"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "data": {"type": "array", "items": {"$ref": "#/definitions/rdfIndexFailure"}},
+    "total": {"type": "integer", "minimum": 0},
+    "offset": {"type": "integer", "minimum": 0},
+    "limit": {"type": "integer", "minimum": 0, "maximum": 1000}
+  },
+  "required": ["data", "total", "offset", "limit"],
+  "additionalProperties": false
+}

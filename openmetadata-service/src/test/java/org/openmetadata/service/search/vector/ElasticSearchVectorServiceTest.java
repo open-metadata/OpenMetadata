@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -47,8 +49,23 @@ class ElasticSearchVectorServiceTest {
 
     mockEmbeddingClient = mock(EmbeddingClient.class);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    when(mockEmbeddingClient.embedQuery(any(String.class)))
+        .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
     vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
+  }
+
+  @Test
+  void searchEmbedsTheQueryAsAQueryNotADocument() throws Exception {
+    // Providers that distinguish the two (Cohere on Bedrock: search_query vs search_document)
+    // return a worse vector for a question embedded as a document, so the query path must not
+    // fall back to embed(). The OpenSearch path has always used embedQuery.
+    mockRestClientResponse(EMPTY_HITS_RESPONSE);
+
+    vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+
+    verify(mockEmbeddingClient).embedQuery("test query");
+    verify(mockEmbeddingClient, never()).embed("test query");
   }
 
   @Test

@@ -19,7 +19,11 @@ import {
 } from '../../../src/generated/entity/data/apiEndpoint';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -213,45 +217,39 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/apiServices',
-      {
-        data: this.service,
-      }
-    );
-
-    const apiCollectionResponse = await apiContext.post(
-      '/api/v1/apiCollections',
-      {
-        data: this.apiCollection,
-      }
-    );
-
-    const entityResponse = await apiContext.post('/api/v1/apiEndpoints', {
-      data: this.entity,
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'ApiEndpointClass.create service',
+      createPath: '/api/v1/services/apiServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
     });
 
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'ApiEndpointClass.create'
-    );
-    this.apiCollectionResponseData = await okJson(
-      apiCollectionResponse,
-      'ApiEndpointClass.create'
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'ApiEndpointClass.create'
-    );
+    this.apiCollectionResponseData = await createOrFetch(apiContext, {
+      label: 'ApiEndpointClass.create apiCollection',
+      createPath: '/api/v1/apiCollections',
+      fqnSegments: [this.service.name, this.apiCollection.name],
+      data: this.apiCollection,
+    });
+
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'ApiEndpointClass.create apiEndpoint',
+      createPath: '/api/v1/apiEndpoints',
+      fqnSegments: [
+        this.service.name,
+        this.apiCollection.name,
+        this.entity.name,
+      ],
+      data: this.entity,
+    });
 
     this.childrenSelectorId =
       this.entityResponseData.requestSchema?.schemaFields?.[0]
         .fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      apiCollection: apiCollectionResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      apiCollection: this.apiCollectionResponseData,
+      entity: this.entityResponseData,
     };
   }
 

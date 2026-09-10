@@ -23,7 +23,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import { fillDescriptionBox, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -478,7 +478,7 @@ test.describe('Data Products', () => {
       await page
         .locator('#root\\/displayName')
         .fill(dataProduct.data.displayName);
-      await page.locator(descriptionBox).fill(dataProduct.data.description);
+      await fillDescriptionBox(page, dataProduct.data.description);
 
       const domainContainer = page.getByTestId('domain-select');
       await domainContainer.scrollIntoViewIfNeeded();

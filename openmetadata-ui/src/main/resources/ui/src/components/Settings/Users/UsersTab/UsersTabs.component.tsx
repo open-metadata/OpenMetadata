@@ -22,7 +22,7 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getUserById } from '../../../../rest/userAPI';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
+import Table from '../../../common/Table/TableV2';
 
 interface UsersTabProps {
   users: EntityReference[];

@@ -21,6 +21,7 @@ import {
 import { MessageDotsCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
@@ -57,6 +58,66 @@ export interface ActivityFeedItemProps {
   onClick: (selection: ActivityFeedItemSelection) => void;
 }
 
+const getActorName = (
+  isActivity: boolean,
+  activity?: ActivityEvent,
+  feed?: Conversation
+): string =>
+  isActivity ? activity?.actor?.name ?? '' : feed?.createdBy?.name ?? '';
+
+const getSourceReactions = (
+  isActivity: boolean,
+  activity?: ActivityEvent,
+  feed?: Conversation
+): Reaction[] =>
+  ((isActivity ? activity?.reactions : feed?.reactions) ?? []) as Reaction[];
+
+const getAuthorName = (
+  user: Parameters<typeof getEntityName>[0],
+  isActivity: boolean,
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  actorName: string
+): string =>
+  getEntityName(user) ||
+  (isActivity ? activity?.actor?.displayName : feed?.createdBy?.displayName) ||
+  actorName;
+
+const getActionLabel = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  t: TFunction
+): string => {
+  if (activity) {
+    return getActivityEventLabel(activity, t);
+  }
+  if (feed) {
+    return t('label.posted-on');
+  }
+
+  return '';
+};
+
+const getEventEntity = (
+  isActivity: boolean,
+  activity?: ActivityEvent,
+  feed?: Conversation
+) => {
+  const entity = isActivity ? activity?.entity : feed?.entityRef;
+
+  return {
+    entity,
+    entityName: entity?.displayName || entity?.name || entity?.type,
+  };
+};
+
+const getEventTimestamp = (
+  isActivity: boolean,
+  activity?: ActivityEvent,
+  feed?: Conversation
+): number | undefined =>
+  isActivity ? activity?.timestamp : feed?.createdAt ?? feed?.updatedAt;
+
 /**
  * A single Inbox card: actor + action + entity chip, the message body, and a
  * footer with reactions (plus a comment affordance for conversations —
@@ -73,38 +134,21 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const { currentUser } = useApplicationStore();
   const isActivity = Boolean(activity);
 
-  const actorName = isActivity
-    ? activity?.actor?.name ?? ''
-    : feed?.createdBy?.name ?? '';
+  const actorName = getActorName(isActivity, activity, feed);
   const [, , user] = useUserProfile({ permission: false, name: actorName });
 
-  const sourceReactions = ((isActivity
-    ? activity?.reactions
-    : feed?.reactions) ?? []) as Reaction[];
-  const [reactions, setReactions] = useState<Reaction[]>(sourceReactions);
+  const [reactions, setReactions] = useState<Reaction[]>(() =>
+    getSourceReactions(isActivity, activity, feed)
+  );
 
   useEffect(() => {
-    setReactions(
-      ((isActivity ? activity?.reactions : feed?.reactions) ?? []) as Reaction[]
-    );
-  }, [activity?.reactions, feed?.reactions, isActivity]);
+    setReactions(getSourceReactions(isActivity, activity, feed));
+  }, [activity, feed, isActivity]);
 
-  const authorName =
-    getEntityName(user) ||
-    (isActivity
-      ? activity?.actor?.displayName
-      : feed?.createdBy?.displayName) ||
-    actorName;
-  const actionLabel = activity
-    ? getActivityEventLabel(activity, t)
-    : feed
-    ? t('label.posted-on')
-    : '';
-  const entity = isActivity ? activity?.entity : feed?.entityRef;
-  const entityName = entity?.displayName || entity?.name || entity?.type;
-  const timestamp = isActivity
-    ? activity?.timestamp
-    : feed?.createdAt ?? feed?.updatedAt;
+  const authorName = getAuthorName(user, isActivity, activity, feed, actorName);
+  const actionLabel = getActionLabel(activity, feed, t);
+  const { entity, entityName } = getEventEntity(isActivity, activity, feed);
+  const timestamp = getEventTimestamp(isActivity, activity, feed);
   const commentCount = feed?.replyCount ?? 0;
 
   const message = useMemo(

@@ -36,6 +36,7 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
+import { getHyperlinkUrlValidationErrorKey } from '../../../utils/CustomProperty.utils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -140,7 +141,20 @@ const EditUrlConfigurationPage = () => {
         <Item
           label={t('label.brand-name-url')}
           name="openMetadataUrl"
-          rules={[{ required: true }]}>
+          rules={[
+            { required: true },
+            {
+              validator: (_, value) => {
+                const errorKey = getHyperlinkUrlValidationErrorKey(
+                  typeof value === 'string' ? value : undefined
+                );
+
+                return errorKey
+                  ? Promise.reject(new Error(t(errorKey)))
+                  : Promise.resolve();
+              },
+            },
+          ]}>
           <Input
             data-testid="open-metadata-url-input"
             id="root/openMetadataUrl-input"

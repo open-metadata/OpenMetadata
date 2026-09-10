@@ -43,6 +43,7 @@ import {
   NAME_VALIDATION_ERROR,
   readElementInListWithScroll,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
@@ -442,8 +443,11 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     )
     .toBe(true);
 
+  // Click the domain name cell, not the row center — the row's center column is
+  // the glossary-terms cell whose tags are their own links, so a row-center
+  // click lands on a tag instead of triggering the domain navigation.
   await Promise.all([
-    domainRow.click(),
+    domainRow.getByTestId('entity-name').click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
@@ -527,16 +531,51 @@ export const selectDataProduct = async (
   await waitForAllLoadersToDisappear(page);
   await searchBox.waitFor({ state: 'visible' });
 
-  await Promise.all([
-    page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
-    searchBox.fill(dataProduct.name),
-  ]);
+  const dataProductRow = page.getByTestId(dataProduct.name);
 
-  await waitForSearchDebounce(page);
+  // Same eventual consistency as the domain listing above: a data product
+  // created moments ago can be missing from the first query, and the listing
+  // re-queries only when the search text changes. Retry the search, reloading
+  // between attempts, so the row is clicked only once it is really there.
+  //
+  // The response wait deliberately lives outside this callback -- waits here
+  // are test-bound, so a `waitForResponse` that never matches would hang the
+  // callback and the poll could never retry it.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          await searchBox.waitFor({ state: 'visible' });
+        }
+        hasSearched = true;
 
+        await searchBox.fill('');
+        await searchBox.fill(dataProduct.name);
+
+        await waitForSearchDebounce(page);
+
+        return dataProductRow.isVisible();
+      },
+      {
+        message: `Wait for data product "${dataProduct.name}" to appear in the data product listing`,
+        // Deliberately well under the default 60s test budget: most callers of
+        // this helper do not set test.slow(), and a poll sized to the whole
+        // budget would starve the rest of the test instead of failing it.
+        timeout: 30_000,
+        intervals: [1_000, 2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
+
+  // Click the data product name cell, not the row center — the row's center
+  // column can be the glossary-terms cell whose tags are their own links, so a
+  // row-center click lands on a tag instead of triggering navigation.
   await Promise.all([
     page.waitForResponse('/api/v1/dataProducts/name/*'),
-    page.getByTestId(dataProduct.name).click(),
+    dataProductRow.getByTestId('entity-name').click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
@@ -623,11 +662,15 @@ export const fillDomainForm = async (
     .getByTestId('add-domain-form')
     .getByTestId('domainType')
     .getByRole('button');
-  await domainTypeTrigger.click();
+  const domainTypeOption = page.getByRole('option', {
+    name: entity.domainType,
+    exact: true,
+  });
 
-  await page
-    .getByRole('option', { name: entity.domainType, exact: true })
-    .click();
+  // React Aria can close the listbox mid-click and detach the option
+  // ("element was detached from the DOM"); selectOptionWithRetry re-resolves the
+  // trigger's expanded state and reopens the popover before retrying the click.
+  await selectOptionWithRetry(domainTypeTrigger, domainTypeOption);
 };
 
 /**

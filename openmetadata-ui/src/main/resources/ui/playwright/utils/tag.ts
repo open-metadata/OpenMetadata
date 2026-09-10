@@ -173,7 +173,19 @@ export const removeAssetsFromTag = async (
   assets: EntityClass[],
   tag: TagClass
 ) => {
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  // `/api/v1/tags/name/*` also fires for the classification-page sidebar that
+  // `tag.visitPage()` navigates through first, and even for other tag lookups
+  // that the layout may issue. The bare glob consumed the wait on those
+  // upstream calls, leaving the tag detail page's own fetch unwaited-for and
+  // the test blocked further down when the loader was still detached. Match
+  // the tag under test specifically so the wait cannot resolve early.
+  const tagFqn = tag.responseData.fullyQualifiedName;
+  const res = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/tags/name/') &&
+      decodeURIComponent(response.url()).includes(tagFqn ?? '')
+  );
   await tag.visitPage(page);
   await res;
 
@@ -202,9 +214,11 @@ export const removeAssetsFromTag = async (
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
+  // After a reload the badge renders only once the assets search returns —
+  // give it the same 30s the domain util allows instead of the default 15s.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString());
+  ).toContainText(count.toString(), { timeout: 30_000 });
 };
 
 export const setupAssetsForTag = async (page: Page) => {

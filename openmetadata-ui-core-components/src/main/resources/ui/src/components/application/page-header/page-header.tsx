@@ -21,13 +21,26 @@ import { Typography } from '../../foundations/typography';
 import { Breadcrumbs } from '../breadcrumbs/breadcrumbs';
 import type { BreadcrumbItemType } from '../breadcrumbs/breadcrumbs';
 import { Tabs } from '../tabs/tabs';
-import type { PageHeaderProps, PageHeaderTab } from './page-header.types';
+import type {
+  PageHeaderDensity,
+  PageHeaderProps,
+  PageHeaderTab,
+} from './page-header.types';
 
 export type {
+  PageHeaderDensity,
   PageHeaderProps,
   PageHeaderTab,
   PageHeaderVariant,
 } from './page-header.types';
+
+const PADDING_BY_DENSITY: Record<
+  PageHeaderDensity,
+  { default: string; withFooter: string }
+> = {
+  compact: { default: 'tw:py-3', withFooter: 'tw:pt-3 tw:pb-0' },
+  comfortable: { default: 'tw:py-4', withFooter: 'tw:pt-4 tw:pb-0' },
+};
 
 // Distinguishes a breadcrumb items array from a ReactNode (which can itself be
 // an array of elements) by shape — items are plain objects carrying `id`+`label`.
@@ -122,6 +135,7 @@ export const PageHeader = ({
   search,
   actions,
   footer,
+  density = 'comfortable',
   variant = 'flat',
   className,
   'data-testid': dataTestId = 'page-header',
@@ -129,7 +143,9 @@ export const PageHeader = ({
 }: PageHeaderProps) => {
   // When the header renders a footer (the tab strip), the tabs sit flush at the
   // bottom edge of the card — drop the card's bottom padding but keep the top.
-  const paddingClass = footer ? 'tw:pt-4 tw:pb-0' : 'tw:py-4';
+  const paddingClass = footer
+    ? PADDING_BY_DENSITY[density].withFooter
+    : PADDING_BY_DENSITY[density].default;
 
   const leadingNode =
     typeof icon === 'function' ? (

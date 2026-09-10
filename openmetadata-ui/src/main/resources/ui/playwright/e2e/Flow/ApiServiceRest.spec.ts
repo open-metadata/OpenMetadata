@@ -17,7 +17,7 @@ import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -136,7 +136,7 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     );
     await page.locator('#service-name').fill(apiServiceConfig.name);
     await page.getByTestId('add-description-button').click();
-    await page.locator(descriptionBox).fill(apiServiceConfig.description);
+    await fillDescriptionBox(page, apiServiceConfig.description);
     await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
 
     await page

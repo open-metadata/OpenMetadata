@@ -444,7 +444,11 @@ public class JwtFilter implements ContainerRequestFilter {
             .getFreshSessionById(sessionId)
             .orElseThrow(
                 () -> AuthenticationException.getInvalidTokenException("Invalid session."));
-    if (session.getStatus() != SessionStatus.ACTIVE
+    // Existing access tokens remain usable while another request holds the refresh lease.
+    final boolean isAuthenticated =
+        session.getStatus() == SessionStatus.ACTIVE
+            || session.getStatus() == SessionStatus.REFRESHING;
+    if (!isAuthenticated
         || session.isExpired(System.currentTimeMillis())
         || nullOrEmpty(session.getUsername())
         || !session.getUsername().equalsIgnoreCase(userName)) {
@@ -498,6 +502,10 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    return getCatalogSecurityContext(token, null);
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
     String email =
@@ -509,7 +517,9 @@ public class JwtFilter implements ContainerRequestFilter {
         "https",
         SecurityContext.DIGEST_AUTH,
         getUserRolesFromClaims(claims, isBotUser),
-        isBotUser);
+        isBotUser,
+        null,
+        activePersona);
   }
 
   private Algorithm createAlgorithmFromJwk(
