@@ -15,6 +15,7 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
@@ -27,6 +28,8 @@ const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition
 const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
+// Only for the multi-select combobox — its popup is typing-driven, so
+// selectOptionWithRetry's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -43,26 +46,18 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
   );
 };
 
-// React Aria's listbox is a non-modal popover, and a press on a trigger that
-// does not already hold focus both opens it and — via the focus transition that
-// same press produces — dismisses it a frame later. That leaves roughly 160ms to
-// pick an option, and nothing reopens the listbox afterwards, so a loaded runner
-// that misses the window retries the option click until the test times out.
-// Focusing the trigger first removes the transition, and with it the window.
+// Assert on the trigger, never on the Select root: the root also holds React
+// Aria's hidden <select>, whose <option> text makes toContainText on the root
+// pass for any value the field offers, selected or not.
 const selectEntityType = async (page: Page, entityType: string) => {
-  const entityTypeSelect = page.getByTestId('entity-type');
-  const entityTypeTrigger = entityTypeSelect.getByRole('button');
+  const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
 
-  await entityTypeTrigger.focus();
-  await expect(entityTypeTrigger).toBeFocused();
-  await entityTypeTrigger.click();
-
-  await selectOptionWithMouse(
-    page,
+  await selectOptionWithRetry(
+    entityTypeTrigger,
     page.getByRole('option', { name: entityType, exact: true })
   );
 
-  await expect(entityTypeSelect).toContainText(entityType);
+  await expect(entityTypeTrigger).toContainText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -409,8 +404,10 @@ test.describe(
           ).toHaveCount(0);
 
           // Add dbt
-          await page.getByTestId('test-platforms').click();
-          await page.getByRole('option', { name: 'dbt', exact: true }).click();
+          await selectOptionWithRetry(
+            page.getByTestId('test-platforms'),
+            page.getByRole('option', { name: 'dbt', exact: true })
+          );
 
           // Close dropdown
           await page.keyboard.press('Escape');
@@ -760,26 +757,17 @@ test.describe(
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        const dimensionField = page.getByTestId('data-quality-dimension');
+        const dimensionTrigger = page
+          .getByTestId('data-quality-dimension')
+          .getByRole('button');
         const accuracyOption = page.getByRole('option', {
           name: 'Accuracy',
           exact: true,
         });
 
-        // The listbox is a non-modal React Aria popover, so it is dismissed by any
-        // scroll of the pane holding the trigger — including the one Playwright
-        // emits to bring this field into view, delivered a frame after the popup
-        // opened. Reopen on each attempt; nothing else reopens it.
-        await expect(async () => {
-          if (!(await accuracyOption.isVisible())) {
-            await dimensionField.getByRole('button').click();
-            await expect(accuracyOption).toBeVisible({ timeout: 2_000 });
-          }
-          await selectOptionWithMouse(page, accuracyOption);
-          await expect(dimensionField).toContainText('Accuracy', {
-            timeout: 2_000,
-          });
-        }).toPass({ timeout: 20_000, intervals: [500, 1_000, 2_000] });
+        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
+
+        await expect(dimensionTrigger).toContainText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(

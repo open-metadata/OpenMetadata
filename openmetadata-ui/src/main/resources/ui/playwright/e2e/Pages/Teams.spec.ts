@@ -43,6 +43,7 @@ import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { getCellByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
   addEmailTeam,
@@ -395,9 +396,7 @@ test.describe('Teams Page', () => {
       await expect
         .poll(
           async () =>
-            page
-              .getByRole('cell', { name: teamDetails?.displayName ?? '' })
-              .count(),
+            getCellByName(page, teamDetails?.displayName ?? '').count(),
           { timeout: 60000, intervals: [500, 1000, 2000] }
         )
         .toBe(0);

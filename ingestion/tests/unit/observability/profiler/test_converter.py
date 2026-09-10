@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
 from metadata.profiler.orm.registry import CustomTypes
@@ -240,3 +240,61 @@ def test_money_and_bit_stay_out_of_the_common_mapper():
     common_reverse_map = CommonMapTypes.map_sqa_to_om_types()
     assert DataType.MONEY not in common_reverse_map[sqlalchemy.NUMERIC]
     assert DataType.BIT not in common_reverse_map[sqlalchemy.BOOLEAN]
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
+    """Columns whose names begin with __ or _sa_ are filtered by SQLAlchemy 2.x's
+    declarative scan and silently dropped from the mapped Table.  When the dropped
+    column is the first one it also carries the synthetic primary key, causing a hard
+    mapper error (see #32508).  ometa_to_sqa_orm must remap such names to a safe
+    class-attribute key so every column reaches the ORM table.
+    """
+    column_definition = [
+        ("__hevo_id", DataType.STRING),  # dunder prefix — is the PK, must not be dropped
+        ("normal_col", DataType.INT),
+        ("_sa_special", DataType.STRING),  # _sa_ prefix — also filtered by SQLAlchemy
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="dunder_test_table",
+        columns=columns,
+        serviceType=DatabaseServiceType.BigQuery,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    # Every column must appear in the underlying Table under its original name
+    assert [col.name for col in orm_table.__table__.columns] == [name for name, _ in column_definition]
+    # The first column (dunder-prefixed) must be the primary key
+    pk_cols = list(orm_table.__table__.primary_key)
+    assert len(pk_cols) == 1
+    assert pk_cols[0].name == "__hevo_id"
+
+
+def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
+    """A normal column named exactly like a remapped dunder key must not collide.
+
+    If a table has both ``__hevo_id`` (remapped to ``om_col___hevo_id``) and a
+    real column literally named ``om_col___hevo_id``, _safe_orm_attr must yield
+    distinct keys for both so neither column is silently overwritten.
+    """
+    existing: set = set()
+
+    # The real column arrives first and claims "om_col___hevo_id".
+    real_key = _safe_orm_attr("om_col___hevo_id", existing)
+    existing.add(real_key)
+    assert real_key == "om_col___hevo_id"
+
+    # The dunder column is remapped — its initial candidate collides, so it
+    # must get an extra underscore suffix.
+    dunder_key = _safe_orm_attr("__hevo_id", existing)
+    existing.add(dunder_key)
+    assert dunder_key == "om_col___hevo_id_"
+
+    # Both keys are distinct — no column was silently overwritten.
+    assert real_key != dunder_key

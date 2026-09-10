@@ -93,11 +93,13 @@ export const mockTagsSortAndHighlightResponse = [
 
 export const mockTagFQNsForHighlight = ['PersonalData.SpecialCategory'];
 
+// Mirrors what highlightSearchText() actually emits (`class=`, not the JSX
+// `className=`) so the string is valid HTML that DOMPurify won't strip.
 export const mockListItemNameHighlight =
-  '<span className="text-highlighter">title2</span>';
+  '<span class="text-highlighter">title2</span>';
 
 const mockListItemDescriptionHighlight =
-  'some description of <span className="text-highlighter">title2</span>';
+  'some description of <span class="text-highlighter">title2</span>';
 
 export const mockHighlights = {
   'columns.name': [mockListItemNameHighlight],

@@ -182,22 +182,37 @@ class SessionMultiNodeIT {
   }
 
   @Test
-  void refreshReturnsRetryAfterWhenLeaseIsHeldAcrossNodes(TestNamespace ns) throws Exception {
+  void apiRequestsRemainAuthenticatedWhileAnotherNodeHoldsTheRefreshLease(TestNamespace ns)
+      throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
 
     SessionCookies cookies = new SessionCookies();
     HttpClient client = HttpClient.newHttpClient();
 
-    login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    final JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
     UserSession currentSession = loadSession(cookies.get("OM_SESSION"));
-    persistSession(
+    final UserSession leasedSession =
         currentSession.toBuilder()
             .status(SessionStatus.REFRESHING)
-            .refreshLeaseUntil(System.currentTimeMillis() + 10_000)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
             .updatedAt(System.currentTimeMillis())
             .version(safeVersion(currentSession) + 1)
-            .build());
+            .build();
+    persistSession(leasedSession);
+
+    final HttpResponse<String> meOnB =
+        getRawWithBearer(
+            client,
+            loginResponse.get("accessToken").asText(),
+            cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(200, meOnB.statusCode(), meOnB.body());
+    assertEquals(user.getId().toString(), JsonUtils.readTree(meOnB.body()).get("id").asText());
+    final UserSession afterRead = loadSession(leasedSession.getId());
+    assertEquals(SessionStatus.REFRESHING, afterRead.getStatus());
+    assertEquals(leasedSession.getRefreshLeaseUntil(), afterRead.getRefreshLeaseUntil());
+    assertEquals(leasedSession.getVersion(), afterRead.getVersion());
 
     HttpResponse<String> response =
         postRaw(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);

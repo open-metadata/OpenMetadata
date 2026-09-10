@@ -12,8 +12,10 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { getTopicByFqn } from '../../rest/topicsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
 jest.mock('../../components/Topic/TopicDetails/TopicDetails.component', () => {
@@ -27,8 +29,9 @@ jest.mock('../../rest/topicsAPI', () => ({
   removeFollower: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../utils/useRequiredParams', () => ({
@@ -132,5 +135,65 @@ describe('Test TopicDetailsPage component', () => {
         expect.any(Object)
       )
     );
+  });
+
+  it('renders the entity-missing placeholder (not a stuck loader) when the topic fetch returns 404', async () => {
+    (getTopicByFqn as jest.Mock).mockImplementation(() =>
+      Promise.reject({ response: { status: ClientErrors.NOT_FOUND } })
+    );
+
+    renderWithQueryClient(<TopicDetailsPageComponent />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument()
+    );
+
+    expect(screen.getByText('sample_kafka.sales')).toBeInTheDocument();
+    expect(screen.getByText(/label\.not-found-lowercase/)).toBeInTheDocument();
+    expect(
+      screen.queryByText('server.entity-details-fetch-error')
+    ).not.toBeInTheDocument();
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+  });
+
+  it('renders a fetch-error placeholder (not a stuck loader) when the topic fetch fails with a sustained 5xx', async () => {
+    (getTopicByFqn as jest.Mock).mockImplementation(() =>
+      Promise.reject({ response: { status: 503 } })
+    );
+
+    renderWithQueryClient(<TopicDetailsPageComponent />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument()
+    );
+
+    expect(
+      screen.getByText('server.entity-details-fetch-error')
+    ).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+  });
+
+  it('renders a fetch-error placeholder and fires the toast when the topic fetch fails with a transport error (no status)', async () => {
+    (getTopicByFqn as jest.Mock).mockImplementation(() =>
+      Promise.reject(new Error('Network Error'))
+    );
+
+    renderWithQueryClient(<TopicDetailsPageComponent />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument()
+    );
+
+    expect(
+      screen.getByText('server.entity-details-fetch-error')
+    ).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 });

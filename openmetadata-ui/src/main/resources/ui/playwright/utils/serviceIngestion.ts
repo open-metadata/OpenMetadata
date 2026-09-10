@@ -21,7 +21,11 @@ import {
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { getApiContext, toastNotification } from './common';
+import {
+  getApiContext,
+  toastNotification,
+  waitForToastStackToClear,
+} from './common';
 import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 
 export enum Services {
@@ -201,6 +205,11 @@ export const testConnection = async (page: Page) => {
     .filter({ hasText: /Connection status|Test Connection/ });
 
   await expect(testConnectionDialog).toBeVisible();
+
+  // The toast stack renders bottom-center, over the dialog's Done/OK button; a
+  // background "…deleted successfully!" toast from a parallel worker's cleanup
+  // can otherwise swallow this click. Wait for the stack to drain first.
+  await waitForToastStackToClear(page, 30_000);
 
   await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
 
