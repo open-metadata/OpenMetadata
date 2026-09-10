@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static com.cronutils.model.CronType.UNIX;
 import static org.openmetadata.service.apps.AbstractNativeApplication.getAppRuntime;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import com.cronutils.mapper.CronMapper;
@@ -224,7 +225,7 @@ public class AppScheduler {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(APP_NAME, app.getName());
     dataMap.put(
-        "triggerType",
+        TRIGGER_TYPE_KEY,
         Optional.ofNullable(app.getAppSchedule())
             .map(v -> v.getScheduleTimeline().value())
             .orElse(null));
@@ -238,10 +239,26 @@ public class AppScheduler {
     return jobBuilder.build();
   }
 
+  /**
+   * Heavy full-reindex apps skip every misfire and wait for the next scheduled trigger,
+   * regardless of their cron frequency. Quartz's default catch-up policy could otherwise launch
+   * a multi-hour reindex during deployment or recovery. Other apps retain the default policy.
+   */
+  static final Set<String> SKIP_MISSED_RUN_APPS =
+      Set.of("SearchIndexingApplication", "RdfIndexApp");
+
+  static CronScheduleBuilder scheduleFor(App app) {
+    CronScheduleBuilder schedule = getCronSchedule(app.getAppSchedule());
+    if (SKIP_MISSED_RUN_APPS.contains(app.getName())) {
+      schedule = schedule.withMisfireHandlingInstructionDoNothing();
+    }
+    return schedule;
+  }
+
   private Trigger trigger(App app) {
     return TriggerBuilder.newTrigger()
         .withIdentity(app.getName(), APPS_TRIGGER_GROUP)
-        .withSchedule(getCronSchedule(app.getAppSchedule()))
+        .withSchedule(scheduleFor(app))
         .build();
   }
 
@@ -327,7 +344,7 @@ public class AppScheduler {
       }
 
       JobDetail newJobDetail = jobBuilder(application, jobIdentity);
-      newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
+      newJobDetail.getJobDataMap().put(TRIGGER_TYPE_KEY, ON_DEMAND_JOB);
       // Use the application name for lookup consistency in OmAppJobListener
       newJobDetail.getJobDataMap().put(APP_NAME, application.getName());
       newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);

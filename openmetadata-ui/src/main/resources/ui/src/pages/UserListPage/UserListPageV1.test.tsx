@@ -23,6 +23,9 @@ import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
+  // from here, and a wholesale mock leaves them undefined.
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
     .fn()
@@ -116,7 +119,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../components/common/Table/Table', () => {
+jest.mock('../../components/common/Table/TableV2', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -171,7 +174,7 @@ describe('Test UserListPage component', () => {
   beforeAll(() => {
     // Get reference to mocked Table component
     mockTableComponent = jest.requireMock(
-      '../../components/common/Table/Table'
+      '../../components/common/Table/TableV2'
     );
   });
 

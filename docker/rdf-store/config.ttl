@@ -1,18 +1,29 @@
-# Fuseki configuration for OpenMetadata RDF Store
+# Fuseki assembler configuration for the OpenMetadata RDF store.
+#
+# Why --config instead of --loc: the union default graph and server-side execution
+# deadlines below are assembler-only settings. OpenMetadata-generated updates contain
+# at most one WHERE-bearing operation because Jena 6.2.0 mishandles a second one when
+# arq:updateTimeout is active. The OpenMetadata SPARQL API rejects that unsupported
+# shape explicitly; direct Fuseki clients must use VALUES/UNION or separate requests.
+#
+# NOTE ON UPGRADES: the original `--loc=/fuseki-data` layout stored TDB2 files
+# directly in /fuseki-data, while this assembler uses the /fuseki-data/openmetadata
+# subdirectory. Pointing at the wrong location does not fail — it silently starts
+# an EMPTY store — so verify a triple count before and after any launch-mode change.
+# See docs/rdf-production-setup.md for the runbook.
 
-@prefix :      <#> .
 @prefix fuseki: <http://jena.apache.org/fuseki#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix tdb2:  <http://jena.apache.org/2016/tdb#> .
 @prefix ja:    <http://jena.hpl.hp.com/2005/11/Assembler#> .
-# jena-text prefix: without this the file fails to parse at the first text: term below
-# ("Undefined prefix: text"), which made Fuseki refuse to boot with --config.
 @prefix text:  <http://jena.apache.org/text#> .
 
 [] rdf:type fuseki:Server ;
    fuseki:services (
      <#openmetadata>
+     <#openmetadata_a>
+     <#openmetadata_b>
    ) .
 
 <#openmetadata> rdf:type fuseki:Service ;
@@ -24,27 +35,91 @@
     fuseki:serviceReadWriteGraphStore "data" ;
     fuseki:dataset <#dataset> .
 
-<#dataset> rdf:type tdb2:DatasetTDB2 ;
+<#dataset> rdf:type text:TextDataset ;
+    text:dataset <#tdb_dataset> ;
+    text:index <#index> ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#tdb_dataset> rdf:type tdb2:DatasetTDB2 ;
     tdb2:location "/fuseki-data/openmetadata" ;
+    # Required, not cosmetic: OpenMetadata writes every entity into a NAMED graph, so
+    # without this a plain `?s ?p ?o` against the default graph returns zero rows while
+    # the data sits in <https://open-metadata.org/graph/knowledge>. That is the shape the
+    # SPARQL playground and the MCP knowledge-graph tools generate, so turning this off
+    # yields silently empty results rather than an error. Queries that need to target one
+    # graph must say so with an explicit GRAPH clause.
     tdb2:unionDefaultGraph true ;
+    # Bound abandoned reads and writes inside Fuseki itself. These fire before the
+    # shipped 60-second client deadline because releasing an OpenMetadata thread does
+    # not cancel server work holding TDB2's writer or consuming read resources.
+    ja:context <#queryDeadline>, <#updateDeadline> ;
     .
 
-# Enable full-text search
-<#dataset> ja:textIndex (<#index>) .
+<#queryDeadline> ja:cxtName "arq:queryTimeout" ; ja:cxtValue "50000" .
+<#updateDeadline> ja:cxtName "arq:updateTimeout" ; ja:cxtValue "50000" .
 
+<#openmetadata_a> rdf:type fuseki:Service ;
+    fuseki:name "openmetadata_a" ;
+    fuseki:serviceQuery "sparql", "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:dataset <#dataset_a> .
+
+<#openmetadata_b> rdf:type fuseki:Service ;
+    fuseki:name "openmetadata_b" ;
+    fuseki:serviceQuery "sparql", "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:dataset <#dataset_b> .
+
+<#dataset_a> rdf:type text:TextDataset ;
+    text:dataset <#tdb_dataset_a> ;
+    text:index <#index_a> ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#tdb_dataset_a> rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki-data/openmetadata_a" ;
+    tdb2:unionDefaultGraph true ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#dataset_b> rdf:type text:TextDataset ;
+    text:dataset <#tdb_dataset_b> ;
+    text:index <#index_b> ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#tdb_dataset_b> rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki-data/openmetadata_b" ;
+    tdb2:unionDefaultGraph true ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+# Each dataset owns its index so clearing a rebuild target cannot affect serving queries.
 <#index> a text:TextIndexLucene ;
-    text:directory "/fuseki-data/lucene" ;
+    text:directory <file:/fuseki-data/lucene> ;
+    text:entityMap <#entityMap> ;
+    text:storeValues true .
+
+<#index_a> a text:TextIndexLucene ;
+    text:directory <file:/fuseki-data/lucene_a> ;
+    text:entityMap <#entityMap> ;
+    text:storeValues true .
+
+<#index_b> a text:TextIndexLucene ;
+    text:directory <file:/fuseki-data/lucene_b> ;
     text:entityMap <#entityMap> ;
     text:storeValues true .
 
 <#entityMap> a text:EntityMap ;
     text:defaultField "text" ;
     text:entityField "uri" ;
+    # UID tracking removes indexed documents on update/delete; graph tracking scopes
+    # text:query to the requested named graph instead of leaking matches across graphs.
+    text:uidField "uid" ;
+    text:graphField "graph" ;
     text:map (
-        [ text:field "text" ; 
+        [ text:field "text" ;
           text:predicate rdfs:label ]
-        [ text:field "description" ; 
+        [ text:field "description" ;
           text:predicate <http://purl.org/dc/terms/description> ]
-        [ text:field "name" ; 
+        [ text:field "name" ;
           text:predicate <https://open-metadata.org/ontology/name> ]
     ) .

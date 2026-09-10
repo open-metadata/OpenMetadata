@@ -90,14 +90,15 @@ LIMIT 1
 """  # noqa: W291
 
 FETCH_COLUMN = """
-select 
-	tc.id, 
+select
+	tc.id,
     	t.table_name ,
-    	tc.column_name, 
-		tc.table_id, 
+    	tc.column_name,
+		tc.table_id,
     	tc.type,
-    	tc.description 
-from 
+    	tc.description,
+    	tc.expression
+from
 	table_columns  tc  
 inner join 
 	tables t 

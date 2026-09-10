@@ -42,40 +42,54 @@ test.describe('Table & Data Model columns table pagination', () => {
     );
     await tablePageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(tablePageSizeDropdown).toBeVisible();
-
-    const tablePageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '25 / Page' });
+    const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
     await expect(async () => {
       await tablePageSizeDropdown.hover();
-      if (!(await tablePageSizeOption.isVisible())) {
+      if (!(await menuItem.isVisible())) {
         await tablePageSizeDropdown.click();
       }
-      await expect(tablePageSizeOption).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
-    await tablePageSizeOption.click();
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+      await menuItem.click();
+      await expect(tablePageSizeDropdown).toHaveText('25 / Page');
+    }).toPass({
+      timeout: 30_000,
+      intervals: [500, 1_000, 2_000],
+    });
 
     await waitForAllLoadersToDisappear(page);
 
-    // Go to Explore Page
+    // Go to Explore Page — its first search runs at the persisted page size,
+    // so wait for that size=25 response to settle before reading the value
+    // back off the dropdown, otherwise the assertion can race the search and
+    // read the pre-hydration default.
+    const exploreSearchAt25 = page.waitForResponse(
+      (res) =>
+        res.url().includes('/search/query') &&
+        new URL(res.url()).searchParams.get('size') === '25'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await exploreSearchAt25;
 
     await waitForAllLoadersToDisappear(page);
+    await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
+      '25'
+    );
 
-    const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
-    await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
-
-    // Change page size to 50.
-    // `rows-per-page-dropdown` is a react-aria Select. Under load the click
-    // lands (button goes to [active] in the failure snapshot) but the popover
-    // can close before the option is clickable. Wrap in toPass so the click
-    // retries until the option is actually visible.
-    const rowsPerPageOption50 = page.getByTestId('rows-per-page-option-50');
+    // Change page size to 50
+    const menuItem1 = page.getByTestId('rows-per-page-option-50');
+    const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' });
     await expect(async () => {
-      await rowsPerPageDropdown.click();
-      await expect(rowsPerPageOption50).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
-    await rowsPerPageOption50.click();
+      await pageSizeRecordBtn.click();
+      await expect(menuItem1).toBeVisible({ timeout: 2_000 });
+      await menuItem1.click();
+      await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
+        '50'
+      );
+    }).toPass({
+      timeout: 30_000,
+      intervals: [500, 1_000, 2_000],
+    });
+
     await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page

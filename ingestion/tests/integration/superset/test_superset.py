@@ -67,6 +67,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
     DatabaseResult,
     DataSourceResult,
+    DSColumns,
     FetchChart,
     FetchColumn,
     FetchDashboard,
@@ -200,6 +201,27 @@ EXPECTED_CHART_2 = CreateChartRequest(
 )
 MOCK_DATASOURCE = [FetchColumn(id=11, type="INT()", column_name="Population", table_name="sample_table")]
 
+# A Superset calculated column commonly has no declared type
+CALCULATED_COLUMN_FORMULA = "CASE WHEN state = 'CA' THEN num ELSE 0 END"
+MOCK_CALCULATED_COLUMN_DB = [
+    FetchColumn(
+        id=12,
+        type=None,
+        column_name="num_california",
+        table_name="sample_table",
+        expression=CALCULATED_COLUMN_FORMULA,
+    )
+]
+MOCK_CALCULATED_COLUMN_API = [
+    DSColumns(id=12, type=None, column_name="num_california", expression=CALCULATED_COLUMN_FORMULA)
+]
+# A calculated column can also have its type set -- must keep that type (not
+# fall back to UNKNOWN) while still getting the formula surfaced.
+TYPED_CALCULATED_COLUMN_FORMULA = "price * 2"
+MOCK_TYPED_CALCULATED_COLUMN_API = [
+    DSColumns(id=13, type="BIGINT", column_name="double_price", expression=TYPED_CALCULATED_COLUMN_FORMULA)
+]
+
 # EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
 EXPECTED_ALL_CHARTS_DB = {1: MOCK_CHART_DB_2}
@@ -292,7 +314,9 @@ def setup_sample_data(postgres_container):
         """  # noqa: N806
         INSERT_TABLES_DATA = """
             INSERT INTO tables(id, table_name, schema, database_id)
-            VALUES (99, 'sample_table', 'main', 5);
+            VALUES
+                (99, 'sample_table', 'main', 5),
+                (100, 'calc_table', 'main', 5);
         """  # noqa: N806
         CREATE_TABLE_COLUMNS_TABLE = """
             CREATE TABLE table_columns (
@@ -301,17 +325,29 @@ def setup_sample_data(postgres_container):
                 table_id INTEGER,
                 column_name VARCHAR(255),
                 type VARCHAR(255),
-                description VARCHAR(255)
+                description VARCHAR(255),
+                expression VARCHAR(4000)
             );
         """  # noqa: N806
         CREATE_TABLE_COLUMNS_DATA = """
-            INSERT INTO 
+            INSERT INTO
                 table_columns(id, table_name, table_id, column_name, type, description)
-            VALUES 
-                (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'), 
+            VALUES
+                (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'),
                 (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description'),
                 (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
-        """  # noqa: N806, W291
+        """  # noqa: N806
+        # Calculated columns as Superset actually stores them: no physical DB column
+        # backs them, so `type` is frequently left NULL by whoever created them.
+        # Kept on a separate table_id (100) so it doesn't disturb the other tests'
+        # exact-column-set assertions against table_id 99.
+        CREATE_CALCULATED_COLUMNS_DATA = """
+            INSERT INTO
+                table_columns(id, table_name, table_id, column_name, type, description, expression)
+            VALUES
+                (1399, 'calc_table', 100, 'is_expensive', NULL, NULL, 'CASE WHEN price > 100 THEN 1 ELSE 0 END'),
+                (1499, 'calc_table', 100, 'double_price', 'BIGINT', NULL, 'price * 2');
+        """  # noqa: N806
 
         connection.execute(sqlalchemy.text(CREATE_TABLE_AB_USER))
         connection.execute(sqlalchemy.text(INSERT_AB_USER_DATA))
@@ -325,6 +361,7 @@ def setup_sample_data(postgres_container):
         connection.execute(sqlalchemy.text(INSERT_TABLES_DATA))
         connection.execute(sqlalchemy.text(CREATE_TABLE_COLUMNS_TABLE))
         connection.execute(sqlalchemy.text(CREATE_TABLE_COLUMNS_DATA))
+        connection.execute(sqlalchemy.text(CREATE_CALCULATED_COLUMNS_DATA))
 
 
 INITIAL_SETUP = True
@@ -648,6 +685,54 @@ class SupersetUnitTest(TestCase):
         assert parsed_datasource[0].dataType.value == "INT"
         # column name is the real column_name, not the numeric superset column id
         assert parsed_datasource[0].name.root == "Population"
+
+    def test_calculated_column_missing_type_not_dropped_db(self):
+        """
+        A calculated column with no declared type must still be ingested (as UNKNOWN)
+        instead of being silently dropped, and its SQL formula must be surfaced in
+        the column description. DB-source path (FetchColumn).
+        """
+        self.superset_db.prepare()
+        parsed_datasource = self.superset_db.get_column_info(MOCK_CALCULATED_COLUMN_DB)
+        assert len(parsed_datasource) == 1
+        assert parsed_datasource[0].dataType.value == "UNKNOWN"
+        assert CALCULATED_COLUMN_FORMULA in str(parsed_datasource[0].description.root)
+
+    def test_calculated_column_missing_type_not_dropped_api(self):
+        """
+        Same as test_calculated_column_missing_type_not_dropped_db, but for the
+        API-source path (DSColumns).
+        """
+        parsed_datasource = self.superset_api.get_column_info(MOCK_CALCULATED_COLUMN_API)
+        assert len(parsed_datasource) == 1
+        assert parsed_datasource[0].dataType.value == "UNKNOWN"
+        assert CALCULATED_COLUMN_FORMULA in str(parsed_datasource[0].description.root)
+
+    def test_typed_calculated_column_keeps_type_and_formula_api(self):
+        """
+        A calculated column that DOES have a type set must keep that real type
+        (not fall back to UNKNOWN), while still getting its formula surfaced.
+        """
+        parsed_datasource = self.superset_api.get_column_info(MOCK_TYPED_CALCULATED_COLUMN_API)
+        assert parsed_datasource[0].dataType.value == "BIGINT"
+        assert TYPED_CALCULATED_COLUMN_FORMULA in str(parsed_datasource[0].description.root)
+
+    def test_calculated_columns_end_to_end_via_sql_db(self):
+        """
+        Round-trips real rows through the actual FETCH_COLUMN SQL query (not a
+        hand-built mock), covering the mix a real dataset has: physical columns
+        with a type, a calculated column missing its type, and a calculated
+        column that does have one -- all fetched from table_id 100 in one call.
+        """
+        self.superset_db.prepare()
+        fetched_columns = self.superset_db.get_column_list(100)
+        parsed_columns = {c.name.root: c for c in self.superset_db.get_column_info(fetched_columns)}
+
+        assert parsed_columns["is_expensive"].dataType.value == "UNKNOWN"
+        assert "CASE WHEN price > 100" in str(parsed_columns["is_expensive"].description.root)
+
+        assert parsed_columns["double_price"].dataType.value == "BIGINT"
+        assert TYPED_CALCULATED_COLUMN_FORMULA in str(parsed_columns["double_price"].description.root)
 
     def test_datamodel_fields_api(self):
         """

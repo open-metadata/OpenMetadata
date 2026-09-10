@@ -133,10 +133,11 @@ public final class RdfGraphService {
       case UPSTREAM -> """
           PREFIX om: <https://open-metadata.org/ontology/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
-            ?entity om:name ?name .
+            <%s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
+            ?entity (rdfs:label|om:name) ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
           }
@@ -146,10 +147,11 @@ public final class RdfGraphService {
       case DOWNSTREAM -> """
           PREFIX om: <https://open-metadata.org/ontology/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
-            ?entity om:name ?name .
+            <%s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?entity .
+            ?entity (rdfs:label|om:name) ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
           }
@@ -159,16 +161,17 @@ public final class RdfGraphService {
       case BOTH -> """
           PREFIX om: <https://open-metadata.org/ontology/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
           SELECT DISTINCT ?entity ?name ?type ?relationship
           WHERE {
             {
-              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
+              <%s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
               BIND("upstream" as ?relationship)
             } UNION {
-              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
+              <%s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?entity .
               BIND("downstream" as ?relationship)
             }
-            ?entity om:name ?name .
+            ?entity (rdfs:label|om:name) ?name .
             ?entity a ?type .
           }
           ORDER BY ?relationship ?name
