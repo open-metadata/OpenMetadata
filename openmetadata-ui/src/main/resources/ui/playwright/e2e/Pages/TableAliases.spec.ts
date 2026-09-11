@@ -65,12 +65,17 @@ test.describe('Table Aliases widget', { tag: [DOMAIN_TAGS.DISCOVERY] }, () => {
 
     // The widget shows only the trailing alias name; the service, database and
     // schema are already implied by the page, and the full FQN stays available
-    // as the cell's title attribute.
+    // via the design-system Tooltip on hover (a react-aria overlay with
+    // role="tooltip"), not a native title attribute.
     for (const [index, name] of ALIAS_NAMES.entries()) {
       const cell = aliasesWidget.getByText(name, { exact: true });
 
       await expect(cell).toBeVisible();
-      await expect(cell).toHaveAttribute('title', ALIASES[index]);
+
+      await cell.hover();
+      await expect(
+        page.getByRole('tooltip').filter({ hasText: ALIASES[index] })
+      ).toBeVisible();
     }
 
     await expect(aliasesWidget.getByText(ALIASES[0])).toHaveCount(0);
