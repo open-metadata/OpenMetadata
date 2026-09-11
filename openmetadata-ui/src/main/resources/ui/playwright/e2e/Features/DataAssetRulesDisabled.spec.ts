@@ -411,7 +411,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -556,7 +556,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         await page.getByTestId('column-display-name').click();
@@ -707,7 +707,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
