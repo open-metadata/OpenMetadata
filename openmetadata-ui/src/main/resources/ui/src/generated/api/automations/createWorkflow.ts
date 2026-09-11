@@ -562,6 +562,8 @@ export interface Connection {
      *
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
      *

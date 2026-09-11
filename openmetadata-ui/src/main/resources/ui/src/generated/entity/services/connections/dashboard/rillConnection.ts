@@ -27,6 +27,10 @@ export interface RillConnection {
      * Service Type
      */
     type?: RillType;
+    /**
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     */
+    verifySSL?: boolean;
 }
 
 /**

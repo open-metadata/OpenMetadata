@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for the Rill dashboard connector."""
 
+from collections.abc import Sequence
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
@@ -376,11 +377,13 @@ def make_table(fqn: str) -> Table:
 
 def make_source(
     host_port: str,
-    catalog: list[dict] = DEFAULT_CATALOG,
-    entities: list[Dashboard | DashboardDataModel] = (),
+    catalog: Sequence[dict] | None = None,
+    entities: Sequence[Dashboard | DashboardDataModel] = (),
 ) -> RillSource:
     """Build a RillSource whose Rill API and OpenMetadata lookups are served from
     in-memory fixtures; lineage requests are built by the real base class code."""
+    if catalog is None:
+        catalog = DEFAULT_CATALOG
     resources = {
         (resource["meta"]["name"]["kind"], resource["meta"]["name"]["name"]): RillResource.model_validate(resource)
         for resource in catalog
