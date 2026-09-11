@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
+import { readFile } from 'fs/promises';
 import { get, isEmpty } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
@@ -941,8 +942,6 @@ export const verifyExportLineagePNG = async (
 
   try {
     const [download] = await Promise.all([
-      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
-      // render enough headroom before the download event fires.
       page.waitForEvent('download', { timeout: 120_000 }),
       page.click(
         '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
@@ -952,6 +951,12 @@ export const verifyExportLineagePNG = async (
     const filePath = await download.path();
 
     expect(filePath).not.toBeNull();
+    const png = await readFile(filePath!);
+    expect(png.subarray(0, 8)).toEqual(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    );
+    expect(png.readUInt32BE(16)).toBeGreaterThan(0);
+    expect(png.readUInt32BE(20)).toBeGreaterThan(0);
   } catch (error) {
     // Only the download wait is ambiguous about its cause. A click or selector
     // failure already says what went wrong, so a stray page error must never

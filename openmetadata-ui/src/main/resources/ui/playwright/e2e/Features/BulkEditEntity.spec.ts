@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
@@ -26,7 +26,6 @@ import {
   descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
-  toastNotification,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
@@ -43,46 +42,17 @@ import {
   fillRowDetails,
   fillTagDetails,
   pressKeyXTimes,
+  saveBulkImport,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { getCellByName } from '../../utils/scopedLocators';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 interface GlossaryDetails {
   name: string;
   parent: string;
 }
-
-const saveBulkEdit = async (
-  page: Page,
-  endpoint: string,
-  message: string | RegExp = /details updated successfully/
-) => {
-  const updateResponse = waitForResponseWithStatus(
-    page,
-    (response) => {
-      const url = new URL(response.url());
-
-      return (
-        response.request().method() === 'PUT' &&
-        url.pathname.startsWith(`/api/v1/${endpoint}/name/`) &&
-        url.pathname.endsWith('/importAsync') &&
-        url.searchParams.get('dryRun') === 'false'
-      );
-    },
-    200
-  );
-
-  // The toast can expire while navigation renders the destination page.
-  // Observe it from submission, using the async import completion budget.
-  await Promise.all([
-    updateResponse,
-    toastNotification(page, message, 90_000),
-    page.getByRole('button', { name: 'Update', exact: true }).click(),
-  ]);
-};
 
 // use the admin user to login
 test.use({
@@ -275,7 +245,7 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await saveBulkEdit(page, 'services/databaseServices');
+      await saveBulkImport(page, 'services/databaseServices');
 
       await page.click('[data-testid="databases"]');
 
@@ -408,7 +378,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.locator('.rdg-header-row').waitFor({
         state: 'visible',
       });
-      await saveBulkEdit(page, 'databases');
+      await saveBulkImport(page, 'databases');
 
       await waitForSearchIndexed(
         apiContext,
@@ -542,7 +512,7 @@ test.describe('Bulk Edit Entity', () => {
         processed: '1',
         failed: '0',
       });
-      await saveBulkEdit(page, 'databaseSchemas');
+      await saveBulkImport(page, 'databaseSchemas');
 
       await waitForSearchIndexed(
         apiContext,
@@ -676,7 +646,7 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await saveBulkEdit(page, 'tables');
+      await saveBulkImport(page, 'tables');
 
       // Verify Details updated
       await expect(
@@ -779,7 +749,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await saveBulkEdit(
+      await saveBulkImport(
         page,
         'glossaries',
         `Glossary ${glossary.responseData.fullyQualifiedName} details updated successfully`
@@ -927,7 +897,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await saveBulkEdit(page, 'glossaryTerms');
+      await saveBulkImport(page, 'glossaryTerms');
 
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');

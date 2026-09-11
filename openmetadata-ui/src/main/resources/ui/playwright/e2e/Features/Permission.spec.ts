@@ -10,267 +10,293 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
-import { Operation } from 'fast-json-patch';
-import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import {
+  PolicyClass,
+  PolicyRulesType,
+} from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import { okJson } from '../../utils/apiResponse';
+import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateViewPermissions } from '../../utils/permission';
-
-const policy = new PolicyClass();
-const policy2 = new PolicyClass();
-const role = new RolesClass();
-const role2 = new RolesClass();
-const user = new UserClass();
-const table = new TableClass();
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const viewPermissionsData = [
   {
+    title: 'ViewBasic permission',
+    operations: ['ViewBasic'],
+    permission: {},
+  },
+  {
     title: 'ViewBasic, ViewSampleData & ViewQueries permission',
-    data: {
-      patch: [
-        { op: 'add', path: '/rules/0/operations/1', value: 'ViewSampleData' },
-        { op: 'add', path: '/rules/0/operations/2', value: 'ViewQueries' },
-      ],
-      permission: { viewSampleData: true, viewQueries: true },
-    },
+    operations: ['ViewBasic', 'ViewSampleData', 'ViewQueries'],
+    permission: { viewSampleData: true, viewQueries: true },
   },
   {
     title: 'ViewBasic, ViewSampleData, ViewQueries & ViewTests permission',
-    data: {
-      patch: [{ op: 'add', path: '/rules/0/operations/3', value: 'ViewTests' }],
-      permission: {
-        viewSampleData: true,
-        viewQueries: true,
-        viewTests: true,
-      },
-    },
+    operations: ['ViewBasic', 'ViewSampleData', 'ViewQueries', 'ViewTests'],
+    permission: { viewSampleData: true, viewQueries: true, viewTests: true },
   },
   {
     title: 'EditDisplayName permission',
-    data: {
-      patch: [
-        { op: 'add', path: '/rules/0/operations/4', value: 'EditDisplayName' },
-      ],
-      permission: {
-        viewSampleData: true,
-        viewQueries: true,
-        viewTests: true,
-        editDisplayName: true,
-      },
+    operations: [
+      'ViewBasic',
+      'ViewSampleData',
+      'ViewQueries',
+      'ViewTests',
+      'EditDisplayName',
+    ],
+    permission: {
+      viewSampleData: true,
+      viewQueries: true,
+      viewTests: true,
+      editDisplayName: true,
     },
   },
 ];
 
 const test = base.extend<{
-  adminPage: Page;
+  permissionFixture: {
+    apiContext: APIRequestContext;
+    table: TableClass;
+    policy: PolicyClass;
+    user: UserClass;
+  };
   userPage: Page;
 }>({
-  adminPage: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser, {
-      navigate: true,
-    });
-    await use(page);
-    await afterAction();
-  },
-  userPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await user.login(page);
-    await use(page);
-    await page.close();
-  },
-});
+  permissionFixture: async ({ browser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const policy = new PolicyClass();
+    const denyPolicy = new PolicyClass();
+    const role = new RolesClass();
+    const denyRole = new RolesClass();
+    const user = new UserClass();
+    const table = new TableClass();
 
-test.beforeAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await user.create(apiContext);
-  const policyResponse = await policy.create(apiContext, [
-    {
-      name: `pw-permission-rule-${uuid()}`,
-      resources: ['All'],
-      operations: ['ViewBasic'],
-      effect: 'allow',
-    },
-  ]);
-  const policyResponse2 = await policy2.create(apiContext, [
-    {
-      name: `pw-permission-rule-${uuid()}`,
-      resources: ['All'],
-      operations: ['EditOwners'],
-      effect: 'deny',
-    },
-  ]);
-  await table.create(apiContext);
-  await table.createTestCase(apiContext);
-  await table.createQuery(apiContext);
-  const roleResponse = await role.create(apiContext, [
-    policyResponse.fullyQualifiedName,
-  ]);
-  const roleResponse2 = await role2.create(apiContext, [
-    policyResponse2.fullyQualifiedName,
-  ]);
-  await user.patch({
-    apiContext,
-    patchData: [
-      {
-        op: 'replace',
-        path: '/roles',
-        value: [
+    try {
+      await user.create(apiContext);
+      await policy.create(apiContext, [
+        {
+          name: `pw-permission-rule-${uuid()}`,
+          resources: ['All'],
+          operations: ['ViewBasic'],
+          effect: 'allow',
+        },
+      ]);
+      await denyPolicy.create(apiContext, [
+        {
+          name: `pw-deny-owner-rule-${uuid()}`,
+          resources: ['All'],
+          operations: ['EditOwners'],
+          effect: 'deny',
+        },
+      ]);
+      await role.create(apiContext, [policy.responseData.fullyQualifiedName!]);
+      await denyRole.create(apiContext, [
+        denyPolicy.responseData.fullyQualifiedName!,
+      ]);
+      await user.patch({
+        apiContext,
+        patchData: [
           {
-            id: roleResponse.id,
-            type: 'role',
-            name: roleResponse.name,
-          },
-          {
-            id: roleResponse2.id,
-            type: 'role',
-            name: roleResponse2.name,
+            op: 'replace',
+            path: '/roles',
+            value: [role, denyRole].map(({ responseData }) => ({
+              id: responseData.id,
+              type: 'role',
+              name: responseData.name,
+            })),
           },
         ],
-      },
-    ],
-  });
-  await afterAction();
-});
-
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await user.delete(apiContext);
-  await role.delete(apiContext);
-  await role2.delete(apiContext);
-  await policy.delete(apiContext);
-  await policy2.delete(apiContext);
-  await table.delete(apiContext);
-  await afterAction();
-});
-
-test('Permissions', async ({ userPage, adminPage }) => {
-  test.slow();
-
-  await redirectToHomePage(userPage);
-
-  await test.step('ViewBasic permission', async () => {
-    await table.visitEntityPage(userPage);
-    await waitForAllLoadersToDisappear(userPage);
-    await validateViewPermissions(userPage);
-  });
-
-  for (const viewPermission of viewPermissionsData) {
-    await test.step(viewPermission.title, async () => {
-      const { apiContext, afterAction } = await getApiContext(adminPage);
-      await policy.patch(apiContext, viewPermission.data.patch as Operation[]);
+      });
+      await table.create(apiContext);
+      await table.createTestCase(apiContext);
+      await table.createQuery(apiContext);
+      await use({ apiContext, table, policy, user });
+    } finally {
+      if (user.responseData.id) {
+        await user.delete(apiContext);
+      }
+      if (role.responseData.id) {
+        await role.delete(apiContext);
+      }
+      if (denyRole.responseData.id) {
+        await denyRole.delete(apiContext);
+      }
+      if (policy.responseData.id) {
+        await policy.delete(apiContext);
+      }
+      if (denyPolicy.responseData.id) {
+        await denyPolicy.delete(apiContext);
+      }
+      if (table.entityResponseData.id) {
+        await table.delete(apiContext);
+      }
       await afterAction();
-      await redirectToHomePage(userPage);
-      await userPage.reload({ waitUntil: 'domcontentloaded' });
-      const permissionResponse = userPage.waitForResponse(
+    }
+  },
+  userPage: async ({ page, permissionFixture }, use) => {
+    await permissionFixture.user.login(page);
+    await use(page);
+  },
+});
+
+const updatePermissionsAndVisit = async (
+  page: Page,
+  fixture: {
+    apiContext: APIRequestContext;
+    table: TableClass;
+    policy: PolicyClass;
+  },
+  operations: string[],
+  additionalRules: PolicyRulesType[] = []
+) => {
+  await fixture.policy.patch(fixture.apiContext, [
+    { op: 'replace', path: '/rules/0/operations', value: operations },
+    ...additionalRules.map((rule) => ({
+      op: 'add' as const,
+      path: '/rules/-',
+      value: rule,
+    })),
+  ]);
+  const permissionResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
         `/api/v1/permissions/table/name/${encodeURIComponent(
-          table.entityResponseData?.['fullyQualifiedName']
-        )}`
-      );
-      await table.visitEntityPage(userPage);
-      await permissionResponse;
-      await waitForAllLoadersToDisappear(userPage);
-      await validateViewPermissions(userPage, viewPermission.data.permission);
-    });
-  }
+          fixture.table.entityResponseData.fullyQualifiedName
+        )}`,
+    200
+  );
+  // Direct navigation reloads permissions for the already authenticated user.
+  await fixture.table.visitEntityPage(page);
+  await permissionResponse;
+};
 
-  await test.step('EditQuery permission', async () => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    await policy.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/rules/1',
-        value: {
-          name: `pw-edit-query-rule-${uuid()}`,
-          resources: ['query'],
-          operations: ['ViewAll', 'EditAll'],
-          effect: 'allow',
-        },
-      },
-      { op: 'add', path: '/rules/0/operations/5', value: 'EditQueries' },
-    ]);
-    await afterAction();
-    await redirectToHomePage(userPage);
-    await userPage.reload({ waitUntil: 'domcontentloaded' });
-    const permissionResponse = userPage.waitForResponse(
-      `/api/v1/permissions/table/name/${encodeURIComponent(
-        table.entityResponseData?.['fullyQualifiedName']
-      )}`
+for (const scenario of viewPermissionsData) {
+  test(scenario.title, async ({ userPage, permissionFixture }) => {
+    await updatePermissionsAndVisit(
+      userPage,
+      permissionFixture,
+      scenario.operations
     );
-    await table.visitEntityPage(userPage);
-    await permissionResponse;
-    await waitForAllLoadersToDisappear(userPage);
-    const queryListResponse = userPage.waitForResponse(
-      '/api/v1/search/query?q=*&index=query*'
-    );
-    await userPage.click('[data-testid="table_queries"]');
-    await queryListResponse;
-    await userPage.click('[data-testid="query-btn"]');
-    await userPage.click('[data-menu-id*="edit-query"]');
-    await userPage.locator('.CodeMirror-line').click();
-    await userPage.keyboard.type('updated');
-    const saveQueryResponse = userPage.waitForResponse('/api/v1/queries/*');
-    await userPage.click('[data-testid="save-query-btn"]');
-    await saveQueryResponse;
+    await validateViewPermissions(userPage, scenario.permission);
   });
+}
 
-  await test.step('EditTest permission', async () => {
-    const testCaseName = table.testCasesResponseData[0]?.['name'];
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    await policy.patch(apiContext, [
-      { op: 'add', path: '/rules/1/operations/6', value: 'EditTests' },
+test('EditQuery permission', async ({ userPage, permissionFixture }) => {
+  const { apiContext, table } = permissionFixture;
+  await updatePermissionsAndVisit(
+    userPage,
+    permissionFixture,
+    ['ViewBasic', 'ViewQueries', 'EditQueries'],
+    [
       {
-        op: 'add',
-        path: '/rules/2',
-        value: {
-          name: `cy-edit-test-case-rule-${uuid()}`,
-          resources: ['testCase'],
-          operations: ['ViewAll', 'EditAll'],
-          effect: 'allow',
-        },
+        name: `pw-edit-query-rule-${uuid()}`,
+        resources: ['query'],
+        operations: ['ViewAll', 'EditAll'],
+        effect: 'allow',
       },
-    ]);
-    await afterAction();
-    await redirectToHomePage(userPage);
-    await userPage.reload({ waitUntil: 'domcontentloaded' });
-    const permissionResponse = userPage.waitForResponse(
-      `/api/v1/permissions/table/name/${encodeURIComponent(
-        table.entityResponseData?.['fullyQualifiedName']
-      )}`
-    );
-    await table.visitEntityPage(userPage);
-    await permissionResponse;
-    await waitForAllLoadersToDisappear(userPage);
+    ]
+  );
+  const queryListResponse = waitForResponseWithStatus(
+    userPage,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/v1/search/query' &&
+      new URL(response.url()).searchParams.get('index') === 'query' &&
+      Number(new URL(response.url()).searchParams.get('size')) > 0 &&
+      (new URL(response.url()).searchParams.get('query_filter') ?? '').includes(
+        table.entityResponseData.id
+      ),
+    200
+  );
+  await userPage.getByTestId('table_queries').click();
+  await queryListResponse;
+  await userPage.getByTestId('query-btn').click();
+  await userPage.locator('[data-menu-id*="edit-query"]').click();
+  await userPage.locator('.CodeMirror-line').click();
+  await userPage.keyboard.type('updated');
+  const queryId = table.queryResponseData[0].id;
+  const saveQueryResponse = waitForResponseWithStatus(
+    userPage,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/v1/queries/${queryId}`,
+    200
+  );
+  await userPage.getByTestId('save-query-btn').click();
+  const savedQuery = await (await saveQueryResponse).json();
+  expect(savedQuery.query).toContain('updated');
+  const persistedQuery = await okJson(
+    await apiContext.get(`/api/v1/queries/${queryId}`),
+    'Read edited query'
+  );
+  expect(persistedQuery.query).toBe(savedQuery.query);
+});
 
-    await userPage.getByTestId('profiler').click();
-    await waitForAllLoadersToDisappear(userPage);
-
-    const testCaseResponse = userPage.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/') &&
-        response.request().method() === 'GET'
-    );
-
-    await userPage.getByRole('tab', { name: 'Data Quality' }).click();
-    await testCaseResponse;
-
-    await userPage.getByTestId(`action-dropdown-${testCaseName}`).click();
-    const testDefinitionResponse = userPage.waitForResponse(
-      '/api/v1/dataQuality/testDefinitions/*'
-    );
-    await userPage.getByTestId(`edit-${testCaseName}`).click();
-    await testDefinitionResponse;
-    await userPage.locator('[id="root\\/displayName"]').clear();
-    await userPage.fill('[id="root\\/displayName"]', 'Update_display_name');
-    const saveTestResponse = userPage.waitForResponse(
-      '/api/v1/dataQuality/testCases/*'
-    );
-    await userPage.getByTestId('create-btn').click();
-    await saveTestResponse;
-  });
+test('EditTest permission', async ({ userPage, permissionFixture }) => {
+  const { apiContext, table } = permissionFixture;
+  const testCase = table.testCasesResponseData[0];
+  await updatePermissionsAndVisit(
+    userPage,
+    permissionFixture,
+    ['ViewBasic', 'ViewTests', 'EditTests'],
+    [
+      {
+        name: `pw-edit-test-case-rule-${uuid()}`,
+        resources: ['testCase'],
+        operations: ['ViewAll', 'EditAll'],
+        effect: 'allow',
+      },
+    ]
+  );
+  await userPage.getByTestId('profiler').click();
+  await waitForAllLoadersToDisappear(userPage);
+  const testCaseResponse = waitForResponseWithStatus(
+    userPage,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        '/api/v1/dataQuality/testCases/search/list',
+    200
+  );
+  await userPage.getByRole('tab', { name: 'Data Quality' }).click();
+  await testCaseResponse;
+  await userPage.getByTestId(`action-dropdown-${testCase.name}`).click();
+  const testDefinitionResponse = waitForResponseWithStatus(
+    userPage,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname.startsWith(
+        '/api/v1/dataQuality/testDefinitions/'
+      ),
+    200
+  );
+  await userPage.getByTestId(`edit-${testCase.name}`).click();
+  await testDefinitionResponse;
+  await userPage
+    .locator('[id="root\\/displayName"]')
+    .fill('Update_display_name');
+  const saveTestResponse = waitForResponseWithStatus(
+    userPage,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/dataQuality/testCases/${testCase.id}`,
+    200
+  );
+  await userPage.getByTestId('create-btn').click();
+  await saveTestResponse;
+  const persistedTest = await okJson(
+    await apiContext.get(`/api/v1/dataQuality/testCases/${testCase.id}`),
+    'Read edited test case'
+  );
+  expect(persistedTest.displayName).toBe('Update_display_name');
 });
