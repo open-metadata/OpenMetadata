@@ -322,10 +322,18 @@ Two things to know if you touch this path:
   `e2e/Features/TokenStorage.spec.ts` guards both, and the third case in it exists specifically to
   fail if the fallback is what is under test.
 
-Use `signIn()` in new specs. `login()` remains for the specs that are testing the sign-in form
-itself — `Pages/Login.spec.ts`, `Features/OnlineUsers.spec.ts`, `Flow/Tour.spec.ts` and the
-`Features/AppMode` specs. Creating a user as test data is unrelated and unaffected: `new
-UserClass()` for an owner, reviewer or assignee stays exactly as it is.
+`openmetadata-playwright/prefer-role-page-fixture` runs at **error** with no suppressions: the
+whole corpus was migrated, so a `login()` in a spec is either new code that should be using
+`signIn()` or a fixture, or a spec that is genuinely testing the sign-in form. It flags
+*authenticating as* a bespoke user, not *creating* one — `new UserClass()` for an owner, reviewer
+or assignee is ordinary test data and is untouched, as is `performUserLogin`, which signs in
+through the API and owns its page, context and teardown.
+
+Nine files legitimately keep `login()` because the sign-in flow is what they are testing —
+`Pages/Login.spec.ts`, `Features/OnlineUsers.spec.ts`, `Flow/Tour.spec.ts` and the `Features/AppMode`
+specs. Each call there carries a justified disable
+(`// eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- <why>`) naming the
+reason. If you find yourself adding a tenth, check first that `signIn()` really cannot do the job.
 
 ---
 
@@ -907,6 +915,7 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
+| `openmetadata-playwright/prefer-role-page-fixture` | error | Prefer the shared role page fixtures over creating and logging in a bespoke user |
 | `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
 | `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
 | `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |

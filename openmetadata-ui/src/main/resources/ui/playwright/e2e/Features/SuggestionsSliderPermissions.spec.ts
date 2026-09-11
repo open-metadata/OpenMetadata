@@ -162,7 +162,7 @@ test.describe(
         // Suggestions are created as the suggester so their avatar drives the carousel
         const suggesterPage = await browser.newPage();
         try {
-          await suggesterUser.login(suggesterPage);
+          await suggesterUser.signIn(suggesterPage);
           const { apiContext: suggesterContext, afterAction: disposeContext } =
             await getApiContext(suggesterPage);
 
@@ -234,7 +234,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await adminUser.login(page);
+      await adminUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -256,7 +256,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await viewerUser.login(page);
+      await viewerUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -283,7 +283,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await descriptionEditorUser.login(page);
+      await descriptionEditorUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -304,7 +304,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await descriptionEditorUser.login(page);
+      await descriptionEditorUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, descriptionOnlyTable);
