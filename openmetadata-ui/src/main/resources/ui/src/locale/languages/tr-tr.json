@@ -4125,6 +4125,7 @@
     "request-tags-message": "için etiket isteği",
     "request-test-case-failure-resolution-message": "için Test Senaryosu Başarısızlık Çözümü İsteği",
     "request-update-description": "Güncelleme açıklaması iste",
+    "reserved-column-name": "'{{name}}' sütun adı dahili kullanım için ayrılmıştır ve tablo türündeki özel bir özelliğin sütunu olarak kullanılamaz.",
     "reset-layout-confirmation": "\"Varsayılan Düzen\" uygulamak istediğinizden emin misiniz?",
     "reset-link-has-been-sent": "Sıfırlama bağlantısı e-postanıza gönderildi",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

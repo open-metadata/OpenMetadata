@@ -78,6 +78,10 @@ const CustomControls: FC<{
   deleted?: boolean;
   hasEditAccess?: boolean;
   impactLevel?: EImpactLevel;
+  // Reset the host's pagination to page 1 when the user narrows the result set
+  // via a quick-filter value change or "Clear all". Hosts that have no
+  // pagination (e.g. the lineage graph view) simply omit the prop.
+  onPageReset?: () => void;
 }> = ({
   nodeDepthOptions,
   onSearchValueChange,
@@ -86,6 +90,7 @@ const CustomControls: FC<{
   deleted = false,
   hasEditAccess = false,
   impactLevel,
+  onPageReset,
 }) => {
   const { t } = useTranslation();
   const {
@@ -154,6 +159,7 @@ const CustomControls: FC<{
 
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
+      onPageReset?.(); // reset pagination so the narrowed set is fetched from page 1
       setSelectedQuickFilters((pre) => {
         const data = pre.map((preField) => {
           if (preField.key === field.key) {
@@ -166,7 +172,7 @@ const CustomControls: FC<{
         return data;
       });
     },
-    [setSelectedQuickFilters]
+    [setSelectedQuickFilters, onPageReset]
   );
 
   // Initialize quick filters on component mount
@@ -231,6 +237,11 @@ const CustomControls: FC<{
       (prev ?? []).map((filter) => ({ ...filter, value: [] }))
     );
   }, [setSelectedQuickFilters]);
+
+  const handleClearAllClick = useCallback(() => {
+    handleClearAllFilters();
+    onPageReset?.(); // reset pagination so the un-narrowed set is fetched from page 1
+  }, [handleClearAllFilters, onPageReset]);
 
   const handleTabChange = useCallback(
     (key: string) => {
@@ -551,7 +562,7 @@ const CustomControls: FC<{
             color="link-color"
             isDisabled={!filterApplied}
             size="sm"
-            onClick={handleClearAllFilters}>
+            onClick={handleClearAllClick}>
             {t('label.clear-entity', { entity: t('label.all') })}
           </Button>
         </div>
