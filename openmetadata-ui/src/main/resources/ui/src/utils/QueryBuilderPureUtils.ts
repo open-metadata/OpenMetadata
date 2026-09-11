@@ -512,6 +512,29 @@ const readNestedCustomProperty = (
   return parsed ? { name, ...parsed } : { name, shape: 'exists' };
 };
 
+/** The clause a `bool.must` envelope wraps, minus the `entityType` scope. */
+const unwrapCustomPropertyEnvelope = (
+  clause: UnknownRecord
+): UnknownRecord | undefined => {
+  const must = asClauseArray((clause.bool as EsBoolQuery)?.must);
+
+  if (must.length === 0) {
+    return undefined;
+  }
+
+  const body = must.find((entry) =>
+    isUndefined((entry.term as UnknownRecord)?.entityType)
+  );
+  const rest = must.filter((entry) => entry !== body);
+
+  return body &&
+    rest.every(
+      (entry) => !isUndefined((entry.term as UnknownRecord)?.entityType)
+    )
+    ? body
+    : undefined;
+};
+
 /** A range fans out over the typed value fields; any branch describes it. */
 const readCustomPropertyClause = (
   clause: UnknownRecord | undefined,
@@ -529,11 +552,18 @@ const readCustomPropertyClause = (
     return undefined;
   }
 
-  for (const branch of asClauseArray(bool.should)) {
-    const parsed = readNestedCustomProperty(branch);
+  // How deeply the group formatter wraps the clause varies with the rule, so
+  // each `bool` layer is followed rather than matched at a fixed depth.
+  const nested = [
+    ...asClauseArray(unwrapCustomPropertyEnvelope(clause as UnknownRecord)),
+    ...asClauseArray(bool.should),
+  ];
+
+  for (const branch of nested) {
+    const parsed = readCustomPropertyClause(branch, negated);
 
     if (parsed) {
-      return { ...parsed, negated };
+      return parsed;
     }
   }
 
@@ -595,9 +625,12 @@ const findExtensionField = (
     ...(valueField ? [`${name}.${valueField}`] : []),
   ];
 
+  // `is_null` writes no value field, so a property declaring two keys (a time
+  // interval's start and end) cannot be told apart. Falling back to the order
+  // the config declares them in at least picks the same one every time.
   return (
     candidates.find((candidate) => preferred.includes(candidate.key)) ??
-    candidates.slice().sort((a, b) => a.key.length - b.key.length)[0]
+    candidates[0]
   );
 };
 
@@ -650,6 +683,12 @@ const readRange = (
 const stripWildcards = (value: unknown): string =>
   String(value ?? '').replace(/^\*|\*$/g, '');
 
+/** A multiselect holds its choices in a single value slot, so it nests. */
+const toRuleValue = (
+  fieldType: string | undefined,
+  value: unknown
+): unknown[] => (fieldType === 'multiselect' ? [[value]] : [value]);
+
 /** The rule a parsed clause describes, or nothing if it describes none. */
 const toCustomPropertyRule = (
   parsed: CustomPropertyClause,
@@ -673,12 +712,12 @@ const toCustomPropertyRule = (
         fieldType,
         negated
       ),
-      value: [stripWildcards(value)],
+      value: toRuleValue(fieldType, stripWildcards(value)),
     };
   }
 
   if (shape === 'regexp') {
-    return { operator: 'regexp', value: [value] };
+    return { operator: 'regexp', value: toRuleValue(fieldType, value) };
   }
 
   return {
@@ -688,31 +727,8 @@ const toCustomPropertyRule = (
       fieldType,
       negated
     ),
-    value: [value],
+    value: toRuleValue(fieldType, value),
   };
-};
-
-/** The clause a `bool.must` envelope wraps, minus the `entityType` scope. */
-const unwrapCustomPropertyEnvelope = (
-  clause: UnknownRecord
-): UnknownRecord | undefined => {
-  const must = asClauseArray((clause.bool as EsBoolQuery)?.must);
-
-  if (must.length === 0) {
-    return undefined;
-  }
-
-  const body = must.find((entry) =>
-    isUndefined((entry.term as UnknownRecord)?.entityType)
-  );
-  const rest = must.filter((entry) => entry !== body);
-
-  return body &&
-    rest.every(
-      (entry) => !isUndefined((entry.term as UnknownRecord)?.entityType)
-    )
-    ? body
-    : undefined;
 };
 
 /**
@@ -760,9 +776,7 @@ const matchCustomProperty: QueryFilterBranchHandler = (
   fields
 ) => {
   const clause = curr as unknown as UnknownRecord;
-  const parsed =
-    readCustomPropertyClause(clause) ??
-    readCustomPropertyClause(unwrapCustomPropertyEnvelope(clause));
+  const parsed = readCustomPropertyClause(clause);
 
   if (!parsed) {
     return undefined;

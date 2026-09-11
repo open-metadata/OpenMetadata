@@ -40,15 +40,6 @@ const NEGATED_OPERATORS = [
   'multiselect_not_contains',
 ];
 
-const RANGEABLE_OM_TYPES = [
-  'integer',
-  'number',
-  'timestamp',
-  'date-cp',
-  'dateTime-cp',
-  'time-cp',
-];
-
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
@@ -888,19 +879,9 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
       extensionPropertyName
     );
 
-    // For range operators (between / not_between) the value is a two-element
-    // array [from, to]. Pass the full array so buildExtensionQuery can build a
-    // proper gte/lte range query. Numeric types (integer/number/timestamp) query
-    // longValue/doubleValue. Date types (date-cp/dateTime-cp/time-cp) are stored
-    // as formatted strings in stringValue; a keyword range is a lexicographic
-    // comparison, which is chronologically correct for the default big-endian,
-    // zero-padded formats (e.g. yyyy-MM-dd HH:mm:ss). Other types collapse to
-    // value[0] since only a single bound is meaningful.
-    const isBetweenOp = op === 'between';
-    const isRangeableOmType = RANGEABLE_OM_TYPES.includes(omPropertyType);
     let extensionValue = null;
     if (hasValue) {
-      extensionValue = isBetweenOp && isRangeableOmType ? value : value[0];
+      extensionValue = isRangeOperator(op) ? value : value[0];
     }
 
     return buildExtensionQuery(

@@ -241,6 +241,24 @@ describe('custom property ES round trip', () => {
     expect(rules.map((r) => r.levels)).toEqual([[], ['extension']]);
   });
 
+  it('reads a clause the group formatter wrapped further', () => {
+    const saved =
+      '{"query":{"bool":{"must":[{"bool":{"must":[{"bool":{"should":' +
+      '[{"bool":{"must":[{"nested":{"path":"customPropertiesTyped",' +
+      '"ignore_unmapped":true,"query":{"bool":{"must":[{"term":' +
+      '{"customPropertiesTyped.name":"strCP"}},{"wildcard":' +
+      '{"customPropertiesTyped.stringValue":{"value":"*test*"}}}]}}}},' +
+      '{"term":{"entityType":"table"}}]}}]}}]}}]}}}';
+
+    const rules = reparse(saved);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.properties?.field).toBe('extension.strCP.keyword');
+    expect(rules[0]?.properties?.operator).toBe('like');
+    expect(rules[0]?.properties?.value).toEqual(['test']);
+    expect(rules[0]?.levels).toEqual(['extension']);
+  });
+
   it('keeps a genuine entityType rule', () => {
     const saved = JSON.stringify({
       query: { bool: { must: [{ term: { entityType: 'table' } }] } },
