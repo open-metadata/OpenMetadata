@@ -50,26 +50,51 @@ const executeTokenOperation = async (
 
           request.onsuccess = () => {
             const db = request.result;
-            const transaction = db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const getRequest = store.get(key);
 
-            getRequest.onsuccess = () => {
-              resolve(getRequest.result || null);
-            };
+            // `onupgradeneeded` used to resolve(null) here and leave the store
+            // uncreated, but `onsuccess` fires afterwards regardless — and
+            // `db.transaction([missingStore])` throws NotFoundError *inside the
+            // event handler*, which neither rejects this promise nor is caught
+            // by the try/catch around the await. The promise simply never
+            // settled, so getToken/setToken hung until the test timed out on a
+            // context where the store did not exist yet. Check before opening
+            // the transaction.
+            if (!db.objectStoreNames.contains(storeName)) {
+              resolve(null);
 
-            getRequest.onerror = () => {
-              reject(getRequest.error);
-            };
+              return;
+            }
+
+            try {
+              const transaction = db.transaction([storeName], 'readonly');
+              const store = transaction.objectStore(storeName);
+              const getRequest = store.get(key);
+
+              getRequest.onsuccess = () => {
+                resolve(getRequest.result || null);
+              };
+
+              getRequest.onerror = () => {
+                reject(getRequest.error);
+              };
+            } catch (error) {
+              reject(error);
+            }
           };
 
           request.onerror = () => {
             reject(request.error);
           };
 
-          // Handle case where database doesn't exist yet
-          request.onupgradeneeded = () => {
-            resolve(null);
+          // A brand-new database: create the store so the write path that
+          // follows has somewhere to go, and let `onsuccess` report the (empty)
+          // read.
+          request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+
+            if (!db.objectStoreNames.contains(storeName)) {
+              db.createObjectStore(storeName);
+            }
           };
         });
       };

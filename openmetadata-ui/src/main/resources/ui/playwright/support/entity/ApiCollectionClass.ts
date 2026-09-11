@@ -20,7 +20,10 @@ import {
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import {
+  expectNavigationResponseOk,
+  visitEntityPage,
+} from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   EntityReference,
@@ -286,7 +289,10 @@ export class ApiCollectionClass extends EntityClass {
       `/api/v1/apiCollections/name/*${this.entity.name}?*`
     );
     await page.getByTestId(this.entity.name).click();
-    await apiCollectionsResponse;
+    await expectNavigationResponseOk(
+      apiCollectionsResponse,
+      `visit apiCollection ${this.entity.name}`
+    );
   }
 
   async delete(apiContext: APIRequestContext) {

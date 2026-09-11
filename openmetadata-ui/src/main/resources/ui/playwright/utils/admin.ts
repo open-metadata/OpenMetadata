@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Browser, Page, request } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Page,
+  request,
+} from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { AdminClass } from '../support/user/AdminClass';
@@ -22,18 +28,46 @@ import {
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
+// Poll for whichever of the two landing states appears, rather than racing two
+// `waitFor` calls. A losing `waitFor` cannot be cancelled: it stays pending for
+// the rest of the test and, when anything later times out, reports itself as a
+// ~60s `waiting for locator('#email')` failure — the first and longest error in
+// the report, sending every triage down a login rabbit hole that does not exist.
+// A poll ends when it returns.
+const waitForLandingState = async (page: Page): Promise<'app' | 'login'> => {
+  let landingState: 'app' | 'login' = 'app';
+
+  await expect
+    .poll(
+      async () => {
+        if ((await page.getByTestId('left-sidebar').count()) > 0) {
+          landingState = 'app';
+
+          return true;
+        }
+
+        if (await page.locator('#email').isVisible()) {
+          landingState = 'login';
+
+          return true;
+        }
+
+        return false;
+      },
+      {
+        timeout: 30_000,
+        message:
+          'Neither the app shell (left-sidebar) nor the login form (#email) appeared after navigating to /my-data',
+      }
+    )
+    .toBe(true);
+
+  return landingState;
+};
+
 export const authenticateAdminPage = async (page: Page) => {
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-  const requiresLogin = await Promise.race([
-    page
-      .locator('#email')
-      .waitFor({ state: 'visible' })
-      .then(() => true),
-    page
-      .getByTestId('left-sidebar')
-      .waitFor({ state: 'attached' })
-      .then(() => false),
-  ]);
+  const requiresLogin = (await waitForLandingState(page)) === 'login';
 
   if (requiresLogin) {
     const admin = new AdminClass();
