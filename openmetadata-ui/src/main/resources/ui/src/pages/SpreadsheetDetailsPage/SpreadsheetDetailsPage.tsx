@@ -24,17 +24,13 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import SpreadsheetDetails from '../../components/DriveService/Spreadsheet/SpreadsheetDetails';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDriveAssetFollower,
@@ -45,10 +41,6 @@ import {
 } from '../../rest/driveAPI';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { defaultFields } from '../../utils/SpreadsheetDetailsUtils';
@@ -59,17 +51,34 @@ const SpreadsheetDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: spreadsheetFQN } = useFqn();
   const [spreadsheetDetails, setSpreadsheetDetails] = useState<Spreadsheet>(
     {} as Spreadsheet
   );
-  const [isLoading, setLoading] = useState<boolean>(true);
+  // Entity-fetch loading only now — permission-fetch loading comes from the hook below.
+  // Combined at the render gate as `isPermissionsLoading || (canViewBasic &&
+  // isEntityLoading)`: the `canViewBasic` guard matters because, unlike the old single
+  // shared `isLoading` flag (reset by fetchResourcePermission's own `finally` regardless of
+  // outcome), this flag is now only ever flipped false by fetchSpreadsheetDetails — which is
+  // never called at all when view permission is denied. Without the guard, a denied-view
+  // render would stay stuck on the loader forever instead of reaching the permission
+  // ErrorPlaceHolder.
+  const [isEntityLoading, setEntityLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [spreadsheetPermissions, setSpreadsheetPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // Single useEntityPermissions call — no genuine cycle: this page never derives a
+  // `deleted`-gated canEdit* flag of its own. SpreadsheetDetails (the child) owns the raw
+  // spreadsheetPermissions prop and derives its own edit-tier flags against its own
+  // `deleted` (sourced from spreadsheetDetails.deleted) — see
+  // TopicDetailsPage.component.tsx's analogous comment.
+  const {
+    permissions: spreadsheetPermissions, // SpreadsheetDetails consumes the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.SPREADSHEET, spreadsheetFQN);
 
   const { id: spreadsheetId, version: currentVersion } = spreadsheetDetails;
 
@@ -105,27 +114,8 @@ const SpreadsheetDetailsPage = () => {
     }
   };
 
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.SPREADSHEET,
-        entityFqn
-      );
-      setSpreadsheetPermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchSpreadsheetDetails = async (spreadsheetFQN: string) => {
-    setLoading(true);
+    setEntityLoading(true);
     try {
       const res = await getDriveAssetByFqn<Spreadsheet>(
         spreadsheetFQN,
@@ -161,7 +151,7 @@ const SpreadsheetDetailsPage = () => {
         );
       }
     } finally {
-      setLoading(false);
+      setEntityLoading(false);
     }
   };
 
@@ -271,22 +261,25 @@ const SpreadsheetDetailsPage = () => {
     []
   );
 
+  // Permission fetching itself now lives in useEntityPermissions (called above). Preserves
+  // the old fetchResourcePermission catch's exact toast (interpolating the FQN itself, not
+  // a translated entity-type label) — matches TopicDetailsPage.component.tsx's analogous
+  // effect.
   useEffect(() => {
-    fetchResourcePermission(spreadsheetFQN);
-  }, [spreadsheetFQN]);
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: spreadsheetFQN })
+      );
+    }
+  }, [permissionsError, spreadsheetFQN]);
 
   useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        spreadsheetPermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
+    if (canViewBasic) {
       fetchSpreadsheetDetails(spreadsheetFQN);
     }
-  }, [spreadsheetPermissions, spreadsheetFQN]);
+  }, [canViewBasic, spreadsheetFQN]);
 
-  if (isLoading) {
+  if (isPermissionsLoading || (canViewBasic && isEntityLoading)) {
     return <PageLoader />;
   }
   if (isError) {
@@ -296,7 +289,7 @@ const SpreadsheetDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!spreadsheetPermissions.ViewAll && !spreadsheetPermissions.ViewBasic) {
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
