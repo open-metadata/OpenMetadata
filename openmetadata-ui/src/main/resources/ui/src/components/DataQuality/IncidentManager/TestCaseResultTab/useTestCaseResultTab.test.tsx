@@ -158,7 +158,6 @@ describe('useTestCaseResultTab', () => {
     expect(result.current.isVersionPage).toBe(true);
     expect(result.current.hasEditPermission).toBe(false);
     expect(result.current.hasEditTagsPermission).toBe(false);
-    expect(result.current.parameterItems).toBeNull();
   });
 
   it('should disable all widget edit permissions for a deleted test case', () => {
@@ -175,7 +174,7 @@ describe('useTestCaseResultTab', () => {
     expect(result.current.hasEditGlossaryTermsPermission).toBe(false);
   });
 
-  it('should build parameter items with compute row count when supported', async () => {
+  it('should split parameters and flag compute row count when supported', async () => {
     mockUseTestCaseStore.testCase = {
       ...MOCK_TEST_CASE_DATA,
       computePassedFailedRowCount: true,
@@ -188,19 +187,8 @@ describe('useTestCaseResultTab', () => {
     expect(getTestDefinitionById).toHaveBeenCalledWith(
       MOCK_TEST_CASE_DATA.testDefinition.id
     );
-    expect(result.current.parameterItems).toHaveLength(3);
-  });
-
-  it('should build a dynamic assertion parameter item', () => {
-    mockUseTestCaseStore.testCase = {
-      ...MOCK_TEST_CASE_DATA,
-      useDynamicAssertion: true,
-    };
-
-    const { result } = renderHook(() => useTestCaseResultTab());
-
-    expect(result.current.parameterItems).toHaveLength(1);
-    expect(result.current.parameterItems?.[0].label).toBeUndefined();
+    expect(result.current.withoutSqlParams).toHaveLength(2);
+    expect(result.current.withSqlParams).toHaveLength(0);
   });
 
   it('handleDescriptionChange should patch the description and toast success', async () => {
