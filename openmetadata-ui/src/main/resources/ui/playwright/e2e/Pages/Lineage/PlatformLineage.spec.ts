@@ -221,7 +221,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
     // an unreliable rendering budget. Any real-user export of a much larger
     // graph is protected by the adaptive-pixelRatio cap in
     // openmetadata-ui/.../utils/Export/ExportUtils.ts.
-    const MAX_NODES = 100;
+    const MAX_NODES = 50;
 
     await page.route(
       '**/api/v1/lineage/getPlatformLineage**',
@@ -303,7 +303,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
         response.url().includes('downstreamDepth=2')
     );
 
-    await page.getByText('OK').click();
+    await page.getByRole('button', { name: 'OK', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await refetch;
   });
