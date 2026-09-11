@@ -13,53 +13,12 @@
 import { isNil, startCase } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
+import { LimitConfig, ResourceLimit } from '../../rest/limitsAPI.interface';
+
+export type { LimitConfig, ResourceLimit };
 
 const ERROR_SUB_HEADER =
   'You have used {{currentCount}} out of {{limit}} of the {{resource}} resource.';
-
-export interface ResourceLimit {
-  featureLimitStatuses: Array<{
-    configuredLimit: {
-      name: string;
-      maxVersions?: number;
-      disableFields?: Array<string>;
-      disabledFields?: Array<string>;
-      limits: {
-        softLimit: number;
-        hardLimit: number;
-      };
-    };
-    limitReached: boolean;
-    currentCount: number;
-    name: string;
-  }>;
-}
-
-export type LimitConfig = {
-  enable: boolean;
-  limits: {
-    config: {
-      version: string;
-      plan: string;
-      installationType: string;
-      deployment: string;
-      companyName: string;
-      domain: string;
-      instances: number;
-      featureLimits: Array<{
-        name: string;
-        maxVersions: number;
-        versionHistory: number;
-        limits: {
-          softLimit: number;
-          hardLimit: number;
-        };
-        disableFields: Array<string>;
-        pipelineSchedules?: Array<string>;
-      }>;
-    };
-  };
-};
 
 export type BannerDetails = {
   header: string;
@@ -67,6 +26,7 @@ export type BannerDetails = {
   type: 'warning' | 'danger';
   softLimitExceed?: boolean;
   hardLimitExceed?: boolean;
+  resource?: string;
 };
 
 const buildDisabledResourceLimit = (
@@ -86,12 +46,21 @@ const buildDisabledResourceLimit = (
   },
 });
 
+const computeLimitStatus = (
+  limits: { softLimit: number; hardLimit: number },
+  currentCount: number
+) => ({
+  softLimitExceed: limits.softLimit !== -1 && currentCount >= limits.softLimit,
+  hardLimitExceed: limits.hardLimit !== -1 && currentCount >= limits.hardLimit,
+});
+
 const maybeShowLimitBanner = (
   rLimit: ResourceLimit['featureLimitStatuses'][number],
   resource: string,
   plan: string,
   showBanner: boolean,
-  setBannerDetails: (details: BannerDetails | null) => void
+  setBannerDetails: (details: BannerDetails | null) => void,
+  bannerDetails: BannerDetails | null
 ): void => {
   const {
     configuredLimit: { limits },
@@ -99,27 +68,30 @@ const maybeShowLimitBanner = (
     limitReached,
   } = rLimit;
 
-  const softLimitExceed =
-    limits.softLimit !== -1 && currentCount >= limits.softLimit;
-  const hardLimitExceed =
-    limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+  const { softLimitExceed, hardLimitExceed } = computeLimitStatus(
+    limits,
+    currentCount
+  );
   const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
 
-  if (!isAnyLimitExceeded || !showBanner) {
-    return;
+  if (isAnyLimitExceeded && showBanner) {
+    setBannerDetails({
+      header: `You have reached ${
+        hardLimitExceed ? '100%' : '75%'
+      } of your ${plan} Plan usage limit.`,
+      type: hardLimitExceed ? 'danger' : 'warning',
+      subheader: ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
+        .replace('{{resource}}', startCase(resource))
+        .replace('{{limit}}', limits.hardLimit + ''),
+      softLimitExceed,
+      hardLimitExceed,
+      resource,
+    });
+  } else if (showBanner && bannerDetails?.resource === resource) {
+    // Clear only the banner this resource owns, so a sub-limit refresh of
+    // one resource does not clobber a banner set by a different resource.
+    setBannerDetails(null);
   }
-
-  setBannerDetails({
-    header: `You have reached ${
-      hardLimitExceed ? '100%' : '75%'
-    } of your ${plan} Plan usage limit.`,
-    type: hardLimitExceed ? 'danger' : 'warning',
-    subheader: ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
-      .replace('{{resource}}', startCase(resource))
-      .replace('{{limit}}', limits.hardLimit + ''),
-    softLimitExceed,
-    hardLimitExceed,
-  });
 };
 
 /**
@@ -164,7 +136,13 @@ export const useLimitStore = create<{
     showBanner = true,
     force = false
   ) => {
-    const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
+    const {
+      setResourceLimit,
+      resourceLimit,
+      setBannerDetails,
+      config,
+      bannerDetails,
+    } = get();
 
     if (config?.enable === false) {
       return buildDisabledResourceLimit(resource);
@@ -185,7 +163,8 @@ export const useLimitStore = create<{
         resource,
         plan,
         showBanner,
-        setBannerDetails
+        setBannerDetails,
+        bannerDetails
       );
     }
 

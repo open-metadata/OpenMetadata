@@ -14,3 +14,47 @@
 export interface ResourceLimitsParams {
   cache?: boolean;
 }
+
+export interface ResourceLimit {
+  featureLimitStatuses: Array<{
+    configuredLimit: {
+      name: string;
+      maxVersions?: number;
+      disableFields?: Array<string>;
+      disabledFields?: Array<string>;
+      limits: {
+        softLimit: number;
+        hardLimit: number;
+      };
+    };
+    limitReached: boolean;
+    currentCount: number;
+    name: string;
+  }>;
+}
+
+export type LimitConfig = {
+  enable: boolean;
+  limits: {
+    config: {
+      version: string;
+      plan: string;
+      installationType: string;
+      deployment: string;
+      companyName: string;
+      domain: string;
+      instances: number;
+      featureLimits: Array<{
+        name: string;
+        maxVersions: number;
+        versionHistory: number;
+        limits: {
+          softLimit: number;
+          hardLimit: number;
+        };
+        disableFields: Array<string>;
+        pipelineSchedules?: Array<string>;
+      }>;
+    };
+  };
+};

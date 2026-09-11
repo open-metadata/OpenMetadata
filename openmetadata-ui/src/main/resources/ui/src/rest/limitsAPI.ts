@@ -14,8 +14,8 @@ import axiosClient from '.';
 import {
   LimitConfig,
   ResourceLimit,
-} from '../context/LimitsProvider/useLimitsStore';
-import { ResourceLimitsParams } from './limitsAPI.interface';
+  ResourceLimitsParams,
+} from './limitsAPI.interface';
 
 const BASE_URL = '/limits';
 
