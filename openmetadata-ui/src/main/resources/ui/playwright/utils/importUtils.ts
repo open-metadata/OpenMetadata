@@ -1322,6 +1322,11 @@ export const fillRowDetails = async (
   await fillOwnerDetails(page, row.owners);
 
   if (row.teamOwners && row.teamOwners.length > 0) {
+    // Re-select the owner cell first: committing the users above clicked the
+    // Update button inside the picker's portal overlay, which leaves focus off
+    // the grid, so the Enter key inside fillTeamOwnerDetails would otherwise
+    // never re-open the editor.
+    await selectActiveRowCellByColumn(page, 'owner');
     await fillTeamOwnerDetails(page, row.teamOwners);
   }
 

@@ -13,7 +13,13 @@
 import { Popover, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -322,7 +328,14 @@ export const UserTeamSelectableList = ({
     init();
   }, [popupVisible]);
 
-  useEffect(() => {
+  // Flip the mounted flag in a layout effect (not a passive effect) so the
+  // false -> true transition — and therefore the forced-open popover — happens
+  // synchronously in the mount commit, before the browser paints. A passive
+  // useEffect flips it only after paint, which races the react-data-grid cell
+  // editor lifecycle in the bulk-edit grid: the editor could be re-rendered or
+  // torn down in that gap, so the picker (select-owner-tabs) intermittently
+  // never opened when a cell entered edit mode.
+  useLayoutEffect(() => {
     setIsMounted(true);
   }, []);
 
