@@ -6816,135 +6816,11 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricActivity/MetricActivityDetail.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricActivityTasks.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricActivity/MetricActivityTab.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricActivityTasks.spec.ts",
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricActivity/MetricCommentComposer.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricActivityTasks.spec.ts",
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricActivity/MetricTaskCreateDialog.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricActivityTasks.spec.ts",
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricApproval/MetricApprovalHistory.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricApproval/MetricApprovalTab.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricActivityTasks.spec.ts",
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricAssetsTab/MetricAssetAddDialog.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricAssetsTab/MetricAssetSummary.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricAssetsTab/MetricAssetsTab.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricDefinitionCard/MetricDefinitionCard.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/MetricGovernance.spec.ts",
         "playwright/e2e/Features/MetricHierarchy.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricDeleteDialog/MetricDeleteDialog.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Dashboards.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
-        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
-        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
-        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
-        "playwright/e2e/Flow/ApiServiceRest.spec.ts",
-        "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Policies.spec.ts",
-        "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
-        "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricDetails/MetricDetails.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
-        "playwright/e2e/Features/Container.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
-        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
-        "playwright/e2e/Features/MetricGovernance.spec.ts",
-        "playwright/e2e/Features/MetricHierarchy.spec.ts",
-        "playwright/e2e/Features/RecentlyViewed.spec.ts",
-        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
-        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Entity.spec.ts"
       ]
     },
     {
@@ -6969,22 +6845,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/MetricHierarchy.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricMetadataEditor/MetricMetadataEditor.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricHierarchy.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricObservability/MetricObservabilityTab.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricGovernance.spec.ts"
       ]
     },
     {
