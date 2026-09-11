@@ -633,8 +633,7 @@ const expectMetricScreenshot = async (
     mask: maskVolatileChrome(page),
   });
 };
-
-const captureMetricScreens = async (
+const captureMetricList = async (
   page: Page,
   viewport: 'desktop' | 'narrow'
 ) => {
@@ -654,89 +653,14 @@ const captureMetricScreens = async (
     metricCardView.getByText('Gross Margin', { exact: true })
   ).toBeVisible();
   await expectMetricScreenshot(page, 'list', viewport);
-
-  await gotoForScreenshot(page, `/metric/${METRIC_FQN}`);
-  await expect(page.getByTestId('metric-details-page')).toBeVisible();
-  await expect(page.getByTestId('metric-hierarchy-card')).toBeVisible();
-  if (viewport === 'narrow') {
-    await expect(
-      page
-        .getByTestId('metric-breadcrumbs')
-        .getByRole('link', { name: 'Profitability' })
-    ).toBeHidden();
-  }
-  await expectMetricScreenshot(page, 'overview', viewport);
-
-  await page.getByRole('tab', { name: /^Assets/ }).click();
-  await expect(page.getByTestId('metric-assets-tab')).toBeVisible();
-  await expect(page.getByTestId(`metric-asset-card-${TABLE_ID}`)).toBeVisible();
-  const assetActivator = page.getByTestId(`metric-asset-activate-${TABLE_ID}`);
-
-  if (viewport === 'narrow') {
-    await assetActivator.evaluate((element: HTMLButtonElement) =>
-      element.click()
-    );
-  } else {
-    await assetActivator.click();
-  }
-  await expect(page.getByTestId('metric-asset-summary')).toBeVisible();
-  await expectMetricScreenshot(page, 'assets', viewport);
-  if (viewport === 'narrow') {
-    await page
-      .getByTestId('metric-asset-summary-drawer-header')
-      .getByRole('button', { name: 'Close' })
-      .click();
-    await expect(page.getByRole('dialog')).toBeHidden();
-  }
-
-  await page.getByRole('tab', { name: 'Observability' }).click();
-  await expect(page.getByTestId('metric-observability-tab')).toBeVisible();
-  await expect(page.getByTestId('metric-health-summary')).toContainText('83%');
-  await expectMetricScreenshot(page, 'observability', viewport);
-
-  await page.getByRole('tab', { name: /^Activity & Tasks/ }).click();
-  await expect(page.getByTestId('metric-activity-tab')).toBeVisible();
-  await expect(page.getByTestId('metric-activity-new-comment')).toBeVisible();
-  await expectMetricScreenshot(page, 'activity', viewport);
-
-  await page.getByRole('tab', { name: 'Approval Workflow' }).click();
-  await expect(page.getByTestId('metric-approval-tab')).toBeVisible();
-  await expect(page.getByTestId('metric-approval-history')).toBeVisible();
-  await expectMetricScreenshot(page, 'approval', viewport);
 };
 
-const captureDarkMetricOverview = async (
-  page: Page,
-  viewport: 'desktop' | 'narrow'
-) => {
-  await page.addInitScript(() => localStorage.setItem('ui-theme', 'dark'));
-  await setupMetricRoutes(page);
-  await gotoForScreenshot(page, `/metric/${METRIC_FQN}`);
-  await expect(page.getByTestId('metric-details-page')).toBeVisible();
-  if (viewport === 'narrow') {
-    await page.getByTestId('sidebar-toggle').click();
-    await expect(page.getByTestId('left-sidebar')).toHaveCSS('width', '72px');
-  }
-  await expect(page.getByTestId('metric-hierarchy-card')).toBeVisible();
-  await expect(page.locator('html')).toHaveClass(/dark-mode/);
-  await expectMetricScreenshot(page, 'overview-dark', viewport);
-};
-
-test('Metric surfaces match desktop baselines', async ({ page }) => {
+test('Metric list matches desktop baseline', async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 1440 });
-  await captureMetricScreens(page, 'desktop');
+  await captureMetricList(page, 'desktop');
 });
 
-test('Metric surfaces match narrow baselines', async ({ page }) => {
+test('Metric list matches narrow baseline', async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 390 });
-  await captureMetricScreens(page, 'narrow');
-});
-
-test('Metric overview matches dark desktop and narrow baselines', async ({
-  page,
-}) => {
-  await page.setViewportSize({ height: 900, width: 1440 });
-  await captureDarkMetricOverview(page, 'desktop');
-  await page.setViewportSize({ height: 900, width: 390 });
-  await captureDarkMetricOverview(page, 'narrow');
+  await captureMetricList(page, 'narrow');
 });

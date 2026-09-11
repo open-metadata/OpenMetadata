@@ -44,6 +44,7 @@ import {
   getMetricTypeBadgeColor,
   METRIC_TYPE_BADGE_CLASS_NAME,
 } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricExpression from '../MetricExpression/MetricExpression';
@@ -381,8 +382,9 @@ const MetricDefinitionCard = ({
   } = useGenericContext<Metric>();
   const metric = metricProp ?? contextMetric;
   const onUpdate = onUpdateProp ?? contextUpdate;
+  const { canEditAll } = getDerivedPermissionFlags(permissions);
   const allowEdit =
-    canEdit ?? Boolean(permissions.EditAll && !isVersionView && onUpdate);
+    canEdit ?? Boolean(canEditAll && !isVersionView && onUpdate);
 
   return (
     <Card className="tw:shadow-xs" data-testid="metric-definition-card">

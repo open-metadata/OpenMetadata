@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line no-restricted-imports -- legacy antd layout (pre-#30896)
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';

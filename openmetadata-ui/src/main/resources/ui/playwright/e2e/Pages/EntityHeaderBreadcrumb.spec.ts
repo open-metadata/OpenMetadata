@@ -110,10 +110,7 @@ Object.entries(entities).forEach(([label, EntityClass]) => {
       test('should render every breadcrumb crumb exactly once', async ({
         page,
       }) => {
-        await expectBreadcrumbCrumbsUnique(
-          page,
-          label === 'Metric' ? 'metric-breadcrumbs' : undefined
-        );
+        await expectBreadcrumbCrumbsUnique(page);
       });
     }
   );

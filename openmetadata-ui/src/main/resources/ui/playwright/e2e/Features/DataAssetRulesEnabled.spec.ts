@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -54,13 +54,6 @@ import {
   assignGlossaryTerm,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import {
-  expectMetricMetadataSelections,
-  getPersistedMetricMetadata,
-  openMetricMetadataEditor,
-  saveMetricMetadata,
-  selectMetricMetadataReference,
-} from '../../utils/metricMetadata';
 import { test } from '../fixtures/pages';
 
 const entities = [
@@ -107,119 +100,6 @@ const createdDataProducts: DataProduct[] = [];
 const glossary = new Glossary();
 const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
-
-const requireFixtureValue = (
-  value: string | undefined,
-  fixtureName: string
-) => {
-  if (!value) {
-    throw new Error(`${fixtureName} was not created`);
-  }
-
-  return value;
-};
-
-const verifyEnabledMetricMetadataRules = async (
-  page: Page,
-  apiContext: APIRequestContext,
-  metric: MetricClass
-) => {
-  const metricId = requireFixtureValue(metric.entityResponseData.id, 'Metric');
-  const firstUserName = user.getUserDisplayName();
-  const secondUserName = user2.getUserDisplayName();
-  const teamName = requireFixtureValue(team.responseData.displayName, 'Team');
-  const firstDomainName = requireFixtureValue(
-    domain.responseData.displayName,
-    'First domain'
-  );
-  const secondDomainName = requireFixtureValue(
-    domain2.responseData.displayName,
-    'Second domain'
-  );
-  const firstDataProductName = requireFixtureValue(
-    createdDataProducts[0]?.responseData.displayName,
-    'First data product'
-  );
-  const secondDataProductName = requireFixtureValue(
-    createdDataProducts[1]?.responseData.displayName,
-    'Second data product'
-  );
-  const dialog = await openMetricMetadataEditor(page);
-
-  let ownersGroup = await selectMetricMetadataReference(
-    dialog,
-    'Owners',
-    firstUserName
-  );
-  ownersGroup = await selectMetricMetadataReference(
-    dialog,
-    'Owners',
-    secondUserName
-  );
-  await expectMetricMetadataSelections(ownersGroup, [
-    firstUserName,
-    secondUserName,
-  ]);
-  ownersGroup = await selectMetricMetadataReference(dialog, 'Owners', teamName);
-  await expectMetricMetadataSelections(
-    ownersGroup,
-    [teamName],
-    [firstUserName, secondUserName]
-  );
-
-  await selectMetricMetadataReference(dialog, 'Domains', secondDomainName);
-  const domainsGroup = await selectMetricMetadataReference(
-    dialog,
-    'Domains',
-    firstDomainName
-  );
-  await expectMetricMetadataSelections(
-    domainsGroup,
-    [firstDomainName],
-    [secondDomainName]
-  );
-
-  await selectMetricMetadataReference(
-    dialog,
-    'Data Products',
-    firstDataProductName
-  );
-  const dataProductsGroup = await selectMetricMetadataReference(
-    dialog,
-    'Data Products',
-    secondDataProductName
-  );
-  await expectMetricMetadataSelections(
-    dataProductsGroup,
-    [secondDataProductName],
-    [firstDataProductName]
-  );
-
-  await saveMetricMetadata(page, dialog, metricId);
-
-  const persisted = await getPersistedMetricMetadata(apiContext, metricId);
-  expect(persisted.owners?.map(({ id }) => id)).toEqual([
-    requireFixtureValue(team.responseData.id, 'Team'),
-  ]);
-  expect(persisted.domains?.map(({ id }) => id)).toEqual([
-    requireFixtureValue(domain.responseData.id, 'First domain'),
-  ]);
-  expect(persisted.dataProducts?.map(({ id }) => id)).toEqual([
-    requireFixtureValue(
-      createdDataProducts[1]?.responseData.id,
-      'Second data product'
-    ),
-  ]);
-
-  const metadataRail = page.getByTestId('metric-metadata-rail');
-  await expect(metadataRail).toContainText(teamName);
-  await expect(metadataRail).not.toContainText(firstUserName);
-  await expect(metadataRail).not.toContainText(secondUserName);
-  await expect(metadataRail).toContainText(firstDomainName);
-  await expect(metadataRail).not.toContainText(secondDomainName);
-  await expect(metadataRail).toContainText(secondDataProductName);
-  await expect(metadataRail).not.toContainText(firstDataProductName);
-};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
@@ -275,19 +155,6 @@ test.describe(
 
         const { apiContext, afterAction } = await performAdminLogin(browser);
         await entity.create(apiContext);
-
-        if (entity instanceof MetricClass) {
-          try {
-            await authenticateAdminPage(page);
-            await entity.visitEntityPage(page);
-            await verifyEnabledMetricMetadataRules(page, apiContext, entity);
-          } finally {
-            await afterAction();
-          }
-
-          return;
-        }
-
         await afterAction();
 
         await authenticateAdminPage(page);

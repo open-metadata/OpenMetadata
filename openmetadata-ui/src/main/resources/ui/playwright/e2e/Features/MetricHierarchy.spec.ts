@@ -455,7 +455,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await parentRow.getByRole('link', { name: parentName }).click();
       await expect(page).toHaveURL(new RegExp(`/metric/${parentName}$`));
-      await expect(page.getByTestId('metric-details-page')).toBeVisible();
+      await expect(page.getByTestId('entity-header-title')).toBeVisible();
     } finally {
       if (parentId) {
         await apiContext.delete(
@@ -760,22 +760,9 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect((await groupCreateResponse).ok()).toBeTruthy();
       root = (await (await rootResponse).json()) as MetricResponse;
 
-      await expect(page.getByTestId('metric-details-page')).toBeVisible();
+      await expect(page.getByTestId('entity-header-title')).toBeVisible();
       await expect(page.getByRole('heading', { name: rootName })).toBeVisible();
-      const detailHeader = page.getByTestId('metric-detail-header');
-      await expect(detailHeader).toContainText(root.fullyQualifiedName);
-      await expect(
-        detailHeader.getByTestId('metric-status-pill')
-      ).toContainText('Approved');
-      await expect(detailHeader.getByTestId('metric-type')).toBeVisible();
       await expect(page.getByTestId('metric-definition-unit')).toBeVisible();
-      await expect(detailHeader.getByTestId('granularity')).toBeVisible();
-      await expect(
-        detailHeader.getByTestId('metric-header-health-pill')
-      ).toBeVisible({ timeout: 60_000 });
-      await expect(page.getByTestId('metric-header-owner')).toBeVisible();
-      await expect(page.getByTestId('metric-header-domain')).toBeVisible();
-      await expect(page.getByTestId('metric-header-tier')).toBeVisible();
       await expect(page.getByTestId('metric-tree-group')).toContainText(
         groupName
       );
@@ -836,39 +823,12 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         'COUNT(DISTINCT order_id)'
       );
 
-      await expect(page.getByTestId('edit-metric-metadata')).toBeVisible();
-      await page.getByTestId('edit-metric-metadata').click();
-      await expect(
-        page.getByTestId('metric-metadata-edit-dialog')
-      ).toBeVisible();
-      await page
-        .getByTestId('metric-metadata-edit-dialog')
-        .getByRole('button', { name: 'Cancel' })
-        .click();
-
-      const definitionDesktop = await page
-        .getByTestId('metric-definition-card')
-        .boundingBox();
-      const railDesktop = await page
-        .getByTestId('metric-metadata-rail')
-        .boundingBox();
-      expect(definitionDesktop).not.toBeNull();
-      expect(railDesktop).not.toBeNull();
-      expect(railDesktop?.x).toBeGreaterThan(definitionDesktop?.x ?? 0);
-
       await page.setViewportSize({ height: 844, width: 390 });
-      const definitionNarrow = await page
-        .getByTestId('metric-definition-card')
-        .boundingBox();
-      const railNarrow = await page
-        .getByTestId('metric-metadata-rail')
-        .boundingBox();
-      expect(railNarrow?.width).toBeLessThanOrEqual(390);
-      expect(railNarrow?.y).toBeGreaterThan(definitionNarrow?.y ?? 0);
+      await expect(page.getByTestId('metric-definition-card')).toBeVisible();
       await attachScreenshot(
         page,
-        'metric-details-page',
-        'metric-overview-narrow'
+        'metric-definition-card',
+        'metric-definition-narrow'
       );
     } finally {
       if (root) {
@@ -924,33 +884,18 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         { waitUntil: 'domcontentloaded' }
       );
 
-      const detailsPage = readOnlySession.page.getByTestId(
-        'metric-details-page'
+      const { page: readOnlyPage } = readOnlySession;
+      await expect(readOnlyPage.getByTestId('entity-header-title')).toBeVisible(
+        { timeout: 60_000 }
       );
-      await expect(detailsPage).toBeVisible({ timeout: 60_000 });
-      const detailHeader = detailsPage.getByTestId('metric-detail-header');
-      await expect(detailHeader).toContainText(metric.fullyQualifiedName);
-      await expect(detailHeader.getByTestId('metric-type')).toContainText(
-        'Count'
-      );
+      const definitionCard = readOnlyPage.getByTestId('metric-definition-card');
+      await expect(definitionCard).toBeVisible();
       await expect(
-        detailsPage.getByTestId('metric-definition-unit')
+        definitionCard.getByTestId('metric-definition-unit')
       ).toContainText('Count');
-      await expect(detailHeader.getByTestId('granularity')).toContainText(
-        'Day'
-      );
       await expect(
-        detailHeader.getByTestId('metric-status-pill')
-      ).toContainText('Approved');
-      await expect(
-        detailHeader.getByTestId('metric-header-health-pill')
-      ).toBeVisible({ timeout: 60_000 });
-      await expect(
-        detailsPage.getByTestId('metric-definition-edit')
+        definitionCard.getByTestId('metric-definition-edit')
       ).toHaveCount(0);
-      await expect(detailsPage.getByTestId('edit-metric-metadata')).toHaveCount(
-        0
-      );
     } finally {
       try {
         await readOnlyAfterAction?.();
@@ -1114,7 +1059,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         )
         .toBe('In Review');
 
-      await expect(page.getByTestId('metric-details-page')).toBeVisible({
+      await expect(page.getByTestId('entity-header-title')).toBeVisible({
         timeout: 60_000,
       });
       await page.reload({ waitUntil: 'domcontentloaded' });
