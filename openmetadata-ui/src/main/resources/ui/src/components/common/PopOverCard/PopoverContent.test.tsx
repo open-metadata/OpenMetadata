@@ -121,6 +121,16 @@ describe('PopoverContent Component', () => {
     );
   });
 
+  it('should render team and role chips from the fetched user data', async () => {
+    renderWithQueryClient(
+      <PopoverContent type={OwnerType.USER} userName="testUser" />
+    );
+
+    expect(await screen.findByText('Team 1')).toBeInTheDocument();
+    expect(screen.getByText('Role 1')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+  });
+
   it('should not fetch user details for team type', async () => {
     renderWithQueryClient(
       <PopoverContent type={OwnerType.TEAM} userName="testTeam" />
