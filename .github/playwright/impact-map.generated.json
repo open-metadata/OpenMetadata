@@ -9177,6 +9177,27 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/ConnectionServiceDetailsPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Flow/TestConnectionModal.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
+        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiDestinationSection.component.tsx"
       ],
       "specs": [
