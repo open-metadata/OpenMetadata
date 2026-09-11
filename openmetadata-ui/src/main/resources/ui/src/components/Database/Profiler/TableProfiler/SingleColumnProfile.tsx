@@ -17,7 +17,7 @@ import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cell, Pie, PieChart } from 'recharts';
+import { Cell, Pie, PieChart, Tooltip as RechartsTooltip } from 'recharts';
 import {
   GREEN_3,
   RED_3,
@@ -288,7 +288,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                         <Cell fill={entry.color} key={`cell-${entry.name}`} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <RechartsTooltip />
                     <text
                       className="chart-center-text-header"
                       dominantBaseline="middle"
