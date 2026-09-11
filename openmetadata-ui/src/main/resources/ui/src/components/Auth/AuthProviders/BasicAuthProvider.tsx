@@ -39,6 +39,7 @@ import { BasicAuthContext } from './BasicAuthContext';
 
 import { toLower } from 'lodash';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
+import { getBase64EncodedString } from '../../../utils/StringUtils';
 import {
   getOidcToken,
   getRefreshToken,
@@ -61,7 +62,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         try {
           const response = await basicAuthSignIn({
             email,
-            password: btoa(password),
+            password: getBase64EncodedString(password),
           });
 
           if (response.accessToken) {

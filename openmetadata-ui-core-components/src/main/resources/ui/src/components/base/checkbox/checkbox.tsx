@@ -7,7 +7,7 @@ import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 
 export interface CheckboxBaseProps {
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
   className?: string;
   isFocusVisible?: boolean;
   isSelected?: boolean;
@@ -28,6 +28,7 @@ export const CheckboxBase = ({
       className={cx(
         // Border on ::after — the element's own outline is reserved for the focus ring below.
         `tw:relative tw:flex tw:size-4 tw:shrink-0 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded tw:bg-primary ${borderAfter} tw:after:outline-primary`,
+        size === 'xs' && 'tw:size-3.5',
         size === 'md' && 'tw:size-5 tw:rounded-md',
         (isSelected || isIndeterminate) &&
           'tw:bg-brand-solid tw:after:outline-brand-solid',
@@ -41,6 +42,7 @@ export const CheckboxBase = ({
         aria-hidden="true"
         className={cx(
           'tw:pointer-events-none tw:absolute tw:h-3 tw:w-2.5 tw:text-fg-white tw:opacity-0 tw:transition-inherit-all',
+          size === 'xs' && 'tw:h-2.5 tw:w-2',
           size === 'md' && 'tw:size-3.5',
           isIndeterminate && 'tw:opacity-100',
           isDisabled && 'tw:text-fg-disabled_subtle'
@@ -60,6 +62,7 @@ export const CheckboxBase = ({
         aria-hidden="true"
         className={cx(
           'tw:pointer-events-none tw:absolute tw:size-3 tw:text-fg-white tw:opacity-0 tw:transition-inherit-all',
+          size === 'xs' && 'tw:size-2.5',
           size === 'md' && 'tw:size-3.5',
           isSelected && !isIndeterminate && 'tw:opacity-100',
           isDisabled && 'tw:text-fg-disabled_subtle'
@@ -81,7 +84,7 @@ CheckboxBase.displayName = 'CheckboxBase';
 
 interface CheckboxProps extends AriaCheckboxProps {
   ref?: Ref<HTMLLabelElement>;
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
   label?: ReactNode;
   hint?: ReactNode;
 }
@@ -94,6 +97,12 @@ export const Checkbox = ({
   ...ariaCheckboxProps
 }: CheckboxProps) => {
   const sizes = {
+    xs: {
+      root: 'tw:gap-2',
+      textWrapper: '',
+      label: 'tw:text-xs tw:font-medium',
+      hint: 'tw:text-xs',
+    },
     sm: {
       root: 'tw:gap-2',
       textWrapper: '',
