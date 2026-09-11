@@ -18,7 +18,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 import { ContextSimplePillarCardProps } from './ContextSimplePillarCard.interface';
 
 const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
@@ -31,6 +31,43 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
   children,
   icon: Icon,
 }) => {
+  let pillarBody: ReactNode;
+  if (isLoading) {
+    pillarBody = (
+      <Box className="tw:px-4" direction="col" gap={2}>
+        <Skeleton height="14px" variant="rounded" width="80%" />
+        <Skeleton height="14px" variant="rounded" width="60%" />
+        <Skeleton height="14px" variant="rounded" width="70%" />
+      </Box>
+    );
+  } else if (isEmpty) {
+    pillarBody = (
+      <EmptyPlaceholder
+        actions={
+          emptyAction
+            ? [
+                {
+                  key: 'empty-action',
+                  label: emptyAction.label,
+                  color: 'link-color',
+                  iconLeading: emptyAction.icon,
+                  size: 'xs',
+                  onClick: emptyAction.onClick,
+                },
+              ]
+            : undefined
+        }
+        className="tw:justify-start tw:pt-6 tw:[&_:has(>[data-icon='true'])]:size-12.5 tw:**:data-[icon='true']:size-5 tw:[&>*:first-child]:gap-3"
+        description={emptyMessage}
+        icon={<Icon className="tw:text-fg-brand-primary" />}
+        variant="blank"
+        width={200}
+      />
+    );
+  } else {
+    pillarBody = children;
+  }
+
   return (
     <Card className="tw:h-full tw:flex tw:flex-col" data-testid={dataTestId}>
       <Box
@@ -56,37 +93,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
       </Box>
 
       <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
-        {isLoading ? (
-          <Box className="tw:px-4" direction="col" gap={2}>
-            <Skeleton height="14px" variant="rounded" width="80%" />
-            <Skeleton height="14px" variant="rounded" width="60%" />
-            <Skeleton height="14px" variant="rounded" width="70%" />
-          </Box>
-        ) : isEmpty ? (
-          <EmptyPlaceholder
-            actions={
-              emptyAction
-                ? [
-                    {
-                      key: 'empty-action',
-                      label: emptyAction.label,
-                      color: 'link-color',
-                      iconLeading: emptyAction.icon,
-                      size: 'xs',
-                      onClick: emptyAction.onClick,
-                    },
-                  ]
-                : undefined
-            }
-            className="tw:justify-start tw:pt-6 tw:[&_:has(>[data-icon='true'])]:size-12.5 tw:**:data-[icon='true']:size-5 tw:[&>*:first-child]:gap-3"
-            description={emptyMessage}
-            icon={<Icon className="tw:text-fg-brand-primary" />}
-            variant="blank"
-            width={200}
-          />
-        ) : (
-          children
-        )}
+        {pillarBody}
       </div>
     </Card>
   );

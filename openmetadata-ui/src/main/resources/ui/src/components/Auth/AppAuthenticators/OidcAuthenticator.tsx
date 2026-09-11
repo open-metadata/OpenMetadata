@@ -109,6 +109,14 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       return new Promise<void>((resolve, reject) => {
+        const handleSignoutSuccess = () => {
+          // Cleanup application state
+          handleSuccessfulLogout();
+          resolve();
+        };
+        const handleSignoutError = (error: unknown) => {
+          reject(error);
+        };
         userManager.metadataService.getEndSessionEndpoint().then((endpoint) => {
           if (endpoint) {
             // Perform singout from sso if endSessionEndpointAvailable
@@ -117,14 +125,8 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                 post_logout_redirect_uri:
                   window.location.origin + ROUTES.SIGNIN,
               })
-              .then(() => {
-                // Cleanup application state
-                handleSuccessfulLogout();
-                resolve();
-              })
-              .catch((error) => {
-                reject(error);
-              });
+              .then(handleSignoutSuccess)
+              .catch(handleSignoutError);
           } else {
             try {
               // If signout fails, still clean up local state

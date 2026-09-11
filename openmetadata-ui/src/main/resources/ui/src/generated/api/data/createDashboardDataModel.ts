@@ -749,6 +749,7 @@ export enum DataModelType {
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
     MicroStrategyDataset = "MicroStrategyDataset",
+    ModeDataModel = "ModeDataModel",
     OmniDataModel = "OmniDataModel",
     PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",

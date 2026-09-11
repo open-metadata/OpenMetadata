@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -107,6 +109,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
   private static final String SORT_FIELD_ID_KEYWORD = "id.keyword";
+  private static final int EXPORT_SEARCH_MAX_ATTEMPTS = 3;
+  private static final long EXPORT_SEARCH_RETRY_DELAY_MILLIS = 100L;
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -1035,6 +1039,31 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
+   * Keys a compiled RBAC query by the subject fields that end up embedded in it as literal ids.
+   * Roles select the policies; {@code hasDomain()} compiles domain ids into term clauses; {@code
+   * isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the same way. Nothing
+   * invalidates this cache, so any field left out of the key is served stale for the remainder of
+   * the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator} whenever a new
+   * condition starts reading another subject field.
+   */
+  static String rbacCacheKey(SubjectContext subjectContext) {
+    return subjectContext.user().getId()
+        + ":"
+        + sortedIds(subjectContext.user().getRoles())
+        + ":"
+        + sortedIds(subjectContext.user().getDomains())
+        + ":"
+        + sortedIds(subjectContext.user().getTeams());
+  }
+
+  private static String sortedIds(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(reference -> reference.getId().toString())
+        .sorted()
+        .collect(Collectors.joining(","));
+  }
+
+  /**
    * Applies RBAC query constraints with caching to the request builder.
    *
    * @param subjectContext the subject context containing user and role information
@@ -1046,14 +1075,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return;
     }
 
-    // Create cache key from user ID and roles
-    String cacheKey =
-        subjectContext.user().getId()
-            + ":"
-            + subjectContext.user().getRoles().stream()
-                .map(r -> r.getId().toString())
-                .sorted()
-                .collect(Collectors.joining(","));
+    String cacheKey = rbacCacheKey(subjectContext);
 
     try {
       // Guava Cache forbids null values, so we check getIfPresent first, then build and cache.
@@ -1330,7 +1352,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      SearchResponse<JsonData> response =
+          searchForCompleteExportResponse(searchRequest, request.getIndex());
+
+      if (response.timedOut() || response.shards().failed() > 0) {
+        throw new IOException("Incomplete search export for " + request.getIndex());
+      }
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
@@ -1362,6 +1389,40 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  private SearchResponse<JsonData> searchForCompleteExportResponse(
+      SearchRequest searchRequest, String index) throws IOException {
+    for (int attempt = 1; attempt <= EXPORT_SEARCH_MAX_ATTEMPTS; attempt++) {
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      int failedShards = response.shards().failed();
+      if (!response.timedOut() && failedShards == 0) {
+        return response;
+      }
+      if (attempt == EXPORT_SEARCH_MAX_ATTEMPTS) {
+        throw new IOException(
+            "Incomplete search export for %s after %d attempts (timedOut=%s, failedShards=%d)"
+                .formatted(index, attempt, response.timedOut(), failedShards));
+      }
+      LOG.warn(
+          "Incomplete search export response for {} (timedOut={}, failedShards={}); retrying ({}/{})",
+          index,
+          response.timedOut(),
+          failedShards,
+          attempt,
+          EXPORT_SEARCH_MAX_ATTEMPTS);
+      waitBeforeExportRetry(attempt, index);
+    }
+    throw new IllegalStateException("Export search retry loop terminated unexpectedly");
+  }
+
+  private static void waitBeforeExportRetry(int attempt, String index) throws IOException {
+    try {
+      Thread.sleep(EXPORT_SEARCH_RETRY_DELAY_MILLIS * attempt);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Interrupted while retrying search export for " + index, ex);
     }
   }
 

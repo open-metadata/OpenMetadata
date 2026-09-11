@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.learning.LearningResource;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.service.docstore.PrivateDocumentType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -266,8 +267,10 @@ public interface WorkflowDocStoreDAOs {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String entityType = filter.getQueryParam("entityType");
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String excludedEntityType =
+          filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
       String cond = filter.getCondition();
-      if (entityType == null && fqnPrefix == null) {
+      if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -289,6 +292,7 @@ public interface WorkflowDocStoreDAOs {
         mysqlCondition.append(" AND entityType=:entityType ");
         psqlCondition.append(" AND entityType=:entityType ");
       }
+      appendExcludedEntityType(mysqlCondition, psqlCondition, excludedEntityType);
 
       return listBefore(
           getTableName(),
@@ -304,9 +308,11 @@ public interface WorkflowDocStoreDAOs {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String entityType = filter.getQueryParam("entityType");
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String excludedEntityType =
+          filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
       String cond = filter.getCondition();
 
-      if (entityType == null && fqnPrefix == null) {
+      if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -327,6 +333,7 @@ public interface WorkflowDocStoreDAOs {
         mysqlCondition.append(" AND entityType=:entityType ");
         psqlCondition.append(" AND entityType=:entityType ");
       }
+      appendExcludedEntityType(mysqlCondition, psqlCondition, excludedEntityType);
 
       return listAfter(
           getTableName(),
@@ -342,9 +349,11 @@ public interface WorkflowDocStoreDAOs {
     default int listCount(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String excludedEntityType =
+          filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
       String cond = filter.getCondition();
 
-      if (entityType == null && fqnPrefix == null) {
+      if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -366,6 +375,7 @@ public interface WorkflowDocStoreDAOs {
         mysqlCondition.append(" AND entityType=:entityType ");
         psqlCondition.append(" AND entityType=:entityType ");
       }
+      appendExcludedEntityType(mysqlCondition, psqlCondition, excludedEntityType);
 
       return listCount(
           getTableName(),
@@ -373,6 +383,14 @@ public interface WorkflowDocStoreDAOs {
           filter.getQueryParams(),
           mysqlCondition.toString(),
           psqlCondition.toString());
+    }
+
+    private static void appendExcludedEntityType(
+        StringBuilder mysqlCondition, StringBuilder psqlCondition, String excludedEntityType) {
+      if (excludedEntityType != null) {
+        mysqlCondition.append(" AND entityType<>:excludedEntityType ");
+        psqlCondition.append(" AND entityType<>:excludedEntityType ");
+      }
     }
 
     @ConnectionAwareSqlQuery(

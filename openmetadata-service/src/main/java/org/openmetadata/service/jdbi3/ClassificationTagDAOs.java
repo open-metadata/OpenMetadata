@@ -460,6 +460,19 @@ public interface ClassificationTagDAOs {
                 hash = true)
             String tagFqnHash);
 
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT targetFQNHash) FROM tag_usage "
+            + "WHERE (tagFQNHash LIKE :concatTagFQNHash OR tagFQNHash = :tagFqnHash) "
+            + "AND source = :source")
+    int getDistinctTagTargetCount(
+        @Bind("source") int source,
+        @BindConcat(
+                value = "concatTagFQNHash",
+                original = "tagFqnHash",
+                parts = {":tagFqnHash", ".%"},
+                hash = true)
+            String tagFqnHash);
+
     /**
      * Get tag usage counts for multiple tags.
      * This method retrieves counts for exact tag matches and their children in one query.

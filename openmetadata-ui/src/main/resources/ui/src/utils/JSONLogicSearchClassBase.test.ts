@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
@@ -263,6 +264,100 @@ describe('JSONLogicSearchClassBase', () => {
 
       expect(config.fields).toBeDefined();
       expect(Object.keys(config.fields).length).toBeGreaterThan(0);
+    });
+
+    it('should surface column-tag (columns.tags) for TABLE and lock the full field set', () => {
+      const config = jsonLogicSearchClassBase.getQbConfigs([SearchIndex.TABLE]);
+      const fieldKeys = Object.keys(config.fields);
+
+      expect(fieldKeys).toContain(EntityReferenceFields.COLUMN_TAG);
+      expect(fieldKeys).toContain(EntityReferenceFields.TAG);
+      expect(fieldKeys).toContain(EntityReferenceFields.DATABASE);
+
+      expect(fieldKeys.sort()).toEqual(
+        [
+          EntityReferenceFields.SERVICE,
+          EntityReferenceFields.OWNERS,
+          EntityReferenceFields.DISPLAY_NAME,
+          EntityReferenceFields.NAME,
+          EntityReferenceFields.DESCRIPTION,
+          EntityReferenceFields.TAG,
+          EntityReferenceFields.TIER,
+          EntityReferenceFields.DOMAIN,
+          EntityReferenceFields.DATA_PRODUCTS,
+          EntityReferenceFields.EXTENSION,
+          EntityReferenceFields.UPDATED_AT,
+          EntityReferenceFields.UPDATED_BY,
+          EntityReferenceFields.VERSION,
+          EntityReferenceFields.ENTITY_STATUS,
+          EntityReferenceFields.DATABASE,
+          EntityReferenceFields.DATABASE_SCHEMA,
+          EntityReferenceFields.TABLE_TYPE,
+          EntityReferenceFields.TEST_SUITE,
+          EntityReferenceFields.COLUMN_TAG,
+        ].sort()
+      );
+    });
+
+    it('should surface column-tag (columns.tags) for DATA_ASSET without leaking table-only fields', () => {
+      const config = jsonLogicSearchClassBase.getQbConfigs([
+        SearchIndex.DATA_ASSET,
+      ]);
+      const fieldKeys = Object.keys(config.fields);
+
+      expect(fieldKeys).toContain(EntityReferenceFields.COLUMN_TAG);
+
+      expect(fieldKeys).not.toContain(EntityReferenceFields.DATABASE);
+      expect(fieldKeys).not.toContain(EntityReferenceFields.DATABASE_SCHEMA);
+      expect(fieldKeys).not.toContain(EntityReferenceFields.TABLE_TYPE);
+      expect(fieldKeys).not.toContain(EntityReferenceFields.TEST_SUITE);
+
+      expect(fieldKeys.sort()).toEqual(
+        [
+          EntityReferenceFields.SERVICE,
+          EntityReferenceFields.OWNERS,
+          EntityReferenceFields.DISPLAY_NAME,
+          EntityReferenceFields.NAME,
+          EntityReferenceFields.DESCRIPTION,
+          EntityReferenceFields.TAG,
+          EntityReferenceFields.TIER,
+          EntityReferenceFields.DOMAIN,
+          EntityReferenceFields.DATA_PRODUCTS,
+          EntityReferenceFields.EXTENSION,
+          EntityReferenceFields.UPDATED_AT,
+          EntityReferenceFields.UPDATED_BY,
+          EntityReferenceFields.VERSION,
+          EntityReferenceFields.ENTITY_STATUS,
+          EntityReferenceFields.COLUMN_TAG,
+        ].sort()
+      );
+    });
+  });
+
+  describe('getEntitySpecificQueryBuilderFields - column tag gating', () => {
+    it('should NOT include column-tag for non-column-bearing indices', () => {
+      [
+        SearchIndex.GLOSSARY_TERM,
+        SearchIndex.PIPELINE,
+        SearchIndex.DASHBOARD,
+        SearchIndex.TOPIC,
+        SearchIndex.KNOWLEDGE_PAGE_INDEX,
+      ].forEach((index) => {
+        const result =
+          jsonLogicSearchClassBase.getEntitySpecificQueryBuilderFields([index]);
+
+        expect(Object.keys(result)).not.toContain(
+          EntityReferenceFields.COLUMN_TAG
+        );
+      });
+    });
+
+    it('should not leak column-tag into the common config used by semantic-rule fields', () => {
+      const commonConfig = jsonLogicSearchClassBase.getCommonConfig();
+
+      expect(Object.keys(commonConfig)).not.toContain(
+        EntityReferenceFields.COLUMN_TAG
+      );
     });
   });
 

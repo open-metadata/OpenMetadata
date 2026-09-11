@@ -257,16 +257,26 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
-    await pageSizeDropdown.click();
 
-    const pageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '15 / Page' });
-    await expect(pageSizeOption).toBeVisible();
-    await pageSizeOption.click();
+    // NextPrevious wraps the button in an Ant Dropdown with the default hover
+    // trigger, so a bare click only fires preventDefault. Open and pick inside
+    // one retry: the menu can close between a visibility check and the click,
+    // and a click left outside the loop then waits on a hidden option for the
+    // rest of the test. Asserting the trigger's new label retries the whole
+    // open-and-pick when it did not take.
+    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await pageSizeOption.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
+      await pageSizeOption.click({ timeout: 5_000 });
+
+      await expect(pageSizeDropdown).toContainText('15 / Page');
+    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
@@ -585,10 +595,16 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
+    const editButton = page.locator(
+      `${rowSelector} [data-testid="edit-button"]`
+    );
+
+    await expect(addButton.or(editButton)).toBeVisible({ timeout: 15000 });
+
     if (await addButton.isVisible()) {
       await addButton.click();
     } else {
-      await page.click(`${rowSelector} [data-testid="edit-button"]`);
+      await editButton.click();
     }
 
     await page

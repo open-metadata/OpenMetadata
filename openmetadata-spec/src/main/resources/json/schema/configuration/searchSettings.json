@@ -56,12 +56,12 @@
         "keywordWeight": {
           "description": "Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.4
+          "default": 0.6
         },
         "semanticWeight": {
           "description": "Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.6
+          "default": 0.4
         }
       },
       "additionalProperties": false
@@ -550,8 +550,13 @@
                 "description": "Field name that can be used in searchFields"
               },
               "description": {
-                "type": "string", 
+                "type": "string",
                 "description": "Detailed explanation of what this field represents and how it affects search behavior"
+              },
+              "highlight": {
+                "type": "boolean",
+                "description": "Whether this field may be enabled for search highlighting. Server-derived from the index mapping, not configured: false when the field is mapped flattened/flat_object (no analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The UI only offers the highlight toggle where this is true. Defaults to false.",
+                "default": false
               }
             },
             "required": ["name", "description"],

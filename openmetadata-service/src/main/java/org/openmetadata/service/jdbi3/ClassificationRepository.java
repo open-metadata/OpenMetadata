@@ -522,6 +522,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      restrictSystemProviderChange(updated::setProvider);
       preserveAutoClassificationConfigOnPut();
       compareAndUpdate(
           "disabled",

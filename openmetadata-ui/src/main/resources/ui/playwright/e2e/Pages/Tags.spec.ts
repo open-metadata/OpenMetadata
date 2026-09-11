@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -130,9 +131,13 @@ test('Classification Page', async ({ page }) => {
     ).toBeVisible();
     await expect(page.locator('[data-testid="table"]')).toBeVisible();
 
-    await expect(
-      page.locator('.ant-table-thead > tr > .ant-table-cell')
-    ).toHaveText(['Enabled', 'Tag', 'Display Name', 'Description', 'Actions']);
+    await expect(page.locator('thead > tr > th')).toHaveText([
+      'Enabled',
+      'Tag',
+      'Display Name',
+      'Description',
+      'Actions',
+    ]);
   });
 
   await test.step('Disabled system tags should not render', async () => {
@@ -280,7 +285,7 @@ test('Classification Page', async ({ page }) => {
       .getByTestId('displayName')
       .getByRole('textbox')
       .fill(NEW_CLASSIFICATION.displayName);
-    await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
+    await fillDescriptionBox(page, NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
     const createTagCategoryResponse = page.waitForResponse(
@@ -314,7 +319,7 @@ test('Classification Page', async ({ page }) => {
       .getByTestId('displayName')
       .getByRole('textbox')
       .fill(NEW_TAG.displayName);
-    await page.locator(descriptionBox).fill(NEW_TAG.description);
+    await fillDescriptionBox(page, NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
     await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page

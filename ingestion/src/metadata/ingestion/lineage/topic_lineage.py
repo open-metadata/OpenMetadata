@@ -16,8 +16,6 @@ messageSchema.schemaFields rather than a flat `columns` list, and Debezium
 wraps the real record under an after/before envelope.
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ingestion_logger
@@ -27,7 +25,7 @@ logger = ingestion_logger()
 CDC_ENVELOPE_FIELDS = {"after", "before", "op"}
 
 
-def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: C901, UP045
+def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> str | None:  # noqa: C901
     """
     Get the fully qualified name for a field in a Topic's schema.
     Handles nested structures where fields may be children of a parent RECORD.

@@ -20,6 +20,7 @@
     "records": "레코드",
     "remove-filter": "필터 제거",
     "select-dates": "날짜 선택",
+    "select-only-one-row": "한 행 선택",
     "show-hidden-breadcrumbs": "숨겨진 이동 경로 표시",
     "today": "오늘"
   }

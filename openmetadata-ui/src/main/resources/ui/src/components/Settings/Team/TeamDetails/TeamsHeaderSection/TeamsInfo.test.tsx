@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsInfo from './TeamsInfo.component';
@@ -176,7 +177,7 @@ describe('TeamsInfo', () => {
   });
 
   it('should not show edit button if user does not have permission', () => {
-    mockEntityPermissions.EditAll = false;
+    mockEntityPermissions[Operation.EditAll] = false;
     const { queryByTestId } = render(<TeamsInfo {...teamProps} />);
     const ownerLabel = queryByTestId('edit-email');
 

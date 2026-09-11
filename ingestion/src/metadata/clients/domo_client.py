@@ -15,7 +15,6 @@ DomoClient source to extract data from DOMO
 
 import traceback
 from dataclasses import dataclass
-from typing import List, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 from pydomo import Domo
@@ -36,7 +35,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-HEADERS = {"Content-Type": "application/json"}
+DEFAULT_HEADERS = {"Content-Type": "application/json"}
 WORKFLOW_URL = "dataprocessing/v1/dataflows"
 
 
@@ -65,10 +64,10 @@ class DomoDashboardDetails(DomoBaseModel):
     Response from Domo API
     """
 
-    cardIds: Optional[List[int]] = None  # noqa: N815, UP006, UP045
-    collectionIds: Optional[List[int]] = None  # noqa: N815, UP006, UP045
-    description: Optional[str] = None  # noqa: UP045
-    owners: Optional[List[DomoOwner]] = None  # noqa: UP006, UP045
+    cardIds: list[int] | None = None  # noqa: N815
+    collectionIds: list[int] | None = None  # noqa: N815
+    description: str | None = None
+    owners: list[DomoOwner] | None = None
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -78,7 +77,7 @@ class DomoChartMetadataDetails(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    chartType: Optional[str] = None  # noqa: N815, UP045
+    chartType: str | None = None  # noqa: N815
 
 
 class DomoChartDetails(DomoBaseModel):
@@ -87,7 +86,7 @@ class DomoChartDetails(DomoBaseModel):
     """
 
     metadata: DomoChartMetadataDetails
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
 
 
 class DomoClient:
@@ -98,10 +97,12 @@ class DomoClient:
 
     def __init__(
         self,
-        config: Union[DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection],  # noqa: UP007
+        config: DomoDashboardConnection | DomoPipelineConnection | DomoDatabaseConnection,
     ):
         self.config = config
-        HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
+        self.headers = DEFAULT_HEADERS.copy()
+        if self.config.accessToken:
+            self.headers["X-DOMO-Developer-Token"] = self.config.accessToken.get_secret_value()
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.instanceDomain),
             api_version="api/",
@@ -110,7 +111,7 @@ class DomoClient:
         )
         self.client = TrackedREST(client_config)
 
-    def get_chart_details(self, page_id) -> Optional[DomoChartDetails]:  # noqa: UP045
+    def get_chart_details(self, page_id) -> DomoChartDetails | None:
         """
         Getting chart details for particular page
         """
@@ -119,7 +120,7 @@ class DomoClient:
             f"metadataOverrides,owners,problems,properties,slicers,subscriptions&includeFiltered=true"
         )
         try:
-            response = self.client.get(path=url, headers=HEADERS)
+            response = self.client.get(path=url, headers=self.headers)
 
             if isinstance(response, list) and len(response) > 0:
                 return DomoChartDetails(
@@ -137,7 +138,7 @@ class DomoClient:
 
     def get_pipelines(self):
         try:
-            response = self.client.get(path=WORKFLOW_URL, headers=HEADERS)
+            response = self.client.get(path=WORKFLOW_URL, headers=self.headers)
             return response  # noqa: RET504, TRY300
         except Exception as exc:
             logger.error(f"Error while getting pipelines - {exc}")
@@ -147,7 +148,7 @@ class DomoClient:
     def get_runs(self, workflow_id):
         try:
             url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
-            response = self.client.get(path=url, headers=HEADERS)
+            response = self.client.get(path=url, headers=self.headers)
             return response  # noqa: RET504, TRY300
         except Exception as exc:
             logger.warning(f"Error while getting runs for pipeline {workflow_id} - {exc}")
@@ -161,7 +162,7 @@ class DomoClient:
         This helps us validate that the provided Access Token is correct for Domo Dashboard.
         """
         try:
-            self.client.get(path="content/v1/cards", headers=HEADERS)
+            self.client.get(path="content/v1/cards", headers=self.headers)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error listing cards due to [{exc}]")

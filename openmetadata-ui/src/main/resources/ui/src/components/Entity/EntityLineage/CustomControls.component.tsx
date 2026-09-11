@@ -78,6 +78,10 @@ const CustomControls: FC<{
   deleted?: boolean;
   hasEditAccess?: boolean;
   impactLevel?: EImpactLevel;
+  // Reset the host's pagination to page 1 when the user narrows the result set
+  // via a quick-filter value change or "Clear all". Hosts that have no
+  // pagination (e.g. the lineage graph view) simply omit the prop.
+  onPageReset?: () => void;
 }> = ({
   nodeDepthOptions,
   onSearchValueChange,
@@ -86,6 +90,7 @@ const CustomControls: FC<{
   deleted = false,
   hasEditAccess = false,
   impactLevel,
+  onPageReset,
 }) => {
   const { t } = useTranslation();
   const {
@@ -154,6 +159,7 @@ const CustomControls: FC<{
 
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
+      onPageReset?.(); // reset pagination so the narrowed set is fetched from page 1
       setSelectedQuickFilters((pre) => {
         const data = pre.map((preField) => {
           if (preField.key === field.key) {
@@ -166,7 +172,7 @@ const CustomControls: FC<{
         return data;
       });
     },
-    [setSelectedQuickFilters]
+    [setSelectedQuickFilters, onPageReset]
   );
 
   // Initialize quick filters on component mount
@@ -231,6 +237,11 @@ const CustomControls: FC<{
       (prev ?? []).map((filter) => ({ ...filter, value: [] }))
     );
   }, [setSelectedQuickFilters]);
+
+  const handleClearAllClick = useCallback(() => {
+    handleClearAllFilters();
+    onPageReset?.(); // reset pagination so the un-narrowed set is fetched from page 1
+  }, [handleClearAllFilters, onPageReset]);
 
   const handleTabChange = useCallback(
     (key: string) => {
@@ -371,10 +382,10 @@ const CustomControls: FC<{
     [updateURLParams]
   );
   const lineageEditButton = useMemo(() => {
+    const isEditableLineageView =
+      hasEditAccess && !deleted && platformView === LineagePlatformView.None;
     const showEditOption =
-      hasEditAccess &&
-      !deleted &&
-      platformView === LineagePlatformView.None &&
+      isEditableLineageView &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
 
@@ -416,93 +427,47 @@ const CustomControls: FC<{
     );
   }, []);
 
-  return (
-    <div>
-      <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
-        <div className="tw:flex tw:items-center tw:gap-4">
-          <Tooltip placement="top" title={t('label.filter-plural')}>
-            <TooltipTrigger>
-              <Button
-                aria-label={t('label.filter-plural')}
-                color={filterSelectionActive ? 'primary' : 'secondary'}
-                data-testid="filters-button"
-                iconLeading={FilterLinesIcon}
-                onClick={toggleFilterSelection}
-              />
-            </TooltipTrigger>
-          </Tooltip>
-          {searchBarComponent}
-        </div>
-        <div className="tw:flex tw:gap-4 tw:items-center">
-          {isEditMode ? null : (
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key) => handleTabChange(key as string)}>
-              <Tabs.List size="sm" type="button-border">
-                <Tabs.Item id="lineage" key="lineage">
-                  {t('label.lineage')}
-                </Tabs.Item>
-                <Tabs.Item id="impact_analysis" key="impact_analysis">
-                  {t('label.impact-analysis')}
-                </Tabs.Item>
-              </Tabs.List>
-            </Tabs>
-          )}
+  const exportButtonLabel = useMemo(
+    () =>
+      activeTab === 'impact_analysis'
+        ? t('label.export-as-type', { type: t('label.csv') })
+        : t('label.export'),
+    [activeTab, t]
+  );
 
-          <LineageTimeFilter
-            endTime={timeFilter?.endTime}
-            startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
-          />
-          {lineageEditButton}
-          <Tooltip
-            placement="top"
-            title={
-              activeTab === 'impact_analysis'
-                ? t('label.export-as-type', { type: t('label.csv') })
-                : t('label.export')
-            }>
-            <TooltipTrigger>
-              <ButtonUtility
-                aria-label={
-                  activeTab === 'impact_analysis'
-                    ? t('label.export-as-type', { type: t('label.csv') })
-                    : t('label.export')
-                }
-                data-testid="export-button"
-                disabled={isEditMode}
-                icon={DownloadIcon}
-                onClick={handleExportClick}
-              />
-            </TooltipTrigger>
-          </Tooltip>
-          {settingsButton}
-          <Tooltip
-            placement="top"
-            title={
-              isFullScreen
-                ? t('label.exit-full-screen')
-                : t('label.full-screen-view')
-            }>
-            <TooltipTrigger>
-              <ButtonUtility
-                aria-label={
-                  isFullScreen
-                    ? t('label.exit-full-screen')
-                    : t('label.full-screen-view')
-                }
-                icon={isFullScreen ? ExitFullScreenIcon : FullscreenIcon}
-                onClick={() =>
-                  updateURLParams({
-                    [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                  })
-                }
-              />
-            </TooltipTrigger>
-          </Tooltip>
-        </div>
-      </div>
-      {filterSelectionActive ? (
+  const fullScreenLabel = useMemo(
+    () =>
+      isFullScreen ? t('label.exit-full-screen') : t('label.full-screen-view'),
+    [isFullScreen, t]
+  );
+
+  const fullScreenIcon = useMemo(
+    () => (isFullScreen ? ExitFullScreenIcon : FullscreenIcon),
+    [isFullScreen]
+  );
+
+  const tabsSection = useMemo(
+    () =>
+      isEditMode ? null : (
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(key) => handleTabChange(key as string)}>
+          <Tabs.List size="sm" type="button-border">
+            <Tabs.Item id="lineage" key="lineage">
+              {t('label.lineage')}
+            </Tabs.Item>
+            <Tabs.Item id="impact_analysis" key="impact_analysis">
+              {t('label.impact-analysis')}
+            </Tabs.Item>
+          </Tabs.List>
+        </Tabs>
+      ),
+    [isEditMode, activeTab, handleTabChange, t]
+  );
+
+  const filterSelectionSection = useMemo(
+    () =>
+      filterSelectionActive ? (
         <div className="tw:mt-2 tw:flex tw:items-center tw:justify-between">
           <div className="tw:flex tw:items-baseline">
             {activeTab === 'impact_analysis' && (
@@ -551,13 +516,82 @@ const CustomControls: FC<{
             color="link-color"
             isDisabled={!filterApplied}
             size="sm"
-            onClick={handleClearAllFilters}>
+            onClick={handleClearAllClick}>
             {t('label.clear-entity', { entity: t('label.all') })}
           </Button>
         </div>
       ) : (
         <></>
-      )}
+      ),
+    [
+      filterSelectionActive,
+      activeTab,
+      nodeDepthOptions,
+      nodeDepth,
+      handleNodeDepthUpdate,
+      queryFilter,
+      filteredQuickFilters,
+      handleQuickFiltersValueSelect,
+      filterApplied,
+      handleClearAllFilters,
+      t,
+    ]
+  );
+
+  return (
+    <div>
+      <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
+        <div className="tw:flex tw:items-center tw:gap-4">
+          <Tooltip placement="top" title={t('label.filter-plural')}>
+            <TooltipTrigger>
+              <Button
+                aria-label={t('label.filter-plural')}
+                color={filterSelectionActive ? 'primary' : 'secondary'}
+                data-testid="filters-button"
+                iconLeading={FilterLinesIcon}
+                onClick={toggleFilterSelection}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+          {searchBarComponent}
+        </div>
+        <div className="tw:flex tw:gap-4 tw:items-center">
+          {tabsSection}
+
+          <LineageTimeFilter
+            endTime={timeFilter?.endTime}
+            startTime={timeFilter?.startTime}
+            onChange={setTimeFilter}
+          />
+          {lineageEditButton}
+          <Tooltip placement="top" title={exportButtonLabel}>
+            <TooltipTrigger>
+              <ButtonUtility
+                aria-label={exportButtonLabel}
+                data-testid="export-button"
+                disabled={isEditMode}
+                icon={DownloadIcon}
+                onClick={handleExportClick}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+          {settingsButton}
+          <Tooltip placement="top" title={fullScreenLabel}>
+            <TooltipTrigger>
+              <ButtonUtility
+                aria-label={fullScreenLabel}
+                icon={fullScreenIcon}
+                onClick={() =>
+                  updateURLParams({
+                    [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
+                  })
+                }
+              />
+            </TooltipTrigger>
+          </Tooltip>
+        </div>
+      </div>
+      {filterSelectionSection}
 
       <LineageConfigModal
         config={lineageConfig}

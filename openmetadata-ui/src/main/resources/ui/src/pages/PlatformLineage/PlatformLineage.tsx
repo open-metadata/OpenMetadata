@@ -50,10 +50,7 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import {
@@ -63,15 +60,14 @@ import {
 import { EntityReference } from '../../generated/entity/type';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
-import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -87,7 +83,7 @@ const PlatformLineage = () => {
 
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
-  const [loading, setLoading] = useState(false);
+  const [isEntityLoading, setIsEntityLoading] = useState(false);
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
@@ -103,9 +99,36 @@ const PlatformLineage = () => {
     pipelineViewMode:
       defaultLineageConfig?.pipelineViewMode ?? PipelineViewMode.Node,
   });
-  const [permissions, setPermissions] = useState<OperationPermission>();
   const [dialogVisible, setDialogVisible] = useState(false);
   const { showModal } = useEntityExportModalProvider();
+
+  // Fetch-owner, by fqn — `entityType` doubles as the resource here (cast, matching the old
+  // code's own `entityType as unknown as ResourceEntity`). Ungated: the old raw
+  // `permissions?.EditAll || permissions?.EditLineage` read never referenced `deleted`.
+  const {
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canEditLineage,
+  } = useEntityPermissions(
+    entityType as unknown as ResourceEntity,
+    decodedFqn,
+    { enabled: Boolean(decodedFqn && entityType) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `loading` state covered both the entity fetch AND the
+  // permission fetch together (a single `Promise.allSettled` awaited by one try/finally).
+  // Both fetches now run independently (permission via the hook, entity via `init` below) but
+  // neither is gated on the other's result, so a plain OR reproduces the old "loading until
+  // both settle" behavior without the denied-case stuck-loading risk that gated fetches have
+  // (ServiceVersionPage.tsx precedent — not applicable here since entity fetch isn't
+  // permission-gated).
+  const loading = isEntityLoading || isPermissionsLoading;
 
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
@@ -178,30 +201,20 @@ const PlatformLineage = () => {
     }
 
     try {
-      setLoading(true);
-      const [entityResponse, permissionResponse] = await Promise.allSettled([
-        getEntityAPIfromSource(entityType as AssetsUnion)(decodedFqn),
-        getEntityPermissionByFqn(
-          entityType as unknown as ResourceEntity,
-          decodedFqn
-        ),
-      ]);
-
-      if (entityResponse.status === 'fulfilled') {
-        setSelectedEntity(entityResponse.value);
-        setDefaultValue(decodedFqn || undefined);
-      }
-
-      if (permissionResponse.status === 'fulfilled') {
-        const operationPermission = getOperationPermissions(
-          permissionResponse.value
-        );
-        setPermissions(operationPermission);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+      setIsEntityLoading(true);
+      const entityResponse = await getEntityAPIfromSource(
+        entityType as AssetsUnion
+      )(decodedFqn);
+      setSelectedEntity(entityResponse);
+      setDefaultValue(decodedFqn || undefined);
+    } catch {
+      // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
+      // rejection (or a synchronous throw from an unsupported entityType) never reached a
+      // showErrorToast call — a settled 'rejected' result just left selectedEntity/
+      // defaultValue unset. Preserve that silently; permission-fetch errors now surface
+      // separately via the hook's own effect above.
     } finally {
-      setLoading(false);
+      setIsEntityLoading(false);
     }
   }, [decodedFqn, entityType]);
 
@@ -313,14 +326,12 @@ const PlatformLineage = () => {
           isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
-          hasEditAccess={
-            permissions?.EditAll || permissions?.EditLineage || false
-          }
+          hasEditAccess={canEditLineage}
           platformHeader={header}
         />
       </LineageProvider>
     );
-  }, [selectedEntity, loading, permissions, entityType, header]);
+  }, [selectedEntity, loading, canEditLineage, entityType, header]);
 
   return (
     <PageLayoutV1

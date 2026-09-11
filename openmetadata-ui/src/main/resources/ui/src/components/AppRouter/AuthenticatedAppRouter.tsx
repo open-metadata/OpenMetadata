@@ -208,6 +208,12 @@ const OntologyExplorerPage = withPageSuspenseFallback(
   )
 );
 
+const SparqlPlaygroundPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
+  )
+);
+
 const WorkflowsListPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
@@ -378,6 +384,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={<SparqlPlaygroundPage />}
+        path={ROUTES.SPARQL_PLAYGROUND}
       />
       <Route
         element={<OntologyExplorerPage />}

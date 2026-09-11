@@ -21,18 +21,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getApiCollectionByFQN,
@@ -100,11 +96,6 @@ import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -117,6 +108,7 @@ import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAsset
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
@@ -125,6 +117,93 @@ import {
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+
+type EntityFetchResolution =
+  | { immediate: true }
+  | { immediate: false; promise: Promise<object> | null };
+
+// Picks how to populate the panel for `entityType`: a dedicated fetch-by-fqn
+// call when one is registered, the search-hit data as-is for tableColumn
+// (it has no standalone API), a fields-scoped fetch for knowledge pages, or
+// the generic `owners,domains,tags,extension` fetch otherwise.
+const resolveEntityFetch = (
+  entityType: EntityType,
+  fqn: string,
+  entityFetchMap: Record<string, (fqn: string) => Promise<object>>
+): EntityFetchResolution => {
+  const fetchFn = entityFetchMap[entityType];
+  if (fetchFn) {
+    return { immediate: false, promise: fetchFn(fqn) };
+  }
+  if (entityType === EntityType.TABLE_COLUMN) {
+    return { immediate: true };
+  }
+  if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return {
+      immediate: false,
+      promise: entityUtilClassBase.getEntityByFqn(
+        entityType,
+        fqn,
+        'owners,domains,tags'
+      ),
+    };
+  }
+
+  return {
+    immediate: false,
+    promise: entityUtilClassBase.getEntityByFqn(
+      entityType,
+      fqn,
+      'owners,domains,tags,extension'
+    ),
+  };
+};
+
+interface FetchedEntityData {
+  description?: string;
+  displayName?: string;
+  service?: EntityReference;
+  owners?: EntityReference[];
+  domains?: EntityReference[];
+  tags?: TagLabel[];
+  dataProducts?: EntityReference[];
+}
+
+// Merges the dedicated-endpoint response with the essential fields already
+// present on the search hit (`entityDetails.details`) — the API response is
+// canonical where it overlaps, the search hit fills in what the API omits.
+const mergeEntityData = (
+  data: FetchedEntityData,
+  details: EntityDetailsObjectInterface['details']
+): EntityData => {
+  const searchDetails: SearchSourceDetails = details;
+
+  return {
+    ...data,
+    entityType: details.entityType,
+    fullyQualifiedName: details.fullyQualifiedName,
+    id: details.id ?? '',
+    description: data.description ?? details.description,
+    displayName: data.displayName,
+    name: details.name,
+    deleted: details.deleted,
+    serviceType: searchDetails.serviceType,
+    service: data.service ?? details.service,
+    owners: data.owners ?? [],
+    domains: data.domains ?? [],
+    tags: data.tags ?? [],
+    dataProducts: data.dataProducts ?? searchDetails.dataProducts,
+    tier: searchDetails.tier,
+    columnNames: searchDetails.columnNames,
+    database: searchDetails.database,
+    databaseSchema: searchDetails.databaseSchema,
+    tableType: searchDetails.tableType,
+  } as EntityData;
+};
+
+const ONTOLOGY_EXPLORER = 'ontology-explorer';
+const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
+const DETAILS_ENTITY_TYPE_KEY = 'details.entityType';
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -149,11 +228,6 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermission, getEntityPermissionByFqn } =
-    usePermissionProvider();
-  const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
-  const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -173,7 +247,7 @@ export default function EntitySummaryPanel({
   const ontologyExplorerMinimalTwoTabNav = useMemo(
     () =>
       Boolean(
-        panelPath === 'ontology-explorer' &&
+        panelPath === ONTOLOGY_EXPLORER &&
           isSideDrawer &&
           ontologyExplorerRelationsSlot != null
       ),
@@ -183,7 +257,7 @@ export default function EntitySummaryPanel({
   const ontologyExplorerAppendRelationsTab = useMemo(
     () =>
       Boolean(
-        panelPath === 'glossary-term-assets-tab' &&
+        panelPath === GLOSSARY_TERM_ASSETS_TAB &&
           isSideDrawer &&
           ontologyExplorerRelationsSlot != null
       ),
@@ -195,61 +269,91 @@ export default function EntitySummaryPanel({
       Boolean(
         isSideDrawer &&
           ontologyExplorerRelationsSlot != null &&
-          (panelPath === 'ontology-explorer' ||
-            panelPath === 'glossary-term-assets-tab')
+          (panelPath === ONTOLOGY_EXPLORER ||
+            panelPath === GLOSSARY_TERM_ASSETS_TAB)
       ),
     [isSideDrawer, ontologyExplorerRelationsSlot, panelPath]
   );
 
   const entityType = useMemo(
-    () => get(entityDetails, 'details.entityType') as EntityType | undefined,
+    () => get(entityDetails, DETAILS_ENTITY_TYPE_KEY) as EntityType | undefined,
     [entityDetails]
   );
 
-  const fetchResourcePermission = async (id: string) => {
-    try {
-      setIsPermissionLoading(true);
-      let type = get(entityDetails, 'details.entityType') as
-        | ResourceEntity
-        | undefined;
-      let idForPermission = id;
-
-      if (isUndefined(type)) {
-        setIsPermissionLoading(false);
-
-        return;
-      }
-
-      // For tableColumn entities, use the parent table's resource type and ID
-      // since columns inherit permissions from their parent table
-      if (type === ResourceEntity.TABLE_COLUMN) {
-        type = ResourceEntity.TABLE;
-        // Get the parent table ID from the column's table reference
-        const tableId = get(entityDetails, 'details.table.id');
-        if (tableId) {
-          idForPermission = tableId;
-        }
-      }
-
-      // In ontology data-mode, nodes are built with id=FQN (not a UUID).
-      // Passing that FQN to the by-ID endpoint returns empty permissions even
-      // for admins.
-      const isOntologyPanel =
-        panelPath === 'ontology-explorer' ||
-        panelPath === 'glossary-term-assets-tab';
-      const permissions =
-        isOntologyPanel && fqn
-          ? await getEntityPermissionByFqn(type, fqn)
-          : await getEntityPermission(type, idForPermission);
-      setEntityPermissions(permissions);
-    } catch {
-      // Error - set default permission to allow viewing
-      // This prevents permission errors for entities like columns
-      setEntityPermissions(DEFAULT_ENTITY_PERMISSION);
-    } finally {
-      setIsPermissionLoading(false);
+  // Resource type + identifier for the permission fetch, mirroring the old
+  // fetchResourcePermission's exact precedence: prefer looking up by id; a tableColumn
+  // entity inherits permissions from its parent table, so both the resource type and the id
+  // are substituted for the parent's; and in "ontology panel" mode (nodes there are built
+  // with id=FQN, not a UUID — the by-id endpoint returns empty permissions even for admins)
+  // fqn is used instead of id. `permissionResourceType` stays undefined when entityType is
+  // unresolved — the hook call below is disabled in that case (a hook can't be called
+  // conditionally, so `ResourceEntity.TABLE`/`{ id: '' }` are inert placeholders, never
+  // actually fetched against).
+  // Returns concrete hook arguments plus the `enabled` gate, so the call site below stays
+  // free of fallback branches (they would otherwise count against this component's
+  // cyclomatic complexity budget). The placeholders are inert: `isPermissionFetchEnabled`
+  // is false whenever they are used.
+  const {
+    permissionResourceType,
+    permissionIdentifier,
+    isPermissionFetchEnabled,
+  } = useMemo(() => {
+    if (isUndefined(entityType) || !id) {
+      return {
+        permissionResourceType: ResourceEntity.TABLE,
+        permissionIdentifier: { id: '' },
+        isPermissionFetchEnabled: false,
+      };
     }
-  };
+
+    let type = entityType as unknown as ResourceEntity;
+    let idForPermission = id;
+    if (type === ResourceEntity.TABLE_COLUMN) {
+      type = ResourceEntity.TABLE;
+      const tableId = get(entityDetails, 'details.table.id');
+      if (tableId) {
+        idForPermission = tableId;
+      }
+    }
+
+    const isOntologyPanel =
+      panelPath === ONTOLOGY_EXPLORER || panelPath === GLOSSARY_TERM_ASSETS_TAB;
+
+    return {
+      permissionResourceType: type,
+      permissionIdentifier:
+        isOntologyPanel && fqn ? fqn : { id: idForPermission },
+      isPermissionFetchEnabled: true,
+    };
+  }, [entityType, entityDetails, panelPath, fqn, id]);
+
+  // Single useEntityPermissions call. `enabled: false` when no entity is selected (id empty)
+  // or its entityType is unresolved — mirrors the old effect's `if (id) {
+  // fetchResourcePermission(id) }` gate plus fetchResourcePermission's own `if
+  // (isUndefined(type)) return;` early-out. No error-toast effect: the old catch had none
+  // (it silently fell back to DEFAULT_ENTITY_PERMISSION on any error) — the hook's own
+  // `data ?? DEFAULT_ENTITY_PERMISSION` fallback already reproduces that, so nothing extra
+  // is needed here. No `deleted` option, deliberately: the two canEdit* flags consumed below
+  // (canEditDisplayName, canEditCustomFields) were derived pre-refactor by bare
+  // getPrioritizedEditPermission calls with no soft-delete gating, so passing `deleted` here
+  // would hide edit affordances that previously rendered on deleted entities — a real
+  // behavior change. DataAssetsHeader is ungated for the same reason.
+  const {
+    isLoading: isPermissionLoading,
+    hasViewAccess: viewPermission,
+    canEditDisplayName,
+    canEditCustomFields,
+    canViewCustomFields,
+    // Deliberate semantic change, not a pure rename: the old expression was the raw dual
+    // check `entityPermissions.ViewTests || entityPermissions.ViewAll`, which grants on
+    // ViewAll even when ViewTests is explicitly denied. `canViewTests` is prioritized (same
+    // precedent as `canViewBasic`'s fix — see PermissionDerivation.ts): an explicit field
+    // deny beats a broader grant. Fixes the same class of bug in passing.
+    canViewTests,
+  } = useEntityPermissions(permissionResourceType, permissionIdentifier, {
+    enabled: isPermissionFetchEnabled,
+  });
+
   // Memoize the entity fetch map to avoid recreating it on every render
   const entityFetchMap = useMemo<
     Record<string, (fqn: string) => Promise<object>>
@@ -351,66 +455,20 @@ export default function EntitySummaryPanel({
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
-      let entityPromise: Promise<object> | null = null;
+      const resolution = resolveEntityFetch(entityType, fqn, entityFetchMap);
 
-      const fetchFn = entityFetchMap[entityType];
-      if (fetchFn) {
-        entityPromise = fetchFn(fqn);
-      } else if (entityType === EntityType.TABLE_COLUMN) {
+      if (resolution.immediate) {
         setEntityData(entityDetails.details as EntityData);
         setIsEntityDataLoading(false);
 
         return;
-      } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
-        entityPromise = entityUtilClassBase.getEntityByFqn(
-          entityType,
-          fqn,
-          'owners,domains,tags'
-        );
-      } else {
-        entityPromise = entityUtilClassBase.getEntityByFqn(
-          entityType,
-          fqn,
-          'owners,domains,tags,extension'
-        );
       }
 
+      const entityPromise = resolution.promise;
+
       if (entityPromise) {
-        const data = (await entityPromise) as {
-          description?: string;
-          displayName?: string;
-          service?: EntityReference;
-          owners?: EntityReference[];
-          domains?: EntityReference[];
-          tags?: TagLabel[];
-          dataProducts?: EntityReference[];
-        };
-        const searchDetails: SearchSourceDetails = entityDetails.details;
-        // Merge API data with essential fields from entityDetails.details
-        const mergedData = {
-          ...data,
-          // Essential fields that are used in DataAssetSummaryPanelV1
-          entityType: entityDetails.details.entityType,
-          fullyQualifiedName: entityDetails.details.fullyQualifiedName,
-          id: entityDetails.details.id ?? '',
-          description: data.description ?? entityDetails.details.description,
-          displayName: data.displayName,
-          name: entityDetails.details.name,
-          deleted: entityDetails.details.deleted,
-          serviceType: searchDetails.serviceType,
-          service: data.service ?? entityDetails.details.service,
-          // Prefer canonical data; fallback to search result if missing
-          owners: data.owners ?? [],
-          domains: data.domains ?? [],
-          tags: data.tags ?? [],
-          dataProducts: data.dataProducts ?? searchDetails.dataProducts,
-          tier: searchDetails.tier,
-          columnNames: searchDetails.columnNames,
-          database: searchDetails.database,
-          databaseSchema: searchDetails.databaseSchema,
-          tableType: searchDetails.tableType,
-        };
-        setEntityData(mergedData as EntityData);
+        const data = (await entityPromise) as FetchedEntityData;
+        setEntityData(mergeEntityData(data, entityDetails.details));
       } else {
         // For entity types without a dedicated API (like tableColumn),
         // use the search index data directly. The search index already
@@ -776,12 +834,6 @@ export default function EntitySummaryPanel({
     }
   }, [entityDetails, navigate]);
 
-  useEffect(() => {
-    if (id) {
-      fetchResourcePermission(id);
-    }
-  }, [id]);
-
   // Reset activeTab to OVERVIEW when entity changes
   useEffect(() => {
     setActiveTab(EntityRightPanelTab.OVERVIEW);
@@ -819,11 +871,6 @@ export default function EntitySummaryPanel({
     ontologyExplorerGraphRelationsTabActive,
   ]);
 
-  const viewPermission = useMemo(
-    () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
-    [entityPermissions]
-  );
-
   const summaryComponentV1 = useMemo(() => {
     if (isPermissionLoading) {
       return <Loader />;
@@ -840,7 +887,7 @@ export default function EntitySummaryPanel({
         />
       );
     }
-    const type = (get(entityDetails, 'details.entityType') ??
+    const type = (get(entityDetails, DETAILS_ENTITY_TYPE_KEY) ??
       EntityType.TABLE) as EntityType;
     const entity = entityData || entityDetails.details;
     const SummaryPanelComponent =
@@ -921,6 +968,116 @@ export default function EntitySummaryPanel({
     );
   };
 
+  const renderOverviewTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityDisplayName={entityData?.displayName}
+          entityLink={entityLink}
+          entityType={entityType}
+          hasEditPermission={canEditDisplayName}
+          onDisplayNameUpdate={handleDisplayNameUpdate}
+        />
+      )}
+
+      <div className="overview-tab-content">{summaryComponentV1}</div>
+    </>
+  );
+
+  const renderSchemaTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+        />
+      )}
+      <div className="entity-summary-panel-tab-content">
+        {entityType && (
+          <EntityDetailsSection
+            dataAsset={entityDetails.details}
+            entityType={entityType}
+            highlights={highlights}
+            isLoading={isPermissionLoading}
+          />
+        )}
+      </div>
+    </>
+  );
+
+  const renderLineageTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+          entityType={entityType}
+          hasEditPermission={canEditDisplayName}
+          onDisplayNameUpdate={handleDisplayNameUpdate}
+        />
+      )}
+      <div className="entity-summary-panel-tab-content">
+        <div className="p-x-md">{renderLineageContent()}</div>
+      </div>
+    </>
+  );
+
+  const renderDataQualityTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+        />
+      )}
+      <DataQualityTab
+        entityFQN={entityDetails.details.fullyQualifiedName || ''}
+        hasViewTests={canViewTests}
+      />
+    </>
+  );
+
+  const renderCustomPropertiesTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+        />
+      )}
+      {entityType && (
+        <CustomPropertiesSection
+          emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
+            entityType
+          )}
+          entityData={entityData ?? undefined}
+          entityDetails={entityDetails}
+          entityType={entityType}
+          entityTypeDetail={entityTypeDetail}
+          hasEditPermissions={canEditCustomFields}
+          isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
+          viewCustomPropertiesPermission={canViewCustomFields}
+          onExtensionUpdate={handleExtensionUpdate}
+        />
+      )}
+    </>
+  );
+
+  const tabRenderers: Partial<Record<EntityRightPanelTab, () => JSX.Element>> =
+    {
+      [EntityRightPanelTab.OVERVIEW]: renderOverviewTab,
+      [EntityRightPanelTab.SCHEMA]: renderSchemaTab,
+      [EntityRightPanelTab.LINEAGE]: renderLineageTab,
+      [EntityRightPanelTab.DATA_QUALITY]: renderDataQualityTab,
+      [EntityRightPanelTab.CUSTOM_PROPERTIES]: renderCustomPropertiesTab,
+    };
+
   const renderTabContent = () => {
     if (
       activeTab === EntityRightPanelTab.RELATIONS &&
@@ -947,10 +1104,7 @@ export default function EntitySummaryPanel({
               entityDisplayName={entityData?.displayName}
               entityLink={entityLink}
               entityType={entityType}
-              hasEditPermission={getPrioritizedEditPermission(
-                entityPermissions,
-                Operation.EditDisplayName
-              )}
+              hasEditPermission={canEditDisplayName}
               onDisplayNameUpdate={handleDisplayNameUpdate}
             />
           )}
@@ -965,128 +1119,8 @@ export default function EntitySummaryPanel({
         </>
       );
     }
-    switch (activeTab) {
-      case EntityRightPanelTab.OVERVIEW:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityDisplayName={entityData?.displayName}
-                entityLink={entityLink}
-                entityType={entityType}
-                hasEditPermission={getPrioritizedEditPermission(
-                  entityPermissions,
-                  Operation.EditDisplayName
-                )}
-                onDisplayNameUpdate={handleDisplayNameUpdate}
-              />
-            )}
 
-            <div className="overview-tab-content">{summaryComponentV1}</div>
-          </>
-        );
-      case EntityRightPanelTab.SCHEMA:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-              />
-            )}
-            <div className="entity-summary-panel-tab-content">
-              {entityType && (
-                <EntityDetailsSection
-                  dataAsset={entityDetails.details}
-                  entityType={entityType}
-                  highlights={highlights}
-                  isLoading={isPermissionLoading}
-                />
-              )}
-            </div>
-          </>
-        );
-      case EntityRightPanelTab.LINEAGE:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-                entityType={entityType}
-                hasEditPermission={getPrioritizedEditPermission(
-                  entityPermissions,
-                  Operation.EditDisplayName
-                )}
-                onDisplayNameUpdate={handleDisplayNameUpdate}
-              />
-            )}
-            <div className="entity-summary-panel-tab-content">
-              <div className="p-x-md">{renderLineageContent()}</div>
-            </div>
-          </>
-        );
-      case EntityRightPanelTab.DATA_QUALITY:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-              />
-            )}
-            <DataQualityTab
-              entityFQN={entityDetails.details.fullyQualifiedName || ''}
-              hasViewTests={
-                entityPermissions.ViewTests || entityPermissions.ViewAll
-              }
-            />
-          </>
-        );
-      case EntityRightPanelTab.CUSTOM_PROPERTIES: {
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-              />
-            )}
-            {entityType && (
-              <CustomPropertiesSection
-                emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
-                  entityType
-                )}
-                entityData={entityData ?? undefined}
-                entityDetails={entityDetails}
-                entityType={entityType}
-                entityTypeDetail={entityTypeDetail}
-                hasEditPermissions={getPrioritizedEditPermission(
-                  entityPermissions,
-                  Operation.EditCustomFields
-                )}
-                isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
-                viewCustomPropertiesPermission={getPrioritizedViewPermission(
-                  entityPermissions,
-                  Operation.ViewCustomFields
-                )}
-                onExtensionUpdate={handleExtensionUpdate}
-              />
-            )}
-          </>
-        );
-      }
-      case EntityRightPanelTab.RELATIONS:
-        return null;
-      default:
-        return null;
-    }
+    return tabRenderers[activeTab]?.() ?? null;
   };
 
   return (
@@ -1094,8 +1128,8 @@ export default function EntitySummaryPanel({
       className={classNames('entity-summary-panel-container', {
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
-        'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
-        'ontology-explorer': panelPath === 'ontology-explorer',
+        [GLOSSARY_TERM_ASSETS_TAB]: panelPath === GLOSSARY_TERM_ASSETS_TAB,
+        [ONTOLOGY_EXPLORER]: panelPath === ONTOLOGY_EXPLORER,
       })}
       data-testid="entity-summary-panel-container">
       {isSideDrawer && (
@@ -1106,10 +1140,7 @@ export default function EntitySummaryPanel({
             entityDisplayName={entityData?.displayName}
             entityLink={entityLink}
             entityType={entityType}
-            hasEditPermission={getPrioritizedEditPermission(
-              entityPermissions,
-              Operation.EditDisplayName
-            )}
+            hasEditPermission={canEditDisplayName}
             testId="entity-header-title"
             tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -71,8 +72,6 @@ const test = base.extend<{ page: Page }>({
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
   // Create admin user and persona
@@ -84,8 +83,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
   // Delete user and persona
@@ -589,7 +586,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--value'),
-      'tier.tier5',
+      'Tier.Tier5',
       true
     );
 
@@ -600,7 +597,7 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('tier.tier5')
+        response.url().toLowerCase().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();

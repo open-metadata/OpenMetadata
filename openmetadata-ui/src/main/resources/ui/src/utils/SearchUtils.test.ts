@@ -136,6 +136,63 @@ describe('getGroupLabel', () => {
 });
 
 describe('parseBucketsData', () => {
+  it('resolves a source path that crosses an array of objects', () => {
+    const buckets = [
+      {
+        key: 'pii.sensitive',
+        doc_count: 3,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  tags: [{ tagFQN: 'Tier.Tier1' }, { tagFQN: 'PII.Sensitive' }],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'tags.tagFQN');
+
+    expect(result).toEqual([
+      { value: 'PII.Sensitive', title: 'PII.Sensitive' },
+    ]);
+  });
+
+  it('resolves a source path that ends on a string array', () => {
+    const buckets = [
+      {
+        key: 'enterprise business glossary.advanced shipment notification',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  glossaryTags: [
+                    'Enterprise Business Glossary.Advanced Shipment Notification',
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'glossaryTags');
+
+    expect(result).toEqual([
+      {
+        value: 'Enterprise Business Glossary.Advanced Shipment Notification',
+        title: 'Enterprise Business Glossary.Advanced Shipment Notification',
+      },
+    ]);
+  });
+
   it('should parse buckets with only key property', () => {
     const buckets = [
       { key: 'value1', doc_count: 1 },

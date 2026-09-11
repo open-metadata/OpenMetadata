@@ -34,7 +34,9 @@ import {
   descriptionBox,
   descriptionBoxReadOnly,
   fetchCompletedCsvAsyncJobResult,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   uuid,
 } from './common';
 import {
@@ -813,17 +815,24 @@ const editGlossaryCustomProperty = async (
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
+    // Scoped to the markdown editor this block already reaches into for its
+    // save button, rather than to the page: the entity behind the custom
+    // property panel has description editors of its own.
+    const markdownEditor = page.getByTestId('markdown-editor');
+    const markdownDescription = getDescriptionBox(markdownEditor);
 
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+    await markdownDescription.waitFor({ state: 'visible' });
+
+    await fillDescriptionBox(
+      markdownEditor,
+      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
+    );
 
     await clickOutside(page);
 
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
+    await markdownEditor.getByTestId('save').click();
 
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
+    await markdownDescription.waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
@@ -1225,15 +1234,20 @@ const editEntityCustomProperty = async (
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
+    // Scoped to the markdown editor, as above.
+    const markdownEditor = page.getByTestId('markdown-editor');
+    const markdownDescription = getDescriptionBox(markdownEditor);
 
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+    await markdownDescription.waitFor({ state: 'visible' });
 
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
+    await fillDescriptionBox(
+      markdownEditor,
+      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
+    );
 
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
+    await markdownEditor.getByTestId('save').click();
+
+    await markdownDescription.waitFor({ state: 'detached' });
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {

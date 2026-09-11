@@ -59,6 +59,7 @@ import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
@@ -132,6 +133,18 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const [assetOptions, setAssetOptions] = useState<QuickLinkFormSelectItem[]>(
     []
   );
+
+  // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+  // component receives as a prop; no `deleted` argument since the old expressions below never
+  // referenced `quickLink?.deleted` either. `urlField`'s raw `permissions.EditAll` maps
+  // directly to `canEditAll` (identical, EditAll-only read). `displayNameField`/
+  // `descriptionField`/`tagsField` move from a hand-rolled raw OR (`field || EditAll`) to the
+  // prioritized `canEdit*` flags — the same explicit-deny-wins fix as the sanctioned
+  // canViewBasic precedent (Task 6 Finding 1). `glossaryTermsField` reuses `EditTags` (not a
+  // separate EditGlossaryTerms check) in the old code too — preserved verbatim via
+  // `canEditTags`, not "corrected" to `canEditGlossaryTerms`.
+  const { canEditAll, canEditDisplayName, canEditDescription, canEditTags } =
+    useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
 
   const { initialValues, restRelatedDataAssets } = useMemo(() => {
     if (isUndefined(quickLink)) {
@@ -415,7 +428,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.TEXT,
     props: {
       'data-testid': 'displayName',
-      disabled: !(permissions.EditAll || permissions.EditDisplayName),
+      disabled: !canEditDisplayName,
     },
     placeholder: t('label.display-name'),
   };
@@ -435,7 +448,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     },
     props: {
       'data-testid': 'url',
-      disabled: !permissions.EditAll,
+      disabled: !canEditAll,
     },
     placeholder: t(URL_UPPERCASE_LABEL_KEY),
   };
@@ -448,7 +461,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.DESCRIPTION,
     props: {
       'data-testid': 'description',
-      disabled: !(permissions.EditAll || permissions.EditDescription),
+      disabled: !canEditDescription,
     },
     placeholder: t('label.description'),
   };
@@ -461,7 +474,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.TAG_SUGGESTION,
     props: {
       'data-testid': 'tags-container',
-      disabled: !(permissions.EditAll || permissions.EditTags),
+      disabled: !canEditTags,
       filterOption: () => true,
       multiple: true,
       onFocus: () => void fetchTagOptions(),
@@ -487,7 +500,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.GLOSSARY_TAG_SUGGESTION,
     props: {
       'data-testid': 'glossaryTerms-container',
-      disabled: !(permissions.EditAll || permissions.EditTags),
+      disabled: !canEditTags,
       filterOption: () => true,
       multiple: true,
       onFocus: () => void fetchGlossaryOptions(),

@@ -126,6 +126,9 @@ const DomainDetailPage = () => {
         const response = await patchDomains(activeDomain.id, jsonPatch);
 
         setActiveDomain(response);
+        // Re-fetch with full fields so the cache includes extension,
+        // votes, certification — fields the PATCH response omits.
+        void queryClient.invalidateQueries({ queryKey: domainCacheKey });
 
         if (activeDomain?.name !== updatedData.name) {
           navigate(getDomainPath(response.fullyQualifiedName));

@@ -8,6 +8,7 @@ on:
       - 'openmetadata-spec/src/main/resources/json/schema/**'
       - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
       - 'openmetadata-ui/src/main/resources/ui/src/jsons/**'
+      - 'openmetadata-ui/src/main/resources/ui/public/jsons/**'
       - 'openmetadata-ui/src/main/resources/ui/parseSchemas.js'
   workflow_dispatch:
     inputs:
@@ -166,8 +167,11 @@ jobs:
         id: git-check
         continue-on-error: true
         run: |
-          git add openmetadata-ui/src/main/resources/ui/src/generated/ \
-                  openmetadata-ui/src/main/resources/ui/src/jsons/
+          for dir in openmetadata-ui/src/main/resources/ui/src/generated/ \
+                     openmetadata-ui/src/main/resources/ui/src/jsons/ \
+                     openmetadata-ui/src/main/resources/ui/public/jsons/; do
+            [ -d "$dir" ] && git add "$dir"
+          done
           git diff --cached --quiet
 
       - name: Configure Git
@@ -178,7 +182,9 @@ jobs:
 
       - name: Commit and push changes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Not GITHUB_TOKEN: pushes made with it never trigger workflow runs,
+          # so every required check stays pending and the PR can't merge.
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref || github.event.inputs.branch }}
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
         run: |
@@ -198,8 +204,8 @@ jobs:
             ## ✅ Generated Sources Auto-Updated
 
             The generated TypeScript types (`src/generated/`) and dereferenced JSON
-            schemas (`src/jsons/`) have been automatically updated based on JSON schema
-            changes in this PR.
+            schemas (`src/jsons/`, `public/jsons/`) have been automatically updated
+            based on JSON schema changes in this PR.
 
       - name: Create PR comment for fork repository
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
@@ -218,7 +224,7 @@ jobs:
             cd openmetadata-ui/src/main/resources/ui
             ./json2ts-generate-all.sh -l true
             yarn parse-schema
-            git add src/generated/ src/jsons/
+            git add src/generated/ src/jsons/ public/jsons/
             git commit -m "Update generated TypeScript types and dereferenced schemas"
             git push
             ```

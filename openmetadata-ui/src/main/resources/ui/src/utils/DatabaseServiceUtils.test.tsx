@@ -11,16 +11,35 @@
  *  limitations under the License.
  */
 import { useNavigate } from 'react-router-dom';
+import bigQueryConnection from '../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json';
+import customDatabaseConnection from '../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
+import mysqlConnection from '../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json';
+import postgresConnection from '../../public/jsons/connectionSchemas/connections/database/postgresConnection.json';
+import snowflakeConnection from '../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
-import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
-import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
-import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
-import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import { getDatabaseConfig } from './DatabaseServicePureUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+
+// jest.mock() is hoisted above imports, so we require() the JSON inside the
+// factory rather than referencing the top-level imports (which are still in
+// their temporal dead zone at factory-run time).
+jest.mock('./loadConnectionSchema', () => {
+  const schemas: Record<string, unknown> = {
+    'connections/database/bigQueryConnection.json': require('../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json'),
+    'connections/database/customDatabaseConnection.json': require('../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json'),
+    'connections/database/mysqlConnection.json': require('../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json'),
+    'connections/database/postgresConnection.json': require('../../public/jsons/connectionSchemas/connections/database/postgresConnection.json'),
+    'connections/database/snowflakeConnection.json': require('../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json'),
+  };
+
+  return {
+    loadConnectionSchema: jest.fn((relativePath: string) =>
+      Promise.resolve(schemas[relativePath] ?? {})
+    ),
+  };
+});
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',

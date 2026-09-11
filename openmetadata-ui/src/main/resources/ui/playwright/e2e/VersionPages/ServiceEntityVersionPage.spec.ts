@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -31,6 +26,7 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -64,6 +60,9 @@ const applyServicePatch = async (
   };
   await legacy.patch(apiContext, patchData);
 };
+
+/** Setup failures, keyed by test name, so one service cannot fail the rest. */
+const setupErrors = new Map<string, unknown>();
 
 const entities = {
   'Api Service': new ApiServiceClass(),
@@ -99,49 +98,58 @@ test.describe('Service Version pages', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
 
-    for (const entity of Object.values(entities)) {
-      await entity.create(apiContext);
-      const domain = EntityDataClass.domain1.responseData;
-      const patchData: Operation[] = [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            labelType: 'Manual',
-            state: 'Confirmed',
-            source: 'Classification',
-            tagFQN: 'PersonalData.SpecialCategory',
-          },
-        },
-        {
-          op: 'add',
-          path: '/tags/1',
-          value: {
-            labelType: 'Manual',
-            state: 'Confirmed',
-            source: 'Classification',
-            tagFQN: 'PII.Sensitive',
-          },
-        },
-        {
-          op: 'add',
-          path: '/description',
-          value: 'Description for newly added service',
-        },
-        {
-          op: 'add',
-          path: '/domains',
-          value: [
-            {
-              id: domain.id,
-              type: 'domain',
-              name: domain.name,
-              description: domain.description,
+    for (const [key, entity] of Object.entries(entities)) {
+      try {
+        await entity.create(apiContext);
+        const domain = EntityDataClass.domain1.responseData;
+        const patchData: Operation[] = [
+          {
+            op: 'add',
+            path: '/tags/-',
+            value: {
+              labelType: 'Manual',
+              state: 'Confirmed',
+              source: 'Classification',
+              tagFQN: 'PersonalData.SpecialCategory',
             },
-          ],
-        },
-      ];
-      await applyServicePatch(entity, apiContext, patchData);
+          },
+          {
+            op: 'add',
+            path: '/tags/-',
+            value: {
+              labelType: 'Manual',
+              state: 'Confirmed',
+              source: 'Classification',
+              tagFQN: 'PII.Sensitive',
+            },
+          },
+          {
+            op: 'add',
+            path: '/description',
+            value: 'Description for newly added service',
+          },
+          {
+            op: 'add',
+            path: '/domains',
+            value: [
+              {
+                id: domain.id,
+                type: 'domain',
+                name: domain.name,
+                description: domain.description,
+              },
+            ],
+          },
+        ];
+        await applyServicePatch(entity, apiContext, patchData);
+      } catch (error) {
+        // Setup for all eleven services shares this hook, so an API hiccup on
+        // one of them used to fail the other ten tests and get attributed to
+        // whichever test ran first -- a 404 patching the api service is why
+        // "Storage Service" has been the top flake. Record it against its own
+        // key instead and let only that test report it.
+        setupErrors.set(key, error);
+      }
     }
 
     await afterAction();
@@ -172,6 +180,12 @@ test.describe('Service Version pages', () => {
      * in the UI to highlight what changed between versions
      */
     test(key, async ({ page }) => {
+      const setupError = setupErrors.get(key);
+
+      if (setupError) {
+        throw setupError;
+      }
+
       await entity.visitEntityPage(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();

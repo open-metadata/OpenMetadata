@@ -24,6 +24,9 @@ import ClassificationDetails from './ClassificationDetails';
 const mockNavigate = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
+  // from here, and a wholesale mock leaves them undefined.
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Tooltip: ({
     children,
     title,
@@ -158,7 +161,7 @@ jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
   ))
 );
 
-jest.mock('../../common/Table/Table', () =>
+jest.mock('../../common/Table/TableV2', () =>
   jest.fn().mockImplementation(({ columns, dataSource, loading, locale }) => (
     <div data-testid="tags-table">
       {loading && <span data-testid="table-loading">Loading...</span>}

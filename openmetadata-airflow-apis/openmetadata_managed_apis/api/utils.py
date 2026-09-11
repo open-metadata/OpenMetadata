@@ -15,7 +15,6 @@ import re
 import sys
 import traceback
 from multiprocessing import Process
-from typing import Optional
 
 from airflow import settings
 from airflow.models import DagBag
@@ -43,7 +42,7 @@ def import_path(path):
     return module
 
 
-def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:  # noqa: UP045
+def clean_dag_id(raw_dag_id: str | None) -> str | None:
     """
     Given a string we want to use as a dag_id, we should
     give it a cleanup as Airflow does not support anything
@@ -52,7 +51,7 @@ def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:  # noqa: UP045
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None
 
 
-def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:  # noqa: UP045
+def sanitize_task_id(raw_task_id: str | None) -> str | None:
     """
     Sanitize task_id to prevent path traversal attacks.
     Only allows alphanumeric characters, dashes, and underscores.
@@ -62,7 +61,7 @@ def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:  # noqa: UP04
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_task_id) if raw_task_id else None
 
 
-def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:  # noqa: UP045
+def get_request_arg(req, arg, raise_missing: bool = True) -> str | None:
     """
     Pick up the `arg` from the flask `req`.
     E.g., GET api/v1/endpoint?key=value
@@ -78,7 +77,7 @@ def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:  # n
     return request_argument
 
 
-def get_arg_dag_id() -> Optional[str]:  # noqa: UP045
+def get_arg_dag_id() -> str | None:
     """
     Try to fetch the dag_id from the args
     and clean it
@@ -88,14 +87,14 @@ def get_arg_dag_id() -> Optional[str]:  # noqa: UP045
     return clean_dag_id(raw_dag_id)
 
 
-def get_arg_only_queued() -> Optional[str]:  # noqa: UP045
+def get_arg_only_queued() -> str | None:
     """
     Try to fetch the only_queued from the args
     """
     return get_request_arg(request, "only_queued", raise_missing=False)
 
 
-def get_request_dag_id() -> Optional[str]:  # noqa: UP045
+def get_request_dag_id() -> str | None:
     """
     Try to fetch the dag_id from the JSON request
     and clean it
@@ -108,7 +107,7 @@ def get_request_dag_id() -> Optional[str]:  # noqa: UP045
     return clean_dag_id(raw_dag_id)
 
 
-def get_request_conf() -> Optional[dict]:  # noqa: UP045
+def get_request_conf() -> dict | None:
     """
     Try to fetch the conf from the JSON request. Return None if no conf is provided.
     """

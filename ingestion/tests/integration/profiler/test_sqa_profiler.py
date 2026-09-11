@@ -18,7 +18,6 @@ No sample data is required beforehand
 
 import json
 import time
-from typing import List  # noqa: UP035
 from unittest import TestCase
 
 from _openmetadata_testutils.ometa import int_admin_ometa
@@ -94,7 +93,7 @@ class TestSQAProfiler(TestCase):
 
     def list_profiled_tables(self):
         """The tables the fixture ingested, across every container."""
-        tables: List[Table] = []  # noqa: UP006
+        tables: list[Table] = []
         for container in self.container_builder.containers:
             service_name = type(container).__name__
             cfg = json.loads(container.get_config())

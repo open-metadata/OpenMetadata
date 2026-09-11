@@ -997,19 +997,10 @@ public class TagRepository extends EntityRepository<Tag> {
       renameProcessed = false;
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      restrictSystemProviderChange(updated::setProvider);
       preserveRecognizerConfigOnPut();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
@@ -1229,18 +1220,6 @@ public class TagRepository extends EntityRepository<Tag> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Tag tag) {
-    tag =
-        Entity.getEntityByName(
-            Entity.TAG,
-            tag.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        tag.getFullyQualifiedName(), new ArrayList<>(tag.getReviewers()), tag.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {

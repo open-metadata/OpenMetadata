@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -456,7 +457,7 @@ test.describe(
           response.status() === 200
       );
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=stored_procedures');
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
 

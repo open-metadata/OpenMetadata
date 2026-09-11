@@ -13,8 +13,8 @@ Trino usage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 

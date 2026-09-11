@@ -14,7 +14,6 @@ Test unitycatalog using the topology
 """
 
 from types import SimpleNamespace
-from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -96,7 +95,7 @@ mock_unitycatalog_config = {
 }
 
 
-MOCK_CATALOG_INFO: List[CatalogInfo] = [  # noqa: UP006
+MOCK_CATALOG_INFO: list[CatalogInfo] = [
     CatalogInfo(
         browse_only=False,
         catalog_type=CatalogType.MANAGED_CATALOG,

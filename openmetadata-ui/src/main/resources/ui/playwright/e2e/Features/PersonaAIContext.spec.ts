@@ -24,13 +24,13 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
   getDefaultAdminAPIContext,
+  selectOptionWithRetry,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-} from '../../utils/persona';
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const dbService = new DatabaseServiceClass();
@@ -286,12 +286,7 @@ const mockPersonaContextApi = async (
 };
 
 const openPersonaContext = async (page: Page) => {
-  await navigateToPersonaSettings(page);
-  await navigateToPersonaWithPagination(page, persona.data.name, true);
-  await page.getByRole('tab', { name: 'AI Context' }).click();
-  await expect(page).toHaveURL(/#ai-context/);
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('persona-ai-context')).toBeVisible();
+  await openPersonaAIContext(page, persona.data.name);
 };
 
 /**
@@ -1421,6 +1416,7 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage
       .getByTestId('context-rule-name')
       .fill('sections-payload-test');
+    await enablePersonaRulePreloading(adminPage);
 
     // Scope to the drawer so we don't accidentally match checkboxes elsewhere.
     const drawer = adminPage.getByRole('dialog');
@@ -1429,6 +1425,7 @@ test.describe.serial('Persona AI Context', () => {
     });
     await descriptionCheckbox.waitFor({ state: 'visible' });
     await expect(descriptionCheckbox).toBeChecked();
+    await expect(descriptionCheckbox).toBeEnabled();
     await descriptionCheckbox.uncheck();
 
     const createRuleRequest = adminPage.waitForRequest(
@@ -1507,11 +1504,15 @@ test.describe.serial('Persona AI Context', () => {
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
 
     // Switch to Glossary Term — href must change to the glossaries tab.
-    await adminPage.getByTestId('context-rule-entity-type').click();
-    await adminPage
-      .getByRole('listbox')
-      .getByText('Glossary Term', { exact: true })
-      .click();
+    // react-aria can close the listbox mid-click and detach the option, dropping
+    // the selection so the entity type never changes and the href stays on
+    // /explore/tables — the source of this test's flakiness. selectOptionWithRetry
+    // re-resolves the trigger's expanded state and reopens the popover before
+    // retrying the option click.
+    await selectOptionWithRetry(
+      adminPage.getByTestId('context-rule-entity-type'),
+      adminPage.getByRole('listbox').getByText('Glossary Term', { exact: true })
+    );
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/glossaries/);
 
     await adminPage.keyboard.press('Escape');

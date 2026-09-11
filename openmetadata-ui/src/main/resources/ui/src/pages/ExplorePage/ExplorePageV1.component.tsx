@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   ExploreProps,
@@ -40,6 +50,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -642,4 +653,61 @@ const ExplorePageV1: FC<unknown> = () => {
   );
 };
 
-export default withPageLayout(withAdvanceSearch(ExplorePageV1));
+const ExplorePageV1WithLayout = withPageLayout(
+  withAdvanceSearch(ExplorePageV1)
+);
+
+// AI-mode presentation: an AI search header rendered above the shared Explore
+// page, with layout overrides that keep the embedded page in the AI flow.
+const EXPLORE_MODE_PAGE_CLASS_NAME =
+  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
+
+const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
+  'tw:mx-2 tw:mt-2 tw:shrink-0';
+
+const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
+  'tw:flex tw:h-full tw:flex-col tw:bg-primary',
+  'tw:[&_.explore-page]:!bg-primary',
+  'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
+  "tw:[&_[data-testid='page-layout-v1']]:!overflow-visible",
+  "tw:[&>[data-testid='loader']]:tw:m-auto"
+);
+
+const ExploreSearchCard = withSuspenseFallback(
+  React.lazy(() =>
+    import(
+      '../../components/discovery/explore/ExploreHeader/ExploreSearchCard'
+    ).then((module) => ({ default: module.ExploreSearchCard }))
+  )
+);
+
+// Single Explore entry for every app mode. Classic mode renders the shared page
+// unchanged; AI mode wraps it with the AI search header. The route is the same
+// (`/explore`) in both modes — the presentation is selected by app mode here.
+const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
+  pageTitle = '',
+}) => {
+  const isAiMode = useIsAiMode();
+
+  if (!isAiMode) {
+    return <ExplorePageV1WithLayout pageTitle={pageTitle} />;
+  }
+
+  return (
+    <Box
+      className={EXPLORE_MODE_PAGE_CLASS_NAME}
+      data-testid="explore-page"
+      direction="col">
+      <Box className={EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME}>
+        <ExploreSearchCard />
+      </Box>
+      <Box
+        className={EXPLORE_MODE_CONTENT_CLASS_NAME}
+        data-testid="explore-content">
+        <ExplorePageV1WithLayout pageTitle={pageTitle} />
+      </Box>
+    </Box>
+  );
+};
+
+export default ExplorePageV1WithMode;

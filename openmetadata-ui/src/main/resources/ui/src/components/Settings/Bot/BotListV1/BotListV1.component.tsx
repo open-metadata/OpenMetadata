@@ -52,8 +52,8 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
@@ -312,11 +312,12 @@ const BotListV1 = ({
         width: 90,
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
-          const title = isSystemBot
-            ? t('message.ingestion-bot-cant-be-deleted')
-            : isAdminUser
-            ? t('label.delete')
-            : t('message.admin-only-action');
+          let title = t('message.admin-only-action');
+          if (isSystemBot) {
+            title = t('message.ingestion-bot-cant-be-deleted');
+          } else if (isAdminUser) {
+            title = t('label.delete');
+          }
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (

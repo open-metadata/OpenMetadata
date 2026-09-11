@@ -58,6 +58,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    SparqlQuerySettings = "sparqlQuerySettings",
     StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
@@ -110,6 +111,8 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Administrator-managed SPARQL query templates available across the installation.
  *
  * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
  * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
@@ -669,6 +672,10 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?: GlossaryTermRelationType[];
     /**
+     * Installation query templates visible to SPARQL console users.
+     */
+    queryTemplates?: SavedSparqlQuery[];
+    /**
      * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
      * not chosen one; user preference and persona-level app mode still win over this default.
      * Null means no tenant default is configured.
@@ -725,6 +732,13 @@ export interface AllowedFieldField {
      * Detailed explanation of what this field represents and how it affects search behavior
      */
     description: string;
+    /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
     /**
      * Field name that can be used in searchFields
      */
@@ -2680,6 +2694,60 @@ export interface PolicyAgentConfiguration {
      * (pushed) when the run finishes, with a safety timer as the fallback.
      */
     pollingIntervalSeconds?: number;
+}
+
+/**
+ * A SPARQL query saved by a user or curated as an installation query template.
+ */
+export interface SavedSparqlQuery {
+    /**
+     * Preferred result serialization.
+     */
+    format: Format;
+    /**
+     * Stable identifier for the saved query.
+     */
+    id: string;
+    /**
+     * Preferred inference level.
+     */
+    inference: Inference;
+    /**
+     * Display name for the saved query.
+     */
+    name: string;
+    /**
+     * SPARQL query body.
+     */
+    query: string;
+    /**
+     * Time the query was last saved, in Unix epoch milliseconds.
+     */
+    savedAt: number;
+}
+
+/**
+ * Preferred result serialization.
+ */
+export enum Format {
+    CSV = "csv",
+    JSON = "json",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Tsv = "tsv",
+    Turtle = "turtle",
+    XML = "xml",
+}
+
+/**
+ * Preferred inference level.
+ */
+export enum Inference {
+    Custom = "custom",
+    None = "none",
+    Owl = "owl",
+    Rdfs = "rdfs",
 }
 
 /**

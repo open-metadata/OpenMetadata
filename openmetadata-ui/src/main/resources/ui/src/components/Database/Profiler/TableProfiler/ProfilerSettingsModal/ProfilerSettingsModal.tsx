@@ -104,7 +104,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       excludeCol: [],
       includeCol: DEFAULT_INCLUDE_PROFILE,
       enablePartition: false,
-      partitionData: undefined,
       selectedProfileSampleType: ProfileSampleType.Percentage,
     }),
     []
@@ -190,30 +189,26 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     const staticConfig = profileSampleConfig?.config;
     const profileSample = staticConfig?.profileSample;
     const profileSampleType = staticConfig?.profileSampleType;
-    handleStateChange({
-      sqlQuery: profileQuery ?? '',
-      profileSample: profileSample,
-      excludeCol: excludeColumns ?? [],
-      selectedProfileSampleType: profileSampleType,
-      sampleDataCount,
-    });
-    form.setFieldsValue({
-      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
-    });
 
-    form.setFieldsValue({
-      profileSampleType,
-      profileSamplePercentage:
-        profileSample && profileSampleType === ProfileSampleType.Percentage
-          ? profileSample
-          : undefined,
-      profileSampleRows:
-        profileSample && profileSampleType === ProfileSampleType.Rows
-          ? profileSample
-          : undefined,
-    });
+    const applyProfileSampleFields = () => {
+      form.setFieldsValue({
+        profileSampleType,
+        profileSamplePercentage:
+          profileSample && profileSampleType === ProfileSampleType.Percentage
+            ? profileSample
+            : undefined,
+        profileSampleRows:
+          profileSample && profileSampleType === ProfileSampleType.Rows
+            ? profileSample
+            : undefined,
+      });
+    };
 
-    if (includeColumns && includeColumns?.length > 0) {
+    const applyIncludeColumns = () => {
+      if (!includeColumns || includeColumns.length === 0) {
+        return;
+      }
+
       const includeColValue = includeColumns.map((col) => {
         if (
           isUndefined(col.metrics) ||
@@ -228,8 +223,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         includeCol: includeColValue,
       });
-    }
-    if (partitioning) {
+    };
+
+    const applyPartitioning = () => {
+      if (!partitioning) {
+        return;
+      }
+
       handleStateChange({
         enablePartition: partitioning.enablePartitioning || false,
       });
@@ -237,7 +237,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         ...partitioning,
       });
-    }
+    };
+
+    handleStateChange({
+      sqlQuery: profileQuery ?? '',
+      profileSample: profileSample,
+      excludeCol: excludeColumns ?? [],
+      selectedProfileSampleType: profileSampleType,
+      sampleDataCount,
+    });
+    form.setFieldsValue({
+      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
+    });
+
+    applyProfileSampleFields();
+    applyIncludeColumns();
+    applyPartitioning();
 
     Promise.resolve();
   };
@@ -286,61 +301,80 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const handleSave: FormProps['onFinish'] = useCallback(
     async (data: ProfilerForm) => {
-      const {
-        excludeCol,
-        sqlQuery,
-        includeCol,
-        enablePartition,
-        partitionData,
-      } = state;
+      const buildPartitioning = (): TableProfilerConfig['partitioning'] => {
+        if (!state.enablePartition) {
+          return undefined;
+        }
+
+        // Read straight from the form: the loaded config is pushed into the
+        // form with `setFieldsValue`, which never fires `onValuesChange`, so
+        // any state copy is stale until the user edits a partition field.
+        const partitionData = pick(
+          data,
+          'partitionColumnName',
+          'partitionIntegerRangeEnd',
+          'partitionIntegerRangeStart',
+          'partitionInterval',
+          'partitionIntervalType',
+          'partitionIntervalUnit',
+          'partitionValues'
+        );
+
+        return {
+          ...partitionData,
+          partitionValues:
+            data.partitionIntervalType === PartitionIntervalTypes.ColumnValue
+              ? partitionData.partitionValues?.filter(
+                  (value) => !isEmpty(value)
+                )
+              : undefined,
+          enablePartitioning: state.enablePartition,
+        };
+      };
+
+      const buildProfileConfig = (): TableProfilerConfig => {
+        const { excludeCol, sqlQuery, includeCol } = state;
+        const {
+          profileSamplePercentage,
+          profileSampleRows,
+          profileSampleType,
+          sampleDataCount,
+        } = data;
+
+        const profileSampleValue =
+          profileSampleType === ProfileSampleType.Percentage
+            ? profileSamplePercentage
+            : profileSampleRows;
+        const profileSample = profileSampleType
+          ? profileSampleValue
+          : undefined;
+
+        return {
+          excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
+          profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
+          profileSampleConfig:
+            profileSampleType && profileSample
+              ? {
+                  sampleConfigType: SampleConfigType.Static,
+                  config: {
+                    profileSample,
+                    profileSampleType,
+                  },
+                }
+              : undefined,
+          includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
+            ? getIncludesColumns()
+            : undefined,
+          partitioning: buildPartitioning(),
+          sampleDataCount,
+        };
+      };
 
       setIsLoading(true);
-      const {
-        profileSamplePercentage,
-        profileSampleRows,
-        profileSampleType,
-        sampleDataCount,
-      } = data;
-
-      const profileSample = profileSampleType
-        ? profileSampleType === ProfileSampleType.Percentage
-          ? profileSamplePercentage
-          : profileSampleRows
-        : undefined;
-
-      const profileConfig: TableProfilerConfig = {
-        excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
-        profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-        profileSampleConfig:
-          profileSampleType && profileSample
-            ? {
-                sampleConfigType: SampleConfigType.Static,
-                config: {
-                  profileSample,
-                  profileSampleType,
-                },
-              }
-            : undefined,
-        includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
-          ? getIncludesColumns()
-          : undefined,
-        partitioning: enablePartition
-          ? {
-              ...partitionData,
-              partitionValues:
-                partitionIntervalType === PartitionIntervalTypes.ColumnValue
-                  ? partitionData?.partitionValues?.filter(
-                      (value) => !isEmpty(value)
-                    )
-                  : undefined,
-              enablePartitioning: enablePartition,
-            }
-          : undefined,
-        sampleDataCount,
-      };
+      const profileConfig = buildProfileConfig();
       try {
-        const data = await putTableProfileConfig(tableId, profileConfig);
-        if (data) {
+        const response = await putTableProfileConfig(tableId, profileConfig);
+        if (response) {
           showSuccessToast(
             t('server.update-entity-success', {
               entity: t('label.profile-config'),
@@ -415,16 +449,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
       handleStateChange({
         includeCol: data.includeColumns,
-        partitionData: pick(
-          data,
-          'partitionColumnName',
-          'partitionIntegerRangeEnd',
-          'partitionIntegerRangeStart',
-          'partitionInterval',
-          'partitionIntervalType',
-          'partitionIntervalUnit',
-          'partitionValues'
-        ),
       });
     },
     []

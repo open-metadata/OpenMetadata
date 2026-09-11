@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { waitForAllLoadersToDisappear } from './entity';
+import { waitForAllLoadersToDisappear, waitForWidgetsToRender } from './entity';
 
 /**
  * Polls the search API until the given entity appears in Elasticsearch.
@@ -71,4 +71,5 @@ export const waitForSearchIndexed = async (
 export const waitForPageLoaded = async (page: Page) => {
   await page.waitForLoadState('domcontentloaded');
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };

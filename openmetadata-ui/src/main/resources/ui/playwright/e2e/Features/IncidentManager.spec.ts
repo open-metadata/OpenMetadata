@@ -500,8 +500,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await afterAction();
   });
 
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -516,6 +514,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ownerPage,
     browser,
   }) => {
+    test.slow();
     const testCase = table1.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
     const testCaseFqn = testCase?.['fullyQualifiedName'];

@@ -18,6 +18,8 @@ import {
   withSuspenseFallback,
 } from './withSuspenseFallback';
 
+const LoadedComponent = () => <div>Loaded component</div>;
+
 describe('withSuspenseFallback', () => {
   const getLazyComponent = () =>
     // The wrapper itself is the subject under test, so each case owns the fallback.
@@ -27,7 +29,7 @@ describe('withSuspenseFallback', () => {
         new Promise<{ default: () => JSX.Element }>((resolve) => {
           setTimeout(() => {
             resolve({
-              default: () => <div>Loaded component</div>,
+              default: LoadedComponent,
             });
           }, 0);
         })

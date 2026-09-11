@@ -51,6 +51,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.StartupChecksums;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -323,6 +324,7 @@ public interface SystemTokenDAOs {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case SPARQL_QUERY_SETTINGS -> JsonUtils.readValue(json, SparqlQuerySettings.class);
             case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
             case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);

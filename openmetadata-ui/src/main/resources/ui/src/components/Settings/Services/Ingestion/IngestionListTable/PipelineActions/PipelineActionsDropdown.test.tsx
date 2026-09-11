@@ -18,6 +18,7 @@ import { OperationPermission } from '../../../../../../context/PermissionProvide
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { mockPipelineActionsDropdownProps } from '../../../../../../mocks/IngestionListTable.mock';
 import { ENTITY_PERMISSIONS } from '../../../../../../mocks/Permissions.mock';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
 jest.mock(
@@ -35,8 +36,7 @@ const clickOnMoreActions = async () => {
 
   fireEvent.click(moreActions);
 
-  // Wait for dropdown menu items to appear
-  await screen.findByTestId('edit-button');
+  await screen.findByTestId('actions-dropdown');
 };
 
 describe('PipelineActionsDropdown', () => {
@@ -133,6 +133,92 @@ describe('PipelineActionsDropdown', () => {
     expect(screen.queryByTestId('run-button')).toBeNull();
     expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+  });
+
+  it('should hide deploy button when Deploy permission is absent', async () => {
+    const permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      [Operation.Delete]: true,
+    } as OperationPermission;
+
+    await act(async () => {
+      render(
+        <PipelineActionsDropdown
+          {...mockPipelineActionsDropdownProps}
+          ingestion={{
+            ...mockPipelineActionsDropdownProps.ingestion,
+            deployed: false,
+            enabled: true,
+          }}
+          ingestionPipelinePermissions={permissions}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await clickOnMoreActions();
+
+    expect(screen.queryByTestId('deploy-button')).toBeNull();
+    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
+  });
+
+  it('should display deploy button with EditAll when Deploy permission is absent', async () => {
+    const permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      [Operation.EditAll]: true,
+    } as OperationPermission;
+
+    await act(async () => {
+      render(
+        <PipelineActionsDropdown
+          {...mockPipelineActionsDropdownProps}
+          ingestion={{
+            ...mockPipelineActionsDropdownProps.ingestion,
+            deployed: false,
+            enabled: true,
+          }}
+          ingestionPipelinePermissions={permissions}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await clickOnMoreActions();
+
+    expect(screen.getByTestId('deploy-button')).toBeInTheDocument();
+  });
+
+  it('should display deploy button with only Deploy permission', async () => {
+    const permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      [Operation.Deploy]: true,
+    } as OperationPermission;
+
+    await act(async () => {
+      render(
+        <PipelineActionsDropdown
+          {...mockPipelineActionsDropdownProps}
+          ingestion={{
+            ...mockPipelineActionsDropdownProps.ingestion,
+            deployed: false,
+            enabled: true,
+          }}
+          ingestionPipelinePermissions={permissions}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await clickOnMoreActions();
+
+    expect(screen.getByTestId('deploy-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-button')).toBeNull();
   });
 
   it('should call deployIngestion when clicked on deploy button', async () => {

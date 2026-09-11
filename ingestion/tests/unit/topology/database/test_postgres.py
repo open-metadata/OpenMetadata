@@ -13,6 +13,7 @@
 Test Postgres using the topology
 """
 
+import re
 import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -37,12 +38,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
     POLYGON,
 )
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
+from metadata.ingestion.source.database.postgres.queries import POSTGRES_GET_TABLE_NAMES
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
@@ -892,6 +895,67 @@ class PostgresUnitTest(TestCase):
         # the failure must name the offending procedure, not "UNKNOWN"
         reported_error = self.postgres_source.status.failed.call_args.kwargs["error"]
         self.assertEqual(reported_error.name, "null_prosrc_func")
+
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """
+        includeViews=True: materialized views are emitted as MaterializedView
+        alongside regular views (#31515).
+        """
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.return_value = ["my_matview"]
+
+        with patch.object(PostgresSource, "inspector", mock_inspector):
+            results = list(self.postgres_source.query_view_names_and_types("public"))
+
+        self.assertEqual(
+            {result.name: result.type_ for result in results},
+            {
+                "regular_view": TableType.View,
+                "my_matview": TableType.MaterializedView,
+            },
+        )
+
+    def test_matview_survives_when_view_list_and_matview_list_disagree(self):
+        """A failing get_materialized_view_names() must not drop regular views."""
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.side_effect = Exception("unsupported")
+
+        with patch.object(PostgresSource, "inspector", mock_inspector):
+            results = list(self.postgres_source.query_view_names_and_types("public"))
+
+        self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])
+
+    def test_view_path_is_skipped_when_include_views_false(self):
+        """includeViews=False must not consult the view path at all."""
+        self.postgres_source.source_config.includeTables = True
+        self.postgres_source.source_config.includeViews = False
+
+        with (
+            patch.object(PostgresSource, "query_view_names_and_types") as mock_view_query,
+            patch.object(
+                PostgresSource,
+                "query_table_names_and_types",
+                return_value=[TableNameAndType(name="base_table", type_=TableType.Regular)],
+            ),
+        ):
+            emitted = [name for name, _ in self.postgres_source.get_tables_name_and_type()]
+
+        self.assertEqual(emitted, ["base_table"])
+        mock_view_query.assert_not_called()
+
+    def test_table_query_cannot_return_materialized_views(self):
+        """
+        Matviews must stay off the table path, otherwise includeTables — not
+        includeViews — would govern them (#31515).
+
+        Parses the relkind filter rather than substring-matching the SQL, so a stray
+        'm' in a comment cannot mask a real regression.
+        """
+        relkinds = re.search(r"relkind\s+in\s*\(([^)]*)\)", POSTGRES_GET_TABLE_NAMES, re.IGNORECASE)
+        self.assertIsNotNone(relkinds, "POSTGRES_GET_TABLE_NAMES must filter on relkind")
+        self.assertNotIn("m", {kind.strip().strip("'") for kind in relkinds.group(1).split(",")})
 
 
 class TestPostgresCommonMappings(TestCase):

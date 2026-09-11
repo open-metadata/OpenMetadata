@@ -32,7 +32,20 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
 );
 
 jest.mock('../../components/Settings/Users/Users.component', () =>
-  jest.fn().mockReturnValue(<p>User Component</p>)
+  jest.fn().mockImplementation(({ updateUserDetails, afterDeleteAction }) => (
+    <div>
+      <p>User Component</p>
+      <button
+        onClick={() =>
+          updateUserDetails({ defaultPersona: undefined }, 'defaultPersona')
+        }>
+        UserComponentSaveButton
+      </button>
+      <button onClick={() => afterDeleteAction(false)}>
+        UserComponentAfterDeleteActionButton
+      </button>
+    </div>
+  ))
 );
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
@@ -71,7 +84,7 @@ jest.mock('../../rest/userAPI', () => ({
     ),
 }));
 
-describe.skip('Test the User Page', () => {
+describe('Test the User Page', () => {
   it('Should call getUserByName  API on load', async () => {
     render(<UserPage />, { wrapper: MemoryRouter });
 
@@ -81,6 +94,8 @@ describe.skip('Test the User Page', () => {
         'roles',
         'teams',
         'personas',
+        'lastActivityTime',
+        'lastLoginTime',
         'defaultPersona',
         'domains',
       ],

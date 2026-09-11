@@ -156,38 +156,64 @@ const addTo = (
   map.set(key, set);
 };
 
+const addMappedRelation = (
+  mapped: Map<string, Set<string>>,
+  source: string,
+  target: string,
+  sourceIsConcept: boolean,
+  targetIsConcept: boolean
+): void => {
+  if (targetIsConcept && !sourceIsConcept) {
+    addTo(mapped, source, target);
+  } else if (sourceIsConcept && !targetIsConcept) {
+    addTo(mapped, target, source);
+  }
+};
+
+const addOntologyRelation = (
+  link: GraphLink3D,
+  byId: Map<string, GraphNode3D>,
+  lookups: Lookups
+): void => {
+  const source = idOf(link.source);
+  const target = idOf(link.target);
+  const sourceIsConcept = byId.get(source)?.type === 'concept';
+  const targetIsConcept = byId.get(target)?.type === 'concept';
+  if (link.label === MAPPED_TO) {
+    addMappedRelation(
+      lookups.mapped,
+      source,
+      target,
+      sourceIsConcept,
+      targetIsConcept
+    );
+  } else if (link.label === PARENT_OF || link.label === BROADER_NARROWER) {
+    addTo(lookups.parentOf, target, source);
+  } else if (link.label === CHILD_OF) {
+    addTo(lookups.parentOf, source, target);
+  } else if (link.label === RELATED_TO || link.label === SYNONYM) {
+    addTo(lookups.related, source, target);
+    addTo(lookups.related, target, source);
+  }
+};
+
 const buildLookups = (
   graph: Graph3DData,
   byId: Map<string, GraphNode3D>
 ): Lookups => {
-  const mapped = new Map<string, Set<string>>();
-  const parentOf = new Map<string, Set<string>>();
-  const related = new Map<string, Set<string>>();
+  const lookups: Lookups = {
+    mapped: new Map<string, Set<string>>(),
+    parentOf: new Map<string, Set<string>>(),
+    related: new Map<string, Set<string>>(),
+  };
   graph.links.forEach((link) => {
     if (link.kind !== 'ontology') {
       return;
     }
-    const source = idOf(link.source);
-    const target = idOf(link.target);
-    const sourceIsConcept = byId.get(source)?.type === 'concept';
-    const targetIsConcept = byId.get(target)?.type === 'concept';
-    if (link.label === MAPPED_TO) {
-      if (targetIsConcept && !sourceIsConcept) {
-        addTo(mapped, source, target);
-      } else if (sourceIsConcept && !targetIsConcept) {
-        addTo(mapped, target, source);
-      }
-    } else if (link.label === PARENT_OF || link.label === BROADER_NARROWER) {
-      addTo(parentOf, target, source);
-    } else if (link.label === CHILD_OF) {
-      addTo(parentOf, source, target);
-    } else if (link.label === RELATED_TO || link.label === SYNONYM) {
-      addTo(related, source, target);
-      addTo(related, target, source);
-    }
+    addOntologyRelation(link, byId, lookups);
   });
 
-  return { mapped, parentOf, related };
+  return lookups;
 };
 
 /**

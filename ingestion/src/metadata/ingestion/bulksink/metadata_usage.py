@@ -24,7 +24,6 @@ import shutil
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -103,7 +102,7 @@ class MetadataUsageBulkSink(BulkSink):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = MetadataUsageSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -236,7 +235,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.handle_table_usage()
         self.handle_query_cost()
 
-    def get_table_usage_and_joins(self, table_entities: List[Table], table_usage: TableUsageCount):  # noqa: UP006
+    def get_table_usage_and_joins(self, table_entities: list[Table], table_usage: TableUsageCount):
         """
         For the list of tables, compute usage with already existing seen
         tables and publish the join information.
@@ -324,7 +323,7 @@ class MetadataUsageBulkSink(BulkSink):
             )
         return table_joins
 
-    def __get_column_fqn(self, database: str, database_schema: str, table_column: TableColumn) -> Optional[str]:  # noqa: RET503, UP045
+    def __get_column_fqn(self, database: str, database_schema: str, table_column: TableColumn) -> str | None:  # noqa: RET503
         """
         Method to get column fqn
         """

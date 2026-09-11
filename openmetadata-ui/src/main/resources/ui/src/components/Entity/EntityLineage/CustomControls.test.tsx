@@ -18,6 +18,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
 
 const mockOnExportClick = jest.fn();
@@ -588,5 +589,81 @@ describe('CustomControls', () => {
     );
 
     expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+  });
+
+  describe('onPageReset - quick filter pagination reset', () => {
+    const mockOnPageReset = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (useLineageProvider as jest.Mock).mockImplementation(() => ({
+        onExportClick: mockOnExportClick,
+        // A non-empty value keeps the "Clear all" button enabled
+        // (filterApplied === true).
+        selectedQuickFilters: [{ key: 'service', value: ['test-service'] }],
+        setSelectedQuickFilters: mockSetSelectedQuickFilters,
+        lineageConfig: mockLineageConfig,
+        nodes: [],
+      }));
+    });
+
+    it('calls onPageReset when a quick filter value is selected', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      // Open the filter panel so ExploreQuickFilters renders.
+      fireEvent.click(screen.getByLabelText('label.filter-plural'));
+
+      const exploreCalls = (ExploreQuickFilters as jest.Mock).mock.calls;
+      const onFieldValueSelect = exploreCalls[exploreCalls.length - 1][0]
+        .onFieldValueSelect as (field: unknown) => void;
+
+      onFieldValueSelect({ key: 'service', value: [] });
+
+      expect(mockOnPageReset).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls onPageReset when Clear all is clicked', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      fireEvent.click(screen.getByLabelText('label.filter-plural'));
+      fireEvent.click(screen.getByText('label.clear-entity'));
+
+      // Clearing the narrowing must also reset the page so the un-narrowed
+      // set is fetched from page 1.
+      expect(mockOnPageReset).toHaveBeenCalledTimes(1);
+      expect(mockSetSelectedQuickFilters).toHaveBeenCalled();
+    });
+
+    it('does not call onPageReset on tab change', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      // Tab change reuses handleClearAllFilters (no reset); only the Clear-all
+      // button uses handleClearAllClick (with reset). Guard the decoupling so a
+      // future change can't accidentally trigger a page reset on tab switch.
+      fireEvent.click(screen.getByText('label.lineage'));
+
+      expect(mockOnPageReset).not.toHaveBeenCalled();
+    });
   });
 });

@@ -19,7 +19,7 @@ import ssl
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import nats
 from metadata.generated.schema.entity.automations.workflow import (
@@ -229,8 +229,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: NatsClient,
     service_connection: NatsConnectionConfig,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    automation_workflow: AutomationWorkflow | None = None,
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     def get_topics() -> None:
         _get_streams(client)
@@ -261,8 +261,8 @@ class NatsConnection(BaseConnection[NatsConnectionConfig, NatsClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         return test_connection(
             metadata,

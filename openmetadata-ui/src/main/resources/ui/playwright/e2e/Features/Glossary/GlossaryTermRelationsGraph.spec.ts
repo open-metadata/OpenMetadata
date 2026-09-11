@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
-import { GlossaryTermRelationsGraphData as GraphData } from '../../../support/entity/OntologyExplorerDataClass';
+import { GlossaryTermRelationsGraphData as GraphData } from '../../../support/entity/OntologyStudioDataClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -20,7 +20,7 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../../utils/ontologyExplorer';
+} from '../../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

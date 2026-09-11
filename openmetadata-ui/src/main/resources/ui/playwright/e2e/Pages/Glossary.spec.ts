@@ -38,6 +38,7 @@ import {
 import {
   clickOutside,
   descriptionBox,
+  fillDescriptionBox,
   getAuthContext,
   getRandomLastName,
   getToken,
@@ -2388,7 +2389,7 @@ test.describe('Glossary tests', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillDescriptionBox(page, glossary.data.description);
 
       await page.click('[data-testid="tag-selector"]');
       await page.fill(
@@ -2491,9 +2492,7 @@ test.describe('Glossary tests', () => {
 
       const childTermName = `ChildTerm_${uuid()}`;
       await page.getByTestId('name').fill(childTermName);
-      await page
-        .locator(descriptionBox)
-        .fill('Child term created via row action');
+      await fillDescriptionBox(page, 'Child term created via row action');
 
       const createRes = page.waitForResponse(
         (response) =>
@@ -2704,9 +2703,10 @@ test.describe('Glossary tests', () => {
 
       const termName = `P1Term_${uuid()}`;
       await page.getByTestId('name').fill(termName);
-      await page
-        .locator(descriptionBox)
-        .fill('Term created with multiple optional fields');
+      await fillDescriptionBox(
+        page,
+        'Term created with multiple optional fields'
+      );
 
       const termModal = page.locator('.edit-glossary-modal');
       const tagsSelect = termModal.locator('[data-testid="tag-selector"]');

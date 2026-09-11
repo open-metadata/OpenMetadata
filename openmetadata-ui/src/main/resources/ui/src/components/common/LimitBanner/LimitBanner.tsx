@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Header } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -21,6 +22,7 @@ import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-
 import './limit-banner.less';
 
 export const LimitBanner = () => {
+  const { t } = useTranslation();
   const { bannerDetails, setBannerDetails } = useLimitStore();
   const { isTourPage, isTourOpen } = useTourProvider();
 
@@ -41,12 +43,10 @@ export const LimitBanner = () => {
         <div className="p-l-sm">
           <p className="pricing-header">{bannerDetails?.header}</p>
           <p className="pricing-subheader">
-            {bannerDetails?.subheader}
-            <>
-              {' '}
-              Learn more about{' '}
-              <Link to="/settings/billing/plans">plans and pricing.</Link>
-            </>
+            {bannerDetails?.subheader} {t('message.learn-more-about')}{' '}
+            <Link to="/settings/billing/plans">
+              {t('label.plans-and-pricing')}
+            </Link>
           </p>
         </div>
       </div>

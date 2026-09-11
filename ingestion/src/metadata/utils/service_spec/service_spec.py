@@ -3,7 +3,7 @@ Manifests are used to store class information
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Type, cast  # noqa: UP035
+from typing import Any, cast
 
 from pydantic import model_validator
 
@@ -29,7 +29,7 @@ logger = utils_logger()
 
 class SourceLoader(ABC):
     @abstractmethod
-    def __call__(self, service_type: ServiceType, source_type: str, from_: str) -> Type[Any]:  # noqa: UP006
+    def __call__(self, service_type: ServiceType, source_type: str, from_: str) -> type[Any]:
         """Load the service spec for a given service type and source type."""
 
 
@@ -55,14 +55,14 @@ class BaseSpec(BaseModel):
     4. We can hot-swap the class implementation without changing the manifest (example: for testing).
     """
 
-    profiler_class: Optional[str] = None  # noqa: UP045
-    test_suite_class: Optional[str] = None  # noqa: UP045
+    profiler_class: str | None = None
+    test_suite_class: str | None = None
     metadata_source_class: str
-    lineage_source_class: Optional[str] = None  # noqa: UP045
-    usage_source_class: Optional[str] = None  # noqa: UP045
-    sampler_class: Optional[str] = None  # noqa: UP045
-    data_diff: Optional[str] = None  # noqa: UP045
-    connection_class: Optional[str] = None  # noqa: UP045
+    lineage_source_class: str | None = None
+    usage_source_class: str | None = None
+    sampler_class: str | None = None
+    data_diff: str | None = None
+    connection_class: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -106,7 +106,7 @@ class DefaultSourceLoader(SourceLoader):
         service_type: ServiceType,
         source_type: str,
         from_: str = "ingestion",
-    ) -> Type[Any]:  # noqa: UP006
+    ) -> type[Any]:
         """Default implementation for loading service specifications."""
         return import_from_module(
             "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
@@ -140,23 +140,23 @@ def import_source_class(service_type: ServiceType, source_type: str, from_: str 
         field = "metadata_source_class"
     spec = BaseSpec.get_for_source(service_type, source_type, from_)
     return cast(
-        Type[Source],  # noqa: TC006, UP006
+        type[Source],  # noqa: TC006
         import_from_module(spec.model_dump()[field]),
     )
 
 
-def import_profiler_class(service_type: ServiceType, source_type: str) -> Type[ProfilerInterface]:  # noqa: UP006
+def import_profiler_class(service_type: ServiceType, source_type: str) -> type[ProfilerInterface]:
     class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
     if not class_path:
         raise ValueError(f"Profiler class not found for service type {service_type} and source type {source_type}")
-    return cast(Type[ProfilerInterface], import_from_module(class_path))  # noqa: TC006, UP006
+    return cast(type[ProfilerInterface], import_from_module(class_path))  # noqa: TC006
 
 
 def import_test_suite_class(
     service_type: ServiceType,
     source_type: str,
-    source_config_type: Optional[str] = None,  # noqa: UP045
-) -> Type[TestSuiteInterface]:  # noqa: UP006
+    source_config_type: str | None = None,
+) -> type[TestSuiteInterface]:
     try:
         class_path = BaseSpec.get_for_source(service_type, source_type).test_suite_class
     except DynamicImportException:
@@ -166,14 +166,14 @@ def import_test_suite_class(
             raise
     if not class_path:
         raise ValueError(f"Test suite class not found for service type {service_type} and source type {source_type}")
-    return cast(Type[TestSuiteInterface], import_from_module(class_path))  # noqa: TC006, UP006
+    return cast(type[TestSuiteInterface], import_from_module(class_path))  # noqa: TC006
 
 
 def import_sampler_class(
     service_type: ServiceType,
     source_type: str,
-    source_config_type: Optional[str] = None,  # noqa: UP045
-) -> Type[SamplerInterface]:  # noqa: UP006
+    source_config_type: str | None = None,
+) -> type[SamplerInterface]:
     try:
         class_path = BaseSpec.get_for_source(service_type, source_type).sampler_class
     except DynamicImportException:
@@ -183,17 +183,17 @@ def import_sampler_class(
             raise
     if not class_path:
         raise ValueError(f"Sampler class not found for service type {service_type} and source type {source_type}")
-    return cast(Type[SamplerInterface], import_from_module(class_path))  # noqa: TC006, UP006
+    return cast(type[SamplerInterface], import_from_module(class_path))  # noqa: TC006
 
 
 def import_connection_class(
     service_type: ServiceType,
     source_type: str,
-) -> Type[BaseConnection]:  # noqa: UP006
+) -> type[BaseConnection]:
     """
     Import the connection class for a given service type and source type.
     """
     class_path = BaseSpec.get_for_source(service_type, source_type).connection_class
     if not class_path:
         raise ValueError(f"Connection class not found for service type {service_type} and source type {source_type}")
-    return cast(Type[BaseConnection], import_from_module(class_path))  # noqa: TC006, UP006
+    return cast(type[BaseConnection], import_from_module(class_path))  # noqa: TC006

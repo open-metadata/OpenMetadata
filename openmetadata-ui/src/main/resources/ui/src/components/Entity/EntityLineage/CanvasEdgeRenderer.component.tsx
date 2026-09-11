@@ -14,6 +14,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
 import { useLineageEdgeColors } from '../../../hooks/useLineageEdgeColors';
@@ -39,6 +40,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   hoverEdge,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const edgeColors = useLineageEdgeColors();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -114,6 +116,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     hoverEdge,
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
+    theme,
   });
 
   useEffect(() => {

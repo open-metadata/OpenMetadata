@@ -26,16 +26,22 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
@@ -48,6 +54,8 @@ import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -60,6 +68,17 @@ public final class AlertUtil {
   // Bounded + thread-safe — also evaluated from EventSubscriptionScheduler parallel streams.
   private static final Cache<String, Expression> COMPILED_CONDITIONS =
       Caffeine.newBuilder().maximumSize(1000).build();
+
+  private static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
+
+  /** Default handler for {@link #isChangeEventAllowed}: log the event and leave it out. */
+  public static final BiConsumer<ChangeEvent, Exception> LOG_EVALUATION_ERROR =
+      (event, error) ->
+          LOG.error(
+              "Excluding change event {} on {}: alert filter evaluation failed",
+              event.getId(),
+              event.getEntityType(),
+              error);
 
   private AlertUtil() {}
 
@@ -256,16 +275,88 @@ public final class AlertUtil {
   }
 
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
-      EventSubscription eventSubscription, Map<ChangeEvent, Set<UUID>> events) {
-    return events.entrySet().stream()
-        .filter(
-            entry ->
-                checkIfChangeEventIsAllowed(entry.getKey(), eventSubscription.getFilteringRules()))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      EventSubscription eventSubscription,
+      Map<ChangeEvent, Set<UUID>> events,
+      Long startingTimestamp) {
+    return getFilteredEvents(eventSubscription, events, startingTimestamp, LOG_EVALUATION_ERROR);
+  }
+
+  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
+      EventSubscription eventSubscription,
+      Map<ChangeEvent, Set<UUID>> events,
+      Long startingTimestamp,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
+    FilteringRules filteringRules = eventSubscription.getFilteringRules();
+    Map<ChangeEvent, Set<UUID>> filteredEvents = new HashMap<>();
+    for (Map.Entry<ChangeEvent, Set<UUID>> entry : events.entrySet()) {
+      if (isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError)) {
+        filteredEvents.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return filteredEvents;
+  }
+
+  /**
+   * Evaluates one event in isolation, excluding it rather than letting the failure escape. Callers
+   * evaluate whole batches, and the consumer commits its offset either way, so an exception thrown
+   * out of a single matcher would silently drop every other event with it (issue #31331). The catch
+   * is deliberately cause-agnostic: matchers reach the store, the SpEL runtime and the event
+   * payload, and none of those failures may cost an unrelated event its notification.
+   */
+  public static boolean isChangeEventAllowed(
+      ChangeEvent event,
+      FilteringRules filteringRules,
+      Long startingTimestamp,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    boolean allowed;
+    try {
+      allowed = checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp);
+    } catch (Exception e) {
+      reportEvaluationError(onEvaluationError, event, e);
+      allowed = false;
+    }
+    return allowed;
+  }
+
+  /**
+   * Runs the failure handler without letting it become a second failure. The consumer's handler
+   * writes a dead-letter row, so a transient database error there would otherwise escape this
+   * method, abort the surrounding batch loop and lose the very events this isolation exists to
+   * protect.
+   */
+  private static void reportEvaluationError(
+      BiConsumer<ChangeEvent, Exception> onEvaluationError, ChangeEvent event, Exception error) {
+    try {
+      onEvaluationError.accept(event, error);
+    } catch (Exception handlerError) {
+      LOG.error("Failed to record unevaluable change event {}", event.getId(), handlerError);
+    }
+  }
+
+  /**
+   * Only notification and observability subscriptions suppress historical executions. Custom and
+   * governance-workflow consumers drive integrations that may legitimately need the full stream.
+   */
+  public static Long alertingWatermark(
+      EventSubscription eventSubscription, Long startingTimestamp) {
+    CreateEventSubscription.AlertType alertType = eventSubscription.getAlertType();
+    boolean alerting =
+        alertType == CreateEventSubscription.AlertType.NOTIFICATION
+            || alertType == CreateEventSubscription.AlertType.OBSERVABILITY;
+    return alerting ? startingTimestamp : null;
   }
 
   public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
+    return checkIfChangeEventIsAllowed(event, filteringRules, null);
+  }
+
+  public static boolean checkIfChangeEventIsAllowed(
+      ChangeEvent event, FilteringRules filteringRules, Long startingTimestamp) {
+    if (isStalePipelineExecution(event, startingTimestamp)) {
+      return false;
+    }
     boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
     if (triggerChangeEvent) {
@@ -289,17 +380,80 @@ public final class AlertUtil {
             .eventSubscriptionDAO()
             .getSubscriberExtension(eventSubscriptionId.toString(), OFFSET_EXTENSION);
     if (json != null) {
-      EventSubscriptionOffset offsetFromDb =
-          JsonUtils.readValue(json, EventSubscriptionOffset.class);
-      startingOffset = offsetFromDb.getStartingOffset();
-      currentOffset = offsetFromDb.getCurrentOffset();
-    } else {
-      currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-      startingOffset = currentOffset;
+      return JsonUtils.readValue(json, EventSubscriptionOffset.class);
     }
-    return new EventSubscriptionOffset()
-        .withCurrentOffset(currentOffset)
-        .withStartingOffset(startingOffset);
+    currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    startingOffset = currentOffset;
+    long now = System.currentTimeMillis();
+    EventSubscriptionOffset offset =
+        new EventSubscriptionOffset()
+            .withCurrentOffset(currentOffset)
+            .withStartingOffset(startingOffset)
+            .withStartingTimestamp(now)
+            .withTimestamp(now);
+    // Persisted here rather than at the first commit. Until a row exists every server restart and
+    // every subscription edit re-derives this, which would drift the watermark forward and silently
+    // suppress executions that failed after the alert was created.
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSubscriberExtension(
+            eventSubscriptionId.toString(),
+            OFFSET_EXTENSION,
+            "eventSubscriptionOffset",
+            JsonUtils.pojoToJson(offset));
+    return offset;
+  }
+
+  /**
+   * True when a pipeline execution finished before this subscription started alerting. Anything we
+   * cannot place in time is delivered: a suppression rule that cannot decide must not suppress.
+   */
+  public static boolean isStalePipelineExecution(ChangeEvent event, Long startingTimestamp) {
+    if (startingTimestamp == null
+        || event == null
+        || !Entity.PIPELINE.equals(event.getEntityType())
+        || event.getChangeDescription() == null) {
+      return false;
+    }
+    for (FieldChange fieldChange : listOrEmpty(event.getChangeDescription().getFieldsUpdated())) {
+      if (!FIELD_PIPELINE_STATUS.equals(fieldChange.getName())
+          || fieldChange.getNewValue() == null) {
+        continue;
+      }
+      PipelineStatus status;
+      try {
+        status = JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
+      } catch (Exception ex) {
+        // This filter runs on every pipeline event in the batch, including subscriptions with no
+        // pipelineStatus rule, so a throw here would drop the whole delivery batch.
+        LOG.warn("Could not read pipelineStatus for the staleness check, delivering", ex);
+        return false;
+      }
+      OptionalLong executedAt = effectiveExecutionTime(status);
+      return executedAt.isPresent() && executedAt.getAsLong() < startingTimestamp;
+    }
+    return false;
+  }
+
+  /**
+   * Wall-clock time the execution finished. {@code PipelineStatus.timestamp} is deliberately not a
+   * fallback: it is the per-execution unique key, and connectors fill it with anything stable, from
+   * Airflow's logical date to the ingestion clock.
+   */
+  static OptionalLong effectiveExecutionTime(PipelineStatus status) {
+    if (status.getEndTime() != null) {
+      return OptionalLong.of(status.getEndTime());
+    }
+    OptionalLong taskEnd = maxTaskTime(status, Status::getEndTime);
+    return taskEnd.isPresent() ? taskEnd : maxTaskTime(status, Status::getStartTime);
+  }
+
+  private static OptionalLong maxTaskTime(PipelineStatus status, Function<Status, Long> extractor) {
+    return listOrEmpty(status.getTaskStatus()).stream()
+        .map(extractor)
+        .filter(Objects::nonNull)
+        .mapToLong(Long::longValue)
+        .max();
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(
