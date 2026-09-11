@@ -26,6 +26,7 @@ import {
   deleteContractById,
   getContractByEntityId,
 } from '../../../rest/contractAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -65,8 +66,15 @@ export const ContractTab = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { id, name: entityName } = entityData ?? {};
 
+  // Fetch mechanism (entity-level by id once a contract exists, else a resource-level
+  // Create check) is unchanged — only the raw `.EditAll` read is routed through the
+  // named-flag derivation, matching the KnowledgeCenterFilterPage/SchemaTablesTab
+  // precedent. Ungated: the old raw read never referenced `deleted`.
   const hasEditPermission = contract
-    ? Boolean(contractPermissions?.EditAll)
+    ? Boolean(
+        contractPermissions &&
+          getDerivedPermissionFlags(contractPermissions).canEditAll
+      )
     : Boolean(dataContractResourcePermissions?.Create);
 
   const fetchContractPermissions = async (contractId: string) => {
