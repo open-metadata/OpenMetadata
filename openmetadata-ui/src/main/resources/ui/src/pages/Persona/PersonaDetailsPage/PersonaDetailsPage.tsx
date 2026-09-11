@@ -34,7 +34,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -42,11 +41,11 @@ import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
   getPersonaDetailsPath,
@@ -66,9 +65,6 @@ export const PersonaDetailsPage = () => {
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isConfirmModalLoading, setIsConfirmModalLoading] = useState(false);
   const { t } = useTranslation();
-  const [entityPermission, setEntityPermission] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const location = useCustomLocation();
   const { activeKey, activeCategory, fullHash } = useMemo(() => {
     const activeKey = (
@@ -85,7 +81,23 @@ export const PersonaDetailsPage = () => {
     };
   }, [location.hash]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  // Personas aren't soft-deletable through this page (ManageButton is passed a hardcoded
+  // `deleted={false}` below), so this call is deliberately ungated — no `deleted` option.
+  // canEditDescription is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const {
+    canEditAll,
+    canEditDescription,
+    canDelete: hasDeletePermission,
+    error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.PERSONA, fqn);
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
   // AI is always available in OSS — the shell ships in-tree, no
   // install-gate.
   const hasNonDefaultMode = true;
@@ -121,12 +133,6 @@ export const PersonaDetailsPage = () => {
 
     return breadcrumbList;
   }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
-
-  useEffect(() => {
-    getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
-      setEntityPermission
-    );
-  }, []);
 
   const fetchPersonaDetails = async () => {
     try {
@@ -298,7 +304,7 @@ export const PersonaDetailsPage = () => {
         ),
       },
     ];
-  }, [entityPermission.EditAll, personaDetails, t]);
+  }, [canEditAll, personaDetails, t]);
 
   const activeTabContent = useMemo(
     () => tabItems.find((item) => item.key === activeKey)?.children,
@@ -356,12 +362,10 @@ export const PersonaDetailsPage = () => {
             <ManageButton
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}
-              canDelete={entityPermission.EditAll || entityPermission.Delete}
+              canDelete={canEditAll || hasDeletePermission}
               deleted={false}
               displayName={getEntityName(personaDetails)}
-              editDisplayNamePermission={
-                entityPermission.EditAll || entityPermission.EditDescription
-              }
+              editDisplayNamePermission={canEditDescription}
               entityFQN={personaDetails.fullyQualifiedName}
               entityId={personaDetails.id}
               entityName={personaDetails.name}
@@ -378,9 +382,7 @@ export const PersonaDetailsPage = () => {
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
-            hasEditAccess={
-              entityPermission.EditAll || entityPermission.EditDescription
-            }
+            hasEditAccess={canEditDescription}
             showCommentsIcon={false}
             onDescriptionUpdate={async (description) => {
               await handlePersonaUpdate({ description });

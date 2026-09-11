@@ -48,6 +48,7 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -131,22 +132,21 @@ export const PipelineTaskTab = () => {
     setDisplayedColumns(pipelineDetails.tasks ?? []);
   }, [pipelineDetails.tasks, setDisplayedColumns]);
 
+  // Named-flag derivation (Task 8 Batch 9): `permissions` is the raw OperationPermission
+  // read off useGenericContext(), owned by whichever page renders this tab (rule 2 —
+  // DocumentationTab.component.tsx precedent). Ungated: `deleted` is threaded to
+  // TableDescription/TableTags separately as `isReadOnly`, never folded into the edit
+  // flags here (SearchIndexFieldsTab/TopicSchema precedent). All 3 raw `EditAll || EditX`
+  // reads were explicit-deny-wins bugs — a field-specific deny (e.g. EditDescription:
+  // false) was silently overridden by a granted EditAll. The 4th flagged read
+  // (`ViewAll || ViewCustomFields`) computed a `viewCustomPropertiesPermission` that was
+  // never destructured out of this memo's return value — dead code, dropped rather than
+  // converted.
   const {
-    editDescriptionPermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-  } = useMemo(
-    () => ({
-      editDescriptionPermission:
-        permissions?.EditAll || permissions?.EditDescription,
-      editTagsPermission: permissions?.EditAll || permissions?.EditTags,
-      editGlossaryTermsPermission:
-        permissions?.EditAll || permissions?.EditGlossaryTerms,
-      viewCustomPropertiesPermission:
-        permissions?.ViewAll || permissions?.ViewCustomFields,
-    }),
-    [permissions]
-  );
+    canEditDescription: editDescriptionPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+  } = useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
 
   const allTasksInternal = useMemo(
     () =>
