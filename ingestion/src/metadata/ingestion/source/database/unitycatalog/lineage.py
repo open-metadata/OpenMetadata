@@ -323,6 +323,11 @@ class UnitycatalogLineageSource(Source):
         A hot upstream is named by many edges and an upstream that was never ingested
         is named just as often, so both answers are cached; a lookup that failed is
         not, since one unreachable call would otherwise blind the rest of the run.
+
+        The name is built rather than searched for: Unity Catalog normalises its
+        identifiers, so the three parts the system tables report are the three parts
+        the table was ingested under, and `fqn.build` would spend an Elasticsearch
+        search per table to arrive at the same string.
         """
         if databricks_table_fqn in self._table_cache:
             return self._table_cache[databricks_table_fqn]
@@ -333,19 +338,7 @@ class UnitycatalogLineageSource(Source):
             return None
         catalog_name, schema_name, table_name = parts
 
-        entity_fqn = cast(
-            "str | None",
-            fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                database_name=catalog_name,
-                schema_name=schema_name,
-                table_name=table_name,
-                service_name=self.config.serviceName,
-            ),
-        )
-        if not entity_fqn:
-            return None
+        entity_fqn = fqn._build(self.config.serviceName, catalog_name, schema_name, table_name)
 
         try:
             entity = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
