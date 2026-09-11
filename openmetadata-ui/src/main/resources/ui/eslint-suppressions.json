@@ -630,7 +630,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {

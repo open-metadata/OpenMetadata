@@ -12,8 +12,8 @@
  */
 import { expect } from '@playwright/test';
 import {
-    DATA_CONTRACT_SEMANTICS1,
-    DATA_CONTRACT_SEMANTIC_OPERATIONS
+  DATA_CONTRACT_SEMANTICS1,
+  DATA_CONTRACT_SEMANTIC_OPERATIONS,
 } from '../../constant/dataContracts';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -24,30 +24,30 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption, selectRange } from '../../utils/advancedSearch';
 import {
-    assignDataProduct,
-    assignSingleSelectDomain,
-    redirectToHomePage,
-    removeDataProduct,
-    removeSingleSelectDomain
+  assignDataProduct,
+  assignSingleSelectDomain,
+  redirectToHomePage,
+  removeDataProduct,
+  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
-    clickEditContractButton,
-    performInitialStepForRules,
-    saveAndTriggerDataContractValidation,
-    triggerContractValidation
+  clickEditContractButton,
+  performInitialStepForRules,
+  saveAndTriggerDataContractValidation,
+  triggerContractValidation,
 } from '../../utils/dataContracts';
 import {
-    customFormatDateTime,
-    getCurrentMillis,
-    getEpochMillisForFutureDays
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
 } from '../../utils/dateTime';
 import {
-    addOwner,
-    removeOwnersFromList,
-    updateDescription,
-    updateDisplayNameForEntity,
-    updateOwner,
-    waitForAllLoadersToDisappear
+  addOwner,
+  removeOwnersFromList,
+  updateDescription,
+  updateDisplayNameForEntity,
+  updateOwner,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -3374,7 +3374,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const date = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
 
-      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3463,7 +3465,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3552,7 +3556,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3644,7 +3650,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('[data-testid=advanced-search-value] input[type="date"]').fill(date);
+      await ruleLocator
+        .locator('[data-testid=advanced-search-value] input[type="date"]')
+        .fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3719,7 +3727,9 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     });
 
     await test.step('Verify delete button is not visible with only one rule', async () => {
-      await expect(page.getByTestId('delete-condition-button')).not.toBeVisible();
+      await expect(
+        page.getByTestId('delete-condition-button')
+      ).not.toBeVisible();
     });
 
     await test.step('fill the first rule completely', async () => {
@@ -3746,20 +3756,33 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     await test.step('Add a second rule condition', async () => {
       await page.getByTestId('add-new-rule-btn').click();
 
-      await expect(page.getByTestId('delete-condition-button').first()).toBeVisible();
+      await expect(
+        page.getByTestId('delete-condition-button').first()
+      ).toBeVisible();
     });
 
     await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
       const deleteButtons = page.getByTestId('delete-condition-button');
       await deleteButtons.first().click();
 
-      await expect(page.getByTestId('delete-condition-button')).not.toBeVisible();
+      await expect(
+        page.getByTestId('delete-condition-button')
+      ).not.toBeVisible();
       await expect(page.getByText(/rule is required/i)).toBeVisible();
     });
 
     await test.step('select Is Set operator and error is hidden', async () => {
-      await selectOption(page, page.getByTestId('advanced-search-field-select'), 'Owners', true);
-      await selectOption(page, page.getByTestId('advanced-search-operator-select'), 'Is Set');
+      await selectOption(
+        page,
+        page.getByTestId('advanced-search-field-select'),
+        'Owners',
+        true
+      );
+      await selectOption(
+        page,
+        page.getByTestId('advanced-search-operator-select'),
+        'Is Set'
+      );
       await expect(page.getByText(/rule is required/i)).not.toBeVisible();
     });
   });

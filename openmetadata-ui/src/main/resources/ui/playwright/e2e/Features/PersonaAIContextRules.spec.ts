@@ -37,8 +37,8 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { selectOptionWithRetry, toastNotification } from '../../utils/common';
 import {
-    enablePersonaRulePreloading,
-    openPersonaAIContext
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
 } from '../../utils/personaAIContext';
 
 // ---------------------------------------------------------------------------
@@ -228,7 +228,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, 'advanced-search-field-select').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
       });
 
       await test.step('click Save Rule — must be blocked', async () => {
@@ -272,7 +274,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add a condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, 'advanced-search-field-select').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
       });
 
       await test.step('select the Description field (text type, no async fetch)', async () => {
@@ -289,14 +293,19 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('select Contains operator (required before text widget appears)', async () => {
         // Description field uses match_phrase operators; text widget only renders
         // after an operator is chosen — select "Contains" (match_phrase)
-        const operatorLocator = comboboxField(page, 'advanced-search-operator-select').first();
+        const operatorLocator = comboboxField(
+          page,
+          'advanced-search-operator-select'
+        ).first();
         await expect(operatorLocator).toBeVisible({ timeout: 5000 });
         await selectOption(page, operatorLocator, 'Contains', false);
       });
 
       await test.step('type a value in the text widget', async () => {
         const textInput = page
-          .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
+          .locator(
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+          )
           .first();
         await textInput.waitFor({ state: 'visible' });
         await textInput.fill('important data asset');
@@ -329,7 +338,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition — save must be blocked', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, 'advanced-search-field-select').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
         await page.getByRole('button', { name: 'Save Rule' }).click();
         await expect(
           page.getByTestId('context-rule-filter-error')

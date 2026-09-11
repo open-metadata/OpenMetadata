@@ -17,9 +17,9 @@ import { ADVANCED_SEARCH_SUGGESTION_FIELDS } from '../../constant/advancedSearch
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
-    getFieldsSuggestionSearchText,
-    selectOption,
-    showAdvancedSearchDialog
+  getFieldsSuggestionSearchText,
+  selectOption,
+  showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';

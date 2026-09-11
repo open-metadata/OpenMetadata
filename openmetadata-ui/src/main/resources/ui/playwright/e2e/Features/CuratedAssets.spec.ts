@@ -19,20 +19,20 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
 import {
-    addCuratedAssetPlaceholder,
-    CURATED_ASSETS_WIDGET_KEY,
-    ENTITY_TYPE_CONFIGS,
-    navigateToCustomizeLandingPage,
-    removeAndCheckWidget,
-    saveCustomizeLayoutPage,
-    selectAssetTypes,
-    setUserDefaultPersona,
-    toNameableEntity,
-    waitForLandingPageWidget
+  addCuratedAssetPlaceholder,
+  CURATED_ASSETS_WIDGET_KEY,
+  ENTITY_TYPE_CONFIGS,
+  navigateToCustomizeLandingPage,
+  removeAndCheckWidget,
+  saveCustomizeLayoutPage,
+  selectAssetTypes,
+  setUserDefaultPersona,
+  toNameableEntity,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
-    getEntityDisplayName,
-    waitForAllLoadersToDisappear
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
 const adminUser = new UserClass();
@@ -153,8 +153,14 @@ test.describe('Curated Assets Widget', () => {
 
       const entityDisplayName =
         getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
-      await ruleLocator.getByTestId('advanced-search-value').locator('input').clear();
-      await ruleLocator.getByTestId('advanced-search-value').locator('input').fill(entityDisplayName);
+      await ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .clear();
+      await ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .fill(entityDisplayName);
 
       // Wait for save button to be enabled
       await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -260,10 +266,15 @@ test.describe('Curated Assets Widget', () => {
       true
     );
 
-    await selectOption(page, ruleLocator.getByTestId('advanced-search-operator-select'), 'Is');
+    await selectOption(
+      page,
+      ruleLocator.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
 
     await ruleLocator
-      .getByTestId('advanced-search-value').locator('label')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -331,7 +342,11 @@ test.describe('Curated Assets Widget', () => {
       'Owners',
       true
     );
-    await selectOption(page, ruleLocator1.getByTestId('advanced-search-operator-select'), 'Is Set');
+    await selectOption(
+      page,
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
+      'Is Set'
+    );
 
     await page.getByRole('button', { name: 'Add New Field' }).click();
 
@@ -348,9 +363,14 @@ test.describe('Curated Assets Widget', () => {
       'Deleted',
       true
     );
-    await selectOption(page, ruleLocator2.getByTestId('advanced-search-operator-select'), 'Is');
+    await selectOption(
+      page,
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
     await ruleLocator2
-      .getByTestId('advanced-search-value').locator('label')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     const queryResponse = page.waitForResponse(
@@ -428,9 +448,14 @@ test.describe('Curated Assets Widget', () => {
       'Deleted',
       true
     );
-    await selectOption(page, ruleLocator1.getByTestId('advanced-search-operator-select'), 'Is');
+    await selectOption(
+      page,
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
     await ruleLocator1
-      .getByTestId('advanced-search-value').locator('label')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     await page.getByRole('button', { name: 'Add New Field' }).click();
@@ -453,8 +478,14 @@ test.describe('Curated Assets Widget', () => {
     );
 
     // Use a common prefix that should match test entities
-    await ruleLocator2.getByTestId('advanced-search-value').locator('input').clear();
-    await ruleLocator2.getByTestId('advanced-search-value').locator('input').fill('pw');
+    await ruleLocator2
+      .getByTestId('advanced-search-value')
+      .locator('input')
+      .clear();
+    await ruleLocator2
+      .getByTestId('advanced-search-value')
+      .locator('input')
+      .fill('pw');
 
     const queryResponse = page.waitForResponse(
       (response) =>
@@ -542,7 +573,11 @@ test.describe('Curated Assets Widget', () => {
       'Owners',
       true
     );
-    await selectOption(page, ruleLocator1.getByTestId('advanced-search-operator-select'), 'Any in');
+    await selectOption(
+      page,
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
+      'Any in'
+    );
     await selectOption(
       page,
       ruleLocator1.getByTestId('advanced-search-value'),
@@ -565,7 +600,11 @@ test.describe('Curated Assets Widget', () => {
       'Description Status',
       true
     );
-    await selectOption(page, ruleLocator2.getByTestId('advanced-search-operator-select'), 'Is');
+    await selectOption(
+      page,
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
     await selectOption(
       page,
       ruleLocator2.getByTestId('advanced-search-value'),
@@ -582,7 +621,11 @@ test.describe('Curated Assets Widget', () => {
       'Tier',
       true
     );
-    await selectOption(page, ruleLocator3.getByTestId('advanced-search-operator-select'), 'Is Not');
+    await selectOption(
+      page,
+      ruleLocator3.getByTestId('advanced-search-operator-select'),
+      'Is Not'
+    );
     await selectOption(
       page,
       ruleLocator3.getByTestId('advanced-search-value'),

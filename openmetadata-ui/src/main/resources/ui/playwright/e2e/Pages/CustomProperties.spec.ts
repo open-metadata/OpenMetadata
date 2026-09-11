@@ -27,19 +27,19 @@
 
 import { APIRequestContext } from '@playwright/test';
 import {
-    CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
-    INVALID_NAMES
+  CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
+  INVALID_NAMES,
 } from '../../constant/common';
 import {
-    CUSTOM_PROPERTIES_ENTITIES,
-    CUSTOM_PROPERTY_INVALID_NAMES,
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-    NAME_SUFFIX
+  CUSTOM_PROPERTIES_ENTITIES,
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  NAME_SUFFIX,
 } from '../../constant/customProperty';
 import {
-    CP_BASE_VALUES,
-    CP_PARTIAL_SEARCH_VALUES,
-    CP_RANGE_VALUES
+  CP_BASE_VALUES,
+  CP_PARTIAL_SEARCH_VALUES,
+  CP_RANGE_VALUES,
 } from '../../constant/customPropertyAdvancedSearch';
 import { ENDPOINT_TO_EXPLORE_TAB_MAP } from '../../constant/explore';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -67,55 +67,55 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    CONDITIONS_MUST,
-    selectOption,
-    showAdvancedSearchDialog
+  CONDITIONS_MUST,
+  selectOption,
+  showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
 import {
-    clickOutside,
-    createNewPage,
-    getApiContext,
-    getDescriptionBox,
-    redirectToHomePage,
-    uuid
+  clickOutside,
+  createNewPage,
+  getApiContext,
+  getDescriptionBox,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    addCustomPropertiesForEntity,
-    createCustomPropertyForEntity,
-    CustomProperty,
-    CustomPropertyTypeByName,
-    deleteCreatedProperty,
-    editCreatedProperty,
-    fillTableColumnInputDetails,
-    setValueForProperty,
-    updateCustomPropertyInRightPanel,
-    validateValueForProperty,
-    verifyCustomPropertyInAdvancedSearch,
-    verifyTableColumnCustomPropertyPersistence
+  addCustomPropertiesForEntity,
+  createCustomPropertyForEntity,
+  CustomProperty,
+  CustomPropertyTypeByName,
+  deleteCreatedProperty,
+  editCreatedProperty,
+  fillTableColumnInputDetails,
+  setValueForProperty,
+  updateCustomPropertyInRightPanel,
+  validateValueForProperty,
+  verifyCustomPropertyInAdvancedSearch,
+  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import {
-    applyCustomPropertyFilter,
-    clearAdvancedSearchFilters,
-    CPASTestData,
-    setupCustomPropertyAdvancedSearchTest,
-    verifySearchResults
+  applyCustomPropertyFilter,
+  clearAdvancedSearchFilters,
+  CPASTestData,
+  setupCustomPropertyAdvancedSearchTest,
+  verifySearchResults,
 } from '../../utils/customPropertyAdvancedSearchUtils';
 import {
-    getEntityDisplayName,
-    waitForAllLoadersToDisappear
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
-    openMatchingFieldsPanel,
-    setSliderValue
+  openMatchingFieldsPanel,
+  setSliderValue,
 } from '../../utils/searchSettingUtils';
 import {
-    settingClick,
-    SettingOptionsType,
-    sidebarClick
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
@@ -1315,7 +1315,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             );
 
             await ruleLocator
-              .locator('[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])')
+              .locator(
+                '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+              )
               .fill('updated value');
 
             await advanceSearchSaveFilter(page, 'updated value');
