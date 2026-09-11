@@ -4479,6 +4479,7 @@
     "request-tags-message": "Anfrage-Tags für",
     "request-test-case-failure-resolution-message": "Anfrage zur Fehlerbehebung für TestCase",
     "request-update-description": "Aktualisierung der Anfragebeschreibung",
+    "reserved-column-name": "Der Spaltenname '{{name}}' ist für die interne Verwendung reserviert und kann nicht als Spalte einer benutzerdefinierten Eigenschaft vom Typ Tabelle verwendet werden.",
     "reset-layout-confirmation": "Sind sie sich sicher das sie das Layout \"Default Layout\"? aktivieren wollen?",
     "reset-link-has-been-sent": "Der Zurücksetzungslink wurde an Ihre E-Mail gesendet",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
