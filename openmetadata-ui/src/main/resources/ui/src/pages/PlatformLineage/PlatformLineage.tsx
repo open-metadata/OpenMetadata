@@ -53,15 +53,11 @@ import { LineagePlatformView } from '../../context/LineageProvider/LineageProvid
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  LineageSettings,
-  PipelineViewMode,
-} from '../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../generated/entity/type';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
@@ -89,16 +85,12 @@ const PlatformLineage = () => {
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
     decodedFqn || undefined
   );
-  const { appPreferences } = useApplicationStore();
-  const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
-
-  const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
-    downstreamDepth: defaultLineageConfig?.downstreamDepth ?? 1,
-    upstreamDepth: defaultLineageConfig?.upstreamDepth ?? 1,
-    nodesPerLayer: 50,
-    pipelineViewMode:
-      defaultLineageConfig?.pipelineViewMode ?? PipelineViewMode.Node,
-  });
+  // Config lives in the Zustand store — LineageProvider's fetch effect
+  // depends on it, so writing here triggers a refetch. Local useState here
+  // would leave the store untouched and the depth change would never
+  // reach the network.
+  const lineageConfig = useLineageStore((state) => state.lineageConfig);
+  const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
   const { showModal } = useEntityExportModalProvider();
 
@@ -237,10 +229,13 @@ const PlatformLineage = () => {
     setDialogVisible(true);
   };
 
-  const handleDialogSave = (config: LineageConfig) => {
-    setLineageConfig(config);
-    setDialogVisible(false);
-  };
+  const handleDialogSave = useCallback(
+    (config: LineageConfig) => {
+      setLineageConfig(config);
+      setDialogVisible(false);
+    },
+    [setLineageConfig]
+  );
 
   const header = useMemo(() => {
     return (
