@@ -36,7 +36,7 @@ const test = base.extend<{
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
     try {
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -45,7 +45,7 @@ const test = base.extend<{
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await testUser.login(page);
+      await testUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -415,7 +415,7 @@ test.describe('Glossary Permissions', () => {
 
     const teamUserPage = await browser.newPage();
     try {
-      await teamUser.login(teamUserPage);
+      await teamUser.signIn(teamUserPage);
 
       await expect(async () => {
         await glossary.visitEntityPage(teamUserPage);

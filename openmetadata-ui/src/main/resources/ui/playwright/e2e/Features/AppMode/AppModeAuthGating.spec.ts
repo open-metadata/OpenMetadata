@@ -47,6 +47,7 @@ test.beforeAll(
 
     const contextA = await browser.newContext();
     const pageA = await contextA.newPage();
+    // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
     await userA.login(pageA);
     const resultA = await getApiContext(pageA);
     userAApiContext = resultA.apiContext;
@@ -57,6 +58,7 @@ test.beforeAll(
 
     const contextB = await browser.newContext();
     const pageB = await contextB.newPage();
+    // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
     await userB.login(pageB);
     const resultB = await getApiContext(pageB);
     userBApiContext = resultB.apiContext;

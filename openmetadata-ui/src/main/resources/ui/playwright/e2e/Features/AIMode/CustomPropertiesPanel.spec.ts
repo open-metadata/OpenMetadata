@@ -464,7 +464,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
   }) => {
     const page = await browser.newPage();
     try {
-      await viewOnlyUser.login(page);
+      await viewOnlyUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -489,7 +489,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
  *
  * Strategy: beforeAll creates policy → role → user via UserClass/PoliciesClass/
  * RolesClass (in-memory, no JSON file written), seeds a property, then each
- * test creates a fresh page and logs in via typeUser.login(page).
+ * test creates a fresh page and signs in via typeUser.signIn(page).
  */
 
 let typeUser: UserClass;
@@ -596,7 +596,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   }) => {
     const page = await browser.newPage();
     try {
-      await typeUser.login(page);
+      await typeUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -623,7 +623,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   test('detail page shows Add, Edit, Delete buttons', async ({ browser }) => {
     const page = await browser.newPage();
     try {
-      await typeUser.login(page);
+      await typeUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -745,7 +745,7 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
   }) => {
     const page = await browser.newPage();
     try {
-      await viewAllUser.login(page);
+      await viewAllUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
