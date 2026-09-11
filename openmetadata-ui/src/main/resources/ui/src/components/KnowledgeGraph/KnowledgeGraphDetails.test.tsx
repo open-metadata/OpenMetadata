@@ -159,3 +159,49 @@ it('shows actual property types and distinguishes functional declarations from u
   expect(email).toHaveTextContent('http://www.w3.org/2001/XMLSchema#string');
   expect(email).toHaveTextContent('label.kg-not-declared');
 });
+
+it('navigates an inherited property to the ancestor node that declares it', async () => {
+  const onSelect = jest.fn();
+  openDetails({
+    mode: 'ontology',
+    onSelect,
+    data: {
+      nodes: [
+        { id: 'person', label: 'Person', type: 'glossaryTerm' },
+        { id: 'customer', label: 'Customer', type: 'glossaryTerm' },
+        {
+          id: 'kg:property:person:birthDate',
+          label: 'birthDate',
+          type: 'property',
+        },
+      ],
+      edges: [],
+    },
+    concepts: {
+      terms: [
+        {
+          id: 'customer',
+          name: 'Customer',
+          attributes: [],
+          effectiveAttributes: [
+            {
+              id: 'birthDate',
+              name: 'birthDate',
+              dataType: 'DATE',
+              inherited: true,
+              declaringTerm: { id: 'person', type: 'glossaryTerm' },
+            },
+          ],
+        },
+      ] as unknown as GlossaryTerm[],
+      loading: false,
+      error: null,
+      partial: false,
+    },
+  });
+  const grid = screen.getByRole('grid');
+
+  await userEvent.click(within(grid).getByRole('row', { name: /birthDate/ }));
+
+  expect(onSelect).toHaveBeenCalledWith('node', 'kg:property:person:birthDate');
+});

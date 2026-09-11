@@ -349,8 +349,14 @@ const KnowledgeGraphDetails = ({
             (attribute) => ({
               id: term.id + ':' + attribute.id,
               kind: 'node',
+              // An inherited attribute is drawn once, on the ancestor that
+              // declares it, so its node id keys off the declaring concept.
               target: nodeMap.get(
-                attribute.iri ?? 'kg:property:' + term.id + ':' + attribute.id
+                attribute.iri ??
+                  'kg:property:' +
+                    (attribute.declaringTerm?.id ?? term.id) +
+                    ':' +
+                    attribute.id
               )?.id,
               cells: [
                 { text: attribute.name, tone: 'mono' },
