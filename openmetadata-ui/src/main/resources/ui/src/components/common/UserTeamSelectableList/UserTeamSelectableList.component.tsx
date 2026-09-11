@@ -77,6 +77,20 @@ export const UserTeamSelectableList = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
+  // react-aria Tabs unmount the inactive panel, so each SelectableList
+  // re-mounts (and would re-fetch) every time its tab is re-activated. Cache
+  // the initial (empty-query) page per tab for the current open session so
+  // switching tabs does not re-hit the search API, matching the legacy antd
+  // Tabs. The caches are cleared when the popover closes so a re-open fetches
+  // fresh data.
+  const initialUserOptionsRef = useRef<{
+    data: EntityReference[];
+    paging: { total: number; after?: string };
+  } | null>(null);
+  const initialTeamOptionsRef = useRef<{
+    data: EntityReference[];
+    paging: { total: number; after?: string };
+  } | null>(null);
 
   const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
 
@@ -102,6 +116,11 @@ export const UserTeamSelectableList = ({
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+    const isInitialPage = !searchText && afterPage <= 1;
+
+    if (isInitialPage && initialUserOptionsRef.current) {
+      return initialUserOptionsRef.current;
+    }
 
     try {
       const res = await searchQuery({
@@ -120,13 +139,19 @@ export const UserTeamSelectableList = ({
       );
       setCount((pre) => ({ ...pre, user: res.hits.total.value }));
 
-      return {
+      const result = {
         data,
         paging: {
           total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
+
+      if (isInitialPage) {
+        initialUserOptionsRef.current = result;
+      }
+
+      return result;
     } catch (error) {
       return { data: [], paging: { total: 0 } };
     }
@@ -134,6 +159,11 @@ export const UserTeamSelectableList = ({
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+    const isInitialPage = !searchText && afterPage <= 1;
+
+    if (isInitialPage && initialTeamOptionsRef.current) {
+      return initialTeamOptionsRef.current;
+    }
 
     try {
       const res = await searchQuery({
@@ -155,13 +185,19 @@ export const UserTeamSelectableList = ({
 
       setCount((pre) => ({ ...pre, team: res.hits.total.value }));
 
-      return {
+      const result = {
         data,
         paging: {
           total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
+
+      if (isInitialPage) {
+        initialTeamOptionsRef.current = result;
+      }
+
+      return result;
     } catch (error) {
       return { data: [], paging: { total: 0 } };
     }
@@ -291,6 +327,15 @@ export const UserTeamSelectableList = ({
   }, []);
 
   const isOpen = isMounted && (popoverProps?.open ?? popupVisible);
+
+  useEffect(() => {
+    // Drop the per-session list caches when the popover closes so a re-open
+    // always fetches fresh options.
+    if (!isOpen) {
+      initialUserOptionsRef.current = null;
+      initialTeamOptionsRef.current = null;
+    }
+  }, [isOpen]);
 
   const handleOpenChange = (open: boolean) => {
     setPopupVisible(open);
