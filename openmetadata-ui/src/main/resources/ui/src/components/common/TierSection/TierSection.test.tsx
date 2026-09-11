@@ -48,7 +48,7 @@ jest.mock('../TierCard/TierCard', () => ({
   )),
 }));
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () => ({
+jest.mock('../atoms/Tag/ClassificationTag', () => ({
   __esModule: true,
   default: jest
     .fn()

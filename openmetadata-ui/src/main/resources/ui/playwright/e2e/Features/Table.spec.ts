@@ -451,22 +451,10 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const glossaryRowSelector =
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
 
-    await expect
-      .poll(
-        async () => {
-          await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
-          await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await page.locator(glossaryRowSelector).waitFor({ state: 'visible' });
 
-          return await page.locator(glossaryRowSelector).count();
-        },
-        {
-          timeout: 60000,
-          intervals: [1000, 2000, 5000],
-        }
-      )
-      .toBeGreaterThan(0);
-
-    await waitForAllLoadersToDisappear(page);
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );

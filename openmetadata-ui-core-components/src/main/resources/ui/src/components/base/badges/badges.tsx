@@ -1,7 +1,12 @@
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
 import { X as CloseX } from '@untitledui/icons';
-import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
+import type {
+  CSSProperties,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  ReactNode,
+} from 'react';
 import type {
   BadgeColors,
   BadgeTypeToColorMap,
@@ -157,6 +162,7 @@ interface BadgeProps<T extends BadgeTypes> {
   children: ReactNode;
   className?: string;
   bordered?: boolean;
+  style?: CSSProperties;
   'data-testid'?: string;
 }
 
@@ -198,7 +204,8 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         bordered && 'tw:outline-1 tw:-outline-offset-1',
         props.className
       )}
-      data-testid={props['data-testid']}>
+      data-testid={props['data-testid']}
+      style={props.style}>
       {children}
     </span>
   );
@@ -497,6 +504,8 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
   bordered?: boolean;
   children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
   /**
    * The label for the button.
    */
@@ -513,6 +522,11 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    * Whether the button is disabled.
    */
   isDisabled?: boolean;
+  'data-testid'?: string;
+  /**
+   * The data-testid for the button.
+   */
+  buttonTestId?: string;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
@@ -525,6 +539,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     bordered = true,
     icon: Icon = CloseX,
     buttonLabel,
+    buttonTestId,
     children,
     isDisabled,
     onButtonKeyDown,
@@ -557,8 +572,11 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:outline-1 tw:-outline-offset-1'
-      )}>
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
+        props.className
+      )}
+      data-testid={props['data-testid']}
+      style={props.style}>
       {children}
       <button
         aria-label={buttonLabel}
@@ -570,6 +588,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
           colors.styles[color].addonButton,
           type === 'pill-color' ? 'tw:rounded-full' : 'tw:rounded-[3px]'
         )}
+        data-testid={buttonTestId}
         disabled={isDisabled}
         type="button"
         onClick={props.onButtonClick}
