@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    EmptyPlaceholder,
-    HookForm,
-    Typography
+  Box,
+  EmptyPlaceholder,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -25,8 +25,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import {
-    OPEN_METADATA,
-    TEST_CASE_FORM
+  OPEN_METADATA,
+  TEST_CASE_FORM,
 } from '../../../../constants/service-guide.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -39,13 +39,13 @@ import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
-    addIngestionPipeline,
-    deployIngestionPipelineById
+  addIngestionPipeline,
+  deployIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
 import {
-    createTestCase,
-    getTestDefinitionById,
-    updateTestCaseById
+  createTestCase,
+  getTestDefinitionById,
+  updateTestCaseById,
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
@@ -62,17 +62,17 @@ import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
 import {
-    FormValues,
-    TestCaseFormContext,
-    TestCaseFormDrawerProps,
-    TestLevel
+  FormValues,
+  TestCaseFormContext,
+  TestCaseFormDrawerProps,
+  TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
 import {
-    buildEditDefaults,
-    buildTestSuitePipelinePayload,
-    normalizeFormValuesForPayload,
-    transformTestCaseFormData
+  buildEditDefaults,
+  buildTestSuitePipelinePayload,
+  normalizeFormValuesForPayload,
+  transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
 const getResolvedDrawerWidth = (

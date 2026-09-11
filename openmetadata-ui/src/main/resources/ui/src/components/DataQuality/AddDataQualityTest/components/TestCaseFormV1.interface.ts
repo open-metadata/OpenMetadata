@@ -16,9 +16,9 @@ import { ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
 import {
-    EntityReference,
-    TagLabel,
-    TestCase
+  EntityReference,
+  TagLabel,
+  TestCase,
 } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';

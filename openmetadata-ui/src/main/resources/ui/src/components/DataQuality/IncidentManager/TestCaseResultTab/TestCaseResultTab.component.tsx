@@ -37,22 +37,22 @@ import TestCaseFormDrawer from '../../AddDataQualityTest/components/TestCaseForm
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import {
-    SqlParamsSectionProps,
-    TestCaseSidePanelProps
+  SqlParamsSectionProps,
+  TestCaseSidePanelProps,
 } from './TestCaseResultTab.interface';
 import {
-    canEditTestCaseParameters,
-    getSidePanelColSpanClass,
-    hasAdditionalComponents,
-    resolveIsSidePanelVisible,
-    shouldRenderTestSummary,
-    shouldShowAILearningBanner,
-    shouldShowEditParameterButton,
-    shouldShowSqlParamsSection
+  canEditTestCaseParameters,
+  getSidePanelColSpanClass,
+  hasAdditionalComponents,
+  resolveIsSidePanelVisible,
+  shouldRenderTestSummary,
+  shouldShowAILearningBanner,
+  shouldShowEditParameterButton,
+  shouldShowSqlParamsSection,
 } from './TestCaseResultTab.utils';
 import {
-    ParameterDisplayItem,
-    useTestCaseResultTab
+  ParameterDisplayItem,
+  useTestCaseResultTab,
 } from './useTestCaseResultTab';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))

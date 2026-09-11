@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    EmptyPlaceholder,
-    HookForm,
-    Typography
+  Box,
+  EmptyPlaceholder,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -23,19 +23,19 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    OPEN_METADATA,
-    TEST_DEFINITION_FORM
+  OPEN_METADATA,
+  TEST_DEFINITION_FORM,
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
-    createTestDefinition,
-    patchTestDefinition
+  createTestDefinition,
+  patchTestDefinition,
 } from '../../../rest/testAPI';
 import { monospaceParameterNames } from '../../../utils/DataQuality/FormHintDocUtils';
 import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import {
-    isExternalTestDefinition,
-    isSystemTestDefinition
+  isExternalTestDefinition,
+  isSystemTestDefinition,
 } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
@@ -43,14 +43,14 @@ import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import {
-    TestDefinitionFormProps,
-    TestDefinitionFormValues
+  TestDefinitionFormProps,
+  TestDefinitionFormValues,
 } from './TestDefinitionForm.interface';
 import TestDefinitionFormBody from './TestDefinitionFormBody';
 import {
-    buildCreateTestDefinitionPayload,
-    buildEditPatch,
-    buildFormDefaults
+  buildCreateTestDefinitionPayload,
+  buildEditPatch,
+  buildFormDefaults,
 } from './transformTestDefinitionFormData';
 
 const TestDefinitionForm: FC<TestDefinitionFormProps> = ({

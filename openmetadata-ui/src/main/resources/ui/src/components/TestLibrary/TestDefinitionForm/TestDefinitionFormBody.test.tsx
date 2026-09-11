@@ -12,11 +12,11 @@
  */
 import { HookForm } from '@openmetadata/ui-core-components';
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { FC } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';

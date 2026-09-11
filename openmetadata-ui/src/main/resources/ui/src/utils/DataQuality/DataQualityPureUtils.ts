@@ -12,16 +12,16 @@
  */
 import { compare, type Operation } from 'fast-json-patch';
 import {
-    cloneDeep,
-    has,
-    isArray,
-    isEmpty,
-    isNil,
-    isUndefined,
-    lowerCase,
-    omit,
-    omitBy,
-    parseInt
+  cloneDeep,
+  has,
+  isArray,
+  isEmpty,
+  isNil,
+  isUndefined,
+  lowerCase,
+  omit,
+  omitBy,
+  parseInt,
 } from 'lodash';
 import QueryString from 'qs';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
@@ -45,18 +45,18 @@ import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import type {
-    EntityReference,
-    TestCase,
-    TestCaseParameterValue
+  EntityReference,
+  TestCase,
+  TestCaseParameterValue,
 } from '../../generated/tests/testCase';
 import {
-    TestDataType,
-    type TestDefinition
+  TestDataType,
+  type TestDefinition,
 } from '../../generated/tests/testDefinition';
 import type { TableSearchSource } from '../../interface/search.interface';
 import {
-    DataQualityPageTabs,
-    type DataQualityDashboardChartFilters
+  DataQualityPageTabs,
+  type DataQualityDashboardChartFilters,
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { formatDate } from '../date-time/DateTimeUtils';

@@ -18,10 +18,10 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
-    TEST_CASE_FILTERS,
-    TEST_CASE_PLATFORM_OPTION,
-    TEST_CASE_STATUS_FILTER_OPTIONS,
-    TEST_CASE_TYPE_OPTION
+  TEST_CASE_FILTERS,
+  TEST_CASE_PLATFORM_OPTION,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
+  TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';

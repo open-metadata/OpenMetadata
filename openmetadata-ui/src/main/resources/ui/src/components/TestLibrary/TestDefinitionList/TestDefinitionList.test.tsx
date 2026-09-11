@@ -16,9 +16,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../../../generated/entity/bot';
 import {
-    deleteTestDefinitionByFqn,
-    getListTestDefinitions,
-    patchTestDefinition
+  deleteTestDefinitionByFqn,
+  getListTestDefinitions,
+  patchTestDefinition,
 } from '../../../rest/testAPI';
 
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

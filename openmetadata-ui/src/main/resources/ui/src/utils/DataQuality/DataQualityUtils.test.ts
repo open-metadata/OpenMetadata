@@ -19,38 +19,38 @@ import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import {
-    TestDataType,
-    TestDefinition,
-    TestPlatform
+  TestDataType,
+  TestDefinition,
+  TestPlatform,
 } from '../../generated/tests/testDefinition';
 import {
-    LabelType,
-    State,
-    TagLabel,
-    TagSource
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
 } from '../../generated/type/tagLabel';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
-    buildDataQualityDashboardFilters,
-    buildDataQualityTableFilters,
-    buildMustEsFilterForDataProducts,
-    buildMustEsFilterForOwner,
-    buildMustEsFilterForTags,
-    buildMustEsFilterForTier,
-    buildTestCaseParams,
-    createTestCaseParameters,
-    createUpdatedTestCasePatch,
-    filterTestCasesByTableAndColumn,
-    getColumnFilterEntityLink,
-    getColumnFilterOptions,
-    getColumnNameFromColumnFilterKey,
-    getEntityLinkForColumnFilter,
-    getSelectedOptionsFromKeys,
-    getServiceTypeForTestDefinition,
-    getTestCaseFiltersValue,
-    getTestCaseTabPath,
-    parseColumnAggregateBuckets,
-    transformToTestCaseStatusObject
+  buildDataQualityDashboardFilters,
+  buildDataQualityTableFilters,
+  buildMustEsFilterForDataProducts,
+  buildMustEsFilterForOwner,
+  buildMustEsFilterForTags,
+  buildMustEsFilterForTier,
+  buildTestCaseParams,
+  createTestCaseParameters,
+  createUpdatedTestCasePatch,
+  filterTestCasesByTableAndColumn,
+  getColumnFilterEntityLink,
+  getColumnFilterOptions,
+  getColumnNameFromColumnFilterKey,
+  getEntityLinkForColumnFilter,
+  getSelectedOptionsFromKeys,
+  getServiceTypeForTestDefinition,
+  getTestCaseFiltersValue,
+  getTestCaseTabPath,
+  parseColumnAggregateBuckets,
+  transformToTestCaseStatusObject,
 } from './DataQualityPureUtils';
 jest.mock('../../constants/profiler.constant', () => ({
   TEST_CASE_FILTERS: {
@@ -1375,10 +1375,10 @@ describe('DataQualityUtils', () => {
         testCase: {
           ...baseTestCase,
           dataQualityDimension: {
-          id: 'dim-1',
-          type: 'dataQualityDimension',
-          name: 'Accuracy',
-        },
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
         },
         value: { ...baseValue, dataQualityDimension: 'Timeliness' },
         createTestCaseObject: {},
@@ -1402,10 +1402,10 @@ describe('DataQualityUtils', () => {
         testCase: {
           ...baseTestCase,
           dataQualityDimension: {
-          id: 'dim-1',
-          type: 'dataQualityDimension',
-          name: 'Accuracy',
-        },
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
         },
         // The normalizer always emits the key; an empty value means cleared.
         value: { ...baseValue, dataQualityDimension: undefined },
@@ -1424,10 +1424,10 @@ describe('DataQualityUtils', () => {
         testCase: {
           ...baseTestCase,
           dataQualityDimension: {
-          id: 'dim-1',
-          type: 'dataQualityDimension',
-          name: 'Accuracy',
-        },
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
         },
         value: baseValue,
         createTestCaseObject: {},
@@ -1446,10 +1446,10 @@ describe('DataQualityUtils', () => {
         testCase: {
           ...baseTestCase,
           dataQualityDimension: {
-          id: 'dim-1',
-          type: 'dataQualityDimension',
-          name: 'Accuracy',
-        },
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
         },
         value: { ...baseValue, dataQualityDimension: 'Timeliness' },
         createTestCaseObject: {},

@@ -96,11 +96,9 @@ describe('useTestCaseFilterOptions', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.dimensionOptions.map(({ value }) => value)).toEqual([
-        'NoDimension',
-        'BCBS 239',
-        'Completeness',
-      ]);
+      expect(result.current.dimensionOptions.map(({ value }) => value)).toEqual(
+        ['NoDimension', 'BCBS 239', 'Completeness']
+      );
     });
   });
 

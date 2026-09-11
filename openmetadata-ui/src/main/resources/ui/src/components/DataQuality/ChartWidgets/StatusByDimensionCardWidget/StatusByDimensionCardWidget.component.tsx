@@ -18,13 +18,13 @@ import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
-    fetchTestCaseSummaryByDimension,
-    fetchTestCaseSummaryByNoDimension
+  fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
 } from '../../../../rest/dataQualityDashboardAPI';
 import {
-    getDimensionIcon,
-    getTestCaseListPath,
-    transformToTestCaseStatusByDimension
+  getDimensionIcon,
+  getTestCaseListPath,
+  transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';

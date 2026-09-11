@@ -15,17 +15,17 @@ import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { isArray, isEmpty, pick } from 'lodash';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import {
-    ConfigType,
-    CreateIngestionPipeline,
-    PipelineType
+  ConfigType,
+  CreateIngestionPipeline,
+  PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { Table } from '../../../../generated/entity/data/table';
 import { LogLevels } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
-    TestCaseParameterDefinition,
-    TestDefinition
+  TestCaseParameterDefinition,
+  TestDefinition,
 } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -33,30 +33,30 @@ import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManager
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
-    getParamPrefillKind,
-    normalizeParamsForPayload,
-    sanitizeParamName,
-    unwrapSelectValue,
-    unwrapSelectValues
+  getParamPrefillKind,
+  normalizeParamsForPayload,
+  sanitizeParamName,
+  unwrapSelectValue,
+  unwrapSelectValues,
 } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import {
-    generateUUID,
-    isValidJSONString,
-    replaceAllSpacialCharWith_
+  generateUUID,
+  isValidJSONString,
+  replaceAllSpacialCharWith_,
 } from '../../../../utils/StringUtils';
 import {
-    generateEntityLink,
-    getTagsWithoutTier
+  generateEntityLink,
+  getTagsWithoutTier,
 } from '../../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import {
-    KEY_COLUMNS,
-    TABLE2,
-    TABLE2_KEY_COLUMNS,
-    USE_COLUMNS
+  KEY_COLUMNS,
+  TABLE2,
+  TABLE2_KEY_COLUMNS,
+  USE_COLUMNS,
 } from './TableDiffFields';
 import { FormValues, TestLevel } from './TestCaseFormV1.interface';
 

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import {
-    Alert,
-    Button,
-    FieldProp,
-    FieldTypes,
-    FormField,
-    FormItemLabel,
-    FormItemLayout,
-    FormSelectItem,
-    getField,
-    HelperTextType,
-    useFieldDoc,
-    useFieldDocRegistry
+  Alert,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  FormItemLayout,
+  FormSelectItem,
+  getField,
+  HelperTextType,
+  useFieldDoc,
+  useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -35,9 +35,9 @@ import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-obs
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
-    AGGREGATE_PAGE_SIZE_LARGE,
-    MAX_NAME_LENGTH,
-    PAGE_SIZE_LARGE
+  AGGREGATE_PAGE_SIZE_LARGE,
+  MAX_NAME_LENGTH,
+  PAGE_SIZE_LARGE,
 } from '../../../../constants/constants';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
@@ -50,9 +50,9 @@ import { TagSource } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { DataQualityDimension } from '../../../../generated/tests/dataQualityDimension';
 import {
-    EntityType,
-    TestDefinition,
-    TestPlatform
+  EntityType,
+  TestDefinition,
+  TestPlatform,
 } from '../../../../generated/tests/testDefinition';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
@@ -61,13 +61,13 @@ import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import {
-    getListTestCaseBySearch,
-    getListTestDefinitions
+  getListTestCaseBySearch,
+  getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import {
-    convertSearchSourceToTable,
-    getServiceTypeForTestDefinition
+  convertSearchSourceToTable,
+  getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -78,11 +78,11 @@ import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCard
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ParameterFields from './ParameterFields';
 import {
-    FormValues,
-    TablesCache,
-    TestCaseFormBodyProps,
-    TestLevel,
-    TestLevelOption
+  FormValues,
+  TablesCache,
+  TestCaseFormBodyProps,
+  TestLevel,
+  TestLevelOption,
 } from './TestCaseFormV1.interface';
 import TestCaseSchedulerSection from './TestCaseSchedulerSection';
 import { toDataQualityDimensionItem } from './transformTestCaseFormData';
@@ -678,7 +678,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     });
 
     return Array.from(options.values());
-  }, [dataQualityDimensions, selectedTestDefinition, dataQualityDimensionValue]);
+  }, [
+    dataQualityDimensions,
+    selectedTestDefinition,
+    dataQualityDimensionValue,
+  ]);
 
   useEffect(() => {
     getDataQualityDimensions({ limit: 1000 })
