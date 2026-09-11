@@ -258,12 +258,14 @@ export interface SlotContribution {
  * empty estate) while it is not.
  */
 export interface ConnectionsOnboardingSlotProps {
-  /** Unfiltered estate size from the page's own overview query. */
+  /** Unfiltered estate size from the page's own overview query (for the "has a service" gate). */
   estateTotal: number;
-  /** True while that estate query is still loading — hold, do not decide yet. */
-  isEstateLoading: boolean;
-  /** True when a search/filter narrows the list — never onboard over a user-narrowed view. */
-  isNarrowed: boolean;
+  /**
+   * The page's own "settled, empty, unnarrowed estate" signal (no rows, not loading, not errored,
+   * no search/filter). The contribution combines it with its own first-run/admin decision — the
+   * page cannot make that call — and reports the result via `onActiveChange`.
+   */
+  isEmptyUnnarrowedEstate: boolean;
   /** Report whether the onboarding UI is showing, so the page can hide/show the browse view. */
   onActiveChange: (active: boolean) => void;
 }

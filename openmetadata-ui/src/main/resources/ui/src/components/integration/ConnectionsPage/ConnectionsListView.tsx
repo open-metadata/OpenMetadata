@@ -450,16 +450,20 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       EXTENSION_POINTS.CONNECTIONS_LIST_ONBOARDING
     );
 
+  // Settled data only, so the chrome cannot flicker out mid-load or vanish behind a failed fetch.
+  const isEmptyUnnarrowedEstate =
+    !isNarrowed && !isLoading && !isError && rows.length === 0;
+
   // The contributed onboarding experience owns its own first-run decision (who is a first-run
   // admin, whether the estate is set up) and reports back whether it is showing. The page hides the
-  // browse chrome and the list behind it while it is, and shows them — with the generic empty-state
-  // placeholder for an empty estate — while it is not. Kept in state, not derived, because only the
-  // contribution can make that call, and it is mounted on every load so it can (see below).
+  // browse chrome and the list behind it while it is, and shows the generic empty-state placeholder
+  // otherwise. Kept in state, not derived, because only the contribution can make that call.
   const [isOnboardingActive, setIsOnboardingActive] = useState(false);
 
-  // Mounted unconditionally — not only on an empty estate — so it can read the estate count the
-  // page already fetched (no second /services/overview) and run its gate even when services exist,
-  // then report visibility through `onActiveChange`. It renders its own UI only when it decides to.
+  // Rendered inside `serviceList` (the scroll container) on every load, so it can read the estate
+  // count the page already fetched (no second /services/overview), run its gate even when services
+  // exist, and — while active — reserve the composer height that container already reserves. It
+  // reports visibility through `onActiveChange` and renders its own UI only when it decides to.
   const onboardingSlot = useMemo(
     () =>
       onboardingContributions.map((contribution) => {
@@ -469,14 +473,13 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         return (
           <OnboardingComponent
             estateTotal={totalConnections}
-            isEstateLoading={isLoading}
-            isNarrowed={isNarrowed}
+            isEmptyUnnarrowedEstate={isEmptyUnnarrowedEstate}
             key={contribution.key}
             onActiveChange={setIsOnboardingActive}
           />
         );
       }),
-    [onboardingContributions, totalConnections, isLoading, isNarrowed]
+    [onboardingContributions, totalConnections, isEmptyUnnarrowedEstate]
   );
 
   // The list body switches between skeleton, error, empty-first-run placeholder and the populated
@@ -668,26 +671,6 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
     <div
       className="tw:flex tw:h-full tw:w-full tw:overflow-hidden"
       data-testid="connections-browse-view">
-      {/* Mounted on every load so it can run its own first-run gate and report visibility; it
-          renders its own UI only while active. When active it stands in for the whole browse view,
-          so it scrolls independently and reserves the composer's height the same way the list's own
-          scroll container does — otherwise a tall checklist's controls sit under the pinned
-          composer, which then swallows their clicks. `tw:contents` keeps the wrapper weightless
-          while inactive (the slot renders nothing then). */}
-      <div
-        className={
-          isOnboardingActive
-            ? 'tw:flex tw:min-h-0 tw:flex-1 tw:items-start tw:justify-center tw:overflow-y-auto tw:px-4 tw:pt-8'
-            : 'tw:contents'
-        }
-        style={
-          isOnboardingActive
-            ? { paddingBottom: bottomInset || undefined }
-            : undefined
-        }>
-        {onboardingSlot}
-      </div>
-
       {!isOnboardingActive && (
         <ConnectionsSecondaryNav
           category={category}
@@ -698,8 +681,8 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         />
       )}
 
-      {!isOnboardingActive && (
-        <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
+      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
+        {!isOnboardingActive && (
           <>
             <div className="tw:mb-[18px]">
               <Typography
@@ -763,18 +746,22 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               </div>
             </div>
           </>
+        )}
 
-          <div
-            className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-4"
-            data-testid="connections-scroll-container"
-            ref={scrollContainerRef}
-            // Reserve the contributed footer's measured height so the pagination bar can be
-            // scrolled clear of it.
-            style={{ paddingBottom: bottomInset || undefined }}>
-            {serviceList}
-          </div>
-        </main>
-      )}
+        {/* Onboarding renders inside this scroll container (via `serviceList`) so it inherits the
+            composer-height reserve below — a first-run checklist then scrolls clear of the pinned
+            composer instead of sitting under it. */}
+        <div
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-4"
+          data-testid="connections-scroll-container"
+          ref={scrollContainerRef}
+          // Reserve the contributed footer's measured height so the pagination bar can be
+          // scrolled clear of it.
+          style={{ paddingBottom: bottomInset || undefined }}>
+          {onboardingSlot}
+          {!isOnboardingActive && serviceList}
+        </div>
+      </main>
     </div>
   );
 };

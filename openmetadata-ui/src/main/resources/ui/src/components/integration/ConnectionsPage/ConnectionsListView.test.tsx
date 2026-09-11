@@ -876,17 +876,13 @@ describe('ConnectionsListView', () => {
     // browse chrome/list. Active only on a settled, unnarrowed, empty estate (a first-run admin, in
     // the real slot — admin state is the slot's own concern and not modelled here).
     const OnboardingContributionMock = ({
-      estateTotal,
-      isEstateLoading,
-      isNarrowed,
+      isEmptyUnnarrowedEstate,
       onActiveChange,
     }: {
-      estateTotal: number;
-      isEstateLoading: boolean;
-      isNarrowed: boolean;
+      isEmptyUnnarrowedEstate: boolean;
       onActiveChange: (active: boolean) => void;
     }) => {
-      const active = estateTotal === 0 && !isEstateLoading && !isNarrowed;
+      const active = isEmptyUnnarrowedEstate;
 
       React.useEffect(() => {
         onActiveChange(active);
