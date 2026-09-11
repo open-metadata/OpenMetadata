@@ -149,7 +149,10 @@ jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
 
 jest.mock('../../../rest/csvAPI', () => ({
   cancelCsvAsyncJob: jest.fn(),
+  getCsvAsyncImportResult: jest.fn(),
+  getCsvAsyncJob: jest.fn(),
   getCsvAsyncJobs: jest.fn().mockResolvedValue([]),
+  isPollableCsvAsyncJobId: (jobId: string) => /^\d+$/.test(jobId),
   getCsvDocumentation: jest.fn().mockResolvedValue({
     headers: [
       {
@@ -858,6 +861,45 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(JSON.stringify(mockWebSocketResponse));
         }
+      });
+
+      await waitFor(() => {
+        expect(mockReadString).toHaveBeenCalled();
+      });
+    });
+
+    it('should complete validation via REST polling when the websocket frame never arrives', async () => {
+      const csvAPI = require('../../../rest/csvAPI');
+      // Numeric jobId so the poll fallback activates (isPollableCsvAsyncJobId).
+      mockValidateCsvString.mockResolvedValue({
+        jobId: '1',
+        message: 'Import is in progress.',
+      });
+      mockGetImportValidateAPIEntityType.mockReturnValue(
+        jest.fn().mockResolvedValue({
+          jobId: '1',
+          message: 'Import is in progress.',
+        })
+      );
+      csvAPI.getCsvAsyncJob.mockResolvedValue({
+        jobId: '1',
+        operation: 'IMPORT',
+        status: 'COMPLETED',
+      });
+      csvAPI.getCsvAsyncImportResult.mockResolvedValue(mockCSVImportResult);
+
+      renderComponent();
+
+      await uploadCsv();
+      await startPreview();
+
+      // No websocket COMPLETED is simulated: on a multi-pod deployment the frame is emitted on the
+      // pod that ran the job, not the one holding this socket, so the poll must drive completion.
+      await waitFor(() => {
+        expect(csvAPI.getCsvAsyncImportResult).toHaveBeenCalledWith(
+          '1',
+          expect.anything()
+        );
       });
 
       await waitFor(() => {
