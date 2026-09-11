@@ -14,7 +14,9 @@
 import justifiedRuleDisable from './justified-rule-disable.mjs';
 import noAwaitedWaitForResponse from './no-awaited-wait-for-response.mjs';
 import noBlanketTestSlow from './no-blanket-test-slow.mjs';
+import noPageReloadWithoutJustification from './no-page-reload-without-justification.mjs';
 import noPositionalLocator from './no-positional-locator.mjs';
+import noUiInTestSetup from './no-ui-in-test-setup.mjs';
 import requireAssertionPerTest from './require-assertion-per-test.mjs';
 
 export default {
@@ -23,6 +25,8 @@ export default {
     'no-blanket-test-slow': noBlanketTestSlow,
     'require-assertion-per-test': requireAssertionPerTest,
     'no-positional-locator': noPositionalLocator,
+    'no-ui-in-test-setup': noUiInTestSetup,
+    'no-page-reload-without-justification': noPageReloadWithoutJustification,
     'justified-rule-disable': justifiedRuleDisable,
   },
 };
