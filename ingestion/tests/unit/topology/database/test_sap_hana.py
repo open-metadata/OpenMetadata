@@ -1599,7 +1599,13 @@ def test_query_history_failure_is_contained() -> None:
         raise RuntimeError("insufficient privilege: SYS.M_SQL_PLAN_CACHE")
 
     with patch.object(LineageSource, "yield_query_lineage", side_effect=explode):
-        assert list(source.yield_query_lineage()) == []
+        results = list(source.yield_query_lineage())
+
+    # Surfaced on the workflow status rather than swallowed, so the run is not
+    # reported as a clean success that happened to produce nothing.
+    assert len(results) == 1
+    assert results[0].right is None
+    assert "CATALOG READ" in results[0].left.error
 
 
 def test_view_pass_failure_still_surfaces() -> None:
@@ -1621,17 +1627,19 @@ def test_view_pass_failure_still_surfaces() -> None:
 
 
 def test_query_filters_match_real_statement_shapes() -> None:
-    """The DML filter must survive the leading whitespace HANA keeps in the plan cache.
+    """The DML filter must survive what the plan cache actually stores.
 
-    Cached statements retain whatever whitespace they were submitted with, so a filter
-    anchored at character one silently drops real DML. A leading wildcard is not the
-    answer either, because it matches a SELECT that merely quotes the keyword.
+    Statements keep the whitespace they were submitted with, and tools routinely prefix
+    DML with a comment, so a filter anchored at character one silently drops real DML.
+    A leading wildcard is not the answer either, because it matches a SELECT that merely
+    quotes the keyword.
     """
     filters = SaphanaLineageSource.filters
 
-    # Matching happens on the trimmed statement, not the raw one.
-    assert "LTRIM(UPPER(STATEMENT_STRING)" in filters
-    # Still anchored after trimming, so a quoted keyword mid-statement does not match.
+    # Leading comments and whitespace are stripped before the keyword is matched.
+    assert "REPLACE_REGEXPR" in filters
+    assert "LTRIM(" in filters
+    # Still anchored afterwards, so a quoted keyword mid-statement does not match.
     assert "LIKE 'INSERT INTO%SELECT%'" in filters
     assert "LIKE '%INSERT INTO" not in filters
 

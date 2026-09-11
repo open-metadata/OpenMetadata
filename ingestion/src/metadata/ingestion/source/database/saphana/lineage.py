@@ -25,6 +25,10 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -45,9 +49,13 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# The cached statement with leading whitespace removed, so a keyword match can stay
-# anchored to the start of the statement.
-_STATEMENT = "LTRIM(UPPER(STATEMENT_STRING), ' ' || CHAR(9) || CHAR(13) || CHAR(10))"
+# The cached statement with leading comments and whitespace removed, so a keyword match
+# can stay anchored to the start of the statement. Tools routinely prefix DML with a
+# comment, and the plan cache stores whatever whitespace it was submitted with.
+_STATEMENT = (
+    r"LTRIM(UPPER(REPLACE_REGEXPR('^(\s*(/\*.*?\*/|--[^\n]*\n))+' IN STATEMENT_STRING WITH '' OCCURRENCE ALL))"
+    r", ' ' || CHAR(9) || CHAR(13) || CHAR(10))"
+)
 
 
 class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
@@ -70,11 +78,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
     sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
 
-    # Matched against the trimmed statement, because cached statements keep the
-    # whitespace they were submitted with. Still anchored, since a leading wildcard
-    # also matches a SELECT that merely quotes the keyword.
-    #
-    # CREATE TABLE ... AS SELECT is missing by necessity: the plan cache holds no DDL.
+    # Anchored rather than wildcarded, so a SELECT that merely quotes the keyword does
+    # not match. CREATE TABLE ... AS SELECT is missing by necessity: no DDL is cached.
     filters = f"""
         AND (
             {_STATEMENT} LIKE 'INSERT INTO%SELECT%'
@@ -102,7 +107,9 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         sql_edges = 0
         sql_queries = 0
         for either in super()._iter():
-            if isinstance(either.right, AddLineageRequest):
+            # The shared passes wrap lineage rather than yielding AddLineageRequest
+            # directly, so all three shapes have to be counted.
+            if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest):
                 sql_edges += 1
             elif isinstance(either.right, CreateQueryRequest):
                 sql_queries += 1
@@ -128,15 +135,15 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
         if sql_queries:
             logger.warning(
-                "SAP HANA lineage finished with no edges, though %d queries were read. The queries were "
-                "found but neither endpoint resolved to an ingested asset, so check that the metadata "
-                "workflow covers the schemas those queries reference.",
+                "SAP HANA lineage finished with no edges, though %d query records were emitted. The "
+                "statements parsed but their endpoints did not resolve to ingested assets, so check that "
+                "the metadata workflow covers the schemas those statements reference.",
                 sql_queries,
             )
         else:
             logger.warning(
-                "SAP HANA lineage finished with no edges and read no queries. Check that the metadata "
-                "workflow has already ingested the tables and views, that processViewLineage or "
+                "SAP HANA lineage finished with no edges and emitted no query records. Check that the "
+                "metadata workflow has already ingested the tables and views, that processViewLineage or "
                 "processQueryLineage is enabled, and that the ingestion user holds CATALOG READ, without "
                 "which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own statements."
             )
@@ -151,12 +158,19 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         try:
             yield from super().yield_query_lineage()
         except Exception as exc:
-            logger.warning(
-                "SAP HANA query-history lineage failed, so no table-to-table edges were read. View "
-                "lineage is unaffected. Check that the ingestion user holds CATALOG READ. Cause: %s",
-                exc,
+            # Recorded on the workflow status, not just logged, so the run is not
+            # reported as a clean success that happened to produce nothing.
+            yield Either(
+                right=None,
+                left=StackTraceError(
+                    name="Query history lineage",
+                    error=(
+                        "Could not read query history from SYS.M_SQL_PLAN_CACHE, so no table-to-table "
+                        f"lineage was produced. Check that the ingestion user holds CATALOG READ: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                ),
             )
-            logger.debug(traceback.format_exc())
 
     def yield_cdata_lineage(self) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Lineage for calculation, analytic and attribute views, from _SYS_REPO.
