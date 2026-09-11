@@ -437,6 +437,45 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
     expect(json).not.toContain('"entityType"');
   });
 
+  // A table-type property is itself a struct (`testCpTable.rows.name`), so it
+  // looks exactly like an entity-type segment. Deciding from the key's shape
+  // read `testCpTable` as the entity and `rows` as the property, and the query
+  // matched nothing — a workflow filter reported 0 assets while the same
+  // filter found 1 on Explore.
+  it('should keep the whole path of a pinned table-type property', () => {
+    const tableConfig = {
+      ...BasicConfig,
+      fields: {
+        ...BasicConfig.fields,
+        extension: {
+          subfields: {
+            // a pinned builder stores each column flat, dots and all
+            'testCpTable.rows.name': { __omPropertyType: 'table-cp' },
+          },
+        },
+      },
+      settings: { ...BasicConfig.settings, omEntityType: 'table' },
+    };
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['anuj'], 'extension.testCpTable.rows.name'),
+        tableConfig
+      )
+    );
+
+    expect(json).toContain(
+      '"customPropertiesTyped.name":"testCpTable.rows.name"'
+    );
+    expect(json).toContain('"entityType":"table"');
+    expect(json).not.toContain('"customPropertiesTyped.name":"rows"');
+    expect(json).not.toContain('"entityType":"testCpTable"');
+    // A table column holds a string. A column named `name` ends with `.name`,
+    // so it was classified as an entity reference and the query asked for
+    // `refName`, which matched nothing.
+    expect(json).toContain('"customPropertiesTyped.stringValue":"anuj"');
+    expect(json).not.toContain('refName');
+  });
+
   it('should still read the entity-type segment when the config nests one', () => {
     const json = JSON.stringify(
       elasticSearchFormat(

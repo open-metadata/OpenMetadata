@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { SearchIndex } from '../../enums/search.enum';
 import advancedSearchClassBase from '../AdvancedSearchClassBase';
 import {
@@ -291,5 +292,85 @@ describe('buildExploreUrlParams – omitted filter', () => {
     expect(buildExploreUrlParams({ id: 'root' })).toEqual({
       queryFilter: JSON.stringify({ id: 'root' }),
     });
+  });
+});
+
+describe("getQueryBuilderExploreUrl – the builder's own tree", () => {
+  // A custom property is emitted as a nested `customPropertiesTyped` clause,
+  // which cannot be read back into a rule. Rebuilding the tree from the
+  // Elasticsearch filter therefore dropped the condition, and the link opened
+  // Explore showing only the entity-type clause — no way to see or edit what
+  // was actually filtered.
+  const config = {
+    ...advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE]),
+    settings: {
+      ...advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE]).settings,
+      omEntityType: 'table',
+    },
+    fields: {
+      ...advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE]).fields,
+      extension: {
+        label: 'Custom Properties',
+        type: '!group',
+        subfields: {
+          'testCp.rows.name': {
+            label: 'testCp - name',
+            type: 'text',
+            valueSources: ['value'],
+          },
+        },
+      },
+    },
+  } as never;
+
+  const builderTree = QbUtils.loadTree({
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND' },
+    children1: [
+      {
+        id: 'r1',
+        type: 'rule',
+        properties: {
+          field: 'extension.testCp.rows.name',
+          operator: 'equal',
+          value: ['anuj'],
+          valueSrc: ['value'],
+        },
+      },
+    ],
+  } as never);
+
+  // the nested clause the filter carries, which cannot be reversed
+  const nestedFilter = {
+    query: {
+      bool: {
+        must: [
+          {
+            nested: {
+              path: 'customPropertiesTyped',
+              query: { bool: { must: [] } },
+            },
+          },
+        ],
+      },
+    },
+  } as never;
+
+  it('should carry the custom-property condition into the Explore link', () => {
+    const url = decodeURIComponent(
+      getQueryBuilderExploreUrl(nestedFilter, config, builderTree)
+    );
+
+    // rewritten for Explore, which keys custom properties by entity type
+    expect(url).toContain('extension.table.testCp.rows.name');
+  });
+
+  it('should lose it when no tree is given, which is why one is', () => {
+    const url = decodeURIComponent(
+      getQueryBuilderExploreUrl(nestedFilter, config)
+    );
+
+    expect(url).not.toContain('testCp');
   });
 });

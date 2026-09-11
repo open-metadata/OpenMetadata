@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Config } from '@react-awesome-query-builder/ui';
+import type { Config, ImmutableTree } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
@@ -109,10 +109,11 @@ export const withExploreFieldKeys = (
 
 export const getQueryBuilderExploreUrl = (
   queryFilter: QueryFilterInterface,
-  config: Config
+  config: Config,
+  builderTree?: ImmutableTree
 ): string => {
   const tree = QbUtils.sanitizeTree(
-    QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilter)),
+    builderTree ?? QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilter)),
     config
   ).fixedTree;
   // Explore reads the tree, not the Elasticsearch filter, so the field keys

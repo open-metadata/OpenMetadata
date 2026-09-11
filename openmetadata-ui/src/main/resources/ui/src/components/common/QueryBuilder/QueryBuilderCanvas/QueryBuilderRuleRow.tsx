@@ -18,11 +18,16 @@ import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getQueryBuilderColumnRatios,
+  QUERY_BUILDER_CONTROL_HEIGHT,
   QUERY_BUILDER_FIELD_MIN_WIDTH,
   QUERY_BUILDER_FIELD_TEST_ID,
 } from './QueryBuilderCanvas.constants';
 import type { QueryBuilderRuleRowProps } from './QueryBuilderCanvas.types';
-import { configUtils, toFieldNodes } from './QueryBuilderCanvas.utils';
+import {
+  configUtils,
+  resolveSelectedField,
+  toFieldNodes,
+} from './QueryBuilderCanvas.utils';
 import QueryBuilderControl, { QueryBuilderCell } from './QueryBuilderControl';
 
 const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
@@ -130,7 +135,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
 
   return (
     <div
-      className="tw:flex tw:items-end tw:gap-4"
+      className="tw:flex tw:items-start tw:gap-4"
       data-testid={`query-builder-rule-${ruleIndexById[String(rule.id)] ?? 0}`}>
       <div
         className="tw:grid tw:min-w-0 tw:flex-1 tw:gap-3.5"
@@ -139,31 +144,29 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
             fieldControls.length
           ),
         }}>
-        {/* Every level carries the Field label, so a drilled control is named
-            wherever it lands — including the second line it wraps onto. They
-            wrap rather than squeeze every control past reading width: a
-            drilled rule in a narrow panel (an automation form, the
-            curated-assets widget) has three where Explore has room for one. */}
-        <div className="tw:flex tw:flex-wrap tw:items-end tw:gap-2">
-          {fieldControls.map((control) => (
-            <QueryBuilderCell
-              className={classNames(QUERY_BUILDER_FIELD_MIN_WIDTH, 'tw:flex-1')}
-              key={control.key}
-              label={t('label.field')}>
-              {config.settings.renderField?.({
-                ...(control.dataTestId
-                  ? { dataTestId: control.dataTestId }
-                  : {}),
-                items: control.items,
-                placeholder: t('label.field'),
-                readonly,
-                selectedKey: control.selectedKey ?? undefined,
-                setField: (key: string) =>
-                  actions.setField(control.path as never, key as never),
-              } as unknown as FieldProps)}
-            </QueryBuilderCell>
-          ))}
-        </div>
+        {/* Each level is a grid child of its own, so a row too narrow for all
+            of them wraps rather than overflowing. */}
+        {fieldControls.map((control) => (
+          <QueryBuilderCell
+            className={classNames({
+              [QUERY_BUILDER_FIELD_MIN_WIDTH]: fieldControls.length === 1,
+            })}
+            key={control.key}
+            label={t('label.field')}>
+            {config.settings.renderField?.({
+              ...(control.dataTestId ? { dataTestId: control.dataTestId } : {}),
+              items: control.items,
+              placeholder: t('label.field'),
+              readonly,
+              selectedKey: control.selectedKey ?? undefined,
+              setField: (key: string) =>
+                actions.setField(
+                  control.path as never,
+                  resolveSelectedField(config, key) as never
+                ),
+            } as unknown as FieldProps)}
+          </QueryBuilderCell>
+        ))}
 
         <QueryBuilderControl
           items={operatorItems}
@@ -208,15 +211,27 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       </div>
 
       {canRemoveRule && !readonly && (
-        <Button
-          aria-label={t('label.remove')}
-          className="tw:mb-2.5"
-          color="link-destructive"
-          data-testid={preset.testIds.delRule}
-          iconLeading={X}
-          size="sm"
-          onClick={() => actions.removeRule(path)}
-        />
+        /* The button removes the whole rule, so it stays on the row's first
+           line even when the row wraps; the spacer stands in for the label. */
+        <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <span aria-hidden className="tw:invisible tw:text-sm">
+            &nbsp;
+          </span>
+          <div
+            className={classNames(
+              'tw:flex tw:items-center',
+              QUERY_BUILDER_CONTROL_HEIGHT
+            )}>
+            <Button
+              aria-label={t('label.remove')}
+              color="link-destructive"
+              data-testid={preset.testIds.delRule}
+              iconLeading={X}
+              size="sm"
+              onClick={() => actions.removeRule(path)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

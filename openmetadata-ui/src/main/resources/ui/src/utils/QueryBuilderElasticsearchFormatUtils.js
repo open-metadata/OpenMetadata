@@ -412,21 +412,37 @@ function getFieldTypeInfo(propertyName) {
  * @returns {string|null} - The OM property type, or null
  * @private
  */
+/**
+ * A property's declared type, from whichever scope of the config holds it.
+ *
+ * Explore nests properties per entity type; a builder pinned to one type
+ * exposes them directly under `extension`. Both store the key flat, dots and
+ * all — a table-type property declares each column as
+ * `<property>.rows.<column>`. Picking a single scope by `entityType` returned
+ * no type for the pinned shape, and the path fallback then read a column's
+ * trailing `.name` as an entity reference: the query asked for `refName`
+ * instead of `stringValue` and matched nothing.
+ */
 function lookupOmPropertyType(config, entityType, propertyName) {
   const extensionGroup = config?.fields?.extension;
-  // Pinned builders expose properties directly under `extension`; Explore nests
-  // them one level deeper, per entity type.
-  const scope = entityType
-    ? extensionGroup?.subfields?.[entityType]?.subfields
-    : extensionGroup?.subfields;
+  const scopes = [
+    entityType ? extensionGroup?.subfields?.[entityType]?.subfields : null,
+    extensionGroup?.subfields,
+  ];
 
-  return (
-    scope?.[propertyName]?.__omPropertyType ??
+  for (const scope of scopes) {
     // The field key carries suffixes such as `.keyword` that the config key
     // does not.
-    scope?.[getBasePropertyName(propertyName)]?.__omPropertyType ??
-    null
-  );
+    const found =
+      scope?.[propertyName]?.__omPropertyType ??
+      scope?.[getBasePropertyName(propertyName)]?.__omPropertyType;
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -813,9 +829,17 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     // Deciding positionally read `testCp` as the entity type and `keyword` as
     // the property, so those builders matched nothing at all. Ask the config
     // instead: an entity-type segment is a group, a property is a leaf.
+    // `omEntityType` is set only for a builder pinned to one entity type, and
+    // that is exactly when its keys omit the entity-type segment — so it
+    // decides, and the key's shape is only a fallback. Shape alone cannot: a
+    // table-type property is itself a struct (`testCp.rows.name`), so "the
+    // segment has subfields, therefore it is an entity type" read `testCp` as
+    // the entity and `rows` as the property, and the query matched nothing.
+    const pinnedEntityType = config?.settings?.omEntityType ?? null;
     const extensionSubfields = config?.fields?.extension?.subfields;
     const segment = extensionSubfields?.[parts[1]];
     const hasEntityTypeSegment =
+      !pinnedEntityType &&
       parts.length >= 3 &&
       (segment ? Boolean(segment.subfields) : !extensionSubfields);
 
@@ -823,10 +847,7 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
       entityType = parts[1];
       extensionPropertyName = parts.slice(2).join('.');
     } else if (parts.length >= 2) {
-      // A pinned builder's key has no entity-type segment, so take the type the
-      // builder was configured with. Without it the nested query is not scoped
-      // to the selected entity at all.
-      entityType = config?.settings?.omEntityType ?? null;
+      entityType = pinnedEntityType;
       extensionPropertyName = parts.slice(1).join('.');
     }
 

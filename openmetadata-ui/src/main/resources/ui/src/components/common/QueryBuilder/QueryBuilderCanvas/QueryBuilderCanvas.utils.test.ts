@@ -14,7 +14,9 @@ import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
 import {
   countRules,
   getRuleRowModel,
+  getStructLevel,
   getSurfaceForDepth,
+  resolveSelectedField,
   toFieldNodes,
 } from './QueryBuilderCanvas.utils';
 
@@ -26,7 +28,7 @@ const FIELDS = {
     type: '!group',
     subfields: { tagFQN: { label: 'Tag' } },
   },
-  // a `!struct`: only groups its subfields
+  // a `!struct`: a level the row splits into its own control
   extension: {
     label: 'Custom Properties',
     type: '!struct',
@@ -46,11 +48,18 @@ describe('toFieldNodes', () => {
     expect(tags.items).toBeUndefined();
   });
 
-  it('should group a `!struct` around its subfields, as RAQB does', () => {
+  it('should keep a `!struct` selectable too, so the row can split it', () => {
+    // Nesting it here made `OMFieldSelect` flatten the parent away, which is
+    // why Custom Properties showed one entry per property instead of the two
+    // controls a `!group` gets. `getStructLevel` provides the level instead.
     const struct = toFieldNodes(FIELDS)[2];
 
-    expect(struct.path).toBe('extension');
-    expect(struct.items?.map((item) => item.path)).toEqual(['extension.size']);
+    expect(struct).toEqual({
+      key: 'extension',
+      label: 'Custom Properties',
+      path: 'extension',
+    });
+    expect(struct.items).toBeUndefined();
   });
 
   it('should not offer a field that groups nothing', () => {
@@ -76,16 +85,10 @@ describe('toFieldNodes', () => {
     ]);
   });
 
-  it('should not offer a struct whose subfields all drop out', () => {
+  it('should not offer a struct with no subfields at all', () => {
     expect(
       toFieldNodes({
-        outer: {
-          label: 'Outer',
-          subfields: {
-            inner: { label: 'Inner', subfields: {}, type: '!group' },
-          },
-          type: '!struct',
-        },
+        outer: { label: 'Outer', subfields: {}, type: '!struct' },
       })
     ).toEqual([]);
   });
@@ -305,5 +308,33 @@ describe('getRuleRowModel', () => {
 
     expect(model?.cells).toHaveLength(2);
     expect(model?.cells[1].fields).toEqual(CONFIG.fields.loneLeaf.subfields);
+  });
+});
+
+describe('struct levels', () => {
+  const config = { fields: FIELDS };
+
+  it('should split a struct-owned field into its level and its leaf', () => {
+    expect(getStructLevel(config, 'extension.size')).toEqual({
+      field: 'extension',
+      subfields: FIELDS.extension.subfields,
+    });
+  });
+
+  it('should not claim a field that owns no struct', () => {
+    expect(getStructLevel(config, 'tags.tagFQN')).toBeUndefined();
+    expect(getStructLevel(config, 'name')).toBeUndefined();
+    expect(getStructLevel(config, undefined)).toBeUndefined();
+  });
+
+  it('should land a struct choice on something inside it', () => {
+    // A struct is a level, not a field to filter on: setting the rule to one
+    // would leave it naming nothing RAQB can build a condition from.
+    expect(resolveSelectedField(config, 'extension')).toBe('extension.size');
+  });
+
+  it('should leave every other choice alone', () => {
+    expect(resolveSelectedField(config, 'tags')).toBe('tags');
+    expect(resolveSelectedField(config, 'name')).toBe('name');
   });
 });

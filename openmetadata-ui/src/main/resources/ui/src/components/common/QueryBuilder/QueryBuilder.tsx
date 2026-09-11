@@ -231,7 +231,11 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
         // One scoping pass feeds both: addEntityTypeFilter mutates in place,
         // so scoping twice would double the entity-type clause.
         const scopedFilter = getScopedQueryFilter(queryFilter, entityType);
-        nextExploreUrl = getQueryBuilderExploreUrl(scopedFilter, nextConfig);
+        nextExploreUrl = getQueryBuilderExploreUrl(
+          scopedFilter,
+          nextConfig,
+          nextTree
+        );
         setExploreUrl(nextExploreUrl);
 
         if (showCountPreview) {

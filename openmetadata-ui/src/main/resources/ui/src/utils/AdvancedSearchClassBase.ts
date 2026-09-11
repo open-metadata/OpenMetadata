@@ -1498,9 +1498,43 @@ class AdvancedSearchClassBase {
     }
   }
 
+  /**
+   * A table property as one `some` group over its rows. `rows` is an array, so
+   * a dotted column field resolves to nothing and matches no row. Elasticsearch
+   * indexes one entry per column instead, so it keeps the flat keys.
+   */
+  private buildTableCustomPropertyGroup(
+    field: CustomPropertySummary,
+    label: string,
+    columns: string[]
+  ): Array<{ subfieldsKey: string; dataObject: Field }> {
+    const subfields: Record<string, Field> = {};
+    columns.forEach((columnName) => {
+      subfields[columnName] = {
+        type: 'text',
+        label: columnName,
+        operators: TEXT_FIELD_OPERATORS,
+        valueSources: ['value'],
+      };
+    });
+
+    return [
+      {
+        subfieldsKey: `${field.name}.rows`,
+        dataObject: {
+          type: '!group',
+          mode: 'some',
+          label,
+          subfields,
+        } as Field,
+      },
+    ];
+  }
+
   private buildMultiValueCustomPropertySubFields(
     field: CustomPropertySummary,
-    label: string
+    label: string,
+    searchOutputType: SearchOutputType
   ): Array<{ subfieldsKey: string; dataObject: Field }> {
     switch (field.type) {
       case 'timeInterval':
@@ -1557,6 +1591,10 @@ class AdvancedSearchClassBase {
           return [];
         }
 
+        if (searchOutputType === SearchOutputType.JSONLogic) {
+          return this.buildTableCustomPropertyGroup(field, label, columns);
+        }
+
         return columns.map((columnName) => ({
           subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
@@ -1590,7 +1628,11 @@ class AdvancedSearchClassBase {
     }
 
     if (MULTI_VALUE_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
-      return this.buildMultiValueCustomPropertySubFields(field, label);
+      return this.buildMultiValueCustomPropertySubFields(
+        field,
+        label,
+        searchOutputType
+      );
     }
 
     return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);

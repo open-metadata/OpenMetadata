@@ -18,26 +18,17 @@
  */
 export const QUERY_BUILDER_COLUMN_RATIOS = '80fr 41fr 80fr';
 
-/** What each further drill level adds to the Field column's share. */
-const QUERY_BUILDER_DRILL_COLUMN_RATIO = 40;
+/** Narrowest a control in a drilled row may get before the row rewraps. */
+const QUERY_BUILDER_DRILL_CONTROL_MIN_WIDTH = 150;
 
 /**
- * Floor for the operator column once the Field column grows. Without it a
- * drilled rule in a narrow panel truncates the operator to `Operato`.
- */
-const QUERY_BUILDER_OPERATOR_MIN_WIDTH = 120;
-
-/**
- * The row's columns for a rule showing `fieldCells` Field controls. Figma
- * only draws the single-field case; a drilled rule would otherwise split that
- * one column three ways and truncate every label, so the Field column grows
- * with the levels and the value column gives up the room.
+ * The row's columns for a rule showing `fieldCells` Field controls. Figma draws
+ * only the single-field case; holding its proportions once a level joins the
+ * row pushed the value past the panel's edge, so a drilled row is sized to wrap.
  */
 export const getQueryBuilderColumnRatios = (fieldCells: number): string =>
   fieldCells > 1
-    ? `${
-        80 + QUERY_BUILDER_DRILL_COLUMN_RATIO * (fieldCells - 1)
-      }fr minmax(${QUERY_BUILDER_OPERATOR_MIN_WIDTH}px, 41fr) 80fr`
+    ? `repeat(auto-fit, minmax(${QUERY_BUILDER_DRILL_CONTROL_MIN_WIDTH}px, 1fr))`
     : QUERY_BUILDER_COLUMN_RATIOS;
 
 /**
@@ -47,8 +38,8 @@ export const getQueryBuilderColumnRatios = (fieldCells: number): string =>
  */
 export const QUERY_BUILDER_FIELD_TEST_ID = 'advanced-search-field-select';
 
-/**
- * Narrowest a Field control may get before its level wraps to the next line.
- * Below this the entity and property names read as ellipses.
- */
+/** Narrowest a lone Field control may get before its name reads as ellipses. */
 export const QUERY_BUILDER_FIELD_MIN_WIDTH = 'tw:min-w-[140px]';
+
+/** Control height, so the delete button sits level with the row's first line. */
+export const QUERY_BUILDER_CONTROL_HEIGHT = 'tw:h-10';

@@ -12,7 +12,13 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { JsonTree } from '@react-awesome-query-builder/ui';
+import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
+import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
+import { buildQueryBuilderConfig } from '../../../utils/queryBuilder/config';
+import { formatQuery } from '../../../utils/queryBuilder/formatters';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilder from './QueryBuilder';
 
@@ -499,5 +505,234 @@ describe('QueryBuilder – defaults', () => {
     expect(
       screen.queryByTestId('view-assets-banner-button')
     ).not.toBeInTheDocument();
+  });
+});
+
+// Serialises to a `nested` query over `customPropertiesTyped`, the one shape
+// the filter could write but not read back.
+describe('QueryBuilder – a saved custom-property filter', () => {
+  const fields = {
+    ...(advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE] as never, {})
+      .fields as object),
+    extension: {
+      label: 'label.custom-property-plural',
+      type: '!group',
+      subfields: {
+        'strCP.keyword': {
+          type: 'text',
+          label: 'strCP',
+          operators: ['equal', 'not_equal', 'like', 'not_like'],
+          valueSources: ['value'],
+        },
+      },
+    },
+  } as never;
+
+  const savedFilter = JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  nested: {
+                    path: 'customPropertiesTyped',
+                    ignore_unmapped: true,
+                    query: {
+                      bool: {
+                        must: [
+                          { term: { 'customPropertiesTyped.name': 'strCP' } },
+                          {
+                            term: {
+                              'customPropertiesTyped.stringValue': 'anuj',
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+                { term: { entityType: 'table' } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  it('should reload it into the same controls the user built it with', () => {
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        fields={fields}
+        groupMode="flat"
+        outputType={SearchOutputType.ElasticSearch}
+        value={savedFilter}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(
+      Array.from(document.querySelectorAll('input')).map((input) => input.value)
+    ).toEqual(['label.custom-property-plural', 'strCP', 'label.is', 'anuj']);
+  });
+});
+
+// `extension` is a `!struct` here and a `!group` in Elasticsearch; both must
+// render the same drill without changing the rule JSONLogic stores.
+describe('QueryBuilder – a custom property in a JSONLogic builder', () => {
+  const fields = {
+    ...(jsonLogicSearchClassBase.getQbConfigs([SearchIndex.TABLE] as never, {})
+      .fields as object),
+    extension: {
+      label: 'label.custom-property-plural',
+      type: '!struct',
+      subfields: {
+        'otherCP.keyword': {
+          type: 'text',
+          label: 'otherCP',
+          operators: ['equal', 'not_equal'],
+          valueSources: ['value'],
+        },
+        'strCP.keyword': {
+          type: 'text',
+          label: 'strCP',
+          operators: ['equal', 'not_equal'],
+          valueSources: ['value'],
+        },
+      },
+    },
+  } as never;
+
+  const savedRule =
+    '{"and":[{"==":[{"var":"extension.strCP.keyword"},"anuj"]}]}';
+
+  it('should offer the property in two steps, as the Elasticsearch builders do', () => {
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        fields={fields}
+        groupMode="flat"
+        outputType={SearchOutputType.JSONLogic}
+        value={savedRule}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getAllByTestId(/advanced-search-field-select/)).toHaveLength(
+      2
+    );
+    expect(
+      Array.from(document.querySelectorAll('input')).map((input) => input.value)
+    ).toEqual(['label.custom-property-plural', 'strCP', 'label.is', 'anuj']);
+  });
+
+  it('should keep both levels on the row that deletes them', () => {
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        fields={fields}
+        groupMode="flat"
+        outputType={SearchOutputType.JSONLogic}
+        value={savedRule}
+        onChange={jest.fn()}
+      />
+    );
+
+    // A wrapping level used to take the delete button onto the second line.
+    expect(screen.getByTestId('query-builder-rule-0').innerHTML).not.toContain(
+      'flex-wrap'
+    );
+  });
+
+  it('should store the rule exactly as it did before', () => {
+    const config = buildQueryBuilderConfig({
+      outputType: SearchOutputType.JSONLogic,
+      searchIndex: SearchIndex.TABLE,
+      entityType: EntityType.TABLE,
+      groupMode: 'flat',
+      fields,
+    });
+
+    const tree = QbUtils.checkTree(
+      QbUtils.loadTree({
+        id: 'aaaaaaaa-1111-4111-8111-111111111111',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          'cccccccc-3333-4333-8333-333333333333': {
+            type: 'rule',
+            properties: {
+              field: 'extension.strCP.keyword',
+              operator: 'equal',
+              value: ['anuj'],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      } as never),
+      config
+    );
+
+    expect(formatQuery(tree, config, SearchOutputType.JSONLogic).value).toBe(
+      savedRule
+    );
+  });
+});
+
+// Asked about with `some` over its rows, so the row carries three levels.
+describe('QueryBuilder – a table custom property', () => {
+  const column = {
+    operators: ['equal', 'not_equal'],
+    type: 'text',
+    valueSources: ['value'],
+  };
+
+  const fields = {
+    ...(jsonLogicSearchClassBase.getQbConfigs([SearchIndex.TABLE] as never, {})
+      .fields as object),
+    extension: {
+      label: 'label.custom-property-plural',
+      type: '!struct',
+      subfields: {
+        'testCPTable.rows': {
+          label: 'testCPTable',
+          mode: 'some',
+          subfields: {
+            id: { ...column, label: 'id' },
+            name: { ...column, label: 'name' },
+          },
+          type: '!group',
+        },
+      },
+    },
+  } as never;
+
+  it('should name every level and keep them on the row that deletes them', () => {
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        fields={fields}
+        groupMode="flat"
+        outputType={SearchOutputType.JSONLogic}
+        value='{"and":[{"some":[{"var":"extension.testCPTable.rows"},{"==":[{"var":"name"},"karan"]}]}]}'
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getAllByTestId(/advanced-search-field-select/)).toHaveLength(
+      3
+    );
+    expect(
+      Array.from(document.querySelectorAll('input')).map((input) => input.value)
+    ).toEqual([
+      'label.custom-property-plural',
+      'testCPTable',
+      'name',
+      'label.is',
+      'karan',
+    ]);
   });
 });

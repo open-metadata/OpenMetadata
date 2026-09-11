@@ -20,15 +20,19 @@ describe('getQueryBuilderColumnRatios', () => {
     expect(getQueryBuilderColumnRatios(1)).toBe(QUERY_BUILDER_COLUMN_RATIOS);
   });
 
-  it('should widen the Field column once a rule drills', () => {
-    // Splitting the one column three ways truncates every label, so the
-    // column grows per level and the value column gives up the room.
-    expect(getQueryBuilderColumnRatios(2)).toContain('120fr');
-    expect(getQueryBuilderColumnRatios(3)).toContain('160fr');
+  it('should size a drilled rule by the controls it has to fit', () => {
+    // Holding the drawn proportions pushed the value past the panel's edge
+    // once a level joined the row; sized columns let it wrap instead.
+    expect(getQueryBuilderColumnRatios(2)).toBe(
+      'repeat(auto-fit, minmax(150px, 1fr))'
+    );
+    expect(getQueryBuilderColumnRatios(3)).toBe(
+      'repeat(auto-fit, minmax(150px, 1fr))'
+    );
   });
 
-  it('should floor the operator column so it cannot be squeezed to nothing', () => {
-    // Without the floor a drilled rule in a narrow panel renders `Operato`.
-    expect(getQueryBuilderColumnRatios(3)).toContain('minmax(120px, 41fr)');
+  it('should keep a floor under every control so none is squeezed to nothing', () => {
+    // Without it a drilled rule in a narrow panel renders `Operato`.
+    expect(getQueryBuilderColumnRatios(3)).toContain('150px');
   });
 });
