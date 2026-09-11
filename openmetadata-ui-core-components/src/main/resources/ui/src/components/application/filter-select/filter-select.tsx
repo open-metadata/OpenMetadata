@@ -217,10 +217,12 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  testId,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  testId: string;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
@@ -235,6 +237,7 @@ const OptionRow = ({
       className={(state) =>
         state.isSelected && !state.isFocused ? 'tw:[&>div]:bg-transparent!' : ''
       }
+      data-testid={testId}
       icon={iconComponent}
       id={option.value}
       showCheckbox={showCheckbox}
@@ -507,12 +510,14 @@ export const FilterSelect = ({
       )}
       <Dropdown.Popover
         className={cx('tw:w-80', popoverClassName)}
+        data-testid="drop-down-menu"
         placement="bottom left"
         triggerRef={isChips ? chipsFieldRef : undefined}>
         {searchable && (
           <div className="tw:p-2" ref={searchWrapperRef}>
             <Input
               icon={SearchInputIcon}
+              inputDataTestId="search-input"
               placeholder={t('label.search')}
               size="sm"
               value={query}
@@ -569,6 +574,7 @@ export const FilterSelect = ({
                 hideCounts={hideCounts}
                 option={displayedNullOption}
                 showCheckbox={isMulti}
+                testId={isMulti ? 'no-option-checkbox' : 'no-option-radio'}
               />
             )}
             {displayedOptions.map((option) => (
@@ -577,6 +583,7 @@ export const FilterSelect = ({
                 key={option.value}
                 option={option}
                 showCheckbox={isMulti}
+                testId={`${option.value}-checkbox`}
               />
             ))}
           </Dropdown.Menu>
@@ -601,14 +608,14 @@ export const FilterSelect = ({
             <div className="tw:flex tw:items-center tw:gap-2">
               <Button
                 color="secondary"
-                data-testid="cancel-filter-btn"
+                data-testid="close-btn"
                 size="sm"
                 onPress={() => handleOpenChange(false)}>
                 {t('label.cancel')}
               </Button>
               <Button
                 color="primary"
-                data-testid="apply-filter-btn"
+                data-testid="update-btn"
                 size="sm"
                 onPress={handleApply}>
                 {staged.length > 0
