@@ -87,19 +87,19 @@ describe('useTestCaseFilterOptions', () => {
     });
     const { result } = renderHook(() => useTestCaseFilterOptions());
 
-    act(() => {
+    // `await act` rather than a bare `act`: the fetcher is async, so the state update lands in a
+    // later microtask. Without flushing it here the assertion below races the re-render and the
+    // test passes or fails depending on what ran before it.
+    await act(async () => {
       result.current.getInitialOptions(TEST_CASE_FILTERS.dimension);
     });
 
-    await waitFor(() => {
-      expect(getDataQualityDimensions).toHaveBeenCalledWith({ limit: 1000 });
-    });
-
-    await waitFor(() => {
-      expect(result.current.dimensionOptions.map(({ value }) => value)).toEqual(
-        ['NoDimension', 'BCBS 239', 'Completeness']
-      );
-    });
+    expect(getDataQualityDimensions).toHaveBeenCalledWith({ limit: 1000 });
+    expect(result.current.dimensionOptions.map(({ value }) => value)).toEqual([
+      'NoDimension',
+      'BCBS 239',
+      'Completeness',
+    ]);
   });
 
   it('should dispatch the tier fetcher through getTags when getInitialOptions is called with the tier key', () => {
@@ -260,6 +260,9 @@ describe('useTestCaseFilterOptions', () => {
         TEST_CASE_FILTERS.tier,
         TEST_CASE_FILTERS.service,
         TEST_CASE_FILTERS.dataProduct,
+        // Dimensions are fetched from Settings > Preferences > Data Quality now, so the
+        // dimension filter is async like the rest rather than a hard-coded option list.
+        TEST_CASE_FILTERS.dimension,
       ].sort((a, b) => a.localeCompare(b))
     );
     expect(result.current.asyncOptionsByKey[TEST_CASE_FILTERS.tier]).toEqual(
