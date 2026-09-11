@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnAggregator;
+import org.openmetadata.service.search.ColumnGridIndexConfigs;
 import org.openmetadata.service.search.ColumnMetadataGrouper;
 import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
 
@@ -63,23 +64,13 @@ import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
 public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private final ElasticsearchClient client;
 
-  /** Index configuration with field mappings for each entity type. Uses aliases defined in indexMapping.json */
-  private static final Map<String, IndexConfig> INDEX_CONFIGS =
-      Map.of(
-          "table",
-          new IndexConfig("table", "columns", "columns.name.keyword"),
-          "dashboardDataModel",
-          new IndexConfig("dashboardDataModel", "columns", "columns.name.keyword"),
-          "topic",
-          new IndexConfig(
-              "topic", "messageSchema.schemaFields", "messageSchema.schemaFields.name.keyword"),
-          "searchIndex",
-          new IndexConfig("searchIndex", "fields", "fields.name.keyword"),
-          "container",
-          new IndexConfig("container", "dataModel.columns", "dataModel.columns.name.keyword"));
-
-  /** Simple record to hold index configuration */
-  private record IndexConfig(String indexName, String columnFieldPath, String columnNameKeyword) {}
+  /**
+   * Index configuration per entity type, derived from the child-field registry and shared with the
+   * OpenSearch aggregator so the two engines cannot drift apart. Uses aliases defined in
+   * indexMapping.json.
+   */
+  private static final Map<String, ColumnGridIndexConfigs.IndexConfig> INDEX_CONFIGS =
+      ColumnGridIndexConfigs.load();
 
   public ElasticSearchColumnAggregator(ElasticsearchClient client) {
     this.client = client;
@@ -605,18 +596,14 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   /** Get entity types to query - defaults to table only for performance */
   private List<String> getEntityTypesForRequest(ColumnAggregationRequest request) {
-    if (request.getEntityTypes() == null || request.getEntityTypes().isEmpty()) {
-      // Default to tables only for better performance on initial load
-      return List.of("table");
-    }
-    return request.getEntityTypes().stream().filter(INDEX_CONFIGS::containsKey).toList();
+    return ColumnGridIndexConfigs.resolveEntityTypes(request.getEntityTypes());
   }
 
   /** Group entity types by their column field path to minimize queries */
   private Map<String, List<String>> groupByFieldPath(List<String> entityTypes) {
     Map<String, List<String>> result = new HashMap<>();
     for (String entityType : entityTypes) {
-      IndexConfig config = INDEX_CONFIGS.get(entityType);
+      ColumnGridIndexConfigs.IndexConfig config = INDEX_CONFIGS.get(entityType);
       if (config != null) {
         result.computeIfAbsent(config.columnNameKeyword(), k -> new ArrayList<>()).add(entityType);
       }
