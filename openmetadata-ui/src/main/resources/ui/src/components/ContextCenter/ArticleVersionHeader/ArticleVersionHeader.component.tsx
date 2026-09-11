@@ -14,8 +14,10 @@
 import { Card, PageLayout, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 
@@ -28,7 +30,9 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+  const isAiMode = useIsAiMode();
+  const { breadcrumbInsideCard, isEmbedded } =
+    getContextCenterHeaderPresentation(isAiMode);
 
   const breadcrumbItems = [
     contextCenterClassBase.getContextCenterRootBreadcrumb(t),
@@ -53,8 +57,6 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
       </div>
     );
   }
-
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
 
   const breadcrumbEl = (
     <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />

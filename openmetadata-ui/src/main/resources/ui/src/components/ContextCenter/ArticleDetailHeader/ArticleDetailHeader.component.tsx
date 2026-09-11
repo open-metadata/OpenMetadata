@@ -59,6 +59,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
@@ -69,6 +70,7 @@ import {
 import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
@@ -115,7 +117,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+  const isAiMode = useIsAiMode();
+  const { breadcrumbInsideCard, isEmbedded } =
+    getContextCenterHeaderPresentation(isAiMode);
 
   // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
   // ContextCenterArticlesPage, out of this batch's scope). Ungated: `knowledgePage?.deleted`
@@ -696,8 +700,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       t,
     ]
   );
-
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
 
   const breadcrumbEl = (
     <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />

@@ -224,6 +224,14 @@ describe('TestSuiteDetail', () => {
     );
   });
 
+  it('should align the detail header card with the inset tab content', () => {
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('test-suite-header-container')).toHaveClass(
+      'tw:mx-4'
+    );
+  });
+
   it('should render the pipeline tab body when the pipeline tab is active', () => {
     mockUseTestSuiteDetailsPage.mockReturnValue({
       ...baseHookReturn,

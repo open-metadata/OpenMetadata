@@ -16,7 +16,9 @@ import { Plus, SearchMd } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
@@ -34,8 +36,9 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   onSearch,
 }) => {
   const { t } = useTranslation();
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+  const isAiMode = useIsAiMode();
+  const { breadcrumbInsideCard, isEmbedded } =
+    getContextCenterHeaderPresentation(isAiMode);
 
   const resolvedBreadcrumbs = [
     contextCenterClassBase.getContextCenterRootBreadcrumb(t),
