@@ -5650,14 +5650,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseConfigurationCard/TestCaseConfigurationCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
+        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts"
       ]
     },
     {
