@@ -15,6 +15,7 @@ import { buildSync } from 'esbuild';
 import { resolve } from 'path';
 import { chooseSelectOption } from '../utils/common';
 import { removeTier } from '../utils/entity';
+import { confirmPortRemoval } from '../utils/inputOutputPorts';
 import { openMatchingFieldsPanel } from '../utils/searchSettingUtils';
 
 const bundle = buildSync({
@@ -24,12 +25,16 @@ const bundle = buildSync({
       import Collapse from 'rc-collapse';
       import { Button, Popover, Typography } from 'antd';
       import { Select, PaginationCardWithControls } from '@openmetadata/ui-core-components';
+      import ConfirmationModal from './src/components/Modals/ConfirmationModal/ConfirmationModal';
       function App() {
         const [strategy, setStrategy] = useState('COUNT');
         const [pageSize, setPageSize] = useState(25);
         const [tier, setTier] = useState('Tier4');
         const [tierOpen, setTierOpen] = useState(false);
         const [tierClickOpacity, setTierClickOpacity] = useState('');
+        const [removeOpen, setRemoveOpen] = useState(false);
+        const [portPresent, setPortPresent] = useState(true);
+        const [removeClickOpacity, setRemoveClickOpacity] = useState('');
         return <>
           <Collapse accordion prefixCls="ant-collapse" defaultActiveKey="ranking">
             <Collapse.Panel header="Ranking Details" key="ranking">Ranking configuration</Collapse.Panel>
@@ -58,6 +63,15 @@ const bundle = buildSync({
             }}>Clear</Typography.Text>}>
             <Button data-testid="edit-tier">Edit Tier</Button>
           </Popover>
+          {portPresent && <Button onClick={() => setRemoveOpen(true)}>Remove output port</Button>}
+          <output data-testid="remove-click-opacity">{removeClickOpacity}</output>
+          <ConfirmationModal visible={removeOpen} header="Remove Port" bodyText="Remove the selected output port?"
+            confirmText="Remove" cancelText="Cancel" onCancel={() => setRemoveOpen(false)}
+            onConfirm={async () => {
+              setRemoveClickOpacity(getComputedStyle(document.querySelector('.ant-modal')).opacity);
+              const response = await fetch('/api/v1/dataProducts/fixture/outputPorts/remove', {method:'PUT'});
+              if (response.ok) { setPortPresent(false); setRemoveOpen(false); }
+            }} />
         </>;
       }
       createRoot(document.getElementById('root')).render(<App />);`,
@@ -73,6 +87,31 @@ const bundle = buildSync({
   },
   define: { 'process.env.NODE_ENV': '"production"' },
 }).outputFiles[0].text;
+
+test('port removal waits for the confirmation dialog to finish opening', async ({
+  page,
+}) => {
+  let removals = 0;
+  await page.route(
+    'http://forms.test/api/v1/dataProducts/fixture/outputPorts/remove',
+    async (route) => {
+      removals++;
+      await route.fulfill({ json: {} });
+    }
+  );
+  await page.addStyleTag({
+    content:
+      '.ant-zoom-appear, .ant-zoom-enter { animation-delay: 400ms !important; }',
+  });
+  await page.getByRole('button', { name: 'Remove output port' }).click();
+  await confirmPortRemoval(page, 'fixture', 'output');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(
+    page.getByRole('button', { name: 'Remove output port' })
+  ).toBeHidden();
+  await expect(page.getByTestId('remove-click-opacity')).toHaveText('1');
+  expect(removals).toBe(1);
+});
 
 test.beforeEach(async ({ page }) => {
   await page.route('http://forms.test/**', (route) =>

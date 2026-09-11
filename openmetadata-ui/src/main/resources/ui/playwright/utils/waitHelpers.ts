@@ -17,7 +17,9 @@ export const waitForAntOverlayToOpen = async (overlay: Locator) => {
   await expect(overlay).toBeVisible();
   // Ant's invisible enter-start frame has a stable box, so click auto-waiting
   // can finish before the zoom motion starts changing the target's position.
-  await expect(overlay).not.toHaveClass(/\bant-zoom-big(?:-|\b)/);
+  await expect(overlay).not.toHaveClass(
+    /\bant-zoom(?:-big)?-(?:appear|enter|leave)(?:-|\b)/
+  );
   await expect(overlay).toHaveCSS('opacity', '1');
 };
 

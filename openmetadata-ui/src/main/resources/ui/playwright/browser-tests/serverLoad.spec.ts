@@ -187,3 +187,65 @@ test('boot config HTTP failures stay visible and are not cached', async ({
     );
   }
 });
+
+test('a reset boot connection fails in the browser without retrying or caching it', async ({
+  page,
+}) => {
+  let reads = 0;
+  let healthy = false;
+  const server = createServer((request, response) => {
+    if (request.url !== configPath) {
+      response.end('<html></html>');
+
+      return;
+    }
+
+    reads++;
+    if (!healthy) {
+      request.socket.destroy();
+
+      return;
+    }
+
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({ version: 1 }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    await installServerLoadReducers(page.context());
+    await page.goto(
+      `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+      { waitUntil: 'domcontentloaded' }
+    );
+    const failedRequest = page.waitForEvent('requestfailed', {
+      predicate: (request) => new URL(request.url()).pathname === configPath,
+    });
+    const failure = await page.evaluate(async (url) => {
+      try {
+        await fetch(url);
+
+        return 'resolved';
+      } catch (error) {
+        return error instanceof Error ? error.name : String(error);
+      }
+    }, configPath);
+
+    expect(failure).toBe('TypeError');
+    expect((await failedRequest).failure()?.errorText).toBe(
+      'net::ERR_CONNECTION_RESET'
+    );
+    expect(reads).toBe(1);
+
+    healthy = true;
+    const read = () =>
+      page.evaluate(async (url) => (await fetch(url)).json(), configPath);
+    expect(await read()).toEqual({ version: 1 });
+    expect(await read()).toEqual({ version: 1 });
+    expect(reads).toBe(2);
+  } finally {
+    await page.close();
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve()))
+    );
+  }
+});

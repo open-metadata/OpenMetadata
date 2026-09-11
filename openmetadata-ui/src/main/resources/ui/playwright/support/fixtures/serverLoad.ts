@@ -233,6 +233,27 @@ const replayableHeaders = (headers: Record<string, string>) =>
     )
   );
 
+const fetchRouteResponse = async (route: Route) => {
+  try {
+    return await route.fetch();
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/^route\.fetch: (?:socket hang up|(?:read )?ECONNRESET)\b/.test(
+        error.message
+      )
+    ) {
+      throw error;
+    }
+
+    // route.fetch uses a separate HTTP client. Preserve a reset as a failed
+    // browser request instead of an unhandled fixture exception or a retry.
+    await route.abort('connectionreset');
+
+    return undefined;
+  }
+};
+
 const serveBootConfig = async (route: Route) => {
   const request = route.request();
 
@@ -261,7 +282,12 @@ const serveBootConfig = async (route: Route) => {
   }
 
   const generation = writeGeneration;
-  const response = await route.fetch();
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const payload: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -315,7 +341,12 @@ const serveStaticAsset = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const entry: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),

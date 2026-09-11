@@ -140,7 +140,7 @@ export class DataProduct extends EntityClass {
     return this.domains;
   }
 
-  private getFqn() {
+  getFqn() {
     return this.data?.fullyQualifiedName ?? this.data.name;
   }
 

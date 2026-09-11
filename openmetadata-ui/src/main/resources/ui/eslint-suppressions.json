@@ -387,7 +387,7 @@
   },
   "playwright/e2e/Features/QueryEntity.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Features/RTL.spec.ts": {

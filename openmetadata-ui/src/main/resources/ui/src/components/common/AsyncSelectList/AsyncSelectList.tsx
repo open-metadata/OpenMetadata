@@ -186,7 +186,6 @@ const AsyncSelectList: FC<
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
-            disabled={isEmpty(tagOptions)}
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
