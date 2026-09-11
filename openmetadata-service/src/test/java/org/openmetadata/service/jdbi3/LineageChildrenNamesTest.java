@@ -12,10 +12,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
@@ -28,15 +31,19 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.SearchIndexField;
+import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.ChildFieldResolver;
 
 /**
- * Characterization tests pinning LineageRepository.getChildrenNames per entity type against the
- * pre-consolidation implementation. These assertions describe what the code does today, including
- * the gaps: the METRIC and PIPELINE arms return empty on purpose here, and Task 11 changes the
- * PIPELINE expectation in the commit that gives pipelines child coverage.
+ * Tests for LineageRepository.getChildrenNames per entity type.
+ *
+ * <p>Written as characterization pins against the pre-consolidation switch, then carried across the
+ * migration to the registry unchanged, which is what proves the migration preserved behavior. Two
+ * exceptions, both deliberate: pipelines now return task names rather than empty (the registry gives
+ * them child coverage), and metric still returns empty because it is not a registry type.
  */
 class LineageChildrenNamesTest {
 
@@ -69,21 +76,48 @@ class LineageChildrenNamesTest {
     return new EntityReference().withType(type).withId(UUID.randomUUID());
   }
 
+  static Table tableFixture() {
+    return new Table()
+        .withFullyQualifiedName("svc.db.sch.tbl")
+        .withColumns(
+            List.of(
+                new Column()
+                    .withName("profile")
+                    .withFullyQualifiedName("svc.db.sch.tbl.profile")
+                    .withChildren(
+                        List.of(
+                            new Column()
+                                .withName("full_name")
+                                .withFullyQualifiedName("svc.db.sch.tbl.profile.full_name")))));
+  }
+
+  static Topic topicFixture() {
+    return new Topic()
+        .withFullyQualifiedName("svc.topic")
+        .withMessageSchema(
+            new MessageSchema()
+                .withSchemaFields(
+                    List.of(
+                        new Field()
+                            .withName("customer")
+                            .withFullyQualifiedName("svc.topic.customer")
+                            .withChildren(
+                                List.of(
+                                    new Field()
+                                        .withName("id")
+                                        .withFullyQualifiedName("svc.topic.customer.id"))))));
+  }
+
+  static MlModel mlModelFixture() {
+    return new MlModel()
+        .withFullyQualifiedName("svc.model")
+        .withMlFeatures(
+            List.of(new MlFeature().withName("age").withFullyQualifiedName("svc.model.age")));
+  }
+
   @Test
   void table_columnsWithStructChildren() throws Exception {
-    Table table =
-        new Table()
-            .withFullyQualifiedName("svc.db.sch.tbl")
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName("profile")
-                        .withFullyQualifiedName("svc.db.sch.tbl.profile")
-                        .withChildren(
-                            List.of(
-                                new Column()
-                                    .withName("full_name")
-                                    .withFullyQualifiedName("svc.db.sch.tbl.profile.full_name")))));
+    Table table = tableFixture();
     EntityReference reference = ref(Entity.TABLE);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
       mocked
@@ -98,21 +132,7 @@ class LineageChildrenNamesTest {
 
   @Test
   void topic_nestedSchemaFields() throws Exception {
-    Topic topic =
-        new Topic()
-            .withFullyQualifiedName("svc.topic")
-            .withMessageSchema(
-                new MessageSchema()
-                    .withSchemaFields(
-                        List.of(
-                            new Field()
-                                .withName("customer")
-                                .withFullyQualifiedName("svc.topic.customer")
-                                .withChildren(
-                                    List.of(
-                                        new Field()
-                                            .withName("id")
-                                            .withFullyQualifiedName("svc.topic.customer.id"))))));
+    Topic topic = topicFixture();
     EntityReference reference = ref(Entity.TOPIC);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
       mocked
@@ -252,11 +272,7 @@ class LineageChildrenNamesTest {
 
   @Test
   void mlmodel_featureNames() throws Exception {
-    MlModel model =
-        new MlModel()
-            .withFullyQualifiedName("svc.model")
-            .withMlFeatures(
-                List.of(new MlFeature().withName("age").withFullyQualifiedName("svc.model.age")));
+    MlModel model = mlModelFixture();
     EntityReference reference = ref(Entity.MLMODEL);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
       mocked
@@ -270,13 +286,53 @@ class LineageChildrenNamesTest {
   }
 
   @Test
-  void pipeline_currentlyUnsupported_returnsEmpty() throws Exception {
-    // Pins today's gap: the PIPELINE arm logs and returns empty. Task 11 deliberately changes
-    // this to return task names (child coverage everywhere is the feature); the change happens
-    // in that commit only. The MockedStatic is still required even though no getEntity stub is
-    // needed: without it the static initializer blows up (see step 0).
-    try (MockedStatic<Entity> ignored = mockedEntity()) {
-      assertEquals(Set.of(), invokeGetChildrenNames(ref(Entity.PIPELINE)));
+  void parity_registryChildrenMatchOldSwitch_tableTopicMlmodel() throws Exception {
+    record Case(String type, EntityInterface entity) {}
+    List<Case> cases =
+        List.of(
+            new Case(Entity.TABLE, tableFixture()),
+            new Case(Entity.TOPIC, topicFixture()),
+            new Case(Entity.MLMODEL, mlModelFixture()));
+    for (Case testCase : cases) {
+      EntityReference reference = ref(testCase.type());
+      Set<String> oldResult;
+      try (MockedStatic<Entity> mocked = mockedEntity()) {
+        mocked
+            .when(
+                () ->
+                    Entity.getEntity(
+                        eq(testCase.type()), any(UUID.class), anyString(), any(Include.class)))
+            .thenReturn(testCase.entity());
+        oldResult = invokeGetChildrenNames(reference);
+      }
+      Set<String> viaRegistry =
+          CommonUtil.getChildrenNames(
+              ChildFieldResolver.childrenOf(testCase.entity(), testCase.type()),
+              "getChildren",
+              testCase.entity().getFullyQualifiedName());
+      assertEquals(oldResult, viaRegistry, "parity failed for " + testCase.type());
+    }
+  }
+
+  @Test
+  void pipeline_taskNamesNowSupportedViaRegistry() throws Exception {
+    // Was pipeline_currentlyUnsupported_returnsEmpty, which pinned the old gap. Pipelines are in
+    // the registry now, so their task names surface like any other child collection. That is the
+    // feature, and the assertion was flipped in the commit that caused it.
+    Pipeline pipeline =
+        new Pipeline()
+            .withFullyQualifiedName("svc.pipe")
+            .withTasks(
+                List.of(new Task().withName("extract").withFullyQualifiedName("svc.pipe.extract")));
+    EntityReference reference = ref(Entity.PIPELINE);
+    try (MockedStatic<Entity> mocked = mockedEntity()) {
+      mocked
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.PIPELINE), any(UUID.class), anyString(), any(Include.class)))
+          .thenReturn(pipeline);
+      assertEquals(Set.of("extract"), invokeGetChildrenNames(reference));
     }
   }
 
