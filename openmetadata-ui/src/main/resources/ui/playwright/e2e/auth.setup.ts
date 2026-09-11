@@ -94,7 +94,11 @@ const ownerUser = new UserClass({
 });
 
 setup('authenticate all users', async ({ browser }) => {
-  setup.setTimeout(120 * 1000);
+  // With PW_PRESEEDED_STATE this project has no dependents, so it is scheduled
+  // alongside the shard's own specs and competes with them for workers. Eight
+  // user creations, nine logins and the security-config round trip below do not
+  // fit the old 2-minute budget under that contention.
+  setup.setTimeout(180 * 1000);
   // Create separate pages for each user
   const [
     adminPage,
