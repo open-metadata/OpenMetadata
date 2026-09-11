@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "تطبيق",
+    "apply-count": "تطبيق ({{count}})",
     "cancel": "إلغاء",
     "clear-all": "مسح الكل",
     "close": "إغلاق",

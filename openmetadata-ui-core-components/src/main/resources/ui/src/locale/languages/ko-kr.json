@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "적용",
+    "apply-count": "적용 ({{count}})",
     "cancel": "취소",
     "clear-all": "모두 지우기",
     "close": "닫기",

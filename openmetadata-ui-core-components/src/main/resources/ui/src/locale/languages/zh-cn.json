@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "应用",
+    "apply-count": "应用 ({{count}})",
     "cancel": "取消",
     "clear-all": "清除全部",
     "close": "关闭",

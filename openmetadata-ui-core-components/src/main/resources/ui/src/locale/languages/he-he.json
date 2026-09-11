@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "החל",
+    "apply-count": "החל ({{count}})",
     "cancel": "ביטול",
     "clear-all": "נקה הכל",
     "close": "סגור",

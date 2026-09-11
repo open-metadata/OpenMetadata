@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "اعمال",
+    "apply-count": "اعمال ({{count}})",
     "cancel": "لغو",
     "clear-all": "پاک کردن همه",
     "close": "بستن",

@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "適用",
+    "apply-count": "適用 ({{count}})",
     "cancel": "キャンセル",
     "clear-all": "すべてクリア",
     "close": "閉じる",

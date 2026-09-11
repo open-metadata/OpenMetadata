@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "นำไปใช้",
+    "apply-count": "นำไปใช้ ({{count}})",
     "cancel": "ยกเลิก",
     "clear-all": "ล้างทั้งหมด",
     "close": "ปิด",

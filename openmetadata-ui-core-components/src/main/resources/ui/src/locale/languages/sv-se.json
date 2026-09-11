@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "Tillämpa",
+    "apply-count": "Tillämpa ({{count}})",
     "cancel": "Avbryt",
     "clear-all": "Rensa alla",
     "close": "Stäng",
