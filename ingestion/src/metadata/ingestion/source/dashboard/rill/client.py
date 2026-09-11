@@ -76,6 +76,7 @@ class RillApiClient:
             access_token=token,
             auth_header=AUTHORIZATION_HEADER if token else None,
             auth_token_mode="Bearer" if token else None,
+            verify=config.verifySSL if config.verifySSL is not None else True,
         )
         self.client = TrackedREST(client_config, source_name="rill")
 
@@ -86,7 +87,7 @@ class RillApiClient:
     def test_access(self) -> dict:
         """Verify access to the configured Rill project."""
         response = self.client.get(self._resources_path, data={"pageSize": 1})
-        return response or {}
+        return response if isinstance(response, dict) else {}
 
     def _paginate_resources(self, kind: str) -> Iterable[RillResource]:
         page_token = None

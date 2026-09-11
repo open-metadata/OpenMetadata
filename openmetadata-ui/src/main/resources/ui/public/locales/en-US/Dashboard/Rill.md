@@ -33,3 +33,10 @@ is **required** when connecting to a Rill Cloud project. Leave it empty when
 connecting to a local Rill Developer runtime that does not require
 authentication.
 $$
+
+$$section
+### Verify SSL $(id="verifySSL")
+
+Whether to verify the SSL certificate of the Rill runtime. Enabled by default;
+disable it only for a local runtime served with a self-signed certificate.
+$$

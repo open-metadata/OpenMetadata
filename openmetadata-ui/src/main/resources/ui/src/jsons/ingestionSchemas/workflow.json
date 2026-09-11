@@ -7866,6 +7866,58 @@
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "RillConnection",
+                      "description": "Rill Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.dashboard.RillConnection",
+                      "definitions": {
+                        "rillType": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Rill"
+                          ],
+                          "default": "Rill"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/20/definitions/rillType",
+                          "default": "Rill"
+                        },
+                        "hostPort": {
+                          "expose": true,
+                          "title": "Host and Port",
+                          "description": "URL of a Rill Developer runtime or Rill Cloud project endpoint.",
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "token": {
+                          "title": "API Token",
+                          "description": "API token to authenticate with Rill.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "verifySSL": {
+                          "title": "Verify SSL",
+                          "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
+                          "type": "boolean",
+                          "default": true
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "hostPort"
+                      ]
+                    },
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapS4HanaConnection",
                       "description": "SAP S/4HANA Connection Config for Embedded Analytics",
                       "type": "object",
@@ -7957,7 +8009,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/20/definitions/sapS4HanaType",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/21/definitions/sapS4HanaType",
                           "default": "SapS4Hana"
                         },
                         "hostPort": {
@@ -7972,10 +8024,10 @@
                           "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/20/definitions/sapS4HanaBasicAuthType"
+                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/21/definitions/sapS4HanaBasicAuthType"
                             },
                             {
-                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/20/definitions/sapS4HanaOAuthType"
+                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/21/definitions/sapS4HanaOAuthType"
                             }
                           ]
                         },
@@ -8046,7 +8098,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/21/definitions/omniType",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/22/definitions/omniType",
                           "default": "Omni"
                         },
                         "hostPort": {

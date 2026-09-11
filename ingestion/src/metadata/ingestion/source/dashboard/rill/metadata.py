@@ -12,7 +12,7 @@
 
 import traceback
 from collections.abc import Iterable
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple, cast
 from urllib.parse import quote
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -21,13 +21,18 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.rillConnection import (
     RillConnection,
 )
@@ -42,10 +47,13 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
     SourceUrl,
+    SqlQuery,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -75,6 +83,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 DashboardSpec = RillExploreSpec | RillCanvasSpec
+
+# Appended by list_datamodels after the last data model so yield_bulk_datamodel knows
+# every model has been yielded and can flush and draw lineage without a dashboard.
+_DATAMODEL_LINEAGE_SENTINEL = object()
 
 
 class RillTableTarget(NamedTuple):
@@ -121,6 +133,12 @@ RILL_DATA_TYPE_MAP = {
 }
 
 
+def _error(name: str, error: str) -> Either:
+    return Either(  # pyright: ignore[reportCallIssue]
+        left=StackTraceError(name=name, error=error, stackTrace=traceback.format_exc())
+    )
+
+
 class RillSource(DashboardServiceSource):
     """Extract Explore and Canvas dashboards from Rill."""
 
@@ -140,7 +158,7 @@ class RillSource(DashboardServiceSource):
         pipeline_name: str | None = None,
     ) -> "RillSource":
         config = WorkflowSource.model_validate(config_dict)
-        connection: RillConnection = config.serviceConnection.root.config
+        connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
         if not isinstance(connection, RillConnection):
             raise InvalidSourceException(f"Expected RillConnection, but got {connection}")
         return cls(config, metadata)
@@ -148,7 +166,7 @@ class RillSource(DashboardServiceSource):
     def prepare(self) -> None:
         components = self.client.get_components()
         self.components = {component.meta.name.name: component for component in components}
-        logger.info(f"Found {len(self.components)} Rill components")
+        logger.info("Found %d Rill components", len(self.components))
 
     def get_dashboards_list(self) -> list[RillResource] | None:
         return self.client.get_dashboards()
@@ -162,9 +180,9 @@ class RillSource(DashboardServiceSource):
             name=dashboard.meta.name.name,
         )
 
-    def list_datamodels(self) -> Iterable[RillResource]:
+    def list_datamodels(self) -> Iterable[Any]:
         if not self.source_config.includeDataModels:
-            return []
+            return
 
         datamodels = self.client.get_datamodels()
         self.models = {
@@ -173,8 +191,24 @@ class RillSource(DashboardServiceSource):
         self.metrics_views = {
             resource.meta.name.name: resource for resource in datamodels if resource.meta.name.kind == METRICS_VIEW_KIND
         }
-        logger.info(f"Found {len(self.models)} Rill models and {len(self.metrics_views)} Rill metrics views")
-        return datamodels
+        logger.info("Found %d Rill models and %d Rill metrics views", len(self.models), len(self.metrics_views))
+        yield from datamodels
+        yield _DATAMODEL_LINEAGE_SENTINEL
+
+    def _service_name(self) -> str:
+        return self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
+
+    def _get_component(self, component_name: str) -> RillResource:
+        component = self.components.get(component_name)
+        if component is None:
+            raise ValueError(f"Rill component [{component_name}] was not returned by the API")
+        return component
+
+    @staticmethod
+    def _datamodel_name(kind: str, name: str) -> str:
+        """Rill names are unique per kind only, and a metrics view commonly shares its
+        model's name, so models carry a suffix to keep data model FQNs distinct."""
+        return f"{name}_model" if kind == MODEL_KIND else name
 
     @staticmethod
     def _get_dashboard_spec(dashboard: RillResource) -> DashboardSpec:
@@ -201,18 +235,6 @@ class RillSource(DashboardServiceSource):
         if model.model and model.model.spec:
             return model.model.spec
         raise ValueError(f"Rill model [{model.meta.name.name}] has no valid specification")
-
-    def _get_component(self, component_name: str) -> RillResource:
-        component = self.components.get(component_name)
-        if component is None:
-            raise ValueError(f"Rill component [{component_name}] was not returned by the API")
-        return component
-
-    def _get_metrics_view(self, metrics_view_name: str) -> RillResource:
-        metrics_view = self.metrics_views.get(metrics_view_name)
-        if metrics_view is None:
-            raise ValueError(f"Rill metrics view [{metrics_view_name}] was not returned by the API")
-        return metrics_view
 
     def _dashboard_url(self, dashboard: RillResource) -> str:
         dashboard_type = "canvas" if dashboard.meta.name.kind == CANVAS_KIND else "explore"
@@ -243,11 +265,11 @@ class RillSource(DashboardServiceSource):
         return self._project_name()
 
     @staticmethod
-    def _get_chart_type(renderer: str | None) -> str:
+    def _get_chart_type(renderer: str | None) -> ChartType:
         normalized_renderer = (renderer or "other").lower().replace("-", "_")
         normalized_renderer = normalized_renderer.removesuffix("_chart")
         normalized_renderer = RILL_CHART_TYPE_OVERRIDES.get(normalized_renderer, normalized_renderer)
-        return get_standard_chart_type(normalized_renderer).value
+        return get_standard_chart_type(normalized_renderer)
 
     @staticmethod
     def _get_column_data_type(data_type: RillDataType | None) -> DataType:
@@ -295,8 +317,8 @@ class RillSource(DashboardServiceSource):
 
         for dimension in spec.dimensions:
             append_column(
-                Column(
-                    name=truncate_column_name(dimension.name),
+                Column(  # pyright: ignore[reportCallIssue]
+                    name=ColumnName(truncate_column_name(dimension.name)),
                     displayName=dimension.display_name or dimension.name,
                     dataType=cls._get_column_data_type(dimension.data_type),
                     dataTypeDisplay=(
@@ -312,8 +334,8 @@ class RillSource(DashboardServiceSource):
             )
         for measure in spec.measures:
             append_column(
-                Column(
-                    name=truncate_column_name(measure.name),
+                Column(  # pyright: ignore[reportCallIssue]
+                    name=ColumnName(truncate_column_name(measure.name)),
                     displayName=measure.display_name or measure.name,
                     dataType=DataType.MEASURE,
                     dataTypeDisplay=(
@@ -329,10 +351,14 @@ class RillSource(DashboardServiceSource):
             )
         return columns
 
-    def yield_bulk_datamodel(
+    def yield_bulk_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
-        datamodel: RillResource,
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        datamodel: Any,
+    ) -> Iterable[Either]:
+        if datamodel is _DATAMODEL_LINEAGE_SENTINEL:
+            yield from self._yield_bulk_datamodel_lineage()
+            return
+
         datamodel_name = datamodel.meta.name.name
         if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
             self.status.filter(datamodel_name, "Data model filtered out.")
@@ -341,13 +367,13 @@ class RillSource(DashboardServiceSource):
         try:
             if datamodel.meta.name.kind == METRICS_VIEW_KIND:
                 spec = self._get_metrics_view_spec(datamodel)
-                request = CreateDashboardDataModelRequest(
+                request = CreateDashboardDataModelRequest(  # pyright: ignore[reportCallIssue]
                     name=EntityName(datamodel_name),
                     displayName=spec.display_name or datamodel_name,
                     description=self._get_resource_description(spec.description),
-                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                    service=FullyQualifiedEntityName(self._service_name()),
                     serviceType=self.service_connection.type.value,
-                    dataModelType=DataModelType.RillMetricsView.value,
+                    dataModelType=DataModelType.RillMetricsView,
                     columns=self._get_metrics_view_columns(spec),
                     project=self._project_name(),
                     sourceUrl=SourceUrl(self._project_url()),
@@ -355,62 +381,55 @@ class RillSource(DashboardServiceSource):
             elif datamodel.meta.name.kind == MODEL_KIND:
                 spec = self._get_model_spec(datamodel)
                 sql = spec.input_properties.get("sql")
-                request = CreateDashboardDataModelRequest(
-                    name=EntityName(datamodel_name),
+                request = CreateDashboardDataModelRequest(  # pyright: ignore[reportCallIssue]
+                    name=EntityName(self._datamodel_name(MODEL_KIND, datamodel_name)),
                     displayName=datamodel_name,
-                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                    service=FullyQualifiedEntityName(self._service_name()),
                     serviceType=self.service_connection.type.value,
-                    dataModelType=DataModelType.RillModel.value,
+                    dataModelType=DataModelType.RillModel,
                     columns=[],
-                    sql=sql if isinstance(sql, str) and sql else None,
+                    sql=SqlQuery(sql) if isinstance(sql, str) and sql else None,
                     project=self._project_name(),
                     sourceUrl=SourceUrl(self._project_url()),
                 )
             else:
                 return
 
-            yield Either(right=request)
+            yield Either(right=request)  # pyright: ignore[reportCallIssue]
             self.register_record_datamodel(request)
         except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=datamodel_name,
-                    error=f"Error creating Rill data model [{datamodel_name}]: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
+            yield _error(datamodel_name, f"Error creating Rill data model [{datamodel_name}]: {exc}")
 
     def yield_dashboard(self, dashboard_details: RillResource) -> Iterable[Either[CreateDashboardRequest]]:
         try:
             spec = self._get_dashboard_spec(dashboard_details)
             dashboard_name = dashboard_details.meta.name.name
-            dashboard_request = CreateDashboardRequest(
+            chart_fqns = [
+                chart_fqn
+                for chart in self.context.get().charts or []  # pyright: ignore[reportAttributeAccessIssue]
+                if (
+                    chart_fqn := fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self._service_name(),
+                        chart_name=chart,
+                    )
+                )
+            ]
+            dashboard_request = CreateDashboardRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(dashboard_name),
                 displayName=spec.display_name or dashboard_name,
                 description=self._get_resource_description(spec.description),
-                charts=[
-                    FullyQualifiedEntityName(
-                        fqn.build(
-                            self.metadata,
-                            entity_type=Chart,
-                            service_name=self.context.get().dashboard_service,
-                            chart_name=chart,
-                        )
-                    )
-                    for chart in self.context.get().charts or []
-                ],
-                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                charts=[FullyQualifiedEntityName(chart_fqn) for chart_fqn in chart_fqns],
+                service=FullyQualifiedEntityName(self._service_name()),
                 sourceUrl=SourceUrl(self._dashboard_url(dashboard_details)),
             )
-            yield Either(right=dashboard_request)
+            yield Either(right=dashboard_request)  # pyright: ignore[reportCallIssue]
             self.register_record(dashboard_request)
         except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=dashboard_details.meta.name.name,
-                    error=f"Error creating Rill dashboard [{dashboard_details.meta.name.name}]: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
+            yield _error(
+                dashboard_details.meta.name.name,
+                f"Error creating Rill dashboard [{dashboard_details.meta.name.name}]: {exc}",
             )
 
     def yield_dashboard_chart(self, dashboard_details: RillResource) -> Iterable[Either[CreateChartRequest]]:
@@ -427,24 +446,18 @@ class RillSource(DashboardServiceSource):
                     self.status.filter(display_name, "Chart Pattern not allowed")
                     continue
 
-                chart_request = CreateChartRequest(
+                chart_request = CreateChartRequest(  # pyright: ignore[reportCallIssue]
                     name=EntityName(component_name),
                     displayName=display_name,
                     description=self._get_resource_description(spec.description),
                     chartType=self._get_chart_type(spec.renderer),
-                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                    service=FullyQualifiedEntityName(self._service_name()),
                     sourceUrl=SourceUrl(self._dashboard_url(dashboard_details)),
                 )
-                yield Either(right=chart_request)
+                yield Either(right=chart_request)  # pyright: ignore[reportCallIssue]
                 self.register_record_chart(chart_request)
             except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name=component_name,
-                        error=f"Error creating Rill chart [{component_name}]: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
+                yield _error(component_name, f"Error creating Rill chart [{component_name}]: {exc}")
 
     def _get_dashboard_metrics_views(self, dashboard: RillResource) -> list[str]:
         metrics_views = {}
@@ -458,7 +471,7 @@ class RillSource(DashboardServiceSource):
                 metrics_views[metrics_view] = None
 
         if dashboard.canvas and dashboard.canvas.effective_spec:
-            for component_name in dashboard.canvas.effective_spec.iter_component_names():
+            for component_name in dict.fromkeys(dashboard.canvas.effective_spec.iter_component_names()):
                 component = self.components.get(component_name)
                 if not component:
                     continue
@@ -476,14 +489,29 @@ class RillSource(DashboardServiceSource):
 
         return list(metrics_views)
 
-    def _get_datamodel_entity(self, datamodel_name: str) -> DashboardDataModel | None:
+    def _get_datamodel_entity(self, kind: str, datamodel_name: str) -> DashboardDataModel:
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.get().dashboard_service,
-            data_model_name=datamodel_name,
+            service_name=self._service_name(),
+            data_model_name=self._datamodel_name(kind, datamodel_name),
         )
-        return self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
+        entity = self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn) if datamodel_fqn else None
+        if entity is None:
+            raise ValueError(f"Rill data model [{datamodel_name}] was not found in OpenMetadata")
+        return entity
+
+    def _get_dashboard_entity(self, dashboard_name: str) -> Dashboard:
+        dashboard_fqn = fqn.build(
+            self.metadata,
+            entity_type=Dashboard,
+            service_name=self._service_name(),
+            dashboard_name=dashboard_name,
+        )
+        entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn) if dashboard_fqn else None
+        if entity is None:
+            raise ValueError(f"Rill dashboard [{dashboard_name}] was not found in OpenMetadata")
+        return entity
 
     @staticmethod
     def _matches_prefix(resource_name: str | None, prefix_name: str | None) -> bool:
@@ -518,30 +546,34 @@ class RillSource(DashboardServiceSource):
             return []
 
         fqn_search_string = build_es_fqn_search_string(
-            database_name=prefix_database_name or target.database,
+            database_name=prefix_database_name or target.database or "*",
             schema_name=prefix_schema_name or target.database_schema,
             service_name=service_name or "*",
             table_name=prefix_table_name or target.table,
         )
-        return (
-            self.metadata.search_in_any_service(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-                fetch_multiple_entities=True,
-            )
-            or []
+        tables = self.metadata.search_in_any_service(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
+            fetch_multiple_entities=True,
         )
+        if isinstance(tables, list):
+            return tables
+        return [tables] if tables else []
 
     def _get_physical_table_targets(self, resource: RillResource) -> list[RillTableTarget]:
         internal_model_names = {reference.name for reference in resource.meta.refs if reference.kind == MODEL_KIND}
+
+        def is_internal(table_name: str) -> bool:
+            return table_name in internal_model_names or table_name in self.models
 
         if resource.meta.name.kind == METRICS_VIEW_KIND:
             spec = self._get_metrics_view_spec(resource)
             if spec.parent:
                 return []
 
+            # Metrics views on external connectors may name the table via `model`.
             table_name = spec.table or spec.model
-            if not table_name or table_name in internal_model_names or table_name in self.models:
+            if not table_name or is_internal(table_name):
                 return []
 
             return [
@@ -565,15 +597,16 @@ class RillSource(DashboardServiceSource):
             sql,
             parser_type=self.get_query_parser_type(),
         )
-        for source_table in lineage_parser.source_tables:
+        for source_table in lineage_parser.source_tables:  # pyright: ignore[reportGeneralTypeIssues]
             table_parts = fqn.split_table_name(str(source_table))
             table_name = table_parts.get("table")
-            if not table_name or table_name in internal_model_names or table_name in self.models:
+            if not table_name or is_internal(table_name):
                 continue
 
+            database_schema = table_parts.get("database_schema")
             target = RillTableTarget(
                 database=table_parts.get("database"),
-                database_schema=self.check_database_schema_name(table_parts.get("database_schema")),
+                database_schema=self.check_database_schema_name(database_schema) if database_schema else None,
                 table=table_name,
                 sql=sql,
             )
@@ -581,130 +614,141 @@ class RillSource(DashboardServiceSource):
 
         return list(targets.values())
 
-    def _yield_physical_table_dependencies(
+    def _yield_physical_table_lineage(
         self,
         resource: RillResource,
-        db_service_prefix: str | None,
-        downstream: DashboardDataModel | None,
+        downstream: DashboardDataModel,
+        db_service_prefixes: list[str | None],
     ) -> Iterable[Either[AddLineageRequest]]:
         for target in self._get_physical_table_targets(resource):
-            table_entities = self._get_table_entities(target, db_service_prefix)
-            if not table_entities:
-                logger.debug(
-                    "No OpenMetadata table found for Rill data model [%s] target [%s.%s.%s] "
-                    "with database service prefix [%s]",
-                    resource.meta.name.name,
-                    target.database,
-                    target.database_schema,
-                    target.table,
-                    db_service_prefix,
-                )
-                continue
-
-            for table_entity in table_entities:
-                entity_fqn = getattr(table_entity, "fullyQualifiedName", None)
-                table_key = model_str(entity_fqn) if entity_fqn else target.table
-                edge_key = (f"table:{table_key}", f"datamodel:{resource.meta.name.name}")
-                if edge_key in self.lineage_edges:
+            for db_service_prefix in db_service_prefixes:
+                table_entities = self._get_table_entities(target, db_service_prefix)
+                if not table_entities:
+                    logger.debug(
+                        "No OpenMetadata table found for Rill data model [%s] target [%s.%s.%s] "
+                        "with database service prefix [%s]",
+                        resource.meta.name.name,
+                        target.database,
+                        target.database_schema,
+                        target.table,
+                        db_service_prefix,
+                    )
                     continue
 
-                lineage = self._get_add_lineage_request(
-                    to_entity=downstream,
-                    from_entity=table_entity,
-                    sql=target.sql,
-                )
-                if lineage:
-                    self.lineage_edges.add(edge_key)
-                    yield lineage
-
-    def _yield_datamodel_dependencies(
-        self,
-        resource: RillResource,
-        visited: set[tuple[str, str]],
-        db_service_prefix: str | None = None,
-    ) -> Iterable[Either[AddLineageRequest]]:
-        resource_key = (resource.meta.name.kind, resource.meta.name.name)
-        if resource_key in visited:
-            return
-        visited.add(resource_key)
-
-        downstream = self._get_datamodel_entity(resource.meta.name.name)
-        yield from self._yield_physical_table_dependencies(resource, db_service_prefix, downstream)
-        for reference in resource.meta.refs:
-            if reference.kind not in {MODEL_KIND, METRICS_VIEW_KIND}:
-                continue
-            if filter_by_datamodel(self.source_config.dataModelFilterPattern, reference.name):
-                continue
-
-            upstream_resource = (
-                self.models.get(reference.name)
-                if reference.kind == MODEL_KIND
-                else self.metrics_views.get(reference.name)
-            )
-            if not upstream_resource:
-                continue
-
-            edge_key = (f"datamodel:{reference.name}", f"datamodel:{resource.meta.name.name}")
-            if edge_key not in self.lineage_edges:
-                upstream = self._get_datamodel_entity(reference.name)
-                lineage = self._get_add_lineage_request(to_entity=downstream, from_entity=upstream)
-                if lineage:
-                    self.lineage_edges.add(edge_key)
-                    yield lineage
-
-            yield from self._yield_datamodel_dependencies(
-                upstream_resource,
-                visited,
-                db_service_prefix,
-            )
-
-    def yield_dashboard_lineage_details(
-        self,
-        dashboard_details: RillResource,
-        db_service_prefix: str | None = None,
-    ) -> Iterable[Either[AddLineageRequest]]:
-        if not self.source_config.includeDataModels:
-            return
-
-        dashboard_name = dashboard_details.meta.name.name
-        dashboard_fqn = fqn.build(
-            self.metadata,
-            entity_type=Dashboard,
-            service_name=self.context.get().dashboard_service,
-            dashboard_name=dashboard_name,
-        )
-        dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
-
-        for metrics_view_name in self._get_dashboard_metrics_views(dashboard_details):
-            if filter_by_datamodel(self.source_config.dataModelFilterPattern, metrics_view_name):
-                continue
-            try:
-                metrics_view = self._get_metrics_view(metrics_view_name)
-
-                edge_key = (f"datamodel:{metrics_view_name}", f"dashboard:{dashboard_name}")
-                if edge_key not in self.lineage_edges:
-                    metrics_view_entity = self._get_datamodel_entity(metrics_view_name)
+                for table_entity in table_entities:
+                    table_key = (
+                        model_str(table_entity.fullyQualifiedName) if table_entity.fullyQualifiedName else target.table
+                    )
+                    edge_key = (f"table:{table_key}", f"datamodel:{resource.meta.name.name}")
+                    if edge_key in self.lineage_edges:
+                        continue
                     lineage = self._get_add_lineage_request(
-                        to_entity=dashboard_entity,
-                        from_entity=metrics_view_entity,
+                        to_entity=downstream,
+                        from_entity=table_entity,
+                        sql=target.sql,
                     )
                     if lineage:
                         self.lineage_edges.add(edge_key)
                         yield lineage
 
-                yield from self._yield_datamodel_dependencies(
-                    metrics_view,
-                    visited=set(),
-                    db_service_prefix=db_service_prefix,
-                )
+    def _yield_datamodel_ref_lineage(
+        self,
+        resource: RillResource,
+        downstream: DashboardDataModel,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        references = dict.fromkeys(
+            (reference.kind, reference.name)
+            for reference in resource.meta.refs
+            if reference.kind in {MODEL_KIND, METRICS_VIEW_KIND}
+        )
+        for kind, upstream_name in references:
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, upstream_name):
+                continue
+            edge_key = (f"datamodel:{upstream_name}", f"datamodel:{resource.meta.name.name}")
+            if edge_key in self.lineage_edges:
+                continue
+            try:
+                upstream = self._get_datamodel_entity(kind, upstream_name)
             except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name=metrics_view_name,
-                        error=(
-                            f"Error creating Rill data model lineage for dashboard "
-                            f"[{dashboard_name}] and metrics view [{metrics_view_name}]: {exc}"
-                        ),
-                        stackTrace=traceback.format_exc(),
-                    )
+                yield _error(
+                    upstream_name,
+                    (
+                        f"Error creating Rill data model lineage from [{upstream_name}] "
+                        f"to [{resource.meta.name.name}]: {exc}"
+                    ),
                 )
+                continue
+            lineage = self._get_add_lineage_request(to_entity=downstream, from_entity=upstream)
+            if lineage:
+                self.lineage_edges.add(edge_key)
+                yield lineage
+
+    def _yield_bulk_datamodel_lineage(self) -> Iterable[Either]:
+        """Flush the written data models, then draw model-to-model and physical table
+        lineage for every data model, whether or not a dashboard uses it."""
+        yield Either(right=Barrier(reason="rill_datamodel_lineage_flush"))  # pyright: ignore[reportCallIssue]
+        db_service_prefixes: list[str | None] = list(self.get_db_service_prefixes() or [None])
+        for resource in [*self.models.values(), *self.metrics_views.values()]:
+            datamodel_name = resource.meta.name.name
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
+                continue
+            try:
+                downstream = self._get_datamodel_entity(resource.meta.name.kind, datamodel_name)
+                for lineage in self._yield_datamodel_ref_lineage(resource, downstream):
+                    yield from self.yield_lineage_request(lineage)
+                for lineage in self._yield_physical_table_lineage(resource, downstream, db_service_prefixes):
+                    yield from self.yield_lineage_request(lineage)
+            except Exception as exc:
+                yield _error(datamodel_name, f"Error creating Rill data model lineage for [{datamodel_name}]: {exc}")
+
+    def _yield_dashboard_datamodel_lineage(
+        self,
+        dashboard: RillResource,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        dashboard_name = dashboard.meta.name.name
+        try:
+            dashboard_entity = self._get_dashboard_entity(dashboard_name)
+        except Exception as exc:
+            yield _error(dashboard_name, f"Error creating Rill dashboard lineage for [{dashboard_name}]: {exc}")
+            return
+
+        for metrics_view_name in self._get_dashboard_metrics_views(dashboard):
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, metrics_view_name):
+                continue
+            edge_key = (f"datamodel:{metrics_view_name}", f"dashboard:{dashboard_name}")
+            if edge_key in self.lineage_edges:
+                continue
+            try:
+                metrics_view_entity = self._get_datamodel_entity(METRICS_VIEW_KIND, metrics_view_name)
+                lineage = self._get_add_lineage_request(
+                    to_entity=dashboard_entity,
+                    from_entity=metrics_view_entity,
+                )
+                if lineage:
+                    self.lineage_edges.add(edge_key)
+                    yield lineage
+            except Exception as exc:
+                yield _error(
+                    metrics_view_name,
+                    (
+                        f"Error creating Rill lineage from metrics view [{metrics_view_name}] "
+                        f"to dashboard [{dashboard_name}]: {exc}"
+                    ),
+                )
+
+    def yield_dashboard_lineage(self, dashboard_details: Any) -> Iterable[Either[OMetaLineageRequest]]:
+        """Only metrics view -> dashboard edges are drawn per dashboard; model lineage
+        is emitted once from the bulk data model stage."""
+        if not self.source_config.includeDataModels:
+            return
+        yield Either(right=Barrier(reason="rill_dashboard_lineage_flush"))  # pyright: ignore[reportCallIssue]
+        for lineage in self._yield_dashboard_datamodel_lineage(dashboard_details):
+            yield from self.yield_lineage_request(lineage)
+
+    def yield_dashboard_lineage_details(
+        self,
+        dashboard_details: Any,
+        db_service_prefix: str | None = None,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Unused: see yield_dashboard_lineage and _yield_bulk_datamodel_lineage."""
+        return []
