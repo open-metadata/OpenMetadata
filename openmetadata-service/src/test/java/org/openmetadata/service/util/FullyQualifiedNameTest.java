@@ -283,12 +283,6 @@ class FullyQualifiedNameTest {
         "service.model.dataModel",
         FullyQualifiedName.getParentEntityFQN(
             "service.model.dataModel.col1.child1", "dashboardDataModel"));
-    // Metric dimension case
-    assertEquals(
-        "revenue", FullyQualifiedName.getParentEntityFQN("revenue.dimension.region", "metric"));
-    // Metric measure case
-    assertEquals(
-        "revenue", FullyQualifiedName.getParentEntityFQN("revenue.measure.total_amount", "metric"));
     // Error: unsupported entity type
     assertThrows(
         IllegalArgumentException.class,
@@ -296,20 +290,16 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  void test_getMetricFQN() {
-    // Standard dimension FQN
-    assertEquals("revenue", FullyQualifiedName.getMetricFQN("revenue.dimension.region"));
-    // Standard measure FQN
-    assertEquals("revenue", FullyQualifiedName.getMetricFQN("revenue.measure.total_amount"));
-    // Quoted metric name
-    assertEquals(
-        "\"my.metric\"", FullyQualifiedName.getMetricFQN("\"my.metric\".dimension.region"));
-    // Multi-part metric FQN (e.g. service-prefixed) keeps everything but the last two segments
-    assertEquals(
-        "service.revenue", FullyQualifiedName.getMetricFQN("service.revenue.measure.total_amount"));
-    // Error: too few segments
+  void getParentEntityFQN_metric_isRejectedAsUnsupported() {
+    // The METRIC arm was dead code: ColumnRepository.validateEntityType, the only caller path,
+    // never admits metric. Removed as currently unreachable; a metric arm may legitimately
+    // return when the Metrics-hierarchy work relands.
     assertThrows(
-        IllegalArgumentException.class, () -> FullyQualifiedName.getMetricFQN("metric.dimension"));
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("revenue.dimension.region", "metric"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.getParentEntityFQN("revenue.measure.total_amount", "metric"));
   }
 
   @Test
