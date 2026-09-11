@@ -58,7 +58,11 @@ API_TIMEOUT = 10
 PAGE_SIZE = 100
 QUERIES_PATH = "/sql/history/queries"
 API_VERSION = "/api/2.0"
-JOB_API_VERSION = "/api/2.1"
+# 2.2 is the first Jobs API version that can return a job with more than 100 tasks.
+# Earlier versions omit `settings.tasks` for such a job without signalling it.
+JOB_API_VERSION = "/api/2.2"
+# runs/list rejects any limit above 26, unlike jobs/list which allows up to 100.
+RUNS_PAGE_SIZE = 25
 SCIM_SERVICE_PRINCIPALS_PATH = "/preview/scim/v2/ServicePrincipals"
 SCIM_GROUPS_PATH = "/preview/scim/v2/Groups"
 
@@ -270,7 +274,7 @@ class DatabricksClient:
         return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))  # noqa: PIE810
 
     def list_jobs_test_connection(self) -> None:
-        data = {"limit": 1, "expand_tasks": True, "offset": 0}
+        data = {"limit": 1, "expand_tasks": True}
         response = self.client.get(
             self.jobs_list_url,
             data=json.dumps(data),
@@ -280,76 +284,102 @@ class DatabricksClient:
         if response.status_code != 200:
             raise DatabricksClientException(response.text)
 
+    def _get_json(self, url: str, params: dict) -> dict:
+        """
+        GET a Jobs API page, refusing to treat an error body as an empty page.
+
+        Databricks answers a rejected request with a 200-shaped JSON body, so calling
+        .json() without checking the status silently turns a failure into "no more
+        results" and truncates whatever was being paginated.
+        """
+        response = self.client.get(
+            url,
+            params=params,
+            headers=self.headers,
+            timeout=self.api_timeout,
+        )
+        if response.status_code != 200:
+            raise DatabricksClientException(
+                f"Databricks API call to [{url}] failed with status {response.status_code}: {response.text}"
+            )
+        return response.json()
+
+    def _paginate(self, url: str, params: dict, key: str) -> Iterable[dict]:
+        """
+        Walk a Jobs API list endpoint by page token.
+
+        Token pagination rather than `offset` because Databricks caps `offset` at 1000,
+        and because API 2.2 drops the root-level `has_more` that the offset loop needed
+        to know when to stop.
+        """
+        page_params = dict(params)
+        while True:
+            payload = self._get_json(url, page_params)
+            yield from payload.get(key) or []
+
+            next_page_token = payload.get("next_page_token")
+            if not next_page_token:
+                return
+            page_params["page_token"] = next_page_token
+
+    def _expand_job_tasks(self, job: dict) -> dict:
+        """
+        Fill in the tasks that jobs/list left out.
+
+        List responses carry at most 100 elements of any list field and set a per-job
+        `has_more` when a job has more. Pipeline lineage is built from the task list, so
+        a job truncated here would lose both its tasks and its lineage.
+        """
+        if not job.get("has_more"):
+            return job
+
+        job_id = job.get("job_id")
+        try:
+            tasks: list[dict] = []
+            params = {"job_id": job_id}
+            while True:
+                payload = self._get_json(f"{self.base_job_url}/get", params)
+                tasks.extend((payload.get("settings") or {}).get("tasks") or [])
+                next_page_token = payload.get("next_page_token")
+                if not next_page_token:
+                    break
+                params["page_token"] = next_page_token
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not fetch the full task list for job %s, using the first page only: %s", job_id, exc)
+            return job
+
+        expanded = {**job, "settings": {**(job.get("settings") or {}), "tasks": tasks}}
+        expanded.pop("has_more", None)
+        return expanded
+
     def list_jobs(self) -> Iterable[dict]:
         """
         Method returns List all the created jobs in a Databricks Workspace
         """
-        try:
-            iteration_count = 1
-            data = {"limit": PAGE_SIZE, "expand_tasks": True, "offset": 0}
+        # "true" lowercase: Databricks ignores the Python bool's "True" encoding
+        # without complaining, which would drop every task list.
+        params = {"limit": PAGE_SIZE, "expand_tasks": "true"}
+        for job in self._paginate(self.jobs_list_url, params, key="jobs"):
+            yield self._expand_job_tasks(job)
 
-            response = self.client.get(
-                self.jobs_list_url,
-                data=json.dumps(data),
-                headers=self.headers,
-                timeout=self.api_timeout,
-            ).json()
-
-            yield from response.get("jobs") or []
-
-            while response and response.get("has_more"):
-                data["offset"] = PAGE_SIZE * iteration_count
-
-                response = self.client.get(
-                    self.jobs_list_url,
-                    data=json.dumps(data),
-                    headers=self.headers,
-                    timeout=self.api_timeout,
-                ).json()
-                iteration_count += 1
-                yield from response.get("jobs") or []
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(exc)
-
-    def get_job_runs(self, job_id) -> list[dict]:
+    def get_job_runs(self, job_id) -> Iterable[dict]:
         """
         Method returns List of all runs for a job by the specified job_id
         """
+        params = {
+            "job_id": job_id,
+            "limit": RUNS_PAGE_SIZE,
+            "active_only": "false",
+            "completed_only": "true",
+            "run_type": "JOB_RUN",
+            "expand_tasks": "true",
+        }
         try:
-            params = {
-                "job_id": job_id,
-                "active_only": "false",
-                "completed_only": "true",
-                "run_type": "JOB_RUN",
-                "expand_tasks": "true",
-            }
-
-            response = self.client.get(
-                self.jobs_run_list_url,
-                params=params,
-                headers=self.headers,
-                timeout=self.api_timeout,
-            ).json()
-
-            yield from response.get("runs") or []
-
-            while response["has_more"]:
-                params.update({"start_time_to": response["runs"][-1]["start_time"]})
-
-                response = self.client.get(
-                    self.jobs_run_list_url,
-                    params=params,
-                    headers=self.headers,
-                    timeout=self.api_timeout,
-                ).json()
-
-                yield from response.get("runs") or []
-
+            yield from self._paginate(self.jobs_run_list_url, params, key="runs")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(exc)
+            logger.warning("Could not list runs for job %s: %s", job_id, exc)
 
     def get_table_lineage(self, entity_id: str) -> list[dict[str, str]]:
         """
