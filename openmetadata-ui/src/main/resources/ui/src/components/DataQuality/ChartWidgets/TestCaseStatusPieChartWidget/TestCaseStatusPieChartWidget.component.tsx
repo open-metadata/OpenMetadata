@@ -46,21 +46,35 @@ const TestCaseStatusPieChartWidget = ({
   const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
     useState(true);
 
-  const fetchTestSummary = async () => {
-    setIsTestCaseSummaryLoading(true);
-    try {
-      const { data } = await fetchTestCaseSummary(chartFilter);
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary(updatedData);
-    } catch {
-      setTestCaseSummary(INITIAL_TEST_SUMMARY);
-    } finally {
-      setIsTestCaseSummaryLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+
+    const fetchTestSummary = async () => {
+      setIsTestCaseSummaryLoading(true);
+      try {
+        const { data } = await fetchTestCaseSummary(chartFilter);
+        if (ignore) {
+          return;
+        }
+
+        const updatedData = transformToTestCaseStatusObject(data);
+        setTestCaseSummary(updatedData);
+      } catch {
+        if (!ignore) {
+          setTestCaseSummary(INITIAL_TEST_SUMMARY);
+        }
+      } finally {
+        if (!ignore) {
+          setIsTestCaseSummaryLoading(false);
+        }
+      }
+    };
+
     fetchTestSummary();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter]);
 
   const handleSegmentClick = useCallback(

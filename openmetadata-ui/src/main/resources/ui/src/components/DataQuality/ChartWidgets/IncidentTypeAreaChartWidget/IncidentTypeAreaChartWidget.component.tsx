@@ -55,27 +55,41 @@ const IncidentTypeAreaChartWidget = ({
     );
   }, [title, chartData, name, height]);
 
-  const getCountOfIncidentStatus = async () => {
-    setIsChartLoading(true);
-    try {
-      const { data } = await fetchCountOfIncidentStatusTypeByDays(
-        incidentStatusType,
-        chartFilter
-      );
-      const updatedData = data.map((item) => ({
-        timestamp: +item.timestamp,
-        count: +item.stateId,
-      }));
-      setChartData(updatedData);
-    } catch {
-      setChartData([]);
-    } finally {
-      setIsChartLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+
+    const getCountOfIncidentStatus = async () => {
+      setIsChartLoading(true);
+      try {
+        const { data } = await fetchCountOfIncidentStatusTypeByDays(
+          incidentStatusType,
+          chartFilter
+        );
+        if (ignore) {
+          return;
+        }
+
+        const updatedData = data.map((item) => ({
+          timestamp: +item.timestamp,
+          count: +item.stateId,
+        }));
+        setChartData(updatedData);
+      } catch {
+        if (!ignore) {
+          setChartData([]);
+        }
+      } finally {
+        if (!ignore) {
+          setIsChartLoading(false);
+        }
+      }
+    };
+
     getCountOfIncidentStatus();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter, incidentStatusType]);
 
   if (isChartLoading) {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { fetchIncidentTimeMetrics } from '../../../../rest/dataQualityDashboardAPI';
 import {
   IncidentTimeChartWidgetProps,
@@ -110,5 +110,51 @@ describe('IncidentTimeChartWidget', () => {
     expect((await screen.findByTestId('average-time')).textContent).toEqual(
       '--'
     );
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    }; // The stale filter has no metric value, so applying it would render '--'.
+    (fetchIncidentTimeMetrics as jest.Mock).mockImplementation(
+      async (_type: IncidentTimeMetricsType, filters: { startTs: number }) => {
+        await gates[filters.startTs];
+
+        return {
+          data: [
+            {
+              'metrics.value':
+                filters.startTs === 100 ? '5549.916666666667' : null,
+              'metrics.name.keyword': 'timeToResponse',
+              timestamp: '1729468800000',
+            },
+          ],
+        };
+      }
+    );
+
+    const { rerender } = render(
+      <IncidentTimeChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 1, endTs: 10 }}
+      />
+    );
+    rerender(
+      <IncidentTimeChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await act(async () => release[1]());
+
+    expect(screen.getByTestId('average-time')).toHaveTextContent('1h 32m');
   });
 });

@@ -87,40 +87,56 @@ const DataAssetsCoveragePieChartWidget = ({
     [dataAssetsCoverageStates]
   );
 
-  const fetchDataAssetsCoverage = async () => {
-    setIsLoading(true);
-    try {
-      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
-        fetchEntityCoveredWithDQ(chartFilter, false),
-        fetchTotalEntityCount(chartFilter),
-      ]);
-      if (coverageData.length === 0 || totalData.length === 0) {
-        setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
-
-        return;
-      }
-
-      const covered = parseInt(coverageData[0].originEntityFQN, 10);
-      let total = parseInt(totalData[0].fullyQualifiedName, 10);
-
-      if (covered > total) {
-        total = covered;
-      }
-
-      setDataAssetsCoverageStates({
-        covered,
-        notCovered: total - covered,
-        total: total,
-      });
-    } catch {
-      setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+
+    const fetchDataAssetsCoverage = async () => {
+      setIsLoading(true);
+      try {
+        const [{ data: coverageData }, { data: totalData }] = await Promise.all(
+          [
+            fetchEntityCoveredWithDQ(chartFilter, false),
+            fetchTotalEntityCount(chartFilter),
+          ]
+        );
+        if (ignore) {
+          return;
+        }
+
+        if (coverageData.length === 0 || totalData.length === 0) {
+          setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
+
+          return;
+        }
+
+        const covered = parseInt(coverageData[0].originEntityFQN, 10);
+        let total = parseInt(totalData[0].fullyQualifiedName, 10);
+
+        if (covered > total) {
+          total = covered;
+        }
+
+        setDataAssetsCoverageStates({
+          covered,
+          notCovered: total - covered,
+          total: total,
+        });
+      } catch {
+        if (!ignore) {
+          setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     fetchDataAssetsCoverage();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter]);
 
   if (isLoading) {

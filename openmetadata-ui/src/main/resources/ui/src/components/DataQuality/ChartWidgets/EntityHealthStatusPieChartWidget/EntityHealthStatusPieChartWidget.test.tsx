@@ -222,4 +222,51 @@ describe('EntityHealthStatusPieChartWidget', () => {
       }
     );
   });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    (fetchEntityCoveredWithDQ as jest.Mock).mockImplementation(
+      async (filters: { startTs: number }, unhealthy: boolean) => {
+        await gates[filters.startTs];
+
+        return {
+          data: [
+            { originEntityFQN: unhealthy ? String(filters.startTs) : '1000' },
+          ],
+        };
+      }
+    );
+
+    const { rerender } = render(
+      <EntityHealthStatusPieChartWidget
+        chartFilter={{ startTs: 1, endTs: 10 }}
+      />
+    );
+    rerender(
+      <EntityHealthStatusPieChartWidget
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await act(async () => release[1]());
+
+    expect(CustomPieChart).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ value: 900 }),
+          expect.objectContaining({ value: 100 }),
+        ],
+      }),
+      expect.anything()
+    );
+  });
 });

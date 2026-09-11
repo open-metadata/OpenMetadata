@@ -52,37 +52,51 @@ const IncidentTimeChartWidget = ({
     );
   }, [chartData]);
 
-  const getRespondTimeMetrics = async () => {
-    setIsChartLoading(true);
-    try {
-      const { data } = await fetchIncidentTimeMetrics(
-        incidentMetricType,
-        chartFilter
-      );
-      const updatedData = data.reduce((act, cur) => {
-        if (isNull(cur['metrics.value'])) {
-          return act;
+  useEffect(() => {
+    let ignore = false;
+
+    const getRespondTimeMetrics = async () => {
+      setIsChartLoading(true);
+      try {
+        const { data } = await fetchIncidentTimeMetrics(
+          incidentMetricType,
+          chartFilter
+        );
+        if (ignore) {
+          return;
         }
 
-        return [
-          ...act,
-          {
-            timestamp: +cur.timestamp,
-            count: +cur['metrics.value'],
-          },
-        ];
-      }, [] as CustomAreaChartData[]);
+        const updatedData = data.reduce((act, cur) => {
+          if (isNull(cur['metrics.value'])) {
+            return act;
+          }
 
-      setChartData(updatedData);
-    } catch {
-      setChartData([]);
-    } finally {
-      setIsChartLoading(false);
-    }
-  };
+          return [
+            ...act,
+            {
+              timestamp: +cur.timestamp,
+              count: +cur['metrics.value'],
+            },
+          ];
+        }, [] as CustomAreaChartData[]);
 
-  useEffect(() => {
+        setChartData(updatedData);
+      } catch {
+        if (!ignore) {
+          setChartData([]);
+        }
+      } finally {
+        if (!ignore) {
+          setIsChartLoading(false);
+        }
+      }
+    };
+
     getRespondTimeMetrics();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter, incidentMetricType]);
 
   if (isChartLoading) {

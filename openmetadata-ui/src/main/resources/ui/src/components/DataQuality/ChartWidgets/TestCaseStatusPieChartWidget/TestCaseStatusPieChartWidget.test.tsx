@@ -260,4 +260,53 @@ describe('TestCaseStatusPieChartWidget', () => {
       endTs: 200,
     });
   });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    (fetchTestCaseSummary as jest.Mock).mockImplementation(
+      async (filters: { startTs: number }) => {
+        await gates[filters.startTs];
+
+        return {
+          data: [
+            {
+              document_count: String(filters.startTs),
+              'testCaseResult.testCaseStatus': 'success',
+            },
+          ],
+        };
+      }
+    );
+
+    const { rerender } = render(
+      <TestCaseStatusPieChartWidget chartFilter={{ startTs: 1, endTs: 10 }} />
+    );
+    rerender(
+      <TestCaseStatusPieChartWidget
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await act(async () => release[1]());
+
+    expect(CustomPieChart).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ value: 100 }),
+          expect.objectContaining({ value: 0 }),
+          expect.objectContaining({ value: 0 }),
+        ],
+      }),
+      expect.anything()
+    );
+  });
 });

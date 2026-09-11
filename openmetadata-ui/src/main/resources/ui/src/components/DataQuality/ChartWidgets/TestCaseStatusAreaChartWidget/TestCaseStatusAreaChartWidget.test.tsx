@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
@@ -534,5 +534,50 @@ describe('TestCaseStatusAreaChartWidget', () => {
         screen.getByTestId('test-case-Success-area-chart-widget')
       ).toBeInTheDocument();
     });
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    mockFetchTestCaseStatusMetricsByDays.mockImplementation(
+      async (_status, filters) => {
+        await gates[filters?.startTs ?? 0];
+
+        return {
+          data: [
+            {
+              timestamp: '1625097600000',
+              'testCase.fullyQualifiedName': String(filters?.startTs),
+            },
+          ],
+          metadata: { dimensions: [] },
+        };
+      }
+    );
+
+    const { rerender } = render(
+      <TestCaseStatusAreaChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 1, endTs: 10 }}
+      />
+    );
+    rerender(
+      <TestCaseStatusAreaChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await act(async () => release[1]());
+
+    expect(screen.getByTestId('total-value')).toHaveTextContent('100');
   });
 });

@@ -120,33 +120,47 @@ const TestCaseStatusAreaChartWidget = ({
     showIcon,
   ]);
 
-  const getTestCaseStatusMetrics = async () => {
-    setIsChartLoading(true);
-    try {
-      const { data } = await fetchTestCaseStatusMetricsByDays(
-        testCaseStatus,
-        chartFilter
-      );
-      const updatedData = data.map((cur) => {
-        return {
-          timestamp: +cur.timestamp,
-          count: +cur['testCase.fullyQualifiedName'],
-        };
-      });
-      // Aggregation buckets are not guaranteed to arrive chronologically;
-      // Recharts expects an ascending x-axis for a stable trend line.
-      updatedData.sort((first, second) => first.timestamp - second.timestamp);
-
-      setChartData(updatedData);
-    } catch {
-      setChartData([]);
-    } finally {
-      setIsChartLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+
+    const getTestCaseStatusMetrics = async () => {
+      setIsChartLoading(true);
+      try {
+        const { data } = await fetchTestCaseStatusMetricsByDays(
+          testCaseStatus,
+          chartFilter
+        );
+        if (ignore) {
+          return;
+        }
+
+        const updatedData = data.map((cur) => {
+          return {
+            timestamp: +cur.timestamp,
+            count: +cur['testCase.fullyQualifiedName'],
+          };
+        });
+        // Aggregation buckets are not guaranteed to arrive chronologically;
+        // Recharts expects an ascending x-axis for a stable trend line.
+        updatedData.sort((first, second) => first.timestamp - second.timestamp);
+
+        setChartData(updatedData);
+      } catch {
+        if (!ignore) {
+          setChartData([]);
+        }
+      } finally {
+        if (!ignore) {
+          setIsChartLoading(false);
+        }
+      }
+    };
+
     getTestCaseStatusMetrics();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter, testCaseStatus]);
 
   const containerClassName = classNames(

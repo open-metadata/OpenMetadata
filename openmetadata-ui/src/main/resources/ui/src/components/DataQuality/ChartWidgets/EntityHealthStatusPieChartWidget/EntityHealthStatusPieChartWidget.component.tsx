@@ -81,31 +81,46 @@ const EntityHealthStatusPieChartWidget = ({
     [entityHealthStates]
   );
 
-  const fetchEntityHealthSummary = async () => {
-    setIsLoading(true);
-    try {
-      const [{ data: unhealthyData }, { data: totalData }] = await Promise.all([
-        fetchEntityCoveredWithDQ(chartFilter, true),
-        fetchEntityCoveredWithDQ(chartFilter, false),
-      ]);
-      if (unhealthyData.length === 0 || totalData.length === 0) {
-        setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
-
-        return;
-      }
-      const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
-      const total = parseInt(totalData[0].originEntityFQN, 10);
-
-      setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
-    } catch {
-      setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+
+    const fetchEntityHealthSummary = async () => {
+      setIsLoading(true);
+      try {
+        const [{ data: unhealthyData }, { data: totalData }] =
+          await Promise.all([
+            fetchEntityCoveredWithDQ(chartFilter, true),
+            fetchEntityCoveredWithDQ(chartFilter, false),
+          ]);
+        if (ignore) {
+          return;
+        }
+
+        if (unhealthyData.length === 0 || totalData.length === 0) {
+          setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
+
+          return;
+        }
+        const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
+        const total = parseInt(totalData[0].originEntityFQN, 10);
+
+        setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
+      } catch {
+        if (!ignore) {
+          setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     fetchEntityHealthSummary();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter]);
 
   if (isLoading) {
