@@ -4125,6 +4125,7 @@
     "request-tags-message": "다음에 대한 태그 요청:",
     "request-test-case-failure-resolution-message": "다음에 대한 테스트 케이스 실패 해결 요청:",
     "request-update-description": "설명 업데이트 요청",
+    "reserved-column-name": "열 이름 '{{name}}'은(는) 내부용으로 예약되어 있어 테이블 유형 사용자 지정 속성의 열로 사용할 수 없습니다.",
     "reset-layout-confirmation": "\"기본 레이아웃\"을 적용하시겠습니까?",
     "reset-link-has-been-sent": "재설정 링크가 이메일로 전송되었습니다",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
