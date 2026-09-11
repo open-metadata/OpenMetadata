@@ -1172,8 +1172,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
               sit on the first filter row: centring them inside a column the
               wrapped filters have made two rows tall floats them into the gap
               and reads as a much heavier block. */}
+          {/* `self-start` keeps this column at its content height. Left to
+              stretch, it grows with the wrapped filters, and the vertical
+              dividers — which are `self-stretch` — grow with it, towering over
+              the controls they separate. */}
           <Col
-            className="d-flex items-start justify-end gap-3 tw:mt-1"
+            className="d-flex items-start justify-end gap-3 tw:mt-1 tw:self-start"
             flex="none">
             <Button
               aria-label={t('label.sort-order')}
