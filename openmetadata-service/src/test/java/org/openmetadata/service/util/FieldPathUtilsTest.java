@@ -505,6 +505,26 @@ class FieldPathUtilsTest {
   }
 
   @Test
+  void nestedContainerResolution_returnsTheLiveListInstance() {
+    // The registry must hand back the entity's own list, not a copy: FieldPathUtils mutates the
+    // element POJOs in place, so a copied list would write to something the entity cannot see.
+    // This is what makes the resolver a safe substitute for the deleted nested-container chain.
+    Topic topic =
+        new Topic()
+            .withMessageSchema(
+                new MessageSchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("customer")))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            topic, repository, "admin", "messageSchema::customer::description", "via resolver"));
+    assertSame(
+        topic.getMessageSchema().getSchemaFields(),
+        ChildFieldResolver.containerListFor(topic, "messageSchema"));
+  }
+
+  @Test
   void updateFieldDescription_columnsContainerOnTable_worksToday() {
     // FROZEN, must never change. Task 10 makes "columns" a registry-resolved alias for the
     // entity's child container; for table the registry's container path IS literally "columns"

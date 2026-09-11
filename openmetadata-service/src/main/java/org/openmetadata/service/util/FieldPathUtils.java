@@ -243,114 +243,36 @@ public class FieldPathUtils {
   /** Navigate entity structure and set description on target field. */
   private static boolean navigateAndSetDescription(
       EntityInterface entity, FieldPathComponents components, String description) {
-
-    String container = components.containerName();
-    String fieldName = components.fieldName();
-
-    // Try direct field lists first (columns, fields, schemaFields, tasks, charts)
-    List<?> fieldList = getFieldList(entity, container);
-    if (fieldList != null) {
-      return setDescriptionInList(fieldList, fieldName, description);
+    List<?> fieldList = resolveContainerList(entity, components.containerName());
+    if (fieldList == null) {
+      LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
     }
-
-    // Handle nested containers (messageSchema.schemaFields, dataModel.columns)
-    return handleNestedContainer(entity, container, fieldName, description);
+    return fieldList != null
+        && setDescriptionInList(fieldList, components.fieldName(), description);
   }
 
   /** Navigate entity structure and get the description on the target field. */
   private static Optional<String> navigateAndGetDescription(
       EntityInterface entity, FieldPathComponents components) {
-
-    String container = components.containerName();
-    String fieldName = components.fieldName();
-
-    List<?> fieldList = getFieldList(entity, container);
-    if (fieldList != null) {
-      return getDescriptionFromList(fieldList, fieldName);
+    List<?> fieldList = resolveContainerList(entity, components.containerName());
+    if (fieldList == null) {
+      LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
     }
-
-    return getNestedContainerDescription(entity, container, fieldName);
+    return fieldList == null
+        ? Optional.empty()
+        : getDescriptionFromList(fieldList, components.fieldName());
   }
 
-  /** Handle nested containers like messageSchema.schemaFields or dataModel.columns. */
-  private static boolean handleNestedContainer(
-      EntityInterface entity, String container, String fieldName, String description) {
-
-    // Topic: messageSchema -> schemaFields
-    if ("messageSchema".equals(container)) {
-      Object schema = invokeGetter(entity, "getMessageSchema");
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return setDescriptionInList(schemaFields, fieldName, description);
-        }
-      }
-    }
-
-    // Container: dataModel -> columns
-    if ("dataModel".equals(container)) {
-      Object dataModel = invokeGetter(entity, "getDataModel");
-      if (dataModel != null) {
-        List<?> columns = getFieldListFromObject(dataModel, "columns");
-        if (columns != null) {
-          return setDescriptionInList(columns, fieldName, description);
-        }
-      }
-    }
-
-    // API Endpoint: responseSchema/requestSchema -> schemaFields
-    if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
-      String methodName = "get" + capitalize(container);
-      Object schema = invokeGetter(entity, methodName);
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return setDescriptionInList(schemaFields, fieldName, description);
-        }
-      }
-    }
-
-    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
-    return false;
-  }
-
-  /** Handle nested containers like messageSchema.schemaFields or dataModel.columns. */
-  private static Optional<String> getNestedContainerDescription(
-      EntityInterface entity, String container, String fieldName) {
-
-    if ("messageSchema".equals(container)) {
-      Object schema = invokeGetter(entity, "getMessageSchema");
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return getDescriptionFromList(schemaFields, fieldName);
-        }
-      }
-    }
-
-    if ("dataModel".equals(container)) {
-      Object dataModel = invokeGetter(entity, "getDataModel");
-      if (dataModel != null) {
-        List<?> columns = getFieldListFromObject(dataModel, "columns");
-        if (columns != null) {
-          return getDescriptionFromList(columns, fieldName);
-        }
-      }
-    }
-
-    if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
-      String methodName = "get" + capitalize(container);
-      Object schema = invokeGetter(entity, methodName);
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return getDescriptionFromList(schemaFields, fieldName);
-        }
-      }
-    }
-
-    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
-    return Optional.empty();
+  /**
+   * Resolve the list of child POJOs that a field path's container segment names.
+   *
+   * <p>The registry is consulted before the plain reflective getter so that a container segment on
+   * a registry type always means what the registry says it means. Falling back to the getter only
+   * serves entity types the registry does not cover, for example a dashboard's charts.
+   */
+  private static List<?> resolveContainerList(EntityInterface entity, String container) {
+    List<?> fromRegistry = ChildFieldResolver.containerListFor(entity, container);
+    return fromRegistry != null ? fromRegistry : getFieldList(entity, container);
   }
 
   /**
@@ -437,40 +359,11 @@ public class FieldPathUtils {
     String container = components.containerName();
     String fieldName = components.fieldName();
 
-    List<?> fieldList = getFieldList(entity, container);
-    if (fieldList != null) {
-      return findFieldInList(fieldList, fieldName);
+    List<?> fieldList = resolveContainerList(entity, container);
+    if (fieldList == null) {
+      LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
     }
-
-    List<?> nested = getNestedContainerList(entity, container);
-    if (nested != null) {
-      return findFieldInList(nested, fieldName);
-    }
-
-    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
-    return Optional.empty();
-  }
-
-  /** Get the list of fields hosted by a nested container (messageSchema, dataModel, …). */
-  private static List<?> getNestedContainerList(EntityInterface entity, String container) {
-    List<?> result = null;
-    if ("messageSchema".equals(container)) {
-      Object schema = invokeGetter(entity, "getMessageSchema");
-      if (schema != null) {
-        result = getFieldListFromObject(schema, "schemaFields");
-      }
-    } else if ("dataModel".equals(container)) {
-      Object dataModel = invokeGetter(entity, "getDataModel");
-      if (dataModel != null) {
-        result = getFieldListFromObject(dataModel, "columns");
-      }
-    } else if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
-      Object schema = invokeGetter(entity, "get" + capitalize(container));
-      if (schema != null) {
-        result = getFieldListFromObject(schema, "schemaFields");
-      }
-    }
-    return result;
+    return fieldList == null ? Optional.empty() : findFieldInList(fieldList, fieldName);
   }
 
   /**
@@ -514,7 +407,7 @@ public class FieldPathUtils {
   /** Find a field by name in a list of fields. */
   private static Optional<?> findFieldByName(List<?> fieldList, String name) {
     for (Object item : fieldList) {
-      String itemName = (String) invokeGetter(item, "getName");
+      String itemName = (String) ChildFieldResolver.invokeGetter(item, "getName");
       if (name.equals(itemName)) {
         return Optional.of(item);
       }
@@ -536,40 +429,20 @@ public class FieldPathUtils {
 
   /** Get description from a field object. */
   private static Optional<String> getDescription(Object field) {
-    Object description = invokeGetter(field, "getDescription");
+    Object description = ChildFieldResolver.invokeGetter(field, "getDescription");
     return Optional.ofNullable((String) description);
   }
 
   /** Get a field list from entity by name (columns, fields, schemaFields, etc.). */
   private static List<?> getFieldList(EntityInterface entity, String listName) {
-    String methodName = "get" + capitalize(listName);
-    Object result = invokeGetter(entity, methodName);
+    Object result =
+        ChildFieldResolver.invokeGetter(entity, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;
   }
 
   /** Get a field list from an object by name. */
   private static List<?> getFieldListFromObject(Object obj, String listName) {
-    String methodName = "get" + capitalize(listName);
-    Object result = invokeGetter(obj, methodName);
+    Object result = ChildFieldResolver.invokeGetter(obj, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;
-  }
-
-  /** Invoke a getter method on an object. */
-  private static Object invokeGetter(Object obj, String methodName) {
-    try {
-      Method method = obj.getClass().getMethod(methodName);
-      return method.invoke(obj);
-    } catch (NoSuchMethodException e) {
-      // Expected for some entity types
-      return null;
-    } catch (Exception e) {
-      LOG.debug("[FieldPathUtils] Could not invoke {}: {}", methodName, e.getMessage());
-      return null;
-    }
-  }
-
-  /** Capitalize first letter of a string. */
-  private static String capitalize(String s) {
-    return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
   }
 }

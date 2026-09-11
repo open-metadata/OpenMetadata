@@ -17,10 +17,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
@@ -55,6 +57,10 @@ public final class ChildFieldResolver {
       boolean supportsDisplayName) {}
 
   private static final Map<String, ChildContainerSpec> REGISTRY = buildRegistry();
+
+  private static final Map<String, String> TYPE_BY_SIMPLE_CLASS_NAME =
+      REGISTRY.keySet().stream()
+          .collect(Collectors.toMap(type -> type.toLowerCase(Locale.ROOT), type -> type));
 
   private ChildFieldResolver() {}
 
@@ -178,6 +184,47 @@ public final class ChildFieldResolver {
 
   public static void ensureChildFqns(EntityInterface parent, String entityType) {
     assignFqns(parent.getFullyQualifiedName(), childrenOf(parent, entityType));
+  }
+
+  /**
+   * Resolve the child list that a field path's container segment names, for a registry type.
+   * Returns null when the entity's type is not registered or the segment does not name one of its
+   * declared container paths, which lets callers fall back to their own resolution.
+   */
+  public static List<?> containerListFor(EntityInterface entity, String containerName) {
+    String entityType = registryTypeOf(entity);
+    List<?> result = null;
+    if (supports(entityType)) {
+      result = listForDeclaredPath(entity, specFor(entityType), containerName);
+    }
+    return result;
+  }
+
+  /**
+   * Map a POJO to its registry entity type by simple class name.
+   *
+   * <p>Deliberately not {@link Entity#getEntityTypeFromObject}: that reads a map populated by
+   * {@code Entity.registerEntity} during server bootstrap, so it returns null in any context where
+   * repositories have not registered (unit tests, and any static utility invoked before
+   * registration). The registry's own keys already are the canonical entity-type names, so deriving
+   * the lookup from them keeps this resolvable everywhere and independent of registration order.
+   */
+  private static String registryTypeOf(EntityInterface entity) {
+    return TYPE_BY_SIMPLE_CLASS_NAME.get(
+        entity.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+  }
+
+  private static List<?> listForDeclaredPath(
+      EntityInterface entity, ChildContainerSpec spec, String containerName) {
+    List<?> result = null;
+    for (String path : spec.containerPaths()) {
+      boolean matches = path.equals(containerName) || path.startsWith(containerName + ".");
+      if (result == null && matches) {
+        Object node = walkPath(entity, path);
+        result = node instanceof List<?> list ? list : null;
+      }
+    }
+    return result;
   }
 
   public static String parentFqnOf(String childFqn, String entityType) {

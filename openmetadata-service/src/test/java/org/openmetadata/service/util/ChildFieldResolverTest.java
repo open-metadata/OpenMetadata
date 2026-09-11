@@ -2,6 +2,8 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -16,10 +18,14 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerDataModel;
@@ -221,6 +227,59 @@ class ChildFieldResolverTest {
       assertEquals(
           "svc.root.sub", ChildFieldResolver.parentFqnOf("svc.root.sub.col", Entity.CONTAINER));
     }
+  }
+
+  @Test
+  void containerListFor_directAndNestedContainers() {
+    Table table = new Table().withColumns(List.of(new Column().withName("id")));
+    assertEquals(1, ChildFieldResolver.containerListFor(table, "columns").size());
+
+    Topic topic =
+        new Topic()
+            .withMessageSchema(
+                new MessageSchema().withSchemaFields(List.of(new Field().withName("f"))));
+    assertEquals(1, ChildFieldResolver.containerListFor(topic, "messageSchema").size());
+
+    Pipeline pipeline = new Pipeline().withTasks(List.of(new Task().withName("t1")));
+    assertEquals(1, ChildFieldResolver.containerListFor(pipeline, "tasks").size());
+  }
+
+  @Test
+  void containerListFor_resolvesEveryRegistryTypeFromItsPojoClass() {
+    // containerListFor maps a POJO to its registry type by lowercased simple class name. That
+    // holds for all nine today; this pins it, because a future registry type whose class name
+    // does not lowercase to its entity type would silently resolve to null instead of failing.
+    assertNotNull(
+        ChildFieldResolver.containerListFor(new Table().withColumns(List.of()), "columns"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(
+            new DashboardDataModel().withColumns(List.of()), "columns"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(
+            new Topic().withMessageSchema(new MessageSchema().withSchemaFields(List.of())),
+            "messageSchema"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(
+            new Container().withDataModel(new ContainerDataModel().withColumns(List.of())),
+            "dataModel"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(new MlModel().withMlFeatures(List.of()), "mlFeatures"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(new Pipeline().withTasks(List.of()), "tasks"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(new SearchIndex().withFields(List.of()), "fields"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(
+            new APIEndpoint().withRequestSchema(new APISchema().withSchemaFields(List.of())),
+            "requestSchema"));
+    assertNotNull(
+        ChildFieldResolver.containerListFor(new Worksheet().withColumns(List.of()), "columns"));
+  }
+
+  @Test
+  void containerListFor_unknownContainerOrTypeReturnsNull() {
+    assertNull(ChildFieldResolver.containerListFor(new Table(), "mlFeatures"));
+    assertNull(ChildFieldResolver.containerListFor(new Glossary(), "columns"));
   }
 
   @Test
