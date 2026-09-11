@@ -168,6 +168,48 @@
   --color-brand-900: #194185;
   --color-brand-950: #102a56;
 
+  /* Entity palette values are stable identifiers in stored metadata. Themes
+     may override their presentation without changing those identifiers. */
+  --color-entity-palette-blue: #1470ef;
+  --color-entity-palette-indigo: #7d81e9;
+  --color-entity-palette-rose: #f14c75;
+  --color-entity-palette-pink: #f689a6;
+  --color-entity-palette-cyan: #05c4ea;
+  --color-entity-palette-teal: #05a580;
+  --color-entity-palette-amber: #ffb01a;
+  --color-entity-palette-purple: #bf4cf1;
+  --color-entity-palette-blue-muted: #99aadf;
+  --color-entity-palette-indigo-muted: #c0b3f2;
+  --color-entity-palette-rose-muted: #edb3b3;
+  --color-entity-palette-orange-muted: #ecb892;
+  --color-entity-palette-cyan-muted: #90dae3;
+  --color-entity-palette-teal-muted: #82e6c4;
+
+  /* Fixed chart hues retain their existing categorical identity. */
+  --color-visualization-test-success: #12b76a;
+  --color-visualization-green-3: #48ca9e;
+  --color-visualization-green-4: #039855;
+  --color-visualization-green-3-translucent: #48ca9e30;
+  --color-visualization-yellow-2: #ffbe0e;
+  --color-visualization-red-3: #f24822;
+  --color-visualization-red-3-translucent: #ff7c501a;
+  --color-visualization-purple-2: #7147e8;
+  --color-visualization-gray-1: #a1a1aa;
+  --color-visualization-blue-2: #3ca2f4;
+  --color-visualization-chart-blue-1: #4689ff;
+  --color-visualization-blue-600: #1677ff;
+  --color-visualization-riptide: #76e9c6;
+  --color-visualization-my-sin: #feb019;
+  --color-visualization-san-marino: #416bb3;
+  --color-visualization-silver-tree: #5cae95;
+  --color-visualization-desert: #b56727;
+  --color-visualization-pink-salmon: #ff92ae;
+  --color-visualization-electric-violet: #9747ff;
+  --color-visualization-lemon-zest: #ffd700;
+  --color-visualization-gray-400: #98a2b3;
+  --color-visualization-gray-300: #d0d5dd;
+  --color-visualization-dq-failed: #cb5a50;
+
   --color-error-25: #fffbfa;
   --color-error-50: #fef3f2;
   --color-error-100: #fee4e2;
