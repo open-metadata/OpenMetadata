@@ -18,7 +18,6 @@ import {
   Popover,
   PopoverTrigger,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Database01, Globe01, User03 } from '@untitledui/icons';
@@ -61,20 +60,22 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
       data-testid="entity-meta-strip">
       {/* Domain */}
       <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-        <Tooltip arrow title={t('label.domain')}>
-          <TooltipTrigger className="tw:flex tw:cursor-default tw:items-center">
-            <Globe01 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
-          </TooltipTrigger>
+        <Tooltip
+          arrow
+          title={t('label.domain')}
+          triggerClassName="tw:flex tw:cursor-default tw:items-center">
+          <Globe01 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
         </Tooltip>
         {firstDomain ? (
-          <Tooltip arrow title={firstDomain.displayName ?? firstDomain.name}>
-            <TooltipTrigger className="tw:flex tw:min-w-0 tw:cursor-default tw:items-center">
-              <Typography
-                className="tw:block tw:max-w-[200px] tw:truncate"
-                weight="regular">
-                {firstDomain.displayName ?? firstDomain.name}
-              </Typography>
-            </TooltipTrigger>
+          <Tooltip
+            arrow
+            title={firstDomain.displayName ?? firstDomain.name}
+            triggerClassName="tw:flex tw:min-w-0 tw:cursor-default tw:items-center">
+            <Typography
+              className="tw:block tw:max-w-[200px] tw:truncate"
+              weight="regular">
+              {firstDomain.displayName ?? firstDomain.name}
+            </Typography>
           </Tooltip>
         ) : (
           <Typography weight="regular">
@@ -98,14 +99,15 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
                     className="tw:flex tw:items-center tw:gap-1.5"
                     key={d.id}>
                     <Globe01 className="tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-fg-disabled" />
-                    <Tooltip arrow title={d.displayName ?? d.name}>
-                      <TooltipTrigger className="tw:flex tw:min-w-0 tw:cursor-default tw:items-center">
-                        <Typography
-                          className="tw:block tw:max-w-[240px] tw:truncate tw:text-secondary"
-                          weight="regular">
-                          {d.displayName ?? d.name}
-                        </Typography>
-                      </TooltipTrigger>
+                    <Tooltip
+                      arrow
+                      title={d.displayName ?? d.name}
+                      triggerClassName="tw:flex tw:min-w-0 tw:cursor-default tw:items-center">
+                      <Typography
+                        className="tw:block tw:max-w-[240px] tw:truncate tw:text-secondary"
+                        weight="regular">
+                        {d.displayName ?? d.name}
+                      </Typography>
                     </Tooltip>
                   </div>
                 ))}
@@ -135,10 +137,11 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
       <Dot className="tw:text-fg-disabled" size="xs" />
       {/* Owners */}
       <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2 dashboard-details-page-owner-label">
-        <Tooltip arrow title={t('label.owner')}>
-          <TooltipTrigger className="tw:flex tw:cursor-default tw:items-center">
-            <User03 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
-          </TooltipTrigger>
+        <Tooltip
+          arrow
+          title={t('label.owner')}
+          triggerClassName="tw:flex tw:cursor-default tw:items-center">
+          <User03 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
         </Tooltip>
         {owners && owners.length > 0 ? (
           <OwnerLabel
@@ -185,10 +188,11 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
         <div
           className="tw:flex tw:cursor-pointer tw:items-center tw:gap-2"
           data-testid="tier-container">
-          <Tooltip arrow title={t('label.tier')}>
-            <TooltipTrigger className="tw:flex tw:cursor-default tw:items-center">
-              <Database01 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
-            </TooltipTrigger>
+          <Tooltip
+            arrow
+            title={t('label.tier')}
+            triggerClassName="tw:flex tw:cursor-default tw:items-center">
+            <Database01 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
           </Tooltip>
           <Typography
             className={tier ? 'tw:truncate' : 'tw:whitespace-nowrap'}

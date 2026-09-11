@@ -16,7 +16,6 @@ import {
   Card,
   FeaturedIcon,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
@@ -99,20 +98,19 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
           {/* The card title truncates hard at this width, so the full name has to be
               reachable. Cards are few and large enough for a real Tooltip to be worth it; the
               list rows use a native `title` instead. */}
-          {/* TooltipTrigger is a react-aria button, and usePress consumes the click rather than
-              letting it bubble — so the name was a dead spot on an otherwise clickable card. It
-              navigates itself instead, which also makes the name keyboard-reachable. */}
-          <Tooltip title={serviceName}>
-            <TooltipTrigger
-              className="tw:w-full tw:text-left"
-              onPress={handleClick}>
-              <Typography
-                ellipsis
-                className="tw:cursor-pointer tw:text-primary"
-                weight="semibold">
-                {serviceName}
-              </Typography>
-            </TooltipTrigger>
+          {/* The Tooltip trigger wrapper is a react-aria button, and usePress consumes the click
+              rather than letting it bubble — so the name was a dead spot on an otherwise clickable
+              card. It navigates itself instead, which also makes the name keyboard-reachable. */}
+          <Tooltip
+            title={serviceName}
+            triggerClassName="tw:w-full tw:text-left"
+            onTriggerPress={handleClick}>
+            <Typography
+              ellipsis
+              className="tw:cursor-pointer tw:text-primary"
+              weight="semibold">
+              {serviceName}
+            </Typography>
           </Tooltip>
           <Typography className="tw:text-tertiary" size="text-xs">
             {service.serviceType as string}

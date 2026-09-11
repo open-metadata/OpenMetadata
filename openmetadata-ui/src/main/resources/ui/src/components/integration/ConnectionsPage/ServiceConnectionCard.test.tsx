@@ -136,9 +136,6 @@ jest.mock(
         {children}
       </div>
     ),
-    TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
     Typography: ({
       children,
       ellipsis,
@@ -287,8 +284,8 @@ describe('ServiceConnectionCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/path/to/service');
   });
 
-  // TooltipTrigger is a react-aria button, whose usePress consumes the click instead of letting it
-  // bubble — the name was a dead spot in the middle of a clickable card.
+  // The Tooltip trigger wrapper is a react-aria button, whose usePress consumes the click instead
+  // of letting it bubble — the name was a dead spot in the middle of a clickable card.
   it('navigates when the service name is clicked', () => {
     renderCard();
 
