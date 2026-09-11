@@ -24,12 +24,16 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe.configure({ mode: 'default' });
 
   const glossary = new Glossary();
-  const glossaryTerms: GlossaryTerm[] = [];
+  let glossaryTerms: GlossaryTerm[] = [];
   let parentTerm: GlossaryTerm;
-  const childTerms: GlossaryTerm[] = [];
-  const siblingTerms: GlossaryTerm[] = [];
+  let childTerms: GlossaryTerm[] = [];
+  let siblingTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms = [];
+    childTerms = [];
+    siblingTerms = [];
+
     const { apiContext, afterAction } = await createNewPage(browser);
     await glossary.create(apiContext);
     for (let i = 1; i <= 15; i++) {
