@@ -1603,6 +1603,7 @@
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Features/TierDropdown.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
@@ -2059,6 +2060,7 @@
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Features/TierDropdown.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
@@ -3137,6 +3139,7 @@
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Features/TierDropdown.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
@@ -3434,6 +3437,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts",
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
@@ -3596,6 +3600,7 @@
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
@@ -4405,7 +4410,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/tier.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/TierDropdown.spec.ts"
+        "playwright/e2e/Features/TierDropdown.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts"
       ]
     },
     {
@@ -4977,15 +4983,6 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextRuleEditor/ContextRuleEditor.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextRuleEditor/RuleQueryBuilderField.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
@@ -7997,6 +7994,21 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/ConditionBuilder/ConditionBuilder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/DataAssetFormSection.tsx"
       ],
       "specs": [
@@ -8582,14 +8594,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContracts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/TreeSelectWidget.tsx"
       ],
       "specs": [
@@ -8780,6 +8784,43 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderGroupCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderGroupHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderRuleRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
@@ -11100,7 +11141,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts"
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
@@ -11171,6 +11213,15 @@
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/queryBuilderWidgets/OMConjs.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     }
   ],
