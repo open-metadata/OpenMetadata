@@ -132,22 +132,24 @@ export const renderDomainOwnersCell = (
 
 export const renderDomainGlossaryTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize; emptyPlaceholder?: string }
+  emptyPlaceholder?: string,
+  size?: TagSize
 ): ReactNode => (
   <TagBadgeList
-    emptyPlaceholder={options?.emptyPlaceholder}
-    size={options?.size}
+    emptyPlaceholder={emptyPlaceholder}
+    size={size}
     tags={getGlossaryTags(entity.tags)}
   />
 );
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize; emptyPlaceholder?: string }
+  emptyPlaceholder?: string,
+  size?: TagSize
 ): ReactNode => (
   <TagBadgeList
-    emptyPlaceholder={options?.emptyPlaceholder}
-    size={options?.size}
+    emptyPlaceholder={emptyPlaceholder}
+    size={size}
     tags={getClassificationTags(entity.tags)}
   />
 );

@@ -1114,9 +1114,10 @@ describe('TestSuiteDetailsPage component', () => {
         renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
-      // Component should still render without crashing
+      // When the suite fetch resolves to no data, the page should fall back to
+      // the error placeholder rather than rendering a degraded empty header.
       expect(
-        await screen.findByText('HeaderBreadcrumb.component')
+        await screen.findByText('ErrorPlaceHolder.component')
       ).toBeInTheDocument();
     });
 

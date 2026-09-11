@@ -13,6 +13,7 @@
 
 import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
@@ -66,9 +67,17 @@ export const useDomainTableColumns = ({
             renderOwnerContent
           );
         case 'glossaryTerms':
-          return renderDomainGlossaryTagsCell(entity, { size: tagSize });
+          return renderDomainGlossaryTagsCell(
+            entity,
+            NO_DATA_PLACEHOLDER,
+            tagSize
+          );
         case 'tags':
-          return renderDomainClassificationTagsCell(entity, { size: tagSize });
+          return renderDomainClassificationTagsCell(
+            entity,
+            NO_DATA_PLACEHOLDER,
+            tagSize
+          );
         default:
           return null;
       }

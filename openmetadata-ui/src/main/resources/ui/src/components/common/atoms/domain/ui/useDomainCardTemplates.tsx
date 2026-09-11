@@ -194,9 +194,7 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.glossary-term-plural')}
                 </Typography>
-                {renderDomainGlossaryTagsCell(entity, {
-                  emptyPlaceholder: NO_DATA_PLACEHOLDER,
-                })}
+                {renderDomainGlossaryTagsCell(entity, NO_DATA_PLACEHOLDER)}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -207,9 +205,10 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.tag-plural')}
                 </Typography>
-                {renderDomainClassificationTagsCell(entity, {
-                  emptyPlaceholder: NO_DATA_PLACEHOLDER,
-                })}
+                {renderDomainClassificationTagsCell(
+                  entity,
+                  NO_DATA_PLACEHOLDER
+                )}
               </Box>
             </Grid.Item>
           </Grid>
