@@ -27,6 +27,16 @@ Highest-value constraints, all machine-enforced:
 
 - No positional locators (`.first()`, `.last()`, `.nth()`) — narrow the locator, or use
   `getRowByName()` from `playwright/utils/scopedLocators.ts`.
+- **Sign in with a role page fixture, not a bespoke user.** `support/fixtures/userPages.ts` owns
+  every signed-in page (`adminPage`, `dataConsumerPage`, `dataStewardPage`, `ownerPage`,
+  `editDescriptionPage`, `editTagsPage`, `editGlossaryTermPage`, `viewOnlyPage`);
+  `e2e/fixtures/pages.ts` re-exports them and aliases `page` to `adminPage`. When the test needs its
+  own account, `support/fixtures/isolatedUser.ts` has `isolatedUserPage` (one per worker) and
+  `freshUserPage` (one per test) — both create *and delete* the account, so there is no
+  `beforeAll`/`afterAll` bookkeeping to get wrong. Never call `UserClass.login()`: it drives the
+  sign-in form (nine UI interactions). `UserClass.signIn()` establishes the same session with one
+  POST and runs the identical post-sign-in steps; only a spec testing the form itself should drive
+  `login()`. Creating a user as *test data* is unrelated and unaffected.
 - **`beforeAll` is not a per-worker hook.** Under `fullyParallel` it runs once per *group* of the
   file's tests dispatched to a worker, with `afterAll` in between — so it can run twice in one
   worker. Rebuild describe-scope state at the top of the hook; never `.push()` into it.
