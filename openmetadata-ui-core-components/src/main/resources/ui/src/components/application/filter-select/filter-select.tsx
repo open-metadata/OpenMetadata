@@ -608,7 +608,9 @@ export const FilterSelect = ({
                 data-testid="apply-filter-btn"
                 size="sm"
                 onPress={handleApply}>
-                {t('label.apply')}
+                {staged.length > 0
+                  ? t('label.apply-count', { count: staged.length })
+                  : t('label.apply')}
               </Button>
             </div>
           </div>

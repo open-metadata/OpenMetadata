@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "套用",
+    "apply-count": "套用 ({{count}})",
     "cancel": "取消",
     "clear-all": "清除全部",
     "close": "關閉",

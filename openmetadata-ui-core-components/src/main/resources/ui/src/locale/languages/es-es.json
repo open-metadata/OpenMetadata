@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "Aplicar",
+    "apply-count": "Aplicar ({{count}})",
     "cancel": "Cancelar",
     "clear-all": "Borrar todo",
     "close": "Cerrar",

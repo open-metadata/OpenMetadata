@@ -19,6 +19,7 @@ import type { FilterSelectProps } from './filter-select.types';
 // renders to their en-us texts; everything else falls through as the raw key.
 const EN_LABELS: Record<string, string> = {
   'label.apply': 'Apply',
+  'label.apply-count': 'Apply ({{count}})',
   'label.cancel': 'Cancel',
   'label.clear-all': 'Clear all',
   'label.count-selected': '{{count}} selected',
@@ -366,6 +367,19 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('trigger-regular').className).toContain(
       'font-normal'
     );
+  });
+
+  it('apply carries the staged count, and drops it when nothing is staged', () => {
+    renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
+
+    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent(
+      'Apply (1)'
+    );
+
+    fireEvent.click(screen.getByTestId('clear-filter-btn'));
+
+    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent('Apply');
+    expect(screen.getByTestId('apply-filter-btn')).not.toHaveTextContent('(');
   });
 
   it('immediate mode footer reports the count and clears on demand', () => {

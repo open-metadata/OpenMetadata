@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "Uygula",
+    "apply-count": "Uygula ({{count}})",
     "cancel": "İptal",
     "clear-all": "Tümünü temizle",
     "close": "Kapat",

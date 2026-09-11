@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "Apply",
+    "apply-count": "Apply ({{count}})",
     "cancel": "Cancel",
     "clear-all": "Clear all",
     "close": "Close",

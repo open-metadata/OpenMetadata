@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "Применить",
+    "apply-count": "Применить ({{count}})",
     "cancel": "Отмена",
     "clear-all": "Очистить все",
     "close": "Закрыть",

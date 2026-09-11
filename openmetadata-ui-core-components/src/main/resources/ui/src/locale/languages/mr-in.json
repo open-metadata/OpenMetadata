@@ -1,6 +1,7 @@
 {
   "label": {
     "apply": "लागू करा",
+    "apply-count": "लागू करा ({{count}})",
     "cancel": "रद्द करा",
     "clear-all": "सर्व साफ करा",
     "close": "बंद करा",
