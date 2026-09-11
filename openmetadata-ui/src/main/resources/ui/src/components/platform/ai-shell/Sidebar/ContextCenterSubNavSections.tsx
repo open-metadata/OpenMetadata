@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { File06, Link03, Plus } from '@untitledui/icons';
 import { groupBy, isEmpty, startCase } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
@@ -173,18 +173,19 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
 
       return (
         <li key={page.fullyQualifiedName ?? testId}>
-          <button
-            aria-label={label}
-            className="ask-sub-panel__item"
-            data-testid={`ask-sub-panel-link-${testId}`}
-            title={label}
-            type="button"
-            onClick={handleClick}>
-            <span className="ask-sub-panel__item-icon">
-              <Icon size={16} />
-            </span>
-            <span className="ask-sub-panel__item-label">{label}</span>
-          </button>
+          <Tooltip title={label}>
+            <button
+              aria-label={label}
+              className="ask-sub-panel__item"
+              data-testid={`ask-sub-panel-link-${testId}`}
+              type="button"
+              onClick={handleClick}>
+              <span className="ask-sub-panel__item-icon">
+                <Icon size={16} />
+              </span>
+              <span className="ask-sub-panel__item-label">{label}</span>
+            </button>
+          </Tooltip>
         </li>
       );
     },

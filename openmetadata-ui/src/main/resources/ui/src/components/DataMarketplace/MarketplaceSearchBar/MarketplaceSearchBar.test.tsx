@@ -109,7 +109,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     children?: React.ReactNode;
   } & Record<string, unknown>) => <span {...rest}>{children}</span>;
 
-  return { Input, SelectPopover, Typography };
+  const Tooltip = ({
+    children,
+  }: {
+    children?: React.ReactNode;
+  } & Record<string, unknown>) => <>{children}</>;
+
+  return { Input, SelectPopover, Tooltip, Typography };
 });
 
 jest.mock('@untitledui/icons', () => ({
@@ -213,20 +219,12 @@ describe('MarketplaceSearchBar', () => {
     const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
 
     expect(toggleBtn).not.toHaveClass('active');
-    expect(toggleBtn).toHaveAttribute(
-      'title',
-      'label.use-natural-language-search'
-    );
 
     await act(async () => {
       fireEvent.click(toggleBtn);
     });
 
     expect(toggleBtn).toHaveClass('active');
-    expect(toggleBtn).toHaveAttribute(
-      'title',
-      'message.natural-language-search-active'
-    );
 
     await act(async () => {
       fireEvent.click(toggleBtn);

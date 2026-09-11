@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -149,26 +150,27 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
             <div className="bar-menu-wrapper--format-group">
               {format.map((item) => {
                 return (
-                  <button
-                    className={classNames(
-                      'bar-menu-wrapper--format-group--button',
-                      { active: item.isActive() }
-                    )}
-                    key={item.name}
-                    title={item.name}
-                    onMouseDown={(e) => {
-                      // To prevent losing focus from editor
-                      // The mouseDown event fires before the click event and before focus changes,
-                      // so we can intercept it and prevent the default focus behavior.
-                      e.preventDefault();
-                      item.command();
-                    }}>
-                    <img
-                      alt={item.name}
-                      className="bar-menu-wrapper--format--button--icon"
-                      src={item.icon}
-                    />
-                  </button>
+                  <Tooltip key={item.name} title={item.name}>
+                    <button
+                      className={classNames(
+                        'bar-menu-wrapper--format-group--button',
+                        { active: item.isActive() }
+                      )}
+                      type="button"
+                      onMouseDown={(e) => {
+                        // To prevent losing focus from editor
+                        // The mouseDown event fires before the click event and before focus changes,
+                        // so we can intercept it and prevent the default focus behavior.
+                        e.preventDefault();
+                        item.command();
+                      }}>
+                      <img
+                        alt={item.name}
+                        className="bar-menu-wrapper--format--button--icon"
+                        src={item.icon}
+                      />
+                    </button>
+                  </Tooltip>
                 );
               })}
             </div>

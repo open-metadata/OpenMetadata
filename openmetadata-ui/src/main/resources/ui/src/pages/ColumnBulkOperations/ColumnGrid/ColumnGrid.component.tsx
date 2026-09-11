@@ -20,6 +20,7 @@ import {
   Input,
   Table,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -234,12 +235,11 @@ const ColumnGridTruncatingTagBadges: React.FC<
         const fullLabel = tag.name || tag.tagFQN.split('.').pop() || '';
 
         return (
-          <div
-            className="tw:min-w-0 tw:flex-1 tw:basis-0 tw:overflow-hidden"
-            key={tag.tagFQN}
-            title={fullLabel}>
-            {renderBadge(tag, index)}
-          </div>
+          <Tooltip key={tag.tagFQN} title={fullLabel}>
+            <div className="tw:min-w-0 tw:flex-1 tw:basis-0 tw:overflow-hidden">
+              {renderBadge(tag, index)}
+            </div>
+          </Tooltip>
         );
       })}
       {remaining > 0 && <Typography as="span">+{remaining}</Typography>}

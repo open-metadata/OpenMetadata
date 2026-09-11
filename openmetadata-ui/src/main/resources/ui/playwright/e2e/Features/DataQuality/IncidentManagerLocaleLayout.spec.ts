@@ -276,7 +276,10 @@ test.describe('Incident Manager table in a long-string locale', () => {
     );
 
     expect(labelOverflow).toBeGreaterThan(0);
-    await expect(severityLabel).toHaveAttribute('title', RU_NO_SEVERITY);
+    // The full text is surfaced on hover by the design-system Tooltip (a
+    // react-aria overlay with role="tooltip"), not a native title attribute.
+    await severityLabel.hover();
+    await expect(page.getByRole('tooltip')).toContainText(RU_NO_SEVERITY);
 
     // Truncation is visual only — the button's accessible name still carries
     // the whole string.
