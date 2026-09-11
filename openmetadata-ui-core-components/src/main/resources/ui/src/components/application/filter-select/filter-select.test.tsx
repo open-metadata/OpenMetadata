@@ -21,8 +21,10 @@ const EN_LABELS: Record<string, string> = {
   'label.apply': 'Apply',
   'label.cancel': 'Cancel',
   'label.clear-all': 'Clear all',
+  'label.count-selected': '{{count}} selected',
   'label.loading': 'Loading…',
   'label.no-data-found': 'No data found',
+  'label.none-selected': 'None selected',
   'label.remove-filter': 'Remove filter',
   'label.search': 'Search',
   'label.select-all': 'Select all',
@@ -30,7 +32,15 @@ const EN_LABELS: Record<string, string> = {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => EN_LABELS[key] ?? key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      const text = EN_LABELS[key] ?? key;
+
+      return Object.entries(options ?? {}).reduce(
+        (resolved, [name, value]) =>
+          resolved.replace(`{{${name}}}`, String(value)),
+        text
+      );
+    },
   }),
 }));
 
@@ -356,6 +366,41 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('trigger-regular').className).toContain(
       'font-normal'
     );
+  });
+
+  it('immediate mode footer reports the count and clears on demand', () => {
+    const { onChange } = renderFilter({
+      selectedValues: ['snowflake', 'bigquery'],
+    });
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent('2 selected');
+
+    fireEvent.click(screen.getByTestId('clear-filter-btn'));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it('immediate mode footer reports an empty selection', () => {
+    renderFilter();
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent(
+      'None selected'
+    );
+    expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
+  });
+
+  it('single select has no footer', () => {
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filter-btn')).not.toBeInTheDocument();
+  });
+
+  it('staged mode keeps the Apply footer, not the status footer', () => {
+    renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.getByTestId('apply-filter-btn')).toBeInTheDocument();
   });
 
   it('removing a chip does not open the popover', () => {

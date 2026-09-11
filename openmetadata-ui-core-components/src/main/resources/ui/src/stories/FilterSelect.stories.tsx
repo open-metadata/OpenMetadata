@@ -168,7 +168,8 @@ export const FilterBar: Story = {
 };
 
 // Same list without the Apply step — each toggle commits instantly. For short
-// lists and client-side filtering where each toggle is cheap.
+// lists and client-side filtering where each toggle is cheap. A quiet footer
+// keeps the selection count and Clear all.
 export const Immediate: Story = {
   args: baseArgs,
   render: () => (

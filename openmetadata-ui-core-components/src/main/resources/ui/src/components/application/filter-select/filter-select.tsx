@@ -468,6 +468,9 @@ export const FilterSelect = ({
   };
 
   const showFooter = isStaged;
+  // Immediate mode has nothing to apply, so it gets a quiet footer instead:
+  // what is selected, and a way to drop it all without closing the menu.
+  const showStatusFooter = isMulti && !isStaged;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
   const isEmpty =
@@ -608,6 +611,27 @@ export const FilterSelect = ({
                 {t('label.apply')}
               </Button>
             </div>
+          </div>
+        )}
+
+        {showStatusFooter && (
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
+            <span
+              className="tw:text-xs tw:font-normal tw:text-tertiary"
+              data-testid="selected-count">
+              {selectedValues.length === 0
+                ? t('label.none-selected')
+                : t('label.count-selected', { count: selectedValues.length })}
+            </span>
+            <Button
+              className="tw:font-normal"
+              color="tertiary"
+              data-testid="clear-filter-btn"
+              isDisabled={selectedValues.length === 0}
+              size="sm"
+              onPress={() => onChange([])}>
+              {t('label.clear-all')}
+            </Button>
           </div>
         )}
       </Dropdown.Popover>
