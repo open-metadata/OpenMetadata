@@ -28,6 +28,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const table1 = new TableClass();
 const table2 = new TableClass();
 
+// The grid lists every test-suite pipeline in the deployment, not just this spec's, and the
+// default page holds 15. Widen it so both pipelines below are always on the page the test
+// reads -- the listing is name-ordered and pipelines named with a bare UUID (how
+// DataContractRepository names a contract's DQ pipeline) sort ahead of every `pw-*` one.
+const PIPELINE_PAGE_SIZE = 100;
+
 test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
@@ -102,6 +108,12 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test('Re-deploy all test-suite ingestion pipelines', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.DATA_OBSERVABILITY);
 
+    // usePaging seeds pageSize from the URL on first render, so widening the page is a
+    // navigation rather than a click through the (conditionally rendered) size selector.
+    const listUrl = new URL(page.url());
+    listUrl.searchParams.set('pageSize', String(PIPELINE_PAGE_SIZE));
+    await page.goto(listUrl.toString(), { waitUntil: 'domcontentloaded' });
+
     await expect(
       page.getByRole('button', { name: 'Re Deploy' })
     ).not.toBeEnabled();
@@ -113,6 +125,7 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     expect(pipelines).toHaveLength(2);
     for (const pipeline of pipelines) {
       const row = getRowByName(page, pipeline.name);
+      await expect(row).toHaveCount(1);
       await expect(row).toBeVisible();
       await row.locator('label[slot="selection"]').click();
       await expect(row.getByRole('checkbox')).toBeChecked();

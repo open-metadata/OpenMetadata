@@ -4479,6 +4479,7 @@
     "request-tags-message": "Verzoek tags voor",
     "request-test-case-failure-resolution-message": "Verzoek oplossing voor gefaalde testcase voor",
     "request-update-description": "Verzoek om bij te werken omschrijving",
+    "reserved-column-name": "De kolomnaam '{{name}}' is gereserveerd voor intern gebruik en kan niet worden gebruikt als kolom van een aangepaste eigenschap van het type tabel.",
     "reset-layout-confirmation": "Weet je zeker dat je de \"Standaardindeling\" wilt toepassen?",
     "reset-link-has-been-sent": "Resetlink is verzonden naar je e-mail",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

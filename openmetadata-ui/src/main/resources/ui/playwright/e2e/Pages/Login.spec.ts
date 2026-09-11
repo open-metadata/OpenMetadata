@@ -18,6 +18,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  generateRandomUsername,
   getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
@@ -132,6 +133,42 @@ test.describe(
       await expect(page.getByTestId('nav-user-name')).toContainText(
         `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
       );
+    });
+
+    // The UI base64-encodes the password before POSTing it to
+    // /api/v1/auth/login and the server decodes those bytes as UTF-8. `btoa`
+    // maps every character to a single Latin-1 byte, so a non-ASCII password
+    // was reconstructed as a different string and the login was rejected —
+    // issue #28694.
+    test('Signin with a password containing non-ASCII characters', async ({
+      page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      const nonAsciiUser = new UserClass({
+        ...generateRandomUsername(),
+        password: 'T\u00ebst\u00a7123\u00a3aA!',
+      });
+
+      try {
+        await nonAsciiUser.create(apiContext);
+        await nonAsciiUser.login(page);
+
+        await expect(page).toHaveURL(
+          (url) => !url.pathname.includes('/signin')
+        );
+
+        await page.getByTestId('dropdown-profile').click();
+
+        await expect(page.getByTestId('nav-user-name')).toContainText(
+          `${nonAsciiUser.data.firstName}${nonAsciiUser.data.lastName}`
+        );
+      } finally {
+        await nonAsciiUser.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('Signin using invalid credentials', async ({ page }) => {

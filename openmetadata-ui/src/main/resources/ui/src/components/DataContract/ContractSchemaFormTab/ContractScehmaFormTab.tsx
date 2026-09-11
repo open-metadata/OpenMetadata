@@ -429,7 +429,6 @@ export const ContractSchemaFormTab: React.FC<{
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             isReadOnly
-            newLook
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
@@ -464,7 +463,6 @@ export const ContractSchemaFormTab: React.FC<{
           return (
             <TableTags<Column>
               isReadOnly
-              newLook
               entityFqn={tableFqn}
               entityType={EntityType.TABLE}
               handleTagSelection={() => Promise.resolve()}
