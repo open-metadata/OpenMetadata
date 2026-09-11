@@ -12,8 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toString } from 'lodash';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
@@ -21,15 +21,12 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Classification } from '../../generated/entity/classification/classification';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getClassificationByName,
@@ -37,7 +34,6 @@ import {
   getClassificationVersionsList,
 } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
@@ -50,43 +46,46 @@ function ClassificationVersionPage() {
   const navigate = useNavigate();
   const { version } = useRequiredParams<{ version: string }>();
   const { fqn: classificationName } = useFqn();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [currentVersionData, setCurrentVersionData] = useState<Classification>(
     {} as Classification
   );
   const [classificationId, setClassificationId] = useState<string>('');
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [classificationPermissions, setClassificationPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isVersionsListLoading, setIsVersionsListLoading] =
+    useState<boolean>(false);
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
 
-  const viewVersionPermission = useMemo(
-    () =>
-      classificationPermissions.ViewAll || classificationPermissions.ViewBasic,
-    [classificationPermissions]
-  );
+  // Fetch-owner, by fqn. `hasViewAccess` is byte-for-byte the old bare
+  // `classificationPermissions.ViewAll || classificationPermissions.ViewBasic` OR.
+  const {
+    permissions: classificationPermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+  } = useEntityPermissions(ResourceEntity.CLASSIFICATION, classificationName, {
+    enabled: Boolean(classificationName),
+  });
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.CLASSIFICATION,
-        classificationName
-      );
-
-      setClassificationPermissions(permission);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
     }
-  }, [classificationName, getEntityPermissionByFqn]);
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `isLoading` state doubled as both the permission-fetch
+  // loading flag AND the version-list-fetch loading flag (fetchVersionsList only ever runs
+  // when view access is granted, per the effect below) — same shape as ServiceVersionPage.tsx's
+  // `isLoading` fix (Task 8 Batch 10). Gated on `viewVersionPermission` so
+  // `isVersionsListLoading`'s initial value isn't counted while denied.
+  const isLoading =
+    isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
   const fetchVersionsList = async () => {
-    setIsLoading(true);
+    setIsVersionsListLoading(true);
     try {
       const { id } = await getClassificationByName(classificationName);
 
@@ -96,7 +95,7 @@ function ClassificationVersionPage() {
 
       setVersionList(versions);
     } finally {
-      setIsLoading(false);
+      setIsVersionsListLoading(false);
     }
   };
 
@@ -129,12 +128,6 @@ function ClassificationVersionPage() {
   const backHandler = useCallback(() => {
     navigate(getClassificationDetailsPath(classificationName));
   }, []);
-
-  useEffect(() => {
-    if (!isEmpty(classificationName)) {
-      fetchResourcePermission();
-    }
-  }, [classificationName]);
 
   useEffect(() => {
     if (viewVersionPermission) {

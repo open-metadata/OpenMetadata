@@ -18,6 +18,8 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataQualityTab from '../../../Database/Profiler/DataQualityTab/DataQualityTab';
 import TestCaseListTableHeader from '../../../DataQuality/TestCases/TestCaseListTableHeader.component';
@@ -57,6 +59,19 @@ const TestCases = () => {
     extraDropdownContent,
   } = useTestCaseListPage();
 
+  // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
+  // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
+  // runs through getDerivedPermissionFlags exactly like an entity-level fetch, mirroring the
+  // classic TestCases.component.tsx precedent. Falls back to DEFAULT_ENTITY_PERMISSION
+  // (all-false) to reproduce the old `?.` optional-chaining undefined-is-falsy behavior.
+  const testCaseFlags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
+    [testCasePermission]
+  );
+
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
     if (createActions?.canCreateTestCase && createActions?.onAddTestCase) {
@@ -72,7 +87,7 @@ const TestCases = () => {
     return action;
   }, [createActions?.canCreateTestCase, createActions?.onAddTestCase, t]);
 
-  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
+  if (!testCaseFlags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"

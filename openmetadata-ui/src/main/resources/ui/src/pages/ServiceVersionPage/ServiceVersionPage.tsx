@@ -14,6 +14,7 @@
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Tabs, TabsProps } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
@@ -28,7 +29,6 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Directory } from '../../generated/entity/data/directory';
@@ -37,6 +37,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
@@ -62,10 +63,7 @@ import {
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getServiceDetailsPath,
   getServiceVersionPath,
@@ -75,13 +73,14 @@ import {
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServicePureUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
+  const { permissions } = usePermissionProvider();
   const { serviceCategory, version } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     version: string;
@@ -97,9 +96,8 @@ function ServiceVersionPage() {
     handlePageChange,
   } = usePaging();
   const [data, setData] = useState<Array<ServicePageData>>([]);
-  const [servicePermissions, setServicePermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isVersionsListLoading, setIsVersionsListLoading] =
+    useState<boolean>(true);
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
   const [isOtherDataLoading, setIsOtherDataLoading] = useState<boolean>(true);
@@ -125,10 +123,37 @@ function ServiceVersionPage() {
       [currentVersionData, entityType]
     );
 
-  const viewVersionPermission = useMemo(
-    () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
-    [servicePermissions]
-  );
+  // Fetch-owner, by fqn — reads-only conversion, mechanism preserved
+  // (APICollectionVersionPage.tsx precedent). `resourceEntity` varies per service category
+  // (computed above from the URL's serviceCategory param, known synchronously at mount — no
+  // ordering cycle), so a single call suffices. `hasViewAccess` is a byte-for-byte match of
+  // the old bare `servicePermissions.ViewAll || servicePermissions.ViewBasic` OR.
+  const {
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+  } = useEntityPermissions(resourceEntity, decodedServiceFQN, {
+    enabled: Boolean(decodedServiceFQN),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Combined loading flag: this page's old `isLoading` state doubled as both the
+  // permission-fetch loading flag AND the version-list-fetch loading flag (both set it true
+  // at their own start, false in their own finally) — same general-page-loading shape as
+  // TeamsPage.tsx's `isPageLoading` (Task 8 Batch 7 precedent). Permission loading now comes
+  // from the hook; `isVersionsListLoading` keeps the version-list fetch's own half. Gated on
+  // `viewVersionPermission`: fetchVersionsList only ever runs when view access is granted
+  // (see the effect below), so `isVersionsListLoading`'s initial `true` must NOT be counted
+  // while denied — the old code's `isLoading` settled back to `false` as soon as the
+  // permission fetch alone resolved in the denied case (fetchVersionsList's own setIsLoading
+  // calls never ran to re-flip it), and this preserves that.
+  const isLoading =
+    isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
@@ -142,28 +167,9 @@ function ServiceVersionPage() {
       [currentVersionData.changeDescription, owners, tier, domains]
     );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const permission = await getEntityPermissionByFqn(
-        resourceEntity,
-        decodedServiceFQN
-      );
-
-      setServicePermissions(permission);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    decodedServiceFQN,
-    getEntityPermissionByFqn,
-    resourceEntity,
-    setServicePermissions,
-  ]);
-
   const fetchVersionsList = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsVersionsListLoading(true);
 
       const { id } = await getServiceByFQN(serviceCategory, decodedServiceFQN, {
         include: Include.All,
@@ -174,7 +180,7 @@ function ServiceVersionPage() {
 
       setVersionList(versions);
     } finally {
-      setIsLoading(false);
+      setIsVersionsListLoading(false);
     }
   }, [viewVersionPermission, serviceCategory, decodedServiceFQN]);
 
@@ -572,12 +578,6 @@ function ServiceVersionPage() {
       </>
     );
   };
-
-  useEffect(() => {
-    if (!isEmpty(decodedServiceFQN)) {
-      fetchResourcePermission();
-    }
-  }, [decodedServiceFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {

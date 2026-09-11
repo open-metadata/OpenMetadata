@@ -44,6 +44,10 @@ import EntityLink from '../../utils/EntityLink';
 import { hasLineageTab } from '../../utils/EntityPermissionUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  DerivedPermissionFlags,
+  getDerivedPermissionFlags,
+} from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -178,77 +182,56 @@ const renderEntityDebugTestId = (entityType: EntityType) => {
 type EditPermissionInputs = {
   canEditSummary: boolean;
   canEditColumnField: boolean;
-  entityPermissions: OperationPermission | null;
-  isDeleted?: boolean;
+  /** Derived flags for the entity's permissions; each canEdit* already applies the
+   * `deleted` gate, so the getters below no longer AND `isDeleted` themselves. The
+   * prioritized flags are also an explicit-deny-wins fix over the raw `EditAll || EditX`
+   * ORs they replace: an explicit `EditX: false` now beats a bare `EditAll: true`. */
+  flags: DerivedPermissionFlags;
   panelPath?: string;
 };
 
 // Columns inherit domain from table - not editable
 const getEditDomainPermission = ({
   canEditColumnField,
-  entityPermissions,
-  isDeleted,
+  flags,
   panelPath,
 }: EditPermissionInputs) =>
   canEditColumnField &&
-  entityPermissions?.EditAll &&
-  !isDeleted &&
+  flags.canEditAll &&
   panelPath !== ENTITY_PATH.dataProductsTab;
 
 const getEditDescriptionPermission = ({
   canEditSummary,
-  entityPermissions,
-  isDeleted,
-}: EditPermissionInputs) =>
-  canEditSummary &&
-  (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
-  !isDeleted;
+  flags,
+}: EditPermissionInputs) => canEditSummary && flags.canEditDescription;
 
 const getEditGlossaryTermsPermission = ({
   canEditSummary,
-  entityPermissions,
-  isDeleted,
-}: EditPermissionInputs) =>
-  canEditSummary &&
-  (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
-  !isDeleted;
+  flags,
+}: EditPermissionInputs) => canEditSummary && flags.canEditGlossaryTerms;
 
 // Columns inherit owners from table - not editable
 const getEditOwnerPermission = ({
   canEditColumnField,
-  entityPermissions,
-  isDeleted,
-}: EditPermissionInputs) =>
-  canEditColumnField &&
-  (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
-  !isDeleted;
+  flags,
+}: EditPermissionInputs) => canEditColumnField && flags.canEditOwners;
 
 // Columns inherit tier from table - not editable
 const getEditTierPermission = ({
   canEditColumnField,
-  entityPermissions,
-  isDeleted,
-}: EditPermissionInputs) =>
-  canEditColumnField &&
-  (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
-  !isDeleted;
+  flags,
+}: EditPermissionInputs) => canEditColumnField && flags.canEditTier;
 
 const getEditTagsPermission = ({
   canEditSummary,
-  entityPermissions,
-  isDeleted,
-}: EditPermissionInputs) =>
-  canEditSummary &&
-  (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
-  !isDeleted;
+  flags,
+}: EditPermissionInputs) => canEditSummary && flags.canEditTags;
 
 // Columns inherit data products from table - not editable
 const getEditDataProductPermission = ({
   canEditColumnField,
-  entityPermissions,
-  isDeleted,
-}: EditPermissionInputs) =>
-  canEditColumnField && entityPermissions?.EditAll && !isDeleted;
+  flags,
+}: EditPermissionInputs) => canEditColumnField && flags.canEditAll;
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -349,6 +332,22 @@ export const DataAssetSummaryPanelV1 = ({
   >({});
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
+
+  // Fetch mechanism (`init`, below) intentionally left untouched — Task 8 documented-deferral
+  // precedent (GlossaryV1.component.tsx / ServiceDetailsPage.tsx): for TABLE_COLUMN entities
+  // this fetches the PARENT TABLE's permission (columns don't have their own), for every other
+  // entity type it fetches by the entity's own dynamic id+type, and the failure path seeds a
+  // bespoke ViewBasic/ViewAll:true fallback for columns that useEntityPermissions has no
+  // equivalent for — not a mechanical hook swap. `deleted` is passed through here because every
+  // edit flag below was already ANDed with `!dataAsset.deleted` in the old code.
+  const flags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        entityPermissions ?? DEFAULT_ENTITY_PERMISSION,
+        Boolean(dataAsset.deleted)
+      ),
+    [entityPermissions, dataAsset.deleted]
+  );
   const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
@@ -407,10 +406,7 @@ export const DataAssetSummaryPanelV1 = ({
   );
 
   const fetchIncidentCount = useCallback(async () => {
-    if (
-      dataAsset?.fullyQualifiedName &&
-      (entityPermissions?.ViewAll || entityPermissions?.ViewDataProfile)
-    ) {
+    if (dataAsset?.fullyQualifiedName && flags.canViewDataProfile) {
       try {
         const { paging } = await getListTestCaseIncidentStatus({
           limit: 0,
@@ -431,7 +427,7 @@ export const DataAssetSummaryPanelV1 = ({
         });
       }
     }
-  }, [dataAsset?.fullyQualifiedName, entityPermissions]);
+  }, [dataAsset?.fullyQualifiedName, flags.canViewDataProfile]);
 
   const fetchTestCases = useCallback(async () => {
     if (!dataAsset?.fullyQualifiedName || entityType !== EntityType.TABLE) {
@@ -513,8 +509,7 @@ export const DataAssetSummaryPanelV1 = ({
     const permissionInputs: EditPermissionInputs = {
       canEditSummary,
       canEditColumnField,
-      entityPermissions,
-      isDeleted: 'deleted' in dataAsset ? dataAsset.deleted : undefined,
+      flags,
       panelPath,
     };
 
@@ -528,7 +523,9 @@ export const DataAssetSummaryPanelV1 = ({
       editTagsPermission: getEditTagsPermission(permissionInputs),
       editDataProductPermission: getEditDataProductPermission(permissionInputs),
     };
-  }, [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]);
+    // `flags` already folds in entityPermissions and dataAsset.deleted, so neither belongs
+    // in the dependency list any more.
+  }, [canEditSummary, flags, isColumnEntity, panelPath]);
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders

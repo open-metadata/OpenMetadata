@@ -61,6 +61,10 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import {
+  DerivedPermissionFlags,
+  getDerivedPermissionFlags,
+} from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -108,41 +112,39 @@ const TAG_TABLE_FILL_CLASSNAME = [
 function computeEditDescriptionPermission(
   isVersionView: boolean,
   isClassificationDisabled: boolean,
-  classificationPermissions: OperationPermission
+  flags: DerivedPermissionFlags
 ): boolean {
+  // explicit-deny-wins (Task 6 Finding 1): the raw `EditAll || EditDescription` let a
+  // classification-level EditAll override an explicit `EditDescription: false`.
   return (
-    !isVersionView &&
-    !isClassificationDisabled &&
-    (classificationPermissions.EditAll ||
-      classificationPermissions.EditDescription)
+    !isVersionView && !isClassificationDisabled && flags.canEditDescription
   );
 }
 
 function computeCreatePermission(
   isVersionView: boolean,
   permissions: UIPermission,
-  classificationPermissions: OperationPermission
+  flags: DerivedPermissionFlags
 ): boolean {
   return (
     !isVersionView &&
     (checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
-      classificationPermissions.EditAll)
+      flags.canEditAll)
   );
 }
 
 function computeEditOwnerPermission(
   isEditable: boolean,
-  classificationPermissions: OperationPermission
+  flags: DerivedPermissionFlags
 ): boolean {
-  return (
-    isEditable &&
-    (classificationPermissions.EditAll || classificationPermissions.EditOwners)
-  );
+  // explicit-deny-wins, same as computeEditDescriptionPermission above.
+  return isEditable && flags.canEditOwners;
 }
 
 function computeClassificationPermissionFlags(
   permissions: UIPermission,
   classificationPermissions: OperationPermission,
+  flags: DerivedPermissionFlags,
   isVersionView: boolean,
   isClassificationDisabled: boolean,
   isSystemClassification: boolean,
@@ -151,24 +153,21 @@ function computeClassificationPermissionFlags(
   const isEditable = !isClassificationDisabled && !isClassificationDeleted;
 
   return {
-    editClassificationPermission: classificationPermissions.EditAll,
+    editClassificationPermission: flags.canEditAll,
     editDescriptionPermission: computeEditDescriptionPermission(
       isVersionView,
       isClassificationDisabled,
-      classificationPermissions
+      flags
     ),
     createPermission: computeCreatePermission(
       isVersionView,
       permissions,
-      classificationPermissions
+      flags
     ),
     deletePermission:
       classificationPermissions.Delete && !isSystemClassification,
-    editOwnerPermission: computeEditOwnerPermission(
-      isEditable,
-      classificationPermissions
-    ),
-    editDomainPermission: isEditable && classificationPermissions.EditAll,
+    editOwnerPermission: computeEditOwnerPermission(isEditable, flags),
+    editDomainPermission: isEditable && flags.canEditAll,
   };
 }
 
@@ -289,6 +288,18 @@ const ClassificationDetails = forwardRef(
       }
     }, [currentVersion, tagCategoryName]);
 
+    // Prop stays raw (OperationPermission) — ClassificationUtils.tsx's getTagsTableColumn
+    // (out of this batch's scope: src/utils/**, not src/components/**) also consumes this
+    // object verbatim, and the GenericProvider context below exposes it to consumers as-is
+    // (TableProfilerProvider precedent, Task 8 Batch 3). No `deleted` argument:
+    // isClassificationDeleted is a separate, already-computed local (from
+    // getClassificationInfo) folded into `isEditable` below, never passed into the
+    // derivation itself — the old expressions never gated on it either.
+    const classificationFlags = useMemo(
+      () => getDerivedPermissionFlags(classificationPermissions),
+      [classificationPermissions]
+    );
+
     const {
       editClassificationPermission,
       editDescriptionPermission,
@@ -301,6 +312,7 @@ const ClassificationDetails = forwardRef(
         computeClassificationPermissionFlags(
           permissions,
           classificationPermissions,
+          classificationFlags,
           isVersionView,
           isClassificationDisabled,
           isSystemClassification,
@@ -309,6 +321,7 @@ const ClassificationDetails = forwardRef(
       [
         permissions,
         classificationPermissions,
+        classificationFlags,
         isVersionView,
         isClassificationDisabled,
         isSystemClassification,
@@ -349,8 +362,8 @@ const ClassificationDetails = forwardRef(
       () =>
         !isVersionView &&
         !isSystemClassification &&
-        classificationPermissions.ViewAll,
-      [isVersionView, isSystemClassification, classificationPermissions]
+        classificationFlags.canViewAll,
+      [isVersionView, isSystemClassification, classificationFlags]
     );
 
     // Import creates/updates tags, so it needs full EditAll access and is not
@@ -361,12 +374,12 @@ const ClassificationDetails = forwardRef(
         !isVersionView &&
         !isClassificationDisabled &&
         !isSystemClassification &&
-        classificationPermissions.EditAll,
+        classificationFlags.canEditAll,
       [
         isVersionView,
         isClassificationDisabled,
         isSystemClassification,
-        classificationPermissions,
+        classificationFlags,
       ]
     );
 

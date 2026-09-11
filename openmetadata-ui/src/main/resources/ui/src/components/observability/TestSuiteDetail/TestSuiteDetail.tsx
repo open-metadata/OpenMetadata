@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
@@ -39,6 +40,7 @@ import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/use
 import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -100,8 +102,9 @@ const TestSuiteTitle = ({
 );
 
 interface TestSuiteAddTestCaseDialogProps {
-  editAll?: boolean;
-  editTests?: boolean;
+  /** Prioritized EditTests (falls back to EditAll when the payload carries no EditTests) —
+   * one derived flag rather than the raw editAll/editTests pair it replaces. */
+  canAddTestCase?: boolean;
   isOpen: boolean;
   existingTests?: AddTestCaseModalProps['existingTest'];
   onOpenChange: (open: boolean) => void;
@@ -110,8 +113,7 @@ interface TestSuiteAddTestCaseDialogProps {
 }
 
 const TestSuiteAddTestCaseDialog = ({
-  editAll,
-  editTests,
+  canAddTestCase,
   isOpen,
   existingTests,
   onOpenChange,
@@ -120,7 +122,7 @@ const TestSuiteAddTestCaseDialog = ({
 }: TestSuiteAddTestCaseDialogProps) => {
   const { t } = useTranslation();
 
-  if (!editAll && !editTests) {
+  if (!canAddTestCase) {
     return null;
   }
 
@@ -203,6 +205,14 @@ const TestSuiteDetail = () => {
     handleTestSuiteUpdate,
   } = useTestSuiteDetailsPage();
 
+  // Consumer via the hook's raw `testSuitePermissions: OperationPermission` field, mirroring
+  // the classic TestSuiteDetailsPage.component.tsx precedent — derive named flags locally
+  // instead of reading `.EditAll`/`.ViewAll`/`.ViewBasic` directly.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(testSuitePermissions),
+    [testSuitePermissions]
+  );
+
   const afterDeleteAction = () => {
     navigate(
       observabilityRouterClassBase.getDataQualityPagePath(
@@ -265,8 +275,7 @@ const TestSuiteDetail = () => {
     const removeFromTestSuite = testSuite
       ? {
           testSuite,
-          isAllowed:
-            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+          isAllowed: flags.can(Operation.EditTests),
         }
       : undefined;
 
@@ -297,7 +306,7 @@ const TestSuiteDetail = () => {
     descriptionChangeSummaryEntry,
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
-    testSuitePermissions,
+    flags,
     fetchTestCases,
     incidentUrlState,
     handleSortTestCase,
@@ -313,7 +322,7 @@ const TestSuiteDetail = () => {
     return <Loader />;
   }
 
-  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+  if (!flags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -391,8 +400,7 @@ const TestSuiteDetail = () => {
               </Box>
               <Box align="center" className="tw:shrink-0" gap={2}>
                 <TestSuiteAddTestCaseDialog
-                  editAll={testSuitePermissions.EditAll}
-                  editTests={testSuitePermissions.EditTests}
+                  canAddTestCase={flags.can(Operation.EditTests)}
                   existingTests={testSuite?.tests}
                   isOpen={isTestCaseModalOpen}
                   onClose={() => setIsTestCaseModalOpen(false)}
@@ -406,10 +414,7 @@ const TestSuiteDetail = () => {
                   canDelete={permissions.hasDeletePermission}
                   deleted={testSuite?.deleted}
                   displayName={getEntityName(testSuite)}
-                  editDisplayNamePermission={
-                    testSuitePermissions.EditAll ||
-                    testSuitePermissions.EditDisplayName
-                  }
+                  editDisplayNamePermission={flags.canEditDisplayName}
                   entityId={testSuite?.id}
                   entityName={testSuite?.fullyQualifiedName as string}
                   entityType={EntityType.TEST_SUITE}
@@ -426,7 +431,7 @@ const TestSuiteDetail = () => {
                 entityFqn={testSuite?.fullyQualifiedName ?? ''}
                 entityId={testSuite?.id ?? ''}
                 entityType={EntityType.TEST_SUITE}
-                hasPermission={Boolean(testSuitePermissions.EditAll)}
+                hasPermission={flags.canEditAll}
                 multiple={canAddMultipleDomains}
                 textClassName="render-domain-lebel-style"
                 onUpdate={handleDomainUpdate}
