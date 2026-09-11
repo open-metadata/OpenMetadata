@@ -43,6 +43,7 @@ const RemovableChip: React.FC<RemovableChipProps> = ({
       iconLeading={X}
       isDisabled={isDisabled}
       size="xs"
+      slot={null}
       onPress={onRemove}
     />
   </Badge>
