@@ -57,6 +57,7 @@ import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -101,7 +102,8 @@ const NotificationListPage = () => {
       alertDetails.fullyQualifiedName ?? ''
     );
 
-    const editPermission = permission.EditAll;
+    // Pure rename — old raw read never referenced `deleted` here (ungated).
+    const editPermission = getDerivedPermissionFlags(permission).canEditAll;
     const deletePermission = permission.Delete;
 
     return {

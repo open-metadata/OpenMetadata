@@ -11,13 +11,43 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DashboardDetails from './DashboardDetails.component';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
+
+// The component now reads its own permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old getEntityPermission
+// REST boundary) drives its permission-derived behavior in these tests — same approach as
+// TableDetailsPageV1.test.tsx.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockDashboardDetails: Dashboard = {
   id: 'test-dashboard-id',
@@ -88,12 +118,6 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   }),
 }));
 
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockResolvedValue(DEFAULT_ENTITY_PERMISSION),
-  }),
-}));
-
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
@@ -135,6 +159,16 @@ jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
 }));
 
 describe('DashboardDetails component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      ViewAll: true,
+      EditCustomFields: true,
+      EditLineage: true,
+      ViewCustomFields: true,
+    });
+  });
+
   it('should render successfully', () => {
     const { container } = render(<DashboardDetails {...mockProps} />, {
       wrapper: MemoryRouter,
@@ -154,5 +188,52 @@ describe('DashboardDetails component', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('fetches its own permissions by the dashboard id', () => {
+    render(<DashboardDetails {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      'dashboard',
+      { id: 'test-dashboard-id' },
+      expect.objectContaining({ deleted: false })
+    );
+  });
+
+  it('passes the derived permission flags through to getDashboardDetailPageTabs', () => {
+    render(<DashboardDetails {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(
+      dashboardDetailsClassBase.getDashboardDetailPageTabs
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editLineagePermission: true,
+        editCustomAttributePermission: true,
+        viewAllPermission: true,
+        viewCustomPropertiesPermission: true,
+      })
+    );
+  });
+
+  it('denies view-custom-fields when ViewCustomFields is explicitly false, even with no ViewAll grant', async () => {
+    setMockPermissions({ ViewAll: true, ViewCustomFields: false });
+
+    render(<DashboardDetails {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitFor(() => {
+      expect(
+        dashboardDetailsClassBase.getDashboardDetailPageTabs
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          viewCustomPropertiesPermission: false,
+        })
+      );
+    });
   });
 });

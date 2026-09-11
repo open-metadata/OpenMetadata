@@ -34,7 +34,10 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Database;
@@ -50,6 +53,8 @@ import org.openmetadata.sdk.fluent.LineageAPI;
 import org.openmetadata.sdk.fluent.OpenLineage;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.wrappers.FluentTable;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for OpenLineage → lineage resolution.
@@ -66,6 +71,7 @@ import org.openmetadata.sdk.fluent.wrappers.FluentTable;
 public class OpenLineageLineageResolutionIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String OPEN_LINEAGE_SETTINGS_TYPE = "openLineageSettings";
   private static final List<Column> DEFAULT_COLUMNS =
       List.of(
           new Column().withName("id").withDataType(ColumnDataType.BIGINT),
@@ -508,9 +514,139 @@ public class OpenLineageLineageResolutionIT {
         "Edge must not attach to the same-named table in another database");
   }
 
+  @Test
+  @Order(15)
+  @ResourceLock(
+      value = SharedResourceLocks.OPEN_LINEAGE_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void bareTokenName_resolvesViaNamespaceMapping(TestNamespace ns) throws Exception {
+    String tableName = "ol_baretoken_input_" + uniqueSuffix();
+    String outputName = "ol_baretoken_output_" + uniqueSuffix();
+    String eventNamespace = "s3://ol-baretoken-" + uniqueSuffix();
+
+    Tables.create().name(tableName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    String previousSettings = readOpenLineageSettings();
+    try {
+      writeOpenLineageNamespaceMapping(eventNamespace, serviceName);
+
+      // A single undelimited token: no dots, no slashes, no symlinks facet.
+      Map<String, Object> bareInput = Map.of("namespace", eventNamespace, "name", tableName);
+
+      String response =
+          OpenLineage.event()
+              .withEventType("COMPLETE")
+              .withEventTime(Instant.now().toString())
+              .withJob(ns.prefix("bare_token_job"), ns.prefix("namespace"))
+              .withRun(UUID.randomUUID().toString())
+              .addInput(bareInput)
+              .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+              .send();
+
+      JsonNode json = MAPPER.readTree(response);
+      assertEquals("success", json.get("status").asText());
+      assertTrue(
+          json.get("lineageEdgesCreated").asInt() >= 1,
+          "A bare token whose namespace maps to a service should resolve, got: " + response);
+
+      assertNotNull(
+          fetchOpenLineageEdgeDetails(tableName, outputName),
+          "Edge resolved from a bare dataset name should exist between the test tables");
+    } finally {
+      restoreOpenLineageSettings(previousSettings);
+    }
+  }
+
+  @Test
+  @Order(16)
+  void bareTokenNameWithoutMapping_createsNoEdge(TestNamespace ns) throws Exception {
+    String tableName = "ol_baretoken_unmapped_" + uniqueSuffix();
+    String outputName = "ol_baretoken_unmapped_out_" + uniqueSuffix();
+    Tables.create().name(tableName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Map<String, Object> bareInput =
+        Map.of("namespace", "s3://ol-unmapped-" + uniqueSuffix(), "name", tableName);
+
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("bare_token_unmapped_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(bareInput)
+            .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+            .send();
+
+    JsonNode json = MAPPER.readTree(response);
+    assertEquals("success", json.get("status").asText());
+    assertEquals(
+        0,
+        json.get("lineageEdgesCreated").asInt(),
+        "An unmapped bare token must not be matched against the whole catalog by table name");
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================
+
+  /**
+   * There is no reset endpoint for openLineageSettings (only searchSettings supports reset), so the
+   * test has to capture and restore the value itself. Returns null when the setting has never been
+   * persisted.
+   */
+  private static String readOpenLineageSettings() {
+    try {
+      return SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.GET,
+              "/v1/system/settings/" + OPEN_LINEAGE_SETTINGS_TYPE,
+              null,
+              RequestOptions.builder().build());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private static void writeOpenLineageNamespaceMapping(String namespace, String serviceName)
+      throws Exception {
+    Map<String, Object> configValue =
+        Map.of(
+            "autoCreateEntities",
+            false,
+            "defaultPipelineService",
+            "OpenLineage",
+            "namespaceToServiceMapping",
+            Map.of(namespace, serviceName));
+    putOpenLineageSettings(
+        Map.of("config_type", OPEN_LINEAGE_SETTINGS_TYPE, "config_value", configValue));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void restoreOpenLineageSettings(String previousSettings) throws Exception {
+    Map<String, Object> configValue = new HashMap<>();
+    if (previousSettings != null && !previousSettings.isBlank()) {
+      JsonNode previous = MAPPER.readTree(previousSettings).path("config_value");
+      if (previous.isObject()) {
+        configValue = MAPPER.convertValue(previous, Map.class);
+      }
+    }
+    configValue.remove("namespaceToServiceMapping");
+    putOpenLineageSettings(
+        Map.of("config_type", OPEN_LINEAGE_SETTINGS_TYPE, "config_value", configValue));
+  }
+
+  private static void putOpenLineageSettings(Map<String, Object> body) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings",
+            MAPPER.writeValueAsString(body),
+            RequestOptions.builder().build());
+  }
 
   private static String uniqueSuffix() {
     return UUID.randomUUID().toString().substring(0, 8);
