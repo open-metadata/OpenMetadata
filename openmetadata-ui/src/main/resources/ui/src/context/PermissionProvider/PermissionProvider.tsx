@@ -65,7 +65,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     {} as UIPermission
   );
   const { currentUser } = useApplicationStore();
-  const cookieStorage = new CookieStorage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
@@ -103,12 +102,14 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   >(new Map());
 
   const redirectToStoredPath = useCallback(() => {
-    const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+    const urlPathname = new CookieStorage().getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       setUrlPathnameExpiryAfterRoute(urlPathname);
-      navigate(urlPathname);
+      if (urlPathname !== window.location.pathname) {
+        navigate(urlPathname);
+      }
     }
-  }, [history]);
+  }, [navigate]);
 
   /**
    * Fetch permission for logged in user

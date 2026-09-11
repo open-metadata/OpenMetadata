@@ -32,11 +32,27 @@ import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 export const ENTITY_UUID_REGEX =
   /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 export const PANEL_WIDTH = 576;
-export const FIT_SCALE_FACTOR = 0.9;
-export const ZOOM_IN_FACTOR = 1.2;
-export const ZOOM_OUT_FACTOR = 0.8;
+/**
+ * Fitting never shrinks the graph below this. At 55% a card's name is still
+ * readable; a graph that would need less is centred on the subject entity
+ * instead, so the reader starts from it and pans outwards.
+ */
+export const FIT_MIN_ZOOM = 0.55;
+/** Fitting never magnifies a small graph past this, so two cards do not become a poster. */
+export const FIT_MAX_ZOOM = 1.1;
+/** What the wheel and the zoom buttons can reach; wider than the fit band so detail stays available. */
+export const ZOOM_RANGE: [number, number] = [0.3, 1.6];
+export const ZOOM_IN_FACTOR = 1.15;
+export const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 export const ZOOM_DURATION_MS = 300;
 export const ZOOM_EASING = 'easeCubic';
+/**
+ * Clearance between a level band and the cards it encloses, in world pixels.
+ * The top strip is deeper because the band's label sits in it; keeping the
+ * label inside the padding is what stops it colliding with the first card.
+ */
+export const BAND_PADDING = { x: 44, top: 72, bottom: 44 };
+export const BAND_RADIUS = 30;
 
 export const EXPORT_FORMAT_MAP: Partial<
   Record<ExportFormat, EntityGraphExportFormat>
@@ -52,7 +68,13 @@ export const MIN_NODE_WIDTH = 120;
 
 export const EDGE_LINE_WIDTH = 1.75;
 export const EDGE_HIGHLIGHT_LINE_WIDTH = 3;
-export const EDGE_LABEL_FONT_SIZE = 12;
+/** Design: labels are small pills that read as annotations, not as a second line of card text. */
+export const EDGE_LABEL_FONT_SIZE = 11.5;
+export const EDGE_LABEL_PADDING: [number, number] = [5, 8];
+export const EDGE_LABEL_RADIUS = 6;
+/** The band label is drawn in world units, like the design, so it shrinks and grows with the cards. */
+export const BAND_LABEL_FONT_SIZE = 12;
+export const BAND_LABEL_INSET = { x: 18, y: 24 };
 /**
  * Non-focused elements keep this much opacity while a path is highlighted, so
  * the surrounding graph stays as readable context instead of disappearing.

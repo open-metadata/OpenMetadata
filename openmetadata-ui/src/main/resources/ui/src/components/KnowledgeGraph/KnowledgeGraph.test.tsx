@@ -18,6 +18,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -49,6 +50,7 @@ jest.mock('@antv/g6', () => ({
 
     return {
       destroyed: false,
+      setTransforms: jest.fn(),
       getNodeData: () => data.nodes,
       getEdgeData: () => data.edges,
       setData: (next: typeof data) => {
@@ -82,6 +84,14 @@ jest.mock('@antv/g6-extension-react', () => ({ ReactNode: jest.fn() }));
 jest.mock('../../rest/rdfAPI', () => ({
   getEntityGraphData: jest.fn(),
   downloadEntityGraph: jest.fn(),
+}));
+jest.mock('../../rest/tableAPI', () => ({
+  getTableColumnsById: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+jest.mock('../../rest/glossaryAPI', () => ({
+  getGlossaryTermsByIds: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../../utils/TableUtils', () => ({ getEntityIcon: () => <svg /> }));
 jest.mock(
@@ -151,6 +161,62 @@ beforeEach(() => {
 });
 
 describe('KnowledgeGraph', () => {
+  it('opens the selected concept model with exact ontology predicates', async () => {
+    api.mockImplementation(async (query) =>
+      query.entityType === 'glossaryTerm'
+        ? {
+            nodes: [
+              { id: 'term', label: 'Customer', type: 'glossaryTerm' },
+              { id: 'order', label: 'Order', type: 'glossaryTerm' },
+            ],
+            edges: [
+              {
+                from: 'term',
+                to: 'order',
+                label: 'Places',
+                relationType: 'https://example.org/places',
+              },
+            ],
+          }
+        : {
+            ...graphData,
+            nodes: [
+              ...graphData.nodes,
+              { id: 'term', label: 'Customer', type: 'glossaryTerm' },
+            ],
+            edges: [
+              ...graphData.edges,
+              {
+                from: 'root',
+                to: 'term',
+                label: 'Has glossary term',
+                relationType: 'hasGlossaryTerm',
+              },
+            ],
+          }
+    );
+    await act(async () => {
+      openGraph();
+    });
+    await press(screen.getByRole('radio', { name: 'label.ontology' }));
+    await screen.findByTestId('edge-Customer-Places-Order');
+
+    expect(
+      screen.queryByTestId('edge-Orders-Downstream-Customers')
+    ).not.toBeInTheDocument();
+    expect(api).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'term',
+        entityType: 'glossaryTerm',
+        depth: 1,
+      }),
+      { signal: expect.any(AbortSignal) }
+    );
+
+    await press(screen.getByRole('radio', { name: 'label.knowledge-graph' }));
+    await screen.findByTestId('edge-Orders-Downstream-Customers');
+  });
+
   it('defaults to the direct neighborhood with exactly three level choices', async () => {
     await act(async () => {
       openGraph();
@@ -176,33 +242,107 @@ describe('KnowledgeGraph', () => {
   });
 
   it.each([
-    [1, 0],
-    [2, 1],
-    [3, 2],
-  ])('requests and exports level %i as depth %i', async (level, depth) => {
+    [1, 1, 0],
+    [2, 1, 1],
+    [3, 2, 2],
+  ])(
+    'requests level %i as depth %i and exports it as depth %i',
+    async (level, depth, exportDepth) => {
+      await act(async () => {
+        openGraph();
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('knowledge-graph-edges').innerHTML).toContain(
+          'Downstream'
+        )
+      );
+      await chooseLevel(level);
+      await waitFor(() =>
+        expect(api).toHaveBeenLastCalledWith(
+          expect.objectContaining({ depth }),
+          { signal: expect.any(AbortSignal) }
+        )
+      );
+      await openView();
+      await press(screen.getByTestId('knowledge-graph-export'));
+      await press(
+        screen.getByRole('menuitemradio', { name: 'label.skos-turtle' })
+      );
+      await waitFor(() =>
+        expect(downloadEntityGraph).toHaveBeenCalledWith(
+          expect.objectContaining({ depth: exportDepth, format: 'turtle' })
+        )
+      );
+    }
+  );
+
+  it('shows the entity profile at level 1 and re-fits the viewport for each level', async () => {
+    api.mockResolvedValue({
+      ...graphData,
+      nodes: [
+        ...graphData.nodes,
+        { id: 'team', label: 'Analytics', type: 'team' },
+      ],
+      edges: [
+        ...graphData.edges,
+        {
+          from: 'root',
+          to: 'team',
+          label: 'Has owner',
+          relationType: 'hasOwner',
+        },
+      ],
+    });
     await act(async () => {
       openGraph();
     });
+    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    const graph = (Graph as unknown as jest.Mock).mock.results[0]
+      .value as Graph;
     await waitFor(() =>
-      expect(screen.getByTestId('knowledge-graph-edges').innerHTML).toContain(
-        'Downstream'
-      )
+      expect(graph.focusElement).toHaveBeenCalledWith('root', false)
     );
-    await chooseLevel(level);
+    (graph.focusElement as jest.Mock).mockClear();
+    (graph.zoomTo as jest.Mock) = jest.fn(graph.zoomTo);
+
+    await chooseLevel(1);
+
+    await screen.findByTestId('edge-Orders-Has owner-Analytics');
+
+    expect(
+      screen.queryByTestId('edge-Orders-Downstream-Customers')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('graph-status')).toHaveTextContent(
+      'label.kg-returned-counts'
+    );
+    expect(screen.queryByText('message.kg-root-only')).not.toBeInTheDocument();
+
     await waitFor(() =>
-      expect(api).toHaveBeenLastCalledWith(expect.objectContaining({ depth }), {
+      expect(graph.focusElement).toHaveBeenCalledWith('root', false)
+    );
+
+    expect(graph.zoomTo).toHaveBeenCalled();
+    expect(api).toHaveBeenLastCalledWith(
+      expect.objectContaining({ depth: 1 }),
+      {
         signal: expect.any(AbortSignal),
-      })
+      }
     );
-    await press(screen.getByTestId('knowledge-graph-export'));
-    await press(
-      screen.getByRole('menuitemradio', { name: 'label.skos-turtle' })
-    );
-    await waitFor(() =>
-      expect(downloadEntityGraph).toHaveBeenCalledWith(
-        expect.objectContaining({ depth, format: 'turtle' })
-      )
-    );
+  });
+
+  it('explains an empty level 1 as a missing profile rather than a hidden graph', async () => {
+    await act(async () => {
+      openGraph();
+    });
+    await screen.findByTestId('edge-Orders-Downstream-Customers');
+
+    await chooseLevel(1);
+
+    await screen.findByText('message.kg-root-only');
+
+    expect(
+      screen.queryByTestId('edge-Orders-Downstream-Customers')
+    ).not.toBeInTheDocument();
   });
 
   it('keeps its canvas and zoom when labels change and keeps every relationship', async () => {
@@ -220,8 +360,9 @@ describe('KnowledgeGraph', () => {
     const zoom = graph.getZoom();
     await openView();
     await press(
-      screen.getByRole('menuitemcheckbox', { name: 'label.kg-no-labels' })
+      within(screen.getByTestId('graph-label-chooser')).getByRole('button')
     );
+    await press(screen.getByRole('option', { name: 'label.kg-no-labels' }));
     await waitFor(() =>
       expect(
         graph.getEdgeData().every((edge) => edge.style?.labelText === '')
@@ -291,6 +432,6 @@ describe('KnowledgeGraph', () => {
 
     expect(
       screen.getByRole('button', { name: /label.kg-levels/ })
-    ).toHaveTextContent('3 — label.kg-extended-connections');
+    ).toHaveTextContent('3 · label.extended');
   });
 });

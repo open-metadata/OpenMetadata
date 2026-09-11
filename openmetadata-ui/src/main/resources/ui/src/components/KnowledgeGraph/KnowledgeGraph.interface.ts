@@ -21,6 +21,7 @@ import {
   GraphEdge,
   GraphFilterOptions,
 } from '../../types/knowledgeGraph.types';
+import type { RelationCategory } from './KnowledgeGraph.relations';
 
 export interface KnowledgeGraphProps {
   entity?: EntityReference;
@@ -30,6 +31,26 @@ export interface KnowledgeGraphProps {
 
 export type KnowledgeGraphLevel = 1 | 2 | 3;
 export type KnowledgeGraphLabelMode = 'auto' | 'all' | 'none';
+export type KnowledgeGraphMode = 'knowledge-graph' | 'ontology';
+export type KnowledgeGraphPresentation = 'balanced' | 'all';
+export type KnowledgeGraphDrawer = 'columns' | 'relationships' | 'coverage';
+export type MappingCoverage = 'mapped' | 'unmapped' | 'unknown';
+
+export interface GraphNodePresentation {
+  level: number;
+  position: { x: number; y: number };
+  size: [number, number];
+  root?: boolean;
+  members?: GraphNode[];
+  predicate?: string;
+  relationType?: string;
+  direction?: 'in' | 'out';
+  anchorId?: string;
+  groupId?: string;
+  expanded?: boolean;
+  side?: 'left' | 'right' | 'top' | 'bottom';
+  coverage?: MappingCoverage;
+}
 
 export interface GraphLevelRing {
   level: number;
@@ -57,11 +78,39 @@ export interface GraphNode {
   tags?: Array<{ name: string; tagFQN: string }>;
   name?: string;
   fullyQualifiedName?: string;
+  ontologyProperty?: { range: string; functional: boolean };
+  presentation?: GraphNodePresentation;
 }
 
-export interface GraphData extends Omit<RdfGraphData, 'nodes'> {
+export interface GraphDerivation {
   nodes: GraphNode[];
+  /** Original predicates retain their direction, even when the chain walks backwards. */
   edges: GraphEdge[];
+}
+
+export interface KnowledgeGraphEdge extends GraphEdge {
+  id?: string;
+  derivation?: GraphDerivation;
+  members?: KnowledgeGraphEdge[];
+  category?: RelationCategory;
+  /** A connector to an expanded member represents an existing bundle, not another RDF statement. */
+  presentationOnly?: boolean;
+}
+
+export interface KnowledgeGraphG6Edge extends G6EdgeData {
+  data: {
+    label: string;
+    category: RelationCategory;
+    relationType?: string;
+    derivation?: GraphDerivation;
+    members?: KnowledgeGraphEdge[];
+    presentationOnly?: boolean;
+  };
+}
+
+export interface GraphData extends Omit<RdfGraphData, 'nodes' | 'edges'> {
+  nodes: GraphNode[];
+  edges: KnowledgeGraphEdge[];
   filterOptions?: GraphFilterOptions;
   totalNodes?: number;
   totalEdges?: number;
@@ -91,9 +140,10 @@ export interface EdgeTooltipState {
   sourceLabel: string;
   targetLabel: string;
   edgeId: string;
+  derived?: boolean;
 }
 
-export type KnowledgeGraphLayout = 'dagre' | 'radial';
+export type KnowledgeGraphLayout = 'dagre' | 'radial' | 'lanes';
 
 export interface GraphFilterChoice {
   id: string;
@@ -105,21 +155,46 @@ export interface KnowledgeGraphFilters {
   relationshipTypes: string[];
 }
 
+/** The Columns / Relationships / Gaps tabs that open the details drawer. */
+export interface KnowledgeGraphDetailsControl {
+  active: KnowledgeGraphDrawer | null;
+  counts: Record<KnowledgeGraphDrawer, number>;
+  onChange: (drawer: KnowledgeGraphDrawer) => void;
+}
+
 export interface KnowledgeGraphToolbarProps {
+  hasFilters?: boolean;
   selectedLevel: KnowledgeGraphLevel;
   layout: KnowledgeGraphLayout;
   labelMode: KnowledgeGraphLabelMode;
+  mode: KnowledgeGraphMode;
   nodes: GraphNode[];
   filters: KnowledgeGraphFilters;
   filterOptions?: GraphFilterOptions;
+  presentation: KnowledgeGraphPresentation;
+  showBands: boolean;
+  excludedFamilies: RelationCategory[];
+  familyCounts: Record<RelationCategory, number>;
+  ontology: {
+    concepts: GraphNode[];
+    selectedId?: string;
+    onChange: (id: string) => void;
+  };
+  viewport: { isFullscreen: boolean; onFullscreen: () => void };
+  onPresentationChange: (presentation: KnowledgeGraphPresentation) => void;
+  onToggleBands: () => void;
+  onToggleFamily: (family: RelationCategory) => void;
+  onClearFilters: () => void;
   onFindNode: (nodeId: string) => void;
   onLevelChange: (level: KnowledgeGraphLevel) => void;
   onLayoutChange: (layout: KnowledgeGraphLayout) => void;
   onLabelModeChange: (mode: KnowledgeGraphLabelMode) => void;
+  onModeChange: (mode: KnowledgeGraphMode) => void;
   onFiltersChange: (filters: KnowledgeGraphFilters) => void;
   onExportJsonLd: () => Promise<void>;
   onExportPng: () => Promise<void>;
   onExportTurtle: () => Promise<void>;
+  onExportCsv: () => Promise<void>;
 }
 
 export interface KnowledgeGraphOverlaysProps {
@@ -134,6 +209,7 @@ export interface KnowledgeGraphOverlaysProps {
 
 export interface KnowledgeGraphViewControlsProps {
   isFullscreen: boolean;
+  zoom?: number;
   onFit: () => void;
   onFullscreen: () => void;
   onRefresh: () => void;

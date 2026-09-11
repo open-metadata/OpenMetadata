@@ -12,11 +12,30 @@
  */
 
 import type { NodeData } from '@antv/g6';
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import {
+  BookClosed,
+  CheckCircle,
+  ChevronRight,
+  Columns03,
+  Database01,
+  Dataflow03,
+  Globe01,
+  Table,
+  Tag01,
+  User01,
+  Users01,
+} from '@untitledui/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import {
+  getEntityNameLabel,
+  getPluralizeEntityName,
+} from '../../../utils/EntityNameUtils';
+import { getGraphNodeLabel } from '../../../utils/knowledge-graph/knowledgeGraphPresentation.utils';
+import { GraphNodePresentation } from '../KnowledgeGraph.interface';
+import { normalizeRelationKey } from '../KnowledgeGraph.relations';
 import './custom-node.less';
 
 export interface CustomNodeProps {
@@ -25,78 +44,199 @@ export interface CustomNodeProps {
   onSelect?: (keyboard: boolean) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onExpand?: () => void;
 }
+
+export const NODE_ICONS = {
+  table: Table,
+  column: Columns03,
+  property: Columns03,
+  glossaryterm: BookClosed,
+  concept: BookClosed,
+  term: BookClosed,
+  glossary: BookClosed,
+  tag: Tag01,
+  classification: Tag01,
+  domain: Globe01,
+  dataproduct: Globe01,
+  team: Users01,
+  user: User01,
+  pipeline: Dataflow03,
+  testcase: CheckCircle,
+  testsuite: CheckCircle,
+  certification: CheckCircle,
+};
+
+/** Glossary terms read as business concepts on the graph, as in the design. */
+export const getNodeTypeLabel = (type: string, t: (key: string) => string) => {
+  const key = type.toLowerCase();
+  if (key === 'property') {
+    return t('label.property');
+  }
+  if (key === 'glossaryterm') {
+    return t('label.concept');
+  }
+
+  return getEntityNameLabel(type);
+};
+
+export const getNodeIcon = (type: string) =>
+  NODE_ICONS[type.toLowerCase() as keyof typeof NODE_ICONS] ?? Database01;
+
+const getNodeView = (nodeData: NodeData) => {
+  const data = nodeData.data ?? {};
+  const type = String(data.type ?? '');
+  const presentation = data.presentation as GraphNodePresentation | undefined;
+
+  return {
+    data,
+    type,
+    presentation,
+    isRoot: Boolean(presentation?.root),
+    mapped: Boolean(presentation?.root && presentation.coverage === 'mapped'),
+    Icon: getNodeIcon(type),
+    rawLabel: String(data.label ?? ''),
+    level: data.level ?? 1,
+  };
+};
 
 function CustomNode({
   nodeData,
   onSelect,
   onFocus,
   onBlur,
+  onExpand,
 }: Readonly<CustomNodeProps>) {
   const { t } = useTranslation();
-  const highlighted = Boolean(nodeData.data?.highlighted);
-  const dimmed = Boolean(nodeData.data?.dimmed);
-  const colorMain = nodeData.data?.colorMain as string | undefined;
-  const colorLight = nodeData.data?.colorLight as string | undefined;
-  const label = nodeData.data?.label as string;
-  const type = nodeData.data?.type as string;
+  const { data, type, presentation, isRoot, mapped, Icon, rawLabel, level } =
+    getNodeView(nodeData);
+  const members = presentation?.members;
+  const color = data.colorMain as string | undefined;
+  const typeLabel = getNodeTypeLabel(type, t);
+  const groupLabel = () => {
+    const predicate = normalizeRelationKey(presentation?.predicate ?? '');
+    if (['hasfollower', 'followedby'].includes(predicate)) {
+      return t('label.follower-plural');
+    }
+    const keys: Record<string, string> = {
+      column: 'label.column-plural',
+      query: 'label.query-plural',
+      property: 'label.property-plural',
+      tag: 'label.tag-plural',
+      user: 'label.user-plural',
+      team: 'label.team-plural',
+    };
+
+    return keys[type] ? t(keys[type]) : getPluralizeEntityName(type);
+  };
+  const label = members ? groupLabel() : rawLabel;
 
   return (
-    <Button
-      noTextPadding
-      aria-label={t('label.kg-node-description', {
-        name: label,
-        type,
-        level: nodeData.data?.level ?? 1,
-      })}
+    <Box
       className={classNames('knowledge-graph-custom-node', {
-        highlighted,
-        dimmed,
+        highlighted: data.highlighted,
+        dimmed: data.dimmed,
+        'kg-node-root': isRoot,
+        'kg-node-group': members,
+        'kg-node-gap': presentation?.coverage === 'unmapped',
       })}
-      color="secondary"
-      data-level={nodeData.data?.level}
-      data-node-id={nodeData.id}
-      data-testid={`node-${label}`}
-      style={colorMain ? { borderLeftColor: colorMain } : undefined}
-      title={label}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      onPress={(event) => onSelect?.(event.pointerType === 'keyboard')}>
-      <Box align="center" className="tw:overflow-hidden" gap={2}>
+      direction="col">
+      <Button
+        noTextPadding
+        aria-label={t('label.kg-node-description', {
+          name: label,
+          type: typeLabel,
+          level,
+        })}
+        className="kg-node-select"
+        color="tertiary"
+        data-level={data.level}
+        data-node-id={nodeData.id}
+        data-testid={'node-' + rawLabel}
+        title={label}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        onPress={(event) => onSelect?.(event.pointerType === 'keyboard')}>
+        <Box align="center" className="tw:w-full tw:min-w-0" gap={2}>
+          <Box
+            align="center"
+            className="node-icon tw:rounded-md tw:border"
+            justify="center"
+            style={{
+              color,
+              backgroundColor: data.colorLight as string | undefined,
+              borderColor: color,
+            }}>
+            <Icon aria-hidden="true" size={isRoot ? 18 : 16} />
+          </Box>
+          <Box
+            className="tw:min-w-0 tw:flex-1 tw:text-left"
+            direction="col"
+            gap={0}>
+            <span className="kg-node-name tw:truncate" data-testid="label">
+              {label}
+            </span>
+            <span className="kg-node-type" data-testid="type-tag">
+              {typeLabel}
+            </span>
+          </Box>
+          {members && (
+            <span
+              className="kg-node-count tw:rounded-full tw:border tw:px-1.5"
+              style={{
+                color,
+                backgroundColor: data.colorLight as string | undefined,
+                borderColor: color,
+              }}>
+              {members.length}
+            </span>
+          )}
+        </Box>
+      </Button>
+      {mapped && (
         <Box
           align="center"
-          className="node-icon"
-          justify="center"
-          style={colorMain ? { color: colorMain } : undefined}>
-          {getEntityIcon(type, '', {
-            width: 12,
-            height: 12,
-          })}
+          className="kg-node-note tw:px-3 tw:pb-2 tw:text-success-primary"
+          gap={1}>
+          <CheckCircle aria-hidden="true" size={12} />
+          <span>{t('label.kg-mapped-to-ontology')}</span>
         </Box>
-        <Typography ellipsis data-testid="label" weight="semibold">
-          {label}
-        </Typography>
-      </Box>
-      <Typography
-        className="asset-type-tag"
-        data-testid="type-tag"
-        size="text-xs"
-        style={
-          colorMain && colorLight
-            ? { color: colorMain, backgroundColor: colorLight, border: 'none' }
-            : undefined
-        }>
-        {type}
-      </Typography>
-    </Button>
+      )}
+      {members && (
+        <Box
+          className="tw:mx-3 tw:min-h-0 tw:border-t tw:border-secondary tw:pt-1"
+          direction="col"
+          gap={0}>
+          {members.slice(0, 3).map((member) => (
+            <span className="kg-node-member tw:truncate" key={member.id}>
+              {getGraphNodeLabel(member)}
+            </span>
+          ))}
+          <Box align="center" className="tw:mt-1" justify="between">
+            <Button
+              aria-expanded={Boolean(presentation.expanded)}
+              color="link-color"
+              iconTrailing={ChevronRight}
+              size="xs"
+              onPress={onExpand}>
+              {t(
+                presentation.expanded
+                  ? 'label.kg-collapse-group'
+                  : 'label.kg-expand-group'
+              )}
+            </Button>
+            {members.length > 3 && (
+              <span className="kg-node-more">
+                {t('label.kg-more-count', { count: members.length - 3 })}
+              </span>
+            )}
+          </Box>
+        </Box>
+      )}
+    </Box>
   );
 }
 
-// The G6 node object is mutable and can be updated in place.
-// In a custom memo comparator, prev.nodeData.data and next.nodeData.data
-// can end up reading the same already-mutated object
-// Hence adding nodeRenderKey which is derived from nodeData but is a string
-// and won't be affected by mutations to the nodeData object
 export default React.memo(
   CustomNode,
   (prev, next) => prev.nodeRenderKey === next.nodeRenderKey

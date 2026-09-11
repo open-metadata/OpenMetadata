@@ -31,12 +31,14 @@ const noCounts: Record<RelationCategory, number> = {
 
 const renderLegend = (
   counts: Partial<Record<RelationCategory, number>> = {},
-  isCollapsed = false
+  isCollapsed = false,
+  hiddenCount = 0
 ) => {
   const onToggleCollapsed = jest.fn();
   const result = render(
     <KnowledgeGraphLegend
       counts={{ ...noCounts, ...counts }}
+      hiddenCount={hiddenCount}
       isCollapsed={isCollapsed}
       onToggleCollapsed={onToggleCollapsed}
     />
@@ -69,8 +71,10 @@ describe('KnowledgeGraphLegend', () => {
   });
 
   it('draws a colour sample for each family so the encoding is decodable', () => {
-    const { container } = renderLegend({ lineage: 1, ontology: 1 });
-    const lines = container.querySelectorAll('svg line');
+    renderLegend({ lineage: 1, ontology: 1 });
+    const lines = screen
+      .getByTestId('knowledge-graph-legend-items')
+      .querySelectorAll('svg line');
 
     expect(lines).toHaveLength(2);
     expect(lines[0].getAttribute('stroke')).not.toBe(
@@ -79,16 +83,21 @@ describe('KnowledgeGraphLegend', () => {
   });
 
   it('gives a dashed family a dash array and lineage none', () => {
-    const { container } = renderLegend({ lineage: 1 });
+    const first = renderLegend({ lineage: 1 });
 
     expect(
-      container.querySelector('svg line')?.getAttribute('stroke-dasharray')
+      screen
+        .getByTestId('legend-item-lineage')
+        .querySelector('svg line')
+        ?.getAttribute('stroke-dasharray')
     ).toBeNull();
 
-    const dashed = renderLegend({ ontology: 1 });
+    first.unmount();
+    renderLegend({ ontology: 1 });
 
     expect(
-      dashed.container
+      screen
+        .getByTestId('legend-item-ontology')
         .querySelector('svg line')
         ?.getAttribute('stroke-dasharray')
     ).toBeTruthy();
@@ -118,5 +127,23 @@ describe('KnowledgeGraphLegend', () => {
     fireEvent.click(screen.getByTestId('knowledge-graph-legend-toggle'));
 
     expect(onToggleCollapsed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('KnowledgeGraphLegend label', () => {
+  it('counts the families on screen and only mentions the total once some are hidden', () => {
+    const { unmount } = renderLegend({ lineage: 3, ownership: 1 });
+
+    expect(
+      screen.getByTestId('knowledge-graph-legend-toggle')
+    ).toHaveTextContent('label.kg-family-count');
+
+    unmount();
+
+    renderLegend({ lineage: 3 }, false, 1);
+
+    expect(
+      screen.getByTestId('knowledge-graph-legend-toggle')
+    ).toHaveTextContent('label.kg-family-of-count');
   });
 });

@@ -18,6 +18,7 @@ import {
   humanizeRelationLabel,
   normalizeRelationKey,
   RELATION_CATEGORIES,
+  toSentenceCase,
 } from './KnowledgeGraph.relations';
 
 describe('KnowledgeGraph.relations', () => {
@@ -47,6 +48,8 @@ describe('KnowledgeGraph.relations', () => {
       ['steward', 'ownership'],
       ['partOfDomain', 'governance'],
       ['hasTag', 'governance'],
+      ['hasCertification', 'governance'],
+      ['certifiedAs', 'governance'],
       ['mappedTo', 'ontology'],
       ['broader', 'ontology'],
       ['hasTestCase', 'quality'],
@@ -88,6 +91,11 @@ describe('KnowledgeGraph.relations', () => {
     it('prefers a known predicate over the endpoint heuristic', () => {
       // Both endpoints are people, but `mappedTo` is unambiguously ontological.
       expect(classifyRelation('mappedTo', 'user', 'team')).toBe('ontology');
+    });
+
+    it('does not represent followers as owners', () => {
+      expect(classifyRelation('followedBy', 'table', 'user')).toBe('other');
+      expect(classifyRelation('hasFollower', 'table', 'team')).toBe('other');
     });
 
     it('tolerates missing endpoint types', () => {
@@ -226,5 +234,18 @@ describe('KnowledgeGraph.relations', () => {
     it('returns the original string when nothing is left to humanize', () => {
       expect(humanizeRelationLabel('###')).toBe('###');
     });
+  });
+});
+
+describe('toSentenceCase', () => {
+  it.each([
+    ['Has Data Product', 'Has data product'],
+    ['Mapped To', 'Mapped to'],
+    ['Has GDPR Tag', 'Has GDPR tag'],
+    ['Downstream', 'Downstream'],
+    ['has column', 'Has column'],
+    ['', ''],
+  ])('reads %s as the phrase %s', (label, phrase) => {
+    expect(toSentenceCase(label)).toBe(phrase);
   });
 });

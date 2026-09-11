@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 
-import type { EdgeData, IElementEvent, NodeData } from '@antv/g6';
+import type { EdgeData, ElementDatum, IElementEvent, NodeData } from '@antv/g6';
 import { ExtensionCategory, Graph, register } from '@antv/g6';
 import { ReactNode as AntVReactNode } from '@antv/g6-extension-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import CustomNode from '../../components/KnowledgeGraph/GraphElements/CustomNode';
+import { ZOOM_RANGE } from '../../components/KnowledgeGraph/KnowledgeGraph.constants';
 import {
   EdgeTooltipState,
   GraphData,
   GraphLevelRing,
+  GraphNodePresentation,
+  KnowledgeGraphEdge,
   KnowledgeGraphLabelMode,
   KnowledgeGraphLayout,
+  KnowledgeGraphMode,
 } from '../../components/KnowledgeGraph/KnowledgeGraph.interface';
 import { RelationCategory } from '../../components/KnowledgeGraph/KnowledgeGraph.relations';
 import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
@@ -31,8 +35,10 @@ import {
   buildEdgeDimStyle,
   buildEdgeHighlightStyle,
   buildNodeUpdateData,
+  fitGraphViewport,
   getColorSetForType,
   getGraphLevelRings,
+  getLaneLevelBands,
   getNodeRenderKey,
   projectGraphToPositions,
   resolveFocusNodeId,
@@ -48,18 +54,113 @@ export type GraphSelection =
 
 const nodesForRings = (data: { nodes?: NodeData[] }) => data.nodes ?? [];
 
+const displayedNodeId = (nodes: NodeData[], id: string) =>
+  nodes.find((node) => node.id === id)?.id ??
+  nodes.find((node) =>
+    (
+      node.data?.presentation as GraphNodePresentation | undefined
+    )?.members?.some((member) => member.id === id)
+  )?.id;
+
+const displayedSelection = (nodes: NodeData[], selection: GraphSelection) =>
+  selection?.kind === 'node'
+    ? { ...selection, id: displayedNodeId(nodes, selection.id) ?? selection.id }
+    : selection;
+
+const getContextEdgeStyle = (
+  edge: EdgeData,
+  nodes: Map<string, NodeData>,
+  layout: KnowledgeGraphLayout,
+  selected: boolean,
+  lineWidth: number
+) => {
+  const source = nodes.get(edge.source)?.data?.presentation as
+    | GraphNodePresentation
+    | undefined;
+  const target = nodes.get(edge.target)?.data?.presentation as
+    | GraphNodePresentation
+    | undefined;
+  const branch = [
+    source?.root,
+    target?.root,
+    source?.anchorId === edge.target,
+    target?.anchorId === edge.source,
+    source?.groupId === edge.target,
+    target?.groupId === edge.source,
+  ].some(Boolean);
+  const context = layout === 'lanes' && !selected && !branch;
+
+  return {
+    strokeOpacity: context ? 0.3 : 1,
+    endArrowFillOpacity: context ? 0.3 : 1,
+    lineWidth: context ? 1 : lineWidth,
+  };
+};
+
+const isFocusInView = (graph: Graph, entityId: string) => {
+  const nodes = graph.getNodeData();
+  const focus = nodes.find(
+    (node) => node.id === resolveFocusNodeId(nodes, entityId)
+  );
+  if (!focus) {
+    return true;
+  }
+  const [x, y] = graph.getViewportByCanvas([
+    Number(focus.style?.x ?? 0),
+    Number(focus.style?.y ?? 0),
+  ]);
+  const [width, height] = graph.getSize();
+
+  return x >= 0 && y >= 0 && x <= width && y <= height;
+};
+
+const fitViewport = async (
+  graph: Graph,
+  focusId: string,
+  container: HTMLDivElement | null
+) => {
+  const width = container?.clientWidth || 800;
+  const height = container?.clientHeight || 600;
+  // The legend can resize the pane before ResizeObserver reaches G6.
+  graph.resize(width, height);
+  await fitGraphViewport(graph, focusId, width, height);
+};
+
 const matchesSelection = (
   edge: EdgeData,
   selection: NonNullable<GraphSelection>
 ): boolean => {
   switch (selection.kind) {
     case 'edge':
-      return edge.id === selection.id;
+      return (
+        edge.id === selection.id ||
+        (edge.data?.members as KnowledgeGraphEdge[] | undefined)?.some(
+          (member) => member.id === selection.id
+        ) === true
+      );
     case 'category':
       return edge.data?.category === selection.category;
     case 'node':
       return edge.source === selection.id || edge.target === selection.id;
   }
+};
+
+const isEdgeLabelVisible = (
+  mode: KnowledgeGraphLabelMode,
+  edge: EdgeData,
+  context: { direct: boolean; selected: boolean; groupSelected: boolean }
+) => {
+  if (mode === 'all') {
+    return true;
+  }
+  if (mode === 'none') {
+    return false;
+  }
+  if (edge.data?.presentationOnly && context.groupSelected) {
+    return false;
+  }
+
+  return context.direct || context.selected;
 };
 const selectionSurvives = (
   selection: GraphSelection,
@@ -67,13 +168,85 @@ const selectionSurvives = (
   edges: EdgeData[]
 ): boolean => {
   if (selection?.kind === 'node') {
-    return nodes.some((node) => node.id === selection.id);
+    return Boolean(displayedNodeId(nodes, selection.id));
   }
   if (selection?.kind === 'edge') {
-    return edges.some((edge) => edge.id === selection.id);
+    return edges.some((edge) => matchesSelection(edge, selection));
   }
 
   return true;
+};
+
+const retainSelection = async (
+  graph: Graph,
+  selection: GraphSelection,
+  previousNodes: NodeData[],
+  nodes: NodeData[],
+  edges: EdgeData[],
+  focusId: string,
+  onSelectionChange: (selection: GraphSelection) => void
+) => {
+  if (!selectionSurvives(selection, nodes, edges)) {
+    onSelectionChange(null);
+    if (nodes.some((node) => node.id === focusId)) {
+      await graph.focusElement(focusId, false);
+    }
+  } else if (selection?.kind === 'node') {
+    const id = displayedNodeId(nodes, selection.id);
+    if (id && id !== displayedNodeId(previousNodes, selection.id)) {
+      await graph.focusElement(id, false);
+    }
+  }
+};
+
+const configureParallelEdges = (
+  graph: Graph,
+  edges: EdgeData[],
+  layout: KnowledgeGraphLayout
+) => {
+  if (layout === 'lanes') {
+    graph.setTransforms([]);
+
+    return;
+  }
+  const counts = new Map<string, number>();
+  const key = (edge: EdgeData) =>
+    JSON.stringify([edge.source, edge.target].sort());
+  edges.forEach((edge) =>
+    counts.set(key(edge), (counts.get(key(edge)) ?? 0) + 1)
+  );
+  const parallel = edges
+    .filter((edge) => (counts.get(key(edge)) ?? 0) > 1)
+    .map((edge) => String(edge.id));
+  graph.setTransforms(
+    parallel.length
+      ? [
+          {
+            type: 'process-parallel-edges',
+            mode: 'bundle',
+            distance: 32,
+            edges: parallel,
+          },
+        ]
+      : []
+  );
+};
+
+const focusPendingNode = async (
+  graph: Graph,
+  nodes: NodeData[],
+  pending: { current: string | null },
+  container: HTMLDivElement | null
+) => {
+  if (!pending.current || !nodes.some((node) => node.id === pending.current)) {
+    return;
+  }
+  const id = pending.current;
+  pending.current = null;
+  await graph.focusElement(id, false);
+  container
+    ?.querySelector<HTMLButtonElement>(`[data-node-id="${CSS.escape(id)}"]`)
+    ?.focus({ preventScroll: true });
 };
 
 interface CanvasOptions {
@@ -82,15 +255,50 @@ interface CanvasOptions {
   entityId: string;
   entityType: string;
   layout: KnowledgeGraphLayout;
+  mode: KnowledgeGraphMode;
   labelMode: KnowledgeGraphLabelMode;
   selection: GraphSelection;
+  /**
+   * Identifies the scope being viewed (level, mode, presentation, families,
+   * expanded groups). The viewport is re-fitted when the graph is next drawn
+   * for a new key, so every level opens framed rather than inheriting the
+   * previous level's zoom and pan.
+   */
+  fitKey: string;
+  /** Identifies the pane the graph lives in; a change re-fits once the pane has resized. */
+  viewportKey: string;
   onSelectionChange: (selection: GraphSelection) => void;
+  onExpandGroup?: (id: string) => void;
 }
+
+const getWorldRings = (
+  layout: KnowledgeGraphLayout,
+  nodes: NodeData[],
+  focusId: string
+): GraphLevelRing[] => {
+  if (layout === 'radial') {
+    return getGraphLevelRings(nodes, focusId);
+  }
+  if (layout !== 'lanes') {
+    return [];
+  }
+
+  return getLaneLevelBands(nodes);
+};
+const edgeLabel = (edge: EdgeData) => {
+  const members = edge.data?.members as unknown[] | undefined;
+
+  return (
+    String(edge.data?.label ?? '') +
+    (members && members.length > 1 ? ' ×' + members.length : '')
+  );
+};
 
 export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
   const { theme, brandColors } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
+  const pendingFocus = useRef<string | null>(null);
   const latest = useRef(options);
   latest.current = options;
   const hoverRef = useRef<GraphSelection>(null);
@@ -99,9 +307,12 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [rings, setRings] = useState<GraphLevelRing[]>([]);
+  const [zoom, setZoom] = useState(1);
   const worldRings = useRef<GraphLevelRing[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const drawn = useRef(false);
+  const fittedKey = useRef<string | null>(null);
+  const refitOnResize = useRef(false);
   const positionedSnapshot = useRef<{
     data: GraphData;
     layout: KnowledgeGraphLayout;
@@ -115,6 +326,7 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
       return;
     }
     const zoom = graph.getZoom();
+    setZoom(zoom);
     setRings(
       worldRings.current.map((ring) => {
         const [x, y] = graph.getViewportByCanvas([ring.x, ring.y]);
@@ -130,9 +342,28 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     );
   }, []);
 
+  const fit = useCallback(() => {
+    const graph = graphRef.current;
+    if (graph && drawn.current && !graph.destroyed) {
+      const focusId = resolveFocusNodeId(
+        graph.getNodeData(),
+        latest.current.entityId
+      );
+      queue.current = queue.current
+        .catch(() => undefined)
+        .then(() => fitViewport(graph, focusId, containerRef.current))
+        .catch(setError);
+    }
+  }, []);
+
   const selectNode = useCallback((id: string) => {
     const graph = graphRef.current;
     latest.current.onSelectionChange({ kind: 'node', id });
+    if (!graph?.getNodeData().some((node) => node.id === id)) {
+      pendingFocus.current = id;
+
+      return;
+    }
     if (graph && drawn.current && !graph.destroyed) {
       void graph
         .focusElement(id, false)
@@ -156,6 +387,7 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
           hoverRef.current = null;
           setHover(null);
         }}
+        onExpand={() => latest.current.onExpandGroup?.(data.id)}
         onFocus={() => {
           const target: GraphSelection = { kind: 'node', id: data.id };
           hoverRef.current = target;
@@ -169,7 +401,8 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
           latest.current.onSelectionChange({ kind: 'node', id: data.id });
           if (keyboard) {
             requestAnimationFrame(() =>
-              containerRef.current?.parentElement
+              containerRef.current
+                ?.closest('.knowledge-graph-container')
                 ?.querySelector<HTMLElement>(
                   '[data-testid="graph-inspector"] h3'
                 )
@@ -184,12 +417,24 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
 
   const applyAppearance = useCallback((graph: Graph) => {
     const current = latest.current;
-    const focus = hoverRef.current ?? current.selection;
     const nodes = graph.getNodeData();
+    const focus = displayedSelection(
+      nodes,
+      hoverRef.current ?? current.selection
+    );
     const edges = graph.getEdgeData();
     const nodeIds = new Set<string>();
     const edgeIds = new Set<string>();
     const rootId = resolveFocusNodeId(nodes, current.entityId);
+    const groupSelected =
+      focus?.kind === 'node' &&
+      Boolean(
+        (
+          nodes.find((node) => node.id === focus.id)?.data?.presentation as
+            | GraphNodePresentation
+            | undefined
+        )?.members
+      );
     if (focus) {
       edges.forEach((edge) => {
         const matches = matchesSelection(edge, focus);
@@ -239,7 +484,7 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
         }
       }
     }
-    const nodeMap = new Map(
+    const nodeMap = new Map<string, NodeData>(
       nodes.map((node) => {
         const color = getColorSetForType(String(node.data?.type));
 
@@ -262,19 +507,29 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
           node.id,
           nodeMap,
           nodeIds.has(node.id) || node.id === rootId,
-          Boolean(focus) && !nodeIds.has(node.id) && node.id !== rootId
+          Boolean(focus) &&
+            !groupSelected &&
+            !nodeIds.has(node.id) &&
+            node.id !== rootId
         )
       )
     );
     graph.updateEdgeData(
       edges.map((edge) => {
         const category = (edge.data?.category ?? 'other') as RelationCategory;
-        const label = String(edge.data?.label ?? '');
-        const show = current.labelMode !== 'none';
+        const label = edgeLabel(edge);
+        const direct =
+          Number(nodeMap.get(edge.source)?.data?.level) < 3 &&
+          Number(nodeMap.get(edge.target)?.data?.level) < 3;
+        const show = isEdgeLabelVisible(current.labelMode, edge, {
+          direct,
+          selected: edgeIds.has(String(edge.id)),
+          groupSelected,
+        });
         let style = buildEdgeBaseStyle(category, label, show);
         if (edgeIds.has(String(edge.id))) {
           style = buildEdgeHighlightStyle(category, label, show);
-        } else if (focus) {
+        } else if (focus && !groupSelected) {
           style = {
             ...style,
             ...buildEdgeDimStyle(category),
@@ -284,7 +539,18 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
 
         return {
           id: String(edge.id),
-          style: { ...style, labelAutoRotate: false },
+          style: {
+            ...style,
+            ...getContextEdgeStyle(
+              edge,
+              nodeMap,
+              current.layout,
+              Boolean(focus),
+              style.lineWidth
+            ),
+            endArrow: !edge.data?.derivation,
+            labelAutoRotate: false,
+          },
         };
       })
     );
@@ -304,11 +570,15 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     positionedSnapshot.current = null;
     worldRings.current = [];
     setRings([]);
+    // G6 otherwise adds inline relative positioning, making the canvas size its parent.
+    container.style.position = 'absolute';
     const graph = new Graph({
       container,
       width: container.parentElement?.clientWidth || 800,
       height: container.parentElement?.clientHeight || 600,
       animation: false,
+      padding: 40,
+      zoomRange: ZOOM_RANGE,
       data: { nodes: [], edges: [] },
       behaviors: [
         'drag-canvas',
@@ -318,27 +588,37 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
           key: 'labels',
           padding: 8,
           enable: () => latest.current.labelMode === 'auto',
-          sortEdge: (left: EdgeData, right: EdgeData) => {
+          // The edge-only sorter reads operands in model order instead of comparator order.
+          sort: (left: ElementDatum, right: ElementDatum) => {
             const selected = hoverRef.current ?? latest.current.selection;
-            const priority = (edge: EdgeData) => {
-              if (!selected || !matchesSelection(edge, selected)) {
+            const priority = (edge: ElementDatum) => {
+              if (
+                !selected ||
+                !('source' in edge) ||
+                !matchesSelection(edge as EdgeData, selected)
+              ) {
                 return 2;
               }
 
               return selected.kind === 'edge' ? 0 : 1;
             };
 
-            return Math.sign(priority(left) - priority(right)) as -1 | 0 | 1;
+            const memberCount = (edge: ElementDatum) =>
+              (edge.data?.members as KnowledgeGraphEdge[] | undefined)
+                ?.length ?? 0;
+
+            return Math.sign(
+              priority(left) - priority(right) ||
+                memberCount(right) - memberCount(left)
+            ) as -1 | 0 | 1;
           },
         },
-      ],
-      transforms: [
-        { type: 'process-parallel-edges', mode: 'bundle', distance: 24 },
       ],
       node: { type: 'react-node', style: { component: renderNode } },
       edge: {
         style: {
-          endArrow: true,
+          endArrow: (edge: EdgeData) => !edge.data?.derivation,
+          labelFontFamily: getComputedStyle(container).fontFamily,
           labelBackgroundPadding: [3, 6],
           labelAutoRotate: false,
         },
@@ -354,14 +634,22 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
       setHover(null);
       setTooltip(null);
     };
+    container.addEventListener('pointerleave', leave);
     graph.on('node:pointerover', nodeHover);
     graph.on('node:pointerleave', leave);
     graph.on('node:click', (event: IElementEvent) =>
       latest.current.onSelectionChange({ kind: 'node', id: event.target.id })
     );
-    graph.on('edge:click', (event: IElementEvent) =>
-      latest.current.onSelectionChange({ kind: 'edge', id: event.target.id })
-    );
+    graph.on('edge:click', (event: IElementEvent) => {
+      const edge = graph.getEdgeData(event.target.id);
+      const original = edge?.data?.presentationOnly
+        ? (edge.data.members as KnowledgeGraphEdge[] | undefined)?.[0]
+        : undefined;
+      latest.current.onSelectionChange({
+        kind: 'edge',
+        id: original?.id ?? event.target.id,
+      });
+    });
     graph.on('edge:pointerover', (event: IElementEvent) => {
       const edge = graph.getEdgeData(event.target.id);
       if (!edge) {
@@ -379,6 +667,7 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
         sourceLabel: labels.get(edge.source) ?? edge.source,
         targetLabel: labels.get(edge.target) ?? edge.target,
         labels: [String(edge.data?.label ?? '')],
+        derived: Boolean(edge.data?.derivation),
       });
     });
     graph.on('edge:pointerleave', leave);
@@ -387,23 +676,56 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
       latest.current.onSelectionChange(null);
     });
     graph.on('aftertransform', updateRings);
+    let previousBounds = container.getBoundingClientRect();
+    let previousWindow = [window.innerWidth, window.innerHeight];
     const resize = new ResizeObserver(() => {
-      if (!graph.destroyed) {
+      if (!graph.destroyed && drawn.current) {
         const parent = container.parentElement;
+        if (refitOnResize.current) {
+          refitOnResize.current = false;
+
+          fit();
+
+          return;
+        }
         if (parent) {
+          const anchor = graph.getViewportByCanvas([0, 0]);
+          const bounds = container.getBoundingClientRect();
+          const windowChanged =
+            previousWindow[0] !== window.innerWidth ||
+            previousWindow[1] !== window.innerHeight;
           const [width, height] = graph.getSize();
+          const keepCenter = windowChanged || width !== parent.clientWidth;
+          const offset = keepCenter
+            ? [
+                (parent.clientWidth - width) / 2,
+                (parent.clientHeight - height) / 2,
+              ]
+            : [
+                previousBounds.left - bounds.left,
+                previousBounds.top - bounds.top,
+              ];
           graph.resize(parent.clientWidth, parent.clientHeight);
-          if (drawn.current) {
-            void graph
-              .translateBy(
-                [
-                  (parent.clientWidth - width) / 2,
-                  (parent.clientHeight - height) / 2,
-                ],
-                false
-              )
-              .catch(setError);
-          }
+          const resizedAnchor = graph.getViewportByCanvas([0, 0]);
+          // Width changes keep the viewed center; toolbar changes keep the graph under the pointer.
+          void graph
+            .translateBy(
+              [
+                anchor[0] - resizedAnchor[0] + offset[0],
+                anchor[1] - resizedAnchor[1] + offset[1],
+              ],
+              false
+            )
+            .then(() => {
+              // A pane that shrank past the subject would otherwise show an
+              // empty canvas; re-frame rather than leave the graph out of view.
+              if (!isFocusInView(graph, latest.current.entityId)) {
+                fit();
+              }
+            })
+            .catch(setError);
+          previousBounds = bounds;
+          previousWindow = [window.innerWidth, window.innerHeight];
         }
         updateRings();
       }
@@ -430,13 +752,20 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
 
     return () => {
       resize.disconnect();
+      container.removeEventListener('pointerleave', leave);
       container.removeEventListener('wheel', onWheel);
       graph.destroy();
       if (graphRef.current === graph) {
         graphRef.current = null;
       }
     };
-  }, [entityKey, renderNode, updateRings]);
+  }, [entityKey, renderNode, updateRings, fit]);
+
+  useEffect(() => {
+    // The pane changes size after this effect runs; the ResizeObserver
+    // performs the fit once the new size is known.
+    refitOnResize.current = drawn.current;
+  }, [options.viewportKey]);
 
   const getPositions = useCallback(
     async (
@@ -481,6 +810,8 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
       positionedSnapshot.current = { data: unfiltered, layout, positioned };
       const filtered = projectGraphToPositions(data, positioned);
       const { nodes, edges } = filtered;
+      const previousNodes = graph.getNodeData();
+      configureParallelEdges(graph, edges, layout);
       graph.setData(filtered);
       applyAppearance(graph);
       const firstDraw = !drawn.current;
@@ -497,18 +828,26 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
         return;
       }
       drawn.current = true;
-      worldRings.current =
-        layout === 'radial'
-          ? getGraphLevelRings(nodesForRings(positioned), focusId)
-          : [];
-      if (firstDraw && nodes.length > 0) {
-        await graph.fitView();
-        await graph.zoomTo(Math.min(1, Math.max(0.85, graph.getZoom())), false);
-        await graph.focusElement(focusId, false);
+      worldRings.current = getWorldRings(
+        layout,
+        nodesForRings(positioned),
+        focusId
+      );
+      const fitKey = latest.current.fitKey;
+      if ((firstDraw || fittedKey.current !== fitKey) && nodes.length > 0) {
+        await fitViewport(graph, focusId, containerRef.current);
+        fittedKey.current = fitKey;
       }
-      if (!selectionSurvives(latest.current.selection, nodes, edges)) {
-        latest.current.onSelectionChange(null);
-      }
+      await retainSelection(
+        graph,
+        latest.current.selection,
+        previousNodes,
+        nodes,
+        edges,
+        focusId,
+        latest.current.onSelectionChange
+      );
+      await focusPendingNode(graph, nodes, pendingFocus, containerRef.current);
       setReady(true);
       setError(null);
       updateRings();
@@ -560,5 +899,15 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     applyAppearance,
   ]);
 
-  return { containerRef, graphRef, ready, error, rings, tooltip, selectNode };
+  return {
+    containerRef,
+    graphRef,
+    ready,
+    error,
+    rings,
+    tooltip,
+    selectNode,
+    fit,
+    zoom,
+  };
 };

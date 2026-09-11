@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Minus, Plus } from '@untitledui/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExitFullScreenIcon } from '../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FitScreenIcon } from '../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as FullscreenIcon } from '../../assets/svg/ic-fullscreen.svg';
-import { ReactComponent as ZoomInIcon } from '../../assets/svg/ic-zoom-in.svg';
-import { ReactComponent as ZoomOutIcon } from '../../assets/svg/ic-zoom-out.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/reload.svg';
 import { KnowledgeGraphViewControlsProps } from './KnowledgeGraph.interface';
 
@@ -28,9 +30,8 @@ import { KnowledgeGraphViewControlsProps } from './KnowledgeGraph.interface';
  * changes *what* is shown rather than how it is framed.
  */
 const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
-  isFullscreen,
+  zoom = 1,
   onFit,
-  onFullscreen,
   onRefresh,
   onZoomIn,
   onZoomOut,
@@ -41,22 +42,30 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
     <div
       className="knowledge-graph-action-buttons"
       data-testid="graph-view-controls">
-      <Tooltip title={t('label.zoom-in')}>
-        <TooltipTrigger
-          aria-label={t('label.zoom-in')}
-          className="kg-control-btn"
-          data-testid="zoom-in"
-          onPress={onZoomIn}>
-          <ZoomInIcon aria-hidden="true" />
-        </TooltipTrigger>
-      </Tooltip>
       <Tooltip title={t('label.zoom-out')}>
         <TooltipTrigger
           aria-label={t('label.zoom-out')}
           className="kg-control-btn"
           data-testid="zoom-out"
           onPress={onZoomOut}>
-          <ZoomOutIcon aria-hidden="true" />
+          <Minus aria-hidden="true" />
+        </TooltipTrigger>
+      </Tooltip>
+      <Box
+        align="center"
+        className="tw:min-w-11 tw:px-1 tw:text-tertiary"
+        justify="center">
+        <Typography size="text-xs" weight="semibold">
+          {Math.round(zoom * 100)}%
+        </Typography>
+      </Box>
+      <Tooltip title={t('label.zoom-in')}>
+        <TooltipTrigger
+          aria-label={t('label.zoom-in')}
+          className="kg-control-btn"
+          data-testid="zoom-in"
+          onPress={onZoomIn}>
+          <Plus aria-hidden="true" />
         </TooltipTrigger>
       </Tooltip>
       <Tooltip title={t('label.fit-to-screen')}>
@@ -66,28 +75,6 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
           data-testid="fit-screen"
           onPress={onFit}>
           <FitScreenIcon aria-hidden="true" />
-        </TooltipTrigger>
-      </Tooltip>
-      <Tooltip
-        title={
-          isFullscreen
-            ? t('label.exit-full-screen')
-            : t('label.full-screen-view')
-        }>
-        <TooltipTrigger
-          aria-label={
-            isFullscreen
-              ? t('label.exit-full-screen')
-              : t('label.full-screen-view')
-          }
-          className="kg-control-btn"
-          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-          onPress={onFullscreen}>
-          {isFullscreen ? (
-            <ExitFullScreenIcon aria-hidden="true" />
-          ) : (
-            <FullscreenIcon aria-hidden="true" />
-          )}
         </TooltipTrigger>
       </Tooltip>
       <Tooltip title={t('label.refresh')}>

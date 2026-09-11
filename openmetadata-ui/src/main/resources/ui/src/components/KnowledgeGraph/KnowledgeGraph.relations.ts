@@ -12,6 +12,7 @@
  */
 
 import { resolveCssColor } from '../../utils/common/cssColor.utils';
+import type { KnowledgeGraphEdge } from './KnowledgeGraph.interface';
 
 /**
  * Every RDF predicate the graph can return is folded into one of these six
@@ -214,6 +215,11 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   hasdatacontract: 'governance',
   tier: 'governance',
   hastier: 'governance',
+  hascertification: 'governance',
+  certifiedas: 'governance',
+
+  hasfollower: 'other',
+  followedby: 'other',
 
   // ontology — business meaning
   mappedto: 'ontology',
@@ -383,4 +389,39 @@ export const humanizeRelationLabel = (rawLabel: string): string => {
   return spaced.length === 0
     ? rawLabel
     : spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
+
+/**
+ * `Has Data Product` → `Has data product`. The server emits every predicate
+ * in Title Case, while the design reads them as phrases with a single leading
+ * capital. Fully upper-case words (acronyms) are left alone.
+ */
+export const toSentenceCase = (label: string): string => {
+  const trimmed = label.trim();
+  if (trimmed.length === 0) {
+    return label;
+  }
+  const rest = trimmed
+    .slice(1)
+    .replaceAll(/\s([A-Z])(?=[a-z])/g, (match) => match.toLowerCase());
+
+  return trimmed.charAt(0).toUpperCase() + rest;
+};
+
+export const getGraphRelationCategory = (
+  edge: KnowledgeGraphEdge,
+  nodeTypes: ReadonlyMap<string, string>
+): RelationCategory => {
+  if (edge.category) {
+    return edge.category;
+  }
+  if (edge.derivation) {
+    return 'ontology';
+  }
+
+  return classifyRelation(
+    edge.relationType ?? edge.label,
+    nodeTypes.get(edge.from),
+    nodeTypes.get(edge.to)
+  );
 };

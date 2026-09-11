@@ -13,13 +13,13 @@
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { GraphData } from './KnowledgeGraph.interface';
+import { GraphData, KnowledgeGraphMode } from './KnowledgeGraph.interface';
 interface GraphStatusProps {
   data: GraphData | null;
   loading: boolean;
   partial: boolean;
   failed: boolean;
-  level: number;
+  mode: KnowledgeGraphMode;
   onRetry: () => void;
 }
 const KnowledgeGraphStatus = ({
@@ -27,7 +27,7 @@ const KnowledgeGraphStatus = ({
   loading,
   partial,
   failed,
-  level,
+  mode,
   onRetry,
 }: GraphStatusProps) => {
   const { t } = useTranslation();
@@ -38,18 +38,40 @@ const KnowledgeGraphStatus = ({
       className="tw:px-4 tw:py-2 tw:shrink-0 tw:border-b tw:border-secondary"
       gap={3}
       wrap="wrap">
+      <Box align="center" gap={2}>
+        <svg aria-hidden="true" height="10" width="10">
+          <circle
+            cx="5"
+            cy="5"
+            fill={
+              mode === 'ontology'
+                ? 'var(--om-color-purple-600)'
+                : 'var(--om-color-blue-dark-600)'
+            }
+            r="4"
+          />
+        </svg>
+        <Typography data-testid="graph-mode" size="text-xs" weight="semibold">
+          {t(mode === 'ontology' ? 'label.ontology' : 'label.knowledge-graph')}
+        </Typography>
+      </Box>
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t(
+          mode === 'ontology'
+            ? 'message.kg-concept-scope'
+            : 'message.kg-entity-scope'
+        )}
+      </Typography>
       <Typography
         aria-live="polite"
-        className="tw:text-tertiary"
+        className="tw:ml-auto tw:text-tertiary"
         data-testid="graph-status"
         size="text-xs">
         {data
           ? t('label.kg-returned-counts', {
               nodes: data.nodes.length,
               edges: data.edges.length,
-            }) +
-            ' · ' +
-            t('label.kg-level-name', { level })
+            })
           : t('label.knowledge-graph')}
         {loading ? ' · ' + t('label.kg-updating') : ''}
       </Typography>

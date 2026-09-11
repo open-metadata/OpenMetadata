@@ -13,18 +13,14 @@
 
 .knowledge-graph-custom-node {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--om-space-8);
-  padding: var(--om-space-8);
-  // The accent bar lives on the left border, so the inner padding is reduced
-  // there to keep the card's content box the same width as before.
-  padding-left: var(--om-space-4);
+  align-items: stretch;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  box-shadow: var(--om-shadow-xs);
   border-radius: var(--om-radius-10);
   background-color: var(--om-color-bg-primary);
   border: var(--om-space-1) solid var(--om-color-border-primary);
-  border-left-width: var(--om-space-3);
-  border-left-color: var(--om-color-border-secondary);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -32,6 +28,48 @@
   touch-action: none;
   transition: opacity var(--om-duration-150) ease,
     box-shadow var(--om-duration-150) ease;
+
+  .kg-node-select {
+    width: 100%;
+    min-height: var(--om-space-48);
+    height: auto;
+    padding: var(--om-space-8) var(--om-space-12);
+    border-radius: var(--om-radius-10);
+    box-shadow: none;
+    white-space: normal;
+    > [data-text] {
+      width: 100%;
+    }
+  }
+
+  &.kg-node-group {
+    justify-content: flex-start;
+    box-shadow: var(--om-shadow-sm);
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      inset: calc(-1 * var(--om-space-4)) var(--om-space-4) 0;
+      border: var(--om-space-1) solid var(--om-color-border-secondary);
+      border-radius: var(--om-radius-10);
+      z-index: -1;
+    }
+    &::after {
+      inset: calc(-1 * var(--om-space-8)) var(--om-space-8) 0;
+    }
+  }
+
+  // Design: the subject card carries a brand border with a soft brand halo so
+  // it reads as the centre of the graph at any zoom.
+  &.kg-node-root {
+    border-color: var(--om-color-brand-500);
+    box-shadow: 0 0 0 var(--om-space-4) var(--om-color-brand-100),
+      var(--om-shadow-md);
+  }
+  &.kg-node-gap {
+    border-color: var(--om-color-orange-dark-600);
+    border-style: dashed;
+  }
 
   > [data-text] {
     display: flex;
@@ -44,7 +82,62 @@
 
   .node-icon {
     display: flex;
+    flex-shrink: 0;
+    width: var(--om-space-28);
+    height: var(--om-space-28);
     color: var(--om-color-text-tertiary);
+  }
+
+  // Design typography: 13.5/11 on cards, 15.5 on the subject; the closest
+  // tokens are used so the cards stop reading a step heavier than the design.
+  .kg-node-name {
+    display: block;
+    font-size: var(--om-font-size-13);
+    font-weight: var(--om-font-weight-semibold);
+    line-height: var(--om-line-height-tight);
+    color: var(--om-color-text-primary);
+  }
+
+  .kg-node-type {
+    display: block;
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-medium);
+    line-height: var(--om-line-height-snug);
+    color: var(--om-color-text-tertiary);
+  }
+
+  .kg-node-count {
+    flex-shrink: 0;
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-semibold);
+    line-height: var(--om-line-height-normal);
+  }
+
+  .kg-node-note {
+    font-size: var(--om-font-size-11_5);
+    font-weight: var(--om-font-weight-semibold);
+  }
+
+  .kg-node-member {
+    display: block;
+    font-size: var(--om-font-size-xs);
+    line-height: var(--om-line-height-relaxed);
+    color: var(--om-color-text-secondary);
+  }
+
+  .kg-node-more {
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-medium);
+    color: var(--om-color-text-quaternary);
+  }
+
+  &.kg-node-root .kg-node-name {
+    font-size: var(--om-font-size-15);
+  }
+
+  &.kg-node-root .node-icon {
+    width: var(--om-space-32);
+    height: var(--om-space-32);
   }
 
   .asset-type-tag {

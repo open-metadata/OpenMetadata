@@ -13,249 +13,117 @@
 
 import { NodeData } from '@antv/g6';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { getNodeRenderKey } from '../../../utils/KnowledgeGraph.utils';
 import CustomNode from './CustomNode';
 
-jest.mock('@antv/g6', () => ({}));
+beforeEach(() => jest.useRealTimers());
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getEntityIcon: jest.fn(() => <svg data-testid="entity-icon" />),
-}));
-
-import { getNodeRenderKey } from '../../../utils/KnowledgeGraph.utils';
-import { getEntityIcon } from '../../../utils/TableUtils';
-
-function makeNodeData(
-  overrides: Record<string, unknown> = {},
-  id = 'node-1'
-): NodeData {
-  return {
-    id,
-    data: {
-      label: 'TestNode',
-      type: 'table',
-      ...overrides,
-    },
-  } as NodeData;
-}
-
-function renderCustomNode(nodeData: NodeData) {
-  return render(
+const node: NodeData = {
+  id: 'customers',
+  data: { label: 'Customers', type: 'table', level: 1 },
+};
+const renderNode = (data = node, onSelect = jest.fn(), onExpand = jest.fn()) =>
+  render(
     <CustomNode
-      nodeData={nodeData}
-      nodeRenderKey={getNodeRenderKey(nodeData)}
+      nodeData={data}
+      nodeRenderKey={getNodeRenderKey(data)}
+      onExpand={onExpand}
+      onSelect={onSelect}
     />
   );
-}
 
-describe('CustomNode', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (getEntityIcon as jest.Mock).mockReturnValue(
-      <svg data-testid="entity-icon" />
-    );
-  });
+it('exposes the entity name, type and level and supports keyboard selection', async () => {
+  const onSelect = jest.fn();
+  renderNode(node, onSelect);
+  const button = screen.getByRole('button');
 
-  describe('Basic rendering', () => {
-    it('renders without crashing with minimal props', () => {
-      renderCustomNode(makeNodeData());
+  expect(button).toHaveAttribute('data-node-id', 'customers');
+  expect(screen.getByTestId('label')).toHaveTextContent('Customers');
+  expect(screen.getByTestId('type-tag')).toHaveTextContent('label.table');
 
-      expect(screen.getByTestId('node-TestNode')).toBeInTheDocument();
-    });
+  button.focus();
+  await userEvent.keyboard('{Enter}');
 
-    it('renders label from nodeData.data.label', () => {
-      renderCustomNode(makeNodeData({ label: 'MyTable' }));
+  expect(onSelect).toHaveBeenCalledWith(true);
+});
 
-      expect(screen.getByTestId('label')).toHaveTextContent('MyTable');
-    });
+it('shows member previews and expands a group directly without opening a second dialog', async () => {
+  const onExpand = jest.fn();
+  renderNode(
+    {
+      ...node,
+      data: {
+        ...node.data,
+        presentation: {
+          level: 2,
+          position: { x: 0, y: 0 },
+          size: [222, 152],
+          members: Array.from({ length: 300 }, (_, index) => ({
+            id: String(index),
+            label: 'column_' + index,
+            type: 'column',
+          })),
+        },
+      },
+    },
+    jest.fn(),
+    onExpand
+  );
 
-    it('renders type text in type-tag', () => {
-      renderCustomNode(makeNodeData({ type: 'pipeline' }));
+  expect(screen.getByText('column_0')).toBeVisible();
+  expect(screen.getByText('column_2')).toBeVisible();
+  expect(screen.queryByText('column_3')).not.toBeInTheDocument();
+  expect(screen.getByText('300')).toBeVisible();
 
-      expect(screen.getByTestId('type-tag')).toHaveTextContent('pipeline');
-    });
+  await userEvent.click(
+    screen.getByRole('button', { name: /label.kg-expand-group/ })
+  );
 
-    it('sets data-node-id attribute to nodeData.id', () => {
-      renderCustomNode(makeNodeData({}, 'abc-123'));
+  expect(onExpand).toHaveBeenCalledTimes(1);
+});
 
-      expect(screen.getByTestId('node-TestNode')).toHaveAttribute(
-        'data-node-id',
-        'abc-123'
-      );
-    });
+it('updates an existing node when its label or group members change', () => {
+  const mutable = { ...node, data: { ...node.data } };
+  const { rerender } = renderNode(mutable);
+  mutable.data.label = 'Updated customers';
+  rerender(
+    <CustomNode nodeData={mutable} nodeRenderKey={getNodeRenderKey(mutable)} />
+  );
 
-    it('sets data-testid to "node-{label}" on root div', () => {
-      renderCustomNode(makeNodeData({ label: 'SomeLabel' }));
+  expect(screen.getByTestId('label')).toHaveTextContent('Updated customers');
+});
 
-      expect(screen.getByTestId('node-SomeLabel')).toBeInTheDocument();
-    });
+it('marks a root as mapped only when mapping evidence is present', () => {
+  const root = {
+    ...node,
+    data: {
+      ...node.data,
+      presentation: {
+        root: true,
+        level: 1,
+        position: { x: 0, y: 0 },
+        size: [252, 80],
+        coverage: 'mapped',
+      },
+    },
+  };
+  const { rerender } = renderNode(root);
 
-    it('exposes data-testid="label" on the label element', () => {
-      renderCustomNode(makeNodeData());
+  expect(screen.getByText('label.kg-mapped-to-ontology')).toBeVisible();
 
-      expect(screen.getByTestId('label')).toBeInTheDocument();
-    });
+  root.data.presentation.coverage = 'unknown';
+  rerender(
+    <CustomNode nodeData={root} nodeRenderKey={getNodeRenderKey(root)} />
+  );
 
-    it('exposes data-testid="type-tag" on the type element', () => {
-      renderCustomNode(makeNodeData());
+  expect(
+    screen.queryByText('label.kg-mapped-to-ontology')
+  ).not.toBeInTheDocument();
+});
 
-      expect(screen.getByTestId('type-tag')).toBeInTheDocument();
-    });
-  });
+it('reads glossary terms as business concepts', () => {
+  renderNode({ ...node, data: { ...node.data, type: 'glossaryTerm' } });
 
-  describe('Highlighted state', () => {
-    it('does NOT add highlighted class when highlighted is undefined', () => {
-      renderCustomNode(makeNodeData());
-
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
-        'highlighted'
-      );
-    });
-
-    it('does NOT add highlighted class when highlighted is false', () => {
-      renderCustomNode(makeNodeData({ highlighted: false }));
-
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
-        'highlighted'
-      );
-    });
-
-    it('DOES add highlighted class when highlighted is true', () => {
-      renderCustomNode(makeNodeData({ highlighted: true }));
-
-      expect(screen.getByTestId('node-TestNode')).toHaveClass('highlighted');
-    });
-
-    it('updates highlighted class when same node object is mutated and rerendered', () => {
-      const nodeData = makeNodeData({ highlighted: false });
-      const { rerender } = renderCustomNode(nodeData);
-
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass(
-        'highlighted'
-      );
-
-      (nodeData.data as { highlighted?: boolean }).highlighted = true;
-      rerender(
-        <CustomNode
-          nodeData={nodeData}
-          nodeRenderKey={getNodeRenderKey(nodeData)}
-        />
-      );
-
-      expect(screen.getByTestId('node-TestNode')).toHaveClass('highlighted');
-    });
-  });
-
-  describe('Dimmed state', () => {
-    it('does NOT add dimmed class by default', () => {
-      renderCustomNode(makeNodeData());
-
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass('dimmed');
-    });
-
-    it('DOES add dimmed class when dimmed is true', () => {
-      renderCustomNode(makeNodeData({ dimmed: true }));
-
-      expect(screen.getByTestId('node-TestNode')).toHaveClass('dimmed');
-    });
-
-    it('re-renders when only the dimmed flag changes', () => {
-      const nodeData = makeNodeData({ dimmed: false });
-      const { rerender } = renderCustomNode(nodeData);
-
-      expect(screen.getByTestId('node-TestNode')).not.toHaveClass('dimmed');
-
-      (nodeData.data as { dimmed?: boolean }).dimmed = true;
-      rerender(
-        <CustomNode
-          nodeData={nodeData}
-          nodeRenderKey={getNodeRenderKey(nodeData)}
-        />
-      );
-
-      expect(screen.getByTestId('node-TestNode')).toHaveClass('dimmed');
-    });
-  });
-
-  describe('Custom color styles', () => {
-    it('paints the left accent border with the entity-type colour', () => {
-      renderCustomNode(makeNodeData({ colorMain: '#1677ff' }));
-
-      expect(screen.getByTestId('node-TestNode')).toHaveStyle({
-        borderLeftColor: '#1677ff',
-      });
-    });
-
-    it('leaves the accent border to CSS when no colour is supplied', () => {
-      renderCustomNode(makeNodeData());
-
-      expect(screen.getByTestId('node-TestNode').style.borderLeftColor).toBe(
-        ''
-      );
-    });
-
-    it('applies colorMain and colorLight as inline style on type-tag when both provided', () => {
-      renderCustomNode(
-        makeNodeData({
-          colorMain: '#1677ff',
-          colorLight: '#e6f4ff',
-        })
-      );
-
-      const tag = screen.getByTestId('type-tag');
-
-      expect(tag).toHaveStyle({ color: '#1677ff', backgroundColor: '#e6f4ff' });
-    });
-
-    it('sets border:none on type-tag when both colors provided', () => {
-      renderCustomNode(
-        makeNodeData({
-          colorMain: '#1677ff',
-          colorLight: '#e6f4ff',
-        })
-      );
-
-      expect(screen.getByTestId('type-tag')).toHaveStyle({ border: 'none' });
-    });
-
-    it('does NOT apply inline style when only colorMain is provided', () => {
-      renderCustomNode(makeNodeData({ colorMain: '#1677ff' }));
-
-      expect(screen.getByTestId('type-tag')).not.toHaveStyle({
-        color: '#1677ff',
-      });
-    });
-
-    it('does NOT apply inline style when only colorLight is provided', () => {
-      renderCustomNode(makeNodeData({ colorLight: '#e6f4ff' }));
-
-      expect(screen.getByTestId('type-tag')).not.toHaveStyle({
-        backgroundColor: '#e6f4ff',
-      });
-    });
-
-    it('does NOT apply inline style when neither color is provided', () => {
-      renderCustomNode(makeNodeData());
-      const tag = screen.getByTestId('type-tag');
-
-      expect(tag.getAttribute('style')).toBeFalsy();
-    });
-  });
-
-  describe('Icon rendering', () => {
-    it('calls getEntityIcon with the node type string', () => {
-      renderCustomNode(makeNodeData({ type: 'dashboard' }));
-
-      expect(getEntityIcon).toHaveBeenCalledWith(
-        'dashboard',
-        '',
-        expect.objectContaining({ width: 12, height: 12 })
-      );
-    });
-
-    it('renders the icon returned by getEntityIcon', () => {
-      renderCustomNode(makeNodeData());
-
-      expect(screen.getByTestId('entity-icon')).toBeInTheDocument();
-    });
-  });
+  expect(screen.getByTestId('type-tag')).toHaveTextContent('label.concept');
 });

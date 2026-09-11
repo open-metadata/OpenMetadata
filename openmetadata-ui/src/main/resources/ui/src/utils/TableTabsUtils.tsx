@@ -401,7 +401,6 @@ export const getTableDetailPageBaseTabs = ({
                 : undefined
             }
             entityType={EntityType.TABLE}
-            levels={2}
           />
         </Suspense>
       ),

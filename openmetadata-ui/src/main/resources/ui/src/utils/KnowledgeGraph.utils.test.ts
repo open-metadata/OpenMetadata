@@ -19,10 +19,13 @@ jest.mock('./EntityLinkUtils', () => ({
 import { Graph, NodePortStyleProps } from '@antv/g6';
 import { ELK } from 'elkjs/lib/elk-api';
 import {
+  BAND_PADDING,
   DAGRE_PORTS,
   DIMMED_OPACITY,
   EDGE_HIGHLIGHT_LINE_WIDTH,
   EDGE_LINE_WIDTH,
+  FIT_MAX_ZOOM,
+  FIT_MIN_ZOOM,
   MAX_NODE_WIDTH,
   NODE_HEIGHT,
   NODE_NEUTRAL_COLOR,
@@ -30,6 +33,7 @@ import {
   RING_STRETCH_MAX,
 } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import { getRelationStyle } from '../components/KnowledgeGraph/KnowledgeGraph.relations';
+import { buildGraphPresentation } from './knowledge-graph/knowledgeGraphPresentation.utils';
 import {
   applyGraphLayout,
   applyInitialFocus,
@@ -44,9 +48,12 @@ import {
   computeNodeWidth,
   countRelationCategories,
   findHighlightPath,
+  fitGraphViewport,
   getColorSetForType,
   getFullscreenClassNames,
+  getLaneLevelBands,
   graphLevelToDepth,
+  graphLevelToExportDepth,
   hasActiveGraphFilters,
   isGraphEmpty,
   normalizeGraphLevel,
@@ -86,14 +93,80 @@ const makeAdjMaps = (nodes: TestNode[], edges: TestEdge[]) => {
 const makeNodeMap = (nodes: TestNode[]) => new Map(nodes.map((n) => [n.id, n]));
 
 describe('KnowledgeGraph.utils', () => {
+  it('attaches bottom bundles to the top of their cards and retains opposite arrows', async () => {
+    const data = {
+      nodes: [
+        { id: 'root', label: 'Customers', type: 'table' },
+        ...Array.from({ length: 3 }, (_, i) => ({
+          id: `c${i}`,
+          label: `Column ${i}`,
+          type: 'column',
+        })),
+      ],
+      edges: [
+        ...Array.from({ length: 3 }, (_, i) => ({
+          from: 'root',
+          to: `c${i}`,
+          label: 'Has column',
+          relationType: 'hasColumn',
+        })),
+        {
+          from: 'c0',
+          to: 'root',
+          label: 'Belongs to',
+          relationType: 'belongsTo',
+        },
+      ],
+    };
+    const scene = buildGraphPresentation(
+      data,
+      data,
+      'root',
+      'balanced',
+      []
+    ).data;
+    const rendered = await applyGraphLayout(transformToG6Format(scene), {
+      layout: 'lanes',
+      focusNodeId: 'root',
+      width: 1200,
+      height: 800,
+      hasEntity: true,
+    });
+    const forward = rendered.edges?.find((edge) => edge.source === 'root');
+    const reverse = rendered.edges?.find((edge) => edge.target === 'root');
+
+    expect(forward?.style).toMatchObject({
+      sourcePort: expect.stringMatching(/^bottom:/),
+      targetPort: expect.stringMatching(/^top:/),
+    });
+    expect(reverse?.style).toMatchObject({
+      sourcePort: expect.stringMatching(/^top:/),
+      targetPort: expect.stringMatching(/^bottom:/),
+    });
+    expect(
+      rendered.nodes?.find((node) => node.id !== 'root')?.style?.ports
+    ).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'top' })])
+    );
+    expect(rendered.edges).toHaveLength(2);
+  });
+
+  it.each([
+    [1, 1],
+    [2, 1],
+    [3, 2],
+    [8, 2],
+    [-1, 1],
+  ])('fetches level %s as depth %s', (level, depth) => {
+    expect(graphLevelToDepth(level)).toBe(depth);
+  });
+
   it.each([
     [1, 0],
     [2, 1],
     [3, 2],
-    [8, 2],
-    [-1, 0],
-  ])('maps level %s to depth %s', (level, depth) => {
-    expect(graphLevelToDepth(level)).toBe(depth);
+  ])('exports level %s as depth %s', (level, depth) => {
+    expect(graphLevelToExportDepth(level)).toBe(depth);
   });
 
   it('uses the default level for invalid numeric input', () => {
@@ -419,6 +492,14 @@ describe('KnowledgeGraph.utils', () => {
   });
 
   describe('buildEdgeBaseStyle', () => {
+    it('draws the label as a pill outlined in the family colour', () => {
+      const style = buildEdgeBaseStyle('governance', 'Has tag');
+
+      expect(style.labelFontSize).toBe(11.5);
+      expect(style.labelBackgroundStroke).toBe(style.stroke);
+      expect(style.labelBackgroundLineWidth).toBe(1);
+    });
+
     it('dashes non-lineage families so they stay separable without color', () => {
       expect(buildEdgeBaseStyle('lineage', 'Downstream').lineDash).toEqual([]);
       expect(
@@ -1514,5 +1595,170 @@ describe('KnowledgeGraph.utils', () => {
 
       openSpy.mockRestore();
     });
+  });
+});
+
+describe('fitGraphViewport', () => {
+  const card = (
+    id: string,
+    x: number,
+    y: number,
+    size: [number, number] = [212, 58]
+  ) => ({ id, style: { x, y, size }, data: {} });
+  const makeGraph = (nodes: ReturnType<typeof card>[], fittedZoom: number) => {
+    let zoom = 1;
+    const graph = {
+      getNodeData: () => nodes,
+      getZoom: () => zoom,
+      fitView: jest.fn(async () => {
+        zoom = fittedZoom;
+      }),
+      zoomTo: jest.fn(async (value: number) => {
+        zoom = value;
+      }),
+      focusElement: jest.fn().mockResolvedValue(undefined),
+    };
+
+    return { graph: graph as unknown as Graph, mocks: graph };
+  };
+
+  it('centres a small graph on the subject without magnifying past the cap', async () => {
+    const { graph, mocks } = makeGraph(
+      [card('root', 0, 0, [252, 80]), card('a', -350, 0), card('b', 350, 0)],
+      2
+    );
+
+    await fitGraphViewport(graph, 'root', 1600, 800);
+
+    expect(mocks.fitView).not.toHaveBeenCalled();
+    expect(mocks.zoomTo).toHaveBeenCalledWith(FIT_MAX_ZOOM, false);
+    expect(mocks.focusElement).toHaveBeenCalledWith('root', false);
+  });
+
+  it('uses the zoom that seats every card and the band padding around the subject', async () => {
+    const { graph, mocks } = makeGraph(
+      [card('root', 0, 0, [252, 80]), card('a', -350, 0), card('b', 350, 0)],
+      2
+    );
+
+    await fitGraphViewport(graph, 'root', 800, 600);
+
+    const halfWidth = 350 + 212 / 2 + BAND_PADDING.x;
+
+    expect(mocks.zoomTo).toHaveBeenCalledWith(
+      (800 - 64) / (2 * halfWidth),
+      false
+    );
+    expect(mocks.focusElement).toHaveBeenCalledWith('root', false);
+  });
+
+  it('holds the minimum zoom and centres the subject when the graph cannot fit legibly', async () => {
+    const { graph, mocks } = makeGraph(
+      [
+        card('root', 0, 0),
+        card('far-left', -3000, 0),
+        card('far-right', 3000, 0),
+      ],
+      0.3
+    );
+
+    await fitGraphViewport(graph, 'root', 1600, 800);
+
+    expect(mocks.fitView).toHaveBeenCalledTimes(1);
+    expect(mocks.zoomTo).toHaveBeenCalledWith(FIT_MIN_ZOOM, false);
+    expect(mocks.focusElement).toHaveBeenCalledWith('root', false);
+  });
+
+  it('keeps a whole-graph fit that already lands inside the legible band', async () => {
+    const { graph, mocks } = makeGraph(
+      [
+        card('root', 0, 0),
+        card('far-left', -3000, 0),
+        card('far-right', 3000, 0),
+      ],
+      0.8
+    );
+
+    await fitGraphViewport(graph, 'root', 1600, 800);
+
+    expect(mocks.fitView).toHaveBeenCalledTimes(1);
+    expect(mocks.zoomTo).not.toHaveBeenCalled();
+    expect(mocks.focusElement).not.toHaveBeenCalled();
+    expect(graph.getZoom()).toBe(0.8);
+  });
+
+  it('falls back to a capped whole-graph fit when the subject is not drawn', async () => {
+    const { graph, mocks } = makeGraph([card('a', 0, 0), card('b', 300, 0)], 3);
+
+    await fitGraphViewport(graph, 'missing', 1600, 800);
+
+    expect(mocks.fitView).toHaveBeenCalledTimes(1);
+    expect(mocks.zoomTo).toHaveBeenCalledWith(FIT_MAX_ZOOM, false);
+    expect(mocks.focusElement).not.toHaveBeenCalled();
+  });
+});
+
+describe('getLaneLevelBands', () => {
+  const laid = (
+    id: string,
+    level: number,
+    x: number,
+    y: number,
+    size: [number, number] = [212, 58]
+  ) => ({
+    id,
+    style: { x, y },
+    data: { level, presentation: { level, position: { x, y }, size } },
+  });
+  const edges = (ring: {
+    x: number;
+    y: number;
+    radiusX: number;
+    radiusY: number;
+  }) => ({
+    left: ring.x - ring.radiusX,
+    right: ring.x + ring.radiusX,
+    top: ring.y - ring.radiusY,
+    bottom: ring.y + ring.radiusY,
+  });
+
+  it('pads the direct band around every card at or inside level 2', () => {
+    const rings = getLaneLevelBands([
+      laid('root', 1, 0, 0, [252, 80]),
+      laid('left', 2, -350, 0),
+      laid('right', 2, 350, 0),
+      laid('dock', 2, 0, -300, [222, 152]),
+    ]);
+
+    expect(rings.map((ring) => ring.level)).toEqual([2]);
+    expect(edges(rings[0])).toEqual({
+      left: -350 - 106 - BAND_PADDING.x,
+      right: 350 + 106 + BAND_PADDING.x,
+      top: -300 - 76 - BAND_PADDING.top,
+      bottom: 40 + BAND_PADDING.bottom,
+    });
+  });
+
+  it('draws the extended band outermost and clear of the direct band on every side', () => {
+    const rings = getLaneLevelBands([
+      laid('root', 1, 0, 0, [252, 80]),
+      laid('left', 2, -350, 0),
+      laid('right', 2, 350, 0),
+      laid('outer', 3, 730, 0),
+    ]);
+    const [extended, direct] = rings.map(edges);
+
+    expect(rings.map((ring) => ring.level)).toEqual([3, 2]);
+    expect(extended.left).toBe(direct.left - BAND_PADDING.x);
+    expect(extended.right).toBe(730 + 106 + BAND_PADDING.x);
+    expect(extended.top).toBe(direct.top - BAND_PADDING.top);
+    expect(extended.bottom).toBe(direct.bottom + BAND_PADDING.bottom);
+  });
+
+  it('draws nothing while only the entity itself is on the canvas', () => {
+    expect(getLaneLevelBands([laid('root', 1, 0, 0, [252, 80])])).toEqual([]);
+    expect(getLaneLevelBands([{ id: 'loose', style: {}, data: {} }])).toEqual(
+      []
+    );
   });
 });

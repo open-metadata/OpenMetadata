@@ -13,18 +13,26 @@
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { KnowledgeGraphMode } from './KnowledgeGraph.interface';
 interface EmptyStateProps {
   level: number;
   hasFilters: boolean;
+  mode: KnowledgeGraphMode;
   onClearFilters: () => void;
+  onExtend: () => void;
 }
 const KnowledgeGraphEmptyState = ({
   level,
   hasFilters,
+  mode,
   onClearFilters,
+  onExtend,
 }: EmptyStateProps) => {
   const { t } = useTranslation();
-  let message = 'message.kg-no-connections';
+  let message =
+    mode === 'ontology'
+      ? 'message.kg-ontology-empty'
+      : 'message.kg-no-connections';
   if (hasFilters) {
     message = 'message.kg-no-filter-matches';
   }
@@ -35,6 +43,11 @@ const KnowledgeGraphEmptyState = ({
   return (
     <div className="kg-empty-hint">
       <Typography size="text-sm">{t(message)}</Typography>
+      {mode === 'ontology' && level < 3 && !hasFilters && (
+        <Button color="link-color" size="sm" onPress={onExtend}>
+          {t('label.kg-extended-connections')}
+        </Button>
+      )}
       {hasFilters && (
         <Button color="link-color" size="sm" onPress={onClearFilters}>
           {t('label.clear-filter-plural')}

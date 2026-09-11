@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@untitledui/icons';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +30,8 @@ import {
 interface KnowledgeGraphLegendProps {
   /** How many edges of each family the rendered graph contains. */
   counts: Record<RelationCategory, number>;
+  /** Families the user has hidden; the label then reads "shown of total". */
+  hiddenCount?: number;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
   selectedCategory?: RelationCategory | null;
@@ -41,6 +49,7 @@ const SAMPLE_HEIGHT = 8;
  */
 const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
   counts,
+  hiddenCount = 0,
   isCollapsed,
   onToggleCollapsed,
   selectedCategory,
@@ -65,81 +74,114 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
   return (
     <section
       aria-label={t('label.relationship-type')}
-      className="kg-legend tw:flex tw:shrink-0 tw:flex-wrap tw:items-center tw:gap-1 tw:border-t tw:border-secondary tw:bg-primary tw:px-3 tw:py-2"
+      className="kg-legend tw:shrink-0"
       data-testid="knowledge-graph-legend">
-      <Button
-        aria-expanded={!isCollapsed}
-        className="tw:shrink-0"
-        color="link-gray"
-        data-testid="knowledge-graph-legend-toggle"
-        iconTrailing={isCollapsed ? ChevronUp : ChevronDown}
-        size="sm"
-        onPress={handleToggle}>
-        <Typography size="text-xs" weight="semibold">
-          {t('label.relationship-plural')}
-        </Typography>
-      </Button>
+      <PopoverTrigger
+        isOpen={!isCollapsed}
+        onOpenChange={(open) => {
+          if (open === isCollapsed) {
+            handleToggle();
+          }
+        }}>
+        <Button
+          aria-expanded={!isCollapsed}
+          className="tw:shrink-0 tw:rounded-full"
+          color="secondary"
+          data-testid="knowledge-graph-legend-toggle"
+          iconTrailing={isCollapsed ? ChevronUp : ChevronDown}
+          size="sm">
+          <Box align="center" gap={2}>
+            <Box aria-hidden="true" gap={1}>
+              {presentCategories.map((category) => (
+                <svg height="8" key={category} width="8">
+                  <circle
+                    cx="4"
+                    cy="4"
+                    fill={getRelationStyle(category).color}
+                    r="4"
+                  />
+                </svg>
+              ))}
+            </Box>
+            <Typography size="text-xs" weight="semibold">
+              {hiddenCount > 0
+                ? t('label.kg-family-of-count', {
+                    shown: presentCategories.length,
+                    total: presentCategories.length + hiddenCount,
+                  })
+                : t('label.kg-family-count', {
+                    count: presentCategories.length,
+                  })}
+            </Typography>
+          </Box>
+        </Button>
 
-      {!isCollapsed && (
-        <ul
-          className="tw:m-0 tw:flex tw:list-none tw:flex-wrap tw:gap-1 tw:p-0"
-          data-testid="knowledge-graph-legend-items">
-          {presentCategories.map((category) => {
-            const style = getRelationStyle(category);
+        <Popover
+          aria-label={t('label.relationship-type')}
+          className="tw:w-72 tw:p-3"
+          placement="top end">
+          {!isCollapsed && (
+            <ul
+              className="tw:m-0 tw:flex tw:list-none tw:flex-wrap tw:gap-1 tw:p-0"
+              data-testid="knowledge-graph-legend-items">
+              {presentCategories.map((category) => {
+                const style = getRelationStyle(category);
 
-            return (
-              <li
-                className="tw:flex tw:items-center tw:gap-2"
-                data-testid={`legend-item-${category}`}
-                key={category}>
-                <Button
-                  aria-pressed={selectedCategory === category}
-                  className="tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center tw:[&>[data-text]]:gap-2"
-                  color="tertiary"
-                  size="sm"
-                  onPress={() => onSelectCategory?.(category)}>
-                  <svg
-                    aria-hidden="true"
-                    className="tw:shrink-0"
-                    height={SAMPLE_HEIGHT}
-                    viewBox={`0 0 ${SAMPLE_WIDTH} ${SAMPLE_HEIGHT}`}
-                    width={SAMPLE_WIDTH}>
-                    <line
-                      stroke={style.color}
-                      strokeDasharray={
-                        style.lineDash.length > 0
-                          ? style.lineDash.join(' ')
-                          : undefined
-                      }
-                      strokeLinecap="round"
-                      strokeWidth={2}
-                      x1={0}
-                      x2={SAMPLE_WIDTH - 6}
-                      y1={SAMPLE_HEIGHT / 2}
-                      y2={SAMPLE_HEIGHT / 2}
-                    />
-                    <path
-                      d={`M${SAMPLE_WIDTH - 7} 1 L${SAMPLE_WIDTH} ${
-                        SAMPLE_HEIGHT / 2
-                      } L${SAMPLE_WIDTH - 7} ${SAMPLE_HEIGHT - 1} Z`}
-                      fill={style.color}
-                    />
-                  </svg>
-                  <Typography className="tw:flex-1" size="text-xs">
-                    {t(style.labelKey)}
-                  </Typography>
-                  <Typography
-                    className="tw:text-tertiary"
-                    data-testid={`legend-count-${category}`}
-                    size="text-xs">
-                    {counts[category]}
-                  </Typography>
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                return (
+                  <li
+                    className="tw:flex tw:items-center tw:gap-2"
+                    data-testid={`legend-item-${category}`}
+                    key={category}>
+                    <Button
+                      aria-pressed={selectedCategory === category}
+                      className="tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center tw:[&>[data-text]]:gap-2"
+                      color="tertiary"
+                      size="sm"
+                      onPress={() => onSelectCategory?.(category)}>
+                      <svg
+                        aria-hidden="true"
+                        className="tw:shrink-0"
+                        height={SAMPLE_HEIGHT}
+                        viewBox={`0 0 ${SAMPLE_WIDTH} ${SAMPLE_HEIGHT}`}
+                        width={SAMPLE_WIDTH}>
+                        <line
+                          stroke={style.color}
+                          strokeDasharray={
+                            style.lineDash.length > 0
+                              ? style.lineDash.join(' ')
+                              : undefined
+                          }
+                          strokeLinecap="round"
+                          strokeWidth={2}
+                          x1={0}
+                          x2={SAMPLE_WIDTH - 6}
+                          y1={SAMPLE_HEIGHT / 2}
+                          y2={SAMPLE_HEIGHT / 2}
+                        />
+                        <path
+                          d={`M${SAMPLE_WIDTH - 7} 1 L${SAMPLE_WIDTH} ${
+                            SAMPLE_HEIGHT / 2
+                          } L${SAMPLE_WIDTH - 7} ${SAMPLE_HEIGHT - 1} Z`}
+                          fill={style.color}
+                        />
+                      </svg>
+                      <Typography className="tw:flex-1" size="text-xs">
+                        {t(style.labelKey)}
+                      </Typography>
+                      <Typography
+                        className="tw:text-tertiary"
+                        data-testid={`legend-count-${category}`}
+                        size="text-xs">
+                        {counts[category]}
+                      </Typography>
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Popover>
+      </PopoverTrigger>
     </section>
   );
 };

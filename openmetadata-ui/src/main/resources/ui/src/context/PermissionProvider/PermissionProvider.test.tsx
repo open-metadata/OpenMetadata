@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { CookieStorage } from 'cookie-storage';
+import { BrowserRouter } from 'react-router-dom';
+import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
@@ -18,10 +21,6 @@ import {
   getResourcePermission,
 } from '../../rest/permissionAPI';
 import PermissionProvider from './PermissionProvider';
-
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-}));
 
 jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
@@ -56,11 +55,22 @@ jest.mock('../../components/common/Loader/Loader', () => {
 });
 
 describe('PermissionProvider', () => {
+  beforeEach(() => {
+    currentUser = { id: '123', name: 'Test User' };
+    window.history.replaceState(null, '', '/');
+    new CookieStorage().removeItem(REDIRECT_PATHNAME, { path: '/' });
+  });
+
+  afterEach(() => {
+    new CookieStorage().removeItem(REDIRECT_PATHNAME, { path: '/' });
+  });
+
   it('Should render loader and call getLoggedInUserPermissions', async () => {
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
-      </PermissionProvider>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
     );
 
     // Verify that the API methods were called
@@ -73,7 +83,8 @@ describe('PermissionProvider', () => {
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
-      </PermissionProvider>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
     );
 
     // Verify that the API methods were called
@@ -90,7 +101,8 @@ describe('PermissionProvider', () => {
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
-      </PermissionProvider>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
     );
 
     // Verify that the API methods were not called
@@ -101,5 +113,40 @@ describe('PermissionProvider', () => {
 
     expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     expect(await screen.findByTestId('children')).toBeInTheDocument();
+  });
+
+  it('preserves the current graph view when permissions replay its pathname', async () => {
+    const pathname = '/table/warehouse.orders/knowledge_graph';
+    const search = '?fullscreen=true&graphMode=ontology';
+    window.history.replaceState(null, '', pathname + search + '#graph');
+    new CookieStorage().setItem(REDIRECT_PATHNAME, pathname, { path: '/' });
+
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
+    );
+
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
+    expect(window.location.pathname).toBe(pathname);
+    expect(window.location.search).toBe(search);
+    expect(window.location.hash).toBe('#graph');
+  });
+
+  it('redirects to the stored pathname when permissions load on another page', async () => {
+    const pathname = '/table/warehouse.orders/knowledge_graph';
+    window.history.replaceState(null, '', '/signin');
+    new CookieStorage().setItem(REDIRECT_PATHNAME, pathname, { path: '/' });
+
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
+    );
+
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
+    expect(window.location.pathname).toBe(pathname);
   });
 });

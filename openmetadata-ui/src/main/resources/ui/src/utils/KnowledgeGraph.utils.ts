@@ -23,14 +23,19 @@ import type {
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { toString } from 'lodash';
 import {
+  BAND_PADDING,
   DAGRE_PORTS,
   DIMMED_OPACITY,
   EDGE_ARROW_SIZE,
   EDGE_HIGHLIGHT_ARROW_SIZE,
   EDGE_HIGHLIGHT_LINE_WIDTH,
   EDGE_LABEL_FONT_SIZE,
+  EDGE_LABEL_PADDING,
+  EDGE_LABEL_RADIUS,
   EDGE_LINE_WIDTH,
   ENTITY_TYPE_COLORS,
+  FIT_MAX_ZOOM,
+  FIT_MIN_ZOOM,
   LABEL_BAND_END,
   LABEL_BAND_START,
   LABEL_PLACEMENT_SOLO,
@@ -52,11 +57,16 @@ import {
   GraphData,
   GraphInteractionCtx,
   GraphLevelRing,
+  GraphNode,
+  GraphNodePresentation,
+  KnowledgeGraphEdge,
+  KnowledgeGraphG6Edge,
   KnowledgeGraphLayout,
   KnowledgeGraphLevel,
 } from '../components/KnowledgeGraph/KnowledgeGraph.interface';
 import {
   classifyRelation,
+  getGraphRelationCategory,
   getRelationStyle,
   RelationCategory,
   RELATION_CATEGORIES,
@@ -65,6 +75,8 @@ import { LITE_GRAY_COLOR, WHITE_COLOR } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { resolveCssColor } from './common/cssColor.utils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
+import { getEntityNameLabel } from './EntityNameUtils';
+import { routeGraphEdges } from './knowledge-graph/knowledgeGraphLayout.utils';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
 
 // Layout: padding(8) + icon(14) + gap(8) + label + gap(8) + typeChip + padding(8)
@@ -446,7 +458,22 @@ export const normalizeGraphLevel = (value: number): KnowledgeGraphLevel =>
     Math.max(1, Math.floor(Number.isFinite(value) ? value : 2))
   ) as KnowledgeGraphLevel;
 
+/**
+ * Traversal depth fetched for a level. Level 1 shows the entity with its own
+ * profile — owners, containers, governance — which are its direct neighbours,
+ * so it needs the same depth-1 traversal as level 2 and is narrowed on the
+ * client by `restrictToEntityLevel`. Levels 1 and 2 therefore share one fetch.
+ */
 export const graphLevelToDepth = (level: number): number =>
+  Math.max(1, normalizeGraphLevel(level) - 1);
+
+/**
+ * Depth of the RDF export for a level. Unlike the fetch, level 1 exports the
+ * entity's own description (depth 0): its profile relations are triples of the
+ * entity itself, so the export matches what the level shows without carrying
+ * every neighbour's description along.
+ */
+export const graphLevelToExportDepth = (level: number): number =>
   normalizeGraphLevel(level) - 1;
 
 export const computeELKRadialPositions = async (
@@ -543,6 +570,153 @@ export const getGraphLevelRings = (
   });
 
   return [...rings.values()].sort((left, right) => left.level - right.level);
+};
+
+export const getCenteredGraphZoom = (
+  nodes: G6NodeData[],
+  focusId: string,
+  width: number,
+  height: number,
+  maxZoom = 1,
+  margin = { x: 0, y: 0 }
+): number => {
+  const focus = nodes.find((node) => node.id === focusId);
+  const centerX = Number(focus?.style?.x ?? 0);
+  const centerY = Number(focus?.style?.y ?? 0);
+  let halfWidth = 1;
+  let halfHeight = 1;
+  nodes.forEach((node) => {
+    const [nodeWidth, nodeHeight] = (node.style?.size as
+      | [number, number]
+      | undefined) ?? [NODE_WIDTH, NODE_HEIGHT];
+    halfWidth = Math.max(
+      halfWidth,
+      Math.abs(Number(node.style?.x ?? 0) - centerX) + nodeWidth / 2
+    );
+    halfHeight = Math.max(
+      halfHeight,
+      Math.abs(Number(node.style?.y ?? 0) - centerY) + nodeHeight / 2
+    );
+  });
+
+  return Math.min(
+    maxZoom,
+    Math.max(1, width - 64) / (2 * (halfWidth + margin.x)),
+    Math.max(1, height - 96) / (2 * (halfHeight + margin.y))
+  );
+};
+
+/**
+ * Frames the graph the way the design does. A graph that fits around the
+ * subject entity at a legible zoom is centred on that entity. A larger one is
+ * fitted whole, but never below {@link FIT_MIN_ZOOM}: past that point the cards
+ * stop being readable, so the view holds the minimum and centres on the
+ * subject for the reader to pan outwards from. Small graphs are capped at
+ * {@link FIT_MAX_ZOOM} rather than magnified to fill the pane.
+ */
+export const fitGraphViewport = async (
+  graph: Graph,
+  focusId: string,
+  width: number,
+  height: number
+): Promise<void> => {
+  const nodes = graph.getNodeData();
+  const hasFocus = nodes.some((node) => node.id === focusId);
+  const bandMargin = { x: BAND_PADDING.x, y: BAND_PADDING.top };
+  const centered = getCenteredGraphZoom(
+    nodes,
+    focusId,
+    width,
+    height,
+    FIT_MAX_ZOOM,
+    bandMargin
+  );
+  if (hasFocus && centered >= FIT_MIN_ZOOM) {
+    await graph.zoomTo(centered, false);
+    await graph.focusElement(focusId, false);
+  } else {
+    await graph.fitView(undefined, false);
+    const zoom = graph.getZoom();
+    if (zoom > FIT_MAX_ZOOM) {
+      await graph.zoomTo(FIT_MAX_ZOOM, false);
+    } else if (zoom < FIT_MIN_ZOOM) {
+      await graph.zoomTo(FIT_MIN_ZOOM, false);
+      if (hasFocus) {
+        await graph.focusElement(focusId, false);
+      }
+    }
+  }
+};
+
+interface WorldRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+const unionRect = (rects: WorldRect[]): WorldRect => ({
+  left: Math.min(...rects.map((rect) => rect.left)),
+  right: Math.max(...rects.map((rect) => rect.right)),
+  top: Math.min(...rects.map((rect) => rect.top)),
+  bottom: Math.max(...rects.map((rect) => rect.bottom)),
+});
+
+const padRect = (rect: WorldRect): WorldRect => ({
+  left: rect.left - BAND_PADDING.x,
+  right: rect.right + BAND_PADDING.x,
+  top: rect.top - BAND_PADDING.top,
+  bottom: rect.bottom + BAND_PADDING.bottom,
+});
+
+const rectToRing = (level: number, rect: WorldRect): GraphLevelRing => ({
+  level,
+  x: (rect.left + rect.right) / 2,
+  y: (rect.top + rect.bottom) / 2,
+  radiusX: (rect.right - rect.left) / 2,
+  radiusY: (rect.bottom - rect.top) / 2,
+});
+
+/**
+ * The "Level 2 · Direct" and "Level 3 · Extended" bands of the lanes layout,
+ * in world coordinates and outer-first so the inner band paints on top.
+ *
+ * Each band is the padded bounding box of the cards at or inside its level.
+ * The extended band additionally encloses the direct band with a full padding
+ * margin, so its label always sits clear of the inner band even when the
+ * extended cards happen to lie only on one side.
+ */
+export const getLaneLevelBands = (nodes: G6NodeData[]): GraphLevelRing[] => {
+  const boxes = nodes.flatMap((node) => {
+    const presentation = node.data?.presentation as
+      | GraphNodePresentation
+      | undefined;
+    if (!presentation) {
+      return [];
+    }
+    const { position, size } = presentation;
+
+    return [
+      {
+        level: Number(node.data?.level ?? presentation.level),
+        left: position.x - size[0] / 2,
+        right: position.x + size[0] / 2,
+        top: position.y - size[1] / 2,
+        bottom: position.y + size[1] / 2,
+      },
+    ];
+  });
+  const within = (level: number) => boxes.filter((box) => box.level <= level);
+  const rings: GraphLevelRing[] = [];
+  if (boxes.some((box) => box.level === 2)) {
+    const direct = padRect(unionRect(within(2)));
+    if (boxes.some((box) => box.level === 3)) {
+      rings.push(rectToRing(3, padRect(unionRect([...within(3), direct]))));
+    }
+    rings.push(rectToRing(2, direct));
+  }
+
+  return rings;
 };
 
 export const assignRadialPorts = (
@@ -676,7 +850,7 @@ export const findHighlightPath = (
  * centre on.
  */
 export const resolveFocusNodeId = (
-  nodes: G6NodeData[],
+  nodes: Pick<G6NodeData, 'id'>[],
   entityId?: string
 ): string =>
   entityId
@@ -744,14 +918,19 @@ export const applyGraphLayout = async (
   }
 ): Promise<G6GraphData> => {
   const { layout, focusNodeId, width, height, hasEntity } = options;
+  const sourceNodes = data.nodes ?? [];
+  const sourceEdges = data.edges ?? [];
+  if (layout === 'lanes') {
+    return routeGraphEdges(sourceNodes, sourceEdges);
+  }
   const isRadial = layout === 'radial';
-  let nodes = enlargeFocusNode(data.nodes ?? [], focusNodeId);
-  const depths = computeUndirectedDepths(nodes, data.edges ?? [], focusNodeId);
+  let nodes = enlargeFocusNode(sourceNodes, focusNodeId);
+  const depths = computeUndirectedDepths(nodes, sourceEdges, focusNodeId);
   nodes = nodes.map((node) => ({
     ...node,
     data: { ...node.data, level: (depths.get(node.id) ?? 0) + 1 },
   }));
-  let edges = data.edges ?? [];
+  let edges = sourceEdges;
 
   if (isRadial && hasEntity) {
     nodes = withPositions(
@@ -845,14 +1024,19 @@ export const buildEdgeBaseStyle = (
     labelText: showLabels ? labelText : '',
     labelFontSize: EDGE_LABEL_FONT_SIZE,
     labelFontWeight: 500,
-    labelFill: style.color,
+    labelFill: resolveCssColor('var(--om-color-text-secondary)', '#414651'),
     labelBackground: showLabels,
-    labelBackgroundFill: style.labelBg,
+    labelBackgroundFill: resolveCssColor(
+      'var(--om-color-bg-primary)',
+      '#ffffff'
+    ),
     labelBackgroundOpacity: 1,
+    // Design: a white pill outlined in the family colour, so the label reads as
+    // an annotation of its edge rather than as a second line of card text.
     labelBackgroundStroke: style.color,
     labelBackgroundLineWidth: 1,
-    labelBackgroundRadius: 4,
-    labelPadding: [3, 6],
+    labelBackgroundRadius: EDGE_LABEL_RADIUS,
+    labelPadding: EDGE_LABEL_PADDING,
     labelZIndex: 100,
   };
 };
@@ -905,10 +1089,49 @@ export const computeLabelPlacements = (
   });
 };
 
+export const identifyGraphEdges = (edges: KnowledgeGraphEdge[]) => {
+  const occurrences = new Map<string, number>();
+
+  return edges.map((edge) => {
+    const signature = JSON.stringify([
+      edge.from,
+      edge.to,
+      edge.relationType ?? edge.label,
+    ]);
+    const occurrence = occurrences.get(signature) ?? 0;
+    occurrences.set(signature, occurrence + 1);
+
+    return { ...edge, id: edge.id ?? JSON.stringify([signature, occurrence]) };
+  });
+};
+
+export const getGroupRelationship = (
+  node: GraphNode | undefined,
+  edges: KnowledgeGraphG6Edge[]
+) => {
+  if (!node?.presentation?.members) {
+    return undefined;
+  }
+  const presentation = node.presentation;
+  const incoming = presentation.direction === 'in';
+  const source = incoming ? node.id : presentation.anchorId;
+  const target = incoming ? presentation.anchorId : node.id;
+
+  return edges.find(
+    (edge) =>
+      edge.source === source &&
+      edge.target === target &&
+      (edge.data.relationType ?? edge.data.label) === presentation.relationType
+  );
+};
+
 export const transformToG6Format = (
   data: GraphData | null,
   options: { showEdgeLabels?: boolean } = {}
-): G6GraphData & { nodes: G6NodeData[]; edges: G6EdgeData[] } => {
+): Omit<G6GraphData, 'nodes' | 'edges'> & {
+  nodes: G6NodeData[];
+  edges: KnowledgeGraphG6Edge[];
+} => {
   if (!data) {
     return { nodes: [], edges: [] };
   }
@@ -918,48 +1141,70 @@ export const transformToG6Format = (
 
   const nodes: G6NodeData[] = data.nodes.map((node) => {
     const colorSet = getColorSetForType(node.type);
-    const nodeWidth = computeNodeWidth(node.label, node.type);
+    const nodeWidth = computeNodeWidth(
+      node.label,
+      getEntityNameLabel(node.type)
+    );
 
     return {
       id: node.id,
-      style: { size: [nodeWidth, NODE_HEIGHT] as [number, number] },
+      style: {
+        size:
+          node.presentation?.size ??
+          ([nodeWidth, NODE_HEIGHT] as [number, number]),
+        ...node.presentation?.position,
+        dx: node.presentation ? -node.presentation.size[0] / 2 : 0,
+        dy: node.presentation ? -node.presentation.size[1] / 2 : 0,
+      },
       data: {
         ...node,
         colorMain: colorSet.main,
         colorLight: colorSet.light,
+        level: node.presentation?.level,
       } as Record<string, unknown>,
     };
   });
 
-  const occurrences = new Map<string, number>();
   const labelPlacements = computeLabelPlacements(data.edges);
-  const edges: G6EdgeData[] = data.edges.map((edge, index) => {
-    const signature = JSON.stringify([
-      edge.from,
-      edge.to,
-      edge.relationType ?? edge.label,
-    ]);
-    const occurrence = occurrences.get(signature) ?? 0;
-    occurrences.set(signature, occurrence + 1);
-    const category = classifyRelation(
-      edge.relationType ?? edge.label,
-      nodeTypeById.get(edge.from) ?? '',
-      nodeTypeById.get(edge.to) ?? ''
-    );
+  const hasPresentation = data.nodes.some((node) => node.presentation);
+  const positions = new Map(nodes.map((node) => [node.id, node.style]));
+  const edgeType = (edge: KnowledgeGraphEdge) => {
+    if (!hasPresentation) {
+      return 'quadratic';
+    }
+    const from = positions.get(edge.from);
+    const to = positions.get(edge.to);
+    const x = Math.abs(Number(from?.x) - Number(to?.x));
+    const y = Math.abs(Number(from?.y) - Number(to?.y));
 
-    return {
-      id: JSON.stringify([signature, occurrence]),
-      type: edge.from === edge.to ? 'cubic' : 'quadratic',
-      source: edge.from,
-      target: edge.to,
-      data: { label: edge.label, category, relationType: edge.relationType },
-      style: {
-        ...buildEdgeBaseStyle(category, edge.label, showEdgeLabels),
-        labelAutoRotate: false,
-        labelPlacement: labelPlacements[index],
-      },
-    };
-  });
+    return y > x ? 'cubic-vertical' : 'cubic-horizontal';
+  };
+  const edges: KnowledgeGraphG6Edge[] = identifyGraphEdges(data.edges).map(
+    (edge, index) => {
+      const category = getGraphRelationCategory(edge, nodeTypeById);
+
+      return {
+        id: edge.id,
+        type: edge.from === edge.to ? 'cubic' : edgeType(edge),
+        source: edge.from,
+        target: edge.to,
+        data: {
+          label: edge.label,
+          category,
+          relationType: edge.relationType,
+          derivation: edge.derivation,
+          members: edge.members,
+          presentationOnly: edge.presentationOnly,
+        },
+        style: {
+          ...buildEdgeBaseStyle(category, edge.label, showEdgeLabels),
+          endArrow: !edge.derivation,
+          labelAutoRotate: false,
+          labelPlacement: hasPresentation ? 0.5 : labelPlacements[index],
+        },
+      };
+    }
+  );
 
   return { nodes, edges };
 };
@@ -970,7 +1215,10 @@ export const projectGraphToPositions = (
 ) => {
   const positions = new Map(positioned.nodes?.map((node) => [node.id, node]));
   const filtered = transformToG6Format(data);
-  const nodes = filtered.nodes.map((node) => {
+  const positionedEdges = new Map(
+    positioned.edges?.map((edge) => [edge.id, edge])
+  );
+  const nodes: G6NodeData[] = filtered.nodes.map((node) => {
     const position = positions.get(node.id);
 
     return {
@@ -980,7 +1228,17 @@ export const projectGraphToPositions = (
     };
   });
 
-  return { ...filtered, nodes };
+  const edges = filtered.edges.map((edge) => {
+    const position = positionedEdges.get(edge.id);
+
+    return {
+      ...edge,
+      type: position?.type ?? edge.type,
+      style: { ...position?.style, ...edge.style },
+    };
+  });
+
+  return { ...filtered, nodes, edges };
 };
 
 /** Counts returned relationships using the same classification as the canvas. */
@@ -996,11 +1254,13 @@ export const countRelationCategories = (
       data.nodes.map((node) => [node.id, node.type])
     );
     data.edges.forEach((edge) => {
-      const category = classifyRelation(
-        edge.relationType ?? edge.label,
-        nodeTypeById.get(edge.from) ?? '',
-        nodeTypeById.get(edge.to) ?? ''
-      );
+      const category = edge.derivation
+        ? 'ontology'
+        : classifyRelation(
+            edge.relationType ?? edge.label,
+            nodeTypeById.get(edge.from) ?? '',
+            nodeTypeById.get(edge.to) ?? ''
+          );
       counts[category] += 1;
     });
   }
@@ -1027,8 +1287,8 @@ export const buildEdgeHighlightStyle = (
   lineWidth: EDGE_HIGHLIGHT_LINE_WIDTH,
   zIndex: 100,
   endArrowSize: EDGE_HIGHLIGHT_ARROW_SIZE,
-  labelFontWeight: 700,
-  labelBackgroundLineWidth: 2,
+  labelFontWeight: 600,
+  labelBackgroundLineWidth: 1.5,
 });
 
 /** Pushes an edge into the background while another path holds focus. */
@@ -1378,5 +1638,6 @@ export const getNodeRenderKey = (nodeData: NodeData): string => {
     toString(data.colorLight),
     toString(data.highlighted),
     toString(data.dimmed),
+    JSON.stringify(data.presentation),
   ].join('|');
 };
