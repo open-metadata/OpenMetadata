@@ -168,8 +168,17 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
         self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         executed_query = str(mock_connection.execute.call_args[0][0])
+        # Normalize whitespace/case so formatting churn does not break semantics checks
+        normalized_query = " ".join(executed_query.upper().split())
+
         assert '"COLUMNS_V2"' in executed_query
         assert '"PARTITION_KEYS"' in executed_query
         assert '"PKEY_NAME"' in executed_query
         assert '"PKEY_TYPE"' in executed_query
         assert '"PKEY_COMMENT"' in executed_query
+
+        # Partition contract (#26712): sentinel + ordinals + stable ordering
+        # (symmetry coverage with MySQL dialect; not a current CI failure)
+        assert "'# PARTITION INFORMATION'" in normalized_query
+        assert "INTEGER_IDX" in normalized_query
+        assert "ORDER BY SORT_ORDER, COL_INDEX" in normalized_query
