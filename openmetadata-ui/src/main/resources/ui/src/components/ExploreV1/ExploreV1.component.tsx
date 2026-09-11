@@ -1167,8 +1167,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
             />
           </Col>
           {/* Content-sized: a grow factor here would swallow the free space the
-              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide). */}
-          <Col className="d-flex items-center justify-end gap-3" flex="none">
+              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide).
+              Top-aligned, and offset by the filters' own `mt-1`, so the controls
+              sit on the first filter row: centring them inside a column the
+              wrapped filters have made two rows tall floats them into the gap
+              and reads as a much heavier block. */}
+          <Col
+            className="d-flex items-start justify-end gap-3 tw:mt-1"
+            flex="none">
             <Button
               aria-label={t('label.sort-order')}
               className="tw:p-0"
