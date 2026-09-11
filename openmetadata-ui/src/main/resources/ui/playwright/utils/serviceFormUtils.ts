@@ -24,6 +24,22 @@ const getOneOfOptionLabels = (optionName: string) => {
   return [...new Set([optionName, spacedLabel])];
 };
 
+// Callers name a oneOf branch by its schema title, but CoreOneOfField renders every
+// option through `getFormDisplayLabel`, which spaces camelCase and re-cases known
+// acronyms — the title "DBT S3 Config" renders as "dbt S3 Config".
+//
+// Playwright may not import that function (app code outside src/generated and src/enums
+// is restricted), and copying its acronym table here would reintroduce the same drift
+// from the other side. Casing is the only thing the table changes, so matching the title
+// and its spaced form case-insensitively covers the transform without restating it.
+// The pattern stays anchored, so it is as strict as `exact: true` about substrings.
+// `getFormDisplayLabel`'s own behaviour is pinned in formBuilderV1LabelUtils.test.ts.
+const getOneOfOptionNamePattern = (optionName: string) =>
+  new RegExp(
+    `^(${getOneOfOptionLabels(optionName).map(escapeRegExp).join('|')})$`,
+    'i'
+  );
+
 export const selectOneOfOption = async (
   page: Page,
   fieldId: string,
@@ -31,17 +47,14 @@ export const selectOneOfOption = async (
   optionName: string
 ) => {
   const field = page.locator(`[data-field-id="${fieldId}"]`);
+  const optionNamePattern = getOneOfOptionNamePattern(optionName);
 
-  for (const optionLabel of getOneOfOptionLabels(optionName)) {
-    const tab = field.getByRole('tab', {
-      name: new RegExp(`^${escapeRegExp(optionLabel)}$`, 'i'),
-    });
+  const tab = field.getByRole('tab', { name: optionNamePattern });
 
-    if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await tab.click();
+  if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await tab.click();
 
-      return;
-    }
+    return;
   }
 
   const selectWidget = page.getByTestId(selectTestId);
@@ -50,7 +63,7 @@ export const selectOneOfOption = async (
     const trigger = selectWidget.getByRole('button');
     const option = page
       .locator('.core-one-of-field-select-popover')
-      .getByRole('option', { name: optionName, exact: true });
+      .getByRole('option', { name: optionNamePattern });
 
     await selectOptionWithRetry(trigger, option);
 

@@ -36,6 +36,7 @@ import DirectRolesSection from './permissions/DirectRolesSection';
 import InheritedPermissionsSection from './permissions/InheritedPermissionsSection';
 import MembershipSection from './permissions/MembershipSection';
 import TeamPermissionsSection from './permissions/TeamPermissionsSection';
+
 interface PermissionsTabProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;

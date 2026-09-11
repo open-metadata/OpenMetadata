@@ -60,6 +60,9 @@ function DestinationFormItemFormBridge({
   const { t } = useTranslation();
   const methods = useForm<DestinationFormFields>({
     defaultValues: getDestinationFormFields(values),
+    // Parent submission calls trigger() directly, so blur validation must clear
+    // corrected field errors without relying on RHF's submitted state.
+    mode: 'onBlur',
   });
   const { getValues, reset, setError, trigger, watch } = methods;
   const { destinations, readTimeout, resources, timeout } = values;

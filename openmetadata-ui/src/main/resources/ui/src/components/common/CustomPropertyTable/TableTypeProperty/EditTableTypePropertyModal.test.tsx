@@ -15,6 +15,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import EditTableTypePropertyModal from './EditTableTypePropertyModal';
 import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.interface';
+import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 
 jest.mock('./TableTypePropertyEditTable', () =>
   jest.fn().mockImplementation(() => <div>TableTypePropertyEditTable</div>)
@@ -23,6 +24,8 @@ jest.mock('./TableTypePropertyEditTable', () =>
 jest.mock('./TableTypePropertyView', () =>
   jest.fn().mockImplementation(() => <div>TableTypePropertyView</div>)
 );
+
+const mockedEditTable = TableTypePropertyEditTable as unknown as jest.Mock;
 
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn().mockResolvedValue(undefined);
@@ -38,6 +41,10 @@ const defaultProps: EditTableTypePropertyModalProps = {
 };
 
 describe('EditTableTypePropertyModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render the modal with the correct title', () => {
     const { getByText } = render(
       <EditTableTypePropertyModal {...defaultProps} />
@@ -90,5 +97,59 @@ describe('EditTableTypePropertyModal', () => {
     );
 
     expect(getByText('TableTypePropertyEditTable')).toBeInTheDocument();
+  });
+
+  it('should preserve a user-defined column named "id" on init and save (no data loss)', async () => {
+    const props: EditTableTypePropertyModalProps = {
+      ...defaultProps,
+      columns: ['id', 'name'],
+      rows: [{ id: 'abc-123', name: 'foo' }],
+    };
+
+    const { getByTestId } = render(<EditTableTypePropertyModal {...props} />);
+
+    // The internal row id is a prefixed key (`__row_id__`), so the user's
+    // `id` column value must survive the useState initializer untouched.
+    const editTableCall =
+      mockedEditTable.mock.calls.find(
+        (call) => call[0]?.dataSource?.length > 0
+      ) ?? mockedEditTable.mock.calls[0];
+    const dataSource = editTableCall[0].dataSource as Record<string, string>[];
+
+    expect(dataSource[0].id).toBe('abc-123');
+    expect(dataSource[0].name).toBe('foo');
+    expect(dataSource[0].__row_id__).toBe('0');
+
+    fireEvent.click(getByTestId('update-table-type-property'));
+
+    await waitFor(() => expect(mockOnSave).toHaveBeenCalledTimes(1));
+
+    const onSaveArg = mockOnSave.mock.calls[0][0];
+
+    // The user's `id: 'abc-123'` value is preserved on save.
+    expect(onSaveArg.rows).toEqual([{ id: 'abc-123', name: 'foo' }]);
+    // The internal row id key is stripped and does not leak into saved data.
+    expect(onSaveArg.rows[0].__row_id__).toBeUndefined();
+    // The original value survives somewhere in the saved rows.
+    expect(
+      onSaveArg.rows.some((row: Record<string, string>) =>
+        Object.values(row).includes('abc-123')
+      )
+    ).toBe(true);
+  });
+
+  it('should not leak the internal __row_id__ key into saved rows', async () => {
+    const { getByTestId } = render(
+      <EditTableTypePropertyModal {...defaultProps} />
+    );
+    fireEvent.click(getByTestId('update-table-type-property'));
+
+    await waitFor(() => expect(mockOnSave).toHaveBeenCalledTimes(1));
+
+    const onSaveArg = mockOnSave.mock.calls[0][0];
+
+    onSaveArg.rows.forEach((row: Record<string, string>) => {
+      expect(row.__row_id__).toBeUndefined();
+    });
   });
 });

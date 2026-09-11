@@ -11,5 +11,9 @@
  *  limitations under the License.
  */
 
-export { default as TagChip } from './TagChip';
-export type { TagChipProps } from './TagChip';
+export { default as AutoClassificationTag } from './AutoClassificationTag';
+export { default as ClassificationTag } from './ClassificationTag';
+export { default as DataProductTag } from './DataProductTag';
+export { default as DomainTag } from './DomainTag';
+export { default as GlossaryTag } from './GlossaryTag';
+export type { BaseTagProps, TagSize } from './Tag.interface';
