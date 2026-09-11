@@ -1552,12 +1552,21 @@ class AdvancedSearchClassBase {
         }
 
         return columns.map((columnName) => ({
-          subfieldsKey: `${field.name}.rows.${columnName}`,
+          subfieldsKey: `${field.name}.rows`,
           dataObject: {
-            type: 'text',
             label: `${label} - ${columnName}`,
-            operators: TEXT_FIELD_OPERATORS,
-            valueSources: ['value'],
+            type: '!group',
+            mode: 'some',
+            defaultField: columnName,
+            subfields: {
+              [columnName]: {
+                label: columnName,
+                type: 'text',
+                valueSources: ['value'],
+                operators: TEXT_FIELD_OPERATORS,
+                mainWidgetProps: this.mainWidgetProps,
+              },
+            },
           },
         }));
       }
