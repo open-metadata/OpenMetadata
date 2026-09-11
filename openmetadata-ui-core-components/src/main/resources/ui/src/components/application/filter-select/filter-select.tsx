@@ -555,6 +555,10 @@ export const FilterSelect = ({
         {!isLoading && !isEmpty && (
           <Dropdown.Menu
             aria-label={label}
+            // A search box owns focus while it is there: the menu remounts
+            // whenever results land, and MenuTrigger's autofocus would pull
+            // the caret out of the box mid-query.
+            autoFocus={searchable ? false : undefined}
             className="tw:max-h-64 tw:overflow-y-auto"
             disallowEmptySelection={false}
             selectedKeys={selectedKeySet}
