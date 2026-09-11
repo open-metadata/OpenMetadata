@@ -117,7 +117,85 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     return buildHikariConfig(poolName);
   }
 
+  /**
+   * How long a borrower holds a connection, and how long its individual statements run. The
+   * request pool's defaults — a 60s leak detector and a 5-minute socket timeout — are protective
+   * for short work and actively wrong for long work, so each subsystem pool declares which it is.
+   */
+  public enum PoolWorkload {
+    /**
+     * Short, bounded statements returned promptly — the Quartz job stores. Inherits the request
+     * pool's socket timeout and leak detection, both of which are worth keeping here: with only a
+     * handful of connections, one hung query or unreturned connection matters.
+     */
+    SHORT_STATEMENTS,
+
+    /**
+     * Fast statements, but the connection stays checked out for a long time — a Flowable command
+     * whose synchronous service task calls the REST API or search before committing. Disables leak
+     * detection, which measures checkout duration and would otherwise log alarming "connection
+     * leak" traces for commands behaving exactly as designed. Keeps the socket timeout, since the
+     * individual reads are still short and a genuinely hung one should not hold a connection.
+     */
+    LONG_CHECKOUTS,
+
+    /**
+     * Single statements that legitimately run for minutes — Flowable's schema upgrade issuing DDL
+     * against a large {@code ACT_HI_*} table. Additionally clears the socket timeout, which would
+     * otherwise sever such a statement at 5 minutes and fail the migration half-applied. An
+     * operator who wants a bound can still set one via {@code database.properties}.
+     */
+    LONG_STATEMENTS
+  }
+
+  /**
+   * Build an additional connection pool from this same configuration, sized independently of the
+   * request-serving pool.
+   *
+   * <p>Subsystems that own their JDBC work — the Quartz job stores, the Flowable engine — need
+   * their own connections: API traffic must not be able to starve a Quartz cluster check-in, and a
+   * Flowable command holding a connection across a REST call must not be able to starve API
+   * traffic. Left to themselves those subsystems each build a pool from raw JDBC settings, which
+   * silently drops everything configured here — driver tuning, timeouts, metrics, and, under AWS
+   * RDS IAM, the per-connection token minting that a captured static password cannot replicate
+   * once the 15-minute token expires.
+   *
+   * @param transactionIsolation a {@code Connection.TRANSACTION_*} constant name, or null for the
+   *     driver default. Belongs on the pool because an engine handed a ready-made DataSource
+   *     ignores the isolation knobs it would have applied to a pool of its own making.
+   */
+  public HikariDataSource buildSubsystemPool(
+      String poolName, int maxPoolSize, String transactionIsolation, PoolWorkload workload) {
+    initializeAwsRdsIamAuth();
+    HikariConfig config = buildHikariConfig(poolName, workload);
+    config.setMaximumPoolSize(maxPoolSize);
+    config.setMinimumIdle(1);
+    if (transactionIsolation != null) {
+      config.setTransactionIsolation(transactionIsolation);
+    }
+    if (workload != PoolWorkload.SHORT_STATEMENTS) {
+      config.setLeakDetectionThreshold(0);
+    }
+    // Defer the first physical connect to first getConnection() rather than to pool construction.
+    // These pools are built during startup, after the request pool has already proven the database
+    // reachable, and every subsystem issues its own query immediately — so fast-fail survives to
+    // the very next call, while unit tests that never open a socket pay nothing for it.
+    config.setInitializationFailTimeout(-1);
+    LOG.info(
+        "Creating subsystem connection pool '{}' with maxPoolSize={} workload={} "
+            + "transactionIsolation={}",
+        poolName,
+        maxPoolSize,
+        workload,
+        transactionIsolation != null ? transactionIsolation : "driver default");
+    return new HikariDataSource(config);
+  }
+
   private HikariConfig buildHikariConfig(String poolNameToUse) {
+    return buildHikariConfig(poolNameToUse, PoolWorkload.SHORT_STATEMENTS);
+  }
+
+  private HikariConfig buildHikariConfig(String poolNameToUse, PoolWorkload workload) {
     HikariConfig config = new HikariConfig();
 
     config.setJdbcUrl(getUrl());
@@ -196,6 +274,14 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     Properties dataSourceProperties = new Properties();
     if (getProperties() != null) {
       dataSourceProperties.putAll(getProperties());
+    }
+
+    // Seeded before the driver-specific defaults below, which all use putIfAbsent, so this wins
+    // over them while still yielding to anything the operator set explicitly in yaml. Applied
+    // here rather than after the fact because under AWS RDS IAM these properties are baked into
+    // AwsRdsIamAwareDataSource and cannot be adjusted once the config is built.
+    if (workload == PoolWorkload.LONG_STATEMENTS) {
+      dataSourceProperties.putIfAbsent("socketTimeout", "0");
     }
 
     if (cachePrepStmts) {
