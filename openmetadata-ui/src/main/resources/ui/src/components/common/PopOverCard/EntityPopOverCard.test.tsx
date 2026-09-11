@@ -346,12 +346,20 @@ describe('Test EntityPopoverCard component', () => {
     });
 
     expect(await screen.findByText('label.no-data-found')).toBeInTheDocument();
+    expect(document.querySelector('.ant-popover')).not.toHaveClass(
+      'ant-popover-hidden'
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('navigate-away'));
     });
 
-    expect(screen.queryByText('label.no-data-found')).toBeNull();
+    // The popup is kept mounted rather than destroyed, so re-hovering the same
+    // entity does not refetch it. Hiding is what matters here: leaving it
+    // visible is what let it float over the next screen.
+    expect(document.querySelector('.ant-popover')).toHaveClass(
+      'ant-popover-hidden'
+    );
   });
 
   it('EntityPopoverCard should call tags api if entity type is tag card', async () => {
