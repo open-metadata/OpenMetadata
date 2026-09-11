@@ -702,7 +702,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           // Wait for tag option to be visible before clicking
           const tagOption = page
             .locator('.selectable-list-item')
-            .filter({ hasText: 'Sensitive' });
+            .filter({ has: page.getByText('Sensitive', { exact: true }) });
           await expect(tagOption).toBeVisible();
           await tagOption.click();
 
@@ -805,7 +805,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await page
             .locator('.selectable-list-item')
-            .filter({ hasText: 'Sensitive' })
+            .filter({ has: page.getByText('Sensitive', { exact: true }) })
             .click();
           const tagCleanupResponse = page.waitForResponse(
             (response) =>
