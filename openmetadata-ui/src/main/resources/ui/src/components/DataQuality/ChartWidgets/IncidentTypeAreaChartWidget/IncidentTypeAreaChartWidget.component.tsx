@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, last } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
-import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { IncidentTypeAreaChartWidgetProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
+import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
 
 const IncidentTypeAreaChartWidget = ({
   incidentStatusType,
@@ -29,8 +30,26 @@ const IncidentTypeAreaChartWidget = ({
   redirectPath,
   height,
 }: IncidentTypeAreaChartWidgetProps) => {
-  const [isChartLoading, setIsChartLoading] = useState(true);
-  const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
+  const { data: chartData = EMPTY_CHART_DATA, isLoading: isChartLoading } =
+    useQuery({
+      queryKey: [
+        'dq-dashboard',
+        'incident-status-count',
+        incidentStatusType,
+        chartFilter,
+      ],
+      queryFn: async () => {
+        const { data } = await fetchCountOfIncidentStatusTypeByDays(
+          incidentStatusType,
+          chartFilter
+        );
+
+        return data.map((item) => ({
+          timestamp: +item.timestamp,
+          count: +item.stateId,
+        }));
+      },
+    });
 
   const bodyElement = useMemo(() => {
     const latestValue = last(chartData)?.count ?? 0;
@@ -54,43 +73,6 @@ const IncidentTypeAreaChartWidget = ({
       </>
     );
   }, [title, chartData, name, height]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    const getCountOfIncidentStatus = async () => {
-      setIsChartLoading(true);
-      try {
-        const { data } = await fetchCountOfIncidentStatusTypeByDays(
-          incidentStatusType,
-          chartFilter
-        );
-        if (ignore) {
-          return;
-        }
-
-        const updatedData = data.map((item) => ({
-          timestamp: +item.timestamp,
-          count: +item.stateId,
-        }));
-        setChartData(updatedData);
-      } catch {
-        if (!ignore) {
-          setChartData([]);
-        }
-      } finally {
-        if (!ignore) {
-          setIsChartLoading(false);
-        }
-      }
-    };
-
-    getCountOfIncidentStatus();
-
-    return () => {
-      ignore = true;
-    };
-  }, [chartFilter, incidentStatusType]);
 
   if (isChartLoading) {
     return (

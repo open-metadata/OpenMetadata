@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import EntityHealthStatusPieChartWidget from './EntityHealthStatusPieChartWidget.component';
@@ -80,7 +81,7 @@ describe('EntityHealthStatusPieChartWidget', () => {
   });
 
   it('should render the component', async () => {
-    render(<EntityHealthStatusPieChartWidget />);
+    renderWithQueryClient(<EntityHealthStatusPieChartWidget />);
 
     expect(
       await screen.findByText('label.healthy-data-asset-plural')
@@ -91,7 +92,7 @@ describe('EntityHealthStatusPieChartWidget', () => {
   });
 
   it('fetchEntityCoveredWithDQ should be called', async () => {
-    render(<EntityHealthStatusPieChartWidget />);
+    renderWithQueryClient(<EntityHealthStatusPieChartWidget />);
 
     await act(async () => {
       await Promise.resolve();
@@ -106,7 +107,9 @@ describe('EntityHealthStatusPieChartWidget', () => {
       tags: ['tag1', 'tag2'],
       ownerFqn: 'ownerFqn',
     };
-    render(<EntityHealthStatusPieChartWidget chartFilter={filters} />);
+    renderWithQueryClient(
+      <EntityHealthStatusPieChartWidget chartFilter={filters} />
+    );
 
     await act(async () => {
       await Promise.resolve();
@@ -126,11 +129,9 @@ describe('EntityHealthStatusPieChartWidget', () => {
       }
     ).__getMockNavigate();
 
-    render(<EntityHealthStatusPieChartWidget />);
+    renderWithQueryClient(<EntityHealthStatusPieChartWidget />);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await screen.findByText('CustomPieChart.component');
 
     expect(CustomPieChart).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -178,7 +179,7 @@ describe('EntityHealthStatusPieChartWidget', () => {
   it('should use the supplied navigate function and test cases path', async () => {
     const navigate = jest.fn();
 
-    render(
+    renderWithQueryClient(
       <EntityHealthStatusPieChartWidget
         chartFilter={{ startTs: 100, endTs: 200 }}
         navigate={navigate}
@@ -245,7 +246,7 @@ describe('EntityHealthStatusPieChartWidget', () => {
       }
     );
 
-    const { rerender } = render(
+    const { rerender } = renderWithQueryClient(
       <EntityHealthStatusPieChartWidget
         chartFilter={{ startTs: 1, endTs: 10 }}
       />
@@ -257,7 +258,11 @@ describe('EntityHealthStatusPieChartWidget', () => {
     );
 
     await act(async () => release[100]());
+    await screen.findByText('CustomPieChart.component');
     await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
 
     expect(CustomPieChart).toHaveBeenLastCalledWith(
       expect.objectContaining({

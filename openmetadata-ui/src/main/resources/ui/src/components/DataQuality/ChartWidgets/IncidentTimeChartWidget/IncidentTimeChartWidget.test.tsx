@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { fetchIncidentTimeMetrics } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   IncidentTimeChartWidgetProps,
   IncidentTimeMetricsType,
@@ -56,7 +57,7 @@ const defaultProps: IncidentTimeChartWidgetProps = {
 
 describe('IncidentTimeChartWidget', () => {
   it('should render the component', async () => {
-    render(<IncidentTimeChartWidget {...defaultProps} />);
+    renderWithQueryClient(<IncidentTimeChartWidget {...defaultProps} />);
 
     expect(await screen.findByText(defaultProps.title)).toBeInTheDocument();
     expect(
@@ -68,7 +69,7 @@ describe('IncidentTimeChartWidget', () => {
   });
 
   it('should call fetchIncidentTimeMetrics function', async () => {
-    render(<IncidentTimeChartWidget {...defaultProps} />);
+    renderWithQueryClient(<IncidentTimeChartWidget {...defaultProps} />);
 
     expect(fetchIncidentTimeMetrics).toHaveBeenCalledWith(
       defaultProps.incidentMetricType,
@@ -85,7 +86,7 @@ describe('IncidentTimeChartWidget', () => {
       tier: ['tier1'],
     };
     const status = IncidentTimeMetricsType.TIME_TO_RESPONSE;
-    render(
+    renderWithQueryClient(
       <IncidentTimeChartWidget
         {...defaultProps}
         chartFilter={filters}
@@ -100,7 +101,7 @@ describe('IncidentTimeChartWidget', () => {
     (fetchIncidentTimeMetrics as jest.Mock).mockRejectedValue(
       new Error('API Error')
     );
-    render(<IncidentTimeChartWidget {...defaultProps} />);
+    renderWithQueryClient(<IncidentTimeChartWidget {...defaultProps} />);
     await waitFor(() => expect(fetchIncidentTimeMetrics).toHaveBeenCalled());
 
     expect(await screen.findByText(defaultProps.title)).toBeInTheDocument();
@@ -121,7 +122,8 @@ describe('IncidentTimeChartWidget', () => {
       100: new Promise((resolve) => {
         release[100] = resolve;
       }),
-    }; // The stale filter has no metric value, so applying it would render '--'.
+    };
+    // The stale filter has no metric value, so applying it would render '--'.
     (fetchIncidentTimeMetrics as jest.Mock).mockImplementation(
       async (_type: IncidentTimeMetricsType, filters: { startTs: number }) => {
         await gates[filters.startTs];
@@ -139,7 +141,7 @@ describe('IncidentTimeChartWidget', () => {
       }
     );
 
-    const { rerender } = render(
+    const { rerender } = renderWithQueryClient(
       <IncidentTimeChartWidget
         {...defaultProps}
         chartFilter={{ startTs: 1, endTs: 10 }}
@@ -153,7 +155,15 @@ describe('IncidentTimeChartWidget', () => {
     );
 
     await act(async () => release[100]());
+
+    expect(await screen.findByTestId('average-time')).toHaveTextContent(
+      '1h 32m'
+    );
+
     await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
 
     expect(screen.getByTestId('average-time')).toHaveTextContent('1h 32m');
   });

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { parseInt } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
@@ -38,12 +39,24 @@ const EntityHealthStatusPieChartWidget = ({
   const { t } = useTranslation();
   const routerNavigate = useNavigate();
   const navigate = navigateProp ?? routerNavigate;
-  const [isLoading, setIsLoading] = useState(true);
-  const [entityHealthStates, setEntityHealthStates] = useState<{
-    healthy: number;
-    unhealthy: number;
-    total: number;
-  }>(INITIAL_ENTITY_HEALTH_MATRIX);
+  const { data: entityHealthStates = INITIAL_ENTITY_HEALTH_MATRIX, isLoading } =
+    useQuery({
+      queryKey: ['dq-dashboard', 'entity-health', chartFilter],
+      queryFn: async () => {
+        const [{ data: unhealthyData }, { data: totalData }] =
+          await Promise.all([
+            fetchEntityCoveredWithDQ(chartFilter, true),
+            fetchEntityCoveredWithDQ(chartFilter, false),
+          ]);
+        if (unhealthyData.length === 0 || totalData.length === 0) {
+          return INITIAL_ENTITY_HEALTH_MATRIX;
+        }
+        const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
+        const total = parseInt(totalData[0].originEntityFQN, 10);
+
+        return { unhealthy, healthy: total - unhealthy, total };
+      },
+    });
 
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
@@ -80,48 +93,6 @@ const EntityHealthStatusPieChartWidget = ({
     }),
     [entityHealthStates]
   );
-
-  useEffect(() => {
-    let ignore = false;
-
-    const fetchEntityHealthSummary = async () => {
-      setIsLoading(true);
-      try {
-        const [{ data: unhealthyData }, { data: totalData }] =
-          await Promise.all([
-            fetchEntityCoveredWithDQ(chartFilter, true),
-            fetchEntityCoveredWithDQ(chartFilter, false),
-          ]);
-        if (ignore) {
-          return;
-        }
-
-        if (unhealthyData.length === 0 || totalData.length === 0) {
-          setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
-
-          return;
-        }
-        const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
-        const total = parseInt(totalData[0].originEntityFQN, 10);
-
-        setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
-      } catch {
-        if (!ignore) {
-          setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchEntityHealthSummary();
-
-    return () => {
-      ignore = true;
-    };
-  }, [chartFilter]);
 
   if (isLoading) {
     return (

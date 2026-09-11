@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { isNull, isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchIncidentTimeMetrics } from '../../../../rest/dataQualityDashboardAPI';
 import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
@@ -20,6 +21,7 @@ import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interfa
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { IncidentTimeChartWidgetProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
+import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
 
 const IncidentTimeChartWidget = ({
   incidentMetricType,
@@ -29,8 +31,35 @@ const IncidentTimeChartWidget = ({
   height,
   redirectPath,
 }: IncidentTimeChartWidgetProps) => {
-  const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
-  const [isChartLoading, setIsChartLoading] = useState(true);
+  const { data: chartData = EMPTY_CHART_DATA, isLoading: isChartLoading } =
+    useQuery({
+      queryKey: [
+        'dq-dashboard',
+        'incident-time-metrics',
+        incidentMetricType,
+        chartFilter,
+      ],
+      queryFn: async () => {
+        const { data } = await fetchIncidentTimeMetrics(
+          incidentMetricType,
+          chartFilter
+        );
+
+        return data.reduce((act, cur) => {
+          if (isNull(cur['metrics.value'])) {
+            return act;
+          }
+
+          return [
+            ...act,
+            {
+              timestamp: +cur.timestamp,
+              count: +cur['metrics.value'],
+            },
+          ];
+        }, [] as CustomAreaChartData[]);
+      },
+    });
 
   const avgTimeValue = useMemo(() => {
     const totalTime = chartData.reduce((acc, curr) => {
@@ -51,53 +80,6 @@ const IncidentTimeChartWidget = ({
       </Typography>
     );
   }, [chartData]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    const getRespondTimeMetrics = async () => {
-      setIsChartLoading(true);
-      try {
-        const { data } = await fetchIncidentTimeMetrics(
-          incidentMetricType,
-          chartFilter
-        );
-        if (ignore) {
-          return;
-        }
-
-        const updatedData = data.reduce((act, cur) => {
-          if (isNull(cur['metrics.value'])) {
-            return act;
-          }
-
-          return [
-            ...act,
-            {
-              timestamp: +cur.timestamp,
-              count: +cur['metrics.value'],
-            },
-          ];
-        }, [] as CustomAreaChartData[]);
-
-        setChartData(updatedData);
-      } catch {
-        if (!ignore) {
-          setChartData([]);
-        }
-      } finally {
-        if (!ignore) {
-          setIsChartLoading(false);
-        }
-      }
-    };
-
-    getRespondTimeMetrics();
-
-    return () => {
-      ignore = true;
-    };
-  }, [chartFilter, incidentMetricType]);
 
   if (isChartLoading) {
     return (
