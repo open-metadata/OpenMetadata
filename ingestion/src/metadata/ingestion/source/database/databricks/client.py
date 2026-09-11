@@ -273,17 +273,6 @@ class DatabricksClient:
         query_text = row.get("query_text")
         return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))  # noqa: PIE810
 
-    def list_jobs_test_connection(self) -> None:
-        data = {"limit": 1, "expand_tasks": True}
-        response = self.client.get(
-            self.jobs_list_url,
-            data=json.dumps(data),
-            headers=self.headers,
-            timeout=self.api_timeout,
-        )
-        if response.status_code != 200:
-            raise DatabricksClientException(response.text)
-
     def _get_json(self, url: str, params: dict) -> dict:
         """
         GET a Jobs API page, refusing to treat an error body as an empty page.
@@ -304,23 +293,36 @@ class DatabricksClient:
             )
         return response.json()
 
-    def _paginate(self, url: str, params: dict, key: str) -> Iterable[dict]:
+    def _paginate_responses(self, url: str, params: dict) -> Iterable[dict]:
         """
-        Walk a Jobs API list endpoint by page token.
+        Yield each page of a token-paginated Jobs API response.
 
         Token pagination rather than `offset` because Databricks caps `offset` at 1000,
         and because API 2.2 drops the root-level `has_more` that the offset loop needed
         to know when to stop.
+
+        Stops if a page hands back the token that produced it, which would otherwise
+        refetch the same page forever.
         """
         page_params = dict(params)
         while True:
             payload = self._get_json(url, page_params)
-            yield from payload.get(key) or []
+            yield payload
 
             next_page_token = payload.get("next_page_token")
             if not next_page_token:
                 return
+            if next_page_token == page_params.get("page_token"):
+                logger.warning("Databricks repeated page token for [%s], stopping pagination early", url)
+                return
             page_params["page_token"] = next_page_token
+
+    def _paginate_items(self, url: str, params: dict, key: str) -> Iterable[dict]:
+        """
+        Walk a Jobs API list endpoint, flattening every page into its items.
+        """
+        for payload in self._paginate_responses(url, params):
+            yield from payload.get(key) or []
 
     def _expand_job_tasks(self, job: dict) -> dict:
         """
@@ -328,7 +330,11 @@ class DatabricksClient:
 
         List responses carry at most 100 elements of any list field and set a per-job
         `has_more` when a job has more. Pipeline lineage is built from the task list, so
-        a job truncated here would lose both its tasks and its lineage.
+        a job left truncated here loses both its tasks and its lineage.
+
+        Unlike a failure to list jobs, a failure here degrades rather than raises: it
+        costs one job an accurate task list, where a short job list costs the catalogue
+        every job that never arrived.
         """
         if not job.get("has_more"):
             return job
@@ -336,36 +342,44 @@ class DatabricksClient:
         job_id = job.get("job_id")
         try:
             tasks: list[dict] = []
-            params = {"job_id": job_id}
-            while True:
-                payload = self._get_json(f"{self.base_job_url}/get", params)
+            for payload in self._paginate_responses(f"{self.base_job_url}/get", {"job_id": job_id}):
                 tasks.extend((payload.get("settings") or {}).get("tasks") or [])
-                next_page_token = payload.get("next_page_token")
-                if not next_page_token:
-                    break
-                params["page_token"] = next_page_token
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning("Could not fetch the full task list for job %s, using the first page only: %s", job_id, exc)
+            logger.warning(
+                "Could not fetch the full task list for job %s, keeping the first page only. "
+                "Its tasks and lineage will be incomplete: %s",
+                job_id,
+                exc,
+            )
             return job
 
         expanded = {**job, "settings": {**(job.get("settings") or {}), "tasks": tasks}}
         expanded.pop("has_more", None)
         return expanded
 
+    def list_jobs_test_connection(self) -> None:
+        self._get_json(self.jobs_list_url, {"limit": 1, "expand_tasks": "true"})
+
     def list_jobs(self) -> Iterable[dict]:
         """
-        Method returns List all the created jobs in a Databricks Workspace
+        Yield every job in the workspace, each with its full task list.
+
+        Raises rather than stopping short if the workspace cannot be listed, because a
+        truncated job list is indistinguishable from a smaller workspace.
         """
         # "true" lowercase: Databricks ignores the Python bool's "True" encoding
         # without complaining, which would drop every task list.
         params = {"limit": PAGE_SIZE, "expand_tasks": "true"}
-        for job in self._paginate(self.jobs_list_url, params, key="jobs"):
+        for job in self._paginate_items(self.jobs_list_url, params, key="jobs"):
             yield self._expand_job_tasks(job)
 
     def get_job_runs(self, job_id) -> Iterable[dict]:
         """
-        Method returns List of all runs for a job by the specified job_id
+        Yield the completed runs of one job, newest first.
+
+        Yields nothing and logs if the runs cannot be listed, since a missing run costs
+        only pipeline status.
         """
         params = {
             "job_id": job_id,
@@ -376,7 +390,7 @@ class DatabricksClient:
             "expand_tasks": "true",
         }
         try:
-            yield from self._paginate(self.jobs_run_list_url, params, key="runs")
+            yield from self._paginate_items(self.jobs_run_list_url, params, key="runs")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Could not list runs for job %s: %s", job_id, exc)

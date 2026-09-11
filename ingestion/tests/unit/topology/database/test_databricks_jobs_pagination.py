@@ -10,13 +10,18 @@
 #  limitations under the License.
 
 """
-FakeJobsApi reproduces the Databricks Jobs API contract as measured against a live
-workspace, which differs from the published docs in two places that cost us data:
+FakeJobsApi reproduces the Databricks Jobs API 2.2 contract as measured against a live
+workspace, including the parts the published docs do not describe:
 
   * `offset` is capped at 1000, and going past it returns a 400 whose body is valid
     JSON, so a client that skips status_code reads it as an ordinary empty response
-  * a job with more than 100 tasks comes back from 2.1 with `settings.tasks` absent
-    altogether, not truncated to 100, and with no error and no has_more to notice
+  * list responses carry at most 100 tasks per job and flag the rest with a per-job
+    `has_more`, which only `jobs/get` with a page token can satisfy
+  * `expand_tasks` is honoured as "true" but ignored as "True", which is what requests
+    makes of a Python bool in a query string
+
+The client is pinned to 2.2 because 2.1 answers 200 with `settings.tasks` missing
+entirely for a job above that cap, giving no way to detect or recover the rest.
 """
 
 import json
@@ -45,10 +50,15 @@ def _response(status_code: int, payload: dict) -> MagicMock:
 
 
 class FakeJobsApi:
-    """Databricks Jobs API, as measured. `api_version` picks the 2.1 or 2.2 dialect."""
+    """
+    Databricks Jobs API 2.2, as measured.
 
-    def __init__(self, total_jobs: int = 3000, runs: int = 0, tasks_on_first_job: int = 1, api_version: str = "2.2"):
-        self.api_version = api_version
+    It still rejects an out-of-range `offset` even though the client no longer sends
+    one. That is deliberate: it makes any return to offset pagination fail loudly here
+    rather than silently cap out in production.
+    """
+
+    def __init__(self, total_jobs: int = 3000, runs: int = 0, tasks_on_first_job: int = 1):
         self.tasks = [{"task_key": f"t{i:03d}"} for i in range(tasks_on_first_job)]
         self.jobs = [
             {
@@ -66,9 +76,6 @@ class FakeJobsApi:
             return job
         expanded = {**job, "settings": {**job["settings"], "tasks": self.tasks[:TASKS_PER_PAGE]}}
         if len(self.tasks) > TASKS_PER_PAGE:
-            if self.api_version == "2.1":
-                # 2.1 cannot represent an over-cap job: the key is simply gone.
-                return {**job, "settings": {k: v for k, v in job["settings"].items() if k != "tasks"}}
             expanded["has_more"] = True
         return expanded
 
@@ -105,10 +112,6 @@ class FakeJobsApi:
         payload = {key: page}
         if start + limit < len(items):
             payload["next_page_token"] = str(start + limit)
-            if self.api_version == "2.1":
-                payload["has_more"] = True
-        elif self.api_version == "2.1":
-            payload["has_more"] = False
         return _response(200, payload)
 
     def _get_job(self, args: dict) -> MagicMock:
@@ -260,3 +263,73 @@ def test_get_job_runs_respects_the_limit_ceiling():
     listings = [r for r in fake.requests if r["url"].endswith("/runs/list")]
     assert listings, "expected at least one runs/list request"
     assert all(int(request.get("limit", 0)) <= 26 for request in listings)
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_expanded_job_no_longer_advertises_more_tasks():
+    """`has_more` is the signal to go fetch the rest, so it must not survive the fetch."""
+    fake = FakeJobsApi(total_jobs=1, tasks_on_first_job=250)
+
+    job = next(iter(build_client(fake).list_jobs()))
+
+    assert "has_more" not in job
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_a_failed_task_page_degrades_that_job_without_failing_the_run():
+    """
+    Losing page two of one job's tasks costs that job an accurate task list. Failing
+    the whole run over it would cost the catalogue every other job, so this one
+    deliberately degrades where list_jobs raises.
+    """
+    fake = FakeJobsApi(total_jobs=3, tasks_on_first_job=250)
+    healthy = fake.get
+
+    def fail_only_jobs_get(url, **kwargs):
+        if url.endswith("/jobs/get"):
+            return _response(503, {"error_code": "TEMPORARILY_UNAVAILABLE", "message": "try later"})
+        return healthy(url, **kwargs)
+
+    fake.get = fail_only_jobs_get
+
+    jobs = list(build_client(fake).list_jobs())
+
+    assert len(jobs) == 3, "the other jobs must still be ingested"
+    assert len(jobs[0]["settings"]["tasks"]) == TASKS_PER_PAGE, "the first page is kept"
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_test_connection_passes_on_a_reachable_workspace():
+    fake = FakeJobsApi(total_jobs=3)
+
+    build_client(fake).list_jobs_test_connection()
+
+    assert fake.requests[0]["limit"] == 1, "the probe must not pull a full page"
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_test_connection_raises_on_an_unreachable_workspace():
+    """The GetPipelines step has to fail loudly, it is what tells a user their token is wrong."""
+    fake = FakeJobsApi(total_jobs=3)
+    fake.get = MagicMock(return_value=_response(403, {"error_code": "PERMISSION_DENIED", "message": "nope"}))
+
+    with pytest.raises(DatabricksClientException, match="403"):
+        build_client(fake).list_jobs_test_connection()
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_a_repeated_page_token_stops_instead_of_looping():
+    """A service that hands back the token it was given must not spin forever."""
+    fake = FakeJobsApi(total_jobs=3000)
+    calls = {"n": 0}
+
+    def always_the_same_token(url, **kwargs):
+        calls["n"] += 1
+        assert calls["n"] < 50, "pagination looped instead of stopping"
+        return _response(200, {"jobs": [{"job_id": 1}], "next_page_token": "stuck"})
+
+    fake.get = always_the_same_token
+
+    jobs = list(build_client(fake).list_jobs())
+
+    assert len(jobs) == 2, "one page, then the repeat is detected and pagination stops"
