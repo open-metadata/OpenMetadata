@@ -25,16 +25,13 @@ export const OMConfig: BasicConfig = {
   ...QbBasicConfig,
   settings: {
     ...QbBasicConfig.settings,
-    // `dataTestId` precedes the spread so a caller that renders this control
-    // somewhere other than a rule row — the canvas does, for a rule_group's
-    // own field — can give it a testid of its own.
+    // `dataTestId` precedes the spread so a caller that renders this control somewhere other than a rule row — the
+    // canvas does, for a rule_group's own field — can give it a testid of its own.
     renderField: (props) => (
       <OMFieldSelect dataTestId="advanced-search-field-select" {...props} />
     ),
-    // RAQB passes the same FieldProps shape (including setField) to both
-    // field and operator renderers, so the same select component works for
-    // both. They get distinct testids so a test can address either without
-    // falling back to RAQB's `.rule--field` / `.rule--operator` classes.
+    // RAQB passes the same FieldProps shape (including setField) to both field and operator renderers, so the same
+    // select component works for both.
     renderOperator: (props) => (
       <OMFieldSelect dataTestId="advanced-search-operator-select" {...props} />
     ),

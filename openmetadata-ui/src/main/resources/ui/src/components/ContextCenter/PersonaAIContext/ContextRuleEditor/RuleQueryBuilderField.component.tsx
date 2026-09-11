@@ -27,7 +27,7 @@ import { getRuleFilterTree } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import QueryBuilder from '../../../common/QueryBuilder/QueryBuilder';
-import { PERSONA_BUTTON_PRESET } from '../../../common/QueryBuilder/QueryBuilderButton/QueryBuilderButton.constants';
+import { PERSONA_BUTTON_PRESET } from '../../../common/QueryBuilder/QueryBuilderCanvas/QueryBuilderCanvas.constants';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 interface RuleQueryBuilderFieldProps {
@@ -50,10 +50,8 @@ export const RuleQueryBuilderField = ({
   const [enrichedFields, setEnrichedFields] = useState<
     Config['fields'] | undefined
   >();
-  // getAllCustomProperties returns data for ALL entity types regardless of
-  // which entityType is currently selected — fetch once on mount and cache it
-  // in state. The second effect rebuilds enriched fields whenever entityType
-  // changes without issuing a redundant network request.
+  // getAllCustomProperties returns data for ALL entity types regardless of which entityType is currently selected —
+  // fetch once on mount and cache it in state.
   const [customProps, setCustomProps] = useState<Awaited<
     ReturnType<typeof getAllCustomProperties>
   > | null>(null);
@@ -65,8 +63,8 @@ export const RuleQueryBuilderField = ({
   }, []);
 
   useEffect(() => {
-    // Skip until the custom-property fetch resolves; the effect re-runs
-    // automatically once customProps transitions from null to the map.
+    // Skip until the custom-property fetch resolves; the effect re-runs automatically once customProps transitions from
+    // null to the map.
     if (customProps === null) {
       return;
     }

@@ -37,11 +37,7 @@ const toSelectItems = (
   }));
 };
 
-/**
- * `tw:contents` keeps this wrapper out of layout entirely, so it is a test
- * handle and nothing else. Without it a value control can only be reached
- * through RAQB's internal `.rule--widget--*` classes.
- */
+// `tw:contents` keeps this wrapper out of layout entirely, so it is a test handle and nothing else.
 const VALUE_TEST_ID_WRAPPER = 'tw:contents';
 
 const OMSelectWidget: FC<SelectWidgetProps> = ({
@@ -55,9 +51,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   field,
 }) => {
   const staticItems = toSelectItems(listValues);
-  // Seed with the current value as a placeholder so the widget shows
-  // something while the async fetch is in-flight. The real items replace
-  // this when loadAsync completes.
+  // Seed with the current value as a placeholder so the widget shows something while the async fetch is in-flight.
   const [items, setItems] = useState<SelectItemType[]>(() => {
     if (staticItems.length > 0) {
       return staticItems;
@@ -77,8 +71,8 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
       if (!asyncFetch) {
         return;
       }
-      // Guard against out-of-order responses: only the latest request may
-      // set items, otherwise a slow earlier fetch overwrites newer results.
+      // Guard against out-of-order responses: only the latest request may set items, otherwise a slow earlier fetch
+      // overwrites newer results.
       const requestId = ++requestIdRef.current;
       const result = await asyncFetch(search);
       if (requestId === requestIdRef.current) {
@@ -113,10 +107,9 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
         className={VALUE_TEST_ID_WRAPPER}
         data-testid="advanced-search-value-select">
         <Select.ComboBox
-          // While the async fetch is in flight the typed text transiently
-          // filters the previous results to zero matches; without this flag
-          // React Aria closes the popup at that moment and it stays closed
-          // when the real results arrive.
+          // While the async fetch is in flight the typed text transiently filters the previous results to zero matches;
+          // without this flag React Aria closes the popup at that moment and it stays closed when the real results
+          // arrive.
           allowsEmptyCollection
           isDisabled={readonly}
           items={items}
@@ -128,11 +121,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           showSearchIcon={false}
           size="sm"
           onInputChange={(v) => {
-            // React Aria echoes the selected item's label back through
-            // `onInputChange` when the popup reopens. Refetching on that echo
-            // searches for the value already chosen, so the list collapses to
-            // the single option the user picked and they cannot switch to
-            // another one. Only a genuinely different search term refetches.
+            // React Aria echoes the selected item's label back through `onInputChange` when the popup reopens.
             if (v === selectedLabel) {
               return;
             }
@@ -140,14 +129,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           }}
           onOpenChange={(isOpen) => {
             if (isOpen && defaultOptionsRef.current.length > 0) {
-              // Restore cached defaults immediately so the popup is not empty
-              // while the user types. Do NOT call loadAsync('') here — doing so
-              // sets pendingResolve in the shared autocomplete closure. If the
-              // 300 ms debounce for the default fetch fires before the user's
-              // typed-search fill() completes, the default API response will
-              // steal resolve_searchData and call it with default buckets,
-              // clobbering the search result even though the search API fires
-              // and responds correctly afterward.
+              // Restore cached defaults immediately so the popup is not empty while the user types.
               setItems(defaultOptionsRef.current);
             }
           }}

@@ -34,16 +34,14 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
   const { t } = useTranslation();
   const { actions, config, preset, readonly, showConjunction } = context;
   const conjunctions = Object.keys(config.conjunctions ?? {});
-  // A fixed-conjunction caller still shows which conjunction applies; it just
-  // cannot change it. `buildQueryBuilderConfig` enforces that by handing over a
-  // single-key `conjunctions` map, so its size is the whole test.
+  // A fixed-conjunction caller still shows which conjunction applies; it just cannot change it.
   const canSetConjunction = !readonly && conjunctions.length > 1;
   const levelItems = useMemo(
     () => (groupField ? toFieldNodes(config.fields) : []),
     [config, groupField]
   );
-  // Nothing to choose between, or a caller that says its rules only ever
-  // combine one way: the helper text still says which way that is.
+  // Nothing to choose between, or a caller that says its rules only ever combine one way: the helper text still says
+  // which way that is.
   const hasConjunctionControl = showConjunction && conjunctions.length > 1;
 
   return (

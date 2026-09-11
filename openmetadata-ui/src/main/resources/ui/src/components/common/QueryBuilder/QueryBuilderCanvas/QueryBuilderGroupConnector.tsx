@@ -14,19 +14,10 @@ import { Divider, Select } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import type { QueryBuilderGroupConnectorProps } from './QueryBuilderCanvas.types';
 
-/**
- * The vertical run between two cards. `Divider` stretches to its flex parent
- * by default, so the height is set here and the stretch released.
- */
+// The vertical run between two cards.
 const LINE_CLASS = 'tw:ml-6 tw:h-8 tw:self-auto';
 
-/**
- * How two sibling cards combine.
- *
- * Deliberately a dropdown rather than the tab group a card uses for its own
- * rules: one control says how the conditions inside a card combine, this one
- * says how the cards combine, and the design keeps them visually distinct.
- */
+// How two sibling cards combine.
 const QueryBuilderGroupConnector: FC<QueryBuilderGroupConnectorProps> = ({
   conjunction,
   conjunctions,

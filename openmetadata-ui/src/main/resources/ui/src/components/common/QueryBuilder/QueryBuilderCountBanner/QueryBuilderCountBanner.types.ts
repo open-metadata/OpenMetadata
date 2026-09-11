@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 export interface QueryBuilderCountBannerProps {
-  /** Matched asset count. The banner renders nothing while this is unknown. */
+  // Matched asset count.
   count?: number | null;
-  /** Render a placeholder instead of the banner while the count is in flight. */
+  // Render a placeholder instead of the banner while the count is in flight.
   isLoading?: boolean;
-  /**
-   * Where the click-through goes. Without it the count is shown on its own
-   * rather than as a link that leads nowhere.
-   */
+  // Where the click-through goes.
   exploreUrl?: string;
-  /** i18n key for the link text, so each screen keeps its own wording. */
+  // i18n key for the link text, so each screen keeps its own wording.
   linkLabelKey?: string;
-  /** i18n key for the count sentence, so each screen keeps its own wording. */
+  // i18n key for the count sentence, so each screen keeps its own wording.
   titleKey?: string;
-  /** Anchor target for the link. */
+  // Anchor target for the link.
   target?: string;
   className?: string;
   'data-testid'?: string;

@@ -19,9 +19,8 @@ import type {
   JsonTree,
 } from '@react-awesome-query-builder/ui';
 import { Query, Utils as QbUtils } from '@react-awesome-query-builder/ui';
-// Both stylesheets target RAQB's own markup, which the canvas no longer
-// renders, so neither reaches this component's DOM. They are left in place for
-// the cleanup PR rather than removed here.
+// Both stylesheets target RAQB's own markup, which the canvas no longer renders, so neither reaches this component's
+// DOM.
 import '@react-awesome-query-builder/ui/css/styles.css';
 import { debounce, isEqual } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -47,40 +46,22 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import type { QueryBuilderProps } from './QueryBuilder.types';
 import {
-  COMPACT_BUTTON_PRESET,
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
-} from './QueryBuilderButton/QueryBuilderButton.constants';
-import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
+} from './QueryBuilderCanvas/QueryBuilderCanvas.constants';
+import type { QueryBuilderButtonPreset } from './QueryBuilderCanvas/QueryBuilderCanvas.types';
 import QueryBuilderCanvas from './QueryBuilderCanvas/QueryBuilderCanvas';
 import QueryBuilderCountBanner from './QueryBuilderCountBanner/QueryBuilderCountBanner';
 
 const COUNT_DEBOUNCE_MS = 300;
 
-/**
- * Nested groups only exist on Explore, which is also the only screen whose
- * addGroup/delGroup testids Playwright depends on. JSONLogic builders sit in
- * denser forms and label their add button differently.
- */
-function pickButtonPreset(
-  isNested: boolean,
-  isJsonLogic: boolean
-): QueryBuilderButtonPreset {
-  if (isNested) {
-    return EXPLORE_BUTTON_PRESET;
-  }
-
-  return isJsonLogic ? COMPACT_BUTTON_PRESET : CONDITION_BUTTON_PRESET;
+// Nested groups only exist on Explore, which is also the only screen whose addGroup/delGroup testids Playwright depends
+// on.
+function pickButtonPreset(isNested: boolean): QueryBuilderButtonPreset {
+  return isNested ? EXPLORE_BUTTON_PRESET : CONDITION_BUTTON_PRESET;
 }
 
-/**
- * The only component in the codebase that renders a RAQB `<Query>`.
- *
- * Everything specific to a caller — field definitions, storage format,
- * JSONLogic post-processing, Explore URL writing — stays outside. What lives
- * here is the builder itself plus the chrome that every caller had duplicated:
- * tree rehydration, count preview, and the emitted value.
- */
+// The only component in the codebase that renders a RAQB `<Query>`.
 const QueryBuilder: FC<QueryBuilderProps> = ({
   value,
   tree,
@@ -122,8 +103,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
         readonly,
         fields,
         configOverrides,
-        // The three jobs `isExplorePage` used to conflate, now derived from
-        // the mode the caller actually asked for.
+        // The three jobs `isExplorePage` used to conflate, now derived from the mode the caller actually asked for.
         showLabels: groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
         useFriendlyOperatorLabels:
           groupMode !== QUERY_BUILDER_GROUP_MODE.NESTED,
@@ -143,18 +123,14 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   const preset = useMemo(
     () =>
       buttonPreset ??
-      pickButtonPreset(
-        groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
-        isJsonLogic
-      ),
-    [buttonPreset, groupMode, isJsonLogic]
+      pickButtonPreset(groupMode === QUERY_BUILDER_GROUP_MODE.NESTED),
+    [buttonPreset, groupMode]
   );
 
   const configRef = useRef(config);
   configRef.current = config;
 
-  // The tree we last handed to `onChange`. Without it the `tree` effect below
-  // would reload the builder from our own emission and drop the user's cursor.
+  // The tree we last handed to `onChange`.
   const lastEmittedTreeRef = useRef<JsonTree>();
   const actionsRef = useRef<Actions>();
 
@@ -239,14 +215,13 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
     let nextExploreUrl: string | undefined;
 
     if (!isJsonLogic) {
-      // Same tree and config the emitted filter is built from, so a caller can
-      // block a save that would otherwise drop an unfinished condition and
-      // silently widen the filter.
+      // Same tree and config the emitted filter is built from, so a caller can block a save that would otherwise drop
+      // an unfinished condition and silently widen the filter.
       onValidityChange?.(isQueryTreeComplete(nextTree, nextConfig));
 
       if (queryFilter) {
-        // One scoping pass feeds both: addEntityTypeFilter mutates in place,
-        // so scoping twice would double the entity-type clause.
+        // One scoping pass feeds both: addEntityTypeFilter mutates in place, so scoping twice would double the entity-
+        // type clause.
         const scopedFilter = getScopedQueryFilter(queryFilter, entityType);
         nextExploreUrl = getQueryBuilderExploreUrl(
           scopedFilter,
@@ -300,8 +275,8 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   );
 
   return (
-    // No chrome here on purpose: the card belongs to each group, and anything
-    // around the builder belongs to the screen embedding it.
+    // No chrome here on purpose: the card belongs to each group, and anything around the builder belongs to the screen
+    // embedding it.
     <div
       className="tw:flex tw:flex-col tw:gap-3"
       data-testid="query-builder-form-field">

@@ -25,16 +25,7 @@ import {
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';
 import QueryBuilderGroupConnector from './QueryBuilderGroupConnector';
 
-/**
- * The builder's surface, in place of RAQB's `<Builder>`.
- *
- * RAQB keeps every job it is good at — it owns the tree, validates it, and
- * applies each mutation through `actions`. What it no longer does is render:
- * its markup carries a stylesheet that cannot be restyled from outside (the
- * group card, the row layout and the theme all arrive under one `.query-builder`
- * scope), and it exposes no class hook or `renderGroup` to reach them. So the
- * tree is walked here instead, and drawn with core components only.
- */
+// The builder's surface, in place of RAQB's `<Builder>`.
 const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
   tree,
   actions,
@@ -81,16 +72,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
     return null;
   }
 
-  // RAQB seeds a wrapper group around the first real one, and every group the
-  // user adds lands beside it. Those are peers, so they are drawn as a stack
-  // of cards joined by the conjunction that combines them — not as cards
-  // inside cards, which is what nesting them would look like.
-  //
-  // Only a `group` counts. A `rule_group` is the wrapper RAQB puts around a
-  // field that owns subfields — structural, not a bracket the user drew. Given
-  // a card of its own it took the rows' Add button with it, so a second
-  // condition landed inside that one field and rewrote the first instead of
-  // joining it.
+  // RAQB seeds a wrapper group around the first real one, and every group the user adds lands beside it.
   const rootPath = [String(root.id)];
   const rootChildren = root.children1 ?? [];
   const asSiblings =

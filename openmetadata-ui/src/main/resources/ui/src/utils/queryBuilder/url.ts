@@ -17,13 +17,10 @@ import type { QueryFilterInterface } from '../../interface/queryFilter.interface
 import { getJsonTreeFromQueryFilter } from '../QueryBuilderPureUtils';
 import { getExplorePath } from '../RouterUtils';
 
-/** RAQB's group key for custom properties. */
+// RAQB's group key for custom properties.
 const EXTENSION_FIELD = 'extension';
 
-/**
- * Extra query-string parameters describing a builder filter, for an Explore
- * deep link.
- */
+// Extra query-string parameters describing a builder filter, for an Explore deep link.
 export const buildExploreUrlParams = (
   tree: unknown,
   qFilter?: QueryFilterInterface
@@ -41,20 +38,9 @@ export const buildExploreUrlParams = (
   return params;
 };
 
-/**
- * Rewrites custom-property field keys into the shape Explore understands.
- *
- * A builder pinned to one entity type keys them without that segment
- * (`extension.testCp.keyword`); Explore, which offers every entity type, nests
- * them one level deeper (`extension.table.testCp.keyword`). Explore validates
- * a deep-linked tree against its own config and silently resets when a field is
- * unknown — so an un-rewritten link landed on the unfiltered estate with no
- * advanced-search chip.
- */
-/**
- * RAQB's own `JsonItem` is a union whose members disagree about `properties`
- * and `children1`, so the walk uses a structural shape instead.
- */
+// Rewrites custom-property field keys into the shape Explore understands.
+// RAQB's own `JsonItem` is a union whose members disagree about `properties` and `children1`, so the walk uses a
+// structural shape instead.
 export type TreeNode = {
   properties?: { field?: string } & Record<string, unknown>;
   children1?: Record<string, TreeNode> | TreeNode[];
@@ -116,8 +102,8 @@ export const getQueryBuilderExploreUrl = (
     builderTree ?? QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilter)),
     config
   ).fixedTree;
-  // Explore reads the tree, not the Elasticsearch filter, so the field keys
-  // have to be ones Explore's own config recognises.
+  // Explore reads the tree, not the Elasticsearch filter, so the field keys have to be ones Explore's own config
+  // recognises.
   const entityType = (config.settings as { omEntityType?: string })
     .omEntityType;
   const jsonTree = QbUtils.getTree(tree) as unknown as TreeNode;

@@ -186,11 +186,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
           return { ...base, [key]: value };
         }
 
-        // Each filter is bound to the asset type it was created for. Dropping
-        // that type from `dataAssets` used to leave the filter behind: it could
-        // never match, and its builder kept showing the removed type's fields —
-        // which is why switching ApiCollection -> Table still offered no custom
-        // properties until the drawer was closed and reopened.
+        // Each filter is bound to the asset type it was created for.
         const assets = (value as string[]) ?? [];
 
         return {

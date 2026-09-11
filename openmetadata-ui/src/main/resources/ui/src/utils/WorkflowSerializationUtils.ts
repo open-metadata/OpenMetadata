@@ -13,14 +13,7 @@
 
 import { DataAssetFilter } from '../interface/workflow-builder-components.interface';
 
-/**
- * Drops filters whose asset type is no longer selected.
- *
- * A filter is bound to the asset type it was created for, so one left behind
- * after its type is deselected can never match — and until the drawer is
- * reopened its builder keeps showing the removed type's fields, which is why
- * switching ApiCollection -> Table still offered no custom properties.
- */
+// Drops filters whose asset type is no longer selected.
 export const reconcileDataAssetFilters = (
   filters: DataAssetFilter[] | undefined,
   selectedDataAssets: string[] | undefined

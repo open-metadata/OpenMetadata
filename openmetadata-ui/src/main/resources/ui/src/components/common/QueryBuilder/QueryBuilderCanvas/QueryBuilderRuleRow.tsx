@@ -43,9 +43,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
   const field = rule.properties?.field ?? null;
   const operator = rule.properties?.operator ?? null;
 
-  // One control per level the user has drilled through, each choosing within
-  // the level above it. Only the first keeps the renderer's own testid, so
-  // every rule — drilled or not — is still addressed the same way.
+  // One control per level the user has drilled through, each choosing within the level above it.
   const fieldControls = useMemo(
     () =>
       cells.map((cell, index) => ({
@@ -73,9 +71,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
     );
   }, [config, field]);
 
-  // Delegate the value cell to the widget the config already names for this
-  // field/operator pair. Re-implementing them would drop the behaviour those
-  // widgets carry: async option fetching, the date round-trip, and the rest.
+  // Delegate the value cell to the widget the config already names for this field/operator pair.
   const valueCells = useMemo(() => {
     if (!field || !operator) {
       return [];
@@ -103,10 +99,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
     }
 
     const fieldConfig = configUtils.getFieldConfig(config, field);
-    // What kind of value RAQB is storing. A rule being built for the first
-    // time records none, and calling everything `text` makes a date or a
-    // number serialise as a string — the filter still saves, it just no
-    // longer means what the user picked.
+    // What kind of value RAQB is storing.
     const valueType =
       widgetDef?.type ?? (fieldConfig?.type as string | undefined) ?? 'text';
 
@@ -115,9 +108,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       node: factory({
         ...(fieldConfig?.fieldSettings ?? {}),
         config,
-        // Which value slot this widget owns. Widgets name themselves with it
-        // (`query-date-value-0`), so a widget without it cannot be addressed
-        // — and a two-valued operator renders two identical ones.
+        // Which value slot this widget owns.
         delta,
         field,
         operator,
@@ -202,8 +193,8 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
               </Select>
             ) : (
               valueCells.map((cell) => (
-                /* A two-valued operator keeps both slots readable: they share
-                   the column when it is wide enough and wrap when it is not. */
+                // A two-valued operator keeps both slots readable: they share the column when it is wide enough and
+                // wrap when it is not.
                 <div
                   className={classNames(
                     'tw:flex-1',
@@ -219,8 +210,8 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       </div>
 
       {canRemoveRule && !readonly && (
-        /* The button removes the whole rule, so it stays on the row's first
-           line even when the row wraps; the spacer stands in for the label. */
+        // The button removes the whole rule, so it stays on the row's first line even when the row wraps; the spacer
+        // stands in for the label.
         <div className="tw:flex tw:flex-col tw:gap-1.5">
           <span aria-hidden className="tw:invisible tw:text-sm">
             &nbsp;

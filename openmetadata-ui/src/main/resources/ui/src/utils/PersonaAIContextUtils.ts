@@ -133,10 +133,7 @@ export const getRuleExplorePath = (
     ? searchClassBase.getTabsInfo()[searchIndex]?.path
     : undefined;
 
-  // Explore validates the deep-linked tree against its own config and silently
-  // resets when a field is unknown. This editor is pinned to one entity type,
-  // so its custom-property keys omit the entity segment that Explore expects —
-  // without the rewrite the link lands on the unfiltered estate.
+  // Explore validates the deep-linked tree against its own config and silently resets when a field is unknown.
   const exploreTree = tree
     ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
     : tree;
@@ -239,25 +236,13 @@ export const getRuleConditionParts = (
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
 
-/**
- * The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch. The flag alone is not
- * enough: the backend ignores it on knowledge entity types, because a knowledge rule exists to be in
- * context and scoping it would drop its content from the document. Reading `rule.filteredInSearch`
- * directly anywhere in the UI will claim a rule scopes search when the server preloads it — which is
- * reachable, since the API accepts an explicit `true` on a knowledge rule and rules created before
- * the server-side guard were stamped regardless of type.
- */
+// The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch.
 export const isSearchScopedRule = (rule: ContextRule): boolean =>
   Boolean(rule.filteredInSearch) && !isKnowledgeContextRule(rule);
 
-/**
- * Mirrors both of searchScope()'s gates, in the order the backend applies them: a definition that is
- * switched off serves an empty scope, so none of its rules narrow search however they are flagged,
- * and within an enabled definition a disabled rule is dropped too. Takes the definition rather than
- * its rules so that the top-level gate cannot be forgotten at a call site — counting rules alone
- * tells the admin more of their search is narrowed than actually is. Deliberately not folded into
- * isSearchScopedRule — a disabled rule still *is* in scoping mode, which is what the editor displays.
- */
+// Mirrors both of searchScope()'s gates, in the order the backend applies them: a definition that is switched off
+// serves an empty scope, so none of its rules narrow search however they are flagged, and within an enabled definition
+// a disabled rule is dropped too.
 export const getScopedRuleCount = (
   definition?: PersonaContextDefinition
 ): number => {
@@ -477,9 +462,8 @@ const describeVersionChanges = (
     return changes;
   }
 
-  // The version bumped but the AI context is byte-equal to the previous one —
-  // it came from an unrelated persona edit (name, users, default, …). Label it
-  // as such instead of implying the AI context changed.
+  // The version bumped but the AI context is byte-equal to the previous one — it came from an unrelated persona edit
+  // (name, users, default, …).
   return isEqual(currentComparable, previousComparable)
     ? [{ key: 'message.persona-context-history-metadata-only' }]
     : [{ key: 'message.persona-context-history-updated' }];

@@ -13,20 +13,8 @@
 
 export const DEFAULT_QUERY_BUILDER_PORTAL_ID = 'query-builder-portal';
 
-/**
- * Returns (creating if needed) a dedicated top-layer portal node so popups
- * emitted from inside the query builder render above a react-aria overlay.
- *
- * `openmetadata-ui-core-components` overlays manage their own stacking, but a
- * popup whose container points at an external node does not get that automatic
- * treatment — the container's z-index becomes the popup's stacking floor.
- * 10001 clears the react-aria overlay ceiling of ~10000, and
- * `data-react-aria-top-layer` opts the node into the same stacking model so
- * focus and dismiss interactions keep working.
- *
- * Callers pass their own `containerId` when they need an independently
- * positioned node; the default is shared and sufficient for a single builder.
- */
+// Returns (creating if needed) a dedicated top-layer portal node so popups emitted from inside the query builder render
+// above a react-aria overlay.
 export const getQueryBuilderPortalContainer = (
   containerId: string = DEFAULT_QUERY_BUILDER_PORTAL_ID
 ): HTMLElement => {

@@ -222,8 +222,8 @@ const QueryBuilderWidgetV1: FC<{
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
-      // Same tree and config the emitted filter is built from, so the caller can block a save that
-      // would otherwise drop an unfinished condition and silently widen the filter.
+      // Same tree and config the emitted filter is built from, so the caller can block a save that would otherwise drop
+      // an unfinished condition and silently widen the filter.
       props.onValidityChange?.(!hasUnfinishedRule(nTree, config));
       const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {

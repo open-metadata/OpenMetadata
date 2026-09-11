@@ -401,7 +401,7 @@ const CUSTOM_PROPERTIES_PATH = 'customPropertiesTyped';
 const CUSTOM_PROPERTY_NAME_KEY = `${CUSTOM_PROPERTIES_PATH}.name`;
 const CUSTOM_PROPERTY_VALUE_PREFIX = `${CUSTOM_PROPERTIES_PATH}.`;
 
-/** How the value clause states its condition. */
+// How the value clause states its condition.
 type CustomPropertyShape =
   | 'exists'
   | 'term'
@@ -411,10 +411,10 @@ type CustomPropertyShape =
   | 'range';
 
 interface CustomPropertyClause {
-  /** The property as written into `customPropertiesTyped.name`. */
+  // The property as written into `customPropertiesTyped.name`.
   name: string;
   shape: CustomPropertyShape;
-  /** The typed value field read: `stringValue`, `longValue`, `start`, … */
+  // The typed value field read: `stringValue`, `longValue`, `start`, …
   valueField?: string;
   value?: unknown;
   range?: Record<string, unknown>;
@@ -444,7 +444,7 @@ type ParsedValueClause = Pick<
   'shape' | 'valueField' | 'value' | 'range'
 >;
 
-/** Each shape states its value differently, so the reader rides on the key. */
+// Each shape states its value differently, so the reader rides on the key.
 const VALUE_CLAUSE_READERS: Array<
   [
     CustomPropertyShape,
@@ -472,7 +472,7 @@ const readValueClause = (
   return undefined;
 };
 
-/** Reads one `nested` custom-property query, or nothing if it is not one. */
+// Reads one `nested` custom-property query, or nothing if it is not one.
 const readNestedCustomProperty = (
   clause: UnknownRecord | undefined
 ): Omit<CustomPropertyClause, 'negated'> | undefined => {
@@ -512,7 +512,7 @@ const readNestedCustomProperty = (
   return parsed ? { name, ...parsed } : { name, shape: 'exists' };
 };
 
-/** The clause a `bool.must` envelope wraps, minus the `entityType` scope. */
+// The clause a `bool.must` envelope wraps, minus the `entityType` scope.
 const unwrapCustomPropertyEnvelope = (
   clause: UnknownRecord
 ): UnknownRecord | undefined => {
@@ -535,7 +535,7 @@ const unwrapCustomPropertyEnvelope = (
     : undefined;
 };
 
-/** A range fans out over the typed value fields; any branch describes it. */
+// A range fans out over the typed value fields; any branch describes it.
 const readCustomPropertyClause = (
   clause: UnknownRecord | undefined,
   negated = false
@@ -552,8 +552,8 @@ const readCustomPropertyClause = (
     return undefined;
   }
 
-  // How deeply the group formatter wraps the clause varies with the rule, so
-  // each `bool` layer is followed rather than matched at a fixed depth.
+  // How deeply the group formatter wraps the clause varies with the rule, so each `bool` layer is followed rather than
+  // matched at a fixed depth.
   const nested = [
     ...asClauseArray(unwrapCustomPropertyEnvelope(clause as UnknownRecord)),
     ...asClauseArray(bool.should),
@@ -582,11 +582,7 @@ const readCustomPropertyClause = (
   return undefined;
 };
 
-/**
- * The config key for a property, below `extension`. The query carries the base
- * name; the key extends it with the suffix its type needs (`.keyword`,
- * `.displayName.keyword`, `.start`), so it is matched on that prefix.
- */
+// The config key for a property, below `extension`.
 const findExtensionField = (
   fields: Fields | undefined,
   name: string,
@@ -625,16 +621,15 @@ const findExtensionField = (
     ...(valueField ? [`${name}.${valueField}`] : []),
   ];
 
-  // `is_null` writes no value field, so a property declaring two keys (a time
-  // interval's start and end) cannot be told apart. Falling back to the order
-  // the config declares them in at least picks the same one every time.
+  // `is_null` writes no value field, so a property declaring two keys (a time interval's start and end) cannot be told
+  // apart.
   return (
     candidates.find((candidate) => preferred.includes(candidate.key)) ??
     candidates[0]
   );
 };
 
-/** Equality and containment name themselves per field type, not per query. */
+// Equality and containment name themselves per field type, not per query.
 const CUSTOM_PROPERTY_EQUALITY_OPERATORS: Record<string, [string, string]> = {
   select: ['select_equals', 'select_not_equals'],
   multiselect: ['multiselect_equals', 'multiselect_not_equals'],
@@ -683,13 +678,13 @@ const readRange = (
 const stripWildcards = (value: unknown): string =>
   String(value ?? '').replace(/^\*|\*$/g, '');
 
-/** A multiselect holds its choices in a single value slot, so it nests. */
+// A multiselect holds its choices in a single value slot, so it nests.
 const toRuleValue = (
   fieldType: string | undefined,
   value: unknown
 ): unknown[] => (fieldType === 'multiselect' ? [[value]] : [value]);
 
-/** The rule a parsed clause describes, or nothing if it describes none. */
+// The rule a parsed clause describes, or nothing if it describes none.
 const toCustomPropertyRule = (
   parsed: CustomPropertyClause,
   fieldType: string | undefined
@@ -731,11 +726,8 @@ const toCustomPropertyRule = (
   };
 };
 
-/**
- * Nests a rule in one `rule_group` per level of its field, the way RAQB does —
- * the canvas draws a Field control per wrapper, so a flat rule left the first
- * control blank.
- */
+// Nests a rule in one `rule_group` per level of its field, the way RAQB does — the canvas draws a Field control per
+// wrapper, so a flat rule left the first control blank.
 const wrapInDrillGroups = (
   parentPath: Array<string>,
   levels: string[],
@@ -789,8 +781,7 @@ const matchCustomProperty: QueryFilterBranchHandler = (
   }
 
   const extension = EntityReferenceFields.EXTENSION as string;
-  // Explore's per-entity-type grouping adds a level between `extension` and
-  // the property; a pinned builder has none.
+  // Explore's per-entity-type grouping adds a level between `extension` and the property; a pinned builder has none.
   const levels = found.scope
     ? [extension, `${extension}.${found.scope}`]
     : [extension];
@@ -818,12 +809,8 @@ const matchCustomProperty: QueryFilterBranchHandler = (
   } as OldJsonItem);
 };
 
-// Order matters: mirrors the original if/else-if cascade — first matching
-// handler wins, exactly like the original exclusive branches.
-//
-// `matchCustomProperty` leads: a custom-property clause is a `bool.must` whose
-// companion `entityType` term `matchTerm` would otherwise claim, and a `nested`
-// body every handler below ignores.
+// Order matters: mirrors the original if/else-if cascade — first matching handler wins, exactly like the original
+// exclusive branches.
 const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchCustomProperty,
   matchDeletedTerm,
@@ -1290,9 +1277,6 @@ type JsonLogicHandler = (
 ) => ElasticsearchQuery | undefined;
 
 // Order matters: mirrors the original if-cascade — first matching key wins.
-// A handler returning `undefined` (only possible for `some`) falls through to
-// the next entry, exactly like the original code continuing past a failed
-// inner check without a `return`.
 const JSON_LOGIC_HANDLERS: Array<
   [(logic: JsonLogic) => boolean, JsonLogicHandler]
 > = [
@@ -1449,11 +1433,7 @@ export const migrateJsonLogic = (
     );
   };
 
-  /**
-   * An old table-property rule, written from the flat field it used to use.
-   * `rows` is an array, so a dotted var resolves to nothing and the rule
-   * evaluated false for every row; `some` asks the same question correctly.
-   */
+  // An old table-property rule, written from the flat field it used to use.
   const migrateTableRowsField = (node: JsonLogic): JsonLogic | undefined => {
     if (Array.isArray(node)) {
       return undefined;

@@ -23,7 +23,7 @@ import QueryBuilder from '../QueryBuilder';
 import {
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
-} from '../QueryBuilderButton/QueryBuilderButton.constants';
+} from './QueryBuilderCanvas.constants';
 import QueryBuilderCanvas from './QueryBuilderCanvas';
 import QueryBuilderControl from './QueryBuilderControl';
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';

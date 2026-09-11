@@ -81,9 +81,8 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       <QueryBuilder
         conjunctionMode="editable"
         entityType={EntityType.ALL}
-        // The provider owns the enriched fields (custom properties, field
-        // overrides) and, on submit, the query filter and Explore URL. The
-        // builder only reports changes back into it.
+        // The provider owns the enriched fields (custom properties, field overrides) and, on submit, the query filter
+        // and Explore URL.
         fields={config.fields}
         groupMode="nested"
         showCountPreview={false}

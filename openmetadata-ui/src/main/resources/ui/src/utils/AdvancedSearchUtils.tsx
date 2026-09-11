@@ -225,14 +225,8 @@ export const getTierOptions = async (): Promise<ListValues> => {
   }
 };
 
-/**
- * Legacy entry point: translates the single `isExplorePage` boolean into the
- * explicit mode inputs the class bases now take.
- *
- * New code should call `buildQueryBuilderConfig` instead — it names each of
- * the four jobs this boolean used to conflate, and it is the only way to reach
- * `groupMode` / `conjunctionMode`.
- */
+// Legacy entry point: translates the single `isExplorePage` boolean into the explicit mode inputs the class bases now
+// take.
 export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
@@ -261,13 +255,9 @@ export const getTreeConfig = ({
   });
 };
 
-/**
- * Process a custom property field and add it to the subfields
- * @param field - The custom property field to process
- * @param resEntityType - The entity type containing the field
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
+// Process a custom property field and add it to the subfields @param field - The custom property field to process
+// @param resEntityType - The entity type containing the field @param subfields - The subfields record to update @param
+// entityType - Optional specific entity type to filter for
 export const processCustomPropertyField = (
   field: CustomPropertySummary,
   resEntityType: string,
@@ -317,13 +307,9 @@ export const processCustomPropertyField = (
   });
 };
 
-/**
- * Process all custom property fields for a specific entity type
- * @param resEntityType - The entity type to process
- * @param fields - Array of custom property fields
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
+// Process all custom property fields for a specific entity type @param resEntityType - The entity type to process
+// @param fields - Array of custom property fields @param subfields - The subfields record to update @param entityType -
+// Optional specific entity type to filter for
 export const processEntityTypeFields = (
   resEntityType: string,
   fields: CustomPropertySummary[],

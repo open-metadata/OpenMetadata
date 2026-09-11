@@ -19,14 +19,7 @@ import {
   getEntityTypeAggregationFilter,
 } from '../QueryBuilderPureUtils';
 
-/**
- * Narrows a builder filter to the caller's entity type.
- *
- * Call this exactly once per emitted filter: `addEntityTypeFilter` pushes into
- * `query.bool.must` in place, so a second call on the same object appends the
- * entity-type clause twice. The Explore URL and the count request therefore
- * share one scoped filter rather than each deriving their own.
- */
+// Narrows a builder filter to the caller's entity type.
 export const getScopedQueryFilter = (
   queryFilter: QueryFilterInterface,
   entityType: EntityType
@@ -36,16 +29,7 @@ export const getScopedQueryFilter = (
     entityType
   );
 
-/**
- * How many entities the current filter matches.
- *
- * The same fetch previously lived in both `QueryBuilderWidgetV1` and the RJSF
- * widget, with two different failure behaviours: V1 reset the count to 0, the
- * widget left the previous count on screen. Reporting 0 is the safer of the
- * two — a stale count reads as a successful narrowing that never happened.
- *
- * Debouncing belongs to the caller: this is a plain request.
- */
+// How many entities the current filter matches.
 export const fetchQueryBuilderCount = async (
   scopedFilter: QueryFilterInterface
 ): Promise<number> => {

@@ -32,51 +32,31 @@ import {
   QUERY_BUILDER_GROUP_MODE,
 } from './types';
 
-/**
- * Button types that create or destroy a user-authored bracket. These are the
- * only affordances flat mode withholds — `delRule` and `delRuleGroup` are
- * untouched, because a `rule_group` is structural rather than user-authored.
- */
+// Button types that create or destroy a user-authored bracket.
 const GROUP_BUTTON_TYPES = new Set(['addGroup', 'delGroup']);
 
-/**
- * A caller's escape hatch. `settings` is separately partial because RAQB's own
- * `Settings` type has required members, so a plain `Partial<Config>` would
- * force a caller overriding one flag to supply the whole block.
- */
+// A caller's escape hatch.
 export interface QueryBuilderConfigOverrides
   extends Partial<Omit<Config, 'settings'>> {
   settings?: Partial<Config['settings']>;
 }
 
-export interface BuildQueryBuilderConfigOptions
-  extends QueryBuilderConfigModes {
+interface BuildQueryBuilderConfigOptions extends QueryBuilderConfigModes {
   outputType: SearchOutputType;
   searchIndex: SearchIndex | SearchIndex[];
-  /**
-   * The entity type the builder is pinned to, if any.
-   *
-   * Custom-property field keys omit the entity-type segment when a builder is
-   * pinned to one type, so the Elasticsearch formatter cannot recover it from
-   * the field name. It reads this instead, to scope the nested
-   * `customPropertiesTyped` query to the selected type.
-   */
+  // The entity type the builder is pinned to, if any.
   entityType?: string;
-  /** Defaults to `flat`: a caller that wants brackets has to ask for them. */
+  // Defaults to `flat`: a caller that wants brackets has to ask for them.
   groupMode?: GroupMode;
   conjunctionMode?: ConjunctionMode;
   readonly?: boolean;
-  /** Caller-controlled allow-list; falls back to the class base's fields. */
+  // Caller-controlled allow-list; falls back to the class base's fields.
   fields?: Config['fields'];
-  /** Merged last, so a caller can always win. */
+  // Merged last, so a caller can always win.
   configOverrides?: QueryBuilderConfigOverrides;
 }
 
-/**
- * Wraps a button renderer so flat mode cannot produce a bracket, whichever
- * renderer the caller supplied. Doing it here rather than in each renderer is
- * what makes `groupMode` a guarantee instead of a convention.
- */
+// Wraps a button renderer so flat mode cannot produce a bracket, whichever renderer the caller supplied.
 const withGroupModeButtons = (
   renderButton: RenderSettings['renderButton'],
   groupMode: GroupMode
@@ -91,14 +71,7 @@ const withGroupModeButtons = (
       : renderButton?.(props, ctx)) as RenderSettings['renderButton'];
 };
 
-/**
- * Restricts the AND/OR control to a single conjunction when the caller has
- * fixed it.
- *
- * RAQB hides the control on its own once only one conjunction is available —
- * `Group.showConjs()` requires `conjunctionCount > 1` — so narrowing the map
- * both fixes the value and removes the affordance, with no separate flag.
- */
+// Restricts the AND/OR control to a single conjunction when the caller has fixed it.
 const applyConjunctionMode = (
   conjunctions: Conjunctions | undefined,
   mode: ConjunctionMode
@@ -114,13 +87,7 @@ const applyConjunctionMode = (
     : conjunctions;
 };
 
-/**
- * The one place a query-builder `Config` is assembled.
- *
- * Order is deliberate: the class base (which is itself `OMConfig` plus
- * entity fields) provides the substrate, mode flags are layered on top, and
- * `configOverrides` lands last so an escape hatch always wins.
- */
+// The one place a query-builder `Config` is assembled.
 export const buildQueryBuilderConfig = ({
   outputType,
   searchIndex,
@@ -147,9 +114,8 @@ export const buildQueryBuilderConfig = ({
       : jsonLogicSearchClassBase.getQbConfigs(indexes, modes)
   ) as Config;
 
-  // A class base can hand back a partial config — tests stub `getQbConfigs`,
-  // and a Collate override may not populate every slot — so nothing here may
-  // assume a fully-formed base.
+  // A class base can hand back a partial config — tests stub `getQbConfigs`, and a Collate override may not populate
+  // every slot — so nothing here may assume a fully-formed base.
   const baseSettings = base?.settings ?? ({} as Config['settings']);
 
   return {
@@ -163,10 +129,7 @@ export const buildQueryBuilderConfig = ({
     settings: {
       ...baseSettings,
       ...PERSISTENT_EMPTY_TREE_SETTINGS,
-      // Read by the Elasticsearch formatter for custom-property fields whose
-      // key carries no entity-type segment. RAQB's `Settings` type is closed,
-      // so this rides along as an extra key — the library ignores what it does
-      // not know, and the formatter reads it back off the same object.
+      // Read by the Elasticsearch formatter for custom-property fields whose key carries no entity-type segment.
       ...({
         omEntityType: entityType === EntityType.ALL ? undefined : entityType,
       } as Record<string, unknown>),

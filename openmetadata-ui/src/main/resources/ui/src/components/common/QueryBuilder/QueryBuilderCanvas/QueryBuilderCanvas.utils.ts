@@ -21,24 +21,22 @@ import type {
   QueryBuilderRuleRowModel,
 } from './QueryBuilderCanvas.types';
 
-/** A bracket the user drew: it owns a conjunction and holds rules. */
+// A bracket the user drew: it owns a conjunction and holds rules.
 export const QUERY_BUILDER_GROUP_TYPE = 'group';
 
-/** RAQB's own node types; a group holds children, a rule is a leaf. */
+// RAQB's own node types; a group holds children, a rule is a leaf.
 const QUERY_BUILDER_GROUP_TYPES = [QUERY_BUILDER_GROUP_TYPE, 'rule_group'];
 
-/** The shape RAQB hands its own `renderField`, and so what OMFieldSelect reads. */
-export interface QueryBuilderFieldNode {
+// The shape RAQB hands its own `renderField`, and so what OMFieldSelect reads.
+interface QueryBuilderFieldNode {
   key: string;
   path: string;
   label: string;
   items?: QueryBuilderFieldNode[];
 }
 
-/**
- * `ConfigUtils` ships these helpers but does not declare them, so the shape is
- * asserted once here rather than cast at every call.
- */
+// `ConfigUtils` ships these helpers but does not declare them, so the shape is asserted once here rather than cast at
+// every call.
 export const configUtils = QbUtils.ConfigUtils as unknown as {
   getOperatorsForField: (config: unknown, field: string) => string[] | null;
   getWidgetForFieldOp: (
@@ -54,14 +52,14 @@ export const configUtils = QbUtils.ConfigUtils as unknown as {
     type?: string;
     fieldSettings?: Record<string, unknown>;
     subfields?: Record<string, unknown>;
-    /** Subfield RAQB selects on the user's behalf when this field is picked. */
+    // Subfield RAQB selects on the user's behalf when this field is picked.
     defaultField?: string;
   } | null;
 };
 
 type RawFields = Record<string, Record<string, unknown>> | undefined;
 
-/** `config.fields` as a flat pick list; `OMFieldSelect` renders only leaves. */
+// `config.fields` as a flat pick list; `OMFieldSelect` renders only leaves.
 export const toFieldNodes = (
   fields: unknown,
   prefix = ''
@@ -80,7 +78,7 @@ export const toFieldNodes = (
     }
   );
 
-/** The `!struct` a dotted field sits under, with the subfields below it. */
+// The `!struct` a dotted field sits under, with the subfields below it.
 export const getStructLevel = (
   config: unknown,
   field: string | undefined
@@ -99,7 +97,7 @@ export const getStructLevel = (
   return undefined;
 };
 
-/** A struct is a level, not a field, so a choice of one lands inside it. */
+// A struct is a level, not a field, so a choice of one lands inside it.
 export const resolveSelectedField = (config: unknown, key: string): string => {
   const fieldConfig = configUtils.getFieldConfig(config, key);
 
@@ -130,20 +128,19 @@ export const getGroupDrillFields = (
   return fieldConfig?.defaultField ? undefined : subfields;
 };
 
-/** The field a node filters on, if it has one. */
+// The field a node filters on, if it has one.
 const fieldOf = (node: QueryBuilderNode): string | undefined =>
   node.properties?.field ?? undefined;
 
-/** Whether a node is a level rather than a leaf rule. */
+// Whether a node is a level rather than a leaf rule.
 const isGroupNode = (node: QueryBuilderNode): boolean =>
   QUERY_BUILDER_GROUP_TYPES.includes(node.type ?? '');
 
-/** A level RAQB wrapped around one rule while the user drills into a field. */
+// A level RAQB wrapped around one rule while the user drills into a field.
 const isDrillWrapper = (node: QueryBuilderNode): boolean =>
   node.type === 'rule_group' && node.children1?.length === 1;
 
-// RAQB wraps a `!group` in a node but not a `!struct`, so a struct's level
-// needs a cell of its own. Only the outermost cell can carry one.
+// RAQB wraps a `!group` in a node but not a `!struct`, so a struct's level needs a cell of its own.
 const withStructLevel = (
   config: unknown,
   cell: QueryBuilderFieldCell,
@@ -164,7 +161,7 @@ const withStructLevel = (
   ];
 };
 
-/** The controls the leaf rule itself contributes. */
+// The controls the leaf rule itself contributes.
 const getLeafCells = ({
   available,
   config,
@@ -196,11 +193,11 @@ interface DrillWalk {
   path: string[];
   available?: Record<string, unknown>;
   prefix: string;
-  /** Whether the next level is the user's to pick, or one RAQB fills in. */
+  // Whether the next level is the user's to pick, or one RAQB fills in.
   isChoice: boolean;
 }
 
-/** Walks RAQB's drill wrappers, collecting a cell per level the user chose. */
+// Walks RAQB's drill wrappers, collecting a cell per level the user chose.
 const consumeDrillLevels = (
   config: unknown,
   node: QueryBuilderNode,
@@ -247,16 +244,7 @@ const consumeDrillLevels = (
   return walk;
 };
 
-/**
- * Flattens a chain of drill levels into the single row it describes.
- *
- * Choosing a field that owns subfields makes RAQB wrap the rule in a
- * `rule_group` per level. The user is still naming one field, so the levels
- * belong side by side in one row — drawing a card per level reads as a group
- * appearing by itself, and folding them into one control hides the choice
- * already made. Returns nothing for a group holding several rules: that is a
- * card.
- */
+// Flattens a chain of drill levels into the single row it describes.
 export const getRuleRowModel = (
   config: unknown,
   node: QueryBuilderNode,
@@ -291,7 +279,7 @@ export const getRuleRowModel = (
   return { cells: walk.cells, path: walk.path, rule: walk.current };
 };
 
-/** Rules at any depth. Root children would count a seeded wrapper as one. */
+// Rules at any depth.
 export const countRules = (node?: QueryBuilderNode): number => {
   if (!node) {
     return 0;
@@ -302,11 +290,7 @@ export const countRules = (node?: QueryBuilderNode): number => {
     : 1;
 };
 
-/**
- * Nested cards alternate between the two surfaces. Painting a card the colour
- * of the card it sits in would flatten the nesting the user needs to read, so
- * the screen picks the outermost ground and each level inverts it.
- */
+// Nested cards alternate between the two surfaces.
 export const getSurfaceForDepth = (
   base: QueryBuilderSurface,
   depth: number
@@ -320,14 +304,7 @@ export const getSurfaceForDepth = (
     : QUERY_BUILDER_SURFACE.PLAIN;
 };
 
-/**
- * Every rule's position in render order, keyed by id.
- *
- * A spec that wants "the second condition" would otherwise reach for
- * `.nth(1)`, which the Playwright guardrails ban because it silently retargets
- * when the page changes. Indexing the rows here lets the spec name the one it
- * means.
- */
+// Every rule's position in render order, keyed by id.
 export const buildRuleIndex = (
   node?: QueryBuilderNode,
   acc: Record<string, number> = {},

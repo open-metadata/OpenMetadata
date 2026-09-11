@@ -79,9 +79,8 @@ export const AdvancedAssetsFilterField = ({
         onTreeUpdate(QbUtils.loadTree(nextTree), config);
       }
 
-      // The raw query filter, without the entity type filter — that is added
-      // later by getModifiedQueryFilterWithSelectedAssets. An empty tree still
-      // has to write `{"query":""}`, which is what the count logic expects.
+      // The raw query filter, without the entity type filter — that is added later by
+      // getModifiedQueryFilterWithSelectedAssets.
       const queryFilter = nextValue || JSON.stringify({ query: '' });
 
       form.setFieldValue('queryFilter', queryFilter);
@@ -188,8 +187,8 @@ export const AdvancedAssetsFilterField = ({
             fields={config.fields}
             groupMode="flat"
             key={searchIndex.toLocaleString()}
-            // Counting and the Explore link are done here, scoped to the
-            // selected resources, so the builder's own preview stays off.
+            // Counting and the Explore link are done here, scoped to the selected resources, so the builder's own
+            // preview stays off.
             showCountPreview={false}
             tree={treeJson}
             onChange={handleChange}

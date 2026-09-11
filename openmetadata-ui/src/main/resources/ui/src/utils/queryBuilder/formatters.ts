@@ -20,23 +20,15 @@ import {
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
 
-/**
- * What a formatted tree produces, for both output types.
- *
- * `value` is what the caller persists — a serialised ES filter or JSONLogic —
- * and is deliberately `''` (not `'{}'`) for an empty tree, because callers
- * treat the empty string as "no filter".
- */
-export interface FormattedQuery {
+// What a formatted tree produces, for both output types.
+interface FormattedQuery {
   value: string;
-  /** Present for Elasticsearch output only. */
+  // Present for Elasticsearch output only.
   queryFilter?: QueryFilterInterface;
 }
 
-/**
- * `QueryBuilderElasticsearchFormatUtils` is still untyped JS, so the casts are
- * confined here rather than repeated at every call site.
- */
+// `QueryBuilderElasticsearchFormatUtils` is still untyped JS, so the casts are confined here rather than repeated at
+// every call site.
 export const toElasticSearchQuery = (
   tree: ImmutableTree,
   config: Config
@@ -52,11 +44,8 @@ export const toElasticSearchQuery = (
   return { value: JSON.stringify(queryFilter), queryFilter };
 };
 
-/**
- * RAQB throws while a rule is mid-edit (a field chosen but no operator yet),
- * which is a normal transient state rather than an error — emit an empty value
- * so the caller simply sees "no filter yet".
- */
+// RAQB throws while a rule is mid-edit (a field chosen but no operator yet), which is a normal transient state rather
+// than an error — emit an empty value so the caller simply sees "no filter yet".
 export const toJsonLogicQuery = (
   tree: ImmutableTree,
   config: Config
@@ -112,16 +101,7 @@ const holdsOnlyTheSeedRow = (tree: ImmutableTree): boolean => {
   return rules.length === 1 && !rules[0]?.properties?.operator;
 };
 
-/**
- * False only when an unfinished row would widen the rule to match everything.
- *
- * The emitted filter silently drops a half-written condition, and the warning
- * callers show says exactly what the danger is: "an unfinished condition is
- * ignored, which would widen this rule to match everything". That is only true
- * when dropping it leaves nothing behind. An unfinished row sitting beside a
- * complete one is dropped harmlessly — the rule still filters by the condition
- * the user did finish — so blocking the save there would be a false alarm.
- */
+// False only when an unfinished row would widen the rule to match everything.
 export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config

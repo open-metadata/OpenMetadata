@@ -35,11 +35,11 @@ export const AlertMessage = ({
   assetCount?: number;
   href?: string;
   target?: string;
-  /** Offer the click-through, or show the count on its own. */
+  // Offer the click-through, or show the count on its own.
   showExploreLink?: boolean;
 }) => (
-  // The same banner every other query-builder surface renders; this screen
-  // only supplies a count the builder cannot derive on its own.
+  // The same banner every other query-builder surface renders; this screen only supplies a count the builder cannot
+  // derive on its own.
   <QueryBuilderCountBanner
     count={assetCount}
     exploreUrl={showExploreLink ? href : undefined}

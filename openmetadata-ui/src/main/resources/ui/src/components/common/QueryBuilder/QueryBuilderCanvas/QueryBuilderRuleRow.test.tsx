@@ -17,7 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
-import { EXPLORE_BUTTON_PRESET } from '../QueryBuilderButton/QueryBuilderButton.constants';
+import { EXPLORE_BUTTON_PRESET } from './QueryBuilderCanvas.constants';
 import QueryBuilderRuleRow from './QueryBuilderRuleRow';
 
 // The row asks RAQB which operators and widget a field/operator pair takes.

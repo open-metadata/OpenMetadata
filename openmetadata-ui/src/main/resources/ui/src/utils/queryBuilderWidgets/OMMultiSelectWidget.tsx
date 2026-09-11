@@ -37,11 +37,7 @@ const toSelectItems = (
   }));
 };
 
-/**
- * `tw:contents` keeps this wrapper out of layout entirely, so it is a test
- * handle and nothing else. Without it a value control can only be reached
- * through RAQB's internal `.rule--widget--*` classes.
- */
+// `tw:contents` keeps this wrapper out of layout entirely, so it is a test handle and nothing else.
 const VALUE_TEST_ID_WRAPPER = 'tw:contents';
 
 const OMMultiSelectWidget = ({
@@ -62,15 +58,7 @@ const OMMultiSelectWidget = ({
     [JSON.stringify(listValues ?? null)]
   );
 
-  // Accumulate every fetched option in a bounded, id-keyed map. Async results
-  // are additive: a later fetch — the eager default ('') seed, or a transient
-  // empty value react-aria emits on focus/blur — can only ADD entries, never
-  // drop the option the user just searched for. That makes the widget immune to
-  // the order in which react-aria fires searches, which under load caused the
-  // list to snap back to the unfiltered default catalogue mid-selection (the
-  // server did return the typed option; the default reload simply overwrote it).
-  // The list is shown unfiltered (see filterOption below), so once the typed
-  // option has been fetched it stays selectable regardless of later fetches.
+  // Accumulate every fetched option in a bounded, id-keyed map.
   const ASYNC_ITEM_CAP = 500;
   const [asyncItemMap, setAsyncItemMap] = useState<Map<string, SelectItemType>>(
     () => new Map()
@@ -124,9 +112,7 @@ const OMMultiSelectWidget = ({
     [asyncFetch]
   );
 
-  // Seed the default catalogue once when async search activates so the list has
-  // options before the user types. Results accumulate, so this can never
-  // clobber a query already in progress.
+  // Seed the default catalogue once when async search activates so the list has options before the user types.
   const didSeedRef = useRef(false);
 
   useEffect(() => {
@@ -164,12 +150,8 @@ const OMMultiSelectWidget = ({
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}
-        // Results are filtered server-side, so keep the built-in client filter
-        // off (filterOption: () => true) — the option label need not literally
-        // contain the raw query (e.g. an owner's display name vs the typed value),
-        // and client-filtering it would wrongly hide valid server matches. The
-        // accumulated result set keeps the typed option present regardless of any
-        // later default ('') fetch, so the list always still contains it.
+        // Results are filtered server-side, so keep the built-in client filter off (filterOption: () => true) — the
+        // option label need not literally contain the raw query (e.g.
         {...(isAsync
           ? { filterOption: () => true, onSearchChange: loadAsync }
           : {})}>

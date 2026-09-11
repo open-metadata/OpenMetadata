@@ -215,11 +215,8 @@ class AdvancedSearchClassBase {
     valueLabel: t('label.value'),
   };
 
-  /**
-   * Create an autocomplete function using elasctisearch's suggestion API
-   * @param searchIndex Index to search
-   * @param suggestField `suggest_` field to use
-   */
+  // Create an autocomplete function using elasctisearch's suggestion API @param searchIndex Index to search @param
+  // suggestField `suggest_` field to use
   public autocomplete: (args: {
     searchIndex: SearchIndex | SearchIndex[];
     entityField: EntityFields | EntityReferenceFields;
@@ -282,9 +279,7 @@ class AdvancedSearchClassBase {
     };
   };
 
-  /**
-   * Fields specific to database schema
-   */
+  // Fields specific to database schema
   databaseSchemaQueryBuilderFields: Fields = {
     [EntityFields.DATABASE]: {
       label: t('label.database'),
@@ -300,9 +295,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to tables
-   */
+  // Fields specific to tables
   tableQueryBuilderFields: Fields = {
     [EntityFields.DATABASE]: {
       label: t('label.database'),
@@ -360,9 +353,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to stored procedures
-   */
+  // Fields specific to stored procedures
   storedProcedureQueryBuilderFields: Fields = {
     [EntityFields.DATABASE]: {
       label: t('label.database'),
@@ -391,9 +382,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to pipelines
-   */
+  // Fields specific to pipelines
   pipelineQueryBuilderFields: Fields = {
     [EntityFields.TASK]: {
       label: t('label.task'),
@@ -409,9 +398,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to topics
-   */
+  // Fields specific to topics
   topicQueryBuilderFields: Fields = {
     [EntityFields.SCHEMA_FIELD]: {
       label: t('label.schema-field'),
@@ -427,9 +414,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to API endpoints
-   */
+  // Fields specific to API endpoints
   apiEndpointQueryBuilderFields: Fields = {
     [EntityFields.API_COLLECTION]: {
       label: t('label.api-collection'),
@@ -469,9 +454,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to Glossary
-   */
+  // Fields specific to Glossary
   glossaryTermQueryBuilderFields: Fields = {
     [EntityFields.GLOSSARY]: {
       label: t('label.glossary'),
@@ -487,9 +470,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to dashboard
-   */
+  // Fields specific to dashboard
   dashboardQueryBuilderFields: Fields = {
     [EntityFields.DATA_MODEL]: {
       label: t('label.data-model'),
@@ -529,9 +510,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to ML models
-   */
+  // Fields specific to ML models
   mlModelQueryBuilderFields: Fields = {
     [EntityFields.FEATURE]: {
       label: t('label.feature'),
@@ -547,9 +526,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to containers
-   */
+  // Fields specific to containers
   containerQueryBuilderFields: Fields = {
     [EntityFields.CONTAINER_COLUMN]: {
       label: t('label.container-column'),
@@ -565,9 +542,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to search indexes
-   */
+  // Fields specific to search indexes
   searchIndexQueryBuilderFields: Fields = {
     [EntityFields.FIELD]: {
       label: t('label.field'),
@@ -583,9 +558,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to dashboard data models
-   */
+  // Fields specific to dashboard data models
   dataModelQueryBuilderFields: Fields = {
     [EntityFields.DATA_MODEL_TYPE]: {
       label: t('label.data-model-type'),
@@ -613,9 +586,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to directories
-   */
+  // Fields specific to directories
   directorySearchQueryBuilderFields: Fields = {
     [EntityFields.PARENT]: {
       label: t('label.entity-parent', { entity: t('label.directory') }),
@@ -631,9 +602,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to files
-   */
+  // Fields specific to files
   fileSearchQueryBuilderFields: Fields = {
     [EntityFields.DIRECTORY]: {
       label: t('label.directory'),
@@ -666,9 +635,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to spreadsheets
-   */
+  // Fields specific to spreadsheets
   spreadsheetSearchQueryBuilderFields: Fields = {
     [EntityFields.DIRECTORY]: {
       label: t('label.directory'),
@@ -696,9 +663,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Fields specific to spreadsheets
-   */
+  // Fields specific to spreadsheets
   worksheetSearchQueryBuilderFields: Fields = {
     [EntityFields.SPREADSHEET]: {
       label: t('label.spreadsheet'),
@@ -714,10 +679,7 @@ class AdvancedSearchClassBase {
     },
   };
 
-  /**
-   * Overriding default configurations.
-   * Basic attributes that fields inherit from.
-   */
+  // Overriding default configurations.
   public getInitialConfigWithoutFields = (
     modes: QueryBuilderConfigModes = {}
   ) => {
@@ -784,10 +746,8 @@ class AdvancedSearchClassBase {
           ...this.baseConfig.settings.customFieldSelectProps,
           showSearch: true,
           ['data-testid']: 'advanced-search-field-select',
-          // Adding filterOption to search by label
-          // Since the default search behavior is by value which gives incorrect results
-          // Ex. for search term 'name', it will return 'Task' in results as well
-          //     since value for 'Task' is 'tasks.displayName.keyword'
+          // Adding filterOption to search by label Since the default search behavior is by value which gives incorrect
+          // results Ex.
           filterOption: (input: string, option: { label: string }) => {
             return option.label.toLowerCase().includes(input.toLowerCase());
           },
@@ -1133,9 +1093,8 @@ class AdvancedSearchClassBase {
     };
   }
 
-  // Since the column field key 'columns.name.keyword` is common in table and data model,
-  // Following function is used to get the column field config if all the search Indices have columns field
-  // or for ALL and DATA_ASSET search indices
+  // Since the column field key 'columns.name.keyword` is common in table and data model, Following function is used to
+  // get the column field config if all the search Indices have columns field or for ALL and DATA_ASSET search indices
   public getColumnConfig = (entitySearchIndex: SearchIndex[]) => {
     const shouldAddColumnField = entitySearchIndex.every((index) =>
       SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
@@ -1159,8 +1118,8 @@ class AdvancedSearchClassBase {
       : {};
   };
 
-  // columns.tags.tagFQN is only present in indices that have a columns field,
-  // so we gate it the same way as getColumnConfig
+  // columns.tags.tagFQN is only present in indices that have a columns field, so we gate it the same way as
+  // getColumnConfig
   public getColumnTagConfig = (entitySearchIndex: SearchIndex[]) => {
     const shouldAddField = entitySearchIndex.every((index) =>
       SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
@@ -1185,9 +1144,7 @@ class AdvancedSearchClassBase {
       : {};
   };
 
-  /**
-   * Get entity specific fields for the query builder
-   */
+  // Get entity specific fields for the query builder
   public getEntitySpecificQueryBuilderFields(
     entitySearchIndex = [SearchIndex.TABLE]
   ): Fields {
@@ -1269,9 +1226,7 @@ class AdvancedSearchClassBase {
     return configs;
   }
 
-  /**
-   * Common fields that exit for all searchable entities
-   */
+  // Common fields that exit for all searchable entities
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
     shouldAddServiceField = true,
@@ -1308,9 +1263,7 @@ class AdvancedSearchClassBase {
     return Object.fromEntries(sortedFieldsConfig);
   };
 
-  /**
-   * Builds search index specific configuration for the query builder
-   */
+  // Builds search index specific configuration for the query builder
   public getQbConfigs: (
     entitySearchIndex?: Array<SearchIndex>,
     modes?: QueryBuilderConfigModes
@@ -1498,11 +1451,7 @@ class AdvancedSearchClassBase {
     }
   }
 
-  /**
-   * A table property as one `some` group over its rows. `rows` is an array, so
-   * a dotted column field resolves to nothing and matches no row. Elasticsearch
-   * indexes one entry per column instead, so it keeps the flat keys.
-   */
+  // A table property as one `some` group over its rows.
   private buildTableCustomPropertyGroup(
     field: CustomPropertySummary,
     label: string,

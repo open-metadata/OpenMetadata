@@ -39,8 +39,7 @@ export const SelectAssetTypeField = ({
   const { onChangeSearchIndex } = useAdvanceSearch();
 
   const watchedResources = Form.useWatch<Array<string>>('resources', form);
-  // Memoised so the `|| []` fallback does not hand every dependent hook a new
-  // array identity on each render.
+  // Memoised so the `|| []` fallback does not hand every dependent hook a new array identity on each render.
   const selectedResource: Array<string> = useMemo(
     () => watchedResources ?? [],
     [watchedResources]

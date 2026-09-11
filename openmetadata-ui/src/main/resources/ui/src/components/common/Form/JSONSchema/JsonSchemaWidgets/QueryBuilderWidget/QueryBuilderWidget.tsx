@@ -23,19 +23,7 @@ import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/A
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilder from '../../../../QueryBuilder/QueryBuilder';
 
-/**
- * RJSF adapter over the canonical `QueryBuilder`.
- *
- * This is registered by `FormBuilder` for every JSON-schema form, so it is the
- * widest-reaching caller in the tree. It now does two things and nothing else:
- * map `WidgetProps` onto the component's props, and source `fields` from
- * `AdvanceSearchProvider`.
- *
- * The provider stays because it owns something the component deliberately does
- * not: it fetches custom properties and grafts them onto
- * `config.fields.extension.subfields`, and it applies `fieldOverrides`. Those
- * are feature field definitions, not builder mechanics.
- */
+// RJSF adapter over the canonical `QueryBuilder`.
 const QueryBuilderWidget: FC<
   WidgetProps & {
     fields?: Config['fields'];
@@ -76,14 +64,13 @@ const QueryBuilderWidget: FC<
     onChangeSearchIndex(resolvedSearchIndex);
   }, [resolvedSearchIndex, onChangeSearchIndex]);
 
-  // Mounting before the provider has loaded this index's fields would seed a
-  // tree against the wrong field set, so the builder waits.
+  // Mounting before the provider has loaded this index's fields would seed a tree against the wrong field set, so the
+  // builder waits.
   const isReady = searchIndexFromContext === resolvedSearchIndex && !isUpdating;
 
   if (!isReady) {
-    // A skeleton rather than `null`: if the provider never settles on this
-    // index the section stays in a visibly loading state instead of rendering
-    // an empty box that reads as a broken builder.
+    // A skeleton rather than `null`: if the provider never settles on this index the section stays in a visibly loading
+    // state instead of rendering an empty box that reads as a broken builder.
     return (
       <Skeleton
         animation="pulse"

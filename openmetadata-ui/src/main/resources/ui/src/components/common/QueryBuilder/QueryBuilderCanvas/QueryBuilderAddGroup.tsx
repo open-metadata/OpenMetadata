@@ -16,14 +16,7 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderAddGroupProps } from './QueryBuilderCanvas.types';
 
-/**
- * Adds a group beside the ones already there.
- *
- * Adding a group means saying how it joins them, so the conjunction is picked
- * on the way in rather than corrected afterwards — the connector between the
- * cards then shows what was chosen. A caller with a single conjunction
- * configured has nothing to pick, and gets a plain button.
- */
+// Adds a group beside the ones already there.
 const QueryBuilderAddGroup: FC<QueryBuilderAddGroupProps> = ({
   conjunctions,
   testId,

@@ -36,9 +36,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
   const { actions, surface, preset, readonly } = context;
   const conjunction = group.properties?.conjunction ?? 'AND';
   const children = group.children1 ?? [];
-  // A `rule_group` owns the field its children filter subfields of. When it
-  // holds several rules it keeps a card of its own, and the header names the
-  // level so the field the user picked appears somewhere.
+  // A `rule_group` owns the field its children filter subfields of.
   const ownField = group.properties?.field;
   const drillFields = getGroupDrillFields(
     context.config,
@@ -46,9 +44,8 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
   );
   const drilledLevel =
     drillFields && ownField ? { field: ownField, path } : undefined;
-  // A `rule_group` owning a single subfield offers nothing to choose below
-  // it, so its rows edit the group's own field — a control over the subfield
-  // could not change anything. This is what a contract's semantic rule is.
+  // A `rule_group` owning a single subfield offers nothing to choose below it, so its rows edit the group's own field —
+  // a control over the subfield could not change anything.
   const groupOwnedCell =
     ownField && !drillFields
       ? { field: ownField, path, prefix: '' }
@@ -78,8 +75,8 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
       <div className="tw:flex tw:flex-col tw:gap-6 tw:px-5 tw:pt-4 tw:pb-5">
         {children.map((child, index) => {
           const childPath = [...path, String(child.id ?? index)];
-          // A chain of drill levels is one row with a Field control per level;
-          // anything else holding rules is a group, and gets a card.
+          // A chain of drill levels is one row with a Field control per level; anything else holding rules is a group,
+          // and gets a card.
           const row = getRuleRowModel(
             context.config,
             child,

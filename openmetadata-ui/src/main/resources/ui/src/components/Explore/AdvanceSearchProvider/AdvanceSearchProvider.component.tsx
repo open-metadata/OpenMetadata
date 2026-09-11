@@ -106,13 +106,7 @@ export const AdvanceSearchProvider = ({
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
-      // Re-selecting the index the provider is already on must not enter the
-      // updating state. `loadData` is what clears `isUpdating`, and it only
-      // re-runs when `searchIndex` actually changes — so flipping the flag for
-      // a no-op change strands consumers in "updating" forever. That is how the
-      // workflow Exclude Filter, which asks for the provider's own default
-      // index, rendered nothing while Data Asset Filter (a different index)
-      // worked.
+      // Re-selecting the index the provider is already on must not enter the updating state.
       if (isEqual(searchIndex, index)) {
         return;
       }
@@ -282,8 +276,8 @@ export const AdvanceSearchProvider = ({
       actualConfig.fields.extension.subfields = extensionSubField;
     }
 
-    // Update field type if field override is provided
-    // For example type of extension is group but it is required as struct in some cases
+    // Update field type if field override is provided For example type of extension is group but it is required as
+    // struct in some cases
     fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
       if (actualConfig.fields[fieldOverride.field]) {
         actualConfig.fields[fieldOverride.field].type = fieldOverride.type;

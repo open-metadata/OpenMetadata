@@ -24,14 +24,10 @@ import type {
   QueryBuilderSurface,
 } from '../../../utils/queryBuilder/types';
 import type { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
+import type { QueryBuilderButtonPreset } from './QueryBuilderCanvas/QueryBuilderCanvas.types';
 
-/**
- * Everything a change produced, beyond the serialised value the caller
- * persists. Reported, never acted on: writing the Explore URL stays with
- * `AdvanceSearchProvider`.
- */
-export interface QueryBuilderChangeMeta {
+// Everything a change produced, beyond the serialised value the caller persists.
+interface QueryBuilderChangeMeta {
   queryFilter?: QueryFilterInterface;
   exploreUrl?: string;
   outputType: SearchOutputType;
@@ -39,43 +35,40 @@ export interface QueryBuilderChangeMeta {
 
 export interface QueryBuilderProps {
   // ---- value ----
-  /** Serialised ES filter or JSONLogic, as the caller persists it. */
+  // Serialised ES filter or JSONLogic, as the caller persists it.
   value?: string;
-  /** A saved RAQB tree. Wins over `value`, and is what keeps saved filters loading. */
+  // A saved RAQB tree.
   tree?: JsonTree;
-  /** Caller-controlled allow-list; falls back to the entity type's fields. */
+  // Caller-controlled allow-list; falls back to the entity type's fields.
   fields?: Config['fields'];
 
   // ---- shape ----
   outputType?: SearchOutputType;
-  /** Plain user-created brackets only; `rule_group` is unaffected. */
+  // Plain user-created brackets only; `rule_group` is unaffected.
   groupMode?: GroupMode;
   conjunctionMode?: ConjunctionMode;
-  /**
-   * Hides the AND/OR control without touching the stored conjunction, for a
-   * caller whose rules only ever combine one way. Restricting the config
-   * instead would rewrite a saved filter that used the other conjunction.
-   */
+  // Hides the AND/OR control without touching the stored conjunction, for a caller whose rules only ever combine one
+  // way.
   showConjunction?: boolean;
   entityType?: EntityType;
-  /** Seed field for an empty tree. */
+  // Seed field for an empty tree.
   defaultField?: string;
-  /** Seed subfield, for the JSONLogic `rule_group` seed. */
+  // Seed subfield, for the JSONLogic `rule_group` seed.
   subField?: string;
   readonly?: boolean;
 
   // ---- chrome ----
   label?: string;
   showCountPreview?: boolean;
-  /** Turns the count banner into a link to Explore. */
+  // Turns the count banner into a link to Explore.
   showExploreLink?: boolean;
 
   // ---- escape hatch ----
-  /** Merged last, after every mode flag. */
+  // Merged last, after every mode flag.
   configOverrides?: QueryBuilderConfigOverrides;
-  /** Which ground the group card sits on. Defaults to the tinted surface. */
+  // Which ground the group card sits on.
   surface?: QueryBuilderSurface;
-  /** Overrides the preset the group/output mode would otherwise select. */
+  // Overrides the preset the group/output mode would otherwise select.
   buttonPreset?: QueryBuilderButtonPreset;
 
   // ---- out ----
@@ -84,8 +77,8 @@ export interface QueryBuilderProps {
     tree?: JsonTree,
     meta?: QueryBuilderChangeMeta
   ) => void;
-  /** Hands out RAQB's actions so a caller can drive Add-condition from its own chrome. */
+  // Hands out RAQB's actions so a caller can drive Add-condition from its own chrome.
   onActionsReady?: (actions: Actions) => void;
-  /** False while a rule is incomplete. Callers gate save on this. */
+  // False while a rule is incomplete.
   onValidityChange?: (isValid: boolean) => void;
 }

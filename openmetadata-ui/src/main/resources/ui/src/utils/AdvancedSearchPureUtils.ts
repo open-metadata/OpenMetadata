@@ -231,9 +231,7 @@ export const getQuickFilterSourceFields = (
 ): string | undefined =>
   field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
 
-// The filter value stays the raw tier FQN (tier.tier1); only the visible
-// label becomes the tier name. Default tiers render as Tier1…Tier5 even when
-// the bucket key is lowercased; custom tiers keep their name untouched.
+// The filter value stays the raw tier FQN (tier.tier1); only the visible label becomes the tier name.
 const formatTierLabel = (value: string): string => {
   const tierName = getNameFromFQN(value);
   const defaultTier = tierName.match(/^tier(\d+)$/i);
@@ -241,11 +239,8 @@ const formatTierLabel = (value: string): string => {
   return defaultTier ? `Tier${defaultTier[1]}` : tierName;
 };
 
-/**
- * Per-field label formatter shared by every place a quick-filter value becomes
- * visible text — dropdown options, selected chips, and labels restored after a
- * URL round trip — so the same value cannot render differently per surface.
- */
+// Per-field label formatter shared by every place a quick-filter value becomes visible text — dropdown options,
+// selected chips, and labels restored after a URL round trip — so the same value cannot render differently per surface.
 export const getQuickFilterLabelFormatter = (
   key: string
 ): ((value: string) => string) | undefined =>
@@ -273,15 +268,7 @@ const findSourceLabel = (
   return undefined;
 };
 
-/**
- * Rewrites the labels of already-selected quick-filter values.
- *
- * Only the lowercased bucket key survives a round trip through the URL, so a
- * reloaded or shared listing would render its chips and checked options in
- * lowercase. `resolveLabel` supplies the original casing for one value; a field
- * keeps its identity when nothing resolves, so an unchanged filter set does not
- * re-render. Values that already carry a resolved label are left alone.
- */
+// Rewrites the labels of already-selected quick-filter values.
 export const applyQuickFilterLabels = (
   fields: ExploreQuickFilterField[],
   resolveLabel: (
@@ -296,8 +283,8 @@ export const applyQuickFilterLabels = (
 
     let hasResolvedLabel = false;
     const value = (field.value ?? []).map((option) => {
-      // A label that already differs from the key came from the dropdown, where
-      // the aggregation resolved it against `_source`.
+      // A label that already differs from the key came from the dropdown, where the aggregation resolved it against
+      // `_source`.
       if (option.label !== option.key) {
         return option;
       }
@@ -314,12 +301,8 @@ export const applyQuickFilterLabels = (
     return hasResolvedLabel ? { ...field, value } : field;
   });
 
-/**
- * Recovers selected-value casing from the rows currently listed: every hit of a
- * filtered result set carries the value that matched in its `_source`, so no
- * extra request is needed for the common case. A value whose only matching row
- * sits on another page stays unresolved here — see `useQuickFilterLabels`.
- */
+// Recovers selected-value casing from the rows currently listed: every hit of a filtered result set carries the value
+// that matched in its `_source`, so no extra request is needed for the common case.
 export const hydrateQuickFilterLabels = (
   fields: ExploreQuickFilterField[],
   sources: unknown[]
@@ -375,8 +358,8 @@ export const getOptionsFromAggregationBucket = (
         }
       }
 
-      // Runs after the sourceFields resolution so formatters (entity type,
-      // tier) see the original-cased value, not the lowercased bucket key.
+      // Runs after the sourceFields resolution so formatters (entity type, tier) see the original-cased value, not the
+      // lowercased bucket key.
       if (labelFormatter) {
         label = labelFormatter(label);
       }

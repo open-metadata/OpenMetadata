@@ -39,9 +39,7 @@ const OMConjs: FC<ConjsProps> = ({
       }}>
       {options.map(([key, opt]) => (
         <ButtonGroupItem
-          // AND/OR read as logical operators, so they are uppercased for
-          // display. The transform is CSS rather than a rewritten string so the
-          // label stays whatever the config (and any translation of it) says.
+          // AND/OR read as logical operators, so they are uppercased for display.
           className="tw:uppercase"
           data-testid={`advanced-search-conjunction-${key.toLowerCase()}`}
           id={key}

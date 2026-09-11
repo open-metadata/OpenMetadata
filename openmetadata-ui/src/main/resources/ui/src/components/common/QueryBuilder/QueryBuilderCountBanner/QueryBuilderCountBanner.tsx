@@ -20,13 +20,7 @@ import { QueryBuilderCountBannerProps } from './QueryBuilderCountBanner.types';
 const DEFAULT_LINK_LABEL_KEY = 'message.click-here-to-view-assets-on-explore';
 const DEFAULT_TITLE_KEY = 'message.search-entity-count';
 
-/**
- * The single "N assets found" banner for every query builder surface.
- *
- * It renders the count only — each screen counts something the builder cannot
- * derive on its own (merged chip filters, several entity types, a parent's
- * own resource count), so the caller owns the number and this owns the markup.
- */
+// The single "N assets found" banner for every query builder surface.
 const QueryBuilderCountBanner = ({
   className,
   count,
@@ -61,8 +55,7 @@ const QueryBuilderCountBanner = ({
       data-testid={testId}
       icon={InfoCircle}
       title={t(titleKey, { count })}
-      // A count of zero is a valid answer, not an error: the filter ran and
-      // matched nothing. Colouring it red reads as a failure.
+      // A count of zero is a valid answer, not an error: the filter ran and matched nothing.
       variant="brand">
       {/* The link is a control inside the banner, never a wrapper around it.
           An anchor around the whole Alert puts the close button inside a link,

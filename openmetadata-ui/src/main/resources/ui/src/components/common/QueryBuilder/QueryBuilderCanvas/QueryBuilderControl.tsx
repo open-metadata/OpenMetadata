@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { FC, PropsWithChildren } from 'react';
 import type { QueryBuilderControlProps } from './QueryBuilderCanvas.types';
 
-/** A labelled column of the rule grid. */
+// A labelled column of the rule grid.
 export const QueryBuilderCell: FC<
   PropsWithChildren<{ label: string; className?: string }>
 > = ({ label, className, children }) => (
@@ -35,17 +35,7 @@ export const QueryBuilderCell: FC<
   </div>
 );
 
-/**
- * A labelled field or operator control.
- *
- * The control itself is whatever the config registers as `renderField` /
- * `renderOperator` — the same component RAQB would have called. Those carry
- * behaviour that is easy to lose and hard to rediscover (a stable item
- * identity across RAQB's re-created `items`, a controlled `inputValue` so a
- * re-render cannot wipe the user's filter text, `allowsEmptyCollection` so the
- * popup does not dead-end), plus the testids Playwright locates. Only the
- * label and the column around it belong to the canvas.
- */
+// A labelled field or operator control.
 const QueryBuilderControl: FC<QueryBuilderControlProps> = ({
   label,
   items,
@@ -58,8 +48,8 @@ const QueryBuilderControl: FC<QueryBuilderControlProps> = ({
 }) => (
   <QueryBuilderCell label={label}>
     {render?.({
-      // Only when set: the renderer supplies its own default, and an explicit
-      // `undefined` would win over it through the spread.
+      // Only when set: the renderer supplies its own default, and an explicit `undefined` would win over it through the
+      // spread.
       ...(dataTestId ? { dataTestId } : {}),
       items,
       placeholder,
