@@ -64,9 +64,9 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -88,6 +88,7 @@ const renderDataProductNameCell = (
     <Box
       align="center"
       className={NAME_CELL_CLIP_CLASS}
+      data-testid="entity-name"
       direction="row"
       gap={3}
       onClick={handleNameClick}>
@@ -244,6 +245,7 @@ const DataProductListPage = ({
         case 'owners':
           return (
             <OwnerLabel
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
               owners={entity.owners}
@@ -251,16 +253,17 @@ const DataProductListPage = ({
             />
           );
         case 'glossaryTerms':
-          return <TagBadgeList size="lg" tags={getGlossaryTags(entity.tags)} />;
+          return <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
           return (
-            <TagBadgeList size="sm" tags={getClassificationTags(entity.tags)} />
+            <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
           );
         case 'experts':
           return (
             <OwnerLabel
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
               owners={entity.experts}

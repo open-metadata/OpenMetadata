@@ -252,9 +252,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(page.getByTestId('table')).toBeVisible();
 
       // Verify all table column headers are correct
-      await expect(
-        page.locator('.ant-table-thead > tr > .ant-table-cell')
-      ).toHaveText([
+      await expect(page.locator('thead > tr > th')).toHaveText([
         'Enabled',
         'Tag',
         'Display Name',

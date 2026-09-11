@@ -21,18 +21,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getApiCollectionByFQN,
@@ -100,11 +96,6 @@ import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -237,11 +228,6 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermission, getEntityPermissionByFqn } =
-    usePermissionProvider();
-  const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
-  const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -294,50 +280,80 @@ export default function EntitySummaryPanel({
     [entityDetails]
   );
 
-  const fetchResourcePermission = async (id: string) => {
-    try {
-      setIsPermissionLoading(true);
-      let type = get(entityDetails, DETAILS_ENTITY_TYPE_KEY) as
-        | ResourceEntity
-        | undefined;
-      let idForPermission = id;
-
-      if (isUndefined(type)) {
-        setIsPermissionLoading(false);
-
-        return;
-      }
-
-      // For tableColumn entities, use the parent table's resource type and ID
-      // since columns inherit permissions from their parent table
-      if (type === ResourceEntity.TABLE_COLUMN) {
-        type = ResourceEntity.TABLE;
-        // Get the parent table ID from the column's table reference
-        const tableId = get(entityDetails, 'details.table.id');
-        if (tableId) {
-          idForPermission = tableId;
-        }
-      }
-
-      // In ontology data-mode, nodes are built with id=FQN (not a UUID).
-      // Passing that FQN to the by-ID endpoint returns empty permissions even
-      // for admins.
-      const isOntologyPanel =
-        panelPath === ONTOLOGY_EXPLORER ||
-        panelPath === GLOSSARY_TERM_ASSETS_TAB;
-      const permissions =
-        isOntologyPanel && fqn
-          ? await getEntityPermissionByFqn(type, fqn)
-          : await getEntityPermission(type, idForPermission);
-      setEntityPermissions(permissions);
-    } catch {
-      // Error - set default permission to allow viewing
-      // This prevents permission errors for entities like columns
-      setEntityPermissions(DEFAULT_ENTITY_PERMISSION);
-    } finally {
-      setIsPermissionLoading(false);
+  // Resource type + identifier for the permission fetch, mirroring the old
+  // fetchResourcePermission's exact precedence: prefer looking up by id; a tableColumn
+  // entity inherits permissions from its parent table, so both the resource type and the id
+  // are substituted for the parent's; and in "ontology panel" mode (nodes there are built
+  // with id=FQN, not a UUID — the by-id endpoint returns empty permissions even for admins)
+  // fqn is used instead of id. `permissionResourceType` stays undefined when entityType is
+  // unresolved — the hook call below is disabled in that case (a hook can't be called
+  // conditionally, so `ResourceEntity.TABLE`/`{ id: '' }` are inert placeholders, never
+  // actually fetched against).
+  // Returns concrete hook arguments plus the `enabled` gate, so the call site below stays
+  // free of fallback branches (they would otherwise count against this component's
+  // cyclomatic complexity budget). The placeholders are inert: `isPermissionFetchEnabled`
+  // is false whenever they are used.
+  const {
+    permissionResourceType,
+    permissionIdentifier,
+    isPermissionFetchEnabled,
+  } = useMemo(() => {
+    if (isUndefined(entityType) || !id) {
+      return {
+        permissionResourceType: ResourceEntity.TABLE,
+        permissionIdentifier: { id: '' },
+        isPermissionFetchEnabled: false,
+      };
     }
-  };
+
+    let type = entityType as unknown as ResourceEntity;
+    let idForPermission = id;
+    if (type === ResourceEntity.TABLE_COLUMN) {
+      type = ResourceEntity.TABLE;
+      const tableId = get(entityDetails, 'details.table.id');
+      if (tableId) {
+        idForPermission = tableId;
+      }
+    }
+
+    const isOntologyPanel =
+      panelPath === ONTOLOGY_EXPLORER || panelPath === GLOSSARY_TERM_ASSETS_TAB;
+
+    return {
+      permissionResourceType: type,
+      permissionIdentifier:
+        isOntologyPanel && fqn ? fqn : { id: idForPermission },
+      isPermissionFetchEnabled: true,
+    };
+  }, [entityType, entityDetails, panelPath, fqn, id]);
+
+  // Single useEntityPermissions call. `enabled: false` when no entity is selected (id empty)
+  // or its entityType is unresolved — mirrors the old effect's `if (id) {
+  // fetchResourcePermission(id) }` gate plus fetchResourcePermission's own `if
+  // (isUndefined(type)) return;` early-out. No error-toast effect: the old catch had none
+  // (it silently fell back to DEFAULT_ENTITY_PERMISSION on any error) — the hook's own
+  // `data ?? DEFAULT_ENTITY_PERMISSION` fallback already reproduces that, so nothing extra
+  // is needed here. No `deleted` option, deliberately: the two canEdit* flags consumed below
+  // (canEditDisplayName, canEditCustomFields) were derived pre-refactor by bare
+  // getPrioritizedEditPermission calls with no soft-delete gating, so passing `deleted` here
+  // would hide edit affordances that previously rendered on deleted entities — a real
+  // behavior change. DataAssetsHeader is ungated for the same reason.
+  const {
+    isLoading: isPermissionLoading,
+    hasViewAccess: viewPermission,
+    canEditDisplayName,
+    canEditCustomFields,
+    canViewCustomFields,
+    // Deliberate semantic change, not a pure rename: the old expression was the raw dual
+    // check `entityPermissions.ViewTests || entityPermissions.ViewAll`, which grants on
+    // ViewAll even when ViewTests is explicitly denied. `canViewTests` is prioritized (same
+    // precedent as `canViewBasic`'s fix — see PermissionDerivation.ts): an explicit field
+    // deny beats a broader grant. Fixes the same class of bug in passing.
+    canViewTests,
+  } = useEntityPermissions(permissionResourceType, permissionIdentifier, {
+    enabled: isPermissionFetchEnabled,
+  });
+
   // Memoize the entity fetch map to avoid recreating it on every render
   const entityFetchMap = useMemo<
     Record<string, (fqn: string) => Promise<object>>
@@ -818,12 +834,6 @@ export default function EntitySummaryPanel({
     }
   }, [entityDetails, navigate]);
 
-  useEffect(() => {
-    if (id) {
-      fetchResourcePermission(id);
-    }
-  }, [id]);
-
   // Reset activeTab to OVERVIEW when entity changes
   useEffect(() => {
     setActiveTab(EntityRightPanelTab.OVERVIEW);
@@ -860,11 +870,6 @@ export default function EntitySummaryPanel({
     fetchLineageData,
     ontologyExplorerGraphRelationsTabActive,
   ]);
-
-  const viewPermission = useMemo(
-    () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
-    [entityPermissions]
-  );
 
   const summaryComponentV1 = useMemo(() => {
     if (isPermissionLoading) {
@@ -972,10 +977,7 @@ export default function EntitySummaryPanel({
           entityDisplayName={entityData?.displayName}
           entityLink={entityLink}
           entityType={entityType}
-          hasEditPermission={getPrioritizedEditPermission(
-            entityPermissions,
-            Operation.EditDisplayName
-          )}
+          hasEditPermission={canEditDisplayName}
           onDisplayNameUpdate={handleDisplayNameUpdate}
         />
       )}
@@ -1014,10 +1016,7 @@ export default function EntitySummaryPanel({
           entityDetails={entityDetails.details}
           entityLink={entityLink}
           entityType={entityType}
-          hasEditPermission={getPrioritizedEditPermission(
-            entityPermissions,
-            Operation.EditDisplayName
-          )}
+          hasEditPermission={canEditDisplayName}
           onDisplayNameUpdate={handleDisplayNameUpdate}
         />
       )}
@@ -1038,7 +1037,7 @@ export default function EntitySummaryPanel({
       )}
       <DataQualityTab
         entityFQN={entityDetails.details.fullyQualifiedName || ''}
-        hasViewTests={entityPermissions.ViewTests || entityPermissions.ViewAll}
+        hasViewTests={canViewTests}
       />
     </>
   );
@@ -1061,15 +1060,9 @@ export default function EntitySummaryPanel({
           entityDetails={entityDetails}
           entityType={entityType}
           entityTypeDetail={entityTypeDetail}
-          hasEditPermissions={getPrioritizedEditPermission(
-            entityPermissions,
-            Operation.EditCustomFields
-          )}
+          hasEditPermissions={canEditCustomFields}
           isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
-          viewCustomPropertiesPermission={getPrioritizedViewPermission(
-            entityPermissions,
-            Operation.ViewCustomFields
-          )}
+          viewCustomPropertiesPermission={canViewCustomFields}
           onExtensionUpdate={handleExtensionUpdate}
         />
       )}
@@ -1111,10 +1104,7 @@ export default function EntitySummaryPanel({
               entityDisplayName={entityData?.displayName}
               entityLink={entityLink}
               entityType={entityType}
-              hasEditPermission={getPrioritizedEditPermission(
-                entityPermissions,
-                Operation.EditDisplayName
-              )}
+              hasEditPermission={canEditDisplayName}
               onDisplayNameUpdate={handleDisplayNameUpdate}
             />
           )}
@@ -1150,10 +1140,7 @@ export default function EntitySummaryPanel({
             entityDisplayName={entityData?.displayName}
             entityLink={entityLink}
             entityType={entityType}
-            hasEditPermission={getPrioritizedEditPermission(
-              entityPermissions,
-              Operation.EditDisplayName
-            )}
+            hasEditPermission={canEditDisplayName}
             testId="entity-header-title"
             tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}

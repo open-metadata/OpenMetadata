@@ -181,4 +181,62 @@ describe('useInboxActivity', () => {
     expect(result.current.total).toBe(2);
     expect(result.current.items.every((item) => item.feed)).toBe(true);
   });
+
+  // Regression for the inbox sort precedence bug (OpenMetadata#30879 parity).
+  // A replied conversation (updatedAt bumped past its createdAt) must sort above
+  // a newer-but-unreplied one whose createdAt falls strictly between the replied
+  // thread's createdAt and updatedAt. The prior code sorted by
+  // `createdAt ?? updatedAt` and produced the inverted order; this is the
+  // production shape (backend always sets createdAt on insert, bumps only
+  // updatedAt), where the `?? updatedAt` fallback never fires.
+  it('orders a replied conversation above a newer unreplied one by last-activity', async () => {
+    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockListConversations.mockResolvedValue({
+      data: [
+        // Replied Aug 20, reply landed Sep 4 -> updatedAt >> createdAt.
+        { id: 'c-replied', createdAt: 200, updatedAt: 400 },
+        // Newer but unreplied -> createdAt == updatedAt, sits between 200 and 400.
+        { id: 'c-unreplied', createdAt: 300, updatedAt: 300 },
+      ],
+    });
+
+    const { result } = renderHook(() => useInboxActivity('all'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Expected (upstream / last-activity): c-replied (400) > c-unreplied (300).
+    // Prior (buggy): c-unreplied (createdAt 300) > c-replied (createdAt 200).
+    expect(result.current.items.map((i) => i.feed?.id)).toEqual([
+      'c-replied',
+      'c-unreplied',
+    ]);
+  });
+
+  // Upstream parity tiebreaker (ActivityFeedListV1New.component.tsx): on equal
+  // sort timestamps, items order by ascending id via localeCompare. Without it
+  // the inbox would still diverge on equal-timestamp ordering and rely on JS
+  // sort stability plus the server's `updatedAt DESC, id DESC` order.
+  it('breaks timestamp ties by ascending id, matching upstream', async () => {
+    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockListConversations.mockResolvedValue({
+      data: [
+        // Both unreplied, equal timestamps -> tie decided by id.
+        { id: 'zebra', createdAt: 500, updatedAt: 500 },
+        { id: 'alpha', createdAt: 500, updatedAt: 500 },
+      ],
+    });
+
+    const { result } = renderHook(() => useInboxActivity('all'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items.map((i) => i.feed?.id)).toEqual([
+      'alpha',
+      'zebra',
+    ]);
+  });
 });

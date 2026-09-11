@@ -15,11 +15,14 @@ import { findByTestId, findByText } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../rest/databaseAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseDetailsPage from './DatabaseDetailsPage';
 
 const mockDatabase = {
@@ -92,19 +95,40 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
+// DatabaseDetailsPage now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final, two-call split — DatabaseSchemaPage.test.tsx precedent) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly. Sticky (mockReturnValue, not mockReturnValueOnce): the hook is called twice
+// per render (view-tier + edit-tier).
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = DEFAULT_ENTITY_PERMISSION
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
+
+setMockPermissions({
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+});
 
 jest.mock(
   '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
@@ -271,6 +295,18 @@ jest.mock('../../hooks/useEntityRules', () => ({
 }));
 
 describe('Test DatabaseDetails page', () => {
+  beforeEach(() => {
+    setMockPermissions({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    });
+  });
+
   it('Component should render', async () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter>
@@ -361,5 +397,27 @@ describe('Test DatabaseDetails page', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('should render the permission placeholder and skip the entity fetch when view access is denied', async () => {
+    // canViewBasic (view-tier) is what the entity query's `enabled` — and the page's own
+    // render gate — depend on; ViewAll alone (without ViewBasic present) still grants it via
+    // the getPrioritizedViewPermission fallback the old code used, so deny both explicitly.
+    setMockPermissions({ ViewBasic: false, ViewAll: false });
+    (getDatabaseDetailsByFQN as jest.Mock).mockClear();
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
+
+    const errorPlaceholder = await findByTestId(
+      container,
+      'permission-error-placeholder'
+    );
+
+    expect(errorPlaceholder).toBeInTheDocument();
+    expect(getDatabaseDetailsByFQN).not.toHaveBeenCalled();
   });
 });

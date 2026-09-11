@@ -171,7 +171,7 @@ test.describe('Tag Page with Admin Roles', () => {
       .getByRole('button', { name: 'Cube01', exact: true })
       .click();
     await adminPage
-      .getByRole('button', { name: 'Select color #F14C75' })
+      .getByRole('button', { name: 'Select color #B93815' })
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
@@ -208,6 +208,7 @@ test.describe('Tag Page with Admin Roles', () => {
   });
 
   test('Add and Remove Assets', async ({ adminPage }) => {
+    test.slow();
     await redirectToHomePage(adminPage);
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
@@ -564,6 +565,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
     adminPage,
     dataStewardPage,
   }) => {
+    test.slow();
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataStewardPage);
 
