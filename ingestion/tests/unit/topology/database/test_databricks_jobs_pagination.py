@@ -264,7 +264,10 @@ def test_get_job_runs_respects_the_limit_ceiling():
 
     listings = [r for r in fake.requests if r["url"].endswith("/runs/list")]
     assert listings, "expected at least one runs/list request"
-    assert all(int(request.get("limit", 0)) <= 26 for request in listings)
+    # Assert the explicit value, not just that it is under the ceiling: omitting
+    # `limit` entirely also satisfies "<= 26" and would prove nothing.
+    assert all(request.get("limit") == RUNS_PAGE_SIZE for request in listings)
+    assert RUNS_PAGE_SIZE <= 26, "runs/list rejects anything above 26"
 
 
 @pytest.mark.usefixtures("_no_auth")
@@ -286,8 +289,10 @@ def test_a_failed_task_page_degrades_that_job_without_failing_the_run():
     """
     fake = FakeJobsApi(total_jobs=3, tasks_on_first_job=250)
     healthy = fake.get
+    attempted: list[str] = []
 
     def fail_only_jobs_get(url, **kwargs):
+        attempted.append(url)
         if url.endswith("/jobs/get"):
             return _response(503, {"error_code": "TEMPORARILY_UNAVAILABLE", "message": "try later"})
         return healthy(url, **kwargs)
@@ -296,6 +301,9 @@ def test_a_failed_task_page_degrades_that_job_without_failing_the_run():
 
     jobs = list(build_client(fake).list_jobs())
 
+    # Without this the test also passes against a client that never attempts the
+    # task page at all, which is exactly the behaviour it is supposed to catch.
+    assert any(url.endswith("/jobs/get") for url in attempted), "the task-page fallback never ran"
     assert len(jobs) == 3, "the other jobs must still be ingested"
     assert len(jobs[0]["settings"]["tasks"]) == TASKS_PER_PAGE, "the first page is kept"
 
