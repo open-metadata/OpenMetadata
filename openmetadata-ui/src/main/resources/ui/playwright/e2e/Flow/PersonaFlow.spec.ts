@@ -19,26 +19,26 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
-  createNewPage,
-  descriptionBox,
-  fillDescriptionBox,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    descriptionBox,
+    fillDescriptionBox,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  openAddCustomizeWidgetModal,
-  selectAssetTypes,
+    navigateToCustomizeLandingPage,
+    openAddCustomizeWidgetModal,
+    selectAssetTypes
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
-  checkPersonaInProfile,
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-  removePersonaDefault,
-  setPersonaAsDefault,
-  updatePersonaDisplayName,
+    checkPersonaInProfile,
+    navigateToPersonaSettings,
+    navigateToPersonaWithPagination,
+    removePersonaDefault,
+    setPersonaAsDefault,
+    updatePersonaDisplayName
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 

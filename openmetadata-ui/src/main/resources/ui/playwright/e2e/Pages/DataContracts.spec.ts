@@ -13,17 +13,17 @@
 import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
-  DATA_CONTRACT_CONTAIN_SEMANTICS,
-  DATA_CONTRACT_DETAILS,
-  DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
-  DATA_CONTRACT_SECURITY_DETAILS_1,
-  DATA_CONTRACT_SECURITY_DETAILS_2,
-  DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
-  DATA_CONTRACT_SEMANTICS1,
-  DATA_CONTRACT_SEMANTICS2,
-  NEW_TABLE_TEST_CASE,
-  ODCS_WITH_SLA_YAML,
-  VALID_OM_SIMPLE_YAML,
+    DATA_CONTRACT_CONTAIN_SEMANTICS,
+    DATA_CONTRACT_DETAILS,
+    DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
+    DATA_CONTRACT_SECURITY_DETAILS_1,
+    DATA_CONTRACT_SECURITY_DETAILS_2,
+    DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+    DATA_CONTRACT_SEMANTICS1,
+    DATA_CONTRACT_SEMANTICS2,
+    NEW_TABLE_TEST_CASE,
+    ODCS_WITH_SLA_YAML,
+    VALID_OM_SIMPLE_YAML
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -55,35 +55,35 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import {
-  clickOutside,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    clickOutside,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import {
-  clickAddContractButton,
-  clickEditContractButton,
-  deleteContract,
-  exportContractYaml,
-  importOdcsViaDropdown,
-  importOMViaDropdown,
-  navigateToContractTab,
-  openContractActionsDropdown,
-  saveAndTriggerDataContractValidation,
-  saveContractAndWait,
-  saveSecurityAndSLADetails,
-  triggerContractValidation,
-  validateDataContractInsideBundleTestSuites,
-  validateSecurityAndSLADetails,
-  waitForContractExecutionWithFallback,
+    clickAddContractButton,
+    clickEditContractButton,
+    deleteContract,
+    exportContractYaml,
+    importOdcsViaDropdown,
+    importOMViaDropdown,
+    navigateToContractTab,
+    openContractActionsDropdown,
+    saveAndTriggerDataContractValidation,
+    saveContractAndWait,
+    saveSecurityAndSLADetails,
+    triggerContractValidation,
+    validateDataContractInsideBundleTestSuites,
+    validateSecurityAndSLADetails,
+    waitForContractExecutionWithFallback
 } from '../../utils/dataContracts';
 import {
-  addOwner,
-  addOwnerWithoutValidation,
-  assignGlossaryTerm,
-  assignTag,
-  assignTier,
-  waitForAllLoadersToDisappear,
+    addOwner,
+    addOwnerWithoutValidation,
+    assignGlossaryTerm,
+    assignTag,
+    assignTier,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { selectOnDemandSchedule } from '../../utils/scheduleInterval';

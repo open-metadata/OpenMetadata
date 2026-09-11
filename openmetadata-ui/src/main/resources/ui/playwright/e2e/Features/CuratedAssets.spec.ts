@@ -19,20 +19,20 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  addCuratedAssetPlaceholder,
-  CURATED_ASSETS_WIDGET_KEY,
-  ENTITY_TYPE_CONFIGS,
-  navigateToCustomizeLandingPage,
-  removeAndCheckWidget,
-  saveCustomizeLayoutPage,
-  selectAssetTypes,
-  setUserDefaultPersona,
-  toNameableEntity,
-  waitForLandingPageWidget,
+    addCuratedAssetPlaceholder,
+    CURATED_ASSETS_WIDGET_KEY,
+    ENTITY_TYPE_CONFIGS,
+    navigateToCustomizeLandingPage,
+    removeAndCheckWidget,
+    saveCustomizeLayoutPage,
+    selectAssetTypes,
+    setUserDefaultPersona,
+    toNameableEntity,
+    waitForLandingPageWidget
 } from '../../utils/customizeLandingPage';
 import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
+    getEntityDisplayName,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 
 const adminUser = new UserClass();
