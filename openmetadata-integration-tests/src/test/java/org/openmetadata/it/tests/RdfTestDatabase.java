@@ -73,6 +73,7 @@ final class RdfTestDatabase implements AutoCloseable {
   }
 
   private void initializeSchema() {
+    createFlywayTable("v004__create_db_connection_info.sql", "openmetadata_settings");
     createTable("1.3.0", "change_event_consumers");
     createTable("1.13.0", "rdf_index_job");
     createTable("1.13.0", "rdf_index_partition");
@@ -86,11 +87,32 @@ final class RdfTestDatabase implements AutoCloseable {
   }
 
   private void createTable(final String version, final String table) {
+    final String dialect = backend == Backend.MYSQL ? "mysql" : "postgres";
+    final Path path =
+        repositoryRoot()
+            .resolve(
+                "bootstrap/sql/migrations/native/"
+                    + version
+                    + "/"
+                    + dialect
+                    + "/schemaChanges.sql");
+    createTable(path, table);
+  }
+
+  private void createFlywayTable(final String migration, final String table) {
+    final String driver =
+        backend == Backend.MYSQL ? "com.mysql.cj.jdbc.Driver" : "org.postgresql.Driver";
+    final Path path =
+        repositoryRoot().resolve("bootstrap/sql/migrations/flyway/" + driver + "/" + migration);
+    createTable(path, table);
+  }
+
+  private void createTable(final Path path, final String table) {
     final String create =
-        migrationStatements(version).stream()
+        migrationStatements(path).stream()
             .filter(statement -> statement.contains("CREATE TABLE IF NOT EXISTS " + table + " ("))
             .findFirst()
-            .orElseThrow(() -> new IllegalStateException("Missing migration for " + table));
+            .orElseThrow(() -> new IllegalStateException("Missing table migration for " + table));
     jdbi.useHandle(handle -> handle.execute(create));
   }
 
@@ -104,6 +126,10 @@ final class RdfTestDatabase implements AutoCloseable {
                     + "/"
                     + dialect
                     + "/schemaChanges.sql");
+    return migrationStatements(path);
+  }
+
+  private List<String> migrationStatements(final Path path) {
     return MigrationFile.parseSQLFile(
         path.toFile(), backend == Backend.MYSQL ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
   }
