@@ -27,9 +27,9 @@ import {
   TaskStatus,
   TaskType,
 } from '../../../generated/entity/tasks/task';
-import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import { deleteTaskComment } from '../../../rest/tasksAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import TaskCommentCard from './TaskCommentCard.component';
 
 jest.mock('../../../rest/tasksAPI', () => ({

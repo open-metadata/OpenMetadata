@@ -703,7 +703,9 @@ test.describe('Task Comments - Edit/Delete', () => {
     const message = `Drawer-delete comment ${Date.now()}`;
     const { drawer, taskCommentId } = await postCommentAsUser(page, message);
 
-    await expect(page.locator('.activity-feed-drawer, .feed-drawer')).toBeVisible();
+    await expect(
+      page.locator('.activity-feed-drawer, .feed-drawer')
+    ).toBeVisible();
 
     await deleteCommentViaUi(page, drawer, message, taskCommentId);
   });
@@ -782,7 +784,9 @@ test.describe('Task Comments - Long Comment Overflow', () => {
     await expect(drawer).toBeVisible();
 
     const uniqueMarker = `overflow-marker-${Date.now()}`;
-    const longMessage = `${'This comment is written to overflow the two line clamp on the task comment preview. '.repeat(8)}${uniqueMarker}`;
+    const longMessage = `${'This comment is written to overflow the two line clamp on the task comment preview. '.repeat(
+      8
+    )}${uniqueMarker}`;
 
     const commentInput = drawer.locator(
       '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
