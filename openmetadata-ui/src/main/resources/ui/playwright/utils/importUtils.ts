@@ -550,16 +550,17 @@ const selectOwnersOnTab = async (
   searchIndex: 'user' | 'team',
   owners: string[]
 ) => {
-  const listResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query?q=') &&
-      response.url().includes(`index=${searchIndex}`)
-  );
+  // Do NOT wait for a tab-switch list response here: the picker opens on the
+  // Teams tab by default and caches each tab's first (empty-query) fetch in a
+  // ref, so re-activating an already-visited tab returns the cache and fires no
+  // request (UserTeamSelectableList fetchTeamOptions/fetchUserOptions). Waiting
+  // for one would hang until the test times out. Each per-owner search below
+  // has a non-empty query, bypasses the cache, and awaits its own response, so
+  // that is the reliable synchronization point.
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: tab })
     .click();
-  await listResponse;
 
   await waitForAllLoadersToDisappear(page);
 
