@@ -409,6 +409,13 @@ jest.mock(
   })
 );
 
+// Leaf display component pulling the full ui-core-components surface (Box, …) that this suite only
+// partially mocks; the list assertions never inspect its chips, so stub it.
+jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
+  __esModule: true,
+  default: () => <div data-testid="tags-container" />,
+}));
+
 const row = {
   displayName: 'MySQL Service',
   entityType: 'databaseService',
