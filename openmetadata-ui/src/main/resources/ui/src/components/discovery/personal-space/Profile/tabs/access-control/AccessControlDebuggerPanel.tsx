@@ -190,11 +190,11 @@ const AccessControlDebuggerPanel: React.FC = () => {
           </Typography>
         </Box>
         <Box className="tw:p-6 tw:flex tw:flex-col tw:gap-4">
-          <Box className="tw:flex tw:flex-col tw:gap-2">
+          <Box className="tw:flex tw:flex-col tw:gap-2 tw:bg-tertiary tw:p-4 tw:rounded-lg">
             <Typography className="tw:text-lg tw:font-semibold tw:text-primary">
               {`${t('label.decision')}: ${evaluationInfo.finalDecision}`}
             </Typography>
-            <Typography className="tw:text-sm tw:text-secondary">
+            <Typography className="tw:text-sm tw:text-tertiary">
               {`${t('label.user')} `}
               <strong>{evaluationInfo.user.name}</strong>
               {` ${t('label.is')} `}
@@ -213,7 +213,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
           </Box>
 
           {evaluationInfo.summary && (
-            <Box className="tw:flex tw:flex-wrap tw:gap-4" direction="row">
+            <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="row" wrap='wrap' gap={4}>
               <Typography className="tw:text-sm tw:text-secondary">
                 {`${t('label.policies-evaluated')}: ${evaluationInfo.summary.totalPoliciesEvaluated}`}
               </Typography>
@@ -248,8 +248,8 @@ const AccessControlDebuggerPanel: React.FC = () => {
                   : 'tw:text-red-600';
 
               return (
-                <Box
-                  className="tw:rounded-lg tw:border tw:border-secondary tw:p-4 tw:flex tw:flex-col tw:gap-2"
+                <Card
+                  className="tw:p-4 tw:flex tw:flex-col tw:gap-2 tw: bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
                   key={step.stepNumber}>
                   <Box className="tw:flex tw:flex-wrap tw:gap-2 tw:items-center" direction="row">
                     <Typography className="tw:text-sm tw:text-secondary">
@@ -301,13 +301,13 @@ const AccessControlDebuggerPanel: React.FC = () => {
                       ))}
                     </Box>
                   )}
-                </Box>
+                </Card>
               );
             })}
           </Box>
 
           {evaluationInfo.summary?.reasonsForDecision && (
-            <Box className="tw:flex tw:flex-col tw:gap-2">
+            <Box className="tw:flex tw:flex-col tw:gap-2 tw:bg-tertiary tw:p-4 tw:rounded-lg">
               <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
                 {`${t('label.reasons-for-decision')}:`}
               </Typography>

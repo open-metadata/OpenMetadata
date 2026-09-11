@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Badge,
+  Card,
   Box,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -138,7 +139,7 @@ const renderPolicy = (policy: PolicyInfo, index: number) => {
         </Box>
       </AccordionHeader>
       <AccordionPanel>
-        <Box className="tw:flex tw:flex-col">
+        <Box className="tw:w-full" direction='col'>
           {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
         </Box>
       </AccordionPanel>
@@ -153,14 +154,14 @@ const SectionCard = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <Box className="tw:rounded-xl tw:border tw:border-secondary tw:overflow-hidden tw:mb-4">
-    <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary tw:bg-secondary">
+  <Card className="tw:overflow-hidden tw:mb-4">
+    <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
       <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
         {title}
       </Typography>
     </Box>
-    <Box className="tw:p-6 tw:flex tw:flex-col tw:gap-4">{children}</Box>
-  </Box>
+    <Box className="tw:p-6" direction='col' gap={4}>{children}</Box>
+  </Card>
 );
 
 const AccessControlUserPermissions: React.FC<
@@ -235,7 +236,7 @@ const AccessControlUserPermissions: React.FC<
         </Box>
 
         {!isEmpty(summary.effectiveOperations) && (
-          <Box className="tw:mb-3">
+          <Box className="tw:mb-3" direction='col' gap={2}>
             <Typography className="tw:text-sm tw:font-semibold tw:text-primary tw:mb-2">
               {`${t('label.allowed-operation-plural')}:`}
             </Typography>
@@ -250,7 +251,7 @@ const AccessControlUserPermissions: React.FC<
         )}
 
         {!isEmpty(summary.deniedOperations) && (
-          <Box>
+          <Box direction='col' gap={2}>
             <Typography className="tw:text-sm tw:font-semibold tw:text-primary tw:mb-2">
               {`${t('label.denied-operation-plural')}:`}
             </Typography>
@@ -276,7 +277,7 @@ const AccessControlUserPermissions: React.FC<
       <SectionCard title={t('label.direct-role-plural')}>
         {permissionInfo?.directRoles.map(
           (rolePermission: DirectRolePermission) => (
-            <Box className="tw:mb-6" key={rolePermission.role.id}>
+            <Box className="tw:mb-6" key={rolePermission.role.id} direction='col'>
               <Box
                 className="tw:flex tw:items-center tw:gap-2 tw:mb-3"
                 direction="row">
@@ -351,7 +352,7 @@ const AccessControlUserPermissions: React.FC<
       <SectionCard title={t('label.team-permission-plural')}>
         {permissionInfo?.teamPermissions.map(
           (teamPermission: TeamPermission) => (
-            <Box key={teamPermission.team.id} gap={6}>
+            <Box key={teamPermission.team.id} gap={2} direction='col'>
               <Box
                 className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mb-3"
                 direction="row">
@@ -415,7 +416,7 @@ const AccessControlUserPermissions: React.FC<
               )}
 
               {!isEmpty(teamPermission.directPolicies) && (
-                <Box className="tw:mt-3 tw:mb-3">
+                <Box className="tw:mt-3 tw:mb-3" direction='col' gap={2}>
                   <Typography className="tw:text-sm tw:font-semibold tw:text-primary tw:mb-3">
                     {`${t('label.direct-team-policy-plural')}:`}
                   </Typography>
@@ -427,7 +428,7 @@ const AccessControlUserPermissions: React.FC<
                 </Box>
               )}
 
-              <Box className="tw:h-px tw:bg-secondary tw:my-5" />
+              <Box className="tw:h-px tw:my-5" />
             </Box>
           )
         )}
@@ -491,7 +492,7 @@ const AccessControlUserPermissions: React.FC<
   };
 
   return (
-    <Box className="tw:flex tw:flex-col">
+    <Box className="tw:w-full" direction='col'>
       {renderSummary()}
       {renderDirectRoles()}
       {renderTeamPermissions()}

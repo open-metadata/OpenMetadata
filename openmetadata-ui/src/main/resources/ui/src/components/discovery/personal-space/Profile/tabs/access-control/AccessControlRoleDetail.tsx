@@ -24,8 +24,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete } from '@openmetadata/ui-core-components/icons';
-import { Edit01, Trash01 } from '@untitledui/icons';
+import { Edit, Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
@@ -223,8 +222,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   onSave,
   t,
 }) => (
-  <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
-    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+  <Box className='tw:mb-4' direction="col">
+    <Box align='center' gap={2} direction="row">
       <Typography className="tw:text-primary" weight="medium">
         {t('label.description')}
       </Typography>
@@ -237,14 +236,14 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
             data-testid="edit-description-btn"
             size="xs"
             onPress={onStartEdit}>
-            <Edit01 name={t('label.edit')} width="14px" />
+            <Edit name={t('label.edit')} width="14px" />
           </Button>
         </Tooltip>
       )}
     </Box>
 
     {isEditing ? (
-      <Box className="tw:flex tw:flex-col tw:gap-2" direction="col">
+      <Box direction="col" gap={2}>
         <RichTextEditor
           className="new-form-style"
           initialValue={description ?? ''}
@@ -357,7 +356,7 @@ const RoleHeaderActions: FC<RoleHeaderActionsProps> = ({
         isDisabled={!canEditAll}
         size="sm"
         onPress={() => onRename(displayName || name)}>
-        <Edit01 name={t('label.rename')} width="16px" />
+        <Edit name={t('label.rename')} width="16px" />
       </Button>
     </Tooltip>
     <Tooltip
@@ -369,7 +368,7 @@ const RoleHeaderActions: FC<RoleHeaderActionsProps> = ({
         isDisabled={!canDelete}
         size="sm"
         onPress={onDelete}>
-        <Trash01 name={t('label.delete')} width="16px" />
+        <Delete name={t('label.delete')} width="16px" />
       </Button>
     </Tooltip>
   </Box>
@@ -512,7 +511,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
             setRenameValue(role.displayName || role.name || '');
             setIsRenameOpen(true);
           }}>
-          <Edit01 name={t('label.rename')} width="16px" />
+          <Edit name={t('label.rename')} width="16px" />
         </Button>
       </Tooltip>
     );
@@ -527,7 +526,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           isDisabled={!canDelete}
           size="sm"
           onPress={() => setIsDeleteRoleOpen(true)}>
-          <Trash01 name={t('label.delete')} width="16px" />
+          <Delete name={t('label.delete')} width="16px" />
         </Button>
       </Tooltip>
     );

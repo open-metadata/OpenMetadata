@@ -113,8 +113,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   onStartEdit,
   t,
 }) => (
-  <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
-    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+  <Box className="tw:mb-4" direction="col">
+    <Box direction="row" align="center" gap={2}>
       <Typography className="tw:text-primary" weight="medium">
         {t('label.description')}
       </Typography>
@@ -446,7 +446,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
   t,
   onRemove,
 }) => (
-  <Box className="tw:w-full tw:overflow-x-auto" direction="col">
+  <Box className="tw:w-full tw:overflow-x-auto tw:p-1" direction="col">
     <TableCard.Root className="tw:w-full" size="compact">
       <Table aria-label={label} size="compact">
         <Table.Header columns={columns}>
