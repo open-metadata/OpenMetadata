@@ -16,7 +16,7 @@ import { Delete as DeleteIcon } from '@openmetadata/ui-core-components/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { FC, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { User } from '../../../generated/entity/teams/user';
@@ -72,6 +72,39 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
     [currentUser, comment.author]
   );
 
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Removing the focused node (deleting this comment) must not let keyboard
+  // focus fall through to <body> - move it to a sensible neighbour first.
+  // This runs on unmount rather than inside handleDelete because the card
+  // doesn't disappear until the parent's refetch resolves and re-renders;
+  // by then react-aria has already restored focus to our own (about to be
+  // removed) delete button, so redirecting it earlier would just get
+  // overwritten. See frontend-a11y.md's focus-management rule.
+  useLayoutEffect(
+    () => () => {
+      const card = cardRef.current;
+      if (!card || !card.contains(document.activeElement)) {
+        return;
+      }
+
+      const nextFocusTarget =
+        (card.nextElementSibling as HTMLElement | null) ??
+        (card.previousElementSibling as HTMLElement | null);
+
+      if (nextFocusTarget) {
+        nextFocusTarget.focus();
+      } else if (card.parentElement) {
+        // No sibling comments left - fall back to the still-mounted
+        // replies container itself rather than leaving focus on a node
+        // that's about to be removed.
+        card.parentElement.setAttribute('tabindex', '-1');
+        card.parentElement.focus();
+      }
+    },
+    []
+  );
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -106,7 +139,9 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
       className={classNames('p-y-md p-x-sm tw:relative tw:group', {
         'border-bottom': !isLastReply,
       })}
-      data-testid="task-comment-card">
+      data-testid="task-comment-card"
+      ref={cardRef}
+      tabIndex={-1}>
       <Space align="start" className="w-full" size={12}>
         {authorUserName ? (
           <UserPopOverCard userName={authorUserName}>

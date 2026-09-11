@@ -335,4 +335,61 @@ describe('TaskCommentCard', () => {
       expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
     });
   });
+
+  describe('focus management on delete', () => {
+    it('should move focus to a sibling comment instead of letting it fall to <body>', async () => {
+      const secondComment: TaskComment = {
+        ...mockComment,
+        id: 'comment-2',
+        message: 'A second comment',
+      };
+
+      const rerenderRef: {
+        current?: (ui: React.ReactElement) => void;
+      } = {};
+
+      const TwoComments = ({ showFirst }: { showFirst: boolean }) => (
+        <MemoryRouter>
+          <div data-testid="feed-replies">
+            {showFirst && (
+              <TaskCommentCard
+                comment={mockComment}
+                currentUser={{ name: 'alice' }}
+                task={mockTask}
+                onCommentDeleted={() =>
+                  rerenderRef.current?.(<TwoComments showFirst={false} />)
+                }
+              />
+            )}
+            <TaskCommentCard
+              comment={secondComment}
+              currentUser={{ name: 'alice' }}
+              task={mockTask}
+            />
+          </div>
+        </MemoryRouter>
+      );
+
+      const { rerender } = render(<TwoComments showFirst />);
+      rerenderRef.current = rerender;
+
+      const deleteButtons = screen.getAllByTestId('delete-task-comment');
+      // Simulate react-aria restoring focus to the trigger as the confirm
+      // dialog closes, which is what actually happens right before the
+      // parent's refetch removes this card in the real app.
+      deleteButtons[0].focus();
+      fireEvent.click(deleteButtons[0]);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('confirm-delete'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('task-comment-card')).toHaveLength(1);
+      });
+
+      expect(document.body).not.toHaveFocus();
+      expect(screen.getByTestId('task-comment-card')).toHaveFocus();
+    });
+  });
 });

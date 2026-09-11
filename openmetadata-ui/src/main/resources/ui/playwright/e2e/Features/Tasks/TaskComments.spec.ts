@@ -709,6 +709,114 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 });
 
+test.describe('Task Comments - Long Comment Overflow', () => {
+  const assigneeUser = new UserClass();
+  const table = new TableClass();
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await assigneeUser.create(apiContext);
+
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: assigneeUser.responseData.id,
+        type: 'user',
+      });
+
+      await apiContext.post('/api/v1/tasks', {
+        data: {
+          about: {
+            type: 'table',
+            id: table.entityResponseData?.id,
+            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
+          },
+          type: 'RequestDescription',
+          assignees: [{ id: assigneeUser.responseData.id, type: 'user' }],
+        },
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await assigneeUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('a long comment shows a working View More / View Less toggle instead of being silently clamped', async ({
+    page,
+  }) => {
+    // Regression coverage for TaskCommentCard's RichTextEditorPreviewNew
+    // usage: the ~2-line clamp applies independent of `enableSeeMoreVariant`,
+    // so a comment that overflows needs the toggle rendered to stay
+    // readable. This can't be covered in Jest - jsdom has no real layout, so
+    // the scrollHeight-vs-clientHeight overflow check that decides whether
+    // to render the toggle never actually fires there.
+    await assigneeUser.login(page);
+    await table.visitEntityPage(page);
+
+    await page.getByTestId('activity_feed').click();
+    await waitForPageLoaded(page);
+
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    if (await tasksTab.isVisible()) {
+      await tasksTab.click();
+      await waitForPageLoaded(page);
+    }
+
+    const taskCard = page.getByTestId('task-feed-card');
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
+
+    const drawer = page.locator('.ant-drawer-content');
+    await expect(drawer).toBeVisible();
+
+    const uniqueMarker = `overflow-marker-${Date.now()}`;
+    const longMessage = `${'This comment is written to overflow the two line clamp on the task comment preview. '.repeat(8)}${uniqueMarker}`;
+
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill(longMessage);
+
+    const sendBtn = drawer.getByTestId('send-comment');
+    const commentResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await sendBtn.click();
+    await commentResponsePromise;
+
+    const commentCard = drawer
+      .getByTestId('task-comment-card')
+      .filter({ hasText: uniqueMarker });
+    await expect(commentCard).toBeVisible();
+
+    // The toggle only renders when the browser's real layout measurement
+    // (scrollHeight vs clientHeight against the clamp) finds an overflow -
+    // its presence here is the actual signal Jest can't produce.
+    const readMoreButton = commentCard.getByTestId('read-more-button');
+    await expect(readMoreButton).toBeVisible();
+    await readMoreButton.click();
+
+    await expect(commentCard.getByTestId('read-less-button')).toBeVisible();
+    await expect(commentCard.getByText(uniqueMarker)).toBeVisible();
+  });
+});
+
 test.describe('Task Comments - API Validation', () => {
   const adminUser = new UserClass();
   const table = new TableClass();
