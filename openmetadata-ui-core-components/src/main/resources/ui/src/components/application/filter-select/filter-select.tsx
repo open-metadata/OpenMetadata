@@ -59,6 +59,7 @@ const TriggerCountBadge = ({ count }: { count: number }) => (
 const TriggerButton = ({
   hasSelection,
   text,
+  label,
   count,
   placeholder,
   testId,
@@ -69,6 +70,7 @@ const TriggerButton = ({
 }: {
   hasSelection: boolean;
   text: string;
+  label: string;
   count?: number;
   placeholder?: string;
   testId?: string;
@@ -101,7 +103,7 @@ const TriggerButton = ({
         iconLeading={icon}
         iconTrailing={ChevronDown}
         size={bordered ? 'md' : 'sm'}>
-        {text}
+        <span data-testid={`search-dropdown-${label}`}>{text}</span>
         {countBadge}
       </Button>
     );
@@ -119,7 +121,8 @@ const TriggerButton = ({
           className={cx(
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
-          )}>
+          )}
+          data-testid={`search-dropdown-${label}`}>
           {hasSelection ? text : placeholder ?? text}
         </span>
         {countBadge}
@@ -137,7 +140,7 @@ const TriggerButton = ({
         className
       )}
       data-testid={testId}>
-      {text}
+      <span data-testid={`search-dropdown-${label}`}>{text}</span>
       {countBadge}
       <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
     </AriaButton>
@@ -502,6 +505,7 @@ export const FilterSelect = ({
           count={isMulti ? selectedValues.length : undefined}
           hasSelection={selectedValues.length > 0}
           icon={triggerIcon}
+          label={label}
           placeholder={placeholder}
           testId={testId}
           text={triggerText}

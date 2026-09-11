@@ -292,6 +292,16 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {
+    // The component this replaces put a second test id on an element inside
+    // the trigger, keyed by visible label rather than by filter key. A dozen
+    // specs click filters that way ("search-dropdown-Data Products").
+    renderFilter({ 'data-testid': 'search-dropdown-tier', label: 'Tier' });
+
+    expect(screen.getByTestId('search-dropdown-tier')).toBeInTheDocument();
+    expect(screen.getByTestId('search-dropdown-Tier')).toBeInTheDocument();
+  });
+
   it('exposes the legacy dropdown test ids the E2E suite drives', () => {
     // The Playwright suite addresses filters through the ids the component
     // this replaced used. Renaming them silently breaks ~160 references across
