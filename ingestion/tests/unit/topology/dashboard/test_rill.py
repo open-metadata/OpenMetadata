@@ -692,10 +692,48 @@ class TestRillSource:
         assert len(lineage_edges(dashboard_first)) == 1
         assert lineage_edges(dashboard_second) == []
         assert source.lineage_edges == {
-            ("datamodel:pull_requests", "datamodel:pull_request_metrics"),
-            ("datamodel:raw_pull_requests", "datamodel:pull_requests"),
+            ("datamodel:pull_requests_model", "datamodel:pull_request_metrics"),
+            ("datamodel:raw_pull_requests_model", "datamodel:pull_requests_model"),
             ("datamodel:pull_request_metrics", "dashboard:pull_request_velocity"),
         }
+
+    def test_model_and_metrics_view_sharing_a_name_and_an_upstream_both_get_edges(self):
+        shared_model = {
+            "meta": {
+                "name": {"kind": MODEL_KIND, "name": "runtime_instances"},
+                "refs": [{"kind": MODEL_KIND, "name": "raw_runtime"}],
+            },
+            "model": {"spec": {"inputProperties": {"sql": "SELECT * FROM raw_runtime"}}},
+        }
+        shared_metrics_view = {
+            "meta": {
+                "name": {"kind": METRICS_VIEW_KIND, "name": "runtime_instances"},
+                "refs": [{"kind": MODEL_KIND, "name": "raw_runtime"}],
+            },
+            "metricsView": {"spec": {"model": "raw_runtime"}},
+        }
+        raw_model = make_model("raw_runtime")
+        model = make_model("runtime_instances")
+        metrics_view = make_datamodel("runtime_instances")
+        source = make_source(
+            "http://localhost:9009",
+            catalog=[
+                RAW_MODEL_RESOURCE | {"meta": {"name": {"kind": MODEL_KIND, "name": "raw_runtime"}}},
+                shared_model,
+                shared_metrics_view,
+            ],
+            entities=[raw_model, model, metrics_view],
+        )
+
+        results = list(source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+
+        assert sorted(lineage_edges(results)) == sorted(
+            [
+                (raw_model.fullyQualifiedName.root, model.fullyQualifiedName.root),
+                (raw_model.fullyQualifiedName.root, metrics_view.fullyQualifiedName.root),
+            ]
+        )
+        assert errors(results) == []
 
     def test_canvas_dashboard_does_not_generate_a_description(self):
         source = make_source("http://localhost:9009")

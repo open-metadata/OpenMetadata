@@ -210,6 +210,10 @@ class RillSource(DashboardServiceSource):
         model's name, so models carry a suffix to keep data model FQNs distinct."""
         return f"{name}_model" if kind == MODEL_KIND else name
 
+    @classmethod
+    def _datamodel_edge_key(cls, kind: str, name: str) -> str:
+        return f"datamodel:{cls._datamodel_name(kind, name)}"
+
     @staticmethod
     def _get_dashboard_spec(dashboard: RillResource) -> DashboardSpec:
         if dashboard.explore and dashboard.explore.effective_spec:
@@ -639,7 +643,10 @@ class RillSource(DashboardServiceSource):
                     table_key = (
                         model_str(table_entity.fullyQualifiedName) if table_entity.fullyQualifiedName else target.table
                     )
-                    edge_key = (f"table:{table_key}", f"datamodel:{resource.meta.name.name}")
+                    edge_key = (
+                        f"table:{table_key}",
+                        self._datamodel_edge_key(resource.meta.name.kind, resource.meta.name.name),
+                    )
                     if edge_key in self.lineage_edges:
                         continue
                     lineage = self._get_add_lineage_request(
@@ -664,7 +671,10 @@ class RillSource(DashboardServiceSource):
         for kind, upstream_name in references:
             if filter_by_datamodel(self.source_config.dataModelFilterPattern, upstream_name):
                 continue
-            edge_key = (f"datamodel:{upstream_name}", f"datamodel:{resource.meta.name.name}")
+            edge_key = (
+                self._datamodel_edge_key(kind, upstream_name),
+                self._datamodel_edge_key(resource.meta.name.kind, resource.meta.name.name),
+            )
             if edge_key in self.lineage_edges:
                 continue
             try:
@@ -715,7 +725,7 @@ class RillSource(DashboardServiceSource):
         for metrics_view_name in self._get_dashboard_metrics_views(dashboard):
             if filter_by_datamodel(self.source_config.dataModelFilterPattern, metrics_view_name):
                 continue
-            edge_key = (f"datamodel:{metrics_view_name}", f"dashboard:{dashboard_name}")
+            edge_key = (self._datamodel_edge_key(METRICS_VIEW_KIND, metrics_view_name), f"dashboard:{dashboard_name}")
             if edge_key in self.lineage_edges:
                 continue
             try:
