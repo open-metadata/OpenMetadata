@@ -81,6 +81,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -128,6 +129,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -2898,93 +2900,105 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
 
-    List<Column> allColumns = table.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+    ResultList<FieldInterface> page =
+        new ChildFieldPageReader(this, ChildFieldResolver.specFor(Entity.TABLE))
+            .read(
+                table,
+                limit,
+                offset,
+                fieldsParam,
+                sortBy,
+                sortOrder,
+                (parent, columns, requestedFields) ->
+                    enrichColumnPage(
+                        table, columns, requestedFields, piiOwners, authorizer, securityContext));
+    return toColumnResultList(page);
+  }
+
+  /** A table column page carries custom metrics, custom-property extensions and a masked profile. */
+  private List<FieldInterface> enrichColumnPage(
+      Table table,
+      List<FieldInterface> page,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    if (fieldsParam == null) {
+      return page;
     }
-
-    // Sort columns based on sortBy and sortOrder parameters
-    List<Column> sortedColumns = new ArrayList<>(allColumns);
-    Comparator<Column> comparator;
-    if ("ordinalPosition".equals(sortBy)) {
-      comparator =
-          Comparator.comparing(
-              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
-    } else {
-      // Default: sort by name
-      comparator =
-          Comparator.comparing(
-              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+    List<Column> columns = page.stream().map(Column.class::cast).collect(Collectors.toList());
+    if (fieldsParam.contains("customMetrics")) {
+      addCustomMetrics(table, columns);
     }
-
-    // Apply sort order (desc reverses the comparator)
-    if ("desc".equalsIgnoreCase(sortOrder)) {
-      comparator = comparator.reversed();
+    if (fieldsParam.contains("extension")) {
+      addColumnExtensions(table, columns);
     }
-    sortedColumns.sort(comparator);
-
-    // Apply pagination
-    int total = sortedColumns.size();
-    int fromIndex = Math.min(offset, total);
-    int toIndex = Math.min(offset + limit, total);
-
-    List<Column> paginatedColumns = sortedColumns.subList(fromIndex, toIndex);
-
-    // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    if (fieldsParam.contains("profile")) {
+      columns =
+          addMaskedProfile(table, columns, fieldsParam, piiOwners, authorizer, securityContext);
     }
+    return new ArrayList<>(columns);
+  }
 
-    if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
-      Map<String, List<CustomMetric>> metricsByColumn =
-          batchFetchCustomMetricsByColumn(table.getId());
-      for (Column column : paginatedColumns) {
-        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
+  private void addCustomMetrics(Table table, List<Column> columns) {
+    Map<String, List<CustomMetric>> metricsByColumn =
+        batchFetchCustomMetricsByColumn(table.getId());
+    for (Column column : columns) {
+      column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
+    }
+  }
+
+  private void addColumnExtensions(Table table, List<Column> columns) {
+    List<ExtensionRecord> allColumnExtensions =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByJsonSchema(table.getId(), COLUMN_EXTENSION_JSON_SCHEMA);
+    Map<String, Object> extensionByColumnHash = new HashMap<>();
+    for (ExtensionRecord record : allColumnExtensions) {
+      try {
+        extensionByColumnHash.put(
+            record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to deserialize column extension for table {} extensionKey {}: {}",
+            table.getId(),
+            record.extensionName(),
+            e.getMessage());
       }
     }
-
-    if (fieldsParam != null && fieldsParam.contains("extension")) {
-      List<ExtensionRecord> allColumnExtensions =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtensionsByJsonSchema(table.getId(), COLUMN_EXTENSION_JSON_SCHEMA);
-      Map<String, Object> extensionByColumnHash = new HashMap<>();
-      for (ExtensionRecord record : allColumnExtensions) {
-        try {
-          extensionByColumnHash.put(
-              record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to deserialize column extension for table {} extensionKey {}: {}",
-              table.getId(),
-              record.extensionName(),
-              e.getMessage());
-        }
-      }
-      for (Column column : paginatedColumns) {
-        column.setExtension(
-            extensionByColumnHash.get(
-                FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
-      }
+    for (Column column : columns) {
+      column.setExtension(
+          extensionByColumnHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
     }
+  }
 
-    if (fieldsParam != null && fieldsParam.contains("profile")) {
-      setColumnProfile(paginatedColumns);
-      if (!fieldsParam.contains("tags")) {
-        populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
-      }
-      paginatedColumns =
-          piiOwners != null
-              ? PIIMasker.getTableProfile(piiOwners, paginatedColumns, authorizer, securityContext)
-              : PIIMasker.getTableProfile(
-                  table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
+  /**
+   * Profile data is masked per column, and masking reads a column's tags, so a profile request that
+   * did not also ask for tags has to hydrate them here before masking can decide anything.
+   */
+  private List<Column> addMaskedProfile(
+      Table table,
+      List<Column> columns,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    setColumnProfile(columns);
+    if (!fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, columns, table.getFullyQualifiedName(), true);
     }
+    return piiOwners != null
+        ? PIIMasker.getTableProfile(piiOwners, columns, authorizer, securityContext)
+        : PIIMasker.getTableProfile(
+            table.getFullyQualifiedName(), columns, authorizer, securityContext);
+  }
 
-    // Calculate pagination metadata
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-    return new ResultList<>(paginatedColumns, before, after, total);
+  /** Narrows a generic child page back to the Column-typed result this API has always returned. */
+  private ResultList<Column> toColumnResultList(ResultList<FieldInterface> page) {
+    ResultList<Column> result = new ResultList<>();
+    result.setData(page.getData().stream().map(Column.class::cast).toList());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public Column enrichSingleColumnFields(

@@ -1,7 +1,10 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatus;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
 import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -9,24 +12,39 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 
@@ -167,6 +185,162 @@ public class ChildFieldPaginationIT {
     assertEquals(0, root.get("paging").get("total").asInt());
     assertEquals(cursor(0), root.get("paging").get("before").asText());
     assertEquals(cursor(50), root.get("paging").get("after").asText());
+  }
+
+  @Test
+  void pipelineTasks_paginatedAndTypedAsTask(TestNamespace ns) throws Exception {
+    ColumnChildTypesIT.ChildFixture fixture = ColumnChildTypesIT.createFixture("pipeline", ns);
+    JsonNode root = readChildPage("pipelines", fixture.parentFqn(), "");
+
+    assertEquals(1, root.get("paging").get("total").asInt());
+    JsonNode task = root.get("data").get(0);
+    assertEquals("extract", task.get("name").asText());
+    // A task serializes as itself. If the endpoint had reshaped it into a Column, dataType would
+    // be present and every consumer would read a task as a column.
+    assertFalse(task.has("dataType"), "Task must not be shaped as a Column");
+  }
+
+  @Test
+  void mlModelFeatures_typedAsMlFeature(TestNamespace ns) throws Exception {
+    ColumnChildTypesIT.ChildFixture fixture = ColumnChildTypesIT.createFixture("mlmodel", ns);
+    JsonNode root = readChildPage("mlmodels", fixture.parentFqn(), "");
+
+    assertEquals(1, root.get("paging").get("total").asInt());
+    JsonNode feature = root.get("data").get(0);
+    assertEquals("age", feature.get("name").asText());
+    assertFalse(feature.has("constraint"), "MlFeature must not be shaped as a Column");
+    assertFalse(feature.has("ordinalPosition"), "MlFeature must not be shaped as a Column");
+  }
+
+  @Test
+  void apiEndpointFields_coverBothSchemas(TestNamespace ns) throws Exception {
+    // apiEndpoint is the one type with two child containers. The page must concatenate them
+    // rather than serve only the first.
+    ColumnChildTypesIT.ChildFixture fixture = ColumnChildTypesIT.createFixture("apiEndpoint", ns);
+    JsonNode root = readChildPage("apiEndpoints", fixture.parentFqn(), "");
+    assertEquals(1, root.get("paging").get("total").asInt());
+    assertEquals("userId", root.get("data").get(0).get("name").asText());
+  }
+
+  @Test
+  void newTypeEndpoint_honoursSortByAndSortOrder(TestNamespace ns) throws Exception {
+    // JAX-RS silently discards a query parameter no method declares, so an endpoint that forgot
+    // sortBy would return stored order and report success. This is what catches that.
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    Topic topic =
+        client
+            .topics()
+            .create(
+                new CreateTopic()
+                    .withName(ns.prefix("sortable"))
+                    .withService(service.getFullyQualifiedName())
+                    .withPartitions(1)
+                    .withMessageSchema(
+                        new MessageSchema()
+                            .withSchemaType(SchemaType.JSON)
+                            .withSchemaFields(
+                                List.of(
+                                    new Field()
+                                        .withName("z_field")
+                                        .withDataType(FieldDataType.STRING),
+                                    new Field()
+                                        .withName("a_field")
+                                        .withDataType(FieldDataType.STRING)))));
+
+    JsonNode ascending = readChildPage("topics", topic.getFullyQualifiedName(), "&sortBy=name");
+    assertEquals("a_field", ascending.get("data").get(0).get("name").asText());
+    assertEquals("z_field", ascending.get("data").get(1).get("name").asText());
+
+    JsonNode descending =
+        readChildPage("topics", topic.getFullyQualifiedName(), "&sortBy=name&sortOrder=desc");
+    assertEquals("z_field", descending.get("data").get(0).get("name").asText());
+    assertEquals("a_field", descending.get("data").get(1).get("name").asText());
+  }
+
+  @Test
+  void topicFields_hydrateTagsWhenRequested(TestNamespace ns) throws Exception {
+    ColumnChildTypesIT.ChildFixture fixture = ColumnChildTypesIT.createFixture("topic", ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("pagination_tags"))
+                    .withDescription("Classification for the child-field pagination suite"));
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("sensitive")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Tag for the child-field pagination suite"));
+
+    String tagsBody =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of(
+                "tags",
+                List.of(
+                    Map.of("tagFQN", tag.getFullyQualifiedName(), "source", "Classification"))));
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/columns/name/" + encodeURIComponent(fixture.childFqn()) + "?entityType=topic",
+            tagsBody);
+
+    JsonNode withTags = readChildPage("topics", fixture.parentFqn(), "&fields=tags");
+    JsonNode field = withTags.get("data").get(0);
+    assertTrue(
+        field.has("tags") && !field.get("tags").isEmpty(),
+        "tags must be hydrated when the fields parameter asks for them");
+    assertEquals(tag.getFullyQualifiedName(), field.get("tags").get(0).get("tagFQN").asText());
+  }
+
+  @Test
+  void newTypeEndpoint_unknownParentGives404(TestNamespace ns) throws Exception {
+    // The resource context leaves the entity null for an unknown FQN, so without an explicit
+    // guard this path would surface as a server error rather than a not-found.
+    assertHttpStatus(
+        404,
+        HttpMethod.GET,
+        "/v1/topics/name/" + encodeURIComponent(ns.prefix("no_such_topic")) + "/columns",
+        null);
+  }
+
+  @Test
+  void newTypeEndpoint_viewDeniedUserGets403(TestNamespace ns) throws Exception {
+    ColumnChildTypesIT.ChildFixture fixture = ColumnChildTypesIT.createFixture("pipeline", ns);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("view_denied"), "pipeline", MetadataOperation.VIEW_BASIC);
+
+    assertHttpStatusFor(
+        denied,
+        403,
+        HttpMethod.GET,
+        "/v1/pipelines/name/" + encodeURIComponent(fixture.parentFqn()) + "/columns",
+        null);
+  }
+
+  private JsonNode readChildPage(String collection, String parentFqn, String extraQuery)
+      throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/"
+                    + collection
+                    + "/name/"
+                    + encodeURIComponent(parentFqn)
+                    + "/columns?limit=10&offset=0"
+                    + extraQuery,
+                null);
+    return OBJECT_MAPPER.readTree(response);
   }
 
   private Table createTableWithColumns(TestNamespace ns, String... columnNames) {
