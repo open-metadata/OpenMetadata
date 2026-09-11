@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   Task,
   TaskCategory,
@@ -107,9 +108,6 @@ const renderCard = (
 ) =>
   render(<TaskCommentCard comment={mockComment} task={mockTask} {...props} />);
 
-const hoverCard = () =>
-  fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-
 describe('TaskCommentCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -138,6 +136,7 @@ describe('TaskCommentCard', () => {
       renderCard();
 
       expect(mockRichTextPreview).toHaveBeenCalled();
+
       // Every render, not just one of them - toHaveBeenCalledWith would pass as long
       // as a single call happened to omit the prop.
       mockRichTextPreview.mock.calls.forEach(([props]) => {
@@ -146,23 +145,24 @@ describe('TaskCommentCard', () => {
     });
 
     // Regression guard for #33112: the delete affordance overlays the card rather than
-    // sharing its flow, so revealing it on hover cannot reflow the comment body. jsdom
-    // runs no layout, so this asserts the positioning contract that keeps it out of flow.
+    // sharing its flow, so revealing it cannot reflow the comment body. jsdom runs no
+    // layout, so this asserts the positioning contract that keeps it out of flow.
     it('should overlay the delete action instead of placing it in the flow', () => {
       renderCard({ currentUser: { name: 'alice' } });
-      hoverCard();
 
-      expect(screen.getByTestId('task-comment-card')).toHaveClass('relative');
-      expect(screen.getByTestId('delete-task-comment')).toHaveStyle({
-        position: 'absolute',
-      });
+      expect(screen.getByTestId('task-comment-card')).toHaveClass(
+        'relative',
+        'tw:group'
+      );
+      expect(screen.getByTestId('delete-task-comment')).toHaveClass(
+        'tw:absolute'
+      );
     });
   });
 
   describe('delete affordance permissions', () => {
     it('should not show delete when there is no current user', () => {
       renderCard();
-      hoverCard();
 
       expect(
         screen.queryByTestId('delete-task-comment')
@@ -171,21 +171,18 @@ describe('TaskCommentCard', () => {
 
     it('should show delete to the comment author', () => {
       renderCard({ currentUser: { name: 'alice' } });
-      hoverCard();
 
       expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
     });
 
     it('should show delete to an admin who is not the author', () => {
       renderCard({ currentUser: { name: 'bob', isAdmin: true } });
-      hoverCard();
 
       expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
     });
 
     it('should not show delete to a non-admin who is not the author', () => {
       renderCard({ currentUser: { name: 'bob', isAdmin: false } });
-      hoverCard();
 
       expect(
         screen.queryByTestId('delete-task-comment')
@@ -193,30 +190,57 @@ describe('TaskCommentCard', () => {
     });
   });
 
-  describe('hover behaviour', () => {
-    it('should only reveal the delete affordance while hovered', () => {
+  describe('accessibility', () => {
+    it('should expose the delete action as a button with an accessible name', () => {
       renderCard({ currentUser: { name: 'alice' } });
 
-      expect(
-        screen.queryByTestId('delete-task-comment')
-      ).not.toBeInTheDocument();
+      const deleteButton = screen.getByRole('button', { name: 'label.delete' });
 
-      hoverCard();
+      expect(deleteButton).toHaveAttribute(
+        'data-testid',
+        'delete-task-comment'
+      );
+    });
 
-      expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
+    // The affordance used to be mounted only while the mouse was over the card, which
+    // put it permanently out of reach of the keyboard. It now stays in the DOM and is
+    // revealed by CSS on hover or focus.
+    it('should keep the delete action focusable without a mouse hover', async () => {
+      renderCard({ currentUser: { name: 'alice' } });
 
-      fireEvent.mouseLeave(screen.getByTestId('task-comment-card'));
+      const deleteButton = screen.getByTestId('delete-task-comment');
+      deleteButton.focus();
 
-      expect(
-        screen.queryByTestId('delete-task-comment')
-      ).not.toBeInTheDocument();
+      expect(deleteButton).toHaveFocus();
+      expect(deleteButton).toHaveClass('tw:focus-visible:opacity-100');
+    });
+
+    it('should reveal the delete action on card hover via CSS, not conditional mount', () => {
+      renderCard({ currentUser: { name: 'alice' } });
+
+      expect(screen.getByTestId('delete-task-comment')).toHaveClass(
+        'tw:opacity-0',
+        'tw:group-hover:opacity-100'
+      );
+    });
+
+    it('should open the confirmation modal from the keyboard alone', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderCard({ currentUser: { name: 'alice' } });
+
+      await user.tab();
+
+      expect(screen.getByTestId('delete-task-comment')).toHaveFocus();
+
+      await user.keyboard('{Enter}');
+
+      expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
     });
   });
 
   describe('delete flow', () => {
     const openDeleteModal = (props = { currentUser: { name: 'alice' } }) => {
       renderCard(props);
-      hoverCard();
       fireEvent.click(screen.getByTestId('delete-task-comment'));
     };
 
@@ -230,7 +254,6 @@ describe('TaskCommentCard', () => {
     it('should delete the comment and notify the parent on confirm', async () => {
       const onCommentDeleted = jest.fn();
       renderCard({ currentUser: { name: 'alice' }, onCommentDeleted });
-      hoverCard();
       fireEvent.click(screen.getByTestId('delete-task-comment'));
 
       await act(async () => {
@@ -251,7 +274,6 @@ describe('TaskCommentCard', () => {
       (deleteTaskComment as jest.Mock).mockRejectedValueOnce(error);
       const onCommentDeleted = jest.fn();
       renderCard({ currentUser: { name: 'alice' }, onCommentDeleted });
-      hoverCard();
       fireEvent.click(screen.getByTestId('delete-task-comment'));
 
       await act(async () => {

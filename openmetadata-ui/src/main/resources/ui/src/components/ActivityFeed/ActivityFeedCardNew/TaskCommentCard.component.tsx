@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useMemo, useState } from 'react';
@@ -56,7 +56,6 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
     [user, comment.author]
   );
 
-  const [isHovered, setIsHovered] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -83,13 +82,10 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
 
   return (
     <div
-      className={`p-y-md p-x-sm relative ${
+      className={`p-y-md p-x-sm relative tw:group ${
         !isLastReply ? 'border-bottom' : ''
       }`}
-      data-testid="task-comment-card"
-      role="presentation"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      data-testid="task-comment-card">
       <Space align="start" className="w-full" size={12}>
         <ProfilePicture
           displayName={authorName}
@@ -118,17 +114,16 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
           </div>
         </div>
       </Space>
-      {isHovered && canDelete && (
-        <Icon
-          className="toolbar-button task-comment-delete-action"
-          component={DeleteIcon}
+      {canDelete && (
+        // Stays mounted so it is reachable by Tab, and is revealed on card hover or
+        // on its own focus rather than on a mouse-only hover state.
+        <ButtonUtility
+          className="tw:absolute tw:top-3 tw:right-2 tw:opacity-0 tw:transition-opacity tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
+          color="tertiary"
           data-testid="delete-task-comment"
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '8px',
-            fontSize: '16px',
-          }}
+          icon={DeleteIcon}
+          size="xs"
+          tooltip={t('label.delete')}
           onClick={() => setShowDeleteDialog(true)}
         />
       )}
