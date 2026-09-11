@@ -421,11 +421,14 @@ test.describe('Column Level Lineage', () => {
         const row = page.locator(`[data-row-key="${tableCol}->${metricCol}"]`);
 
         await expect(row).toBeVisible();
+        // Two cells, not one: the metric is both the impacted asset and -- being
+        // its own column endpoint -- the impacted column. Asserting the count
+        // pins that down and still catches the cell rendering NO_DATA.
         await expect(
           row.getByRole('gridcell', {
             name: get(metric, 'entityResponseData.name', ''),
           })
-        ).toBeVisible();
+        ).toHaveCount(2);
       });
 
       await test.step('Remove column lineage', async () => {
