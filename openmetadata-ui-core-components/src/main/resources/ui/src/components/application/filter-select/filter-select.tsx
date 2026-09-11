@@ -513,6 +513,12 @@ export const FilterSelect = ({
         />
       )}
       <Dropdown.Popover
+        // A filter popover is not a modal. React Aria's default blocks every
+        // pointer event outside the overlay, so with one filter open the page
+        // — including the trigger that opened it, and every sibling filter —
+        // stops taking clicks until it is dismissed. The component this
+        // replaces let those clicks through.
+        isNonModal
         className={cx('tw:w-80', popoverClassName)}
         data-testid="drop-down-menu"
         placement="bottom left"

@@ -305,17 +305,19 @@ test('should persist quick filter on global search', async ({ page }) => {
   await clickOutside(page);
 
   // expect the quick filter to be persisted
-  await expect(
-    page.getByRole('button', { name: 'Owners : (1)' })
-  ).toBeVisible();
+  // The trigger shows its label with the selection count in a sibling badge,
+  // rather than spelling it out as "Owners : (1)".
+  await expect(page.getByTestId('search-dropdown-Owners')).toBeVisible();
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
   await page.getByTestId('searchBox').click();
   await page.keyboard.down('Enter');
 
   // expect the quick filter to be persisted
-  await expect(
-    page.getByRole('button', { name: 'Owners : (1)' })
-  ).toBeVisible();
+  // The trigger shows its label with the selection count in a sibling badge,
+  // rather than spelling it out as "Owners : (1)".
+  await expect(page.getByTestId('search-dropdown-Owners')).toBeVisible();
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 });
 
 test('Filter by column entity type shows only column results', async ({
