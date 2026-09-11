@@ -587,7 +587,6 @@ export const FilterSelect = ({
         {showFooter && (
           <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
             <Button
-              className="tw:font-normal"
               color="tertiary"
               data-testid="clear-filter-btn"
               isDisabled={staged.length === 0}
@@ -626,7 +625,6 @@ export const FilterSelect = ({
                 : t('label.count-selected', { count: selectedValues.length })}
             </span>
             <Button
-              className="tw:font-normal"
               color="tertiary"
               data-testid="clear-filter-btn"
               isDisabled={selectedValues.length === 0}

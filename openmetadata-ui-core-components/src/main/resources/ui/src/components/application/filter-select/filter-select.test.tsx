@@ -382,6 +382,20 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('apply-filter-btn')).not.toHaveTextContent('(');
   });
 
+  it('staged clear all is disabled until something is staged', () => {
+    renderFilter({ commitMode: 'staged' });
+
+    expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
+
+    fireEvent.click(screen.getByText('Snowflake'));
+
+    expect(screen.getByTestId('clear-filter-btn')).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('clear-filter-btn'));
+
+    expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
+  });
+
   it('immediate mode footer reports the count and clears on demand', () => {
     const { onChange } = renderFilter({
       selectedValues: ['snowflake', 'bigquery'],
