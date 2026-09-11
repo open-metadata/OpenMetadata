@@ -4492,6 +4492,7 @@
     "request-tags-message": "בקש תגיות עבור",
     "request-test-case-failure-resolution-message": "בקש פתרון כשל מקרה בדיקה עבור",
     "request-update-description": "תיאור עדכון לבקשה",
+    "reserved-column-name": "שם העמודה '{{name}}' שמור לשימוש פנימי ולא ניתן להשתמש בו כעמודה במאפיין מותאם אישית מסוג טבלה.",
     "reset-layout-confirmation": "האם אתה בטוח שברצונך להחיל את \"Default Layout\"?",
     "reset-link-has-been-sent": "קישור לאיפוס נשלח לדוא\"ל שלך",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
