@@ -115,15 +115,3 @@ SET json = jsonb_set(
     to_jsonb((EXTRACT(EPOCH FROM now()) * 1000)::bigint))
 WHERE extension = 'eventSubscription.Offset'
   AND json ->> 'startingTimestamp' IS NULL;
-
--- OpenMetadata issues this JWT itself; a non-positive lifetime makes every login token expire
--- immediately. Repair persisted values accepted by older SSO forms before auth configuration loads.
-UPDATE openmetadata_settings
-SET json = jsonb_set(
-    json,
-    '{oidcConfiguration,tokenValidity}',
-    to_jsonb(3600),
-    false)
-WHERE configtype = 'authenticationConfiguration'
-  AND jsonb_typeof(json #> '{oidcConfiguration,tokenValidity}') = 'number'
-  AND (json #>> '{oidcConfiguration,tokenValidity}')::numeric <= 0;

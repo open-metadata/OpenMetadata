@@ -92,6 +92,8 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.samlConfiguration.sp.spPrivateKey";
     public static final String SAML_SP_CALLBACK =
         "authenticationConfiguration.samlConfiguration.sp.callback";
+    public static final String SAML_SECURITY_TOKEN_VALIDITY =
+        "authenticationConfiguration.samlConfiguration.security.tokenValidity";
     public static final String SAML_SECURITY_AUTHN_SIGNED =
         "authenticationConfiguration.samlConfiguration.security.wantAuthnRequestsSigned";
     public static final String SAML_SECURITY_ASSERTIONS_SIGNED =

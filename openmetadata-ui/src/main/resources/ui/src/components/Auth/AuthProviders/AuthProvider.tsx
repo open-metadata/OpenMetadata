@@ -253,6 +253,13 @@ let pendingRequests: {
 // them — the bug that hung the UI on a spinner.
 let isRefreshDriverActive = false;
 
+// A refresh can return HTTP 200 carrying a token that is ALREADY expired — a non-positive
+// configured token lifetime mints `exp == iat`. Retrying that token 401s, which drives
+// another refresh, forever, with the user staring at a spinner and nothing in the logs.
+// Bound the consecutive cycles so the failure surfaces as a logout instead.
+const MAX_CONSECUTIVE_REFRESH_CYCLES = 3;
+let consecutiveRefreshCycles = 0;
+
 type AuthContextType = {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
@@ -704,11 +711,35 @@ export const AuthProvider = ({
     if (hasNewToken) {
       queued.forEach(
         ({ resolve: onResolve, reject: onReject, config: queuedConfig }) =>
-          axiosClient.request(queuedConfig).then(onResolve).catch(onReject)
+          axiosClient
+            .request(queuedConfig)
+            .then((response) => {
+              // The retry succeeded, so this cycle genuinely recovered the session and
+              // the loop budget starts fresh. A retry that 401s again leaves the budget
+              // spent, which is what eventually breaks a non-recovering loop.
+              consecutiveRefreshCycles = 0;
+              onResolve(response);
+            })
+            .catch(onReject)
       );
     } else {
       queued.forEach(({ reject: onReject }) => onReject(rejectionError));
     }
+  };
+
+  // A token that decodes to an expiry already in the past can never satisfy the retry, so
+  // retrying it only re-enters the refresh cycle. Requires a real `exp` claim: a token we
+  // cannot decode reports the same `isExpired` and is left to the cycle cap instead, so an
+  // opaque-token provider keeps working.
+  const isTokenAlreadyExpired = (token: unknown) => {
+    const { exp, isExpired } = extractDetailsFromToken(token as string);
+
+    return Boolean(exp) && Boolean(isExpired);
+  };
+
+  const abandonRefresh = (error: unknown) => {
+    drainPendingRequests(false, error);
+    resetUserDetails(true);
   };
 
   // Drives exactly one token refresh for a batch of 401s in THIS tab. Extracted
@@ -729,22 +760,27 @@ export const AuthProvider = ({
     if (isRefreshDriverActive) {
       return;
     }
+    if (consecutiveRefreshCycles >= MAX_CONSECUTIVE_REFRESH_CYCLES) {
+      abandonRefresh(error);
+
+      return;
+    }
     isRefreshDriverActive = true;
+    consecutiveRefreshCycles += 1;
 
     tokenService.current
       .refreshToken()
       .then(async (token: unknown) => {
-        if (token) {
-          await reinit();
-          drainPendingRequests(true, error);
-        } else {
-          drainPendingRequests(false, error);
-          resetUserDetails(true);
+        if (!token || isTokenAlreadyExpired(token)) {
+          abandonRefresh(error);
+
+          return;
         }
+        await reinit();
+        drainPendingRequests(true, error);
       })
       .catch(() => {
-        drainPendingRequests(false, error);
-        resetUserDetails(true);
+        abandonRefresh(error);
       });
   };
 
@@ -788,7 +824,13 @@ export const AuthProvider = ({
 
     // Axios response interceptor for statusCode 401,403
     responseInterceptor = axiosClient.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Any non-401 response proves the current token works, so a later unrelated
+        // expiry still gets the full refresh budget.
+        consecutiveRefreshCycles = 0;
+
+        return response;
+      },
       (error) => {
         if (error.response) {
           const { status } = error.response;

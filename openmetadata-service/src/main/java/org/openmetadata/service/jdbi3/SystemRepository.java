@@ -42,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -113,8 +114,8 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.security.OidcTokenValidity;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.TokenValidityResolver;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
@@ -558,10 +559,7 @@ public class SystemRepository {
     } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-      if (authConfig.getOidcConfiguration() != null
-          && !OidcTokenValidity.isValid(authConfig.getOidcConfiguration().getTokenValidity())) {
-        throw new BadRequestException(OidcTokenValidity.VALIDATION_MESSAGE);
-      }
+      rejectInvalidTokenValidity(authConfig);
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
@@ -570,6 +568,24 @@ public class SystemRepository {
       setting.setConfigValue(authorizerConfig);
     }
     return JsonUtils.pojoToJson(setting.getConfigValue());
+  }
+
+  /**
+   * OpenMetadata signs its own JWT after both OIDC and SAML logins, so a non-positive validity on
+   * either path mints tokens that expire the instant they are issued and locks every user out.
+   */
+  private void rejectInvalidTokenValidity(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (oidcConfig != null
+        && TokenValidityResolver.isConfiguredInvalid(oidcConfig.getTokenValidity())) {
+      throw new BadRequestException(TokenValidityResolver.VALIDATION_MESSAGE);
+    }
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    SamlSecurityConfig samlSecurity = samlConfig == null ? null : samlConfig.getSecurity();
+    if (samlSecurity != null
+        && TokenValidityResolver.isConfiguredInvalid(samlSecurity.getTokenValidity())) {
+      throw new BadRequestException(TokenValidityResolver.VALIDATION_MESSAGE);
+    }
   }
 
   private void settingUpdated(SettingsType settingsType) {
@@ -1839,9 +1855,21 @@ public class SystemRepository {
 
   @VisibleForTesting
   static FieldError validateOidcTokenValidity(OidcClientConfig oidcConfig) {
-    if (oidcConfig != null && !OidcTokenValidity.isValid(oidcConfig.getTokenValidity())) {
+    if (oidcConfig != null
+        && TokenValidityResolver.isConfiguredInvalid(oidcConfig.getTokenValidity())) {
       return ValidationErrorBuilder.createFieldError(
-          FieldPaths.OIDC_TOKEN_VALIDITY, OidcTokenValidity.VALIDATION_MESSAGE);
+          FieldPaths.OIDC_TOKEN_VALIDITY, TokenValidityResolver.VALIDATION_MESSAGE);
+    }
+    return null;
+  }
+
+  @VisibleForTesting
+  static FieldError validateSamlTokenValidity(SamlSSOClientConfig samlConfig) {
+    SamlSecurityConfig samlSecurity = samlConfig == null ? null : samlConfig.getSecurity();
+    if (samlSecurity != null
+        && TokenValidityResolver.isConfiguredInvalid(samlSecurity.getTokenValidity())) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.SAML_SECURITY_TOKEN_VALIDITY, TokenValidityResolver.VALIDATION_MESSAGE);
     }
     return null;
   }
@@ -2267,6 +2295,10 @@ public class SystemRepository {
   private FieldError validateSamlConfiguration(
       SamlSSOClientConfig samlConfig, OpenMetadataApplicationConfig applicationConfig) {
     try {
+      FieldError tokenValidityError = validateSamlTokenValidity(samlConfig);
+      if (tokenValidityError != null) {
+        return tokenValidityError;
+      }
       // Use enhanced SAML validator - this performs comprehensive validation
       // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();

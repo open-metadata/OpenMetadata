@@ -36,7 +36,7 @@ import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
-import org.openmetadata.service.security.OidcTokenValidity;
+import org.openmetadata.service.security.TokenValidityResolver;
 
 class SystemRepositoryPatchSettingTest {
   private static final String SETTING_NAME = SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value();
@@ -317,7 +317,7 @@ class SystemRepositoryPatchSettingTest {
         assertThrows(BadRequestException.class, () -> systemRepository.createOrUpdate(update));
 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), failure.getResponse().getStatus());
-    assertEquals(OidcTokenValidity.VALIDATION_MESSAGE, failure.getMessage());
+    assertEquals(TokenValidityResolver.VALIDATION_MESSAGE, failure.getMessage());
     verify(systemDAO, never()).insertSettings(anyString(), anyString());
     settingsCacheMock.verifyNoInteractions();
   }

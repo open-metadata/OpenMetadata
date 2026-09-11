@@ -259,12 +259,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     Integer configuredTokenValidity =
         authenticationConfiguration.getOidcConfiguration().getTokenValidity();
-    if (!OidcTokenValidity.isValid(configuredTokenValidity)) {
+    if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
       LOG.warn(
           "OIDC token validity must be positive; using the {} second default",
-          OidcTokenValidity.DEFAULT_VALIDITY_SECONDS);
+          TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
     }
-    this.tokenValidity = OidcTokenValidity.resolveOrDefault(configuredTokenValidity);
+    this.tokenValidity = TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());

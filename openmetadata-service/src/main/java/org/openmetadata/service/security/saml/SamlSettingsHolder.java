@@ -31,6 +31,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.TokenValidityResolver;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
@@ -161,7 +162,7 @@ public class SamlSettingsHolder {
 
       if (authConfig == null) {
         LOG.error("AuthenticationConfiguration is null in getTokenValidity()");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
       SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
@@ -169,7 +170,7 @@ public class SamlSettingsHolder {
 
       if (samlConfig == null) {
         LOG.error("SamlConfiguration is null in getTokenValidity()");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
       SamlSecurityConfig securityConfig = samlConfig.getSecurity();
@@ -178,16 +179,20 @@ public class SamlSettingsHolder {
       if (securityConfig == null) {
         LOG.error(
             "SAML SecurityConfig is null in getTokenValidity() - this should not happen if config is in DB");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
-      long tokenValidity = securityConfig.getTokenValidity();
-      LOG.debug("Retrieved token validity: {}", tokenValidity);
-      return tokenValidity;
+      Integer configuredTokenValidity = securityConfig.getTokenValidity();
+      if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
+        LOG.warn(
+            "SAML token validity must be positive; using the {} second default",
+            TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
+      }
+      return TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
 
     } catch (Exception e) {
       LOG.error("Error retrieving token validity dynamically", e);
-      return 3600; // Default fallback
+      return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
     }
   }
 
