@@ -56,6 +56,7 @@ import {
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
@@ -165,7 +166,8 @@ interface KnowledgePageEmptyStateProps {
   addQuickLinkModalElement: ReactNode;
   hideAddButton: boolean;
   items: MenuProps['items'];
-  permissions: OperationPermission;
+  /** Derived Create flag rather than the raw OperationPermission object. */
+  canCreate: boolean;
   theme: { primaryColor: string };
 }
 
@@ -173,7 +175,7 @@ const KnowledgePageEmptyState = ({
   addQuickLinkModalElement,
   hideAddButton,
   items,
-  permissions,
+  canCreate,
   theme,
 }: KnowledgePageEmptyStateProps) => {
   const { t } = useTranslation();
@@ -198,7 +200,7 @@ const KnowledgePageEmptyState = ({
         }
         footer={
           <>
-            {permissions.Create && !hideAddButton && (
+            {canCreate && !hideAddButton && (
               <LimitWrapper resource="knowledgeCenter">
                 <Dropdown menu={{ items }} trigger={['click']}>
                   <Button
@@ -283,8 +285,8 @@ const KnowledgePageListComponent = forwardRef<
     const navigate = useNavigate();
     const USERId = currentUser?.id ?? '';
     const [elementRef, isInView] = useElementInView({});
-    const hasViewPermission = useMemo(
-      () => permissions.ViewAll || permissions.ViewBasic,
+    const { hasViewAccess: hasViewPermission, canCreate } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
       [permissions]
     );
     const {
@@ -590,9 +592,9 @@ const KnowledgePageListComponent = forwardRef<
       return (
         <KnowledgePageEmptyState
           addQuickLinkModalElement={addQuickLinkModalElement}
+          canCreate={canCreate}
           hideAddButton={hideAddButton}
           items={items}
-          permissions={permissions}
           theme={theme}
         />
       );

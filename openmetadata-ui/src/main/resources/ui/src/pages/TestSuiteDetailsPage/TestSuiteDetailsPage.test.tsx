@@ -13,6 +13,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
@@ -23,7 +24,36 @@ import {
 } from '../../rest/testAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
+
+// The page's hook now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) drives the page's permission-gated behavior in
+// these tests — same approach as TableDetailsPageV1.test.tsx.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
@@ -512,7 +542,6 @@ describe('TestSuiteDetailsPage component', () => {
   let mockUpdateTestSuiteById: jest.Mock;
   let mockAddTestCasesToLogicalTestSuiteBulk: jest.Mock;
   let mockGetIngestionPipelines: jest.Mock;
-  let mockGetEntityPermissionByFqn: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -524,12 +553,9 @@ describe('TestSuiteDetailsPage component', () => {
       addTestCasesToLogicalTestSuiteBulk as jest.Mock;
     mockGetIngestionPipelines = getIngestionPipelines as jest.Mock;
 
-    mockGetEntityPermissionByFqn = jest
-      .fn()
-      .mockResolvedValue(mockEntityPermissions);
+    setMockPermissions(mockEntityPermissions);
 
     (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
       permissions: {},
     }));
 
@@ -600,9 +626,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     it('should show loader while loading', async () => {
-      mockGetEntityPermissionByFqn.mockImplementation(
-        () => new Promise(() => {}) // Never resolves
-      );
+      setMockPermissions({}, { isLoading: true });
 
       renderWithQueryClient(<TestSuiteDetailsPage />);
 
@@ -631,7 +655,10 @@ describe('TestSuiteDetailsPage component', () => {
         renderWithQueryClient(<TestSuiteDetailsPage />);
       });
 
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        'testSuite',
+        'testSuiteFQN'
+      );
     });
 
     describe('observabilityRouterClassBase migration', () => {
@@ -665,14 +692,11 @@ describe('TestSuiteDetailsPage component', () => {
 
   describe('Props Validation & Permissions', () => {
     it('should show no permission error if user lacks view permissions', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-        getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-          ...mockEntityPermissions,
-          ViewAll: false,
-          ViewBasic: false,
-        }),
-        permissions: {},
-      }));
+      setMockPermissions({
+        ...mockEntityPermissions,
+        ViewAll: false,
+        ViewBasic: false,
+      });
 
       await act(async () => {
         renderWithQueryClient(<TestSuiteDetailsPage />);
@@ -684,14 +708,11 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     it('should hide add test case button if user lacks edit permissions', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-        getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-          ...mockEntityPermissions,
-          EditAll: false,
-          EditTests: false,
-        }),
-        permissions: {},
-      }));
+      setMockPermissions({
+        ...mockEntityPermissions,
+        EditAll: false,
+        EditTests: false,
+      });
 
       await act(async () => {
         renderWithQueryClient(<TestSuiteDetailsPage />);
@@ -715,14 +736,11 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     it('should show add test case button if user has EditTests permission', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-        getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-          ...mockEntityPermissions,
-          EditAll: false,
-          EditTests: true,
-        }),
-        permissions: {},
-      }));
+      setMockPermissions({
+        ...mockEntityPermissions,
+        EditAll: false,
+        EditTests: true,
+      });
 
       await act(async () => {
         renderWithQueryClient(<TestSuiteDetailsPage />);
@@ -731,6 +749,25 @@ describe('TestSuiteDetailsPage component', () => {
       expect(
         await screen.findByTestId('add-test-case-btn')
       ).toBeInTheDocument();
+    });
+
+    it('hides the add test case button when EditTests is explicitly false, even with EditAll true', async () => {
+      // Explicit-deny-wins: an explicit `false` on EditTests must win over a `true` EditAll.
+      setMockPermissions({
+        ...mockEntityPermissions,
+        EditAll: true,
+        EditTests: false,
+      });
+
+      await act(async () => {
+        renderWithQueryClient(<TestSuiteDetailsPage />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('add-test-case-btn')
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -1043,7 +1080,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should handle permission fetch error', async () => {
       const error = new Error('Permission fetch failed');
-      mockGetEntityPermissionByFqn.mockRejectedValue(error);
+      setMockPermissions({}, { error });
 
       await act(async () => {
         renderWithQueryClient(<TestSuiteDetailsPage />);

@@ -47,12 +47,14 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { useClipboard } from '../../hooks/useClipBoard';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
 import './test-suite-details-page.less';
 
@@ -236,6 +238,17 @@ const TestSuiteDetailsPage = () => {
     handleTestSuiteUpdate,
   } = useTestSuiteDetailsPage();
 
+  // Consumer via the hook's raw `testSuitePermissions: OperationPermission` field (Task 8
+  // rule 2) — derive named flags locally instead of reading `.EditAll`/`.ViewAll`/`.ViewBasic`
+  // directly. No `deleted` argument: none of the reads below were ever ANDed with
+  // `testSuite?.deleted` in the old code. Also an explicit-deny-wins fix, same precedent as
+  // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
+  // grant.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(testSuitePermissions),
+    [testSuitePermissions]
+  );
+
   const { searchInputProps } = useListSearchInput({
     searchQuery: testCaseSearchQuery,
     onSearchChange: handleTestCaseSearch,
@@ -291,8 +304,7 @@ const TestSuiteDetailsPage = () => {
     const removeFromTestSuite = testSuite
       ? {
           testSuite,
-          isAllowed:
-            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+          isAllowed: flags.can(Operation.EditTests),
         }
       : undefined;
 
@@ -361,7 +373,7 @@ const TestSuiteDetailsPage = () => {
     descriptionChangeSummaryEntry,
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
-    testSuitePermissions,
+    flags,
     fetchTestCases,
     incidentUrlState,
     handleSortTestCase,
@@ -384,7 +396,7 @@ const TestSuiteDetailsPage = () => {
     return <Loader />;
   }
 
-  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+  if (!flags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -449,9 +461,7 @@ const TestSuiteDetailsPage = () => {
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
               <AddTestCaseDialogTrigger
-                canAddTestCase={Boolean(
-                  testSuitePermissions.EditAll || testSuitePermissions.EditTests
-                )}
+                canAddTestCase={flags.can(Operation.EditTests)}
                 existingTest={testSuite?.tests ?? []}
                 isTestCaseModalOpen={isTestCaseModalOpen}
                 setIsTestCaseModalOpen={setIsTestCaseModalOpen}
@@ -465,10 +475,7 @@ const TestSuiteDetailsPage = () => {
                 canDelete={permissions.hasDeletePermission}
                 deleted={testSuite?.deleted}
                 displayName={getEntityName(testSuite)}
-                editDisplayNamePermission={
-                  testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditDisplayName
-                }
+                editDisplayNamePermission={flags.canEditDisplayName}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
                 entityType={EntityType.TEST_SUITE}
@@ -485,7 +492,7 @@ const TestSuiteDetailsPage = () => {
               entityFqn={testSuite?.fullyQualifiedName ?? ''}
               entityId={testSuite?.id ?? ''}
               entityType={EntityType.TEST_SUITE}
-              hasPermission={Boolean(testSuitePermissions.EditAll)}
+              hasPermission={flags.canEditAll}
               multiple={canAddMultipleDomains}
               textClassName="render-domain-lebel-style"
               onUpdate={handleDomainUpdate}

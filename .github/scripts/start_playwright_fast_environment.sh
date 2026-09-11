@@ -213,7 +213,8 @@ pull_image_with_retry "$PW_OPENSEARCH_IMAGE"
 docker compose -f "$compose_file" -f "$fast_compose_file" up -d --no-build postgresql opensearch
 
 for service in postgresql opensearch; do
-  container_id=$(docker compose -f "$compose_file" -f "$fast_compose_file" ps -q "$service")
+  # -a: without it an exited container yields an empty id and we never reach docker logs below
+  container_id=$(docker compose -f "$compose_file" -f "$fast_compose_file" ps -a -q "$service")
   for _ in $(seq 1 90); do
     status=$(docker inspect "$container_id" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
     [[ "$status" == "healthy" ]] && break
