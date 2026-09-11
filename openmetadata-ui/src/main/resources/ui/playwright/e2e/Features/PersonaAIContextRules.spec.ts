@@ -445,35 +445,38 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await page.keyboard.press('Escape');
     });
 
-    test(
-      'knowledge entity type forces Fully rendered on and disables it',
-      { tag: '@quarantine' },
-      async ({ adminPage: page }) => {
-        await openPersonaContext(page);
-        await openAddRuleDrawer(page);
+    test('knowledge entity type forces Fully rendered on and disables it', async ({
+      adminPage: page,
+    }) => {
+      await openPersonaContext(page);
+      await openAddRuleDrawer(page);
 
-        await test.step('switch to a knowledge entity type', async () => {
-          await page.getByTestId('context-rule-entity-type').click();
-          await page
-            .getByRole('listbox')
-            .getByText(/knowledge/i)
-            .first()
-            .click();
-        });
+      await test.step('switch to a knowledge entity type', async () => {
+        // The popover can close on its own right after opening, while the drawer
+        // is still settling (the match preview and filter builder re-render as
+        // their requests land). The pending option click then waits out the test
+        // budget for a listbox that never comes back. selectOptionWithRetry
+        // reopens the popover and retries, as the entity-type switch test does.
+        // Each option carries its EntityType as data-key. Matching the
+        // "Knowledge" supporting text instead would match all three knowledge
+        // types and leave DOM order to decide which one the test exercises.
+        await selectOptionWithRetry(
+          page.getByTestId('context-rule-entity-type'),
+          page.getByRole('listbox').locator('[data-key="glossaryTerm"]')
+        );
+      });
 
-        await test.step('Fully rendered switch must be checked and disabled', async () => {
-          const fullyRenderedSwitch = page
-            .getByTestId('context-rule-fully-rendered')
-            .getByRole('switch')
-            .first();
-          // toBeChecked() reads the checkbox `checked` property — react-aria Switch
-          // does not always set the aria-checked attribute, so attribute checks fail
-          await expect(fullyRenderedSwitch).toBeChecked();
-          await expect(fullyRenderedSwitch).toBeDisabled();
-        });
+      await test.step('Fully rendered switch must be checked and disabled', async () => {
+        const fullyRenderedSwitch = page
+          .getByTestId('context-rule-fully-rendered')
+          .getByRole('switch');
+        // toBeChecked() reads the checkbox `checked` property — react-aria Switch
+        // does not always set the aria-checked attribute, so attribute checks fail
+        await expect(fullyRenderedSwitch).toBeChecked();
+        await expect(fullyRenderedSwitch).toBeDisabled();
+      });
 
-        await page.keyboard.press('Escape');
-      }
-    );
+      await page.keyboard.press('Escape');
+    });
   });
 });

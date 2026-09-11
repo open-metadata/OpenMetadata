@@ -103,7 +103,21 @@ const MyDataPage = () => {
   useEffect(() => {
     setHasMounted(true);
   }, []);
-  const isLoading = !hasMounted || (!!personaFqn && isDocPending);
+  const isDataLoading = !hasMounted || (!!personaFqn && isDocPending);
+
+  // Latch the first content paint. `selectedPersona` rehydrates *after* the first
+  // render, so `personaFqn` flips null->value and its query re-enters isDocPending
+  // once content is already on screen — bouncing the whole page back into
+  // MyDataPageSkeleton (a visible skeleton flash after the grid appeared). Once
+  // content has painted, keep the current layout mounted and let the persona doc
+  // swap widgets in place instead of blanking to the page skeleton again.
+  const [hasShownContent, setHasShownContent] = useState(false);
+  useEffect(() => {
+    if (!isDataLoading) {
+      setHasShownContent(true);
+    }
+  }, [isDataLoading]);
+  const isLoading = isDataLoading && !hasShownContent;
 
   const personaPreferences = useMemo<PersonaPreferences[]>(
     () => docData?.data?.personPreferences ?? [],

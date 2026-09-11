@@ -26,10 +26,8 @@ import {
 } from '../../../../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
+import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
-
-type TagSize = 'sm' | 'lg';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -108,35 +106,23 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
 
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
-  options?: { showDashPlaceholder?: boolean }
+  showDashPlaceholder?: boolean
 ): ReactNode => (
   <OwnerLabel
     isCompactView={false}
     maxVisibleOwners={4}
     owners={entity.owners}
-    showDashPlaceholder={options?.showDashPlaceholder}
+    showDashPlaceholder={showDashPlaceholder}
     showLabel={false}
   />
 );
 
 export const renderDomainGlossaryTagsCell = (
-  entity: TaggedEntity,
-  options?: { size?: TagSize; emptyPlaceholder?: string }
-): ReactNode => (
-  <TagBadgeList
-    emptyPlaceholder={options?.emptyPlaceholder}
-    size={options?.size}
-    tags={getGlossaryTags(entity.tags)}
-  />
-);
+  entity: TaggedEntity
+): ReactNode => <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
 
 export const renderDomainClassificationTagsCell = (
-  entity: TaggedEntity,
-  options?: { size?: TagSize; emptyPlaceholder?: string }
+  entity: TaggedEntity
 ): ReactNode => (
-  <TagBadgeList
-    emptyPlaceholder={options?.emptyPlaceholder}
-    size={options?.size}
-    tags={getClassificationTags(entity.tags)}
-  />
+  <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
 );

@@ -50,9 +50,36 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.entity_reference import require_entity_reference_id
 
 T = TypeVar("T", bound=BaseModel)
+
+# PasswordEntityMasker.PASSWORD_MASK. The API substitutes this for every secret field
+# when the caller is not a bot (Authorizer.shouldMaskPasswords == !subjectContext.isBot()).
+SERVER_PASSWORD_MASK = "*" * 9
+
+
+def _find_masked_fields(value: Any, path: str = "") -> list[str]:
+    """Collect dotted paths of connection fields holding the server's password mask.
+
+    Walks the dumped connection rather than the model so that `secret:` references are
+    left untouched: resolving one would mean a live call to the secrets manager, which
+    a validation pass has no business making.
+    """
+    if isinstance(value, str):
+        return [path] if value == SERVER_PASSWORD_MASK else []
+    if isinstance(value, dict):
+        return [
+            masked
+            for key, child in value.items()
+            for masked in _find_masked_fields(child, f"{path}.{key}" if path else str(key))
+        ]
+    if isinstance(value, list):
+        return [
+            masked for index, child in enumerate(value) for masked in _find_masked_fields(child, f"{path}[{index}]")
+        ]
+    return []
 
 
 class WorkflowConfigBuilder:
@@ -130,7 +157,29 @@ class WorkflowConfigBuilder:
         service = self._safe_get_by_id(DatabaseService, service_id)
 
         self.service_connection = cast(DatabaseConnection, service.connection)  # noqa: TC006
+        self._raise_if_credentials_masked(model_str(service.name))
         return self
+
+    def _raise_if_credentials_masked(self, service_name: str) -> None:
+        """Fail here rather than letting a masked credential reach the source.
+
+        A workflow built from masked credentials fails much later as an authentication
+        error from the source itself, which points at the source instead of at the token
+        that caused it.
+        """
+        if self.service_connection is None:
+            return
+
+        masked_fields = _find_masked_fields(self.service_connection.model_dump())
+        if not masked_fields:
+            return
+
+        raise ValueError(
+            f"Connection credentials for service '{service_name}' came back masked "
+            f"({', '.join(masked_fields)}). OpenMetadata returns real credentials only to bot "
+            "accounts, so authenticate with a bot token (for example ingestion-bot) rather than "
+            "a personal access token."
+        )
 
     def with_force_test_update(self, force_test_update: bool) -> Self:
         self.force_test_update = force_test_update

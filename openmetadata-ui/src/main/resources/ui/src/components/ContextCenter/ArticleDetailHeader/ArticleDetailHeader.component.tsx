@@ -72,6 +72,7 @@ import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -115,6 +116,15 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
   const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
+  // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
+  // ContextCenterArticlesPage, out of this batch's scope). Ungated: `knowledgePage?.deleted`
+  // gates unrelated UI (vote/follow button disabled state) below, never folded into the
+  // edit flags here.
+  const { canEditAll, canEditOwners } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const breadcrumbItems = useMemo(
     () => [
@@ -228,9 +238,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         return;
       }
       const updated = cloneDeep(knowledgePage);
-      updated.domains = Array.isArray(selectedDomain)
-        ? selectedDomain
-        : [selectedDomain];
+      if (Array.isArray(selectedDomain)) {
+        updated.domains = selectedDomain.length ? selectedDomain : undefined;
+      } else {
+        updated.domains = selectedDomain ? [selectedDomain] : undefined;
+      }
       await onUpdate(updated);
     },
     [knowledgePage, onUpdate]
@@ -335,10 +347,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             +{extraDomains.length}
           </span>
         )}
-        {permissions.EditAll && (
+        {canEditAll && (
           <DomainSelectableList
             isClearable
-            hasPermission={permissions.EditAll}
+            hasPermission={canEditAll}
             multiple={entityRules.canAddMultipleDomains}
             selectedDomain={knowledgePage?.domains ?? []}
             onUpdate={handleDomainSave}>
@@ -358,7 +370,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     [
       firstDomain,
       extraDomains,
-      permissions.EditAll,
+      canEditAll,
       entityRules.canAddMultipleDomains,
       knowledgePage?.domains,
       handleDomainSave,
@@ -398,9 +410,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               {t('label.no-entity', { entity: t('label.owner') })}
             </Typography>
           )}
-          {(permissions.EditAll || permissions.EditOwners) && (
+          {canEditOwners && (
             <UserTeamSelectableList
-              hasPermission={permissions.EditAll || permissions.EditOwners}
+              hasPermission={canEditOwners}
               multiple={{
                 user: entityRules.canAddMultipleUserOwners,
                 team: entityRules.canAddMultipleTeamOwner,
@@ -449,8 +461,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     ),
     [
       owners,
-      permissions.EditAll,
-      permissions.EditOwners,
+      canEditOwners,
       entityRules.canAddMultipleUserOwners,
       entityRules.canAddMultipleTeamOwner,
       knowledgePage?.owners,

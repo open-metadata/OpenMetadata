@@ -15,15 +15,12 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserRolesProps } from './UserPopOverCard.interface';
 
-export const UserRoles = React.memo(({ userName }: UserRolesProps) => {
-  const { userProfilePics } = useApplicationStore();
-  const userData = userProfilePics[userName];
-  const roles = userData?.roles;
-  const isAdmin = userData?.isAdmin;
+export const UserRoles = React.memo(({ user }: UserRolesProps) => {
+  const roles = user?.roles;
+  const isAdmin = user?.isAdmin;
   const { t } = useTranslation();
 
   return roles?.length ? (

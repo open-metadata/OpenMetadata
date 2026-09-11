@@ -12,6 +12,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ class SearchMetadataToolTest {
 
   @BeforeEach
   void setUp() {
-    searchMetadataTool = new SearchMetadataTool();
+    searchMetadataTool = new SearchMetadataTool(ignored -> Optional.empty());
     authorizer = mock(Authorizer.class);
     securityContext = mock(CatalogSecurityContext.class);
     searchRepository = mock(SearchRepository.class);
@@ -74,6 +75,11 @@ class SearchMetadataToolTest {
     mockUser.setIsBot(false);
 
     Entity.setSearchRepository(searchRepository);
+  }
+
+  @Test
+  void testDefaultConstructorCreatesTool() {
+    assertNotNull(new SearchMetadataTool());
   }
 
   @Test
@@ -222,6 +228,63 @@ class SearchMetadataToolTest {
           JsonUtils.readTree(captor.getValue().getQueryFilter())
               .at("/query/term/entityType")
               .asText());
+    }
+  }
+
+  @Test
+  void testPersonaScopeIsAppliedByDefaultAndDisclosedOnEmptyResults() throws Exception {
+    PersonaSearchScope scope =
+        new PersonaSearchScope(
+            "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
+    searchMetadataTool = new SearchMetadataTool(ignored -> Optional.of(scope));
+
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer,
+              securityContext,
+              Map.of(
+                  "query",
+                  "orders",
+                  "queryFilter",
+                  Map.of("term", Map.of("tier.tagFQN", "Tier.Tier1"))));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      JsonNode filters =
+          JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool/filter");
+      assertEquals("Tier.Tier1", filters.get(0).at("/term/tier.tagFQN").asText());
+      assertEquals("finance", filters.get(1).at("/term/service.name.keyword").asText());
+      assertEquals(true, result.get("personaScopeApplied"));
+      assertEquals(List.of("table"), result.get("personaScopeEntityTypes"));
+      assertTrue(result.get("message").toString().contains("ignorePersonaScope=true"));
+    }
+  }
+
+  @Test
+  void testIgnorePersonaScopeLeavesTheSearchUnscoped() throws Exception {
+    PersonaSearchScope scope =
+        new PersonaSearchScope(
+            "{\"query\":{\"term\":{\"service.name.keyword\":\"finance\"}}}", List.of("table"));
+    searchMetadataTool = new SearchMetadataTool(ignored -> Optional.of(scope));
+
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer, securityContext, Map.of("query", "orders", "ignorePersonaScope", true));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(null, captor.getValue().getQueryFilter());
+      assertFalse(result.containsKey("personaScopeApplied"));
     }
   }
 

@@ -16,10 +16,15 @@ Test doris using the topology
 from unittest import TestCase
 from unittest.mock import patch
 
+from sqlalchemy.dialects.mysql.base import MySQLDialect
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.doris.metadata import DorisSource
+from metadata.ingestion.source.database.doris.metadata import (
+    DorisSource,
+    _qualified_identifier,
+)
 
 mock_doris_config = {
     "source": {
@@ -82,3 +87,14 @@ class DorisUnitTest(TestCase):
 
         assert RELKIND_MAP["Iceberg"] == TableType.Iceberg
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+
+    def test_qualified_identifier_escapes_catalog_names(self):
+        preparer = MySQLDialect().identifier_preparer
+
+        qualified_name = _qualified_identifier(
+            preparer,
+            "analytics` ; DROP SCHEMA secret; --",
+            "orders` ; DROP TABLE secret; --",
+        )
+
+        assert qualified_name == ("`analytics`` ; DROP SCHEMA secret; --`.`orders`` ; DROP TABLE secret; --`")
