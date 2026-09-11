@@ -16,7 +16,14 @@ import { Delete as DeleteIcon } from '@openmetadata/ui-core-components/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  RefObject,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { User } from '../../../generated/entity/teams/user';
@@ -41,6 +48,13 @@ interface TaskCommentCardProps {
   closeFeedEditor?: () => void;
   currentUser?: Pick<User, 'name' | 'isAdmin'>;
   onCommentDeleted?: () => void;
+  /**
+   * Focus fallback for when a deleted comment has no sibling comment left to
+   * hand focus to. Must already carry a stable `tabIndex={-1}` - this
+   * component only ever calls `.focus()` on it, it never mutates a foreign
+   * parent node's attributes.
+   */
+  repliesContainerRef?: RefObject<HTMLElement>;
 }
 
 const TaskCommentCard: FC<TaskCommentCardProps> = ({
@@ -49,6 +63,7 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
   isLastReply = false,
   currentUser,
   onCommentDeleted,
+  repliesContainerRef,
 }) => {
   const { t } = useTranslation();
   const [, , user] = useUserProfile({
@@ -94,15 +109,16 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
 
       if (nextFocusTarget) {
         nextFocusTarget.focus();
-      } else if (card.parentElement) {
-        // No sibling comments left - fall back to the still-mounted
-        // replies container itself rather than leaving focus on a node
-        // that's about to be removed.
-        card.parentElement.setAttribute('tabindex', '-1');
-        card.parentElement.focus();
+      } else {
+        // No sibling comments left - fall back to the replies container,
+        // which the parent already keeps focusable (tabIndex={-1}) for
+        // exactly this case, rather than leaving focus on a node that's
+        // about to be removed. Never mutate it ourselves - it's foreign,
+        // shared DOM we don't own.
+        repliesContainerRef?.current?.focus();
       }
     },
-    []
+    [repliesContainerRef]
   );
 
   const handleDelete = async () => {
@@ -182,26 +198,29 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
         </div>
       </Space>
       {canDelete && (
-        // Stays mounted so it is reachable by Tab, and is revealed on card hover or
-        // on its own focus rather than on a mouse-only hover state.
-        <ButtonUtility
-          className="tw:absolute tw:top-3 tw:right-2 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
-          color="tertiary"
-          data-testid="delete-task-comment"
-          icon={DeleteIcon}
-          size="xs"
-          tooltip={t('label.delete')}
-          onClick={() => setShowDeleteDialog(true)}
-        />
+        <>
+          {/* Stays mounted so it is reachable by Tab, and is revealed on card
+              hover or on its own focus rather than on a mouse-only hover state. */}
+          <ButtonUtility
+            className="tw:absolute tw:top-3 tw:right-2 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
+            color="tertiary"
+            data-testid="delete-task-comment"
+            icon={DeleteIcon}
+            size="xs"
+            tooltip={t('label.delete')}
+            onClick={() => setShowDeleteDialog(true)}
+          />
+          <DeleteModal
+            elevated
+            entityTitle={t('label.comment')}
+            isDeleting={isDeleting}
+            message={t('message.confirm-delete-message')}
+            open={showDeleteDialog}
+            onCancel={() => setShowDeleteDialog(false)}
+            onDelete={handleDelete}
+          />
+        </>
       )}
-      <DeleteModal
-        entityTitle={t('label.comment')}
-        isDeleting={isDeleting}
-        message={t('message.confirm-delete-message')}
-        open={showDeleteDialog}
-        onCancel={() => setShowDeleteDialog(false)}
-        onDelete={handleDelete}
-      />
     </div>
   );
 };

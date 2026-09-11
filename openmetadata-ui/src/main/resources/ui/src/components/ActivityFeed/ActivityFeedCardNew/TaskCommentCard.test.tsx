@@ -27,6 +27,7 @@ import {
   TaskStatus,
   TaskType,
 } from '../../../generated/entity/tasks/task';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import { deleteTaskComment } from '../../../rest/tasksAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TaskCommentCard from './TaskCommentCard.component';
@@ -219,6 +220,19 @@ describe('TaskCommentCard', () => {
         screen.queryByTestId('delete-task-comment')
       ).not.toBeInTheDocument();
     });
+
+    it('should not mount DeleteModal at all when the current user cannot delete', () => {
+      renderCard({ currentUser: { name: 'bob', isAdmin: false } });
+
+      expect(DeleteModal as jest.Mock).not.toHaveBeenCalled();
+    });
+
+    it('should mount DeleteModal (closed) when the current user can delete', () => {
+      renderCard({ currentUser: { name: 'alice' } });
+
+      expect(DeleteModal as jest.Mock).toHaveBeenCalled();
+      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+    });
   });
 
   describe('accessibility', () => {
@@ -390,6 +404,27 @@ describe('TaskCommentCard', () => {
 
       expect(document.body).not.toHaveFocus();
       expect(screen.getByTestId('task-comment-card')).toHaveFocus();
+    });
+
+    it('should fall back to the replies container when the deleted comment has no sibling to focus', () => {
+      // A plain object, not the parent's own DOM node - TaskCommentCard must
+      // only ever call .focus() on it, matching what the fix is actually
+      // for: never touching a foreign parent's attributes.
+      const repliesContainerRef = { current: document.createElement('div') };
+      repliesContainerRef.current.tabIndex = -1;
+      document.body.appendChild(repliesContainerRef.current);
+
+      const { unmount } = renderCard({
+        currentUser: { name: 'alice' },
+        repliesContainerRef,
+      });
+
+      screen.getByTestId('delete-task-comment').focus();
+      unmount();
+
+      expect(repliesContainerRef.current).toHaveFocus();
+
+      document.body.removeChild(repliesContainerRef.current);
     });
   });
 });

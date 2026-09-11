@@ -420,6 +420,10 @@ export const TaskTabNew = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
+  // Stable, always-focusable (tabIndex={-1}) fallback target the comment
+  // cards can hand focus to when a deleted comment has no sibling left -
+  // see TaskCommentCard's unmount focus-management effect.
+  const repliesContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
@@ -1832,7 +1836,11 @@ export const TaskTabNew = ({
     );
 
     return (
-      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+      <Col
+        className="p-l-0 p-r-0"
+        data-testid="feed-replies"
+        ref={repliesContainerRef}
+        tabIndex={-1}>
         {sortedComments.map((comment, index, arr) => (
           <TaskCommentCard
             closeFeedEditor={closeFeedEditor}
@@ -1840,6 +1848,7 @@ export const TaskTabNew = ({
             currentUser={currentUser}
             isLastReply={index === arr.length - 1}
             key={comment.id}
+            repliesContainerRef={repliesContainerRef}
             task={task}
             onCommentDeleted={() => fetchUpdatedThread(task.id, true)}
           />

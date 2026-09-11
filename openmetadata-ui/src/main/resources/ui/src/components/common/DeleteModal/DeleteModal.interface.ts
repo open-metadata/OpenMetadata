@@ -25,4 +25,12 @@ export interface DeleteModalProps {
   onCancel: () => void;
   /** Callback when delete is confirmed */
   onDelete: () => void;
+  /**
+   * Raises the overlay's z-index above antd's Drawer/Modal stacking
+   * context (@zindex-modal / @zindex-modal-mask, both 1000). Opt-in and
+   * off by default so this only affects consumers that actually open the
+   * dialog from inside a Drawer - DeleteModal is used across ~75 other
+   * call sites that don't need (or want) their stacking changed.
+   */
+  elevated?: boolean;
 }
