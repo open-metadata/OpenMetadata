@@ -21,6 +21,8 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -70,10 +72,16 @@ const IncidentManager = ({
     handleStatusSubmit,
     searchTestCases,
   } = useIncidentManagerListPage({ isIncidentPage, tableDetails });
-  if (
-    !commonTestCasePermission?.ViewAll &&
-    !commonTestCasePermission?.ViewBasic
-  ) {
+
+  // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
+  // scope — incident permissions decouple from test-case perms in an open upstream PR
+  // #26521). Pure rename: `!hasViewAccess` is De Morgan's law applied to the old
+  // `!ViewAll && !ViewBasic` — the exact same condition, just via the named flag.
+  const hasViewAccess = getDerivedPermissionFlags(
+    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
+  ).hasViewAccess;
+
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
