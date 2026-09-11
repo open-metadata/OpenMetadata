@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Route } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
@@ -521,7 +522,14 @@ test.describe.serial('Team persona setting flow', () => {
         )
       ).toBeVisible();
 
-      const teamPatchResponse = adminPage.waitForResponse('/api/v1/teams/*');
+      const teamPatchResponse = waitForResponseWithStatus(
+        adminPage,
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${testTeam.responseData.id}`,
+        200
+      );
 
       // Save the default persona for team
       await adminPage
@@ -583,8 +591,14 @@ test.describe.serial('Team persona setting flow', () => {
       ).not.toBeVisible();
 
       // Save it and re-verify
-      const teamPatchSwitchResponse =
-        adminPage.waitForResponse('/api/v1/teams/*');
+      const teamPatchSwitchResponse = waitForResponseWithStatus(
+        adminPage,
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${testTeam.responseData.id}`,
+        200
+      );
       await adminPage
         .getByTestId('user-profile-default-persona-edit-save')
         .click();
@@ -608,8 +622,14 @@ test.describe.serial('Team persona setting flow', () => {
       );
       await expect(revertOption).toBeVisible();
       await revertOption.click();
-      const teamPatchRevertResponse =
-        adminPage.waitForResponse('/api/v1/teams/*');
+      const teamPatchRevertResponse = waitForResponseWithStatus(
+        adminPage,
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${testTeam.responseData.id}`,
+        200
+      );
       await adminPage
         .getByTestId('user-profile-default-persona-edit-save')
         .click();
@@ -661,6 +681,76 @@ test.describe.serial('Team persona setting flow', () => {
     });
   });
 
+  test('Team details retain the persona when the basic response arrives last', async ({
+    adminPage,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    try {
+      await testTeam.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: { id: teamPersona.responseData.id, type: 'persona' },
+        },
+      ]);
+    } finally {
+      await afterAction();
+    }
+
+    const teamId = testTeam.responseData.id;
+    if (!teamId) {
+      throw new Error('Team fixture has no ID');
+    }
+    const assetCountRequested = adminPage.waitForRequest((request) => {
+      const url = new URL(request.url());
+
+      return (
+        request.method() === 'GET' &&
+        url.pathname === '/api/v1/search/query' &&
+        (url.searchParams.get('query_filter')?.includes(teamId) ?? false)
+      );
+    });
+    const teamRoute = '**/api/v1/teams/name/**';
+    const delayBasicDetails = async (route: Route) => {
+      const url = new URL(route.request().url());
+      const fields = url.searchParams.get('fields')?.split(',') ?? [];
+      if (
+        url.pathname ===
+          `/api/v1/teams/name/${encodeURIComponent(
+            testTeam.responseData.name
+          )}` &&
+        fields.includes('parents') &&
+        !fields.includes('defaultPersona')
+      ) {
+        const response = await route.fetch();
+        try {
+          // The asset-count request starts after the advanced team state is applied.
+          await assetCountRequested;
+          await route.fulfill({ response });
+        } finally {
+          await response.dispose();
+        }
+      } else {
+        await route.fallback();
+      }
+    };
+    await adminPage.route(teamRoute, delayBasicDetails);
+    try {
+      await adminPage.goto(
+        `/settings/members/teams/${encodeURIComponent(
+          testTeam.responseData.name
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await expect(adminPage.getByTestId('team-persona')).toContainText(
+        teamPersona.responseData.displayName
+      );
+    } finally {
+      await adminPage.unroute(teamRoute, delayBasicDetails);
+    }
+  });
+
   test('Admin can remove the default persona for a team', async ({
     adminPage,
     browser,
@@ -705,8 +795,14 @@ test.describe.serial('Team persona setting flow', () => {
         )
         .click();
 
-      const defaultPersonaChangeResponse =
-        adminPage.waitForResponse('/api/v1/teams/*');
+      const defaultPersonaChangeResponse = waitForResponseWithStatus(
+        adminPage,
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${testTeam.responseData.id}`,
+        200
+      );
 
       // Save the changes
       await adminPage

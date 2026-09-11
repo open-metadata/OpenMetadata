@@ -252,7 +252,9 @@ const TeamsPage = () => {
         include: Include.All,
       });
 
-      setSelectedTeam(data);
+      setSelectedTeam((previous) =>
+        previous.id === data.id ? { ...previous, ...data } : data
+      );
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
         await getParentTeam(data.parents[0].name, true, loadPage);
       }
@@ -280,7 +282,9 @@ const TeamsPage = () => {
           include: Include.All,
         });
 
-        setSelectedTeam((prev) => ({ ...prev, ...data }));
+        setSelectedTeam((previous) =>
+          previous.id === data.id ? { ...previous, ...data } : data
+        );
         fetchAssets(data);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
