@@ -286,7 +286,8 @@ test.describe('Lineage Filters', () => {
           });
         }
       },
-      filterValue: EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+      // The tier option renders the tag name, not the FQN
+      filterValue: EntityDataClass.tierTag1.responseData.name,
     },
   ];
 
