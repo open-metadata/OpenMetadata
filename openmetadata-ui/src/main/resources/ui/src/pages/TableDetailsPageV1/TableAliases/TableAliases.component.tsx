@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import Table from '../../../components/common/Table/Table';
 import { TableComponentProps } from '../../../components/common/Table/Table.interface';
@@ -74,7 +76,14 @@ export const TableAliases = ({
         key: 'name',
         ellipsis: true,
         render: (name: string, record: AliasRow) => (
-          <span title={record.fqn}>{name}</span>
+          // Focusable lets the truncated name consume the Tooltip's hover
+          // context without a wrapper element, so the cell's ellipsis is
+          // preserved; excludeFromTabOrder keeps it out of the tab order.
+          <Tooltip title={record.fqn}>
+            <Focusable excludeFromTabOrder>
+              <span>{name}</span>
+            </Focusable>
+          </Tooltip>
         ),
       },
     ],
