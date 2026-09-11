@@ -44,7 +44,6 @@ import {
   getEmptyJsonTree,
   getEmptyJsonTreeForQueryBuilder,
 } from '../../../../../../utils/AdvancedSearchPureUtils';
-import jsonLogicSearchClassBase from '../../../../../../utils/JSONLogicSearchClassBase';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
@@ -250,10 +249,7 @@ const QueryBuilderWidget: FC<
     } else {
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
-        const rewritten = jsonLogicSearchClassBase.rewriteTableCpRulesToSome(
-          jsonLogic.logic as Record<string, unknown>
-        );
-        onChange(JSON.stringify(rewritten ?? ''));
+        onChange(JSON.stringify(jsonLogic.logic ?? ''));
       } catch {
         onChange('');
       }
@@ -281,10 +277,8 @@ const QueryBuilderWidget: FC<
       } else {
         // migrate existing json logic to new format
         const migratedValue = migrateJsonLogic(parsedValue);
-        const flattenedValue =
-          jsonLogicSearchClassBase.rewriteTableCpSomeToFlat(migratedValue);
 
-        const tree = QbUtils.loadFromJsonLogic(flattenedValue, config);
+        const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
         if (tree) {
           const validatedTree = QbUtils.Validation.sanitizeTree(
             tree,

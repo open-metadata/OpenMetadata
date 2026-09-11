@@ -806,52 +806,36 @@ class JSONLogicSearchClassBase {
     };
   };
 
-  private static readonly TABLE_CP_ROWS_RE = /^extension\.(.+?)\.rows\.(.+)$/;
-
-  private static readonly COMPARISON_OPS = [
-    '==',
-    '!=',
-    '<',
-    '<=',
-    '>',
-    '>=',
-    'in',
-    'like',
-  ];
-
-  private static findComparisonOp(node: Record<string, unknown>) {
-    for (const op of JSONLogicSearchClassBase.COMPARISON_OPS) {
-      const args = node[op];
-      if (Array.isArray(args) && args.length >= 2) {
-        return { op, args };
-      }
-    }
-
-    return undefined;
-  }
-
-  private static getVarString(
-    obj: Record<string, unknown> | undefined
-  ): string | undefined {
-    if (obj?.var && typeof obj.var === 'string') {
-      return obj.var;
-    }
-
-    return undefined;
-  }
-
-  private static mapLogicChildren(
+  private walkLogicTree(
     node: Record<string, unknown>,
-    fn: (child: Record<string, unknown>) => Record<string, unknown>
+    transform: (
+      n: Record<string, unknown>
+    ) => Record<string, unknown> | undefined
   ): Record<string, unknown> {
+    if (!node || typeof node !== 'object') {
+      return node;
+    }
+
+    const result = transform(node);
+    if (result) {
+      return result;
+    }
+
     for (const key of ['and', 'or']) {
       if (Array.isArray(node[key])) {
         return {
-          [key]: (node[key] as unknown[]).map((item) =>
-            fn(item as Record<string, unknown>)
+          [key]: (node[key] as unknown[]).map((i) =>
+            this.walkLogicTree(i as Record<string, unknown>, transform)
           ),
         };
       }
+    }
+
+    const negated = node['!'];
+    if (negated && typeof negated === 'object' && !Array.isArray(negated)) {
+      return {
+        '!': this.walkLogicTree(negated as Record<string, unknown>, transform),
+      };
     }
 
     return node;
@@ -859,83 +843,70 @@ class JSONLogicSearchClassBase {
 
   rewriteTableCpRulesToSome = (
     logic: Record<string, unknown>
-  ): Record<string, unknown> => {
-    const rewriteRule = (
-      node: Record<string, unknown>
-    ): Record<string, unknown> => {
-      if (!node || typeof node !== 'object') {
-        return node;
+  ): Record<string, unknown> =>
+    this.walkLogicTree(logic, (node) => {
+      for (const op of Object.keys(node)) {
+        const args = node[op];
+        if (!Array.isArray(args) || args.length < 2) {
+          continue;
+        }
+        const varPath = (args[0] as Record<string, unknown>)?.var;
+        if (
+          typeof varPath !== 'string' ||
+          !varPath.startsWith('extension.') ||
+          !varPath.includes('.rows.')
+        ) {
+          continue;
+        }
+        const [arrayPath, column] = varPath.split('.rows.');
+
+        return {
+          some: [
+            { var: `${arrayPath}.rows` },
+            { [op]: [{ var: column }, ...args.slice(1)] },
+          ],
+        };
       }
 
-      const found = JSONLogicSearchClassBase.findComparisonOp(node);
-      if (found) {
-        const varPath = JSONLogicSearchClassBase.getVarString(
-          found.args[0] as Record<string, unknown>
-        );
-        const match = varPath
-          ? JSONLogicSearchClassBase.TABLE_CP_ROWS_RE.exec(varPath)
-          : null;
-        if (match) {
-          const [, cpName, columnName] = match;
+      return undefined;
+    });
 
+  rewriteTableCpSomeToFlat = (
+    logic: Record<string, unknown>
+  ): Record<string, unknown> =>
+    this.walkLogicTree(logic, (node) => {
+      if (!Array.isArray(node.some)) {
+        return undefined;
+      }
+      const [varObj, condition] = node.some as [
+        Record<string, unknown>,
+        Record<string, unknown>
+      ];
+      const arrayPath = varObj?.var;
+      if (
+        typeof arrayPath !== 'string' ||
+        !arrayPath.startsWith('extension.') ||
+        !arrayPath.endsWith('.rows') ||
+        !condition
+      ) {
+        return undefined;
+      }
+
+      for (const op of Object.keys(condition)) {
+        const args = condition[op];
+        if (!Array.isArray(args) || args.length < 2) {
+          continue;
+        }
+        const innerVar = (args[0] as Record<string, unknown>)?.var;
+        if (typeof innerVar === 'string') {
           return {
-            some: [
-              { var: `extension.${cpName}.rows` },
-              { [found.op]: [{ var: columnName }, ...found.args.slice(1)] },
-            ],
+            [op]: [{ var: `${arrayPath}.${innerVar}` }, ...args.slice(1)],
           };
         }
       }
 
-      return JSONLogicSearchClassBase.mapLogicChildren(node, rewriteRule);
-    };
-
-    return rewriteRule(logic);
-  };
-
-  rewriteTableCpSomeToFlat = (
-    logic: Record<string, unknown>
-  ): Record<string, unknown> => {
-    const rewriteRule = (
-      node: Record<string, unknown>
-    ): Record<string, unknown> => {
-      if (!node || typeof node !== 'object') {
-        return node;
-      }
-
-      if (Array.isArray(node.some)) {
-        const [varObj, condition] = node.some as [
-          Record<string, unknown>,
-          Record<string, unknown>
-        ];
-        const arrayPath = JSONLogicSearchClassBase.getVarString(varObj);
-        if (
-          arrayPath?.startsWith('extension.') &&
-          arrayPath.endsWith('.rows') &&
-          condition
-        ) {
-          const found = JSONLogicSearchClassBase.findComparisonOp(condition);
-          const innerVar = found
-            ? JSONLogicSearchClassBase.getVarString(
-                found.args[0] as Record<string, unknown>
-              )
-            : undefined;
-          if (found && innerVar) {
-            return {
-              [found.op]: [
-                { var: `${arrayPath}.${innerVar}` },
-                ...found.args.slice(1),
-              ],
-            };
-          }
-        }
-      }
-
-      return JSONLogicSearchClassBase.mapLogicChildren(node, rewriteRule);
-    };
-
-    return rewriteRule(logic);
-  };
+      return undefined;
+    });
 
   // Custom handling for array_not_contains and is_null (Is Not Set) operators
   // on group/some fields (e.g. Owners, Domain, Data Product).
