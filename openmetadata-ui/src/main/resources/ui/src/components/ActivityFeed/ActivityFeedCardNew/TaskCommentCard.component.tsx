@@ -12,11 +12,11 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Delete as DeleteIcon } from '@openmetadata/ui-core-components/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { deleteTaskComment, Task, TaskComment } from '../../../rest/tasksAPI';
 import {
