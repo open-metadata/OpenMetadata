@@ -1837,14 +1837,16 @@ export const TaskTabNew = ({
           <TaskCommentCard
             closeFeedEditor={closeFeedEditor}
             comment={comment}
+            currentUser={currentUser}
             isLastReply={index === arr.length - 1}
             key={comment.id}
             task={task}
+            onCommentDeleted={() => fetchUpdatedThread(task.id, true)}
           />
         ))}
       </Col>
     );
-  }, [task, closeFeedEditor, isPostsLoading]);
+  }, [task, closeFeedEditor, isPostsLoading, currentUser, fetchUpdatedThread]);
 
   useEffect(() => {
     closeFeedEditor();

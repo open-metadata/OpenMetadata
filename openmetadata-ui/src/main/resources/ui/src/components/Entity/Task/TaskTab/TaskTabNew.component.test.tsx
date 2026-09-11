@@ -303,13 +303,14 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockFetchUpdatedThread = jest.fn().mockResolvedValue({});
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn().mockResolvedValue({}),
       updateTask: jest.fn(),
-      fetchUpdatedThread: jest.fn().mockResolvedValue({}),
+      fetchUpdatedThread: mockFetchUpdatedThread,
       updateTestCaseIncidentStatus: jest.fn(),
       testCaseResolutionStatus: [],
       isPostsLoading: false,
@@ -423,10 +424,15 @@ jest.mock(
   }
 );
 
+const mockTaskCommentCardProps: Record<string, unknown>[] = [];
 jest.mock(
   '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component',
   () => {
-    return jest.fn().mockImplementation(() => <p>TaskCommentCard</p>);
+    return jest.fn().mockImplementation((props) => {
+      mockTaskCommentCardProps.push(props);
+
+      return <p>TaskCommentCard</p>;
+    });
   }
 );
 
@@ -452,6 +458,7 @@ const mockProps = {
 describe('TaskTabNew Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTaskCommentCardProps.length = 0;
     const { useAuth } = require('../../../../hooks/authHooks');
     const {
       useApplicationStore,
@@ -1267,6 +1274,56 @@ describe('TaskTabNew Component', () => {
           reviewNotes: 'Needs final verification',
         },
       });
+    });
+  });
+
+  describe('task comments', () => {
+    // The card re-renders, so assert against the props it was last handed rather
+    // than a render count.
+    const lastCommentCardProps = () =>
+      mockTaskCommentCardProps[mockTaskCommentCardProps.length - 1];
+
+    const MOCK_TASK_WITH_COMMENT: Task = {
+      ...MOCK_TASK,
+      comments: [
+        {
+          id: 'comment-1',
+          message: 'A comment on the incident',
+          createdAt: 1735732800000,
+          author: { id: 'user-1', type: 'user', name: 'alice' },
+        },
+      ],
+    };
+
+    it('should pass the current user down so the card can resolve delete permission', async () => {
+      await act(async () => {
+        render(<TaskTabNew {...mockProps} task={MOCK_TASK_WITH_COMMENT} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      expect(lastCommentCardProps().currentUser).toEqual(
+        expect.objectContaining({ name: 'test-user' })
+      );
+    });
+
+    it('should refetch the thread when a comment is deleted', async () => {
+      await act(async () => {
+        render(<TaskTabNew {...mockProps} task={MOCK_TASK_WITH_COMMENT} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      mockFetchUpdatedThread.mockClear();
+
+      await act(async () => {
+        (lastCommentCardProps().onCommentDeleted as () => void)();
+      });
+
+      expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        true
+      );
     });
   });
 });

@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space, Tooltip, Typography } from 'antd';
-import { FC, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { Task, TaskComment } from '../../../rest/tasksAPI';
+import { deleteTaskComment, Task, TaskComment } from '../../../rest/tasksAPI';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 interface TaskCommentCardProps {
@@ -28,12 +34,18 @@ interface TaskCommentCardProps {
   task: Task;
   isLastReply?: boolean;
   closeFeedEditor?: () => void;
+  currentUser?: { name?: string; isAdmin?: boolean };
+  onCommentDeleted?: () => void;
 }
 
 const TaskCommentCard: FC<TaskCommentCardProps> = ({
   comment,
+  task,
   isLastReply = false,
+  currentUser,
+  onCommentDeleted,
 }) => {
+  const { t } = useTranslation();
   const [, , user] = useUserProfile({
     permission: true,
     name: comment.author?.name ?? '',
@@ -44,10 +56,40 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
     [user, comment.author]
   );
 
+  const [isHovered, setIsHovered] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const canDelete = useMemo(
+    () =>
+      (Boolean(currentUser?.name) &&
+        comment.author?.name === currentUser?.name) ||
+      Boolean(currentUser?.isAdmin),
+    [currentUser, comment.author]
+  );
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteTaskComment(task.id, comment.id);
+      setShowDeleteDialog(false);
+      onCommentDeleted?.();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div
-      className={`p-y-md p-x-sm ${!isLastReply ? 'border-bottom' : ''}`}
-      data-testid="task-comment-card">
+      className={`p-y-md p-x-sm relative ${
+        !isLastReply ? 'border-bottom' : ''
+      }`}
+      data-testid="task-comment-card"
+      role="presentation"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
       <Space align="start" className="w-full" size={12}>
         <ProfilePicture
           displayName={authorName}
@@ -71,12 +113,33 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
           </Space>
           <div className="m-t-xs">
             <RichTextEditorPreviewNew
-              enableSeeMoreVariant={false}
               markdown={getFrontEndFormat(comment.message)}
             />
           </div>
         </div>
       </Space>
+      {isHovered && canDelete && (
+        <Icon
+          className="toolbar-button task-comment-delete-action"
+          component={DeleteIcon}
+          data-testid="delete-task-comment"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '8px',
+            fontSize: '16px',
+          }}
+          onClick={() => setShowDeleteDialog(true)}
+        />
+      )}
+      <DeleteModal
+        entityTitle={t('label.comment')}
+        isDeleting={isDeleting}
+        message={t('message.confirm-delete-message')}
+        open={showDeleteDialog}
+        onCancel={() => setShowDeleteDialog(false)}
+        onDelete={handleDelete}
+      />
     </div>
   );
 };
