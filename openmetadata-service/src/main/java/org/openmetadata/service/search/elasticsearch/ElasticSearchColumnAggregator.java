@@ -14,6 +14,8 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.ColumnGridIndexConfigs.NAME_KEYWORD_SUFFIX;
+import static org.openmetadata.service.search.ColumnGridIndexConfigs.TAG_FQN_SUFFIX;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -74,6 +76,20 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   public ElasticSearchColumnAggregator(ElasticsearchClient client) {
     this.client = client;
+  }
+
+  /**
+   * The container path a type's children live under, for example {@code messageSchema.schemaFields}
+   * on a topic. Every query builder and _source reader in this class resolves through here rather
+   * than assuming {@code columns}, which only table, dashboardDataModel and worksheet use.
+   */
+  public static String resolveColumnFieldPath(String entityType) {
+    return INDEX_CONFIGS.get(entityType).columnFieldPath();
+  }
+
+  /** The keyword subfield the grid aggregates and sorts child names on. */
+  public static String resolveColumnNameKeyword(String entityType) {
+    return INDEX_CONFIGS.get(entityType).columnNameKeyword();
   }
 
   @Override
@@ -142,7 +158,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
       List<String> indexes = resolveIndexNames(groupEntityTypes);
 
-      String columnFieldPath = INDEX_CONFIGS.get(groupEntityTypes.getFirst()).columnFieldPath();
+      String columnFieldPath = resolveColumnFieldPath(groupEntityTypes.getFirst());
 
       Query query = buildFilters(request, columnNameKeyword, null);
 
@@ -242,7 +258,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
       String columnNameKeyword = entry.getKey();
       List<String> indexes = resolveIndexNames(entry.getValue());
-      String columnFieldPath = INDEX_CONFIGS.get(entry.getValue().getFirst()).columnFieldPath();
+      String columnFieldPath = resolveColumnFieldPath(entry.getValue().getFirst());
       Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
@@ -289,7 +305,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
       String columnNameKeyword = entry.getKey();
       List<String> indexes = resolveIndexNames(entry.getValue());
-      String columnFieldPath = INDEX_CONFIGS.get(entry.getValue().getFirst()).columnFieldPath();
+      String columnFieldPath = resolveColumnFieldPath(entry.getValue().getFirst());
       Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
@@ -402,7 +418,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       String columnNameKeyword = entry.getKey();
       List<String> groupEntityTypes = entry.getValue();
       List<String> indexes = resolveIndexNames(groupEntityTypes);
-      String columnFieldPath = INDEX_CONFIGS.get(groupEntityTypes.getFirst()).columnFieldPath();
+      String columnFieldPath = resolveColumnFieldPath(groupEntityTypes.getFirst());
 
       Query query = buildTagFilterQuery(request, columnNameKeyword);
 
@@ -534,7 +550,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private Query buildTagFilterQuery(ColumnAggregationRequest request, String columnNameKeyword) {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
-    String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
+    String columnFieldPath = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
     boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
@@ -546,7 +562,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     addDomainFilter(boolBuilder, request);
     addColumnNamePatternFilter(boolBuilder, request, columnNameKeyword);
 
-    String tagFQNField = columnNameKeyword.replace(".name.keyword", ".tags.tagFQN");
+    String tagFQNField = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, TAG_FQN_SUFFIX);
     List<String> allTags = new ArrayList<>();
 
     if (!nullOrEmpty(request.getTags())) {
@@ -603,10 +619,9 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private Map<String, List<String>> groupByFieldPath(List<String> entityTypes) {
     Map<String, List<String>> result = new HashMap<>();
     for (String entityType : entityTypes) {
-      ColumnGridIndexConfigs.IndexConfig config = INDEX_CONFIGS.get(entityType);
-      if (config != null) {
-        result.computeIfAbsent(config.columnNameKeyword(), k -> new ArrayList<>()).add(entityType);
-      }
+      result
+          .computeIfAbsent(resolveColumnNameKeyword(entityType), k -> new ArrayList<>())
+          .add(entityType);
     }
     return result;
   }
@@ -629,7 +644,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       List<String> columnNamesFromTagFilter) {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
-    String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
+    String columnFieldPath = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
     boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
@@ -744,7 +759,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       return;
     }
 
-    String tagFQNField = columnNameKeyword.replace(".name.keyword", ".tags.tagFQN");
+    String tagFQNField = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, TAG_FQN_SUFFIX);
     if (request.getTags() != null && !request.getTags().isEmpty()) {
       List<FieldValue> values = request.getTags().stream().map(FieldValue::of).toList();
       boolBuilder.filter(

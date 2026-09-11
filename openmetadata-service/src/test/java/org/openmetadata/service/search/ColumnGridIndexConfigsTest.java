@@ -6,17 +6,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchColumnAggregator;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 
 /**
- * Pins the grid aggregators' coverage sets before consolidation. The Elasticsearch side carries a
- * per-type index config; the OpenSearch side carries only a flat list of types and has no field-path
- * map at all. That divergence is real and is pinned here so Task 15 fixing it shows up as a diff.
+ * Pins the grid aggregators' coverage and per-type field paths. Both engines now read the same
+ * registry-derived configs; before consolidation the OpenSearch side carried a flat list of types
+ * and no field-path map at all, so it queried topic, searchIndex and container against
+ * {@code columns.*} and matched nothing.
  */
 class ColumnGridIndexConfigsTest {
 
@@ -98,11 +102,117 @@ class ColumnGridIndexConfigsTest {
   }
 
   @Test
-  void os_flatIndexList_pinnedDivergence() throws Exception {
-    // Pins the known ES/OS divergence: OS has no per-type field-path map today.
-    // Task 15 fixes this deliberately and updates this test in its own commit.
-    Field indexesField = OpenSearchColumnAggregator.class.getDeclaredField("DATA_ASSET_INDEXES");
-    indexesField.setAccessible(true);
-    assertEquals(LEGACY_OS_INDEXES, indexesField.get(null));
+  void os_and_es_resolveTheSameFieldPathPerType() {
+    Map<String, ColumnGridIndexConfigs.IndexConfig> configs = ColumnGridIndexConfigs.load();
+    for (Map.Entry<String, ColumnGridIndexConfigs.IndexConfig> entry : configs.entrySet()) {
+      assertEquals(
+          entry.getValue().columnFieldPath(),
+          OpenSearchColumnAggregator.resolveColumnFieldPath(entry.getKey()),
+          "OS field path for " + entry.getKey() + " must come from ColumnGridIndexConfigs");
+      assertEquals(
+          entry.getValue().columnFieldPath(),
+          ElasticSearchColumnAggregator.resolveColumnFieldPath(entry.getKey()),
+          "ES field path for " + entry.getKey() + " must come from ColumnGridIndexConfigs");
+      assertEquals(
+          entry.getValue().columnNameKeyword(),
+          OpenSearchColumnAggregator.resolveColumnNameKeyword(entry.getKey()),
+          "OS keyword for " + entry.getKey() + " must come from ColumnGridIndexConfigs");
+      assertEquals(
+          entry.getValue().columnNameKeyword(),
+          ElasticSearchColumnAggregator.resolveColumnNameKeyword(entry.getKey()),
+          "ES keyword for " + entry.getKey() + " must come from ColumnGridIndexConfigs");
+    }
+    // The three types whose path is not "columns" at all. Before this task the OpenSearch
+    // aggregator queried them against "columns.*", which matches nothing in their mappings.
+    assertEquals("messageSchema.schemaFields", configs.get("topic").columnFieldPath());
+    assertEquals("dataModel.columns", configs.get("container").columnFieldPath());
+    assertEquals("fields", configs.get("searchIndex").columnFieldPath());
+  }
+
+  @Test
+  void suffixConstantsDeriveTheSiblingFieldsFromAKeyword() {
+    // Both aggregators carry only the keyword through their query builders and strip/swap this
+    // suffix to reach the container path and the tag field. If the constant and the built keyword
+    // ever disagree the strip silently no-ops and the exists() filter targets a non-existent field.
+    for (ColumnGridIndexConfigs.IndexConfig config : ColumnGridIndexConfigs.load().values()) {
+      assertEquals(
+          config.columnFieldPath(),
+          config.columnNameKeyword().replace(ColumnGridIndexConfigs.NAME_KEYWORD_SUFFIX, ""));
+      assertEquals(
+          config.columnFieldPath() + ColumnGridIndexConfigs.TAG_FQN_SUFFIX,
+          config
+              .columnNameKeyword()
+              .replace(
+                  ColumnGridIndexConfigs.NAME_KEYWORD_SUFFIX,
+                  ColumnGridIndexConfigs.TAG_FQN_SUFFIX));
+    }
+  }
+
+  @Test
+  void neitherAggregatorHardcodesAChildFieldPath() throws Exception {
+    assertNoChildFieldLiteral(
+        "src/main/java/org/openmetadata/service/search/opensearch/OpenSearchColumnAggregator.java");
+    assertNoChildFieldLiteral(
+        "src/main/java/org/openmetadata/service/search/elasticsearch/ElasticSearchColumnAggregator.java");
+  }
+
+  @Test
+  void os_legacyTypesSurviveTheMigrationOffItsPrivateList() {
+    // The flat private list is gone; every type it used to serve must still be admitted, or the
+    // migration silently removed OpenSearch grid coverage for it.
+    assertThrows(
+        NoSuchFieldException.class,
+        () -> OpenSearchColumnAggregator.class.getDeclaredField("DATA_ASSET_INDEXES"));
+    for (String legacyType : LEGACY_OS_INDEXES) {
+      assertTrue(
+          ColumnGridIndexConfigs.load().containsKey(legacyType),
+          legacyType + " was served by the OpenSearch grid before consolidation");
+    }
+  }
+
+  /**
+   * Fails on any remaining string literal that starts a child-field path. Before this task the
+   * OpenSearch aggregator carried 14 of them; the field path must come from ColumnGridIndexConfigs
+   * so topic/container/searchIndex are not queried against "columns.*".
+   *
+   * <p>Comment lines are skipped. Both files carry prose about columns, and future work will add
+   * more; a scan that fails on a javadoc sentence teaches executors to reword comments instead of
+   * fixing queries.
+   *
+   * <p>The path is resolved against the module directory, which is surefire's working directory for
+   * {@code mvn test -pl openmetadata-service}. The existence check below is deliberate: if the file
+   * is not found the test must fail loudly rather than pass on an empty offender list, which is how
+   * a working-directory change would otherwise turn this pin into a silent no-op.
+   */
+  static void assertNoChildFieldLiteral(String relativePath) throws Exception {
+    Path source = Path.of(relativePath);
+    assertTrue(
+        Files.exists(source),
+        "Cannot scan "
+            + relativePath
+            + " from working directory "
+            + Path.of("").toAbsolutePath()
+            + "; run this test with the module directory as the working directory");
+    List<String> offenders = new ArrayList<>();
+    List<String> lines = Files.readAllLines(source);
+    boolean inBlockComment = false;
+    for (int i = 0; i < lines.size(); i++) {
+      String trimmed = lines.get(i).trim();
+      boolean commentLine =
+          inBlockComment
+              || trimmed.startsWith("//")
+              || trimmed.startsWith("/*")
+              || trimmed.startsWith("*");
+      if (trimmed.startsWith("/*") && !trimmed.contains("*/")) {
+        inBlockComment = true;
+      } else if (inBlockComment && trimmed.contains("*/")) {
+        inBlockComment = false;
+      }
+      boolean hardcoded = trimmed.contains("\"columns\"") || trimmed.contains("\"columns.");
+      if (hardcoded && !commentLine) {
+        offenders.add((i + 1) + ": " + trimmed);
+      }
+    }
+    assertEquals(List.of(), offenders, relativePath + " still hardcodes a child-field path");
   }
 }

@@ -18,6 +18,16 @@ public final class ColumnGridIndexConfigs {
   public record IndexConfig(String indexName, String columnFieldPath, String columnNameKeyword) {}
 
   /**
+   * Suffixes the aggregators strip from or append to a columnNameKeyword to reach the sibling
+   * fields of the same container. Both engines carry the keyword through their query builders and
+   * derive the container path and the tag field from it, so the two suffixes live here rather than
+   * being repeated as literals in each engine.
+   */
+  public static final String NAME_KEYWORD_SUFFIX = ".name.keyword";
+
+  public static final String TAG_FQN_SUFFIX = ".tags.tagFQN";
+
+  /**
    * Types the column grid does not serve.
    *
    * <p>apiEndpoint: its children live under two container paths (requestSchema.schemaFields and
@@ -68,7 +78,7 @@ public final class ColumnGridIndexConfigs {
     for (String entityType : ChildFieldResolver.supportedEntityTypes()) {
       if (!GRID_EXCLUDED_TYPES.contains(entityType)) {
         String path = ChildFieldResolver.specFor(entityType).containerPaths().getFirst();
-        configs.put(entityType, new IndexConfig(entityType, path, path + ".name.keyword"));
+        configs.put(entityType, new IndexConfig(entityType, path, path + NAME_KEYWORD_SUFFIX));
       }
     }
     return Map.copyOf(configs);
