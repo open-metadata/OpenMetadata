@@ -80,6 +80,8 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     await onSave({ rows: modifiedRows, columns });
   }, [onSave, dataSource, columns]);
 
+  // The grid measures columns on mount. A scale animation caches transformed
+  // widths and can move another cell under a double-click; fading preserves layout.
   return (
     <Modal
       centered
@@ -126,6 +128,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
           })}
         </Typography.Text>
       }
+      transitionName="ant-fade"
       width={800}>
       {isEmpty(dataSource) ? (
         <TableTypePropertyView columns={columns} rows={rows} />

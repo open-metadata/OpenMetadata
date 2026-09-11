@@ -213,16 +213,20 @@ export const selectOption = async (
   if (!listboxId) {
     throw new Error('Combobox popup did not expose aria-controls');
   }
+  const controlId = await control.getAttribute('id');
   const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
   await listbox.getByRole('option', { name: optionTitle, exact: true }).click();
 
-  // RAQB can replace a group selector with a child rule after selection.
-  // Callers assert the resulting rule or request; the old input is not the result.
-  if (await control.count()) {
-    await control.blur();
+  // A drawer's focus trap restores focus after blur(), reopening a focus-triggered
+  // ComboBox. Tab moves focus within the drawer and also commits multi-selects.
+  // RAQB can replace a group selector with its child rule. Preserve the original
+  // control's identity so Tab cannot commit an option in that new selector.
+  const selectedControl = controlId
+    ? page.locator(`[id="${controlId}"]`)
+    : control;
+  if (await selectedControl.count()) {
+    await selectedControl.press('Tab');
   }
-  // Selection/blur closes the popup. A subsequent page-level Escape can
-  // reach the enclosing search dialog after focus has been restored.
   await expect(listbox).toBeHidden({ timeout: 10_000 });
 };
 

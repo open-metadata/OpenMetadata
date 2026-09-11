@@ -99,7 +99,7 @@ test(
     // Wait for the API call which should return an error
     const errorResponse = page.waitForResponse(
       (response) =>
-        response.request().method() === 'PATCH' &&
+        response.request().method() === 'PUT' &&
         response.url().includes('/api/v1/columns/name/')
     );
     await page.click('[data-testid="saveAssociatedTag"]');

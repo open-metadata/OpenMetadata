@@ -276,12 +276,12 @@ export class UserClass {
       await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
     }
 
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });
     } catch {
       await page.context().clearCookies();
-      await page.goto('/signin');
+      await page.goto('/signin', { waitUntil: 'domcontentloaded' });
       await page.waitForURL('**/signin');
     }
     await page.waitForLoadState('domcontentloaded');

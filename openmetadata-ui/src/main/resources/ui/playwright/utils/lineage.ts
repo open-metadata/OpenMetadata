@@ -139,6 +139,30 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
 };
 
 const clickCanvasEdge = async (page: Page, marker: Locator) => {
+  await fitToScreen(page);
+  await expect(marker).toBeInViewport();
+  const viewport = page.locator('.react-flow__viewport');
+  const getZoom = () =>
+    viewport.evaluate(
+      (element) => new DOMMatrix(getComputedStyle(element).transform).a
+    );
+  const zoom = await getZoom();
+  const initialBounds = await marker.boundingBox();
+  if (!initialBounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // At overview scale neighbouring curves collapse into the same screen pixel.
+  // Zoom around this edge before clicking, using React Flow's wheel interaction.
+  if (zoom < 1) {
+    await page.mouse.move(
+      initialBounds.x + initialBounds.width / 2,
+      initialBounds.y + initialBounds.height / 2
+    );
+    await page.mouse.wheel(0, -500 * Math.log2(1 / zoom));
+    await expect.poll(getZoom).toBeGreaterThanOrEqual(0.99);
+  }
+
   await expect(marker).toBeInViewport();
   const bounds = await marker.boundingBox();
   if (!bounds) {
@@ -190,7 +214,7 @@ export const deleteEdge = async (
   await clickEdgeBetweenNodes(page, fromNode, toNode, true);
   await addPipeline.click();
 
-  const edgeDialog = page.getByTestId('add-edge-modal');
+  const edgeDialog = page.getByTestId('add-edge-modal').getByRole('dialog');
   await expect(edgeDialog).toBeVisible();
   await edgeDialog.getByTestId('remove-edge-button').click();
 
@@ -586,7 +610,15 @@ export const applyPipelineFromModal = async (
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
-  await saveRes;
+  const saved = await saveRes;
+  expect(saved.status()).toBe(200);
+  expect(saved.request().postDataJSON()).toMatchObject({
+    edge: {
+      fromEntity: { id: get(fromNode, 'entityResponseData.id') },
+      toEntity: { id: get(toNode, 'entityResponseData.id') },
+      lineageDetails: { pipeline: { id: pipelineItem?.entityResponseData.id } },
+    },
+  });
 
   await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',

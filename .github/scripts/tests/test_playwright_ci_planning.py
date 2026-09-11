@@ -1267,7 +1267,7 @@ def test_persona_details_change_selects_ai_context_specs(tmp_path, monkeypatch):
     } <= selected_specs
 
 
-def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypatch):
+def test_explore_changes_schedule_schema_search_in_common_lane(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
@@ -1295,7 +1295,7 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
     schema_search = next(
         entry for entry in selection["selectors"] if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
     )
-    assert "Ingestion" in schema_search["projects"]
+    assert "chromium" in schema_search["projects"]
 
 
 def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
@@ -2138,20 +2138,16 @@ def test_search_rbac_state_setup_maps_only_to_search_rbac():
     assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
 
 
-def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
+def test_search_impact_mapping_covers_common_and_ingestion_projects():
     impact_map = json.loads((SCRIPTS.parents[0] / "playwright/impact-map.json").read_text())
     mapping = next(
         entry
         for entry in impact_map["mappings"]
         if "openmetadata-service/src/main/java/org/openmetadata/service/search/**" in entry["sources"]
     )
-    schema_search = (
-        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
-    ).read_text()
-
     assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
+    assert "chromium" in mapping["projects"]
     assert "Ingestion" in mapping["projects"]
-    assert "tag: '@ingestion'" in schema_search
 
 
 def test_scheduler_impact_mapping_covers_shared_consumers():

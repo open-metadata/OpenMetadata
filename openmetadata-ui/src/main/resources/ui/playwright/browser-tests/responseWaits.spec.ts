@@ -27,7 +27,10 @@ for (const queryLocation of ['q', 'query_filter'] as const) {
         response.end('{}');
       } else {
         response.writeHead(200, { 'Content-Type': 'text/html' });
-        response.end(`<input data-testid="searchbar" /><p>Fixture alpha</p><p id="other">Fixture beta</p>
+        response.end(`<input data-testid="searchbar" /><table><tbody>
+          <tr><td><a>Fixture alpha</a><a>Fixture alpha</a></td></tr>
+          <tr id="other"><td>Fixture beta</td></tr>
+          </tbody></table>
           <script>document.querySelector('input').oninput = async (event) => {
             const term = event.target.value;
             const params = new URLSearchParams({ index: 'table', q: '' });
@@ -52,7 +55,7 @@ for (const queryLocation of ['q', 'query_filter'] as const) {
         `http://127.0.0.1:${(server.address() as AddressInfo).port}`
       );
       await testTableSearch(page, 'table', 'Fixture alpha', 'Fixture beta');
-      await expect(page.getByText('Fixture alpha')).toBeVisible();
+      await expect(page.getByRole('row')).toHaveCount(1);
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve()))

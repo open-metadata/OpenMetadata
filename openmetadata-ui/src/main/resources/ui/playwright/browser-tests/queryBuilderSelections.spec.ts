@@ -32,7 +32,7 @@ const bundle = buildSync({
           onCancel={() => setOpen(false)} onConfirm={() => setOpen(false)} bodyText={<>
           <div data-testid="rule" className={group ? 'group--field' : 'rule--field'}>
           <OMFieldSelect key={String(group)}
-            items={group ? [{key:'extension', label:'Custom Properties'}] : [{key:'extension.count', label:'Count'}]}
+            items={group ? [{key:'extension', label:'Custom Properties'}] : [{key:'extension.container', label:'Container'}, {key:'extension.count', label:'Count'}]}
             selectedKey={field} setField={key => group ? setGroup(false) : setField(key)} />
           </div><output data-testid="selected-field">{field}</output>
           <div data-testid="status-widget"><OMSelectWidget listValues={{incomplete:'Incomplete',complete:'Complete'}}
@@ -62,13 +62,9 @@ test('query builder selection can replace a group control with its child field',
     path: 'node_modules/@openmetadata/ui-core-components/dist/ui-core-components.css',
   });
   await page.addScriptTag({ content: bundle });
-  await selectOption(
-    page,
-    page.locator('.group--field'),
-    'Custom Properties',
-    true
-  );
-  await selectOption(page, page.locator('.rule--field'), 'Count', true);
+  await selectOption(page, page.getByTestId('rule'), 'Custom Properties', true);
+  await expect(page.getByTestId('selected-field')).toBeEmpty();
+  await selectOption(page, page.getByTestId('rule'), 'Count', true);
   await expect(page.getByTestId('selected-field')).toHaveText(
     'extension.count'
   );

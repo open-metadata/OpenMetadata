@@ -1147,15 +1147,19 @@ test.describe(
 
       await test.step('Select data product and verify API carries dataProductFqn', async () => {
         const dataProductInput = page.locator('#dataProductFqn');
-        const dataProductOptionsRes = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/search/query') &&
-            r.url().includes('index=dataProduct') &&
-            r.url().includes(dataProductName)
-        );
+        const dataProductOptionsRes = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('index') === 'dataProduct' &&
+            url.searchParams.get('q') === `*${dataProductName}*`
+          );
+        });
         await dataProductInput.click();
         await dataProductInput.fill(dataProductName);
-        await dataProductOptionsRes;
+        expect((await dataProductOptionsRes).status()).toBe(200);
 
         const filterApiRes = page.waitForResponse(
           (r) =>

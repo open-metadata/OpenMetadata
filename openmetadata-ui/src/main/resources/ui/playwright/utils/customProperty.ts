@@ -79,17 +79,15 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  const cell = page.locator(`div.rdg-cell-${columnName}`).last();
-  await cell.dblclick();
-  await page
+  const cell = page
     .getByTestId('edit-table-type-property-modal')
-    .getByRole('textbox')
-    .fill(text);
-
-  await page
     .locator(`div.rdg-cell-${columnName}`)
-    .last()
-    .press('Enter', { delay: 100 });
+    .last();
+  await cell.dblclick();
+  const editor = cell.getByRole('textbox');
+  await editor.fill(text);
+  await editor.press('Enter');
+  await expect(cell).toHaveText(text);
 };
 
 const addTablePropertyRow = async (page: Page) => {

@@ -21,7 +21,6 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { getApiContext, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { waitForAggregation } from './searchAggregation';
 
 export interface CustomPropertyDetails {
   name: string;
@@ -460,48 +459,36 @@ const handlePropertyValueInput = async (
   const inputElement = ruleLocator.locator('.rule--widget input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
-  // Fill the input only if it's visible
-  if (await inputElement.isVisible()) {
-    // Convert object values to JSON strings
-    const stringValue = isObject(value) ? JSON.stringify(value) : value;
+  await expect(inputElement).toBeVisible();
+  // Convert object values to JSON strings
+  const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
-    // The click on the entity-reference input fires the open aggregate query
-    // (`value=.*`). Use waitForAggregation so the wait distinguishes the
-    // open request from later per-keystroke queries and does not silently
-    // miss when the URL encoding of the wildcard varies.
-    const apiResponsePromise = isEntityRefProperty
-      ? waitForAggregation(page, { value: null })
-      : undefined;
+  // Autofocus can load these options before this helper runs. Opening an
+  // already focused picker need not issue another request.
+  await inputElement.click();
 
-    await inputElement.click();
+  await fillPropertyValue(inputElement, stringValue);
 
-    if (apiResponsePromise) {
-      await apiResponsePromise;
-    }
+  if (MULTISELECT_OPERATORS.includes(operator)) {
+    await page
+      .locator('[role="listbox"]:visible')
+      .getByRole('option', { name: String(value), exact: true })
+      .click();
+  } else if (
+    ((operator === 'equal' || operator === 'not_equal') &&
+      propertyType === 'dateTime-cp') ||
+    propertyType === 'date-cp'
+  ) {
+    await page.keyboard.press('Enter');
+  }
 
-    await fillPropertyValue(inputElement, stringValue);
-
-    if (MULTISELECT_OPERATORS.includes(operator)) {
-      await page
-        .locator('[role="listbox"]:visible')
-        .getByRole('option', { name: String(value), exact: true })
-        .click();
-    } else if (
-      ((operator === 'equal' || operator === 'not_equal') &&
-        propertyType === 'dateTime-cp') ||
-      propertyType === 'date-cp'
-    ) {
-      await page.keyboard.press('Enter');
-    }
-
-    // Handle entity reference selection
-    if (isEntityRefProperty) {
-      await page
-        .locator('[role="listbox"]:visible [role="option"]')
-        .filter({ hasText: value as string })
-        .first()
-        .click();
-    }
+  // Handle entity reference selection
+  if (isEntityRefProperty) {
+    await page
+      .locator('[role="listbox"]:visible [role="option"]')
+      .filter({ hasText: value as string })
+      .first()
+      .click();
   }
 };
 

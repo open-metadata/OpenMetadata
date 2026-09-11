@@ -1922,7 +1922,9 @@ export const testTableSearch = async (
   expect((await responsePromise).status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
   await expect(
-    page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i'))
+    page.getByRole('row').filter({
+      has: page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i')),
+    })
   ).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden({
     timeout: 10_000,

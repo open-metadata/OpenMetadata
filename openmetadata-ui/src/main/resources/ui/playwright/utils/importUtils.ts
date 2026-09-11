@@ -269,8 +269,16 @@ const openSelectedGridEditor = async (page: Page) => {
   const cell = page.locator('.rdg-cell[aria-selected="true"]');
   await expect(cell).toHaveCount(1);
   await cell.click({ position: { x: 5, y: 5 } });
-  await expect(cell).toBeFocused({ timeout: 5_000 });
-  await cell.press('Enter');
+  // Picker cells open on click and move focus into a portal. Text cells still
+  // need Enter; focusing the cell again would close an already open picker.
+  if (
+    !(await cell.evaluate((element) =>
+      element.classList.contains('rdg-editor-container')
+    ))
+  ) {
+    await expect(cell).toBeFocused({ timeout: 5_000 });
+    await page.keyboard.press('Enter');
+  }
 };
 
 const fillAndCommitTextEditor = async (page: Page, text: string) => {

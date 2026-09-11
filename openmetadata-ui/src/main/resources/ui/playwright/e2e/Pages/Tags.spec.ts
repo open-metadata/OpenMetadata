@@ -72,9 +72,7 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
-const classification = new ClassificationClass({
-  provider: 'user',
-});
+const classification = new ClassificationClass();
 const tag = new TagClass({
   classification: classification.data.name,
 });
@@ -99,9 +97,9 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.delete(apiContext);
-  await classification.delete(apiContext);
   await classification1.delete(apiContext);
   await tag.delete(apiContext);
+  await classification.delete(apiContext);
   await tag1.delete(apiContext);
   await user1.delete(apiContext);
   await afterAction();
@@ -111,7 +109,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Classification Page', async ({ page }) => {
+test('Classification Page', async ({ page, browser }) => {
   test.slow();
 
   await test.step('Should render basic elements on page', async () => {
@@ -141,131 +139,127 @@ test('Classification Page', async ({ page }) => {
   });
 
   await test.step('Disabled system tags should not render', async () => {
-    const classificationResponse = page.waitForResponse(
-      `/api/v1/tags?*parent=${classification.responseData.name}*`
-    );
-    await page
-      .locator(`[data-testid="side-panel-classification"]`)
-      .filter({ hasText: classification.responseData.displayName })
-      .click();
-    await classificationResponse;
+    const classification = new ClassificationClass({ provider: 'system' });
+    const tag = new TagClass({ classification: classification.data.name });
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    try {
+      await classification.visitPage(page);
 
-    await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="manage-button"]');
 
-    const disabledTag = page.waitForResponse('/api/v1/classifications/*');
-    await page.click('[data-testid="enable-disable-title"]');
-    await disabledTag;
+      const disabledTag = page.waitForResponse('/api/v1/classifications/*');
+      await page.click('[data-testid="enable-disable-title"]');
+      await disabledTag;
 
-    await expect(
-      page.locator(
-        `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
-      )
-    ).toBeVisible();
+      await expect(
+        page.locator(
+          `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
+        )
+      ).toBeVisible();
 
-    await expect(
-      page.locator('[data-testid="add-new-tag-button"]')
-    ).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="add-new-tag-button"]')
+      ).toBeDisabled();
 
-    // Verify that the "Add Domain" and "Add Owner" icon buttons are not visible
-    // on both the Classification and Tag pages when Classification is disabled.
+      // Verify that the "Add Domain" and "Add Owner" icon buttons are not visible
+      // on both the Classification and Tag pages when Classification is disabled.
 
-    await expect(page.getByTestId('add-domain')).not.toBeVisible();
-    await expect(page.getByTestId('add-owner')).not.toBeVisible();
+      await expect(page.getByTestId('add-domain')).not.toBeVisible();
+      await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
-    const tagDetailResponseDisable = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tags') &&
-        response.url().includes(tag.responseData.name) &&
-        response.request().method() === 'GET'
-    );
-    await page.getByTestId(tag.responseData.name).click();
-    await tagDetailResponseDisable;
-    await waitForAllLoadersToDisappear(page);
+      const tagDetailResponseDisable = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags') &&
+          response.url().includes(tag.responseData.name) &&
+          response.request().method() === 'GET'
+      );
+      await page.getByTestId(tag.responseData.name).click();
+      await tagDetailResponseDisable;
+      await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByTestId('disabled')).toBeVisible();
-    await expect(page.getByTestId('add-domain')).not.toBeVisible();
-    await expect(page.getByTestId('add-owner')).not.toBeVisible();
+      await expect(page.getByTestId('disabled')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).not.toBeVisible();
+      await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
-    // Check if the disabled Classification tag is not visible in the table
-    await table.visitEntityPage(page);
+      // Check if the disabled Classification tag is not visible in the table
+      await table.visitEntityPage(page);
 
-    await page.click(
-      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
-    );
+      await page.click(
+        '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+      );
 
-    const tagResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
+      const tagResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          tag.responseData.displayName
+        )}***`
+      );
+      await page.fill(
+        '[data-testid="tag-selector"] input',
         tag.responseData.displayName
-      )}***`
-    );
-    await page.fill(
-      '[data-testid="tag-selector"] input',
-      tag.responseData.displayName
-    );
-    await tagResponse;
+      );
+      await tagResponse;
 
-    await expect(
-      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText(tag.responseData.displayName);
+      await expect(
+        page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+      ).toContainText(tag.responseData.displayName);
 
-    await expect(
-      page.getByTestId(
-        `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
-      )
-    ).not.toBeVisible();
+      await expect(
+        page.getByTestId(`tag-${tag.responseData.fullyQualifiedName}`)
+      ).not.toBeVisible();
 
-    await expect(page.getByText('No Tags are available')).toBeVisible();
+      await expect(page.getByText('No Tags are available')).toBeVisible();
 
-    await expect(page.getByTestId('saveAssociatedTag')).toBeDisabled();
+      await expect(page.getByTestId('saveAssociatedTag')).toBeDisabled();
 
-    // Re-enable the disabled Classification
-    await classification.visitPage(page);
+      // Re-enable the disabled Classification
+      await classification.visitPage(page);
 
-    await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="manage-button"]');
 
-    const enableTagResponse = page.waitForResponse('/api/v1/classifications/*');
-    await page.click('[data-testid="enable-disable-title"]');
-    await enableTagResponse;
+      const enableTagResponse = page.waitForResponse(
+        '/api/v1/classifications/*'
+      );
+      await page.click('[data-testid="enable-disable-title"]');
+      await enableTagResponse;
 
-    await expect(
-      page.locator('[data-testid="add-new-tag-button"]')
-    ).not.toBeDisabled();
+      await expect(
+        page.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeDisabled();
 
-    await expect(
-      page.locator(
-        `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
-      )
-    ).not.toBeVisible();
+      await expect(
+        page.locator(
+          `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
+        )
+      ).not.toBeVisible();
 
-    // Verify that the "Add Domain" and "Add Owner" icon buttons are visible
-    // on both the Classification and Tag pages when Classification is enabled.
-    await expect(page.getByTestId('add-domain')).toBeVisible();
-    await expect(page.getByTestId('add-owner')).toBeVisible();
+      // Verify that the "Add Domain" and "Add Owner" icon buttons are visible
+      // on both the Classification and Tag pages when Classification is enabled.
+      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-owner')).toBeVisible();
 
-    const tagDetailResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tags') &&
-        response.url().includes(tag.responseData.name) &&
-        response.request().method() === 'GET'
-    );
-    await page.getByTestId(tag.responseData.name).click();
-    await tagDetailResponse;
-    await waitForAllLoadersToDisappear(page);
+      const tagDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags') &&
+          response.url().includes(tag.responseData.name) &&
+          response.request().method() === 'GET'
+      );
+      await page.getByTestId(tag.responseData.name).click();
+      await tagDetailResponse;
+      await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByTestId('disabled')).not.toBeVisible();
-    await expect(page.getByTestId('add-domain')).toBeVisible();
-    await expect(page.getByTestId('add-owner')).toBeVisible();
-
-    /* This code test will be fix in this PR  https://github.com/open-metadata/OpenMetadata/pull/18333  */
-    // await table.visitEntityPage(page);
-    // await addTagToTableColumn(page, {
-    //   tagName: tag.responseData.name,
-    //   tagFqn: tag.responseData.fullyQualifiedName,
-    //   tagDisplayName: tag.responseData.displayName,
-    //   tableId: table.entityResponseData?.['id'],
-    //   columnNumber: 1,
-    //   rowName: 'shop_id numeric',
-    // });
+      await expect(page.getByTestId('disabled')).not.toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-owner')).toBeVisible();
+    } finally {
+      await tag.delete(apiContext);
+      // System classifications cannot be deleted; disable this test's unique fixture.
+      await classification.patch(apiContext, [
+        { op: 'replace', path: '/disabled', value: true },
+      ]);
+      await afterAction();
+    }
   });
 
   await test.step('Create classification with validation checks', async () => {

@@ -48,7 +48,6 @@ import {
   editLineageClick,
   fitToScreen,
   getEntityColumns,
-  performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
   toggleLineageFilters,
@@ -229,7 +228,6 @@ test.describe('Data asset lineage', () => {
 
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-        await performZoomOut(page, 8);
         await waitForAllLoadersToDisappear(page);
 
         const fromNodeFqn = get(
