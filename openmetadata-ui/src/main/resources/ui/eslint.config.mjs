@@ -651,6 +651,7 @@ export default [
       'om-playwright/no-blanket-test-slow': 'error',
       'om-playwright/no-positional-locator': 'error',
       'om-playwright/justified-rule-disable': 'error',
+      'om-playwright/no-accumulating-before-all': 'error',
     },
   },
 

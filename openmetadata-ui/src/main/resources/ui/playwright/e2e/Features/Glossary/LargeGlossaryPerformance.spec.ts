@@ -27,7 +27,7 @@ test.use({
 test.describe('Large Glossary Performance Tests', () => {
   const TOTAL_TERMS = 100; // Reduced for test performance
   const glossary = new Glossary();
-  const glossaryTerms: GlossaryTerm[] = [];
+  let glossaryTerms: GlossaryTerm[] = [];
 
   const getGlossaryTermsScrollTop = async (page: Page) =>
     page.evaluate(() => {
@@ -104,6 +104,8 @@ test.describe('Large Glossary Performance Tests', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms = [];
+
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -396,9 +398,11 @@ test.describe('Large Glossary Performance Tests', () => {
 test.describe('Large Glossary Child Term Performace', () => {
   const TOTAL_TERMS = 1; // Reduced for test performance
   const glossary = new Glossary();
-  const glossaryTerms: GlossaryTerm[] = [];
+  let glossaryTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms = [];
+
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);
