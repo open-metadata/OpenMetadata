@@ -60,7 +60,7 @@ describe('TagBadgeList', () => {
     expect(screen.getByText('-')).toBeInTheDocument();
   });
 
-  it('renders a custom emptyPlaceholder when provided and tags are empty', () => {
+  it('should render a custom emptyPlaceholder when provided and tags array is empty', () => {
     render(
       <MemoryRouter>
         <TagBadgeList emptyPlaceholder="--" tags={[]} />
