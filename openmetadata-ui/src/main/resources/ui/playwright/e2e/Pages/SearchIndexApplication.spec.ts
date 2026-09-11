@@ -14,6 +14,10 @@ import test, { expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  expectApplicationInstalled,
+  openApplicationDetails,
+} from '../../utils/applications';
+import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
@@ -117,9 +121,7 @@ const installSearchIndexApplication = async (page: Page) => {
 
   await getApplications;
 
-  await expect(
-    page.getByTestId('search-indexing-application-card')
-  ).toBeVisible();
+  await expectApplicationInstalled(page, 'search-indexing-application-card');
 };
 
 const verifyLastExecutionStatus = async (page: Page) => {
@@ -291,11 +293,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const statusAPI = page.waitForResponse(
         '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
       );
-      await page
-        .locator(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        )
-        .click();
+      await openApplicationDetails(page, 'search-indexing-application-card');
       const statusResponse = await statusAPI;
 
       expect(statusResponse.status()).toBe(200);
@@ -446,9 +444,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await test.step('Run application and rerun with table-only config', async () => {
         test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
 
-        await page.click(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        );
+        await openApplicationDetails(page, 'search-indexing-application-card');
 
         const previousRunStartTime = await getLatestRunStartTime(page);
         const triggerPipelineResponse = page.waitForResponse(
