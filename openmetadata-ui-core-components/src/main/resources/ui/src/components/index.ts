@@ -130,6 +130,8 @@ export * from './application/credential-file-input/credential-file-input.types';
 export { DEFAULT_CREDENTIAL_FILE_MAX_SIZE } from './application/credential-file-input/credential-file-input.constants';
 export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
+export * from './application/filter-select/filter-select';
+export * from './application/filter-select/filter-select.types';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';
