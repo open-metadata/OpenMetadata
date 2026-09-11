@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { applyPatch, type Operation } from 'fast-json-patch';
 import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { DataQualityDimensions } from '../../enums/DataQuality.enum';
@@ -1370,6 +1371,22 @@ describe('DataQualityUtils', () => {
       expect(hasTagsOp(patch)).toBe(false);
     });
 
+    /** The dimension as it ends up after the patch is applied to the stored test case. */
+    const applyDimensionPatch = (patch: Operation[]) =>
+      applyPatch(
+        {
+          ...baseTestCase,
+          dataQualityDimension: {
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
+        },
+        patch,
+        false,
+        false
+      ).newDocument.dataQualityDimension;
+
     it('should emit a dataQualityDimension op when another dimension is picked', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: {
@@ -1385,15 +1402,13 @@ describe('DataQualityUtils', () => {
         isComputeRowCountFieldVisible: false,
       });
 
-      // Sent without an id: the server resolves the dimension entity by name.
-      expect(patch).toContainEqual({
-        op: 'replace',
-        path: '/dataQualityDimension',
-        value: {
-          type: 'dataQualityDimension',
-          name: 'Timeliness',
-          fullyQualifiedName: 'Timeliness',
-        },
+      // Asserted on the applied result rather than the op shape: fast-json-patch emits a
+      // granular replace/remove/add per field, which is equivalent to one whole-object replace
+      // and is what the server applies either way.
+      expect(applyDimensionPatch(patch)).toEqual({
+        type: 'dataQualityDimension',
+        name: 'Timeliness',
+        fullyQualifiedName: 'Timeliness',
       });
     });
 
@@ -1457,14 +1472,10 @@ describe('DataQualityUtils', () => {
         isComputeRowCountFieldVisible: false,
       });
 
-      expect(patch).toContainEqual({
-        op: 'replace',
-        path: '/dataQualityDimension',
-        value: {
-          type: 'dataQualityDimension',
-          name: 'Timeliness',
-          fullyQualifiedName: 'Timeliness',
-        },
+      expect(applyDimensionPatch(patch)).toEqual({
+        type: 'dataQualityDimension',
+        name: 'Timeliness',
+        fullyQualifiedName: 'Timeliness',
       });
     });
 
