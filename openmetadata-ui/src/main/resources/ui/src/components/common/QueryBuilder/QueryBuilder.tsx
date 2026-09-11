@@ -195,12 +195,21 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
     );
   }, [tree, outputType, groupMode, defaultField, subField]);
 
+  const countRequestRef = useRef(0);
+
   const fetchCount = useCallback(async (scopedFilter: QueryFilterInterface) => {
+    const request = (countRequestRef.current += 1);
     setIsCountLoading(true);
     try {
-      setMatchedCount(await fetchQueryBuilderCount(scopedFilter));
+      const count = await fetchQueryBuilderCount(scopedFilter);
+
+      if (request === countRequestRef.current) {
+        setMatchedCount(count);
+      }
     } finally {
-      setIsCountLoading(false);
+      if (request === countRequestRef.current) {
+        setIsCountLoading(false);
+      }
     }
   }, []);
 
@@ -208,6 +217,14 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
     () => debounce(fetchCount, COUNT_DEBOUNCE_MS),
     [fetchCount]
   );
+
+  const discardPendingCount = useCallback(() => {
+    debouncedFetchCount.cancel();
+    countRequestRef.current += 1;
+    setIsCountLoading(false);
+  }, [debouncedFetchCount]);
+
+  useEffect(() => discardPendingCount, [discardPendingCount]);
 
   const handleChange = (nextTree: ImmutableTree, nextConfig: Config) => {
     setTreeInternal(nextTree);
@@ -242,6 +259,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
           debouncedFetchCount(scopedFilter);
         }
       } else {
+        discardPendingCount();
         setMatchedCount(undefined);
       }
     }
