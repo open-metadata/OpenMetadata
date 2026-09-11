@@ -291,7 +291,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       | OtherTypes['responseData'];
 
     let tableForColumnTest: TableClass | null = null;
-    const users: UserClass[] = [];
+    let users: UserClass[] = [];
 
     // Dashboard-specific state
     let dashboardTopic1: TopicClass;
@@ -314,6 +314,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
+      users = [];
+
       const { page, apiContext, afterAction } = await createNewPage(browser, {
         navigate: true,
       });

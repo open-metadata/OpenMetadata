@@ -352,9 +352,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Metrics page', () => {
-    const metrics: MetricClass[] = [];
+    let metrics: MetricClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      metrics = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
@@ -380,9 +382,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Notification Alerts page', () => {
-    const notificationAlerts: AlertClass[] = [];
+    let notificationAlerts: AlertClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      notificationAlerts = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
@@ -436,9 +440,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Observability Alerts page', () => {
-    const observabilityAlerts: AlertClass[] = [];
+    let observabilityAlerts: AlertClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      observabilityAlerts = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
@@ -1053,9 +1059,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Pagination tests for Roles page', () => {
     let policy: PolicyClass;
-    const roles: RolesClass[] = [];
+    let roles: RolesClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      roles = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       policy = new PolicyClass();
@@ -1096,9 +1104,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Policies page', () => {
-    const policies: PolicyClass[] = [];
+    let policies: PolicyClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      policies = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       // Create Policies
@@ -1133,9 +1143,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Bots page', () => {
-    const bots: BotClass[] = [];
+    let bots: BotClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      bots = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       // Create Bots
