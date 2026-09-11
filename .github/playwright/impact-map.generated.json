@@ -4514,6 +4514,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/tokenStorage.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/TokenStorage.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts"
       ]
     },
