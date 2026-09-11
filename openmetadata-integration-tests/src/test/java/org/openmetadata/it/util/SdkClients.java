@@ -53,9 +53,30 @@ public class SdkClients {
 
   // Mutable so UI test harnesses (containerized server, ephemeral port) can override at
   // runtime via overrideBaseUrl(...) — that path also flushes the cached per-role clients.
-  private static volatile String BASE_URL =
-      System.getProperty(
-          "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
+  //
+  // OM_URL is read here, not just by UiTestServer, because a test that talks to the server
+  // directly (HttpClient + getServerUrl()) rather than through a harness has nothing to trigger
+  // overrideBaseUrl. In external mode that left BASE_URL on localhost until some *other* class
+  // happened to boot the harness first, so the suite passed or failed on test order:
+  // HighlightFieldSaveValidationIT died with ConnectException in 0.006s whenever it sorted early.
+  private static volatile String BASE_URL = resolveInitialBaseUrl();
+
+  private static String resolveInitialBaseUrl() {
+    final String explicit = System.getProperty("IT_BASE_URL", System.getenv("IT_BASE_URL"));
+    if (explicit != null && !explicit.isBlank()) {
+      return stripTrailingSlash(explicit);
+    }
+    // External mode's signal, exported alongside OM_ADMIN_TOKEN by the CI login script.
+    final String external = System.getenv("OM_URL");
+    if (external != null && !external.isBlank()) {
+      return stripTrailingSlash(external);
+    }
+    return "http://localhost:8585";
+  }
+
+  private static String stripTrailingSlash(final String url) {
+    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+  }
 
   // When an admin token is supplied out-of-band (external mode's OM_ADMIN_TOKEN, or the
   // containerized TokenRefresher), adminClient() must keep using THAT token and never self-mint a
