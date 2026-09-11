@@ -25,20 +25,23 @@ export const loginViaSso = async (
   helper: ProviderHelper,
   credentials: ProviderCredentials
 ): Promise<void> => {
-  await page.goto('/signin');
+  await page.goto('/signin', { waitUntil: 'domcontentloaded' });
 
   const signInButton = page.locator('button.signin-button');
 
   await expect(signInButton).toBeVisible();
   await signInButton.click();
-  await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+  await page.waitForURL(helper.loginUrlPattern, {
+    waitUntil: 'domcontentloaded',
+    timeout: 45_000,
+  });
   await helper.performProviderLogin(page, credentials);
   await page.waitForURL(
     (url) =>
       url.pathname.endsWith('/signup') ||
       url.pathname.endsWith('/my-data') ||
       url.pathname === '/',
-    { timeout: 60_000 }
+    { waitUntil: 'domcontentloaded', timeout: 60_000 }
   );
 
   if (page.url().includes('/signup')) {
@@ -48,7 +51,7 @@ export const loginViaSso = async (
     await createButton.click();
     await page.waitForURL(
       (url) => url.pathname === '/' || url.pathname === '/my-data',
-      { timeout: 60_000 }
+      { waitUntil: 'domcontentloaded', timeout: 60_000 }
     );
   }
 

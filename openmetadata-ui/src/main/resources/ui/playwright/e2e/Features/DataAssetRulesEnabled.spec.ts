@@ -257,7 +257,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         await page.waitForLoadState('domcontentloaded');

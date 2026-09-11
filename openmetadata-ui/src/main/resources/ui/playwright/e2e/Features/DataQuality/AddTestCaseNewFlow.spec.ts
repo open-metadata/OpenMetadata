@@ -230,7 +230,9 @@ test.describe(
     };
 
     const visitDataQualityPage = async (page: Page) => {
-      await page.goto('/data-quality/test-cases');
+      await page.goto('/data-quality/test-cases', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
     };
 

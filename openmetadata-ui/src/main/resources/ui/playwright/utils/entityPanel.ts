@@ -157,7 +157,10 @@ export const openEntitySummaryPanel = async ({
       // are plain divs with no menuitem role. Waiting for the query first turns
       // "no menuitem ever appears" into a fast, legible failure instead of a
       // callback that hangs until the whole test times out.
-      await page.waitForURL(/[?&]search=[^&]+/, { timeout: 30_000 });
+      await page.waitForURL(/[?&]search=[^&]+/, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30_000,
+      });
 
       const tab = page
         .getByTestId('explore-left-panel')

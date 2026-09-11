@@ -86,7 +86,8 @@ export const deleteService = async (
   await page.goto(
     `/service/${getServiceCategoryFromService(typeOfService)}s/${getEncodedFqn(
       serviceName
-    )}?currentPage=1`
+    )}?currentPage=1`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 
@@ -121,7 +122,7 @@ export const deleteService = async (
     BIG_ENTITY_DELETE_TIMEOUT
   ); // Wait for up to 5 minutes for the toast notification to appear
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const serviceSearchResponse = page.waitForResponse((response) => {

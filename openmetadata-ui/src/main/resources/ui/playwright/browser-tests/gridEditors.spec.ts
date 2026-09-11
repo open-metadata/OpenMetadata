@@ -188,7 +188,7 @@ for (const selection of ['click', 'keyboard']) {
     }`;
     const page = await browser.newPage({ baseURL });
     try {
-      await page.goto(baseURL);
+      await page.goto(baseURL, { waitUntil: 'domcontentloaded' });
       await page.addStyleTag({
         content: readFileSync(
           require.resolve('react-data-grid/lib/styles.css'),

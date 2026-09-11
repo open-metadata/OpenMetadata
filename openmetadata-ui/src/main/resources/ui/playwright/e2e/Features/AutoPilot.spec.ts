@@ -152,7 +152,9 @@ services.forEach((ServiceClass) => {
         testData.service = service.serviceResponseData;
 
         // Wait for the service details page to load
-        await page.waitForURL('**/service/**');
+        await page.waitForURL('**/service/**', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         // Open a parallel page on the Agents tab BEFORE any AutoPilot run
@@ -166,7 +168,9 @@ services.forEach((ServiceClass) => {
 
         try {
           if (agentsPage) {
-            await agentsPage.goto(page.url());
+            await agentsPage.goto(page.url(), {
+              waitUntil: 'domcontentloaded',
+            });
             await waitForAllLoadersToDisappear(agentsPage);
             await agentsPage.click('[role="tab"] [data-testid="agents"]');
 
@@ -229,7 +233,7 @@ services.forEach((ServiceClass) => {
         // The page was loaded before the workflow finished, and the WebSocket
         // connection for live updates is only established when the initial
         // status is RUNNING — which it wasn't at page load time.
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         // Wait for the auto pilot status banner to be visible
@@ -238,7 +242,7 @@ services.forEach((ServiceClass) => {
         ).toBeVisible({ timeout: 60_000 });
 
         if (service.serviceType === 'Mysql') {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
 
           await page.getByTestId('agent-status-widget-view-more').click();

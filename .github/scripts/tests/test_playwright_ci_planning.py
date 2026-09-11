@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -158,7 +159,7 @@ def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
         planner.Unit("chromium", f"huge-{index}.spec.ts", str(index), weight_ms=19 * 60 * 1000) for index in range(120)
     ]
 
-    with pytest.raises(SystemExit, match=r"needs more than 28 shards"):
+    with pytest.raises(SystemExit, match=rf"needs more than {planner.COMMON_MAX_SHARDS} shards"):
         planner.assign_lane_within_budget(units, "chromium", "full")
 
 
@@ -988,6 +989,37 @@ def test_audited_parallel_suite_is_split_into_individual_tests():
     units = planner.discover_units(report)
 
     assert [unit.test_ids for unit in units] == [{"first"}, {"second"}]
+
+
+def test_child_suite_partition_keeps_each_ordered_group_and_all_selected_ids(monkeypatch, tmp_path):
+    planner = load_script("build_playwright_shards")
+    file = "Pages/isolated.spec.ts"
+    monkeypatch.setattr(planner, "AUDITED_CHILD_SUITE_PARTITIONS", {(file, "parent")})
+
+    def spec(name):
+        return {"id": name, "title": name, "tests": [{"projectName": "chromium"}]}
+
+    report = {"suites": [{"file": file, "suites": [{
+        "title": "parent", "specs": [spec("create"), spec("delete")],
+        "suites": [
+            {"title": "text search", "specs": [spec("search text"), spec("clear text")]},
+            {"title": "number search", "specs": [spec("search number")]},
+        ],
+    }]}]}
+    units = planner.discover_units(report)
+    assert {frozenset(unit.test_ids) for unit in units} == {
+        frozenset({"create", "delete"}),
+        frozenset({"search text", "clear text"}),
+        frozenset({"search number"}),
+    }
+    planner.apply_history_weights(units, {}, {})
+    for index, unit in enumerate(units):
+        plan = planner.write_plan(tmp_path, "chromium", index, [unit])
+        stored = json.loads((tmp_path / plan["plan"]).read_text())
+        assert set(stored["testIds"]) == unit.test_ids
+        for titles in unit.grep_titles:
+            assert re.search(stored["grep"], " ".join(titles))
+    planner.verify_plan_partition(units, [json.loads(path.read_text()) for path in tmp_path.glob("*.json")])
 
 
 def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():

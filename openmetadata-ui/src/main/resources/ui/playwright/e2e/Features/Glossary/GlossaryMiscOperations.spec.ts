@@ -265,7 +265,8 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await page.goto(
         `/glossary/${getEncodedFqn(
           glossary.responseData.fullyQualifiedName as string
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 

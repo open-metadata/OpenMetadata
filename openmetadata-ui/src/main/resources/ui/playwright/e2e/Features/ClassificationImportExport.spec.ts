@@ -118,7 +118,9 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
     await expect(importButton).toBeVisible();
     await importButton.click();
 
-    await page.waitForURL('**/bulk/import/classification/**');
+    await page.waitForURL('**/bulk/import/classification/**', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await expect(
       page.getByText('Drag & Drop or Browse CSV file here')

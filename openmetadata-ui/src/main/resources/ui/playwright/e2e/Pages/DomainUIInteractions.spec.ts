@@ -494,7 +494,9 @@ test.describe('Subdomain Management', () => {
         throw new Error('SubDomain FQN is undefined');
       }
 
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       // Wait for page to fully load
@@ -540,7 +542,9 @@ test.describe('Subdomain Management', () => {
         throw new Error('SubDomain FQN is undefined');
       }
 
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       // Wait for page to fully load
@@ -696,7 +700,7 @@ test.describe('Domain Global Dropdown', () => {
     try {
       await domain.create(apiContext);
 
-      await page.goto('/explore/tables');
+      await page.goto('/explore/tables', { waitUntil: 'domcontentloaded' });
 
       await page.getByTestId('domain-dropdown').click();
 
@@ -724,7 +728,7 @@ test.describe('Domain Global Dropdown', () => {
     try {
       await domain.create(apiContext);
 
-      await page.goto('/explore/tables');
+      await page.goto('/explore/tables', { waitUntil: 'domcontentloaded' });
 
       await page.getByTestId('domain-dropdown').click();
 
@@ -762,7 +766,9 @@ test.describe('Domain Breadcrumb Navigation', () => {
       await subDomain.create(apiContext);
 
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       const parentLink = page.getByRole('link', {
         name: domain.responseData.fullyQualifiedName,
@@ -865,7 +871,8 @@ test.describe('Delete Domain with Dependencies', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       const domainLinks = page.locator('[data-testid="domain-link"]');

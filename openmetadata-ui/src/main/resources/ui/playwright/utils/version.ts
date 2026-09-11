@@ -76,7 +76,9 @@ export const visitVersionedEntityPage = async (
   endpoint: EntityTypeEndpoint,
   fullyQualifiedName: string
 ) => {
-  await page.goto(getEntityRoute(endpoint, fullyQualifiedName));
+  await page.goto(getEntityRoute(endpoint, fullyQualifiedName), {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('version-button')).toBeVisible({
     timeout: 30000,
@@ -95,7 +97,7 @@ export const openEntityVersion = async (page: Page, version: string) => {
           return buttonText;
         }
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         return (await versionButton.textContent().catch(() => '')) ?? '';

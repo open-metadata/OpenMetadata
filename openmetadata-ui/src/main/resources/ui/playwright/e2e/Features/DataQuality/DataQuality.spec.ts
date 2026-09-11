@@ -779,7 +779,9 @@ test.describe(
 
         await test.step('Show the no-run state before the first result', async () => {
           const testCaseDetailsResponse = waitForTestCaseDetails();
-          await page.goto(testCaseDetailsPath);
+          await page.goto(testCaseDetailsPath, {
+            waitUntil: 'domcontentloaded',
+          });
           await testCaseDetailsResponse;
 
           const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
@@ -824,7 +826,7 @@ test.describe(
             expect(resultResponse.ok()).toBeTruthy();
 
             const testCaseDetailsResponse = waitForTestCaseDetails();
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await testCaseDetailsResponse;
 
             const banner = await verifyTestCaseLastRunBanner(
@@ -896,7 +898,8 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testCases/name/')
         );
         await page.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetailsResponse;
 
@@ -1356,7 +1359,7 @@ test.describe(
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
         const url = page.url();
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         expect(page.url()).toBe(url);
 
@@ -1367,7 +1370,7 @@ test.describe(
           page.getByTestId('platform-select-filter')
         ).not.toBeVisible();
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await expect(page.locator('[value="tier"]')).not.toBeVisible();
 
@@ -1644,7 +1647,8 @@ test.describe(
         );
 
         await page.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await Promise.all([detailsResponse, resultsResponse]);
         await waitForAllLoadersToDisappear(page);
@@ -1694,7 +1698,9 @@ test.describe(
         }
 
         await Promise.all([
-          page.waitForURL((url) => url.pathname === incidentHref),
+          page.waitForURL((url) => url.pathname === incidentHref, {
+            waitUntil: 'domcontentloaded',
+          }),
           incidentLink.click(),
         ]);
       } finally {

@@ -405,7 +405,7 @@ entities.forEach((EntityClass) => {
                 r.url().includes(`/api/v1/${entity.endpoint}/`),
               200
             );
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await entityResponse;
             await waitForAllLoadersToDisappear(page);
 

@@ -101,7 +101,8 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await page.goto(
     `/table/${getEncodedFqn(
       table.entityResponseData.fullyQualifiedName ?? ''
-    )}/profiler/data-quality`
+    )}/profiler/data-quality`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByRole('tab', { name: 'Data Quality' })).toBeVisible();
@@ -307,7 +308,7 @@ export const assignIncident = async (data: {
       }
     )
     .toBe(true);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId(`test-case-${testCaseName}`).waitFor();
   if (direct) {

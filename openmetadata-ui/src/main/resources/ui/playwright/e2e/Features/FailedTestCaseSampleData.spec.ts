@@ -227,7 +227,8 @@ test.describe('Failed rows sample fetch gating', () => {
         await page.goto(
           `test-case/${encodeURIComponent(
             passingTestCaseFqn
-          )}/test-case-results`
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetails;
         await testCaseResults;
@@ -245,7 +246,10 @@ test.describe('Failed rows sample fetch gating', () => {
           res.url().includes('/failedRowsSample')
         );
         await page.goto(
-          `test-case/${encodeURIComponent(failedTestCaseFqn)}/test-case-results`
+          `test-case/${encodeURIComponent(
+            failedTestCaseFqn
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         const response = await failedRowsSample;
         expect(response.status()).toBe(404);

@@ -152,7 +152,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -257,7 +257,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -362,7 +362,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -466,7 +466,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -550,7 +550,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -633,7 +633,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -725,7 +725,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -815,7 +815,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -899,7 +899,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -984,7 +984,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1116,7 +1116,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1202,7 +1202,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1289,7 +1289,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1374,7 +1374,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1452,7 +1452,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1529,7 +1529,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1658,7 +1658,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -1784,7 +1784,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2251,7 +2251,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2350,7 +2350,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2448,7 +2448,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2545,7 +2545,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2583,7 +2583,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2672,7 +2672,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2761,7 +2761,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2854,7 +2854,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2945,7 +2945,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -3034,7 +3034,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -3124,7 +3124,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -3208,7 +3208,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         ContractExecutionStatus.Failed
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -3293,7 +3293,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 

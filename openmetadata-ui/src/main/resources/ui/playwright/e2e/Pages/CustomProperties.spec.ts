@@ -1257,7 +1257,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await test.step('Value persists after reload', async () => {
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await waitForAllLoadersToDisappear(page);
 
             await validateValueForProperty({
@@ -3366,7 +3366,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             endpoint: EntityTypeEndpoint.Dashboard,
           });
 
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();

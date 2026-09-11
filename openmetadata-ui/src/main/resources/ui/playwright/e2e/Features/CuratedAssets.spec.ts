@@ -109,9 +109,7 @@ test.describe('Curated Assets Widget', () => {
       test.slow(true);
 
       const testEntity = entityTypeToTestEntity[entityType.name];
-      if (!testEntity) {
-        return;
-      }
+      expect(testEntity, `Seeded entity for ${entityType.name}`).toBeDefined();
 
       // Add a new curated asset placeholder
       await addCuratedAssetPlaceholder({

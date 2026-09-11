@@ -11,521 +11,309 @@
  *  limitations under the License.
  */
 
+import { Locator, Page } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { TaskClass } from '../../../support/entity/TaskClass';
 import { expect, test } from '../../../support/fixtures/base';
+import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
+import { getTableFqn } from '../../../utils/activityAPI';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import {
+  deleteFixtureEntity,
+  okJson,
+  settleAll,
+} from '../../../utils/apiResponse';
+import { getApiContext } from '../../../utils/common';
+import { waitForLandingPageWidget } from '../../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForPageLoaded } from '../../../utils/polling';
 import { waitForTaskListResponse } from '../../../utils/task';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
-/**
- * Task Navigation Tests
- *
- * Tests task navigation scenarios including:
- * - Clicking task in activity feed navigates to correct entity page
- * - Task link should NOT generate 404 error
- * - Task link should NOT go to /table/TASK-XXXXX (wrong URL)
- * - Task detail drawer opens correctly
- * - Navigation from different contexts (home, entity page, notifications)
- */
+type NavigationData = {
+  table: TableClass;
+  user: UserClass;
+  tasks: TaskClass[];
+};
 
-test.describe('Task Navigation - Activity Feed Widget', () => {
-  const adminUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data and create task', async ({ browser }) => {
+const navigationTest = test.extend<{ navigationData: NavigationData }>({
+  navigationData: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
+    const user = new UserClass();
+    const table = new TableClass();
+    const tasks: TaskClass[] = [];
+    const persona = new PersonaClass();
+    let layoutId: string | undefined;
     try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await assigneeUser.create(apiContext);
-
-      await table.create(apiContext);
-      await table.setOwner(apiContext, {
-        id: assigneeUser.responseData.id,
-        type: 'user',
-      });
-
-      // Create a task
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          name: `Test Task - ${Date.now()}`,
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeUser.responseData.name],
-        },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
-  });
-
-  test('clicking task in home feed widget should navigate to entity page', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    // Find the activity feed widget
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-
-    if (await feedWidget.isVisible()) {
-      // Look for task items in the feed
-      const taskItem = feedWidget
-        .locator(
-          '[data-testid="task-feed-card"], [data-testid="message-container"]'
-        )
-        .first();
-
-      if (await taskItem.isVisible()) {
-        // Click on the task link
-        const taskLink = taskItem.getByTestId('redirect-task-button-link');
-
-        if (await taskLink.isVisible()) {
-          await taskLink.click();
-          await waitForPageLoaded(page);
-
-          // CRITICAL: Should NOT be a 404 page
-          await expect(page.getByText('No data available')).not.toBeVisible();
-          await expect(page.locator('.error-page')).not.toBeVisible();
-
-          // CRITICAL: URL should NOT contain /table/TASK-
-          expect(page.url()).not.toMatch(/\/table\/TASK-/);
-
-          // Should navigate to the entity page with activity feed tab
-          const entityFqn = table.entityResponseData?.fullyQualifiedName;
-          if (entityFqn) {
-            // URL should contain the entity FQN or be on the entity page
-            const isOnEntityPage =
-              page.url().includes(encodeURIComponent(entityFqn)) ||
-              page.url().includes('activity_feed');
-
-            expect(isOnEntityPage).toBe(true);
-          }
-        }
-      }
-    }
-  });
-
-  test('task link should contain correct entity FQN, not task ID', async ({
-    page,
-  }) => {
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      const taskLink = taskCard.getByTestId('redirect-task-button-link');
-
-      if (await taskLink.isVisible()) {
-        // Get the href attribute if it's a link
-        const href = await taskLink.getAttribute('href');
-
-        if (href) {
-          // CRITICAL: href should NOT contain TASK- as the entity FQN
-          expect(href).not.toMatch(/\/table\/TASK-/);
-          expect(href).not.toMatch(/\/TASK-\d{5}$/);
-        }
-
-        // Click and verify navigation
-        await taskLink.click();
-        await waitForPageLoaded(page);
-
-        // Should be on entity page, not 404
-        await expect(page.getByText('No data available')).not.toBeVisible();
-      }
-    }
-  });
-});
-
-test.describe('Task Navigation - Entity Page', () => {
-  const adminUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await assigneeUser.create(apiContext);
-
-      await table.create(apiContext);
-      await table.setOwner(apiContext, {
-        id: assigneeUser.responseData.id,
-        type: 'user',
-      });
-
-      // Create multiple tasks
-      for (let i = 0; i < 3; i++) {
-        await apiContext.post('/api/v1/tasks', {
+      await user.create(apiContext);
+      await persona.create(apiContext, [user.responseData.id]);
+      const document = await okJson(
+        await apiContext.post('/api/v1/docStore', {
           data: {
-            name: `Test Task - ${Date.now()}-${i}`,
-            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-            type: i % 2 === 0 ? 'DescriptionRequest' : 'TagRequest',
-            category: 'MetadataUpdate',
-            assignees: [assigneeUser.responseData.name],
+            name: persona.responseData.name,
+            fullyQualifiedName: `persona.${
+              persona.responseData.fullyQualifiedName ??
+              persona.responseData.name
+            }`,
+            entityType: 'Page',
+            data: {
+              pages: [
+                {
+                  pageType: 'LandingPage',
+                  layout: [
+                    { i: 'KnowledgePanel.MyTask', x: 0, y: 0, w: 2, h: 3 },
+                  ],
+                },
+              ],
+            },
+          },
+        }),
+        'Create task navigation home layout'
+      );
+      layoutId = document.id;
+      await user.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/defaultPersona',
+            value: {
+              id: persona.responseData.id,
+              type: 'persona',
+              name: persona.responseData.name,
+            },
+          },
+        ],
+      });
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: user.responseData.id,
+        type: 'user',
+      });
+      for (let index = 0; index < 3; index++) {
+        const task = new TaskClass({
+          about: `<#E::table::${getTableFqn(table)}>`,
+          assignees: [user.responseData.name],
+          payload: {
+            suggestedValue: `Description from task ${index}`,
+            currentValue: table.entityResponseData.description ?? '',
+            field: 'description',
           },
         });
+        tasks.push(task);
+        await task.create(apiContext);
       }
+      await use({ table, user, tasks });
     } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
-  });
-
-  test('should display tasks in entity activity feed tab', async ({ page }) => {
-    await table.visitEntityPage(page);
-
-    // Click on activity feed tab
-    const activityFeedTab = page.getByRole('tab', {
-      name: /activity feeds & tasks/i,
-    });
-    await activityFeedTab.click();
-    await waitForPageLoaded(page);
-
-    // Click on Tasks filter
-    const tasksFilter = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksFilter.isVisible()) {
-      await tasksFilter.click();
-      await waitForPageLoaded(page);
-    }
-
-    // Use Playwright's polling mechanism for task visibility
-    const taskCards = page.locator('[data-testid="task-feed-card"]');
-
-    await expect
-      .poll(async () => taskCards.count(), {
-        message: 'Waiting for task cards to appear',
-        timeout: 30000,
-        intervals: [2000, 3000, 5000],
-      })
-      .toBeGreaterThanOrEqual(0);
-  });
-
-  test('clicking task card should open task detail drawer', async ({
-    page,
-  }) => {
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-
-      // Should open drawer with task details
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible({ timeout: 5000 })) {
-        // Drawer should show task details
-        await expect(drawer).toBeVisible();
-
-        // Should have task ID
-        await expect(drawer.getByText(/TASK-/)).toBeVisible();
-
-        // Should have comments section
-        const commentsSection = drawer.locator(
-          '[data-testid="comments-section"], [data-testid="task-comments"]'
-        );
-        // Comments section might exist
+      try {
+        await settleAll(tasks.map((task) => task.delete(apiContext)));
+        if (table.entityResponseData.id) await table.delete(apiContext);
+        if (user.responseData.id) await user.delete(apiContext);
+        if (layoutId)
+          await deleteFixtureEntity(apiContext, `/api/v1/docStore/${layoutId}`);
+        if (persona.responseData.id) await persona.delete(apiContext);
+      } finally {
+        await afterAction();
       }
     }
-  });
-
-  test('task count badge should match actual task count', async ({ page }) => {
-    await table.visitEntityPage(page);
-
-    // Get count from tab badge
-    const activityFeedTab = page.getByRole('tab', {
-      name: /activity feeds & tasks/i,
-    });
-    const countBadge = activityFeedTab.getByTestId('count');
-
-    let displayedCount = 0;
-    if (await countBadge.isVisible()) {
-      const countText = await countBadge.textContent();
-      displayedCount = parseInt(countText || '0', 10);
-    }
-
-    // Click on tab and go to tasks
-    await activityFeedTab.click();
-    await waitForPageLoaded(page);
-
-    const tasksFilter = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksFilter.isVisible()) {
-      await tasksFilter.click();
-      await waitForPageLoaded(page);
-    }
-
-    // Count actual task cards
-    const taskCards = page.locator('[data-testid="task-feed-card"]');
-    const actualCount = await taskCards.count();
-
-    // Counts should match (allowing for pagination)
-    // Note: If there's pagination, actualCount might be less
-    expect(actualCount).toBeGreaterThanOrEqual(0);
-  });
+  },
+  page: async ({ page, navigationData }, use) => {
+    await navigationData.user.login(page);
+    await use(page);
+  },
 });
 
-test.describe('Task Navigation - Notification Box', () => {
-  const adminUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const table = new TableClass();
+const taskDisplayId = (task: TaskClass) => {
+  expect(task.responseData?.taskId).toMatch(/^TASK-\d+$/);
+  return `#${Number(task.responseData!.taskId.replace('TASK-', ''))}`;
+};
 
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await assigneeUser.create(apiContext);
-
-      await table.create(apiContext);
-
-      // Create task assigned to assignee
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          name: `Test Task - ${Date.now()}`,
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeUser.responseData.name],
-        },
-      });
-    } finally {
-      await afterAction();
-    }
+const taskCard = (page: Page, task: TaskClass, scope: Page | Locator = page) =>
+  scope.getByTestId('task-feed-card').filter({
+    has: page
+      .locator('.task-details-id')
+      .filter({ hasText: new RegExp(`^${taskDisplayId(task)}\\s*$`) }),
   });
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+const openEntityTasks = async (
+  page: Page,
+  { table, tasks }: NavigationData
+) => {
+  await table.visitEntityPage(page);
+  await page.getByTestId('activity_feed').click();
+  await page.getByRole('menuitem', { name: /^Tasks/ }).click();
+  await expect(page.getByTestId('task-feed-card')).toHaveCount(tasks.length);
+};
 
-    try {
-      await table.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
+const expectTaskDestination = async (page: Page, { table }: NavigationData) => {
+  const expectedPath = `/table/${encodeURIComponent(
+    getTableFqn(table)
+  )}/activity_feed/tasks`;
+  await expect(page).toHaveURL((url) => url.pathname === expectedPath);
+  await expect(page.getByTestId('entity-header-name')).toHaveText(
+    table.entityResponseData.name
+  );
+};
 
-  test('assignee should see task in notification box', async ({ page }) => {
-    await assigneeUser.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    // Click notification bell
-    const notificationBell = page.getByTestId('task-notifications');
-
-    if (await notificationBell.isVisible()) {
-      await notificationBell.click();
-
-      const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
-
-      // Look for Tasks tab
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
-
-      if (await tasksTab.isVisible()) {
-        await tasksTab.click();
-        await waitForPageLoaded(page);
-
-        // Should see assigned tasks
-        const taskItems = notificationBox.locator(
-          '[data-testid^="notification-link-"], .notification-dropdown-list-btn'
-        );
-
-        const count = await taskItems.count();
-        expect(count).toBeGreaterThanOrEqual(0);
-      }
-    }
-  });
-
-  test('clicking task notification should navigate correctly', async ({
+const openTaskNotifications = async (page: Page, tasks: TaskClass[]) => {
+  const notificationResponse = waitForResponseWithStatus(
     page,
-  }) => {
-    await assigneeUser.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/v1/tasks/assigned',
+    200
+  );
+  await page.getByTestId('task-notifications').click();
+  await notificationResponse;
+  const box = page.locator('.notification-box');
+  await expect(box).toBeVisible();
+  await expect(
+    box.getByRole('tab', { name: 'Tasks', exact: true })
+  ).toHaveAttribute('aria-selected', 'true');
+  for (const task of tasks) {
+    await expect(
+      box.getByRole('link', { name: new RegExp(`^${taskDisplayId(task)} `) })
+    ).toBeVisible();
+  }
+  return box;
+};
 
-    const notificationBell = page.getByTestId('task-notifications');
-
-    if (await notificationBell.isVisible()) {
-      await notificationBell.click();
-
-      const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
-
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
-
-      if (await tasksTab.isVisible()) {
-        await tasksTab.click();
-        await waitForPageLoaded(page);
-
-        const taskLink = notificationBox
-          .locator('[data-testid^="notification-link-"]')
-          .first();
-
-        if (await taskLink.isVisible()) {
-          await taskLink.click();
-          await waitForPageLoaded(page);
-
-          // Should NOT be 404
-          await expect(page.getByText('No data available')).not.toBeVisible();
-
-          // URL should NOT contain /table/TASK-
-          expect(page.url()).not.toMatch(/\/table\/TASK-/);
-        }
-      }
+navigationTest.describe('Task Navigation - Activity Feed Widget', () => {
+  navigationTest(
+    'clicking task in home feed widget should navigate to entity page',
+    async ({ page, navigationData }) => {
+      const widget = await waitForLandingPageWidget(
+        page,
+        'KnowledgePanel.MyTask'
+      );
+      const [task] = navigationData.tasks;
+      await taskCard(page, task, widget)
+        .getByTestId('redirect-task-button-link')
+        .click();
+      await expectTaskDestination(page, navigationData);
+      await expect(taskCard(page, task)).toBeVisible();
     }
-  });
+  );
+
+  navigationTest(
+    'task link should contain correct entity FQN, not task ID',
+    async ({ page, navigationData }) => {
+      await openEntityTasks(page, navigationData);
+      await taskCard(page, navigationData.tasks[0])
+        .getByTestId('redirect-task-button-link')
+        .click();
+      await expectTaskDestination(page, navigationData);
+    }
+  );
 });
 
-test.describe('Task Navigation - URL Validation', () => {
-  const adminUser = new UserClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-
-      await table.create(apiContext);
-    } finally {
-      await afterAction();
+navigationTest.describe('Task Navigation - Entity Page', () => {
+  navigationTest(
+    'should display tasks in entity activity feed tab',
+    async ({ page, navigationData }) => {
+      await openEntityTasks(page, navigationData);
+      for (const task of navigationData.tasks)
+        await expect(taskCard(page, task)).toBeVisible();
     }
-  });
+  );
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
+  navigationTest(
+    'clicking task card should open task detail panel',
+    async ({ page, navigationData }) => {
+      await openEntityTasks(page, navigationData);
+      const [task] = navigationData.tasks;
+      await taskCard(page, task).click();
+      const drawer = page.locator('#task-panel');
+      await expect(drawer).toBeVisible();
+      await expect(drawer).toContainText(taskDisplayId(task));
+      await expect(drawer).toContainText(
+        navigationData.table.entityResponseData.name
+      );
+      await expect(
+        drawer.getByRole('textbox', {
+          name: 'Use @mention to tag and comment...',
+        })
+      ).toBeVisible();
     }
-  });
+  );
 
-  test('navigating to /table/TASK-XXXXX should show 404 (invalid URL pattern)', async ({
-    page,
-  }) => {
-    await adminUser.login(page);
-
-    // This is a regression test - /table/TASK-00001 is an invalid URL
-    // because TASK-00001 is a task ID, not a table FQN
-    await page.goto('/table/TASK-00001');
-    await waitForPageLoaded(page);
-
-    // Should show 404 or "No data available"
-    const noData = page.getByText('No data available');
-    const notFound = page.getByText('404');
-    const pageNotFound = page.getByText('Page not found', { exact: false });
-
-    const isError =
-      (await noData.isVisible()) ||
-      (await notFound.isVisible()) ||
-      (await pageNotFound.isVisible());
-
-    // This URL pattern should result in an error/404
-    expect(isError).toBe(true);
-  });
-
-  test('task detail page with valid task ID should work', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create a task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          name: `Test Task - ${Date.now()}`,
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [adminUser.responseData.name],
-        },
-      });
-      const task = await taskResponse.json();
-
-      const page = await browser.newPage();
-      await adminUser.login(page);
-
-      // Navigate to task-related entity page
-      // The correct pattern should be /table/{entityFqn}?activeTab=activity_feed
-      const entityFqn = table.entityResponseData?.fullyQualifiedName;
-
-      if (entityFqn) {
-        await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
-        await waitForPageLoaded(page);
-
-        // Should NOT be 404
-        await expect(page.getByText('No data available')).not.toBeVisible();
-      }
-
-      await page.close();
-    } finally {
-      await afterAction();
+  navigationTest(
+    'task count badge should match actual task count',
+    async ({ page, navigationData }) => {
+      await openEntityTasks(page, navigationData);
+      await expect(page.getByTestId('left-panel-task-count')).toHaveText(
+        String(navigationData.tasks.length)
+      );
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(
+        navigationData.tasks.length
+      );
     }
-  });
+  );
+});
+
+navigationTest.describe('Task Navigation - Notification Box', () => {
+  navigationTest(
+    'assignee should see task in notification box',
+    async ({ page, navigationData }) => {
+      const box = await openTaskNotifications(page, navigationData.tasks);
+      await expect(
+        box.locator('li.notification-dropdown-list-btn')
+      ).toHaveCount(navigationData.tasks.length);
+    }
+  );
+
+  navigationTest(
+    'clicking task notification should navigate correctly',
+    async ({ page, navigationData }) => {
+      const box = await openTaskNotifications(page, navigationData.tasks);
+      const [task] = navigationData.tasks;
+      await box
+        .getByRole('link', { name: new RegExp(`^${taskDisplayId(task)} `) })
+        .click();
+      await expectTaskDestination(page, navigationData);
+      await expect(taskCard(page, task)).toBeVisible();
+    }
+  );
+});
+
+navigationTest.describe('Task Navigation - URL Validation', () => {
+  navigationTest(
+    'navigating to /table/TASK-XXXXX should show 404 (invalid URL pattern)',
+    async ({ page }) => {
+      const missingTable = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === '/api/v1/tables/name/TASK-00001',
+        404
+      );
+      await page.goto('/table/TASK-00001', { waitUntil: 'domcontentloaded' });
+      await missingTable;
+      await expect(
+        page.getByText('No data available.', { exact: true })
+      ).toBeVisible();
+    }
+  );
+
+  navigationTest(
+    'task detail page with valid task ID should work',
+    async ({ page, navigationData }) => {
+      const {
+        table,
+        tasks: [task],
+      } = navigationData;
+      await page.goto(
+        `/table/${encodeURIComponent(getTableFqn(table))}/activity_feed/tasks`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await taskCard(page, task).click();
+      await expectTaskDestination(page, navigationData);
+      await expect(page.locator('#task-panel')).toContainText(
+        taskDisplayId(task)
+      );
+    }
+  );
 });
 
 /**
@@ -544,16 +332,14 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   let adminUser: UserClass;
   let otherUser: UserClass;
   let table: TableClass;
-  let taskId: string | undefined;
+  let createdTask: TaskClass;
 
   test.afterAll(
     'Delete task, table, admin user and other user',
     async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
-        if (taskId) {
-          await apiContext.delete(`/api/v1/tasks/${taskId}`);
-        }
+        await createdTask?.delete(apiContext);
         await table.delete(apiContext);
         await adminUser.delete(apiContext);
         await otherUser.delete(apiContext);
@@ -589,7 +375,9 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     await test.step('Log in and navigate to entity page', async () => {
       await adminUser.login(page);
       const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
-      await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
+      await page.goto(`/table/${encodeURIComponent(entityFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForPageLoaded(page);
       await waitForAllLoadersToDisappear(page);
     });
@@ -608,41 +396,26 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
       const { apiContext, afterAction } = await getApiContext(page);
       try {
-        const response = await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${entityFqn}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [adminUser.responseData.name],
+        createdTask = new TaskClass({
+          about: `<#E::table::${entityFqn}>`,
+          assignees: [adminUser.responseData.name],
+          payload: {
+            field: 'description',
+            suggestedValue: 'Updated description',
+            currentValue: table.entityResponseData.description ?? '',
           },
         });
-        const created = await response.json();
-        taskId = created.id;
+        await createdTask.create(apiContext);
       } finally {
         await afterAction();
       }
     });
 
     await test.step('Open notification bell and click the latest task notification', async () => {
-      const notificationBell = page.getByTestId('task-notifications');
-      await expect(notificationBell).toBeVisible();
-
-      const notifFeedResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/tasks/assigned') &&
-          r.url().includes('status=Open')
-      );
-      await notificationBell.click();
-      await notifFeedResponse;
-
-      const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
-
-      const latestNotification = notificationBox
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
-        .first();
-      await expect(latestNotification).toBeVisible();
+      const notificationBox = await openTaskNotifications(page, [createdTask]);
+      const latestNotification = notificationBox.getByRole('link', {
+        name: new RegExp(`^${taskDisplayId(createdTask)} `),
+      });
 
       const taskListRefresh = waitForTaskListResponse(page);
       await latestNotification.click();
@@ -652,17 +425,12 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     });
 
     await test.step('Task list is refreshed with the latest task details', async () => {
-      const taskCards = page.locator('[data-testid="task-feed-card"]');
-
-      await expect
-        .poll(async () => taskCards.count(), {
-          message: 'Waiting for refreshed task list to include the new task',
-          timeout: 30_000,
-          intervals: [1000, 2000, 3000],
-        })
-        .toBeGreaterThanOrEqual(1);
-
-      expect(page.url()).not.toMatch(/\/table\/TASK-/);
+      await expect(taskCard(page, createdTask)).toBeVisible();
+      await expectTaskDestination(page, {
+        table,
+        user: adminUser,
+        tasks: [createdTask],
+      });
     });
   });
 
@@ -686,15 +454,13 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
       await test.step('Admin navigates to entity Columns (Schema) tab', async () => {
         await table.visitEntityPage(adminPage);
-        const schemaTab = adminPage.getByRole('tab', { name: /schema/i });
-        if (await schemaTab.isVisible()) {
-          await schemaTab.click();
-          await waitForAllLoadersToDisappear(adminPage);
-        }
+        await expect(adminPage.getByTestId('name-column-header')).toBeVisible();
       });
 
       await test.step('Other user navigates to entity Activity Feed & Tasks tab', async () => {
-        await userPage.goto(`/table/${encodeURIComponent(entityFqn)}`);
+        await userPage.goto(`/table/${encodeURIComponent(entityFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForPageLoaded(userPage);
         await waitForAllLoadersToDisappear(userPage);
         const feedResponse = userPage.waitForResponse(
@@ -710,41 +476,28 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await test.step('Admin creates a task via API and assigns to other user', async () => {
         const { apiContext, afterAction } = await getApiContext(adminPage);
         try {
-          const response = await apiContext.post('/api/v1/tasks', {
-            data: {
-              name: `Test Task - ${Date.now()}`,
-              about: `<#E::table::${entityFqn}>`,
-              type: 'DescriptionUpdate',
-              category: 'MetadataUpdate',
-              assignees: [otherUser.responseData.name],
+          createdTask = new TaskClass({
+            about: `<#E::table::${entityFqn}>`,
+            assignees: [otherUser.responseData.name],
+            payload: {
+              field: 'description',
+              suggestedValue: 'Updated description',
+              currentValue: table.entityResponseData.description ?? '',
             },
           });
-          const created = await response.json();
-          taskId = created.id;
+          await createdTask.create(apiContext);
         } finally {
           await afterAction();
         }
       });
 
       await test.step('Other user clicks bell icon and latest task notification', async () => {
-        const notificationBell = userPage.getByTestId('task-notifications');
-        await expect(notificationBell).toBeVisible();
-
-        const notifFeedResponse = userPage.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/tasks/assigned') &&
-            r.url().includes('status=Open')
-        );
-        await notificationBell.click();
-        await notifFeedResponse;
-
-        const notificationBox = userPage.locator('.notification-box');
-        await expect(notificationBox).toBeVisible();
-
-        const latestNotification = notificationBox
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
-          .first();
-        await expect(latestNotification).toBeVisible();
+        const notificationBox = await openTaskNotifications(userPage, [
+          createdTask,
+        ]);
+        const latestNotification = notificationBox.getByRole('link', {
+          name: new RegExp(`^${taskDisplayId(createdTask)} `),
+        });
 
         const taskListRefresh = waitForTaskListResponse(userPage);
         await latestNotification.click();
@@ -754,17 +507,12 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       });
 
       await test.step('Task list is refreshed with the new task on the other user page', async () => {
-        const taskCards = userPage.locator('[data-testid="task-feed-card"]');
-
-        await expect
-          .poll(async () => taskCards.count(), {
-            message: 'Waiting for refreshed task list to include the new task',
-            timeout: 30_000,
-            intervals: [1000, 2000, 3000],
-          })
-          .toBeGreaterThanOrEqual(1);
-
-        expect(userPage.url()).not.toMatch(/\/table\/TASK-/);
+        await expect(taskCard(userPage, createdTask)).toBeVisible();
+        await expectTaskDestination(userPage, {
+          table,
+          user: otherUser,
+          tasks: [createdTask],
+        });
       });
     } finally {
       await adminContext.close();

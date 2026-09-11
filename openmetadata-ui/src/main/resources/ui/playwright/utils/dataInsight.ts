@@ -66,5 +66,7 @@ export const addKpi = async (page: Page, data: KPIData) => {
   await fillDescriptionBox(page, 'Playwright KPI test description');
 
   await page.getByTestId('submit-btn').click();
-  await page.waitForURL('**/data-insights/kpi');
+  await page.waitForURL('**/data-insights/kpi', {
+    waitUntil: 'domcontentloaded',
+  });
 };

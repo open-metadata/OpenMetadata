@@ -1609,7 +1609,7 @@ test.describe('Glossary tests', () => {
         await selectColumns(page, columnKeys);
         await verifyColumnsVisibility(page, columnLabels, true);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyColumnsVisibility(page, columnLabels, true);
       });
@@ -1621,7 +1621,7 @@ test.describe('Glossary tests', () => {
         await deselectColumns(page, columnKeys);
         await verifyColumnsVisibility(page, columnLabels, false);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyColumnsVisibility(page, columnLabels, false);
       });
@@ -1639,7 +1639,7 @@ test.describe('Glossary tests', () => {
         ];
         await verifyAllColumns(page, tableColumns, true);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyAllColumns(page, tableColumns, true);
       });
@@ -1655,7 +1655,7 @@ test.describe('Glossary tests', () => {
         ];
         await verifyAllColumns(page, tableColumns, false);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyAllColumns(page, tableColumns, false);
       });
@@ -2075,7 +2075,7 @@ test.describe('Glossary tests', () => {
         const waitForInstanceRes = reviewerPage.waitForResponse(
           '/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/*'
         );
-        await reviewerPage.reload();
+        await reviewerPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForInstanceRes;
         await reviewerPage.getByTestId('workflow-history-widget').click();
 
@@ -2531,7 +2531,8 @@ test.describe('Glossary tests', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -2600,7 +2601,8 @@ test.describe('Glossary tests', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -2694,7 +2696,8 @@ test.describe('Glossary tests', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 

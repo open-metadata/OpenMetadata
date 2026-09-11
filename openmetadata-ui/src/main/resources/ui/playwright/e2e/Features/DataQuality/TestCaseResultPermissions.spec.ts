@@ -115,7 +115,9 @@ test.describe(
 
     const visitTestCaseDetailsPage = async (page: Page) => {
       const detailsPromise = waitForTestCaseDetailsResponse(page);
-      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
+      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await detailsPromise;
       await verifyTestCaseLastRunBanner(page, 'failed');
     };

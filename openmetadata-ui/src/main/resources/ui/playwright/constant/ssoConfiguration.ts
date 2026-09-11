@@ -13,8 +13,6 @@
 export const SSO_COMMON_FIELDS = [
   'Provider Name',
   'Authority',
-  'Client ID',
-  'Callback URL',
   'JWT Principal Claims',
   'Enable Self Signup',
   'Allowed Domains',
@@ -26,18 +24,7 @@ export const OIDC_COMMON_FIELDS = [
   'OIDC Client Secret',
   'OIDC Request Scopes',
   'OIDC Discovery URI',
-  'OIDC Use Nonce',
-  'OIDC Preferred JWS Algorithm',
-  'OIDC Response Type',
-  'OIDC Disable PKCE',
-  'OIDC Max Clock Skew',
-  'OIDC Client Authentication Method',
-  'OIDC Token Validity',
-  'OIDC Server URL',
   'OIDC Callback URL',
-  'OIDC Max Age',
-  'OIDC Prompt',
-  'OIDC Session Expiry',
 ];
 
 export const SAML_VISIBLE_FIELDS = [

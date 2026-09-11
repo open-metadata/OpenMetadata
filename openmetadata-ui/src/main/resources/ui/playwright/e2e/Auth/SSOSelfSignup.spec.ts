@@ -38,7 +38,7 @@ import {
 } from '../../utils/mockOidc';
 
 const completeOidcSelfSignup = async (page: Page): Promise<void> => {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   const ssoButton = page.locator('button.signin-button');
   await ssoButton.waitFor({ state: 'visible', timeout: 30000 });
@@ -49,7 +49,7 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
       url.pathname.endsWith('/signup') ||
       url.pathname.endsWith('/my-data') ||
       url.pathname === '/',
-    { timeout: 60000 }
+    { waitUntil: 'domcontentloaded', timeout: 60000 }
   );
 
   if (page.url().includes('/signup')) {
@@ -58,7 +58,7 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
     await createButton.click();
     await page.waitForURL(
       (url) => url.pathname === '/' || url.pathname === '/my-data',
-      { timeout: 60000 }
+      { waitUntil: 'domcontentloaded', timeout: 60000 }
     );
   }
 };

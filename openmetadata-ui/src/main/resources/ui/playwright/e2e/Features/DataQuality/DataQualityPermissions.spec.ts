@@ -596,7 +596,8 @@ test.describe(
         const testCaseDetailsPromise =
           waitForTestCaseDetailsResponse(viewBasicPage);
         await viewBasicPage.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}`
+          `/test-case/${encodeURIComponent(testCaseFqn)}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetailsPromise;
         await verifyTestCaseLastRunBanner(viewBasicPage, 'not-run-yet');

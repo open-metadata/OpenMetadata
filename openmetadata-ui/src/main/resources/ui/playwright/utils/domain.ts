@@ -711,7 +711,7 @@ export const checkSubDomainCount = async (page: Page, count: number) => {
     .poll(
       async () => {
         if (shouldReload) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
         }
         shouldReload = true;
@@ -873,7 +873,7 @@ export const addAssetsToDomain = async (
 
   await searchRes;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await checkAssetsCount(page, assets.length);
@@ -977,7 +977,7 @@ export const addAssetsToDataProduct = async (
         .getByTestId(`data-product-${dataProductFqn}`)
     ).toBeVisible();
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
   }
 };
@@ -2009,12 +2009,13 @@ export const renameDomain = async (page: Page, newName: string) => {
   );
   await page.getByTestId('save-button').click();
   await patchRes;
-  await page.waitForURL((url) =>
-    url.pathname.includes(encodeURIComponent(newName))
+  await page.waitForURL(
+    (url) => url.pathname.includes(encodeURIComponent(newName)),
+    { waitUntil: 'domcontentloaded' }
   );
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await domainRes;
 };
 
@@ -2125,7 +2126,7 @@ export const assignDomainToEntity = async (
     patch: (options: {
       apiContext: APIRequestContext;
       patchData: Operation[];
-    }) => Promise<void>;
+    }) => Promise<unknown>;
   },
   domain: { responseData: { id?: string } }
 ) => {

@@ -113,7 +113,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.afterEach(async ({ page }) => {
-    await page.goto('about:blank');
+    await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
   });
 
   test.describe('Lineage Layers Toggle', () => {
@@ -242,7 +242,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await addColumnLineage(page, sourceColName, targetColName);
 
         const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageReq;
 
         await activateColumnLayer(page);
@@ -267,7 +267,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const lineageReq1 = page.waitForResponse(
           '/api/v1/lineage/getLineage?*'
         );
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageReq1;
 
         await activateColumnLayer(page);
@@ -794,7 +794,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // Reload to prove the server actually dropped the edge, not just
         // that local state was optimistically updated.
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageRes;
 
         await expect(

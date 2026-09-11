@@ -1025,7 +1025,9 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.goto(`${MEMORIES_URL}?memory=${sharedMemoryName}`);
+        await page.goto(`${MEMORIES_URL}?memory=${sharedMemoryName}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await page
           .getByTestId('context-center-memories-page')
           .waitFor({ state: 'visible' });

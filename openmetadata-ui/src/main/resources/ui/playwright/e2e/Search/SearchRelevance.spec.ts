@@ -324,7 +324,9 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
 };
 
 const openTableSearchSettings = async (page: Page) => {
-  await page.goto('/settings/preferences/search-settings/tables');
+  await page.goto('/settings/preferences/search-settings/tables', {
+    waitUntil: 'domcontentloaded',
+  });
   await expect(page.getByTestId('entity-search-settings-header')).toBeVisible();
 };
 

@@ -312,16 +312,11 @@ const GlossaryPage = () => {
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
-  const isRightPanelLoading = useMemo(() => {
-    if (!glossaries.length) {
-      return true;
-    }
-    if (isTermView) {
-      return glossaryTermFetching;
-    }
-
-    return false;
-  }, [glossaries.length, isTermView, glossaryTermFetching]);
+  const isRightPanelLoading = isTermView && glossaryTermFetching;
+  const isGlossaryNotFound =
+    isGlossaryActive &&
+    Boolean(glossaryFqn) &&
+    !glossaries.some((glossary) => glossary.fullyQualifiedName === glossaryFqn);
 
   const isTermNotFound = useMemo(
     () =>
@@ -526,7 +521,7 @@ const GlossaryPage = () => {
     );
   };
 
-  if (glossaries.length === 0 && !isLoading) {
+  if (glossaries.length === 0 && !isLoading && !glossaryFqn) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         <EmptyPlaceholder
@@ -563,12 +558,12 @@ const GlossaryPage = () => {
     if (isRightPanelLoading) {
       return <Loader />;
     }
-    if (isTermNotFound) {
+    if (isTermNotFound || isGlossaryNotFound) {
       return (
         <div className="content-height-with-resizable-panel tw:relative">
           <NoDataPlaceholder
             description={getEntityMissingMessage(
-              t('label.glossary-term'),
+              t(isGlossaryNotFound ? 'label.glossary' : 'label.glossary-term'),
               glossaryFqn
             )}
           />

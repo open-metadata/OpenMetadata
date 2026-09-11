@@ -110,7 +110,7 @@ export class TagClass {
     const tagLink = page.getByTestId(this.data.name);
     const href = await tagLink.getAttribute('href');
     if (href) {
-      await page.goto(href);
+      await page.goto(href, { waitUntil: 'domcontentloaded' });
     } else {
       await tagLink.click();
     }

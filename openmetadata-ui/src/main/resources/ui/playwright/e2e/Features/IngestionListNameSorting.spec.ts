@@ -167,7 +167,9 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await stubIngestionSchedulerStatus(page);
 
     await test.step('Open the database agents list', async () => {
-      await page.goto('/settings/services/databases?tab=pipelines');
+      await page.goto('/settings/services/databases?tab=pipelines', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -209,7 +211,9 @@ test.describe('Ingestion agent list Name column sorting', () => {
 
     await stubIngestionSchedulerStatus(page);
 
-    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1');
+    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     const sortedFirstPage = waitForSortedListing(page);
@@ -229,7 +233,7 @@ test.describe('Ingestion agent list Name column sorting', () => {
     // bug broke is that the page came back at all.
     const restoredPage = waitForSortedListing(page, { cursored: true });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await restoredPage;
     await waitForAllLoadersToDisappear(page);
 

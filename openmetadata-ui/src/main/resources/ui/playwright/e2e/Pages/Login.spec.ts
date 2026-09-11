@@ -77,7 +77,7 @@ test.describe(
     );
 
     test('Signup and Login with signed up credentials', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       await expect(page).toHaveURL(`/signin`);
 
@@ -135,7 +135,7 @@ test.describe(
     });
 
     test('Signin using invalid credentials', async ({ page }) => {
-      await page.goto(`/signin`);
+      await page.goto(`/signin`, { waitUntil: 'domcontentloaded' });
       // Login with invalid email
       await page.fill('#email', invalidEmail);
       await page.fill('#password', CREDENTIALS.password);
@@ -156,7 +156,7 @@ test.describe(
     });
 
     test('Forgot password and login with new password', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // Click on Forgot button
       await page.locator('[data-testid="forgot-password"]').click();
 
@@ -191,7 +191,7 @@ test.describe(
           await waitForAllLoadersToDisappear(page1);
           await redirectToHomePage(page2);
           await waitForAllLoadersToDisappear(page2);
-          await page2.reload();
+          await page2.reload({ waitUntil: 'domcontentloaded' });
 
           // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
           await page1.waitForTimeout(2 * 61 * 1000);

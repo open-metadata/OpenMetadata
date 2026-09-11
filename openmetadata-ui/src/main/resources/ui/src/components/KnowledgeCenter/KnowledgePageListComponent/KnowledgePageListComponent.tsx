@@ -16,7 +16,7 @@ import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
+import { isEmpty, map, uniqueId } from 'lodash';
 import React, {
   forwardRef,
   ReactNode,
@@ -31,17 +31,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import {
-  CREATE_PAGE_HASH,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
-import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { SearchIndex } from '../../../enums/search.enum';
-import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useKnowledgePageListing } from '../../../hooks/knowledge-center/useKnowledgePageListing';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import {
@@ -54,12 +49,10 @@ import {
 import { queryClient } from '../../../queryClient';
 import {
   followKnowledgePage,
-  getListKnowledgePages,
   postKnowledgePage,
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
-import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -290,11 +283,21 @@ const KnowledgePageListComponent = forwardRef<
     const navigate = useNavigate();
     const USERId = currentUser?.id ?? '';
     const [elementRef, isInView] = useElementInView({});
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-    const [knowledgePages, setKnowledgePages] = useState<KnowledgePage[]>([]);
-    const [paging, setPaging] = useState<Paging>({ total: 0 });
-    const [pageOffset, setPageOffset] = useState<number>(0);
+    const hasViewPermission = useMemo(
+      () => permissions.ViewAll || permissions.ViewBasic,
+      [permissions]
+    );
+    const {
+      knowledgePages,
+      setKnowledgePages,
+      isLoading,
+      isLoadingMore,
+      error,
+      fetchNextPage,
+    } = useKnowledgePageListing(
+      searchQuery,
+      Boolean(hasViewPermission && !isPermissionsLoading)
+    );
     const [isCreatingNewPage, setIsCreatingNewPage] = useState<boolean>(false);
     const [showAddLinkModal, setShowAddLinkModal] = useState<boolean>(false);
     const { getResourceLimit } = useLimitStore();
@@ -309,46 +312,6 @@ const KnowledgePageListComponent = forwardRef<
 
     const handleRefreshTagsCategory = (value: boolean) =>
       setRefreshTagsCategory(value);
-
-    const fetchKnowledgePages = async (offset = 0) => {
-      if (offset > 0) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoading(true);
-      }
-      try {
-        if (searchQuery) {
-          const results = await fetchSearchResults({
-            query: searchQuery,
-            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
-            sortField: 'updatedAt',
-            sortOrder: 'desc',
-            pageSize: PAGE_SIZE_MEDIUM,
-          });
-          setKnowledgePages(
-            results.hits.hits.map((hit) => hit._source as KnowledgePage)
-          );
-          setPaging({ total: results.hits.total.value });
-        } else {
-          const { data, paging: pagingObj } = await getListKnowledgePages({
-            fields: getKnowledgePageFields(),
-            limit: PAGE_SIZE_MEDIUM,
-            offset,
-            sortBy: 'updatedAt',
-            sortOrder: 'desc',
-          });
-          setKnowledgePages((prev) =>
-            uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
-          );
-          setPaging(pagingObj);
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      }
-    };
 
     const addArticleKnowledgePage = async () => {
       try {
@@ -510,22 +473,11 @@ const KnowledgePageListComponent = forwardRef<
       );
     };
 
-    const hasViewPermission = useMemo(
-      () => permissions.ViewAll || permissions.ViewBasic,
-      [permissions]
-    );
-
     useEffect(() => {
-      if (isPermissionsLoading) {
-        return;
+      if (error) {
+        showErrorToast(error as AxiosError);
       }
-      if (hasViewPermission) {
-        setPageOffset(0);
-        fetchKnowledgePages(0);
-      } else {
-        setIsLoading(false);
-      }
-    }, [hasViewPermission, searchQuery, isPermissionsLoading]);
+    }, [error]);
 
     useEffect(() => {
       if (!isLoading && !isPermissionsLoading && !searchQuery) {
@@ -540,21 +492,10 @@ const KnowledgePageListComponent = forwardRef<
     ]);
 
     useEffect(() => {
-      const hasMore = knowledgePages.length < paging.total;
-      const canLoadMore = isInView && hasMore && !isLoadingMore;
-      if (canLoadMore && !searchQuery && hasViewPermission) {
-        const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
-        setPageOffset(nextOffset);
-        fetchKnowledgePages(nextOffset);
+      if (isInView) {
+        void fetchNextPage();
       }
-    }, [
-      isInView,
-      paging.total,
-      knowledgePages.length,
-      isLoadingMore,
-      searchQuery,
-      hasViewPermission,
-    ]);
+    }, [isInView, fetchNextPage]);
 
     const items: MenuProps['items'] = [
       {

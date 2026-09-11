@@ -11,367 +11,329 @@
  *  limitations under the License.
  */
 
+import { APIRequestContext, Page } from '@playwright/test';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
-import { expect, test } from '../../support/fixtures/base';
-import { TeamClass } from '../../support/team/TeamClass';
+import { TaskClass, TaskResponseData } from '../../support/entity/TaskClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import { getTableFqn } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
-import { waitForPageLoaded } from '../../utils/polling';
+import { okJson, settleAll } from '../../utils/apiResponse';
+import { getApiContext } from '../../utils/common';
+import {
+  assignDomainToEntity,
+  selectDomainFromNavbar,
+} from '../../utils/domain';
+import {
+  getTaskCard,
+  getTaskDisplayId,
+  waitForTaskCreateResponse,
+} from '../../utils/task';
 import { addTagSuggestion, selectAssignee } from '../../utils/taskWorkflow';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
-/**
- * Task System E2E Tests
- *
- * These tests verify the complete task workflow including:
- * 1. Task creation (request description, request tags, suggest description, suggest tags)
- * 2. Task assignment (auto-fill from owners, manual assignment)
- * 3. Task navigation (clicking task goes to correct page)
- * 4. Task resolution (assignee permissions required)
- * 5. Task visibility (domain filtering, activity feed)
- * 6. Task count accuracy
- */
+type TaskData = {
+  apiContext: APIRequestContext;
+  author: UserClass;
+  owner: UserClass;
+  outsider: UserClass;
+  table: TableClass;
+  unownedTable: TableClass;
+  tasks: TaskClass[];
+};
 
-test.describe('Task Workflow Tests', () => {
-  const adminUser = new UserClass();
-  const regularUser = new UserClass();
-  const tableWithOwner = new TableClass();
-  const tableWithoutOwner = new TableClass();
-  const testTeam = new TeamClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
+const test = base.extend<{ taskData: TaskData }>({
+  taskData: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
+    const author = new UserClass();
+    const owner = new UserClass();
+    const outsider = new UserClass();
+    const table = new TableClass();
+    const unownedTable = new TableClass();
+    const tasks: TaskClass[] = [];
     try {
-      // Create users
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await regularUser.create(apiContext);
-
-      // Create team and add regular user
-      await testTeam.create(apiContext);
-      await testTeam.addUser(apiContext, regularUser.responseData.id);
-
-      // Create tables - one with owner, one without
-      await tableWithOwner.create(apiContext);
-      await tableWithOwner.setOwner(apiContext, {
-        id: regularUser.responseData.id,
+      await author.create(apiContext);
+      await author.setAdminRole(apiContext);
+      await owner.create(apiContext);
+      await outsider.create(apiContext);
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: owner.responseData.id,
         type: 'user',
       });
-
-      await tableWithoutOwner.create(apiContext);
+      await unownedTable.create(apiContext);
+      await use({
+        apiContext,
+        author,
+        owner,
+        outsider,
+        table,
+        unownedTable,
+        tasks,
+      });
     } finally {
-      await afterAction();
+      try {
+        await settleAll(tasks.map((task) => task.delete(apiContext)));
+        await settleAll(
+          [table, unownedTable]
+            .filter((entity) => entity.entityResponseData.id)
+            .map((entity) => entity.delete(apiContext))
+        );
+        await settleAll(
+          [author, owner, outsider]
+            .filter((user) => user.responseData.id)
+            .map((user) => user.delete(apiContext))
+        );
+      } finally {
+        await afterAction();
+      }
     }
+  },
+});
+
+const createTask = async (data: TaskData, assignee = data.owner) => {
+  const task = new TaskClass({
+    about: `<#E::table::${getTableFqn(data.table)}>`,
+    assignees: [assignee.responseData.name],
+    payload: {
+      field: 'description',
+      currentValue: data.table.entityResponseData.description ?? '',
+      suggestedValue: `Proposed description ${data.tasks.length}`,
+    },
   });
+  data.tasks.push(task);
+  await task.create(data.apiContext);
+  return task;
+};
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+const captureCreatedTask = async (
+  page: Page,
+  data: TaskData,
+  submitTestId: string
+) => {
+  const response = waitForTaskCreateResponse(page);
+  await page.getByTestId(submitTestId).click();
+  const created = await okJson<TaskResponseData>(
+    await response,
+    'Create task through UI'
+  );
+  const task = new TaskClass();
+  task.set(created);
+  data.tasks.push(task);
+  expect(created.status).toBe('Open');
+  expect(created.assignees).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ name: data.owner.responseData.name }),
+    ])
+  );
+  return task;
+};
 
-    try {
-      await tableWithOwner.delete(apiContext);
-      await tableWithoutOwner.delete(apiContext);
-      await testTeam.delete(apiContext);
-      await regularUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
+const openTasks = async (page: Page, table: TableClass) => {
+  await table.visitEntityPage(page);
+  await page.getByTestId('activity_feed').click();
+  await page.getByRole('menuitem', { name: /^Tasks/ }).click();
+};
 
+const expectDestination = async (page: Page, table: TableClass) => {
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname ===
+      `/table/${encodeURIComponent(getTableFqn(table))}/activity_feed/tasks`
+  );
+  await expect(page.getByTestId('entity-header-name')).toHaveText(
+    table.entityResponseData.name
+  );
+};
+
+test.describe('Task Workflow Tests', () => {
   test.describe('Task Creation', () => {
-    test.beforeEach(async ({ page }) => {
-      await adminUser.login(page);
+    test.beforeEach(async ({ page, taskData }) => {
+      await taskData.author.login(page);
     });
 
     test('should create request description task from entity page', async ({
       page,
+      taskData,
     }) => {
-      await tableWithOwner.visitEntityPage(page);
-
-      // Click on request description button
-      const requestDescBtn = page.getByTestId('request-description');
-      await expect(requestDescBtn).toBeVisible();
-      await requestDescBtn.click();
-
-      // Wait for task form page to load (navigates to separate page, not modal)
-      await page.waitForSelector('[data-testid="form-container"]', {
-        state: 'visible',
-      });
-
-      // Verify assignee is auto-filled with owner
-      const assigneeContainer = page.getByTestId('select-assignee');
-      await expect(assigneeContainer).toBeVisible();
-
-      // Submit task
-      const submitBtn = page.getByTestId('submit-btn');
-      const taskResponse = page.waitForResponse('/api/v1/tasks');
-      await submitBtn.click();
-      await taskResponse;
-
-      // Should navigate back to entity page
-      await waitForPageLoaded(page);
+      await taskData.table.visitEntityPage(page);
+      await page.getByTestId('request-description').click();
+      await expect(page.getByTestId('form-container')).toBeVisible();
+      await expect(page.getByTestId('select-assignee')).toContainText(
+        taskData.owner.responseData.displayName
+      );
+      const task = await captureCreatedTask(page, taskData, 'submit-btn');
+      await openTasks(page, taskData.table);
+      await expect(getTaskCard(page, task.responseData!.taskId)).toBeVisible();
     });
 
     test('should allow manual assignee selection when entity has no owner', async ({
       page,
+      taskData,
     }) => {
-      await tableWithoutOwner.visitEntityPage(page);
-
-      const requestDescBtn = page.getByTestId('request-description');
-      await expect(requestDescBtn).toBeVisible();
-      await requestDescBtn.click();
-
-      // Wait for task form page to load
-      await page.waitForSelector('[data-testid="form-container"]', {
-        state: 'visible',
-      });
-
-      // Manually select assignee
-      await selectAssignee(page, regularUser.responseData.name);
-
-      // Submit task
-      const submitBtn = page.getByTestId('submit-btn');
-      const taskResponse = page.waitForResponse('/api/v1/tasks');
-      await submitBtn.click();
-      await taskResponse;
-
-      await waitForPageLoaded(page);
+      await taskData.unownedTable.visitEntityPage(page);
+      await page.getByTestId('request-description').click();
+      await expect(page.getByTestId('form-container')).toBeVisible();
+      await selectAssignee(page, taskData.owner.responseData.name);
+      const task = await captureCreatedTask(page, taskData, 'submit-btn');
+      await openTasks(page, taskData.unownedTable);
+      await expect(getTaskCard(page, task.responseData!.taskId)).toBeVisible();
     });
 
-    test('should create suggest tags task', async ({ page }) => {
-      await tableWithOwner.visitEntityPage(page);
-
-      // Navigate to tags section and click request tags
-      const requestTagsBtn = page.getByTestId('request-entity-tags');
-      if (!(await requestTagsBtn.isVisible())) {
-        // Skip if button not visible
-        return;
-      }
-      await requestTagsBtn.click();
-
-      // Wait for task form page to load
-      await page.waitForSelector('[data-testid="form-container"]', {
-        state: 'visible',
+    test('should create suggest tags task', async ({ page, taskData }) => {
+      await taskData.table.visitEntityPage(page);
+      await page.getByTestId('request-entity-tags').click();
+      await expect(page.getByTestId('form-container')).toBeVisible();
+      await addTagSuggestion({
+        page,
+        searchText: 'PII',
+        tagTestId: 'tag-PII.Sensitive',
       });
-
-      // Add suggested tags
-      const tagsInput = page.locator(
-        '[data-testid="tag-selector"] .ant-select-selection-search input'
+      const task = await captureCreatedTask(
+        page,
+        taskData,
+        'submit-tag-request'
       );
-      if (await tagsInput.isVisible().catch(() => false)) {
-        await addTagSuggestion({
-          page,
-          searchText: 'PII',
-          tagTestId: 'tag-PII.Sensitive',
-        });
-      }
-
-      // Submit - tag request pages use submit-tag-request
-      const submitBtn = page.getByTestId('submit-tag-request');
-      const taskResponse = page.waitForResponse('/api/v1/tasks');
-      await submitBtn.click();
-      await taskResponse;
-
-      await waitForPageLoaded(page);
+      await openTasks(page, taskData.table);
+      const card = getTaskCard(page, task.responseData!.taskId);
+      await expect(card).toBeVisible();
+      await expect(card).toContainText('Sensitive');
     });
   });
 
   test.describe('Task Navigation', () => {
-    test.beforeEach(async ({ page }) => {
-      await adminUser.login(page);
-    });
-
-    test('clicking task in activity feed should navigate to entity page with task tab', async ({
-      browser,
-    }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        // Create a task via API
-        await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [regularUser.responseData.name],
-          },
-        });
-
-        const page = await browser.newPage();
-        await adminUser.login(page);
-
-        // Go to home page and find the task in activity feed
-        await redirectToHomePage(page);
-        await waitForPageLoaded(page);
-
-        // Find the task in activity feed widget
-        const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-        const taskItem = feedWidget
-          .locator('[data-testid="task-feed-card"]')
-          .first();
-
-        if (await taskItem.isVisible()) {
-          // Click on the task link
-          const taskLink = taskItem.getByTestId('redirect-task-button-link');
-          await taskLink.click();
-          await waitForPageLoaded(page);
-
-          // Verify navigation - should NOT be 404
-          await expect(page.getByText('No data available')).not.toBeVisible();
-        }
-
-        await page.close();
-      } finally {
-        await afterAction();
-      }
-    });
-
-    test('task link should NOT navigate to wrong URL like /table/TASK-xxxxx', async ({
-      page,
-    }) => {
-      await tableWithOwner.visitEntityPage(page);
-      await page.getByTestId('activity_feed').click();
-      await waitForPageLoaded(page);
-
-      // Click on a task if visible
-      const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-      if (await taskCard.isVisible()) {
-        const taskLink = taskCard.getByTestId('redirect-task-button-link');
-        await taskLink.click();
-        await waitForPageLoaded(page);
-
-        // URL should NOT contain /table/TASK- pattern
-        expect(page.url()).not.toMatch(/\/table\/TASK-/);
-
-        // Should not show 404 or "No data available"
-        await expect(page.getByText('No data available')).not.toBeVisible();
-      }
-    });
+    for (const title of [
+      'clicking task in activity feed should navigate to entity page with task tab',
+      'task link should NOT navigate to wrong URL like /table/TASK-xxxxx',
+    ]) {
+      test(title, async ({ page, taskData }) => {
+        const task = await createTask(taskData);
+        await taskData.owner.login(page);
+        await openTasks(page, taskData.table);
+        const card = getTaskCard(page, task.responseData!.taskId);
+        await card.getByTestId('redirect-task-button-link').click();
+        await expectDestination(page, taskData.table);
+        await expect(
+          getTaskCard(page, task.responseData!.taskId)
+        ).toBeVisible();
+      });
+    }
   });
 
   test.describe('Task Resolution and Permissions', () => {
-    test('assignee should be able to approve task', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        // Create a task via API
-        const taskResponse = await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [regularUser.responseData.name],
-          },
-        });
-        const task = await taskResponse.json();
-
-        // Login as regular user (who is the assignee)
-        const page = await browser.newPage();
-        await regularUser.login(page);
-
-        await tableWithOwner.visitEntityPage(page);
-        await page.getByTestId('activity_feed').click();
-        await waitForPageLoaded(page);
-
-        // Find the task card
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-        if (await taskCard.isVisible()) {
-          // Click on card to open drawer
-          await taskCard.click();
-          await waitForPageLoaded(page);
-
-          // Look for approve button in drawer
-          const approveBtn = page.getByTestId('approve-task');
-          if (await approveBtn.isVisible()) {
-            await approveBtn.click();
-            await waitForPageLoaded(page);
-          }
-        }
-
-        await page.close();
-      } finally {
-        await afterAction();
-      }
+    test('assignee should be able to approve task', async ({
+      page,
+      taskData,
+    }) => {
+      const task = await createTask(taskData);
+      await taskData.owner.login(page);
+      await openTasks(page, taskData.table);
+      const response = waitForResponseWithStatus(
+        page,
+        (result) =>
+          result.request().method() === 'POST' &&
+          new URL(result.url()).pathname ===
+            `/api/v1/tasks/${task.responseData!.id}/resolve`,
+        200
+      );
+      await getTaskCard(page, task.responseData!.taskId)
+        .getByTestId('approve-button')
+        .click();
+      const resolved = await (await response).json();
+      expect(resolved.status).toBe('Approved');
+      const table = await okJson(
+        await taskData.apiContext.get(
+          `/api/v1/tables/${taskData.table.entityResponseData.id}`
+        ),
+        'Read approved description'
+      );
+      expect(table.description).toBe(task.data.payload!.suggestedValue);
+      await taskData.table.visitEntityPage(page);
+      await expect(
+        page.getByTestId('asset-description-container')
+      ).toContainText(table.description);
     });
 
     test('non-assignee without edit permissions should NOT see approve button', async ({
-      browser,
+      page,
+      taskData,
     }) => {
-      // Create a new user who is NOT the assignee
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      const nonAssignee = new UserClass();
-      await nonAssignee.create(apiContext);
-
-      try {
-        const page = await browser.newPage();
-        await nonAssignee.login(page);
-
-        await tableWithOwner.visitEntityPage(page);
-        await page.getByTestId('activity_feed').click();
-        await waitForPageLoaded(page);
-
-        // Find the task card
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-        if (await taskCard.isVisible()) {
-          await taskCard.click();
-          await waitForPageLoaded(page);
-
-          // Should NOT see approve button (not assignee)
-          const approveBtn = page.getByTestId('approve-task');
-          await expect(approveBtn).not.toBeVisible();
-        }
-
-        await page.close();
-      } finally {
-        await nonAssignee.delete(apiContext);
-        await afterAction();
-      }
+      const task = await createTask(taskData);
+      await taskData.outsider.login(page);
+      await openTasks(page, taskData.table);
+      const card = getTaskCard(page, task.responseData!.taskId);
+      await expect(card).toBeVisible();
+      await expect(card.getByTestId('approve-button')).toHaveCount(0);
+      await expect(card.getByTestId('reject-button')).toHaveCount(0);
     });
 
     test('accepting task without edit permission should be rejected by backend', async ({
-      browser,
+      page,
+      taskData,
     }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      // Create restricted user with no edit permissions
-      const restrictedUser = new UserClass();
-      await restrictedUser.create(apiContext);
-
-      try {
-        // Create a task assigned to this restricted user
-        const taskResponse = await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [restrictedUser.responseData.name],
+      const policy = new PolicyClass();
+      const role = new RolesClass();
+      await policy.create(taskData.apiContext, [
+        {
+          name: 'deny-table-edit',
+          resources: ['table'],
+          operations: ['EditDescription', 'EditAll'],
+          effect: 'deny',
+        },
+      ]);
+      await role.create(taskData.apiContext, [policy.responseData.name]);
+      await taskData.outsider.patch({
+        apiContext: taskData.apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/-',
+            value: { id: role.responseData.id, type: 'role' },
           },
-        });
-        const task = await taskResponse.json();
-
-        // Try to resolve - note: This may succeed if user has owner rights
-        // The actual permission check depends on entity ownership
-        const resolveResponse = await apiContext.post(
-          `/api/v1/tasks/${task.id}/resolve`,
+        ],
+      });
+      const task = await createTask(taskData, taskData.outsider);
+      await taskData.outsider.login(page);
+      const restricted = await getApiContext(page);
+      try {
+        const currentUser = await okJson(
+          await restricted.apiContext.get('/api/v1/users/loggedInUser'),
+          'Verify restricted caller'
+        );
+        expect(currentUser.id).toBe(taskData.outsider.responseData.id);
+        const response = await restricted.apiContext.post(
+          `/api/v1/tasks/${task.responseData!.id}/resolve`,
           {
             data: {
               resolutionType: 'Approved',
-              newValue: 'Test description',
+              newValue: 'Unauthorized description',
             },
           }
         );
-
-        // Response should be valid (either success or forbidden)
-        expect([200, 403]).toContain(resolveResponse.status());
+        expect(response.status()).toBe(403);
+        const stored = await okJson(
+          await taskData.apiContext.get(
+            `/api/v1/tasks/${task.responseData!.id}`
+          ),
+          'Read rejected task'
+        );
+        expect(stored.status).toBe('Open');
+        const table = await okJson(
+          await taskData.apiContext.get(
+            `/api/v1/tables/${taskData.table.entityResponseData.id}`
+          ),
+          'Read unchanged table'
+        );
+        expect(table.description).toBe(
+          taskData.table.entityResponseData.description
+        );
       } finally {
-        await restrictedUser.delete(apiContext);
-        await afterAction();
+        await restricted.afterAction();
+        await role.delete(taskData.apiContext);
+        await policy.delete(taskData.apiContext);
       }
     });
   });
@@ -379,208 +341,113 @@ test.describe('Task Workflow Tests', () => {
   test.describe('Task Count Accuracy', () => {
     test('task count in Activity Feed tab should match actual tasks', async ({
       page,
+      taskData,
     }) => {
-      await adminUser.login(page);
-      await tableWithOwner.visitEntityPage(page);
-
-      // Click on activity feed tab
-      await page.getByTestId('activity_feed').click();
-      await waitForPageLoaded(page);
-
-      // Navigate to Tasks tab
-      const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-      if (await tasksTab.isVisible()) {
-        await tasksTab.click();
-        await waitForPageLoaded(page);
-      }
-
-      // Count actual tasks - this just verifies the UI loads correctly
-      const taskCards = page.locator('[data-testid="task-feed-card"]');
-      const actualCount = await taskCards.count();
-
-      // Just verify count is a valid number
-      expect(actualCount).toBeGreaterThanOrEqual(0);
+      const first = await createTask(taskData);
+      const second = await createTask(taskData);
+      await taskData.owner.login(page);
+      await openTasks(page, taskData.table);
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(2);
+      await expect(getTaskCard(page, first.responseData!.taskId)).toBeVisible();
+      await expect(
+        getTaskCard(page, second.responseData!.taskId)
+      ).toBeVisible();
+      await page.getByTestId('user-profile-page-task-filter-icon').click();
+      await expect(
+        page.getByTestId('open-tasks').locator('.task-count-text')
+      ).toHaveText('2');
+      await expect(
+        page.getByTestId('closed-tasks').locator('.task-count-text')
+      ).toHaveText('0');
     });
 
     test('/tasks/count API should return correct counts for aboutEntity filter', async ({
-      browser,
+      taskData,
     }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        const entityFqn = tableWithOwner.entityResponseData?.fullyQualifiedName;
-        const countResponse = await apiContext.get(
-          `/api/v1/tasks/count?aboutEntity=${encodeURIComponent(
-            entityFqn || ''
-          )}`
-        );
-
-        expect(countResponse.ok()).toBe(true);
-        const counts = await countResponse.json();
-
-        // Verify response structure
-        expect(counts).toHaveProperty('open');
-        expect(counts).toHaveProperty('completed');
-        expect(counts).toHaveProperty('total');
-        expect(typeof counts.open).toBe('number');
-        expect(typeof counts.completed).toBe('number');
-        expect(typeof counts.total).toBe('number');
-        expect(counts.total).toBe(counts.open + counts.completed);
-      } finally {
-        await afterAction();
-      }
+      await createTask(taskData);
+      await createTask(taskData);
+      const counts = await okJson(
+        await taskData.apiContext.get('/api/v1/tasks/count', {
+          params: {
+            aboutEntity: getTableFqn(taskData.table),
+          },
+        }),
+        'Count owned fixture tasks'
+      );
+      expect(counts).toMatchObject({ open: 2, completed: 0, total: 2 });
     });
   });
 
   test.describe('Activity Feed Integration', () => {
     test('creating a task should appear in entity activity feed', async ({
-      browser,
+      page,
+      taskData,
     }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        // Create a task via API
-        const taskResponse = await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [regularUser.responseData.name],
-          },
-        });
-        expect(taskResponse.ok()).toBe(true);
-
-        const page = await browser.newPage();
-        await adminUser.login(page);
-        await tableWithOwner.visitEntityPage(page);
-
-        // Navigate to activity feed
-        await page.getByTestId('activity_feed').click();
-        await waitForPageLoaded(page);
-
-        // Navigate to Tasks tab
-        const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-        if (await tasksTab.isVisible()) {
-          await tasksTab.click();
-          await waitForPageLoaded(page);
-        }
-
-        // Verify task appears using Playwright's polling mechanism
-        const taskCards = page.locator('[data-testid="task-feed-card"]');
-
-        await expect
-          .poll(async () => taskCards.count(), {
-            message: 'Waiting for task cards to appear in activity feed',
-            timeout: 30000,
-            intervals: [2000, 3000, 5000],
-          })
-          .toBeGreaterThanOrEqual(0);
-
-        await page.close();
-      } finally {
-        await afterAction();
-      }
+      const task = await createTask(taskData);
+      await taskData.owner.login(page);
+      await openTasks(page, taskData.table);
+      await expect(getTaskCard(page, task.responseData!.taskId)).toBeVisible();
     });
 
     test('task should appear in "My Tasks" filter for assignee', async ({
-      browser,
+      page,
+      taskData,
     }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        // Create a task assigned to regularUser
-        await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [regularUser.responseData.name],
-          },
-        });
-
-        const page = await browser.newPage();
-        await regularUser.login(page);
-        await redirectToHomePage(page);
-        await waitForPageLoaded(page);
-
-        // Check notifications for tasks
-        const taskNotifications = page.getByTestId('task-notifications');
-        if (await taskNotifications.isVisible()) {
-          await taskNotifications.click();
-          await waitForPageLoaded(page);
-        }
-
-        await page.close();
-      } finally {
-        await afterAction();
-      }
+      const task = await createTask(taskData);
+      await taskData.owner.login(page);
+      await page.getByTestId('task-notifications').click();
+      const box = page.locator('.notification-box');
+      await expect(
+        box.getByRole('tab', { name: 'Tasks', exact: true })
+      ).toHaveAttribute('aria-selected', 'true');
+      await expect(
+        box.getByRole('link', {
+          name: new RegExp(`^${getTaskDisplayId(task.responseData!.taskId)} `),
+        })
+      ).toBeVisible();
     });
   });
 
   test.describe('Domain Filtering', () => {
     test('tasks should respect domain filter when domain is selected', async ({
-      browser,
+      page,
+      taskData,
     }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      let domain: { id: string } | null = null;
-      let tableInDomain: TableClass | null = null;
-
+      const domain = new Domain();
+      const outsideTask = await createTask(taskData);
       try {
-        // Create domain
-        const domainResponse = await apiContext.post('/api/v1/domains', {
-          data: {
-            name: `test-domain-for-tasks-${Date.now()}`,
-            displayName: 'Test Domain For Tasks',
-            domainType: 'Source-aligned',
-          },
-        });
-        domain = await domainResponse.json();
-
-        // Create table in domain
-        tableInDomain = new TableClass();
-        await tableInDomain.create(apiContext);
-        await apiContext.patch(
-          `/api/v1/tables/${tableInDomain.entityResponseData?.id}`,
-          {
-            data: [
-              {
-                op: 'add',
-                path: '/domain',
-                value: { id: domain?.id, type: 'domain' },
-              },
-            ],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
+        await domain.create(taskData.apiContext);
+        await assignDomainToEntity(
+          taskData.apiContext,
+          taskData.unownedTable,
+          domain
         );
-
-        // Create task on entity in domain
-        const taskResponse = await apiContext.post('/api/v1/tasks', {
-          data: {
-            name: `Test Task - ${Date.now()}`,
-            about: `<#E::table::${tableInDomain.entityResponseData?.fullyQualifiedName}>`,
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [adminUser.responseData.name],
-          },
+        const task = new TaskClass({
+          about: `<#E::table::${taskData.unownedTable.entityResponseData.fullyQualifiedName}>`,
+          assignees: [taskData.owner.responseData.name],
         });
-
-        expect(taskResponse.ok()).toBe(true);
-        const task = await taskResponse.json();
-        expect(task.id).toBeDefined();
+        taskData.tasks.push(task);
+        await task.create(taskData.apiContext);
+        await taskData.owner.login(page);
+        await page.goto(`/users/${taskData.owner.responseData.name}`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await page.getByRole('tab', { name: 'Tasks', exact: true }).click();
+        await expect(
+          getTaskCard(page, outsideTask.responseData!.taskId)
+        ).toBeVisible();
+        await expect(
+          getTaskCard(page, task.responseData!.taskId)
+        ).toBeVisible();
+        await selectDomainFromNavbar(page, domain.responseData);
+        await expect(
+          getTaskCard(page, task.responseData!.taskId)
+        ).toBeVisible();
+        await expect(
+          getTaskCard(page, outsideTask.responseData!.taskId)
+        ).toHaveCount(0);
       } finally {
-        // Cleanup
-        if (tableInDomain) {
-          await tableInDomain.delete(apiContext);
-        }
-        if (domain) {
-          await apiContext.delete(
-            `/api/v1/domains/${domain.id}?hardDelete=true`
-          );
-        }
-        await afterAction();
+        if (domain.responseData.id) await domain.delete(taskData.apiContext);
       }
     });
   });

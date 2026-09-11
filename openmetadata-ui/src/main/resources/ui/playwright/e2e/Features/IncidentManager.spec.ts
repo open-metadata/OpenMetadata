@@ -615,7 +615,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(testCasePageUrl);
+      await actorPage.goto(testCasePageUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
@@ -722,7 +722,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(testCasePageUrl);
+      await actorPage.goto(testCasePageUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await verifyTestCaseLastRunBanner(actorPage, 'failed');
@@ -745,7 +745,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(currentUrl);
+      await actorPage.goto(currentUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
@@ -892,7 +892,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         table: table1,
         testCase: testCaseName,
       });
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await openIncidentTaskTab(page);
 
@@ -935,7 +935,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         table: table1,
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await openIncidentTaskTab(page);
 

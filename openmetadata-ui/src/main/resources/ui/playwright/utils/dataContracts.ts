@@ -55,7 +55,7 @@ export const saveAndTriggerDataContractValidation = async (
 
   await triggerContractValidation(page, responseData.id, expectedStatus);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await waitForAllLoadersToDisappear(page);
 

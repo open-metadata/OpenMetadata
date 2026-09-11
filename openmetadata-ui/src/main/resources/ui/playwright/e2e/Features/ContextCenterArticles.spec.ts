@@ -345,6 +345,49 @@ test.describe('Context Center Articles', () => {
     ).toBeVisible();
   });
 
+  test('Article listing paginates search results', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const prefix = `pagination${uuid()}`;
+    const articles: Awaited<ReturnType<typeof createArticleViaApi>>[] = [];
+    try {
+      for (let index = 0; index < 26; index++) {
+        articles.push(
+          await createArticleViaApi(apiContext, {
+            name: `${prefix}_${index}`,
+            displayName: `${prefix} ${index}`,
+          })
+        );
+      }
+      await navigateToArticles(page);
+      await verifyArticleSearch(page, prefix);
+      const listing = page.getByTestId('knowledge-page-listing');
+      await expect(listing.getByTestId('knowledge-card-title')).toHaveCount(25);
+      const nextPage = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('q') === prefix &&
+          url.searchParams.get('from') === '25'
+        );
+      });
+      await scrollListingToCard(page, articles[0].displayName);
+      expect((await nextPage).status()).toBe(200);
+      for (const article of articles) {
+        await expect(
+          listing.getByTestId(`knowledge-card-${article.displayName}`)
+        ).toBeVisible();
+      }
+    } finally {
+      try {
+        for (const article of articles)
+          await deleteArticleByFqn(apiContext, article.fullyQualifiedName);
+      } finally {
+        await afterAction();
+      }
+    }
+  });
+
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
     page,
   }) => {
@@ -861,8 +904,9 @@ test.describe('Context Center Articles', () => {
     await expect(viewedCard).toBeVisible();
 
     await viewedCard.getByTestId('knowledge-page-link').first().click();
-    await page.waitForURL((url) =>
-      url.pathname.includes('/context-center/articles/')
+    await page.waitForURL(
+      (url) => url.pathname.includes('/context-center/articles/'),
+      { waitUntil: 'domcontentloaded' }
     );
     await waitForAllLoadersToDisappear(page);
     await waitForRecentlyViewed(
@@ -880,8 +924,9 @@ test.describe('Context Center Articles', () => {
     await recentlyViewedItem.scrollIntoViewIfNeeded();
     await expect(recentlyViewedItem).toBeVisible();
     await recentlyViewedItem.click();
-    await page.waitForURL((url) =>
-      url.pathname.includes('/context-center/articles/')
+    await page.waitForURL(
+      (url) => url.pathname.includes('/context-center/articles/'),
+      { waitUntil: 'domcontentloaded' }
     );
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
@@ -1199,7 +1244,7 @@ test.describe('Context Center Articles', () => {
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
     await titleInput.fill(`${updatedTitle} Unsaved`);
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     await verifyArticleSearch(page, updatedTitle);
     await expect(
@@ -1834,7 +1879,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -1972,7 +2017,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Reload Article B — its own draft should be synced', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         const editor = page

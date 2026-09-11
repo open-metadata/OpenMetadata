@@ -212,7 +212,8 @@ test.describe('Glossary Navigation', () => {
       const termFqn = glossaryTerm.responseData.fullyQualifiedName;
       const termRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
       await page.goto(
-        `/glossary/${encodeURIComponent(termFqn).replace(/%22/g, '"')}`
+        `/glossary/${encodeURIComponent(termFqn).replace(/%22/g, '"')}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await termRes;
 

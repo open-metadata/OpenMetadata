@@ -195,7 +195,7 @@ test.describe.serial(
           .toBe('success');
 
         // update page
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         // Click on the logs button
         await page.click('[data-testid="logs"]');

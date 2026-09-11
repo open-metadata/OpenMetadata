@@ -76,7 +76,7 @@ test.describe(
 
     test('should navigate to Test Library page', async ({ page }) => {
       // Navigate directly to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
@@ -98,7 +98,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify table is displayed
@@ -113,7 +113,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify at least one test definition is displayed
@@ -129,7 +129,7 @@ test.describe(
     }) => {
       await test.step('Create a new test definition', async () => {
         // Navigate to Test Library
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         const testDefinitionFormDoc = page.waitForResponse(
           '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
@@ -344,7 +344,7 @@ test.describe(
 
     test('should validate required fields in create form', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -369,7 +369,7 @@ test.describe(
 
       try {
         await test.step('Open create form', async () => {
-          await page.goto('/test-library');
+          await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
           await page.getByTestId('add-test-definition-button').click();
           await page
             .getByTestId('test-definition-form-body')
@@ -444,7 +444,7 @@ test.describe(
 
     test('should cancel form and close drawer', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -479,7 +479,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -498,7 +498,7 @@ test.describe(
 
     test('should display test platform badges correctly', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for table to load
       await page.getByTestId('test-definition-table').waitFor({
@@ -588,7 +588,7 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -621,7 +621,7 @@ test.describe(
       let createdTestDisplayName = EXTERNAL_TEST_DISPLAY_NAME;
 
       await test.step('Create external test definition', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -837,7 +837,7 @@ test.describe(
       let createdTestId: string;
 
       await test.step('Create test definition with specific supported services', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -1177,7 +1177,7 @@ test.describe(
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
       await test.step('Create a test definition starting with "z"', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('add-test-definition-button').click();
         await expect(
           page.getByTestId('test-definition-form-body')

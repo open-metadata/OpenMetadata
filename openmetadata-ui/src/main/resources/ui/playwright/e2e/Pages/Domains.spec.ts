@@ -325,7 +325,7 @@ test.describe('Domains', () => {
     const dataProduct1 = new DataProduct([domain]);
     const dataProduct2 = new DataProduct([domain]);
     await domain.create(apiContext);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await test.step('Add assets to domain', async () => {
       await redirectToHomePage(page);
@@ -415,7 +415,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       // Verify assets count is 0 after removal
       await checkAssetsCount(page, 0);
@@ -432,7 +432,7 @@ test.describe('Domains', () => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     await domain.create(apiContext);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
@@ -453,7 +453,7 @@ test.describe('Domains', () => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
     await domain.create(apiContext);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await sidebarClick(page, SidebarItem.DOMAIN);
     await addAssetsToDomain(page, domain, assets);
     await page.getByTestId('documentation').click();
@@ -619,7 +619,7 @@ test.describe('Domains', () => {
       await dataProduct1.create(apiContext);
       await dataProduct2.create(apiContext);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await addAssetsToDomain(page, domain, assets);
       await verifyDataProductAssetsAfterDelete(page, {
         domain,
@@ -633,7 +633,7 @@ test.describe('Domains', () => {
         await domain1.create(apiContext);
         await newDomainDP1.create(apiContext);
         await newDomainDP2.create(apiContext);
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, newDomainDP1.data);
@@ -683,7 +683,7 @@ test.describe('Domains', () => {
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await redirectToHomePage(page);
       const dataProductFqn =
         dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name;
@@ -794,7 +794,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Add assets to domain', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -942,7 +942,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Verify domain data products tab shows both domain and subdomain data products', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -1087,7 +1087,7 @@ test.describe('Domains', () => {
         );
 
         // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -1180,7 +1180,7 @@ test.describe('Domains', () => {
     const domain = new Domain();
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain.data);
@@ -1265,7 +1265,7 @@ test.describe('Domains', () => {
 
     try {
       await parentDomain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await test.step('Navigate to domain and open subdomain modal', async () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
@@ -1347,11 +1347,11 @@ test.describe('Domains', () => {
     const domain = new Domain();
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await page.getByTestId('domain-dropdown').click();
       await page.getByTestId('all-domains-selector').click();
 
@@ -1375,7 +1375,7 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await dataProduct.create(apiContext);
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await redirectToHomePage(page);
 
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -1423,7 +1423,7 @@ test.describe('Domains', () => {
     });
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       const addDomainButton = page.click('[data-testid="add-domain"]');
@@ -1460,7 +1460,7 @@ test.describe('Domains', () => {
 
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await test.step('Navigate to domain and assign custom property value', async () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
@@ -1499,7 +1499,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Reload and verify custom property value persists', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -1528,7 +1528,7 @@ test.describe('Domains', () => {
 
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
@@ -1563,7 +1563,7 @@ test.describe('Domains', () => {
 
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
       await createDataProduct(page, dataProduct.data);
@@ -2010,7 +2010,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const newDomainName = `renamed-dp-domain-${uuid()}`;
       await renameDomain(page, newDomainName);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       currentDomainName = newDomainName;
@@ -2841,7 +2841,8 @@ test.describe('Domains Rbac', () => {
           }/name/${fqn}*`
         );
         await userPage.goto(
-          `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`
+          `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await assetData;
 
@@ -3001,7 +3002,9 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Navigate to the domain table
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
@@ -3017,7 +3020,9 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Navigate to the subdomain table
       const subDomainTableFqn =
         testResources.subDomainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Verify no permission error
       await expect(
@@ -3065,7 +3070,9 @@ test.describe('Domain Access with noDomain() Rule', () => {
     await test.step('Verify user can access domain-assigned table', async () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
@@ -3080,7 +3087,9 @@ test.describe('Domain Access with noDomain() Rule', () => {
     await test.step('Verify user gets permission error for table without domain', async () => {
       const noDomainTableFqn =
         testResources.noDomainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify permission error is shown
@@ -3490,7 +3499,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       await expect(warningModal).not.toBeVisible();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 1);
     } finally {
@@ -3550,7 +3559,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       expect(await commitOnCancel).toBeNull();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 0);
     } finally {
@@ -3652,7 +3661,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       await expect(warningModal).not.toBeVisible();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 1);
     } finally {

@@ -419,7 +419,7 @@ test('Classification Page', async ({ page, browser }) => {
     const databaseSchemasPage = page.waitForResponse(
       'api/v1/databaseSchemas/name/*'
     );
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await databaseSchemasPage;
 
     await waitForAllLoadersToDisappear(page);
@@ -477,7 +477,7 @@ test('Classification Page', async ({ page, browser }) => {
     ).toBeVisible();
 
     // Verify term count is now 0 after deleting the tag
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 

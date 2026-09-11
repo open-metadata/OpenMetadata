@@ -61,7 +61,9 @@ export const visitClassificationPage = async (
       url.url().includes('/api/v1/tags') &&
       url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
-  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
   await expect(
     page
@@ -206,7 +208,7 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('delete-all-button').click();
   await assetsRemoveRes;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('tags-container')
     .getByTestId('loader')

@@ -679,7 +679,7 @@ export const addEmailTeam = async (page: Page, email: string) => {
   await saveEditEmailResponse;
 
   // Reload the page
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await waitForAllLoadersToDisappear(page);
 

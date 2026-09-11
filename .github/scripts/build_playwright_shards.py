@@ -78,13 +78,11 @@ TARGET_MS = 20 * 60 * 1000
 # 19-minute budget feasible again.
 COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
-# Raised 24 → 28 together with the budget revert above. Current chromium
-# content (~71,700 predicted worker-seconds) needs 25 shards at a
-# 19-minute budget — over the old cap, which is exactly why #30784 had to
-# raise the budget instead. 28 leaves ~12% content-growth headroom before
-# planning aborts; if the lane grows past that, split heavy suites (see
-# AUDITED_PARALLEL_SUITES) before considering another cap raise.
-COMMON_MAX_SHARDS = 28
+# Full-run timing history from 34558208874 contains ~101,000 worker-seconds:
+# at three workers and 85% efficiency this needs 35 nineteen-minute shards.
+# Keep a bounded spare shard instead of stretching the timeout or dropping
+# coverage. The planner still uses the smallest count that fits the budget.
+COMMON_MAX_SHARDS = 36
 # Weight assigned to a test that has no timing evidence in `timing-baseline.json`
 # (or in any additional history payloads). Bumped from 20 s → 30 s alongside the
 # all-zero-history fix in `load_history`: a suite re-enabled after being
@@ -105,11 +103,23 @@ AUDITED_PARALLEL_SUITES = {
     # (module-scoped entity constructors generate unique names), so each
     # parallel unit brings its own state without cross-worker collision.
     ("Features/BulkImport.spec.ts", "Bulk Import Export"),
+    # These suites already run fullyParallel. Domains creates unique entities
+    # and Curated Assets owns its user/persona while reading seeded assets.
+    # Partition them before applying the atomic-unit budget; summing every
+    # independent case rejects otherwise valid plans as timings accumulate.
+    ("Features/CuratedAssets.spec.ts", "Curated Assets Widget"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
+    ("Pages/Domains.spec.ts", "Domains"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),
     ("Pages/Lineage/DataAssetLineage.spec.ts", "Column Level Lineage"),
     ("Pages/Lineage/DataAssetLineage.spec.ts", "Data asset lineage"),
+}
+# Dashboard custom-property CRUD and each search category initialize their
+# own data in the parent's beforeAll. Keep each category's default-mode
+# ordering, but let separate shards initialize those independent groups.
+AUDITED_CHILD_SUITE_PARTITIONS = {
+    ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
 }
 ATOMIC_PARALLEL_SCOPES = {
     (
@@ -290,7 +300,19 @@ def discover_units(report: dict[str, Any]) -> list[Unit]:
             continue
         for child in file_suite.get("suites", []):
             specs_with_titles = iter_specs_with_titles(child, (child.get("title", ""),))
-            if (file, child.get("title", "")) in AUDITED_PARALLEL_SUITES:
+            if (file, child.get("title", "")) in AUDITED_CHILD_SUITE_PARTITIONS:
+                parent_title = child["title"]
+                add_specs_to_units(
+                    units, file, parent_title,
+                    ((spec, (parent_title, spec["title"])) for spec in child.get("specs", [])),
+                )
+                for group in child.get("suites", []):
+                    titles = (parent_title, group["title"])
+                    add_specs_to_units(
+                        units, file, " › ".join(titles),
+                        iter_specs_with_titles(group, titles),
+                    )
+            elif (file, child.get("title", "")) in AUDITED_PARALLEL_SUITES:
                 add_specs_as_audited_units(
                     units,
                     file,
@@ -835,7 +857,10 @@ def main() -> None:
             "lane, update FILE_LANE_HINTS in .github/scripts/build_playwright_shards.py."
         )
 
-    oversized_units = [unit for unit in units if unit.weight_ms > TARGET_MS]
+    oversized_units = [
+        unit for unit in units
+        if unit.weight_ms > shard_budget_ms_for_lane(PROJECT_LANES[unit.project])
+    ]
     if oversized_units:
         details = ", ".join(
             f"{unit.key} ({unit.weight_ms / 60_000:.1f}m)"
@@ -847,7 +872,7 @@ def main() -> None:
         # left developers guessing whether to split a suite or restore a
         # dropped lane tag. Point at both fixes concretely.
         raise SystemExit(
-            "Atomic Playwright units exceed the 20-minute execution budget: "
+            "Atomic Playwright units exceed their lane's execution budget: "
             f"{details}\n\n"
             "Common fixes:\n"
             "  * If this suite belongs on a dedicated lane (import-export, "

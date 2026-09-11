@@ -10,629 +10,225 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Page } from '@playwright/test';
+import {
+  createActivityTask,
+  expect,
+  openAssignedTasks,
+  selectActivityFilter,
+  test,
+} from '../../../support/fixtures/taskActivity';
+import { okJson } from '../../../utils/apiResponse';
+import { getTaskCard, getTaskDisplayId } from '../../../utils/task';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
-import { TableClass } from '../../../support/entity/TableClass';
-import { expect, test } from '../../../support/fixtures/base';
-import { TeamClass } from '../../../support/team/TeamClass';
-import { UserClass } from '../../../support/user/UserClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
-import { waitForPageLoaded } from '../../../utils/polling';
-
-/**
- * Team Activity Tests
- *
- * Tests team-related activity feed scenarios:
- * - Team membership changes appear in activity feed
- * - Team-owned entity changes visible to team members
- * - Team assignment to tasks
- * - Team member can see team's activity
- * - User should see changes happening in their team
- */
-
-test.describe('Team Activity - Membership Changes', () => {
-  const adminUser = new UserClass();
-  const teamMember = new UserClass();
-  const newMember = new UserClass();
-  const team = new TeamClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await teamMember.create(apiContext);
-      await newMember.create(apiContext);
-
-      // Create team
-      await team.create(apiContext);
-
-      // Add team member
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/users/-',
-            value: { id: teamMember.responseData.id, type: 'user' },
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-    } finally {
-      await afterAction();
-    }
+const openTeam = async (page: Page, name: string, displayName: string) => {
+  await page.goto(`/settings/members/teams/${encodeURIComponent(name)}`, {
+    waitUntil: 'domcontentloaded',
   });
+  await expect(page.getByTestId('team-heading')).toHaveText(displayName);
+};
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await team.delete(apiContext);
-      await newMember.delete(apiContext);
-      await teamMember.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('team member should see team membership changes in activity feed', async ({
-    browser,
+test.describe('Team membership', () => {
+  test('adding a member updates the team member list', async ({
+    page,
+    activityData: data,
   }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await data.team.addUser(data.apiContext, data.outsider.responseData.id);
+    await data.member.login(page);
+    await openTeam(
+      page,
+      data.team.responseData.name,
+      data.team.responseData.displayName
+    );
+    await expect(
+      page.getByRole('row').filter({ hasText: data.outsider.responseData.name })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('row').filter({ hasText: data.member.responseData.name })
+    ).toBeVisible();
+  });
 
-    // Add new member to team (this creates activity)
-    await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/users/-',
-          value: { id: newMember.responseData.id, type: 'user' },
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
+  test('removing a member updates the list without removing other members', async ({
+    page,
+    activityData: data,
+  }) => {
+    const team = await okJson<{ users: { id: string }[] }>(
+      await data.apiContext.get(
+        `/api/v1/teams/${data.team.responseData.id}?fields=users`
+      ),
+      'Read team members'
+    );
+    const index = team.users.findIndex(
+      (user) => user.id === data.teammate.responseData.id
+    );
+    expect(index).toBeGreaterThanOrEqual(0);
+    await data.team.patch(data.apiContext, [
+      { op: 'remove', path: `/users/${index}` },
+    ]);
+    await data.member.login(page);
+    await openTeam(
+      page,
+      data.team.responseData.name,
+      data.team.responseData.displayName
+    );
+    await expect(
+      page.getByRole('row').filter({ hasText: data.member.responseData.name })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('row').filter({ hasText: data.teammate.responseData.name })
+    ).toHaveCount(0);
+  });
+});
+
+test.describe('Team-owned activity', () => {
+  test('My Data includes activity on assets owned by the user’s team', async ({
+    page,
+    activityData: data,
+  }) => {
+    await data.member.login(page);
+    const widget = await selectActivityFilter(page, 'My Data');
+    await expect(
+      widget.getByTestId('message-container').filter({ hasText: data.summary })
+    ).toBeVisible();
+    await expect(
+      widget
+        .getByTestId('message-container')
+        .filter({ hasText: data.otherSummary })
+    ).toHaveCount(0);
+  });
+
+  test('My Data excludes another team’s activity and retains the user’s own activity', async ({
+    page,
+    activityData: data,
+  }) => {
+    await data.outsider.login(page);
+    const widget = await selectActivityFilter(page, 'My Data');
+    await expect(
+      widget
+        .getByTestId('message-container')
+        .filter({ hasText: data.otherSummary })
+    ).toBeVisible();
+    await expect(
+      widget.getByTestId('message-container').filter({ hasText: data.summary })
+    ).toHaveCount(0);
+  });
+});
+
+test.describe('Tasks assigned to a team', () => {
+  for (const member of ['member', 'teammate'] as const) {
+    test(`${member} sees the exact task assigned to their team`, async ({
+      page,
+      activityData: data,
+    }) => {
+      const task = await createActivityTask(data);
+      await data[member].login(page);
+      const widget = await openAssignedTasks(page);
+      await expect(
+        getTaskCard(page, task.responseData!.taskId, widget)
+      ).toBeVisible();
     });
-    await afterAction();
+  }
 
-    // Login as existing team member
-    const page = await browser.newPage();
-    await teamMember.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    // Check activity feed for team changes
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-
-    if (await feedWidget.isVisible()) {
-      // Look for team-related activity
-      const feedItems = feedWidget.locator('[data-testid="message-container"]');
-      const count = await feedItems.count();
-
-      // Should have some activity (team change might be visible)
-      expect(count).toBeGreaterThanOrEqual(0);
-    }
-
-    await page.close();
-  });
-
-  test('removing team member should create activity', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    // Get current team state
-    const teamResponse = await apiContext.get(
-      `/api/v1/teams/${team.responseData.id}`
+  test('non-member sees their own task without seeing a task assigned to another team', async ({
+    page,
+    activityData: data,
+  }) => {
+    const teamTask = await createActivityTask(data);
+    const ownTask = await createActivityTask(
+      data,
+      data.outsider.responseData.name,
+      data.otherTable
     );
-    const currentTeam = await teamResponse.json();
-    const userIndex = currentTeam.users?.findIndex(
-      (u: { id: string }) => u.id === newMember.responseData.id
-    );
-
-    if (userIndex >= 0) {
-      // Remove the new member
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'remove',
-            path: `/users/${userIndex}`,
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-    }
-    await afterAction();
-
-    // Login as existing team member and check feed
-    const page = await browser.newPage();
-    await teamMember.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    // Activity feed should reflect team changes
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    await expect(feedWidget).toBeVisible();
-
-    await page.close();
-  });
-});
-
-test.describe('Team Activity - Team Owned Entities', () => {
-  const adminUser = new UserClass();
-  const teamMember1 = new UserClass();
-  const teamMember2 = new UserClass();
-  const nonTeamMember = new UserClass();
-  const team = new TeamClass();
-  const teamOwnedTable = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await teamMember1.create(apiContext);
-      await teamMember2.create(apiContext);
-      await nonTeamMember.create(apiContext);
-
-      // Create team with members
-      await team.create(apiContext);
-
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/users',
-            value: [
-              { id: teamMember1.responseData.id, type: 'user' },
-              { id: teamMember2.responseData.id, type: 'user' },
-            ],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      // Create table owned by team
-      await teamOwnedTable.create(apiContext);
-      await teamOwnedTable.setOwner(apiContext, {
-        id: team.responseData.id,
-        type: 'team',
-      });
-    } finally {
-      await afterAction();
-    }
+    await data.outsider.login(page);
+    const widget = await openAssignedTasks(page);
+    await expect(
+      getTaskCard(page, ownTask.responseData!.taskId, widget)
+    ).toBeVisible();
+    await expect(
+      getTaskCard(page, teamTask.responseData!.taskId, widget)
+    ).toHaveCount(0);
   });
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await teamOwnedTable.delete(apiContext);
-      await team.delete(apiContext);
-      await nonTeamMember.delete(apiContext);
-      await teamMember2.delete(apiContext);
-      await teamMember1.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('team member should see team-owned entity changes', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    // Make a change to team-owned table
-    await apiContext.patch(
-      `/api/v1/tables/${teamOwnedTable.entityResponseData?.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/description',
-            value: 'Team owned table description updated',
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      }
-    );
-    await afterAction();
-
-    // Login as team member and check they can see the change
-    const page = await browser.newPage();
-    await teamMember1.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    // Should see activity related to team's entities
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    await expect(feedWidget).toBeVisible();
-
-    await page.close();
-  });
-
-  test('non-team member should not see team-only activity', async ({
+  test('team member approves a team-assigned task and saves the suggested description', async ({
     page,
+    activityData: data,
   }) => {
-    await nonTeamMember.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-
-    if (await feedWidget.isVisible()) {
-      // Filter to "My Data" or similar
-      const myDataFilter = feedWidget.getByRole('button', {
-        name: /my data|@mentions/i,
-      });
-
-      if (await myDataFilter.isVisible()) {
-        await myDataFilter.click();
-        await waitForPageLoaded(page);
-
-        // Should not see team-owned entity activity
-        // (unless entity is public or user has access)
-      }
-    }
-  });
-});
-
-test.describe('Team Activity - Tasks Assigned to Team', () => {
-  const adminUser = new UserClass();
-  const teamMember1 = new UserClass();
-  const teamMember2 = new UserClass();
-  const nonTeamMember = new UserClass();
-  const team = new TeamClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await teamMember1.create(apiContext);
-      await teamMember2.create(apiContext);
-      await nonTeamMember.create(apiContext);
-
-      await team.create(apiContext);
-
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/users',
-            value: [
-              { id: teamMember1.responseData.id, type: 'user' },
-              { id: teamMember2.responseData.id, type: 'user' },
-            ],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      await table.create(apiContext);
-
-      // Create task assigned to team
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: {
-            type: 'table',
-            id: table.entityResponseData?.id,
-            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
-          },
-          type: 'RequestDescription',
-          assignees: [{ id: team.responseData.id, type: 'team' }],
-          payload: {
-            suggestedValue: 'Team assigned task',
-          },
-        },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await team.delete(apiContext);
-      await nonTeamMember.delete(apiContext);
-      await teamMember2.delete(apiContext);
-      await teamMember1.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('team member should see tasks assigned to their team', async ({
-    page,
-  }) => {
-    await teamMember1.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    const tasksFilter = feedWidget.getByRole('button', { name: /tasks/i });
-
-    if (await tasksFilter.isVisible()) {
-      await tasksFilter.click();
-      await waitForPageLoaded(page);
-
-      // Team member should see tasks assigned to their team
-      const taskCards = feedWidget.locator('[data-testid="task-feed-card"]');
-      const count = await taskCards.count();
-
-      expect(count).toBeGreaterThan(0);
-    }
-  });
-
-  test('different team member should also see team-assigned task', async ({
-    page,
-  }) => {
-    await teamMember2.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    const tasksFilter = feedWidget.getByRole('button', { name: /tasks/i });
-
-    if (await tasksFilter.isVisible()) {
-      await tasksFilter.click();
-      await waitForPageLoaded(page);
-
-      const taskCards = feedWidget.locator('[data-testid="task-feed-card"]');
-      const count = await taskCards.count();
-
-      expect(count).toBeGreaterThan(0);
-    }
-  });
-
-  test('non-team member should NOT see team-assigned task in their tasks', async ({
-    page,
-  }) => {
-    await nonTeamMember.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
-
-    // Check notification box for task assignments
-    const notificationBell = page.getByTestId('task-notifications');
-
-    if (await notificationBell.isVisible()) {
-      await notificationBell.click();
-
-      const notificationBox = page.locator('.notification-box');
-
-      if (await notificationBox.isVisible()) {
-        const tasksTab = notificationBox.getByText('Tasks', { exact: false });
-
-        if (await tasksTab.isVisible()) {
-          await tasksTab.click();
-          await waitForPageLoaded(page);
-
-          // Non-team member should NOT see team-assigned tasks
-          // (unless they're also assigned personally)
-        }
-      }
-    }
-  });
-
-  test('team member should be able to resolve team-assigned task', async ({
-    page,
-  }) => {
-    await teamMember1.login(page);
-    await table.visitEntityPage(page);
-
+    const task = await createActivityTask(data);
+    await data.member.login(page);
+    await data.table.visitEntityPage(page);
     await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      // Team member should see approve/reject buttons for team-assigned task
-      const approveBtn = taskCard.getByTestId('approve-button');
-
-      // As team member, should have permission to resolve
-      await expect(approveBtn).toBeVisible();
-    }
-  });
-});
-
-test.describe('Team Activity - Team Page Feed', () => {
-  const adminUser = new UserClass();
-  const teamMember = new UserClass();
-  const team = new TeamClass();
-  const teamOwnedTable = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await teamMember.create(apiContext);
-
-      await team.create(apiContext);
-
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/users/-',
-            value: { id: teamMember.responseData.id, type: 'user' },
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      await teamOwnedTable.create(apiContext);
-      await teamOwnedTable.setOwner(apiContext, {
-        id: team.responseData.id,
-        type: 'team',
-      });
-
-      // Create some activity
-      await apiContext.patch(
-        `/api/v1/tables/${teamOwnedTable.entityResponseData?.id}`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: '/description',
-              value: 'Activity for team page test',
-            },
-          ],
-          headers: { 'Content-Type': 'application/json-patch+json' },
-        }
-      );
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await teamOwnedTable.delete(apiContext);
-      await team.delete(apiContext);
-      await teamMember.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('team page should show activity feed for team', async ({ page }) => {
-    await adminUser.login(page);
-
-    // Navigate to team page
-    await page.goto(`/settings/members/teams/${team.responseData.name}`);
-    await waitForPageLoaded(page);
-
-    // Team page should have activity feed section
-    const activityFeedSection = page.locator(
-      '[data-testid="activity-feed"], [data-testid="team-activity"]'
+    await page.getByRole('menuitem', { name: /^Tasks/ }).click();
+    const response = waitForResponseWithStatus(
+      page,
+      (result) =>
+        result.request().method() === 'POST' &&
+        new URL(result.url()).pathname ===
+          `/api/v1/tasks/${task.responseData!.id}/resolve`,
+      200
     );
-
-    // Activity feed should be visible on team page
-    // (exact implementation depends on UI)
-    await expect(page).not.toHaveURL('/404');
+    await getTaskCard(page, task.responseData!.taskId)
+      .getByTestId('approve-button')
+      .click();
+    expect((await (await response).json()).status).toBe('Approved');
+    expect((await task.get(data.apiContext)).status).toBe('Approved');
+    const table = await okJson<{ description: string }>(
+      await data.apiContext.get(
+        `/api/v1/tables/${data.table.entityResponseData.id}`
+      ),
+      'Read team-approved description'
+    );
+    expect(table.description).toBe(task.data.payload!.suggestedValue);
+    await data.table.visitEntityPage(page);
+    await expect(page.getByTestId('asset-description-container')).toContainText(
+      table.description
+    );
   });
 });
 
-test.describe('Team Activity - Notifications', () => {
-  const adminUser = new UserClass();
-  const teamMember = new UserClass();
-  const team = new TeamClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await teamMember.create(apiContext);
-
-      await team.create(apiContext);
-
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/users/-',
-            value: { id: teamMember.responseData.id, type: 'user' },
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      await table.create(apiContext);
-
-      // Create task assigned to team
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: {
-            type: 'table',
-            id: table.entityResponseData?.id,
-            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
-          },
-          type: 'RequestDescription',
-          assignees: [{ id: team.responseData.id, type: 'team' }],
-        },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await team.delete(apiContext);
-      await teamMember.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('team member should receive notification for team-assigned task', async ({
+test('team page lists the team-owned asset', async ({
+  page,
+  activityData: data,
+}) => {
+  await data.member.login(page);
+  await openTeam(
     page,
-  }) => {
-    await teamMember.login(page);
-    await redirectToHomePage(page);
-    await waitForPageLoaded(page);
+    data.team.responseData.name,
+    data.team.responseData.displayName
+  );
+  await page.getByRole('tab', { name: /^Assets/ }).click();
+  await expect(
+    page
+      .getByTestId(
+        `table-data-card_${data.table.entityResponseData.fullyQualifiedName}`
+      )
+      .getByTestId('entity-link')
+  ).toBeVisible();
+});
 
-    // Check notification bell
-    const notificationBell = page.getByTestId('task-notifications');
-
-    if (await notificationBell.isVisible()) {
-      // Check if notification badge shows count
-      const badge = notificationBell.locator('.ant-badge-count');
-
-      if (await badge.isVisible()) {
-        const count = await badge.textContent();
-        const notificationCount = parseInt(count || '0', 10);
-
-        // Should have at least one notification (team task)
-        expect(notificationCount).toBeGreaterThanOrEqual(0);
-      }
-
-      // Click to open notifications
-      await notificationBell.click();
-
-      const notificationBox = page.locator('.notification-box');
-
-      if (await notificationBox.isVisible()) {
-        // Look for Tasks tab
-        const tasksTab = notificationBox.getByText('Tasks', { exact: false });
-
-        if (await tasksTab.isVisible()) {
-          await tasksTab.click();
-          await waitForPageLoaded(page);
-
-          // Should see team-assigned task
-          const taskItems = notificationBox.locator(
-            '[data-testid^="notification-link-"]'
-          );
-          const taskCount = await taskItems.count();
-
-          expect(taskCount).toBeGreaterThanOrEqual(0);
-        }
-      }
-    }
+test('team member receives a notification linking to the assigned task', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data);
+  await data.member.login(page);
+  const response = waitForResponseWithStatus(
+    page,
+    (result) =>
+      result.request().method() === 'GET' &&
+      new URL(result.url()).pathname === '/api/v1/tasks/assigned',
+    200
+  );
+  await page.getByTestId('task-notifications').click();
+  await response;
+  const box = page.locator('.notification-box');
+  const link = box.getByRole('link', {
+    name: new RegExp(`^${getTaskDisplayId(task.responseData!.taskId)} `),
   });
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page.getByTestId('entity-header-name')).toHaveText(
+    data.table.entityResponseData.name
+  );
+  await expect(getTaskCard(page, task.responseData!.taskId)).toBeVisible();
 });

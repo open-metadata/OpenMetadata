@@ -384,7 +384,7 @@ test.describe('Data Contracts', () => {
         await triggerContractValidation(page, contractId);
         await toastPromise;
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await waitForAllLoadersToDisappear(page);
 
@@ -738,7 +738,9 @@ test.describe('Data Contracts', () => {
     try {
       await test.step('Redirect to Home Page and visit entity', async () => {
         await redirectToHomePage(page);
-        await page.goto(`/table/${entityFQN}`);
+        await page.goto(`/table/${entityFQN}`, {
+          waitUntil: 'domcontentloaded',
+        });
 
         await waitForAllLoadersToDisappear(page);
       });
@@ -955,7 +957,9 @@ test.describe('Data Contracts', () => {
     } finally {
       await test.step('Delete contract', async () => {
         await redirectToHomePage(page);
-        await page.goto(`/table/${entityFQN}`);
+        await page.goto(`/table/${entityFQN}`, {
+          waitUntil: 'domcontentloaded',
+        });
 
         await waitForAllLoadersToDisappear(page);
 
@@ -1158,7 +1162,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -1352,7 +1356,7 @@ test.describe('Data Contracts', () => {
     );
     await toastPromise;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -1516,7 +1520,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-run-now-button').click();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -2355,13 +2359,16 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 DATA_CONTRACT_DETAILS.description
               );
 
-              await page.getByTestId('select-owners').click();
-              await page
-                .locator('.rc-virtual-list-holder-inner li')
-                .first()
-                .click();
+              await addOwnerWithoutValidation({
+                page,
+                owner: adminUser.getUserDisplayName(),
+                type: 'Users',
+                initiatorId: 'select-owners',
+              });
 
-              await expect(page.getByTestId('user-tag')).toBeVisible();
+              await expect(page.getByTestId('user-tag')).toContainText(
+                adminUser.getUserDisplayName()
+              );
 
               // Fill Contract Semantics form
               await page.getByRole('tab', { name: 'Semantics' }).click();

@@ -398,7 +398,7 @@ test.describe(
 
       await policy.create(apiContext, policyRules);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 

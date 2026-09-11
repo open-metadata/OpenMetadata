@@ -180,7 +180,7 @@ test.describe(
         'Updated dimension description.'
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await expect(page.getByTestId('semantic-item-order_date')).toContainText(
         'Updated dimension description.'

@@ -126,15 +126,14 @@ export const reactOnFeedCard = async (page: Page, message: Locator) => {
 
     await addReactionButton.click();
 
-    await page
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
+    const popup = page.locator('.ant-popover-feed-reactions:visible');
+    await expect(popup).toBeVisible();
+    await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
 
     const reactionResponse = waitForReactionResponse(page, reaction);
-    await page
-      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
-      .click();
+    await popup.getByRole('button', { name: reaction, exact: true }).click();
     await reactionResponse;
+    await expect(popup).toBeHidden();
   }
 };
 

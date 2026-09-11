@@ -218,7 +218,9 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
-  await page.goto('/data-quality/test-suites');
+  await page.goto('/data-quality/test-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await listPromise;
 };
 
@@ -236,7 +238,9 @@ export const visitTestSuiteDetailsPage = async (
   suiteFqn: string
 ) => {
   const detailsPromise = waitForTestSuiteDetailsResponse(page);
-  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await detailsPromise;
 };
 
@@ -328,7 +332,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto('/test-library');
+  await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
   let response = await responsePromise;
   let data = await response.json();
 
@@ -392,7 +396,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   const testCaseListResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.goto(`/test-suites/${testSuiteFqn}`);
+  await page.goto(`/test-suites/${testSuiteFqn}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await testCaseListResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').waitFor({
@@ -405,7 +411,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  * @param page - Playwright page object
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await page.getByTestId('manage-button').waitFor();
 };
 
@@ -509,7 +517,7 @@ export const verifyPageAccess = async (
   const permissionResponse = page.waitForResponse((response) =>
     response.url().includes('api/v1/permissions')
   );
-  await page.goto(url);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await permissionResponse;
   await waitForAllLoadersToDisappear(page);
 

@@ -34,11 +34,6 @@
       "count": 25
     }
   },
-  "playwright/e2e/Features/ActivityStream.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
-    }
-  },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 20
@@ -272,7 +267,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts": {
@@ -407,7 +402,7 @@
   },
   "playwright/e2e/Features/SSOConfiguration.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 31
+      "count": 24
     }
   },
   "playwright/e2e/Features/SSOTestLogin.spec.ts": {
@@ -455,62 +450,14 @@
       "count": 10
     }
   },
-  "playwright/e2e/Features/Tasks.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 4
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 3
-    }
-  },
-  "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 4
-    }
-  },
   "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
     }
   },
-  "playwright/e2e/Features/Tasks/TaskComments.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 24
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskCreation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 8
-    }
-  },
   "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 7
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts": {
-    "playwright/no-wait-for-selector": {
-      "count": 1
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskResolution.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
-  "playwright/e2e/Features/Tasks/TeamActivity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts": {
@@ -630,7 +577,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 22
+      "count": 21
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
@@ -808,11 +755,6 @@
       "count": 8
     }
   },
-  "playwright/e2e/Pages/TaskComments.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/TaskFormSettings.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -902,7 +844,7 @@
   },
   "playwright/utils/ContextCenterUtil.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 10
     }
   },
   "playwright/utils/KnowledgeCenter.ts": {
@@ -1099,7 +1041,7 @@
   },
   "playwright/utils/sso.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 9
     }
   },
   "playwright/utils/tag.ts": {
@@ -1114,10 +1056,7 @@
   },
   "playwright/utils/taskWorkflow.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 22
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 1
+      "count": 17
     }
   },
   "playwright/utils/team.ts": {

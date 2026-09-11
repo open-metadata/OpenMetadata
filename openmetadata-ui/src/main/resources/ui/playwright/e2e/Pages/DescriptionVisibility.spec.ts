@@ -65,7 +65,7 @@ test.describe(
         const adminPage = await browser.newPage({
           storageState: 'playwright/.auth/admin.json',
         });
-        await adminPage.goto('/');
+        await adminPage.goto('/', { waitUntil: 'domcontentloaded' });
         const { apiContext, afterAction } = await getApiContext(adminPage);
 
         const id = uuid();

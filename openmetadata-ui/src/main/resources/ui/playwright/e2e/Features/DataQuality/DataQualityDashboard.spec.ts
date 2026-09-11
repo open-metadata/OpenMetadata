@@ -720,7 +720,7 @@ test.describe(
               },
             }
           );
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           latest = await fetchLatestIncident();
         }
@@ -957,7 +957,8 @@ test.describe(
                 `/data-quality/test-cases.*dataQualityDimension=${encodeURIComponent(
                   dimension.urlValue
                 )}`
-              )
+              ),
+              { waitUntil: 'domcontentloaded' }
             );
             await dimensionCard.click();
             await navigationPromise;
@@ -987,16 +988,20 @@ test.describe(
           TestCaseStatus.Failed,
           TestCaseStatus.Aborted,
         ];
-        const navFailed = page.waitForURL((url) => {
-          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+        const navFailed = page.waitForURL(
+          (url) => {
+            const selectedStatuses =
+              url.searchParams.getAll('testCaseStatus[]');
 
-          return (
-            url.pathname === '/data-quality/test-cases' &&
-            expectedStatuses.every((status) =>
-              selectedStatuses.includes(status)
-            )
-          );
-        });
+            return (
+              url.pathname === '/data-quality/test-cases' &&
+              expectedStatuses.every((status) =>
+                selectedStatuses.includes(status)
+              )
+            );
+          },
+          { waitUntil: 'domcontentloaded' }
+        );
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
@@ -1023,7 +1028,8 @@ test.describe(
 
       await test.step('Click success segment and verify redirect', async () => {
         const navSuccess = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Success/
+          /\/data-quality\/test-cases.*testCaseStatus=Success/,
+          { waitUntil: 'domcontentloaded' }
         );
         await clickPieChartSegmentByIndex(
           page,
@@ -1045,7 +1051,8 @@ test.describe(
 
       await test.step('Click failed segment and verify redirect', async () => {
         const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
+          /\/data-quality\/test-cases.*testCaseStatus=Failed/,
+          { waitUntil: 'domcontentloaded' }
         );
         await clickPieChartSegmentByIndex(
           page,
@@ -1067,7 +1074,8 @@ test.describe(
 
       await test.step('Click aborted segment and verify redirect', async () => {
         const navAborted = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Aborted/
+          /\/data-quality\/test-cases.*testCaseStatus=Aborted/,
+          { waitUntil: 'domcontentloaded' }
         );
         await clickPieChartSegmentByIndex(
           page,
@@ -1092,7 +1100,9 @@ test.describe(
       });
 
       await test.step('Click covered segment and verify redirect to Test Suites', async () => {
-        const navTestSuites = page.waitForURL(/\/data-quality\/test-suites/);
+        const navTestSuites = page.waitForURL(/\/data-quality\/test-suites/, {
+          waitUntil: 'domcontentloaded',
+        });
         await clickPieChartSegmentByIndex(
           page,
           DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
@@ -1111,7 +1121,9 @@ test.describe(
       });
 
       await test.step('Click not covered segment and verify redirect to Explore', async () => {
-        const navExplore = page.waitForURL(/\/explore/);
+        const navExplore = page.waitForURL(/\/explore/, {
+          waitUntil: 'domcontentloaded',
+        });
         await clickPieChartSegmentByIndex(
           page,
           DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
@@ -1128,7 +1140,9 @@ test.describe(
       const dataProductName = dataProduct.data.name;
 
       await test.step('Navigate to DQ Test Cases tab', async () => {
-        await page.goto('/data-quality/test-cases');
+        await page.goto('/data-quality/test-cases', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
       });
 

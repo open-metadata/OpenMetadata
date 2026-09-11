@@ -78,7 +78,9 @@ test.describe(
             r.url().includes('/api/v1/dataQuality/testSuites/search/list'),
           200
         );
-        await page.goto('/data-quality/test-suites/bundle-suites');
+        await page.goto('/data-quality/test-suites/bundle-suites', {
+          waitUntil: 'domcontentloaded',
+        });
         await listResponse;
         await waitForAllLoadersToDisappear(page);
 

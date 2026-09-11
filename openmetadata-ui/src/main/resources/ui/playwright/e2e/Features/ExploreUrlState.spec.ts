@@ -197,7 +197,7 @@ test('a deep-linked filter URL restores chips and filtered results', async ({
 
   await test.step('Open the URL in a fresh navigation — state is restored', async () => {
     await redirectToHomePage(page);
-    await page.goto(capturedUrl);
+    await page.goto(capturedUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -229,7 +229,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
     page.getByTestId('query-chip-entityType.keyword-table')
   ).toBeVisible();
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -264,7 +264,7 @@ test('a browse-location deep link highlights the tree and clears on chip removal
 
   await test.step('Reopening the browse URL re-highlights the node', async () => {
     await redirectToHomePage(page);
-    await page.goto(browseUrl);
+    await page.goto(browseUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
@@ -359,7 +359,9 @@ test('an impossible filter combination shows the no-results placeholder and reco
         query: { bool: { must: [...ownerMust, ...topicMust] } },
       })
     );
-    await page.goto(impossibleUrl.pathname + impossibleUrl.search);
+    await page.goto(impossibleUrl.pathname + impossibleUrl.search, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).toBeVisible();
@@ -382,7 +384,9 @@ test('applying a filter from a deep page preserves pagination params', async ({
   test.slow();
 
   await test.step('Navigate to an explore page beyond the first', async () => {
-    await page.goto('/explore/tables?currentPage=2&pageSize=25');
+    await page.goto('/explore/tables?currentPage=2&pageSize=25', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
     expect(page.url()).toContain('currentPage=2');
     expect(page.url()).toContain('pageSize=25');

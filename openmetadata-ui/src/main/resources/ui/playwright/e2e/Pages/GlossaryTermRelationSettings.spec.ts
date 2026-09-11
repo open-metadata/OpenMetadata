@@ -77,7 +77,7 @@ const deleteRelationTypeByNameViaApi = async (
 };
 
 const goToRelationSettings = async (page: Page) => {
-  await page.goto(RELATION_SETTINGS_ROUTE);
+  await page.goto(RELATION_SETTINGS_ROUTE, { waitUntil: 'domcontentloaded' });
   // Wait for at least one row rather than intercepting the API response.
   // React Query may serve data from cache without a network request, so
   // page.waitForResponse would hang forever on repeat navigations.

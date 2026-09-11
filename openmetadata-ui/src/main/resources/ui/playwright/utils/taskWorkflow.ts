@@ -21,6 +21,7 @@ import {
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import {
+  getTaskCard as findTaskCard,
   waitForTaskActionResponse,
   waitForTaskCommentResponse,
   waitForTaskCreateResponse,
@@ -40,7 +41,6 @@ export interface CreatedTask {
   status?: string;
 }
 
-const TASK_CARD_SELECTOR = '[data-testid="task-feed-card"]';
 const TASK_TAB_SELECTOR = '[data-testid="task-tab"]';
 const TASK_PANEL_SELECTOR = '#task-panel';
 const VISIBLE_TASK_MODAL_SELECTOR = '.ant-modal-wrap:visible';
@@ -62,46 +62,19 @@ const selectTagSuggestion = async ({
   searchText: string;
   tagTestId: string;
 }) => {
-  const tagSelector = root.locator('[data-testid="tag-selector"]').first();
-  const tagsInput = tagSelector
-    .locator(
-      '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
-    )
-    .first();
-  const tagOption = page.getByTestId(tagTestId).first();
-  const tagSearchResponse = page
-    .waitForResponse(
-      (response) => {
-        const url = response.url();
-
-        return (
-          url.includes('/api/v1/search/query') && /[?&]index=tag(&|$)/.test(url)
-        );
-      },
-      { timeout: 5000 }
-    )
-    .catch(() => null);
-
-  logTaskDebug('selectTagSuggestion:start', searchText, tagTestId);
-  if (!(await tagsInput.isVisible().catch(() => false))) {
-    await tagSelector.click().catch(() => undefined);
-  }
-
-  await expect(tagsInput).toBeVisible({ timeout: 5000 });
-  await tagsInput.click().catch(() => undefined);
+  const tagSelector = root.getByTestId('tag-selector');
+  const tagsInput = tagSelector.getByRole('combobox');
+  const tagOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId(tagTestId);
+  await tagsInput.focus();
+  await tagsInput.press('ArrowDown');
   await tagsInput.fill(searchText);
-  logTaskDebug('selectTagSuggestion:filled', searchText);
-
-  await Promise.race([
-    tagSearchResponse,
-    tagOption.waitFor({ state: 'visible', timeout: 5000 }),
-  ]).catch(() => undefined);
-
-  await expect(tagOption).toBeVisible({ timeout: 5000 });
-  logTaskDebug('selectTagSuggestion:optionVisible', tagTestId);
+  await expect(tagOption).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   await tagOption.click();
-  await page.keyboard.press('Escape');
-  logTaskDebug('selectTagSuggestion:done', tagTestId);
+  await tagsInput.press('Escape');
+  await expect(tagSelector.getByTestId(tagTestId)).toBeVisible();
 };
 
 const clickDropdownMenuItem = async ({
@@ -125,16 +98,6 @@ const clickDropdownMenuItem = async ({
 
 export const formatTaskFieldValue = (value: string) => {
   return value;
-};
-
-export const getTaskDisplayId = (taskId?: string) => {
-  if (!taskId) {
-    return '';
-  }
-
-  const matchedTaskId = /^TASK-0*([0-9]+)$/.exec(taskId);
-
-  return matchedTaskId?.[1] ?? taskId;
 };
 
 export const buildTaskRoute = ({
@@ -165,36 +128,28 @@ export const buildTaskRoute = ({
 };
 
 export const openTaskForm = async (page: Page, route: string) => {
-  await page.goto(route);
-  await page.waitForSelector('[data-testid="form-container"]', {
-    state: 'visible',
-  });
+  await page.goto(route, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('form-container')).toBeVisible();
 };
 
 export const selectAssignee = async (page: Page, assigneeName: string) => {
-  const assigneeInput = page.locator(
-    '[data-testid="select-assignee"] .ant-select-selection-search input'
-  );
-  const assigneeOption = page.getByTestId(assigneeName).first();
-  const assigneeSearchResponse = page
-    .waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' &&
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('user'),
-      { timeout: 5000 }
-    )
-    .catch(() => null);
-
-  await assigneeInput.click();
+  const assigneeField = page.getByTestId('select-assignee');
+  const assigneeInput = assigneeField.getByRole('combobox');
+  const assigneeOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId(assigneeName);
+  await assigneeInput.focus();
+  await assigneeInput.press('ArrowDown');
   await assigneeInput.fill(assigneeName);
-  await Promise.race([
-    assigneeSearchResponse,
-    assigneeOption.waitFor({ state: 'visible', timeout: 5000 }),
-  ]).catch(() => undefined);
   await expect(assigneeOption).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   await assigneeOption.click();
   await clickOutside(page);
+  await expect(
+    assigneeField
+      .locator('.ant-select-selection-item')
+      .getByTestId(assigneeName)
+  ).toBeVisible();
 };
 
 export const createDescriptionTaskFromForm = async ({
@@ -288,12 +243,7 @@ export const openEntityTasksTab = async (page: Page) => {
 };
 
 export const getTaskCard = (page: Page, task: CreatedTask) => {
-  const taskDisplayId = getTaskDisplayId(task.taskId);
-
-  return page
-    .locator(TASK_CARD_SELECTOR)
-    .filter({ hasText: `#${taskDisplayId}` })
-    .first();
+  return findTaskCard(page, task.taskId);
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {

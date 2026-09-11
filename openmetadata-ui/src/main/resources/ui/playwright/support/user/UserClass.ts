@@ -278,11 +278,14 @@ export class UserClass {
 
     await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     try {
-      await page.waitForURL('**/signin', { timeout: 5000 });
+      await page.waitForURL('**/signin', {
+        waitUntil: 'domcontentloaded',
+        timeout: 5000,
+      });
     } catch {
       await page.context().clearCookies();
       await page.goto('/signin', { waitUntil: 'domcontentloaded' });
-      await page.waitForURL('**/signin');
+      await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
     }
     await page.waitForLoadState('domcontentloaded');
     const emailInput = page.locator('input[id="email"]');
@@ -295,6 +298,7 @@ export class UserClass {
     await loginRes;
     await page
       .waitForURL((url) => !url.pathname.includes('/signin'), {
+        waitUntil: 'domcontentloaded',
         timeout: 60000,
       })
       .catch(() => undefined);
@@ -340,7 +344,9 @@ export class UserClass {
         response.url().includes('/api/v1/users/logout') &&
         response.request().method() === 'POST'
     );
-    const waitSigninNavigation = page.waitForURL('**/signin');
+    const waitSigninNavigation = page.waitForURL('**/signin', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Block analytics collect calls to prevent 401 errors that cause
     // page context to close in fast environments (AUT)

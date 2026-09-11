@@ -210,7 +210,9 @@ test.describe(
     }) => {
       test.slow();
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=sample_data', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
 
       const countApiPromise = waitForResponseWithStatus(
@@ -256,7 +258,8 @@ test.describe(
       );
 
       await page.goto(
-        '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer'
+        '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer',
+        { waitUntil: 'domcontentloaded' }
       );
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
@@ -300,7 +303,9 @@ test.describe(
         200
       );
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=sample_data', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await searchResultsPromise;
       await waitForAllLoadersToDisappear(page);
@@ -389,7 +394,7 @@ test.describe(
         200
       );
 
-      await page.goto('/explore/topics');
+      await page.goto('/explore/topics', { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await browseQueryPromise;
       await waitForAllLoadersToDisappear(page);
@@ -474,7 +479,9 @@ test.describe(
         200
       );
 
-      await page.goto('/explore/tables?search=stored_procedures');
+      await page.goto('/explore/tables?search=stored_procedures', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
 

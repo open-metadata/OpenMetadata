@@ -52,8 +52,15 @@ type ConversationListResponse = {
   data?: ConversationResponse[];
 };
 
-export const getTableFqn = (table: TableClass) =>
-  table.entityResponseData.fullyQualifiedName ?? '';
+export const getTableFqn = (table: TableClass): string => {
+  const fqn = table.entityResponseData.fullyQualifiedName;
+  if (!fqn) {
+    throw new Error(
+      `Table fixture ${table.entityResponseData.name} has no FQN`
+    );
+  }
+  return fqn;
+};
 
 export const getTableLeafName = (table: TableClass) =>
   getTableFqn(table).split('.').pop() ?? getTableFqn(table);

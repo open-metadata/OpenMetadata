@@ -143,7 +143,7 @@ test.describe.serial('Data Insight Report Application', () => {
       )
       .toBe('success');
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await expect(page.getByTestId('logs')).toBeVisible();
 

@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
 import { GlobalSettingOptions } from '../constant/settings';
 import { settingClick } from './sidebar';
 
@@ -54,7 +55,7 @@ export const navigateToSSOConfiguration = async (page: Page) => {
 
   // Wait for the SSO settings URL — covers all states:
   // provider selector (no config), overview (existing config), or form card
-  await page.waitForURL(/settings\/sso/);
+  await page.waitForURL(/settings\/sso/, { waitUntil: 'domcontentloaded' });
 };
 
 /**
@@ -316,7 +317,7 @@ export const verifyValidationErrors = async (
  */
 export const saveSSOConfiguration = async (page: Page) => {
   await page.getByTestId('save-sso-configuration').click();
-  await page.waitForURL('**/signin');
+  await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
 };
 
 /**
@@ -339,7 +340,7 @@ export const saveSSOConfigurationWithVerification = async (page: Page) => {
   const saveResponse = await savePromise;
 
   // Verify we're redirected to signin page
-  await page.waitForURL('**/signin');
+  await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
 
   return {
     validationResponse,
@@ -387,39 +388,19 @@ export const verifyProviderFields = async (
       'sso-configuration-form-array-field-template-allowedEmailRegistrationDomains',
     'Allowed Domains':
       'sso-configuration-form-array-field-template-allowedDomains',
+    'OIDC Request Scopes': 'sso-configuration-form-array-field-template-scope',
   };
 
-  // Verify visible fields
+  const fieldLocator = (field: string) => {
+    const testId = ARRAY_FIELD_TESTIDS[field];
+    return testId
+      ? page.getByTestId(testId)
+      : page.getByLabel(new RegExp(`^${escapeRegExp(field)}\\s*\\*?$`));
+  };
   for (const field of expectedVisibleFields) {
-    const labelLocator = page.getByLabel(field);
-    const labelCount = await labelLocator.count();
-
-    if (labelCount > 0) {
-      await expect(labelLocator.first()).toBeVisible();
-    } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
-
-      if (testId) {
-        await expect(page.getByTestId(testId)).toBeVisible();
-      } else {
-        throw new Error(`Field not found: ${field}`);
-      }
-    }
+    await expect(fieldLocator(field)).toBeVisible();
   }
-
-  // Verify hidden fields
   for (const field of expectedHiddenFields) {
-    const labelLocator = page.getByLabel(field);
-    const labelCount = await labelLocator.count();
-
-    if (labelCount > 0) {
-      await expect(labelLocator).not.toBeVisible();
-    } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
-
-      if (testId) {
-        await expect(page.getByTestId(testId)).not.toBeVisible();
-      }
-    }
+    await expect(fieldLocator(field)).toBeHidden();
   }
 };

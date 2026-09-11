@@ -53,7 +53,7 @@ const test = base.extend<{
 
     const page = await browser.newPage();
     await installServerLoadReducers(page.context());
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
     // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
     // registers a SW -- there is no clients.claim() race to wait out there.

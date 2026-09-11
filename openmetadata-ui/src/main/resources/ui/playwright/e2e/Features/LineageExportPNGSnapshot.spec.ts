@@ -43,7 +43,7 @@ test.describe(
       const lineageResponsePromise = page.waitForResponse(
         '/api/v1/lineage/getLineage*'
       );
-      await page.goto(LINEAGE_URL);
+      await page.goto(LINEAGE_URL, { waitUntil: 'domcontentloaded' });
       await lineageResponsePromise;
 
       // Wait for nodes to render, then wait until the canvas has been drawn.

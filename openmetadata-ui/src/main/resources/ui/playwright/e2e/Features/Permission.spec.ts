@@ -166,7 +166,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
       await policy.patch(apiContext, viewPermission.data.patch as Operation[]);
       await afterAction();
       await redirectToHomePage(userPage);
-      await userPage.reload();
+      await userPage.reload({ waitUntil: 'domcontentloaded' });
       const permissionResponse = userPage.waitForResponse(
         `/api/v1/permissions/table/name/${encodeURIComponent(
           table.entityResponseData?.['fullyQualifiedName']
@@ -196,7 +196,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     ]);
     await afterAction();
     await redirectToHomePage(userPage);
-    await userPage.reload();
+    await userPage.reload({ waitUntil: 'domcontentloaded' });
     const permissionResponse = userPage.waitForResponse(
       `/api/v1/permissions/table/name/${encodeURIComponent(
         table.entityResponseData?.['fullyQualifiedName']
@@ -237,7 +237,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     ]);
     await afterAction();
     await redirectToHomePage(userPage);
-    await userPage.reload();
+    await userPage.reload({ waitUntil: 'domcontentloaded' });
     const permissionResponse = userPage.waitForResponse(
       `/api/v1/permissions/table/name/${encodeURIComponent(
         table.entityResponseData?.['fullyQualifiedName']

@@ -460,7 +460,8 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Navigate to the data product
       await page.goto(
-        `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`
+        `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -540,7 +541,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to first subdomain
       const subDomainFqn = subDomain1.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Check subdomains tab for nested subdomain
       await page.getByTestId('subdomains').click();
@@ -582,7 +585,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to first subdomain
       const subDomainFqn1 = subDomain1.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn1!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn1!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Verify we're on first subdomain
       await expect(
@@ -658,7 +663,8 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table1.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -669,7 +675,8 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table2.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -759,7 +766,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Check subdomain assets count
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await checkAssetsCount(page, 1);
 
       // Check parent domain - assets in subdomains should also count toward parent
@@ -796,7 +805,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to subdomain
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Delete the subdomain (recursive delete)
       await page.getByTestId('manage-button').click();

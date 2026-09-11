@@ -52,14 +52,14 @@ export interface BulkIdsRequest {
   ids?: string[];
 }
 
-interface UploadMultipart {
+type UploadMultipart = {
   file: {
     name: string;
     mimeType: string;
     buffer: Buffer;
   };
   folder?: string;
-}
+};
 
 interface CapturedDownload {
   download: string;
@@ -137,7 +137,7 @@ export const responseMatchesRequestPath = (
   response: Response,
   expectedPath: string
 ): boolean => {
-  let request = response.request();
+  let request: ReturnType<Response['request']> | null = response.request();
 
   while (request) {
     if (request.url().includes(expectedPath)) {
@@ -191,7 +191,7 @@ export const MEMORIES_URL = '/context-center/memories';
 export const MEMORIES_API = '/api/v1/contextCenter/memories';
 
 export const navigateToDashboard = async (page: Page) => {
-  await page.goto(DASHBOARD_URL);
+  await page.goto(DASHBOARD_URL, { waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('context-center-dashboard-page')
     .waitFor({ state: 'visible' });
@@ -275,7 +275,7 @@ export const waitForRecentlyViewed = async (
 };
 
 export const navigateToArticles = async (page: Page) => {
-  await page.goto(ARTICLES_URL);
+  await page.goto(ARTICLES_URL, { waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
@@ -283,7 +283,7 @@ export const navigateToArticles = async (page: Page) => {
 };
 
 export const navigateToDocuments = async (page: Page) => {
-  await page.goto(DOCUMENTS_URL);
+  await page.goto(DOCUMENTS_URL, { waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('context-center-documents-page')
     .waitFor({ state: 'visible' });
@@ -291,7 +291,7 @@ export const navigateToDocuments = async (page: Page) => {
 };
 
 export const navigateToMemories = async (page: Page) => {
-  await page.goto(MEMORIES_URL);
+  await page.goto(MEMORIES_URL, { waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('context-center-memories-page')
     .waitFor({ state: 'visible' });
@@ -299,7 +299,7 @@ export const navigateToMemories = async (page: Page) => {
 };
 
 export const navigateToArchive = async (page: Page) => {
-  await page.goto('/context-center/archive');
+  await page.goto('/context-center/archive', { waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('context-center-archive-page')
     .waitFor({ state: 'visible' });
@@ -925,11 +925,16 @@ export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
   const searchInput = header
     .getByTestId('search-input')
     .getByLabel('Search Articles');
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.url().includes('index=page')
-  );
+  const searchResPromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'page' &&
+      url.searchParams.get('q') === searchTerm &&
+      url.searchParams.get('from') === '0'
+    );
+  });
 
   await searchInput.fill(searchTerm);
   const searchRes = await searchResPromise;
@@ -948,57 +953,20 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
   await listing.waitFor({ state: 'visible' });
 
-  const getLastCard = () =>
-    listing
-      .locator('[data-testid^="knowledge-card-"]')
-      .last()
-      .getAttribute('data-testid');
-
-  let previousLastCard = '';
-  // Require 3 consecutive unchanged readings before concluding end-of-list.
-  // A single unchanged reading can be a false positive when the scroll lands
-  // just before the next infinite-scroll fetch threshold.
-  let staleCount = 0;
-
-  for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
-    await scrollNearestScrollableAncestor(listing);
-    await expect(
-      listing.locator('[data-testid^="knowledge-card-"]').first()
-    ).toBeVisible();
-
-    let lastCard = await getLastCard();
-
-    if (lastCard === previousLastCard) {
-      // The last card may look unchanged because the scroll has only just
-      // flipped the observer element into view — the component still needs
-      // a render tick before its effect fires and issues the pagination
-      // fetch. Register the response wait now (not before the scroll) so
-      // its timeout window covers that render+effect+network latency
-      // instead of racing against it.
-      await page
-        .waitForResponse(
-          (res) => res.url().includes('/api/v1/contextCenter/pages'),
-          { timeout: 5000 }
-        )
-        .catch(() => null);
-
-      lastCard = await getLastCard();
-
-      if (lastCard === previousLastCard) {
-        staleCount += 1;
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
-        await page.waitForTimeout(1000);
-        if (staleCount >= 5) {
-          break;
-        }
-      } else {
-        staleCount = 0;
-      }
-    } else {
-      staleCount = 0;
-    }
-
-    previousLastCard = lastCard ?? '';
+  const cards = listing.getByTestId('knowledge-card-title');
+  const observer = listing.locator('..').getByTestId('observer-element');
+  for (
+    let pageNumber = 0;
+    pageNumber < 50 && !(await card.isVisible());
+    pageNumber++
+  ) {
+    const count = await cards.count();
+    await observer.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() => cards.count(), {
+        message: `Load the next article page while locating ${displayName}`,
+      })
+      .toBeGreaterThan(count);
   }
 
   await expect(card).toBeVisible();
@@ -1065,7 +1033,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   );
 
   const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);
-  await page.goto(articlePath);
+  await page.goto(articlePath, { waitUntil: 'domcontentloaded' });
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
 };

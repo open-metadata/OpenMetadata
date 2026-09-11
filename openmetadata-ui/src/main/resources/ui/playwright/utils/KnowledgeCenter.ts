@@ -784,7 +784,7 @@ export const verifyContentPersistence = async (
 ): Promise<void> => {
   await waitForAutoSave(page);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const editor = await getEditor(page, true);
@@ -902,7 +902,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   );
 
   const articlePath = ARTICLE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
-  await page.goto(articlePath);
+  await page.goto(articlePath, { waitUntil: 'domcontentloaded' });
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
   await getArticleResponse;

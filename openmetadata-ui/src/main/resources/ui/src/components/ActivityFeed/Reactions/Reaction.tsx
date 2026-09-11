@@ -29,7 +29,7 @@ interface ReactionProps {
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
-  ) => void;
+  ) => void | Promise<void>;
   onHide: () => void;
 }
 

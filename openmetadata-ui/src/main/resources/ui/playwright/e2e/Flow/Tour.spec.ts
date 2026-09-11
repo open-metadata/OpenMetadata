@@ -161,7 +161,7 @@ test.describe(
       await page.getByRole('link', { name: 'Tour', exact: true }).click();
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
+      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
 
       await page.locator('#feedWidgetData').waitFor();
 
@@ -181,7 +181,7 @@ test.describe(
           .click();
       }
       await page.getByText('Take a product tour to get started!').click();
-      await page.waitForURL('**/tour');
+      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -199,7 +199,7 @@ test.describe(
     });
 
     test('Tour should work from URL directly', async ({ page }) => {
-      await page.goto('/tour');
+      await page.goto('/tour', { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       const isWelcomeScreenVisible = await page
         .getByTestId('welcome-screen')
@@ -210,7 +210,7 @@ test.describe(
       }
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
+      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,

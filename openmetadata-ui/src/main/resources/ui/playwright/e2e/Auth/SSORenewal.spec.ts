@@ -150,7 +150,7 @@ for (const scenario of SCENARIOS) {
         await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
         await page.getByTestId('app-bar-item-my-data').click();
-        await page.waitForURL('**/my-data');
+        await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
 
         await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
@@ -191,9 +191,12 @@ for (const scenario of SCENARIOS) {
         await clearServerSessionCookie(userContext!);
         await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
-        await page.waitForURL('**/signin', { timeout: 30_000 });
+        await page.waitForURL('**/signin', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30_000,
+        });
         await expect(page.getByText(/session has timed out/i)).toBeVisible();
         await expect(page.locator('button.signin-button')).toBeVisible();
       });

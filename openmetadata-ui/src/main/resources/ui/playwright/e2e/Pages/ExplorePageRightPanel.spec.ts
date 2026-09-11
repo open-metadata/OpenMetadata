@@ -1104,7 +1104,7 @@ test.describe('Right Panel Test Suite', () => {
                   deletedUser.responseData.name,
                 ]
               );
-              await adminPage.reload();
+              await adminPage.reload({ waitUntil: 'domcontentloaded' });
               await rightPanel.waitForPanelVisible();
 
               const deletedOwnerLocator =
@@ -1163,7 +1163,7 @@ test.describe('Right Panel Test Suite', () => {
                 'tag',
                 [deletedTagDisplayName]
               );
-              await adminPage.reload();
+              await adminPage.reload({ waitUntil: 'domcontentloaded' });
               await rightPanel.waitForPanelVisible();
 
               const deletedTagLocator =
@@ -1219,7 +1219,7 @@ test.describe('Right Panel Test Suite', () => {
                 'glossaryTerm',
                 [deletedTermDisplayName]
               );
-              await adminPage.reload();
+              await adminPage.reload({ waitUntil: 'domcontentloaded' });
               await rightPanel.waitForPanelVisible();
 
               const deletedTermLocator =

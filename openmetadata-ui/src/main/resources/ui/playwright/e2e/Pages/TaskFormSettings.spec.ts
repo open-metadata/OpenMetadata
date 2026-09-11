@@ -47,7 +47,9 @@ test.describe.serial('Task Form Settings', () => {
     page,
   }) => {
     await authenticateAdminPage(page);
-    await page.goto(TASK_FORM_SETTINGS_ROUTE);
+    await page.goto(TASK_FORM_SETTINGS_ROUTE, {
+      waitUntil: 'domcontentloaded',
+    });
 
     await expect(page.getByTestId('task-form-settings-page')).toBeVisible();
     await page.getByTestId('task-form-list-item-TagSuggestion').click();
@@ -76,7 +78,9 @@ test.describe.serial('Task Form Settings', () => {
           response.request().method() === 'GET'
       );
 
-      await page.goto(TASK_FORM_SETTINGS_ROUTE);
+      await page.goto(TASK_FORM_SETTINGS_ROUTE, {
+        waitUntil: 'domcontentloaded',
+      });
       await listResponse;
 
       await expect(page.getByTestId('task-form-settings-page')).toBeVisible();
@@ -171,7 +175,7 @@ test.describe.serial('Task Form Settings', () => {
           response.request().method() === 'GET'
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadResponse;
 
       await page.getByTestId(`task-form-list-item-${schemaName}`).click();

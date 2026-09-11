@@ -10,18 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
+import { okJson } from '../../../utils/apiResponse';
 import {
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { selectActiveGlossary } from '../../../utils/glossary';
+import {
+  selectActiveGlossary,
+  verifyWorkflowInstanceExists,
+} from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -66,102 +71,73 @@ test.describe('Glossary P2 Tests', () => {
     }
   });
 
-  // W-H01: View workflow history on term
-  test('should view workflow history on term', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const reviewer = new UserClass();
-    const glossaryTerm = new GlossaryTerm(glossary);
-
-    try {
-      await reviewer.create(apiContext);
-      await glossary.create(apiContext);
-
-      await glossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/reviewers/0',
-          value: {
-            id: reviewer.responseData.id,
-            type: 'user',
+  for (const view of ['term details', 'status popover'] as const) {
+    test(`shows the term workflow stages in ${view}`, async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary();
+      const reviewer = new UserClass();
+      const term = new GlossaryTerm(glossary);
+      try {
+        await reviewer.create(apiContext);
+        await glossary.create(apiContext);
+        await glossary.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/reviewers',
+            value: [{ id: reviewer.responseData.id, type: 'user' }],
           },
-        },
-      ]);
-
-      await glossaryTerm.create(apiContext);
-
-      // Approve the term to create history
-      await apiContext.put(
-        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}/status`,
-        {
-          data: {
-            status: 'Approved',
-          },
+        ]);
+        await term.create(apiContext);
+        await verifyWorkflowInstanceExists(
+          page,
+          term.responseData.fullyQualifiedName
+        );
+        const statesResponse = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname.startsWith(
+              '/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/'
+            ),
+          200
+        );
+        if (view === 'term details') {
+          await term.visitEntityPage(page);
+        } else {
+          await glossary.visitEntityPage(page);
+          await page
+            .getByTestId(`${term.responseData.fullyQualifiedName}-status`)
+            .hover();
         }
-      );
-
-      await glossaryTerm.visitEntityPage(page);
-
-      // Look for status/workflow section
-      const statusSection = page.getByTestId('status-badge');
-
-      if (await statusSection.isVisible({ timeout: 3000 }).catch(() => false)) {
-        // Hover to see history popover
-        await statusSection.hover();
-
-        // Check for history content
-        const historyPopover = page.locator('.ant-popover-content');
-
-        if (
-          await historyPopover.isVisible({ timeout: 2000 }).catch(() => false)
-        ) {
-          await expect(historyPopover).toBeVisible();
-        }
+        const states = await okJson<{
+          data: { stage?: { displayName?: string; name: string } }[];
+        }>(await statesResponse, 'Read displayed workflow history');
+        const stages = states.data.map((state) => {
+          const name = state.stage?.displayName ?? state.stage?.name;
+          if (!name)
+            throw new Error('Workflow history returned an unnamed stage');
+          return name;
+        });
+        expect(stages.length).toBeGreaterThan(0);
+        const widget =
+          view === 'term details'
+            ? page.getByTestId('workflow-history-widget')
+            : page
+                .locator('.ant-popover:visible')
+                .getByTestId('workflow-history-widget');
+        await expect(widget).toBeVisible();
+        await expect(widget.locator('.stage-name')).toHaveText(
+          stages.reverse()
+        );
+      } finally {
+        await glossary.delete(apiContext);
+        await reviewer.delete(apiContext);
+        await afterAction();
       }
-    } finally {
-      await glossary.delete(apiContext);
-      await reviewer.delete(apiContext);
-      await afterAction();
-    }
-  });
+    });
+  }
 
-  // W-H02: Hover status badge shows history popover
-  test('should show history popover on status badge hover', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-
-      await glossaryTerm.visitEntityPage(page);
-
-      // Find status badge
-      const statusBadge = page.locator(
-        '[data-testid="status-badge"], [data-testid="glossary-term-status"]'
-      );
-
-      if (await statusBadge.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await statusBadge.hover();
-
-        // Check if popover appears
-        const popover = page.locator('.ant-popover');
-
-        if (await popover.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await expect(popover).toBeVisible();
-        }
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // W-S01: New term starts as Draft (no reviewers)
-  test('should create term with Draft status when no reviewers', async ({
+  test('automatically approves a term created without reviewers', async ({
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -184,34 +160,32 @@ test.describe('Glossary P2 Tests', () => {
         .locator('[role="dialog"].edit-glossary-modal')
         .waitFor({ timeout: 10000 });
 
-      const termName = `DraftTerm_${Date.now()}`;
+      const termName = `AutoApprovedTerm_${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Test term for draft status');
+      await fillDescriptionBox(page, 'Term without reviewers');
 
       // Set up response listener before clicking save
-      const termResponse = page.waitForResponse(
+      const termResponse = waitForResponseWithStatus(
+        page,
         (res) =>
-          res.url().includes('/api/v1/glossaryTerms') &&
-          res.request().method() === 'POST'
+          new URL(res.url()).pathname === '/api/v1/glossaryTerms' &&
+          res.request().method() === 'POST',
+        201
       );
 
       await page.click('[data-testid="save-glossary-term"]');
 
-      try {
-        const response = await termResponse;
-        const termData = await response.json();
-
-        // Verify status is Draft or Approved (no reviewers = auto-approved in some configs)
-        expect(['Draft', 'Approved']).toContain(termData.status);
-      } catch {
-        // If response doesn't contain status, just verify term was created
-        const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-        await loadResponse;
-
-        await expect(page.getByTestId('entity-header-name')).toBeVisible({
-          timeout: 5000,
-        });
-      }
+      const termData = await (await termResponse).json();
+      expect(termData.name).toBe(termName);
+      expect(termData.glossary.id).toBe(glossary.responseData.id);
+      await expect(
+        page.getByTestId(`${termData.fullyQualifiedName}-status`)
+      ).toContainText('Approved');
+      const persisted = await okJson(
+        await apiContext.get(`/api/v1/glossaryTerms/${termData.id}`),
+        'Read automatically approved glossary term'
+      );
+      expect(persisted.entityStatus).toBe('Approved');
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
@@ -219,7 +193,7 @@ test.describe('Glossary P2 Tests', () => {
   });
 
   // TBL-C06: Custom property columns visible
-  test('should show column settings with custom properties option', async ({
+  test('persists glossary column visibility and restores the hidden column', async ({
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -234,25 +208,28 @@ test.describe('Glossary P2 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Look for column settings button
-      const columnSettingsBtn = page.getByTestId('column-settings-btn');
-
-      if (
-        await columnSettingsBtn.isVisible({ timeout: 3000 }).catch(() => false)
-      ) {
-        await columnSettingsBtn.click();
-
-        // Verify column settings modal/dropdown appears
-        const columnSettings = page.locator(
-          '[data-testid="column-settings"], .ant-dropdown'
-        );
-
-        if (
-          await columnSettings.isVisible({ timeout: 2000 }).catch(() => false)
-        ) {
-          await expect(columnSettings).toBeVisible();
-        }
-      }
+      const table = page.getByTestId('glossary-terms-table');
+      const description = table.getByRole('columnheader', {
+        name: 'Description',
+        exact: true,
+      });
+      await expect(description).toBeVisible();
+      await page.getByTestId('column-dropdown').click();
+      const toggle = page
+        .getByTestId('column-menu-item-description')
+        .getByRole('button');
+      await toggle.click();
+      await page.keyboard.press('Escape');
+      await expect(description).toHaveCount(0);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(
+        page.getByTestId(glossaryTerm.data.displayName)
+      ).toBeVisible();
+      await expect(description).toHaveCount(0);
+      await page.getByTestId('column-dropdown').click();
+      await toggle.click();
+      await page.keyboard.press('Escape');
+      await expect(description).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

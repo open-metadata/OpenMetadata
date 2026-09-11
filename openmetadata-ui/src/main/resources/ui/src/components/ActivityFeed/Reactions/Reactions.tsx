@@ -36,7 +36,7 @@ interface ReactionsProps {
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
-  ) => void;
+  ) => void | Promise<void>;
 }
 
 const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {

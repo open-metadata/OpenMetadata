@@ -52,7 +52,8 @@ for (const queryLocation of ['q', 'query_filter'] as const) {
     );
     try {
       await page.goto(
-        `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+        `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(page, 'table', 'Fixture alpha', 'Fixture beta');
       await expect(page.getByRole('row')).toHaveCount(1);
@@ -89,7 +90,8 @@ for (const [firstStatus, expectedStatus] of [
     );
     try {
       await page.goto(
-        'http://127.0.0.1:' + (server.address() as AddressInfo).port
+        'http://127.0.0.1:' + (server.address() as AddressInfo).port,
+        { waitUntil: 'domcontentloaded' }
       );
       const outcome = waitForResponseWithStatus(
         page,

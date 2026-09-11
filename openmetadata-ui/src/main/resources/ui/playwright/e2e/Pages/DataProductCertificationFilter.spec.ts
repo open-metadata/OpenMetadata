@@ -362,7 +362,7 @@ test.describe('Data Products - quick filters', { tag: '@Governance' }, () => {
       });
 
       await test.step('The casing survives a reload of the filtered URL', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         await expect(

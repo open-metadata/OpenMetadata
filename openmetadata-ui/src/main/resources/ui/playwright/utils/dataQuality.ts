@@ -208,7 +208,9 @@ export const addTestCaseToLogicalTestSuite = async (
   testSuiteName: string,
   testCaseName: string
 ) => {
-  await page.goto(`test-suites/${testSuiteName}`);
+  await page.goto(`test-suites/${testSuiteName}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'

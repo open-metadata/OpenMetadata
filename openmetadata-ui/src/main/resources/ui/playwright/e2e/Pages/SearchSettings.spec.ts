@@ -591,7 +591,7 @@ test.describe('Search Settings', () => {
 
         // Reload so the page re-fetches the restored config and triggers preview.
         const previewPromise = page.waitForResponse('/api/v1/search/preview');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const previewResponse = await previewPromise;
         await waitForAllLoadersToDisappear(page);
 
@@ -752,7 +752,7 @@ test.describe('Search Settings', () => {
       await saveSettings;
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
       await openMatchingFieldsPanel(page);

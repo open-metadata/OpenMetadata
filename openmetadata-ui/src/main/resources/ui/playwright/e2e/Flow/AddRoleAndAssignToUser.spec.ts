@@ -62,7 +62,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click('[data-testid="submit-btn"]');
     await policyResponse;
 
-    await page.waitForURL(`**/settings/access/roles/${roleName}`);
+    await page.waitForURL(`**/settings/access/roles/${roleName}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     await page.getByTestId('inactive-link').waitFor();
 

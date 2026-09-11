@@ -215,7 +215,8 @@ test.describe(
       await page.goto(
         `/service/messagingServices/${getEncodedFqn(
           serviceFqn
-        )}/agents/metadata`
+        )}/agents/metadata`,
+        { waitUntil: 'domcontentloaded' }
       );
       await page.getByTestId('data-assets-header').waitFor();
 

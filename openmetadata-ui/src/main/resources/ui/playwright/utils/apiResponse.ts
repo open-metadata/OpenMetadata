@@ -69,7 +69,7 @@ type ResponseBody = any;
  * Throwing here keeps the blame on the call that failed.
  */
 export const okJson = async <T = ResponseBody>(
-  response: APIResponse,
+  response: Pick<APIResponse, 'ok' | 'status' | 'text' | 'json'>,
   label: string
 ): Promise<T> => {
   if (!response.ok()) {

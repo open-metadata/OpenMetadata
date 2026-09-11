@@ -371,7 +371,9 @@ test.describe('FeedWidget on landing page', () => {
     await expect(viewMoreLink).toHaveAttribute('href', expectedLink);
 
     await viewMoreLink.click();
-    await page.waitForURL(`**${expectedLink}`);
+    await page.waitForURL(`**${expectedLink}`, {
+      waitUntil: 'domcontentloaded',
+    });
   });
 
   test('feed cards render header text and timestamp', async ({ page }) => {
@@ -434,6 +436,7 @@ test.describe('FeedWidget on landing page', () => {
     await reactOnFeedCard(page, seededCard);
 
     await expect(reactionContainer).toBeVisible();
+    await expect(reactionContainer.getByTestId('emoji-button')).toHaveCount(0);
   });
 
   test('activity cards open a reply drawer on the landing widget', async ({
@@ -657,7 +660,7 @@ test.describe('Mention notifications in Notification Box', () => {
     });
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(adminPage);
       const notificationBell = adminPage.getByTestId('task-notifications');
 
@@ -709,7 +712,9 @@ test.describe('Mention notifications in Notification Box', () => {
         '[data-testid^="notification-link-"]'
       );
 
-      const navigationPromise = adminPage.waitForURL(/activity_feed/);
+      const navigationPromise = adminPage.waitForURL(/activity_feed/, {
+        waitUntil: 'domcontentloaded',
+      });
       await mentionNotificationLink.click();
       await navigationPromise;
 
@@ -846,7 +851,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       );
     });
 
-    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`);
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`, {
+      waitUntil: 'domcontentloaded',
+    });
     await feedPromise;
     await waitForAllLoadersToDisappear(page);
 
@@ -1204,7 +1211,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     });
 
     // Reload with Tasks active so every request below belongs to this tab.
-    await adminPage.reload();
+    await adminPage.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(adminPage);
 
     // Landing back on ALL would fetch activity legitimately and fail the

@@ -112,7 +112,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
     )
     .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await page.getByTestId('app-run-history-table').waitFor();
 
@@ -381,7 +381,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           !response.url().includes('/status') &&
           response.request().method() === 'GET'
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await appResponse;
 
       await page.click('[data-testid="manage-button"]');
@@ -424,7 +424,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const statusAPI = page.waitForResponse(
           '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
         );
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const statusResponse = await statusAPI;
 
         expect(statusResponse.status()).toBe(200);

@@ -1285,7 +1285,10 @@ test.describe(
       await page.getByRole('button', { name: 'Update' }).click();
       const response = await updateResponse;
       expect(response.status()).toBe(200);
-      await page.waitForURL(/\/metrics/, { timeout: 90000 });
+      await page.waitForURL(/\/metrics/, {
+        waitUntil: 'domcontentloaded',
+        timeout: 90000,
+      });
 
       const updatedMetric = await parseResponse<MetricResponse>(
         await apiContext.get(`/api/v1/metrics/name/${targetMetricName}`),

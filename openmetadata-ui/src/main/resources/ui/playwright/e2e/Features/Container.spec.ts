@@ -279,7 +279,7 @@ test.describe('Container entity specific tests ', () => {
     expect(validationResult.pathname).toContain('container');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -397,7 +397,9 @@ test.describe('Deeply nested container navigation', () => {
     const initialContainerResponse = page.waitForResponse(
       '/api/v1/containers/name/*'
     );
-    await page.goto(`/container/${deepContainer4Fqn}`);
+    await page.goto(`/container/${deepContainer4Fqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialContainerResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -471,7 +473,9 @@ test.describe('Deeply nested container navigation', () => {
     const initialContainerResponse = page.waitForResponse(
       '/api/v1/containers/name/*'
     );
-    await page.goto(`/container/${deepContainer4Fqn}`);
+    await page.goto(`/container/${deepContainer4Fqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialContainerResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -642,7 +646,9 @@ test.describe('Children tab search + Deleted toggle', () => {
         res.url().includes('/children?'),
       200
     );
-    await page.goto(`/container/${parentFqn}`);
+    await page.goto(`/container/${parentFqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialChildrenResponse;
     await waitForAllLoadersToDisappear(page);
   });
@@ -918,7 +924,9 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
         res.url().includes('/children?'),
       200
     );
-    await page.goto(`/container/${grandparentFqn}`);
+    await page.goto(`/container/${grandparentFqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialChildrenResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -964,7 +972,9 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
         res.url().includes('/children?'),
       200
     );
-    await page.goto(`/container/${parentFqn}`);
+    await page.goto(`/container/${parentFqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialChildrenResponse;
     await waitForAllLoadersToDisappear(page);
 

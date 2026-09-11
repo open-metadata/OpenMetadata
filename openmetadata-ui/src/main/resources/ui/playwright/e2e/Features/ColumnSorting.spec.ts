@@ -22,7 +22,9 @@ test.describe.serial('Table Column Sorting', () => {
   test.beforeEach('Navigate to home page', async ({ page }) => {
     await redirectToHomePage(page);
     const tablePromise = page.waitForResponse(/\/columns\?.*limit=50/);
-    await page.goto(`/table/${SAMPLE_TABLE_FQN}`);
+    await page.goto(`/table/${SAMPLE_TABLE_FQN}`, {
+      waitUntil: 'domcontentloaded',
+    });
     const tableResponse = await tablePromise;
     expect(tableResponse.status()).toBe(200);
   });

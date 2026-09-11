@@ -917,21 +917,26 @@ test.describe(
     test('should deny export access for non-admin users', async ({ page }) => {
       await redirectToHomePage(page);
 
-      // Navigate to audit logs page - non-admin should see forbidden or redirect
-      await page.goto('/settings/audit-logs');
-      await page.waitForLoadState('domcontentloaded');
-
-      await test.step('Verify non-admin cannot access export functionality', async () => {
-        // Non-admin should either:
-        // 1. Not see the export button at all
-        // 2. See the page but export API returns 403
-        // 3. Be redirected away from the page
-
-        // If export button is not visible, the page correctly hides it from non-admins
-        // If it is visible, we would need to verify API returns 403
-        // Either behavior is acceptable for access control
-        expect(true).toBe(true); // Test passes if we get here without error
+      await page.goto('/settings/access/audit-logs', {
+        waitUntil: 'domcontentloaded',
       });
+      await expect(
+        page.getByTestId('permission-error-placeholder')
+      ).toBeVisible();
+      await expect(page.getByTestId('export-audit-logs-button')).toHaveCount(0);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        const response = await apiContext.get('/api/v1/audit/logs/export', {
+          params: {
+            startTs: String(Date.now() - 60_000),
+            endTs: String(Date.now()),
+          },
+        });
+        expect(response.status()).toBe(403);
+      } finally {
+        await afterAction();
+      }
     });
   }
 );
@@ -948,23 +953,23 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
 
-      // Try to navigate to audit logs page directly
-      const response = await page.goto('/settings/audit-logs');
-
-      await test.step('Verify page responds without server error', async () => {
-        // Wait for page to settle
-        await page.waitForLoadState('domcontentloaded');
-
-        // The key test is that the page doesn't crash with a server error
-        // Response could be 200 (has access), 403 (forbidden), or redirect
-        const status = response?.status() ?? 0;
-
-        // Any non-5xx status is acceptable - the app handles access gracefully
-        expect(status).toBeLessThan(500);
-
-        // Also verify the page has some content (didn't completely fail to load)
-        await expect(page.locator('body')).not.toHaveText('');
+      await page.goto('/settings/access/audit-logs', {
+        waitUntil: 'domcontentloaded',
       });
+      await expect(
+        page.getByTestId('permission-error-placeholder')
+      ).toBeVisible();
+      await expect(page.getByTestId('audit-log-list')).toHaveCount(0);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        const response = await apiContext.get('/api/v1/audit/logs', {
+          params: { limit: '1' },
+        });
+        expect(response.status()).toBe(403);
+      } finally {
+        await afterAction();
+      }
     });
   }
 );

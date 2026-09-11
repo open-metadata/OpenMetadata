@@ -117,7 +117,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.goto(
       `/table/${getEncodedFqn(
         focusTable.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
+      )}/knowledge_graph`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     const response = await graphResponse;

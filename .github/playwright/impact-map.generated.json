@@ -292,7 +292,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
@@ -751,7 +750,7 @@
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Permission.spec.ts",
         "playwright/e2e/Features/Permissions/EntityPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
@@ -779,7 +778,7 @@
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Permission.spec.ts",
         "playwright/e2e/Features/Permissions/EntityPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
@@ -879,6 +878,7 @@
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
         "playwright/e2e/Features/SearchSeparation/DomainRenamePrefixCascade.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
@@ -1193,6 +1193,7 @@
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
@@ -1579,18 +1580,12 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskSuggestionAPIs.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Features/TierDropdown.spec.ts",
@@ -1657,7 +1652,15 @@
       ],
       "specs": [
         "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Pages/Tasks.spec.ts"
       ]
     },
@@ -1971,6 +1974,8 @@
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivityDataProductTree.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraphPerf.spec.ts",
@@ -2030,23 +2035,17 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNestedFields.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPipelineEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskSuggestionAPIs.spec.ts",
         "playwright/e2e/Features/Tasks/TaskTopicEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
@@ -2137,6 +2136,29 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/taskActivity.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/taskPermissions.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts"
       ]
     },
     {
@@ -2338,6 +2360,7 @@
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
@@ -2353,6 +2376,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/tag/ClassificationClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -2387,6 +2411,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/tag/TagClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/CertificationDropdown.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
@@ -2429,10 +2454,6 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -2548,17 +2569,13 @@
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNestedFields.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPipelineEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskSuggestionAPIs.spec.ts",
         "playwright/e2e/Features/Tasks/TaskTopicEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
@@ -2658,8 +2675,13 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts"
       ]
     },
     {
@@ -2757,20 +2779,15 @@
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNestedFields.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPipelineEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskSuggestionAPIs.spec.ts",
         "playwright/e2e/Features/Tasks/TaskTopicEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
@@ -2883,9 +2900,21 @@
       "specs": [
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
-        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts"
       ]
     },
     {
@@ -3128,13 +3157,11 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
@@ -3328,6 +3355,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -3439,6 +3467,8 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts",
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
@@ -3596,10 +3626,9 @@
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TableConstraint.spec.ts",
-        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
@@ -4000,13 +4029,8 @@
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
-        "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
@@ -4337,10 +4361,16 @@
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
@@ -4361,6 +4391,7 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
@@ -4481,6 +4512,7 @@
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
@@ -4495,7 +4527,14 @@
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
@@ -4575,6 +4614,15 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew.tsx"
       ],
       "specs": [
@@ -4589,7 +4637,8 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts"
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -4619,8 +4668,6 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
@@ -4635,8 +4682,6 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
@@ -4658,7 +4703,9 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts",
@@ -4722,12 +4769,8 @@
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
@@ -4735,7 +4778,6 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
-        "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
@@ -5939,6 +5981,7 @@
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TableConstraint.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts"
       ]
     },
@@ -6537,7 +6580,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryDetails/GlossaryDetails.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -6586,6 +6628,7 @@
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
@@ -6667,6 +6710,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
@@ -6878,7 +6922,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts"
       ]
@@ -6888,7 +6931,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithQueryEditor/ModalWithQueryEditor.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts"
       ]
@@ -7097,8 +7139,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts"
+        "playwright/e2e/Features/ActivityFeed.spec.ts"
       ]
     },
     {
@@ -7141,6 +7182,7 @@
         "playwright/e2e/Features/LanguageOverride.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/ApiDocs.spec.ts",
@@ -7737,6 +7779,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsHeadingLabel.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -7889,7 +7932,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Tag/TagsContainerV2/TagsContainerV2.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
@@ -7918,7 +7960,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Tag/TagsV1/TagsV1.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
@@ -8136,7 +8177,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/AsyncSelectList/AsyncSelectList.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
@@ -8144,8 +8184,6 @@
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
@@ -8156,7 +8194,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/AsyncSelectList/TreeAsyncSelectList.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
@@ -8164,8 +8201,6 @@
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
@@ -8266,6 +8301,7 @@
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -8309,6 +8345,7 @@
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -8419,6 +8456,7 @@
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
@@ -8474,6 +8512,7 @@
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
@@ -8590,6 +8629,7 @@
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
+        "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
@@ -8718,7 +8758,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/IconButtons/EditIconButton.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts"
+        "playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts"
       ]
     },
     {
@@ -8726,7 +8767,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/InlineEdit/InlineEdit.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
@@ -8889,7 +8929,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/RichTextEditor/RichTextEditor.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
@@ -9026,9 +9065,18 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/Table/Table.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/Table/TableV2.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts"
       ]
     },
@@ -9053,7 +9101,6 @@
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts"
       ]
@@ -9091,8 +9138,6 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -9194,8 +9239,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts"
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts"
       ]
     },
     {
@@ -9206,6 +9250,23 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/InboxCommentComposer.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts"
       ]
     },
     {
@@ -9294,6 +9355,7 @@
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -9816,14 +9878,12 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNestedFields.spec.ts",
@@ -9832,7 +9892,6 @@
         "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskSuggestionAPIs.spec.ts",
         "playwright/e2e/Features/Tasks/TaskTopicEntity.spec.ts",
-        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
@@ -9981,6 +10040,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/topic.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
         "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts",
@@ -10044,8 +10104,11 @@
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPipelineEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskTopicEntity.spec.ts",
@@ -10184,6 +10247,15 @@
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/tasks/task.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts"
       ]
     },
     {
@@ -10956,6 +11028,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/EntityTasks/EntityTasks.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
@@ -10964,8 +11037,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/RequestTagPage/RequestTagPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
       ]
     },
@@ -10974,8 +11045,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/UpdateTagPage/UpdateTagPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
       ]
     },

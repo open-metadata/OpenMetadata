@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { okJson } from '../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { EntityTypeEndpoint } from './Entity.interface';
 
@@ -41,6 +41,8 @@ export interface TaskResponseData {
   createdBy?: { id: string; name: string };
   createdById?: string;
   assignees?: { id: string; name: string }[];
+  about?: { id: string; type: string; fullyQualifiedName?: string };
+  payload?: Record<string, unknown>;
 }
 
 export class TaskClass {
@@ -63,10 +65,6 @@ export class TaskClass {
     };
   }
 
-  get() {
-    return this.data;
-  }
-
   set(data: TaskResponseData) {
     this.responseData = data;
   }
@@ -75,7 +73,10 @@ export class TaskClass {
     const response = await apiContext.post('/api/v1/tasks', {
       data: this.data,
     });
-    const responseData = await okJson(response, 'TaskClass.create');
+    const responseData = await okJson<TaskResponseData>(
+      response,
+      'TaskClass.create'
+    );
     this.responseData = responseData;
 
     return responseData;
@@ -111,7 +112,10 @@ export class TaskClass {
         },
       }
     );
-    const responseData = await response.json();
+    const responseData = await okJson<TaskResponseData>(
+      response,
+      'TaskClass.resolve'
+    );
     this.responseData = responseData;
 
     return responseData;
@@ -124,7 +128,10 @@ export class TaskClass {
     const response = await apiContext.get(
       `/api/v1/tasks/${this.responseData.id}`
     );
-    const responseData = await response.json();
+    const responseData = await okJson<TaskResponseData>(
+      response,
+      'TaskClass.get'
+    );
     this.responseData = responseData;
 
     return responseData;
@@ -136,9 +143,7 @@ export class TaskClass {
     if (!taskRouteId) {
       throw new Error('Task not created');
     }
-    await page.goto(`/tasks/${taskRouteId}`);
-    await page.waitForLoadState('load');
+    await page.goto(`/tasks/${taskRouteId}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('domcontentloaded');
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

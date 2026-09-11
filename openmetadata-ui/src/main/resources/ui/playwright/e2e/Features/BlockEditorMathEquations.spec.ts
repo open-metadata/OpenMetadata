@@ -80,7 +80,7 @@ test.describe('BlockEditor math equations', { tag: ['@Discovery'] }, () => {
     ).toBeVisible();
 
     // Reload to verify persistence through the full save→backend→reload round-trip
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(
       page
         .getByTestId('asset-description-container')

@@ -38,7 +38,7 @@ export const SCREENSHOT_OPTS = {
  */
 export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.clock.setFixedTime(FIXED_DATE);
-  await page.goto(path);
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForPageLoaded(page);
   await page.addStyleTag({
     content: 'html { scroll-behavior: auto !important; }',

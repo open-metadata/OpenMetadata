@@ -92,7 +92,7 @@ test('Glossary', async ({ page }) => {
         type: 'Users',
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       const versionPageResponse = page.waitForResponse(
         `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
       );
@@ -122,7 +122,7 @@ test('Glossary', async ({ page }) => {
         type: 'Users',
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       const versionPageResponse2 = page.waitForResponse(
         `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
       );
@@ -200,7 +200,7 @@ test('GlossaryTerm', async ({ page }) => {
       type: 'Users',
     });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
     );
@@ -230,7 +230,7 @@ test('GlossaryTerm', async ({ page }) => {
       type: 'Users',
     });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     // Verify the reviewer was actually added before checking version diff
     await expect(

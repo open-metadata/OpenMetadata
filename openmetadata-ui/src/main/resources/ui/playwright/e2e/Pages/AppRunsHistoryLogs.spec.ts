@@ -80,7 +80,9 @@ test.describe('App Runs History logs viewer (mocked external app)', () => {
 
     await redirectToHomePage(page);
     await mockExternalApp(page);
-    await page.goto(`/settings/apps/${appName}`);
+    await page.goto(`/settings/apps/${appName}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     await test.step('Open the logs modal from the run row', async () => {
       const recentRunsTab = page.getByRole('tab', { name: /recent run/i });

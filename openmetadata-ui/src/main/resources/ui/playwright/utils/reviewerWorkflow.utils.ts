@@ -300,7 +300,9 @@ export const verifyTaskStatus = async (
     await sidebarClick(page, SidebarItem.TAGS);
     await (entity as TagClass).visitPage(page);
   } else {
-    await page.goto(`/context-center/articles/${entityFQN}`);
+    await page.goto(`/context-center/articles/${entityFQN}`, {
+      waitUntil: 'domcontentloaded',
+    });
   }
   await waitForAllLoadersToDisappear(page);
   await expect(

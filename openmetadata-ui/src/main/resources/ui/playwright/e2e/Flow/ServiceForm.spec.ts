@@ -94,7 +94,9 @@ test.describe(
       test('Verify form selects are working properly', async ({ page }) => {
         test.slow();
 
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
@@ -208,7 +210,9 @@ test.describe(
       test('Verify SSL cert upload with long filename and UI overflow handling', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
@@ -262,7 +266,9 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'BigQuery');
@@ -280,7 +286,9 @@ test.describe(
         await databaseService.create(apiContext);
         await afterAction();
 
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Databricks');
 
@@ -312,7 +320,9 @@ test.describe(
       test('Verify if string input inside oneOf config works properly', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Looker');
@@ -547,7 +557,9 @@ test.describe(
       test('should show service name error and not open modal when test connection clicked without service name', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');
@@ -570,7 +582,9 @@ test.describe(
       test('should include service name in missing required field count shown on test connection card', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');
@@ -586,7 +600,9 @@ test.describe(
       test('should focus the service name input when test connection is clicked without a name', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');

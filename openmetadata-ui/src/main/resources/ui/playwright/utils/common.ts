@@ -840,7 +840,7 @@ export const assignDataProduct = async (
     await expect
       .poll(
         async () => {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
 
           return page
@@ -901,7 +901,7 @@ export const assignDataProduct = async (
       await expect
         .poll(
           async () => {
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await waitForAllLoadersToDisappear(page);
 
             return page
@@ -1382,7 +1382,7 @@ export const testPaginationNavigation = async (
 
   const reloadResponsePromise = page.waitForResponse(responseMatcher);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   const reloadResponse = await reloadResponsePromise;
   expect(reloadResponse.status()).toBe(200);
@@ -1569,7 +1569,7 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
 
   const reloadResponsePromise = waitForMetricsSearchResponse(page);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   const reloadResponse = await reloadResponsePromise;
   expect(reloadResponse.status()).toBe(200);
@@ -1630,7 +1630,7 @@ export const testClientSidePaginationNavigation = async (
   const currentUrl = page.url();
   expect(new URL(currentUrl).searchParams.get('currentPage')).toBe('2');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   if (waitForLoadSelector) {
     await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
@@ -1704,7 +1704,7 @@ export const testCompletePaginationWithSearch = async (
     skipUrlParamCheck = false,
   } = config;
 
-  await page.goto(`${baseUrl}`);
+  await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
   await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
 
   await waitForAllLoadersToDisappear(page);
@@ -1768,7 +1768,7 @@ export const testCompletePaginationWithSearch = async (
     response.url().includes(searchApiPattern)
   );
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   const reloadResponse = await reloadPromise;
   expect(reloadResponse.status()).toBe(200);
 

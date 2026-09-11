@@ -1532,7 +1532,7 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
 
     return;
   } catch {
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
     await expect(page.getByTestId('entity-follow-button')).toContainText(
       expectedText,
@@ -1741,7 +1741,7 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
@@ -1821,7 +1821,7 @@ export const replyAnnouncement = async (page: Page) => {
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
   ).toHaveText('Reply message edited');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -1849,7 +1849,7 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.click('[data-testid="save-button"]');
   await deleteAnnouncementResponse;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -2313,18 +2313,25 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
 
+  const restoreDialog = page.getByRole('dialog', { name: /^Restore / });
+  await expect(restoreDialog).toBeVisible();
+  await expect(restoreDialog).not.toHaveClass(/ant-zoom-(appear|enter|leave)/);
+
   const restoreResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/restore') &&
       response.request().method() === 'PUT'
   );
 
-  await page.click('button:has-text("Restore")');
+  await restoreDialog
+    .getByRole('button', { name: 'Restore', exact: true })
+    .click();
 
   const response = await restoreResponse;
 
   expect(response.status()).toBe(200);
 
+  await expect(restoreDialog).toBeHidden();
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeHidden();
 };
 
@@ -2360,7 +2367,7 @@ export const softDeleteEntity = async (
     BIG_ENTITY_DELETE_TIMEOUT
   );
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   // Retry mechanism for checking deleted badge
   await expect
@@ -2415,7 +2422,7 @@ export const softDeleteEntity = async (
   }
 
   await restoreEntity(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   await deletedEntityCommonChecks({
     page,

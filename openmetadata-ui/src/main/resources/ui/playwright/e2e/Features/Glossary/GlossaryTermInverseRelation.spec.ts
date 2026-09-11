@@ -105,7 +105,7 @@ test.describe('Glossary Term — Inverse Relation Display (#29687)', () => {
         res.url().includes('/api/v1/glossaryTerms/name/'),
       200
     );
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await reloadRes;
 
     await expect(page.getByTestId(termFromName)).toBeVisible();

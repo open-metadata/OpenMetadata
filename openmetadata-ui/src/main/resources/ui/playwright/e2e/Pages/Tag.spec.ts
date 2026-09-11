@@ -232,7 +232,8 @@ test.describe('Tag Page with Admin Roles', () => {
       `/tags/${encodeURIComponent(
         classification.responseData.fullyQualifiedName ??
           classification.responseData.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -268,7 +269,8 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(
         createdTagData.fullyQualifiedName ?? NEW_TAG.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -416,7 +418,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -441,7 +443,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'

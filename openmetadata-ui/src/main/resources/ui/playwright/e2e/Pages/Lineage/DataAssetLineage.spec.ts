@@ -115,7 +115,7 @@ type EntityClassUnion =
   | WorksheetClass;
 
 test.afterEach(async ({ page }) => {
-  await page.goto('about:blank');
+  await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
 });
 
 test.describe('Data asset lineage', () => {
@@ -542,7 +542,9 @@ test.describe('Temp lineage table nodes', () => {
   });
 
   test('should render temp lineage table nodes on canvas', async ({ page }) => {
-    await page.goto(`/table/${encodeURIComponent(RAW_ORDER_FQN)}`);
+    await page.goto(`/table/${encodeURIComponent(RAW_ORDER_FQN)}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await visitLineageTab(page);

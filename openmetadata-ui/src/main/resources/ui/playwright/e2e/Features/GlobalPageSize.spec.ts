@@ -13,7 +13,10 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { waitForAntdPopupToSettle } from '../../utils/common';
+import {
+  chooseSelectOption,
+  waitForAntdPopupToSettle,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -23,7 +26,8 @@ test.describe('Table & Data Model columns table pagination', () => {
     dataConsumerPage: page,
   }) => {
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -72,9 +76,7 @@ test.describe('Table & Data Model columns table pagination', () => {
         url.searchParams.get('size') === '50'
       );
     });
-    await pageSizeRecordBtn.click();
-    await expect(option50).toBeVisible();
-    await option50.click();
+    await chooseSelectOption(pageSizeRecordBtn, option50);
     await expect(pageSizeRecordBtn).toHaveText('50');
 
     await waitForAllLoadersToDisappear(page);

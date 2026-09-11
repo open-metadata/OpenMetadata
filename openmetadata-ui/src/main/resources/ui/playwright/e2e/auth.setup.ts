@@ -128,7 +128,8 @@ setup('authenticate all users', async ({ browser }) => {
     await admin.login(newAdminPage);
 
     await newAdminPage.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await mkdir('playwright/.auth', { recursive: true });

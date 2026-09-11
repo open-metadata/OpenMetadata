@@ -324,7 +324,7 @@ test.describe(
 
     test('admin can open the Intake Forms settings page', async ({ page }) => {
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -340,7 +340,7 @@ test.describe(
         test.slow();
 
         await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
+        await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         await test.step('Open designer via the dropdown', async () => {
@@ -436,7 +436,7 @@ test.describe(
         await afterAction();
 
         await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
+        await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await expect(
           page.getByTestId(`edit-${scenario.entityType}`)
         ).toBeVisible({ timeout: 30000 });
@@ -545,7 +545,7 @@ test.describe(
       });
 
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('add-intake-form').click();
@@ -707,7 +707,7 @@ test.describe(
           r.url().includes('/api/v1/governance/intakeForms') &&
           r.request().method() === 'GET'
       );
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await listResponse;
 
       const toggle = page.getByTestId('toggle-dataProduct');
@@ -792,7 +792,7 @@ test.describe(
       });
 
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('delete-dataProduct').click();
@@ -837,7 +837,7 @@ test.describe(
       });
 
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
 
       // Wait for the seeded row instead of a generic loader — the listing
       // loader sometimes lingers when the page is navigated to repeatedly.
@@ -870,7 +870,7 @@ test.describe(
 
     test('designer does not list schema-required fields', async ({ page }) => {
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('add-intake-form').click();
@@ -953,7 +953,7 @@ test.describe(
         await afterAction();
 
         await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
+        await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await expect(
           page.getByTestId(`row-${scenario.entityType}`)
         ).toBeVisible({ timeout: 30000 });

@@ -192,7 +192,9 @@ export const navigateToCustomizeLandingPage = async (
   page: Page,
   { personaName }: { personaName: string }
 ) => {
-  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`);
+  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
 
   // Navigate to the customize landing page
@@ -589,7 +591,7 @@ export const verifyWidgetFooterViewMore = async (
 
   if (expectedLink) {
     // Wait for the specific URL
-    await page.waitForURL(expectedLink);
+    await page.waitForURL(expectedLink, { waitUntil: 'domcontentloaded' });
   } else if (link) {
     const currentUrl = page.url();
 

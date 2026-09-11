@@ -64,7 +64,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
   test('should display SSO sign-in button on /signin', async ({ page }) => {
     test.slow();
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByTestId('login-form-container')).toBeVisible();
 
@@ -80,13 +80,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const page = userPage!;
 
     await test.step('Click SSO button and redirect to IdP', async () => {
-      await page.goto('/signin');
+      await page.goto('/signin', { waitUntil: 'domcontentloaded' });
 
       const signInButton = page.locator('button.signin-button');
 
       await expect(signInButton).toBeVisible();
       await signInButton.click();
-      await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+      await page.waitForURL(helper.loginUrlPattern, {
+        waitUntil: 'domcontentloaded',
+        timeout: 45_000,
+      });
 
       // #29597 regression guard: the front-channel authorize request must carry
       // the server-configured response_type, not oidc-client's 'id_token' default.
@@ -109,7 +112,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
           url.pathname.endsWith('/signup') ||
           url.pathname.endsWith('/my-data') ||
           url.pathname === '/',
-        { timeout: 60_000 }
+        { waitUntil: 'domcontentloaded', timeout: 60_000 }
       );
 
       if (page.url().includes('/signup')) {
@@ -119,7 +122,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
         await createButton.click();
         await page.waitForURL(
           (url) => url.pathname === '/' || url.pathname === '/my-data',
-          { timeout: 60_000 }
+          { waitUntil: 'domcontentloaded', timeout: 60_000 }
         );
       }
 
@@ -135,10 +138,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     test.slow();
     const page = userPage!;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForURL(
       (url) => url.pathname === '/' || url.pathname === '/my-data',
-      { timeout: 30_000 }
+      { waitUntil: 'domcontentloaded', timeout: 30_000 }
     );
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     await verifyLoggedInUserMatches(page, username);
@@ -149,10 +152,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const extraPage = await userContext!.newPage();
 
     try {
-      await extraPage.goto('/');
+      await extraPage.goto('/', { waitUntil: 'domcontentloaded' });
       await extraPage.waitForURL(
         (url) => url.pathname === '/' || url.pathname === '/my-data',
-        { timeout: 30_000 }
+        { waitUntil: 'domcontentloaded', timeout: 30_000 }
       );
       await expect(extraPage.getByTestId('dropdown-profile')).toBeVisible();
       await verifyLoggedInUserMatches(extraPage, username);
@@ -173,7 +176,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await expect(confirmLogoutButton).toBeEnabled();
     await confirmLogoutButton.click();
 
-    await page.waitForURL('**/signin', { timeout: 30_000 });
+    await page.waitForURL('**/signin', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
 
     await expect(page.locator('button.signin-button')).toBeVisible();
   });
@@ -182,8 +188,11 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     test.slow();
     const page = userPage!;
 
-    await page.reload();
-    await page.waitForURL('**/signin', { timeout: 30_000 });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/signin', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
     await expect(page.locator('button.signin-button')).toBeVisible();
     await expect(page.getByTestId('dropdown-profile')).toHaveCount(0);
   });

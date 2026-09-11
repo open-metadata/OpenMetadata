@@ -802,7 +802,7 @@ export const approveGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const approveButton = page.getByTestId(`${term.name}-approve-btn`);

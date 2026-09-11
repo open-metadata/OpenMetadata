@@ -106,7 +106,9 @@ test('Query Entity', async ({ page }) => {
     const createQueryResponse = page.waitForResponse('/api/v1/queries');
     await page.click('[data-testid="save-btn"]');
     await createQueryResponse;
-    await page.waitForURL('**/table_queries**');
+    await page.waitForURL('**/table_queries**', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await page.locator(`text=${queryData.query}`).waitFor({
       state: 'visible',
@@ -271,7 +273,7 @@ test('Query Entity', async ({ page }) => {
 
     expect(upVoteResponse.status()).toBe(200);
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -283,7 +285,7 @@ test('Query Entity', async ({ page }) => {
       .getByTestId('down-vote-btn')
       .click();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(

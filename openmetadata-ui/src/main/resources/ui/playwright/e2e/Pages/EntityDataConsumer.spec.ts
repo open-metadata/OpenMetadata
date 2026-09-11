@@ -100,7 +100,7 @@ entities.forEach((EntityClass) => {
       });
 
       test('No edit owner permission', async ({ page }) => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('edit-owner')).not.toBeAttached();

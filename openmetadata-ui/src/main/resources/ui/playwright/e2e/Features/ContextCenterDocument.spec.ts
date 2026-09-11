@@ -1090,7 +1090,7 @@ test.describe('Context Center - Documents Page', () => {
     expect(clipboardText).toContain(`document=${doc.id}`);
 
     const newTab = await page.context().newPage();
-    await newTab.goto(clipboardText);
+    await newTab.goto(clipboardText, { waitUntil: 'domcontentloaded' });
     await newTab
       .getByTestId('context-center-documents-page')
       .waitFor({ state: 'visible' });
@@ -1232,7 +1232,9 @@ test.describe('Context Center - Documents Page', () => {
       await searchAndGetDocumentRow(page, secondName)
     ).not.toBeVisible();
 
-    await page.goto('/context-center/archive');
+    await page.goto('/context-center/archive', {
+      waitUntil: 'domcontentloaded',
+    });
     await page
       .getByTestId('context-center-archive-page')
       .waitFor({ state: 'visible' });

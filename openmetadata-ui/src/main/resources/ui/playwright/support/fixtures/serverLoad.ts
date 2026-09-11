@@ -340,13 +340,23 @@ const serveStaticAsset = async (route: Route) => {
  * on a request nothing asserts on. Anything else still propagates — a cache
  * that is broken for a real reason must not be silent.
  */
-const ignoreClosedTarget = async (serve: () => Promise<void>) => {
+const ignoreClosedTarget = async (route: Route, serve: () => Promise<void>) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed/.test(String(error))) {
-      throw error;
+    if (/has been closed/.test(String(error))) {
+      return;
     }
+    // Closing a context disposes route.fetch's response store before its body
+    // reader resumes. A disposed response on a live page is still an error.
+    if (
+      /Response has been disposed/.test(String(error)) &&
+      route.request().frame().page().isClosed()
+    ) {
+      return;
+    }
+
+    throw error;
   }
 };
 
@@ -371,16 +381,16 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   // unload, so a `fulfill` here is more likely than either of them to land on a
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
-    ignoreClosedTarget(() => route.fulfill({ status: 200, body: '' }))
+    ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>
-    ignoreClosedTarget(() => serveBootConfig(route))
+    ignoreClosedTarget(route, () => serveBootConfig(route))
   );
 
   if (cacheStaticAssets) {
     await context.route(STATIC_ASSET, (route) =>
-      ignoreClosedTarget(() => serveStaticAsset(route))
+      ignoreClosedTarget(route, () => serveStaticAsset(route))
     );
   }
 

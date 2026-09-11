@@ -15,6 +15,7 @@ import justifiedRuleDisable from './justified-rule-disable.mjs';
 import noAwaitedWaitForResponse from './no-awaited-wait-for-response.mjs';
 import noBlanketTestSlow from './no-blanket-test-slow.mjs';
 import noDiscardedStateQuery from './no-discarded-state-query.mjs';
+import noImplicitNavigationLoad from './no-implicit-navigation-load.mjs';
 import noPositionalLocator from './no-positional-locator.mjs';
 import noStatusFilteredResponse from './no-status-filtered-response.mjs';
 import requireAssertionPerTest from './require-assertion-per-test.mjs';
@@ -30,5 +31,6 @@ export default {
     'reset-fixture-arrays': resetFixtureArrays,
     'no-discarded-state-query': noDiscardedStateQuery,
     'no-status-filtered-response': noStatusFilteredResponse,
+    'no-implicit-navigation-load': noImplicitNavigationLoad,
   },
 };

@@ -274,7 +274,9 @@ test.describe.serial('Persona operations', () => {
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
 
-    await page.waitForURL('**/settings/persona');
+    await page.waitForURL('**/settings/persona', {
+      waitUntil: 'domcontentloaded',
+    });
   });
 });
 
@@ -400,7 +402,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       });
 
       await test.step('User refreshes and checks the default persona is applied', async () => {
-        await userPage.reload();
+        await userPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
         await redirectToHomePage(userPage);
@@ -423,7 +425,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       });
 
       await test.step('Verify changed default persona for new user', async () => {
-        await userPage.reload();
+        await userPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(
           userPage,
@@ -440,7 +442,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       });
 
       await test.step('User refreshes and sees no default persona', async () => {
-        await userPage.reload();
+        await userPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage); // Expect no persona again
       });

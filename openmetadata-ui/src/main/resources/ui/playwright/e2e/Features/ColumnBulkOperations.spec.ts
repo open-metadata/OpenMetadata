@@ -276,7 +276,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     await test.step('Navigate to page with metadataStatus in URL', async () => {
       const dataReq = waitForGridRequest(page);
       await page.goto(
-        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`
+        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`,
+        { waitUntil: 'domcontentloaded' }
       );
       await dataReq;
       await waitForAllLoadersToDisappear(page);
@@ -360,7 +361,9 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       // Use waitForRequest (not waitForResponse) so we don't depend on response
       // status code — the UI filter chip is driven by URL params, not response data.
       const dataReq = waitForGridRequest(page);
-      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
+      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`, {
+        waitUntil: 'domcontentloaded',
+      });
       await dataReq;
       await waitForAllLoadersToDisappear(page);
     });
@@ -472,7 +475,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       await page.goto(
         `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent(
           'sample_data'
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await dataReq;
       await waitForAllLoadersToDisappear(page);

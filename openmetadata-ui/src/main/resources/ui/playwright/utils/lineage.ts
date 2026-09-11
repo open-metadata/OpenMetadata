@@ -687,7 +687,7 @@ export const removeColumnLineage = async (
   // Only a fresh /api/v1/lineage/getLineage response proves the removal
   // actually persisted.
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await lineageRes;
 
   await waitForAllLoadersToDisappear(page);

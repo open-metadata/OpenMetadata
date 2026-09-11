@@ -591,6 +591,7 @@ export default [
       'om-playwright/reset-fixture-arrays': 'error',
       'om-playwright/no-discarded-state-query': 'error',
       'om-playwright/no-status-filtered-response': 'error',
+      'om-playwright/no-implicit-navigation-load': 'error',
       'om-playwright/no-blanket-test-slow': 'error',
       'om-playwright/no-positional-locator': 'error',
       'om-playwright/justified-rule-disable': 'error',

@@ -309,7 +309,9 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
 
-        await page.waitForURL('**/settings/customProperties/glossaryTerm');
+        await page.waitForURL('**/settings/customProperties/glossaryTerm', {
+          waitUntil: 'domcontentloaded',
+        });
 
         await waitForAllLoadersToDisappear(page);
 

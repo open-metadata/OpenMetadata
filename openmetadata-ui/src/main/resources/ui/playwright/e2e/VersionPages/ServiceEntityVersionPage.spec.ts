@@ -325,7 +325,7 @@ test.describe('Service Version pages', () => {
           BIG_ENTITY_DELETE_TIMEOUT
         );
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 

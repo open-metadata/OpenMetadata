@@ -338,7 +338,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await assignDomainToEntity(apiContext, domainTable, domain);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DOMAIN);

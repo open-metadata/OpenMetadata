@@ -945,7 +945,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }) => {
       test.slow(true);
 
-      await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
+      await page.goto(
+        `/service/driveServices/${serviceFqn}/files?pageSize=15`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       let paginationText = page
@@ -1021,7 +1024,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         (response) => response.url().includes('/api/v1/drives/spreadsheets')
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       const directoriesResponse = await directoriesResponsePromise;
       const reloadSpreadsheetsResponse =
@@ -1278,7 +1281,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Pipeline Tasks normal pagination', async ({ page }) => {
-      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testClientSidePaginationNavigation(
         page,
         '[data-testid="task-table"]'
@@ -1288,7 +1293,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should display at most pageSize rows on each page and total matches task count', async ({
       page,
     }) => {
-      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await page.locator('[data-testid="task-table"]').waitFor({
         state: 'visible',
       });
@@ -1348,7 +1355,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Table version page columns', async ({
       page,
     }) => {
-      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testClientSidePaginationNavigation(
         page,
         '[data-testid="entity-table"]'
@@ -1358,7 +1367,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test search on Table version page columns', async ({
       page,
     }) => {
-      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await page.locator('[data-testid="entity-table"]').waitFor({
         state: 'visible',
       });
@@ -1476,7 +1487,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         sourceFqn
       )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
 
-      await page.goto(impactAnalysisUrl);
+      await page.goto(impactAnalysisUrl, { waitUntil: 'domcontentloaded' });
       await page
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
@@ -1525,7 +1536,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         sourceFqn
       )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
 
-      await page.goto(impactAnalysisUrl);
+      await page.goto(impactAnalysisUrl, { waitUntil: 'domcontentloaded' });
       await page
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });

@@ -136,7 +136,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
 
       await resolveTask(apiContext, task.id);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForPageLoaded(page);
       await navigateToTasksPanel(page);
 
@@ -314,7 +314,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await page.getByTestId('mentions-toggle').click();
       await mentionsAgain;
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForPageLoaded(page);
 
       await expect(mentionCards).toHaveCount(1);
