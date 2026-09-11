@@ -1264,7 +1264,12 @@
         <configuration>
           <publishingServerId>central</publishingServerId>
           <autoPublish>true</autoPublish>
-          <waitUntil>published</waitUntil>
+          <!-- Return once Sonatype has validated the bundle; autoPublish still
+               publishes it afterwards. Waiting for the terminal 'published' state
+               polls Central's async publish queue, which is slow on busy days and
+               times out (~30m) as a false BUILD FAILURE even though the upload and
+               validation succeeded (e.g. the 1.13.6 release). -->
+          <waitUntil>validated</waitUntil>
         </configuration>
       </plugin>
     </plugins>
