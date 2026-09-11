@@ -1,12 +1,15 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -77,16 +80,91 @@ class OnboardingBoardResourceIT {
 
   @ParameterizedTest
   @ValueSource(strings = {"domain", "assignee"})
-  void sparseFiltersFillPagesBeyondOneThousandRows(String filter, TestNamespace namespace) {
+  void sparseFiltersResumeBeyondOneThousandRows(String filter, TestNamespace namespace) {
     seed(namespace, 1005, 1001);
     String query = filter + "=" + (filter.equals("domain") ? domain.getId() : assignee.getId());
-    OnboardingBoard first = board(query, null, 2);
+    OnboardingBoard scan = board(query, null, 2);
+    assertTrue(scan.getData().isEmpty(), "Each request must stop after 1,000 candidates");
+    assertEquals(instanceId(999).toString(), scan.getAfter());
+    assertTrue(scan.getScanLimitReached());
+    OnboardingBoard first = board(query, scan.getAfter(), 2);
     assertEquals(assets.subList(1001, 1003), ids(first));
     assertEquals(instanceId(1002).toString(), first.getAfter());
+    assertFalse(first.getScanLimitReached());
     OnboardingBoard second = board(query, first.getAfter(), 2);
     assertEquals(assets.subList(1003, 1005), ids(second));
     assertNull(second.getAfter(), "An exactly full final page must not advertise an empty page");
+    assertFalse(second.getScanLimitReached());
     assertTrue(board(query, instanceId(1004).toString(), 2).getData().isEmpty());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {998, 999, 1000})
+  void scanBoundaryPreservesMatchesAndIncludesLookahead(int firstMatch, TestNamespace namespace) {
+    seed(namespace, 1005, firstMatch);
+    String query = "domain=" + domain.getId();
+    var first = board(query, null, 2);
+    assertEquals(assets.subList(firstMatch, 1000), ids(first));
+    assertEquals(instanceId(999).toString(), first.getAfter());
+    assertTrue(first.getScanLimitReached());
+    var second = board(query, first.getAfter(), 5);
+    assertEquals(assets.subList(1000, 1005), ids(second));
+    assertNull(second.getAfter());
+    assertFalse(second.getScanLimitReached());
+  }
+
+  @Test
+  void deniedCandidatesConsumeTheBudgetAndContinuationsTerminate(TestNamespace namespace) {
+    seed(namespace, 2501, 0);
+    Filter filter = new Filter(Entity.METRIC, OnboardingStage.DRAFT.value(), domain.getId(), null);
+    AtomicInteger authorized = new AtomicInteger();
+    String cursor = null;
+    for (int index = 0; index < 3; index++) {
+      String after = cursor;
+      authorized.set(0);
+      var measured =
+          measureReads(
+              () ->
+                  OnboardingBoardService.list(
+                      filter,
+                      after,
+                      100,
+                      entity -> {
+                        authorized.incrementAndGet();
+                        return false;
+                      }));
+      var result = measured.board();
+      int expectedRows = index < 2 ? 1000 : 501;
+      assertTrue(result.getData().isEmpty());
+      assertEquals(
+          expectedRows, authorized.get(), "Authorization work must be bounded per request");
+      assertEquals(
+          (expectedRows + 99) / 100,
+          measured.queries().stream()
+              .filter(sql -> sql.contains("FROM onboarding_instance"))
+              .count(),
+          "Stop database scanning at the same budget even if no asset is visible");
+      assertEquals(index < 2, result.getScanLimitReached());
+      cursor = result.getAfter();
+      if (index < 2) {
+        assertEquals(instanceId((index + 1) * 1000 - 1).toString(), cursor);
+      }
+    }
+    assertNull(cursor);
+  }
+
+  @Test
+  void exhaustedCatalogAtScanBoundaryFinishesOnNextRequest(TestNamespace namespace) {
+    seed(namespace, 1000, 1000);
+    String query = "domain=" + domain.getId();
+    var scan = board(query, null, 25);
+    assertTrue(scan.getData().isEmpty());
+    assertTrue(scan.getScanLimitReached());
+    assertEquals(instanceId(999).toString(), scan.getAfter());
+    var exhausted = board(query, scan.getAfter(), 25);
+    assertTrue(exhausted.getData().isEmpty());
+    assertFalse(exhausted.getScanLimitReached());
+    assertNull(exhausted.getAfter());
   }
 
   @Test
@@ -136,6 +214,45 @@ class OnboardingBoardResourceIT {
   void boardReadsAssetsAndDependenciesInBatches(TestNamespace namespace) {
     seed(namespace, 30, 0);
     seedFieldTasks();
+    var measured =
+        measureReads(
+            () ->
+                OnboardingBoardService.list(
+                    new Filter(
+                        Entity.METRIC,
+                        OnboardingStage.DRAFT.value(),
+                        domain.getId(),
+                        assignee.getId()),
+                    null,
+                    25,
+                    ref -> true));
+    var result = measured.board();
+    var queries = measured.queries();
+    assertEquals(assets.subList(0, 25), ids(result));
+    assertTrue(
+        result.getData().stream()
+            .allMatch(
+                row -> row.getSteps().stream().anyMatch(step -> tasks.contains(step.getTaskId()))));
+    assertTrue(
+        queries.stream().anyMatch(sql -> sql.contains("metric_entity")),
+        "Capture real database reads");
+    assertTrue(
+        queries.stream().filter(sql -> sql.contains("FROM metric_entity")).count() <= 2,
+        () -> "Asset reads must be batched: " + queries);
+    assertTrue(
+        queries.stream().filter(sql -> sql.contains("FROM onboarding_instance")).count() <= 2,
+        "Reuse the instances loaded by the board query");
+    assertTrue(
+        queries.stream().filter(sql -> sql.contains("FROM user_entity")).count() <= 2,
+        "Resolve shared assignees once per request");
+    assertTrue(
+        queries.stream().filter(sql -> sql.contains("FROM task_entity")).count() <= 2,
+        "Read assigned tasks in batches");
+  }
+
+  private record MeasuredBoard(OnboardingBoard board, List<String> queries) {}
+
+  private MeasuredBoard measureReads(Supplier<OnboardingBoard> query) {
     var jdbi = Entity.getJdbi();
     var previous = jdbi.getConfig(SqlStatements.class).getSqlLogger();
     var thread = Thread.currentThread();
@@ -154,34 +271,7 @@ class OnboardingBoardResourceIT {
           }
         });
     try {
-      var result =
-          OnboardingBoardService.list(
-              new Filter(
-                  Entity.METRIC, OnboardingStage.DRAFT.value(), domain.getId(), assignee.getId()),
-              null,
-              25,
-              ref -> true);
-      assertEquals(assets.subList(0, 25), ids(result));
-      assertTrue(
-          result.getData().stream()
-              .allMatch(
-                  row ->
-                      row.getSteps().stream().anyMatch(step -> tasks.contains(step.getTaskId()))));
-      assertTrue(
-          queries.stream().anyMatch(sql -> sql.contains("metric_entity")),
-          "Capture real database reads");
-      assertTrue(
-          queries.stream().filter(sql -> sql.contains("FROM metric_entity")).count() <= 2,
-          () -> "Asset reads must be batched: " + queries);
-      assertTrue(
-          queries.stream().filter(sql -> sql.contains("FROM onboarding_instance")).count() <= 2,
-          "Reuse the instances loaded by the board query");
-      assertTrue(
-          queries.stream().filter(sql -> sql.contains("FROM user_entity")).count() <= 2,
-          "Resolve shared assignees once per request");
-      assertTrue(
-          queries.stream().filter(sql -> sql.contains("FROM task_entity")).count() <= 2,
-          "Read assigned tasks in batches");
+      return new MeasuredBoard(query.get(), queries);
     } finally {
       jdbi.setSqlLogger(previous);
     }

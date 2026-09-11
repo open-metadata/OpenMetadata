@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "Включено: {{enrolled}} · Проверено: {{scanned}}",
     "onboarding-board-empty": "Нет активов, соответствующих этим фильтрам.",
     "onboarding-board-load-error": "Не удалось загрузить доску. Обновите, чтобы повторить попытку.",
+    "onboarding-board-scan-incomplete": "Вашим фильтрам могут соответствовать другие активы. Нажмите «Следующий», чтобы продолжить поиск.",
     "onboarding-claim-ownership-description": "Данные работают хорошо, когда ими владеют. Найдите свои объекты и поставьте себя их владельцем.",
     "onboarding-comma-separated": "Разделяйте значения запятыми.",
     "onboarding-configuration-load-error": "Не удалось загрузить параметры конфигурации.",

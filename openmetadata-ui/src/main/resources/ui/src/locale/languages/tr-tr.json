@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} varlık alındı · {{scanned}} varlık tarandı",
     "onboarding-board-empty": "Bu filtrelerle eşleşen varlık yok.",
     "onboarding-board-load-error": "Pano yüklenemedi. Tekrar denemek için yenileyin.",
+    "onboarding-board-scan-incomplete": "Filtrelerinizle eşleşen başka varlıklar olabilir. Aramaya devam etmek için Sonraki'yi seçin.",
     "onboarding-claim-ownership-description": "Veri sahip olunduğunda iyi çalışır. Sahip olduğunuz veri varlıklarına bir göz atın ve sahipliği üstlenin.",
     "onboarding-comma-separated": "Değerleri virgülle ayırın.",
     "onboarding-configuration-load-error": "Yapılandırma seçenekleri yüklenemedi.",

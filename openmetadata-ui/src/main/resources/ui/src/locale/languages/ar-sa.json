@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "تم تسجيل {{enrolled}} · تم فحص {{scanned}}",
     "onboarding-board-empty": "لا توجد أصول تطابق عوامل التصفية هذه.",
     "onboarding-board-load-error": "تعذر تحميل اللوحة. حدّث الصفحة للمحاولة مجددًا.",
+    "onboarding-board-scan-incomplete": "قد تتطابق أصول أخرى مع عوامل التصفية. اختر التالي لمتابعة البحث.",
     "onboarding-claim-ownership-description": "تعمل البيانات جيدًا عندما تكون مملوكة. ألقِ نظرة على أصول البيانات التي تمتلكها وطالب بالملكية.",
     "onboarding-comma-separated": "افصل القيم بفواصل.",
     "onboarding-configuration-load-error": "تعذر تحميل خيارات الإعداد.",

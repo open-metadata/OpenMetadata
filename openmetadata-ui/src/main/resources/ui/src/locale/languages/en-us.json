@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} enrolled · {{scanned}} scanned",
     "onboarding-board-empty": "No assets match these filters.",
     "onboarding-board-load-error": "Could not load the board. Refresh to try again.",
+    "onboarding-board-scan-incomplete": "More assets may match your filters. Select Next to continue searching.",
     "onboarding-claim-ownership-description": "Data works well when it is owned. Take a look at the data assets that you own and claim ownership.",
     "onboarding-comma-separated": "Separate values with commas.",
     "onboarding-configuration-load-error": "Could not load the configuration options.",

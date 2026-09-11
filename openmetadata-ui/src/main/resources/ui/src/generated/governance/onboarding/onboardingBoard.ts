@@ -10,9 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 export interface OnboardingBoard {
+    /**
+     * Continuation cursor. Normally identifies the last returned instance. When
+     * scanLimitReached is true, identifies the last scanned instance, even if no rows matched.
+     * Continue with the same filters until after is absent.
+     */
     after?: string;
     data:   OnboardingProgress[];
+    /**
+     * The request exhausted its 1,000-candidate scan budget before confirming whether more
+     * matches exist. Data may be empty or shorter than the requested limit. Use after to
+     * continue; the following page may be empty if the catalog ended at the scan boundary.
+     */
+    scanLimitReached?: boolean;
 }
 
 export interface OnboardingProgress {

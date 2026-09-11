@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "已加入 {{enrolled}} 個 · 已掃描 {{scanned}} 個",
     "onboarding-board-empty": "沒有資產符合這些篩選條件。",
     "onboarding-board-load-error": "無法載入看板。請重新整理後重試。",
+    "onboarding-board-scan-incomplete": "可能還有其他資產符合篩選條件。請選擇「下一步」繼續搜尋。",
     "onboarding-claim-ownership-description": "資料在有擁有者時效果更好。看看您擁有的資料資產並聲明所有權。",
     "onboarding-comma-separated": "請以逗號分隔多個值。",
     "onboarding-configuration-load-error": "無法載入設定選項。",

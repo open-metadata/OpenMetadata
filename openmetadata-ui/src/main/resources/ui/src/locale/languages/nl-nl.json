@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} opgenomen · {{scanned}} gecontroleerd",
     "onboarding-board-empty": "Geen assets komen overeen met deze filters.",
     "onboarding-board-load-error": "Het bord kon niet worden geladen. Vernieuw om het opnieuw te proberen.",
+    "onboarding-board-scan-incomplete": "Meer assets kunnen overeenkomen met uw filters. Selecteer Volgende om verder te zoeken.",
     "onboarding-claim-ownership-description": "Data is het meest bruikbaar als het een eigenaar heeft. Bekijk de data-assets waar je eigenaar van bent en claim het eigendom.",
     "onboarding-comma-separated": "Scheid waarden met komma’s.",
     "onboarding-configuration-load-error": "De configuratieopties konden niet worden geladen.",

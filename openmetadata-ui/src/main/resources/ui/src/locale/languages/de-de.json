@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} aufgenommen · {{scanned}} geprüft",
     "onboarding-board-empty": "Keine Assets entsprechen diesen Filtern.",
     "onboarding-board-load-error": "Das Board konnte nicht geladen werden. Aktualisieren Sie es, um es erneut zu versuchen.",
+    "onboarding-board-scan-incomplete": "Weitere Assets könnten Ihren Filtern entsprechen. Wählen Sie „Nächster“, um die Suche fortzusetzen.",
     "onboarding-claim-ownership-description": "Daten funktionieren am besten, wenn sie einen Eigentümer haben. Sieh dir die Datenvermögenswerte an, die du besitzt, und beanspruche ihren Besitz.",
     "onboarding-comma-separated": "Trennen Sie die Werte durch Kommas.",
     "onboarding-configuration-load-error": "Die Konfigurationsoptionen konnten nicht geladen werden.",

@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "등록 {{enrolled}}개 · 확인 {{scanned}}개",
     "onboarding-board-empty": "필터와 일치하는 자산이 없습니다.",
     "onboarding-board-load-error": "보드를 불러올 수 없습니다. 새로 고침하여 다시 시도하세요.",
+    "onboarding-board-scan-incomplete": "필터와 일치하는 자산이 더 있을 수 있습니다. 다음을 선택하여 검색을 계속하세요.",
     "onboarding-claim-ownership-description": "데이터는 소유될 때 잘 작동합니다. 소유하고 있는 데이터 자산을 살펴보고 소유권을 주장하세요.",
     "onboarding-comma-separated": "값을 쉼표로 구분하세요.",
     "onboarding-configuration-load-error": "설정 옵션을 불러오지 못했습니다.",

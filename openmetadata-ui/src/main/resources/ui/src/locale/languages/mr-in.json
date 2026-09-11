@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} समाविष्ट · {{scanned}} तपासले",
     "onboarding-board-empty": "या फिल्टरशी जुळणारी मालमत्ता नाही.",
     "onboarding-board-load-error": "बोर्ड लोड करता आला नाही. पुन्हा प्रयत्न करण्यासाठी रिफ्रेश करा.",
+    "onboarding-board-scan-incomplete": "तुमच्या फिल्टरशी जुळणारी आणखी मालमत्ता असू शकते. शोध सुरू ठेवण्यासाठी पुढे निवडा.",
     "onboarding-claim-ownership-description": "डेटा मालकीचा असताना चांगला असतो. तुम्ही मालकीचे असलेले डेटा ॲसेट्स पाहा आणि मालकी हक्क दावा करा.",
     "onboarding-comma-separated": "मूल्ये स्वल्पविरामाने वेगळी करा.",
     "onboarding-configuration-load-error": "कॉन्फिगरेशन पर्याय लोड करता आले नाहीत.",

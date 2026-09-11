@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "ลงทะเบียนแล้ว {{enrolled}} รายการ · ตรวจสอบแล้ว {{scanned}} รายการ",
     "onboarding-board-empty": "ไม่มีสินทรัพย์ที่ตรงกับตัวกรองเหล่านี้",
     "onboarding-board-load-error": "ไม่สามารถโหลดบอร์ดได้ รีเฟรชเพื่อลองอีกครั้ง",
+    "onboarding-board-scan-incomplete": "อาจมีสินทรัพย์อื่นที่ตรงกับตัวกรองของคุณ เลือกถัดไปเพื่อค้นหาต่อ",
     "onboarding-claim-ownership-description": "ข้อมูลทำงานได้ดีเมื่อมีการเป็นเจ้าของ มาดูสินทรัพย์ข้อมูลที่คุณเป็นเจ้าของและรับสิทธิ์ความเป็นเจ้าของ",
     "onboarding-comma-separated": "คั่นค่าด้วยเครื่องหมายจุลภาค",
     "onboarding-configuration-load-error": "ไม่สามารถโหลดตัวเลือกการตั้งค่าได้",

@@ -10293,6 +10293,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/governance/onboarding/onboardingBoard.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/governance/onboarding/onboardingProgress.ts"
       ],
       "specs": [

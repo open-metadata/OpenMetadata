@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} ثبت‌شده · {{scanned}} بررسی‌شده",
     "onboarding-board-empty": "هیچ دارایی با این فیلترها مطابقت ندارد.",
     "onboarding-board-load-error": "Não foi possível carregar o quadro. Atualize para tentar novamente.",
+    "onboarding-board-scan-incomplete": "ممکن است دارایی‌های بیشتری با فیلترهای شما مطابقت داشته باشند. برای ادامه جستجو، بعدی را انتخاب کنید.",
     "onboarding-claim-ownership-description": "داده زمانی خوب عمل می‌کند که مالکیت داشته باشد. به دارایی‌های داده‌ای که شما مالکیت دارید نگاهی بیندازید و مالکیت آنها را برعهده بگیرید.",
     "onboarding-comma-separated": "مقادیر را با ویرگول جدا کنید.",
     "onboarding-configuration-load-error": "گزینه‌های پیکربندی بارگیری نشدند.",

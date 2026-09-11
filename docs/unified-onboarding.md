@@ -105,9 +105,14 @@ from processing the same page. The worker also recovers outstanding task starts 
 
 Board reads batch current entities, assignments, tasks, and workflow evidence while reusing the
 pinned instances. Domain and assignee filters use live values, including inherited domains.
-Sparse filters scan bounded batches until the requested page is full or the catalog is exhausted;
-`after` identifies the last returned instance and is omitted when no further matching row exists.
-Very selective filters can therefore require scanning the eligible catalog.
+Each request scans at most 1,000 candidates in batches of 100, including permission checks and
+lookahead. Normally, `after` identifies the last returned instance and is omitted when no further
+matching row exists. If the scan budget is exhausted, `scanLimitReached` is true and `after`
+identifies the last scanned instance. Such a response may contain fewer than `limit` rows or no
+rows at all; clients must follow `after` with the same filters to continue. An empty final request
+may be needed when the catalog ends exactly at the scan boundary. The board explains that the
+search is incomplete and lets the user select Next; it does not automatically scan the remaining
+catalog or present an unfinished scan as an empty result.
 
 Integration coverage lives in `OnboardingResourceIT`, `OnboardingBoardResourceIT`, and `IntakeFormResourceIT`. Browser journeys
 live in `playwright/e2e/Pages/Onboarding*.spec.ts` and the existing `IntakeForm.spec.ts`. The four

@@ -18,6 +18,7 @@ import org.openmetadata.service.util.FreshReadScope;
 
 public final class OnboardingBoardService {
   private static final int BATCH_SIZE = 100;
+  private static final int MAX_SCANNED_ROWS = 1000;
 
   private OnboardingBoardService() {}
 
@@ -39,18 +40,21 @@ public final class OnboardingBoardService {
     var reads = new OnboardingBoardContext();
     String cursor = after == null ? "" : after;
     String lastResult = null;
+    int scanned = 0;
     // Live domains include inheritance; assignments depend on current metadata and workflow state.
-    // Scan bounded batches to exhaustion rather than truncating sparse, permission-filtered pages.
-    while (true) {
+    // Bound the whole request, including lookahead and candidates the caller cannot view.
+    while (scanned < MAX_SCANNED_ROWS) {
+      int batchSize = Math.min(BATCH_SIZE, MAX_SCANNED_ROWS - scanned);
       var page =
           OnboardingStore.dao()
-              .list(filter.entityType(), filter.stage(), cursor, BATCH_SIZE)
+              .list(filter.entityType(), filter.stage(), cursor, batchSize)
               .stream()
               .map(OnboardingStore::read)
               .toList();
       if (page.isEmpty()) {
         return new OnboardingBoard().withData(results);
       }
+      scanned += page.size();
       var assets = assets(page);
       var visible =
           page.stream()
@@ -77,14 +81,19 @@ public final class OnboardingBoardService {
         if (!matchesAssignee(progress, filter.assignee())) {
           continue;
         }
-        // Look ahead one matching row so the cursor always denotes the last returned row.
-        if (results.size() == limit)
+        // Preserve the next match when lookahead fills the page within the scan budget.
+        if (results.size() == limit) {
           return new OnboardingBoard().withData(results).withAfter(lastResult);
+        }
         results.add(progress);
         lastResult = instance.getId().toString();
       }
       cursor = page.getLast().getId().toString();
+      if (page.size() < batchSize) {
+        return new OnboardingBoard().withData(results);
+      }
     }
+    return new OnboardingBoard().withData(results).withAfter(cursor).withScanLimitReached(true);
   }
 
   private static Map<UUID, EntityInterface> assets(List<OnboardingInstance> instances) {

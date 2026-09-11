@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} registrerade · {{scanned}} granskade",
     "onboarding-board-empty": "Inga tillgångar matchar dessa filter.",
     "onboarding-board-load-error": "Det gick inte att läsa in tavlan. Uppdatera för att försöka igen.",
+    "onboarding-board-scan-incomplete": "Fler tillgångar kan matcha dina filter. Välj Nästa för att fortsätta söka.",
     "onboarding-claim-ownership-description": "Data fungerar bra när de har en ägare. Ta en titt på de datatillgångar som du äger och gör anspråk på ägarskap.",
     "onboarding-comma-separated": "Separera värden med kommatecken.",
     "onboarding-configuration-load-error": "Det gick inte att läsa in konfigurationsalternativen.",

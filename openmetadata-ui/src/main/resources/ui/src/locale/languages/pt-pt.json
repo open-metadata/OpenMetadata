@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} integrados · {{scanned}} examinados",
     "onboarding-board-empty": "Nenhum ativo corresponde a estes filtros.",
     "onboarding-board-load-error": "Não foi possível carregar o quadro. Atualize para tentar novamente.",
+    "onboarding-board-scan-incomplete": "Pode haver mais ativos que correspondam aos seus filtros. Selecione Próximo para continuar a pesquisa.",
     "onboarding-claim-ownership-description": "Os dados funcionam bem quando são de propriedade. Dê uma olhada nos ativos de dados que você possui e reivindique a propriedade.",
     "onboarding-comma-separated": "Separe os valores por vírgulas.",
     "onboarding-configuration-load-error": "Não foi possível carregar as opções de configuração.",

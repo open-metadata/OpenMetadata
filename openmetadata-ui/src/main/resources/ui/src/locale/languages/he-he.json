@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} צורפו · {{scanned}} נבדקו",
     "onboarding-board-empty": "אין נכסים התואמים למסננים האלה.",
     "onboarding-board-load-error": "לא ניתן לטעון את הלוח. יש לרענן ולנסות שוב.",
+    "onboarding-board-scan-incomplete": "ייתכן שיש נכסים נוספים התואמים למסננים שלך. יש לבחור הבא כדי להמשיך בחיפוש.",
     "onboarding-claim-ownership-description": "הנתונים פועלים טוב כשהם משולטים עליהם. עיין בנכסי הנתונים שאתה בעל ותטריד את הבעלות.",
     "onboarding-comma-separated": "יש להפריד ערכים בפסיקים.",
     "onboarding-configuration-load-error": "לא ניתן לטעון את אפשרויות ההגדרה.",

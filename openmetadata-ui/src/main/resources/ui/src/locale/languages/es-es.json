@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} incorporados · {{scanned}} examinados",
     "onboarding-board-empty": "Ningún activo coincide con estos filtros.",
     "onboarding-board-load-error": "No se pudo cargar el tablero. Actualiza para reintentar.",
+    "onboarding-board-scan-incomplete": "Puede haber más activos que coincidan con los filtros. Selecciona Siguiente para continuar la búsqueda.",
     "onboarding-claim-ownership-description": "Revisa los activos de datos que posees y reclama su propiedad.",
     "onboarding-comma-separated": "Separe los valores con comas.",
     "onboarding-configuration-load-error": "No se pudieron cargar las opciones de configuración.",

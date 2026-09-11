@@ -123,15 +123,25 @@ const filterReference = (
     },
   ];
 };
-const boardEmptyMessage = (loading: boolean, error: boolean) => {
+const boardEmptyMessage = (
+  loading: boolean,
+  error: boolean,
+  scanIncomplete: boolean
+) => {
   if (loading) {
     return 'label.loading';
   }
 
-  return error
-    ? 'message.onboarding-board-load-error'
+  if (error) {
+    return 'message.onboarding-board-load-error';
+  }
+
+  return scanIncomplete
+    ? 'message.onboarding-board-scan-incomplete'
     : 'message.onboarding-board-empty';
 };
+const hasPartialScanResults = (board: OnboardingBoard) =>
+  Boolean(board.scanLimitReached && board.data.length);
 const OnboardingBoardPage = () => {
   const { t, i18n } = useTranslation();
   const [search, setSearch] = useSearchParams();
@@ -148,6 +158,7 @@ const OnboardingBoardPage = () => {
   const [board, setBoard] = useState<OnboardingBoard>({ data: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const scanIncomplete = Boolean(board.scanLimitReached);
   const request = useRef(0);
   const updateFilter = (values: Record<string, string | undefined>) => {
     setSearch((current) => {
@@ -285,6 +296,11 @@ const OnboardingBoardPage = () => {
             variant="error"
           />
         )}
+        {hasPartialScanResults(board) && (
+          <Typography className="tw:text-tertiary" role="status" size="text-sm">
+            {t('message.onboarding-board-scan-incomplete')}
+          </Typography>
+        )}
         <Card
           aria-label={t('label.onboarding-board')}
           className="tw:overflow-x-auto"
@@ -312,8 +328,11 @@ const OnboardingBoardPage = () => {
             <Table.Body
               items={board.data}
               renderEmptyState={() => (
-                <Typography className="tw:p-6 tw:text-tertiary" size="text-sm">
-                  {t(boardEmptyMessage(loading, error))}
+                <Typography
+                  className="tw:p-6 tw:text-tertiary"
+                  role="status"
+                  size="text-sm">
+                  {t(boardEmptyMessage(loading, error, scanIncomplete))}
                 </Typography>
               )}>
               {(row) => {

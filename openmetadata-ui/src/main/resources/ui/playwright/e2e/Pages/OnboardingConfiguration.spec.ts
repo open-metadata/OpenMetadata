@@ -15,6 +15,7 @@ import {
   TargetEntityType,
   Type,
 } from '../../../src/generated/governance/intakeForm';
+import { OnboardingBoard } from '../../../src/generated/governance/onboarding/onboardingBoard';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { expect } from '../../support/fixtures/base';
 import { authenticateAdminPage } from '../../utils/admin';
@@ -241,7 +242,7 @@ test.describe(
         .getByRole('row')
         .filter({ has: page.getByRole('link') });
       await expect(rows).toHaveCount(25);
-      await board.getByRole('button', { name: / Stage$/ }).click();
+      await board.getByRole('button', { name: / Stage(?: \*)?$/ }).click();
       await page.getByRole('option', { name: 'Draft', exact: true }).click();
       await expect(page).toHaveURL(/stage=Draft/);
       await expect(rows).toHaveCount(25);
@@ -278,7 +279,7 @@ test.describe(
           }),
         { times: 1 }
       );
-      await board.getByRole('button', { name: / Stage$/ }).click();
+      await board.getByRole('button', { name: / Stage(?: \*)?$/ }).click();
       await page.getByRole('option', { name: 'Approved', exact: true }).click();
       await expect(board.getByRole('alert')).toContainText(
         'Could not load the board'
@@ -291,5 +292,125 @@ test.describe(
         'Draft'
       );
     });
+
+    for (const initialMatches of [0, 1]) {
+      test(`Board continues a scan with ${initialMatches} matches, retries failure and resets filters`, async ({
+        page,
+        onboarding,
+      }) => {
+        await onboarding.publish(metric, fields, checks);
+        const domain = await onboarding.createResource('domains', {
+          name: `board_scan_${Date.now()}`,
+          description: 'Board scan continuation',
+          domainType: 'Aggregate',
+        });
+        const assets = [];
+        for (let count = 0; count < 2; count++) {
+          assets.push(
+            await onboarding.createAsset(metric, {
+              domains: [domain.fullyQualifiedName],
+            })
+          );
+        }
+        const firstResponse = await onboarding.api.get(
+          `/api/v1/governance/onboarding?entityType=metric&stage=Draft&domain=${domain.id}&limit=1`
+        );
+        expect(firstResponse.ok()).toBeTruthy();
+        const first: OnboardingBoard = await firstResponse.json();
+        expect(first.data).toHaveLength(1);
+        expect(first.after).toBeTruthy();
+        const scan: OnboardingBoard = {
+          data: initialMatches ? first.data : [],
+          after: initialMatches
+            ? first.after
+            : '00000000-0000-0000-0000-000000000000',
+          scanLimitReached: true,
+        };
+        // Exercise the scan-budget response without creating 1,000 browser fixtures; continuations use the real API.
+        await page.route('**/api/v1/governance/onboarding?*', (route) => {
+          const query = new URL(route.request().url()).searchParams;
+
+          return !query.has('after') && query.get('stage') === 'Draft'
+            ? route.fulfill({ json: scan })
+            : route.fallback();
+        });
+        await page.goto(
+          `/onboarding?entityType=metric&stage=Draft&domain=${domain.id}&domainName=${domain.name}`
+        );
+        const board = page.getByTestId('onboarding-board');
+        const rows = board
+          .getByRole('row')
+          .filter({ has: page.getByRole('link') });
+        const notice = board.getByText(
+          'More assets may match your filters. Select Next to continue searching.'
+        );
+        await expect(notice).toBeVisible();
+        await expect(
+          board.getByText('No assets match these filters.')
+        ).toHaveCount(0);
+        await expect(rows).toHaveCount(initialMatches);
+        await expect(
+          board.getByRole('button', { name: 'Next', exact: true })
+        ).toBeEnabled();
+
+        await page.route(
+          '**/api/v1/governance/onboarding?*',
+          (route) =>
+            route.fulfill({
+              status: 503,
+              json: { message: 'Continuation temporarily unavailable' },
+            }),
+          { times: 1 }
+        );
+        await board.getByRole('button', { name: 'Next', exact: true }).click();
+        await expect(board.getByRole('alert')).toContainText(
+          'Could not load the board'
+        );
+        await expect(notice).toHaveCount(0);
+        await expect(rows).toHaveCount(0);
+        const continuationUrl = page.url();
+        expect(new URL(continuationUrl).searchParams.get('after')).toBe(
+          scan.after
+        );
+
+        await board
+          .getByRole('button', { name: 'Refresh', exact: true })
+          .click();
+        await expect(rows).toHaveCount(2 - initialMatches);
+        await expect(board.getByRole('alert')).toHaveCount(0);
+        await expect(
+          board.getByRole('button', { name: 'Next', exact: true })
+        ).toBeDisabled();
+        const remaining = assets.filter(
+          (asset) => !scan.data.some((row) => row.entity?.id === asset.id)
+        );
+        for (const asset of remaining) {
+          await expect(
+            board.getByRole('link', { name: asset.name, exact: true })
+          ).toBeVisible();
+        }
+        await page.reload();
+        await expect(rows).toHaveCount(2 - initialMatches);
+        await expect(page).toHaveURL(continuationUrl);
+        await board
+          .getByRole('button', { name: 'Previous', exact: true })
+          .click();
+        await expect(notice).toBeVisible();
+        await expect(rows).toHaveCount(initialMatches);
+        await board.getByRole('button', { name: / Stage(?: \*)?$/ }).click();
+        await page
+          .getByRole('option', { name: 'Approved', exact: true })
+          .click();
+        await expect(
+          board.getByText('No assets match these filters.')
+        ).toBeVisible();
+        await expect(notice).toHaveCount(0);
+        expect(new URL(page.url()).searchParams.has('after')).toBe(false);
+        expect(new URL(page.url()).searchParams.has('previous')).toBe(false);
+        await expect(
+          board.getByRole('button', { name: 'Next', exact: true })
+        ).toBeDisabled();
+      });
+    }
   }
 );

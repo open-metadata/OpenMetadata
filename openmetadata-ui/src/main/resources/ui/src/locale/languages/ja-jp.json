@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "登録済み {{enrolled}} 件 · 確認済み {{scanned}} 件",
     "onboarding-board-empty": "フィルターに一致するアセットはありません。",
     "onboarding-board-load-error": "ボードを読み込めませんでした。更新して再試行してください。",
+    "onboarding-board-scan-incomplete": "フィルターに一致するアセットがほかにもある可能性があります。「次へ」を選択して検索を続けてください。",
     "onboarding-claim-ownership-description": "データに責任者がいると効果的です。自分が所有するデータ資産を確認し、オーナーシップを宣言しましょう。",
     "onboarding-comma-separated": "値をカンマで区切ってください。",
     "onboarding-configuration-load-error": "設定オプションを読み込めませんでした。",

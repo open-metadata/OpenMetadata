@@ -4303,6 +4303,7 @@
     "onboarding-backfill-progress": "{{enrolled}} inscrits · {{scanned}} examinés",
     "onboarding-board-empty": "Aucun actif ne correspond à ces filtres.",
     "onboarding-board-load-error": "Impossible de charger le tableau. Actualisez pour réessayer.",
+    "onboarding-board-scan-incomplete": "D’autres actifs peuvent correspondre à vos filtres. Sélectionnez Suivant pour poursuivre la recherche.",
     "onboarding-claim-ownership-description": "Les données fonctionnent mieux lorsqu'elles sont possédées. Revoyez les actifs de données que vous possédez et revendiquez la propriété.",
     "onboarding-comma-separated": "Séparez les valeurs par des virgules.",
     "onboarding-configuration-load-error": "Impossible de charger les options de configuration.",
