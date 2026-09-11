@@ -892,9 +892,12 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Service Type').click();
 
+    // The option row's data-testid is the lowercased service-type key
+    // ('mlflow'); the visible label is source-cased ('Mlflow'), so match the
+    // stable testid rather than the label.
     const serviceTypeOption = page
       .getByTestId('drop-down-menu')
-      .getByLabel('mlflow', { exact: true });
+      .getByTestId('mlflow');
     await expect(serviceTypeOption).toBeVisible();
 
     await serviceTypeOption.click();
