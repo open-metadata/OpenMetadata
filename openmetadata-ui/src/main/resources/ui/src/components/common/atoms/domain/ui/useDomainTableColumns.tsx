@@ -64,7 +64,8 @@ export const useDomainTableColumns = ({
           return renderDomainOwnersCell(
             entity,
             toOwnersWithHref,
-            renderOwnerContent
+            renderOwnerContent,
+            { showDashPlaceholder: true }
           );
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(
