@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -75,8 +74,8 @@ class AirflowRESTClientTest {
       assertFalse(first.getRunId().isBlank());
       assertNotEquals(first.getRunId(), second.getRunId());
       List<RequestRecord> requests = server.requests("POST", prefix + "/trigger");
-      assertEquals(first.getRunId(), new JSONObject(requests.get(0).body()).getString("run_id"));
-      assertEquals(second.getRunId(), new JSONObject(requests.get(1).body()).getString("run_id"));
+      assertEquals("run_id=" + first.getRunId(), requests.getFirst().query());
+      assertEquals("run_id=" + second.getRunId(), requests.getLast().query());
     }
   }
 

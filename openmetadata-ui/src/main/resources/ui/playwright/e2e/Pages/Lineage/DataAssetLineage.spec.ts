@@ -32,6 +32,7 @@ import {
   clickOutside,
   getApiContext,
   getDefaultAdminAPIContext,
+  getEntityTypeSearchIndexMapping,
   redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -42,6 +43,7 @@ import {
   applyPipelineFromModal,
   clickLineageNode,
   connectEdgeBetweenNodes,
+  connectEdgeBetweenNodesViaAPI,
   deleteEdge,
   deleteNode,
   editLineage,
@@ -117,13 +119,16 @@ test.afterEach(async ({ page }) => {
 });
 
 test.describe('Data asset lineage', () => {
-  const pipeline = new PipelineClass();
+  let pipeline: PipelineClass;
   const entities: EntityClassUnion[] = [];
+  const sourceEntities: EntityClassUnion[] = [];
 
   test.beforeAll(
     'setup lineage creation with other entity creation',
     async ({ browser }) => {
       entities.length = 0;
+      sourceEntities.length = 0;
+      pipeline = new PipelineClass();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -145,14 +150,28 @@ test.describe('Data asset lineage', () => {
     await authenticateAdminPage(page);
   });
 
-  Object.entries(lineageSourceEntities).forEach(([key, EntityClass]) => {
-    const lineageEntity = new EntityClass();
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    try {
+      for (const entity of [...sourceEntities, ...entities, pipeline]) {
+        if (entity?.entityResponseData.id) {
+          await entity.delete(apiContext);
+        }
+      }
+    } finally {
+      await afterAction();
+    }
+  });
 
+  Object.entries(lineageSourceEntities).forEach(([key, EntityClass]) => {
     test(`verify create lineage for entity - ${startCase(key)}`, async ({
       page,
     }) => {
-      // 5 minute timeout
       test.setTimeout(5 * 60 * 1000);
+      const lineageEntity = new EntityClass();
+      sourceEntities.push(lineageEntity);
 
       await test.step('prepare entity', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
@@ -174,7 +193,7 @@ test.describe('Data asset lineage', () => {
         }
 
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageRes;
         await page.getByTestId('edit-lineage').waitFor({
           state: 'visible',
@@ -220,6 +239,39 @@ test.describe('Data asset lineage', () => {
 
           // Panel should not be visible after closing it
           await expect(page.locator('.lineage-entity-panel')).not.toBeVisible();
+        }
+      });
+    });
+
+    test(`verify pipeline, export and removal for entity - ${startCase(
+      key
+    )}`, async ({ page }) => {
+      test.setTimeout(5 * 60 * 1000);
+      const lineageEntity = new EntityClass();
+      sourceEntities.push(lineageEntity);
+
+      await test.step('prepare persisted lineage', async () => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          await lineageEntity.create(apiContext);
+          for (const entity of entities) {
+            const response = await connectEdgeBetweenNodesViaAPI(
+              apiContext,
+              {
+                id: lineageEntity.entityResponseData.id,
+                type: getEntityTypeSearchIndexMapping(lineageEntity.type),
+              },
+              {
+                id: entity.entityResponseData.id,
+                type: getEntityTypeSearchIndexMapping(entity.type),
+              }
+            );
+            expect(response.status()).toBe(200);
+          }
+          await lineageEntity.visitEntityPage(page);
+          await visitLineageTab(page);
+        } finally {
+          await afterAction();
         }
       });
 

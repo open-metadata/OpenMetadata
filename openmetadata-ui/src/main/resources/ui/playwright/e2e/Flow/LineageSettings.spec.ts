@@ -332,7 +332,6 @@ test.describe.serial(
       dataStewardPage,
     }) => {
       // Update setting to show pipeline as Edge
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.SETTINGS);
       await page.getByTestId('preferences').click();
       await page.getByTestId('preferences.lineageConfig').click();
@@ -345,8 +344,6 @@ test.describe.serial(
       );
       await page.getByTestId('save-button').click();
       await lineageSettingUpdate;
-
-      await redirectToHomePage(dataStewardPage);
 
       await table.visitEntityPage(dataStewardPage);
       await visitLineageTab(dataStewardPage);
@@ -383,7 +380,7 @@ test.describe.serial(
       await page.getByTestId('save-button').click();
       await settingsUpdate;
 
-      await dataStewardPage.reload();
+      await dataStewardPage.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(dataStewardPage);
 
       // Pipeline should be shown as Node and not as Edge

@@ -250,27 +250,48 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist page size', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(pageSizeDropdown).toBeInViewport();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
+    await expect(pageSizeDropdown).toHaveText('15 / Page');
 
     // NextPrevious opens this menu on hover. Wait for its animation to finish
     // before clicking the option so the target stays under the pointer.
     const pageSizeMenu = page.getByRole('menu').filter({ hasText: '/ Page' });
     const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
-      name: '15 / Page',
+      name: '25 / Page',
     });
     await pageSizeDropdown.hover();
     await expect(pageSizeMenu).toBeVisible();
     await waitForAntdPopupToSettle(page);
+    const resizedTableList = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/tables' &&
+          url.searchParams.get('databaseSchema') ===
+            'sample_data.ecommerce_db.shopify' &&
+          url.searchParams.get('limit') === '25'
+        );
+      },
+      200
+    );
     await pageSizeOption.click();
-    await expect(pageSizeDropdown).toHaveText('15 / Page');
+    await resizedTableList;
+    await expect(pageSizeDropdown).toHaveText('25 / Page');
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
@@ -289,7 +310,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .scrollIntoViewIfNeeded();
 
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-      '15 / Page'
+      '25 / Page'
     );
   });
 });
@@ -445,22 +466,10 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const glossaryRowSelector =
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
 
-    await expect
-      .poll(
-        async () => {
-          await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
-          await waitForAllLoadersToDisappear(page).catch(() => undefined);
-
-          return await page.locator(glossaryRowSelector).count();
-        },
-        {
-          timeout: 60000,
-          intervals: [1000, 2000, 5000],
-        }
-      )
-      .toBeGreaterThan(0);
-
-    await waitForAllLoadersToDisappear(page);
+    await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator(glossaryRowSelector)).toBeVisible({
+      timeout: 30_000,
+    });
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );

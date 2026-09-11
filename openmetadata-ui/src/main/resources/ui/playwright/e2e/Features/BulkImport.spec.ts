@@ -64,16 +64,16 @@ test.use({
   },
 });
 
-const user1 = new UserClass();
-const user2 = new UserClass();
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
-const domain1 = new Domain();
-const domain2 = new Domain();
+let user1: UserClass;
+let user2: UserClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
+let domain1: Domain;
+let domain2: Domain;
 
 const glossaryDetails = {
-  name: glossaryTerm.data.name,
-  parent: glossary.data.name,
+  name: '',
+  parent: '',
 };
 
 const databaseDetails1 = {
@@ -150,15 +150,30 @@ const storedProcedureDetails = {
 
 test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    // A worker can enter this suite again after another file's tests. Give
+    // each hook invocation its own fixtures instead of recreating old names.
+    user1 = new UserClass();
+    user2 = new UserClass();
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    domain1 = new Domain();
+    domain2 = new Domain();
+    Object.assign(glossaryDetails, {
+      name: glossaryTerm.data.name,
+      parent: glossary.data.name,
+    });
 
-    await user1.create(apiContext);
-    await user2.create(apiContext);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await domain1.create(apiContext);
-    await domain2.create(apiContext);
-    await afterAction();
+    const { apiContext, afterAction } = await createNewPage(browser);
+    try {
+      await user1.create(apiContext);
+      await user2.create(apiContext);
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await domain1.create(apiContext);
+      await domain2.create(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test.beforeEach(async ({ page }) => {

@@ -1259,7 +1259,7 @@ export const closeFirstPopupAlert = async (page: Page) => {
 };
 
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await waitForAllLoadersToDisappear(page);
 };

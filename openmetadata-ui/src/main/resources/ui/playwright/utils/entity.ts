@@ -358,19 +358,31 @@ export const removeOwnersFromList = async ({
   dataTestId?: string;
 }) => {
   await page.getByTestId('edit-owner').click();
-  await waitForAllLoadersToDisappear(page);
+  const ownerTabs = page.getByTestId('select-owner-tabs');
+  const usersTab = ownerTabs.getByRole('tab', { name: /^Users/ });
+  await usersTab.click();
+  await expect(usersTab).toHaveAttribute('aria-selected', 'true');
+  const usersPanel = ownerTabs.getByRole('tabpanel', { name: /^Users/ });
+  await expect(usersPanel.getByTestId('loader')).toHaveCount(0);
 
   for (const ownerName of ownerNames) {
-    const ownerItem = page.getByRole('listitem', {
+    const ownerItem = usersPanel.getByRole('listitem', {
       name: ownerName,
       exact: true,
     });
 
     await ownerItem.click();
   }
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.click('[data-testid="selectable-list-update-btn"]');
+  const patchRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname.startsWith(`/api/v1/${endpoint}/`),
+    200
+  );
+  await usersPanel.getByTestId('selectable-list-update-btn').click();
   await patchRequest;
+  await expect(ownerTabs).toBeHidden();
 
   for (const ownerName of ownerNames) {
     await expect(
@@ -394,19 +406,36 @@ export const removeOwner = async ({
   dataTestId?: string;
 }) => {
   await page.getByTestId('edit-owner').click();
-  await waitForAllLoadersToDisappear(page);
+  const ownerTabs = page.getByTestId('select-owner-tabs');
+  const ownerTab = ownerTabs.getByRole('tab', {
+    name: new RegExp(`^${type}`),
+  });
+  await ownerTab.click();
+  await expect(ownerTab).toHaveAttribute('aria-selected', 'true');
+  const ownerPanel = ownerTabs.getByRole('tabpanel', {
+    name: new RegExp(`^${type}`),
+  });
+  await expect(ownerPanel.getByTestId('loader')).toHaveCount(0);
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname.startsWith(`/api/v1/${endpoint}/`),
+    200
+  );
   if (type === 'Teams') {
-    await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
-
-    await page.getByTestId('remove-owner').locator('svg').click();
+    await ownerPanel.getByTestId('remove-owner').click();
   } else {
-    await page.click('[data-testid="clear-all-button"]');
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await ownerPanel.getByTestId('clear-all-button').click();
+    await expect(
+      ownerPanel.locator('.selectable-list-item.active')
+    ).toHaveCount(0);
+    await ownerPanel.getByTestId('selectable-list-update-btn').click();
   }
 
   await patchRequest;
+  await expect(ownerTabs).toBeHidden();
 
   await page
     .getByTestId(dataTestId ?? 'owner-link')

@@ -400,10 +400,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
     String runId = UUID.randomUUID().toString();
     HttpResponse<String> response;
     try {
-      String triggerUrl = buildURI("trigger").build().toString();
+      // The Airflow trigger endpoint reads run_id from query/form parameters.
+      String triggerUrl = buildURI("trigger").addParameter("run_id", runId).build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
-      requestPayload.put("run_id", runId);
       if (config != null) {
         requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
       }

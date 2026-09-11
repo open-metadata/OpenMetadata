@@ -4510,6 +4510,7 @@
         "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TaskFormSettings.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts",

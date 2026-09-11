@@ -226,18 +226,17 @@ export const removeAndCheckWidget = async (
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
-// Callers poll this across navigations, and each iteration starts from a fresh page load, so
-// the widget needs a chance to mount inside the iteration — an instant `isVisible()` would
-// never observe it. The assertion inherits the project's expect timeout.
+// Keep each probe non-blocking so the caller can reveal a slot that mounts
+// after this probe. Waiting here would leave that slot below the viewport.
 const isLandingPageWidgetVisible = async (
   page: Page,
   widgetKey: string
 ): Promise<boolean> => {
   await revealLandingPageWidget(page, widgetKey);
 
-  return expect(page.getByTestId(widgetKey))
-    .toBeVisible()
-    .then(() => true)
+  return page
+    .getByTestId(widgetKey)
+    .isVisible()
     .catch(() => false);
 };
 
