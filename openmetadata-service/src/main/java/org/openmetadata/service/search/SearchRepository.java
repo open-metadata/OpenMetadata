@@ -18,6 +18,8 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface.getStringWithClusterAlias;
+import static org.openmetadata.service.jdbi3.DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
@@ -985,6 +987,20 @@ public class SearchRepository {
   }
 
   /**
+   * Entity types that have a search index registered for this deployment, sorted. The registry is
+   * merged from the classpath at startup ({@code elasticsearch/indexMapping.json} plus
+   * {@code elasticsearch/collate/indexMapping.json} when present), so Collate-only indexes are
+   * included without the caller knowing which distribution it runs on.
+   *
+   * <p>This is the authoritative reindexing target list: {@code SearchIndexingApplication} expands
+   * {@code "all"} from it and {@code GET /v1/search/entityTypes} serves it to the entity picker, so
+   * the two cannot drift.
+   */
+  public Set<String> getIndexedEntityTypes() {
+    return Collections.unmodifiableSet(new TreeSet<>(entityIndexMap.keySet()));
+  }
+
+  /**
    * Register a staged index as the live-write target for {@code entityType} while a reindex
    * populates it. Must be paired with {@link #unregisterStagedIndex(String, String)} once the
    * alias swap is complete so writes go back through the canonical alias.
@@ -1121,7 +1137,7 @@ public class SearchRepository {
 
   /**
    * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
-   * query. Handles four shapes:
+   * query. Handles these shapes:
    *
    * <ul>
    *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
@@ -1141,6 +1157,8 @@ public class SearchRepository {
    *       the legacy behavior.
    *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
    *       internal code paths that hand back a resolved value don't double-prefix.
+   *   <li><b>Data Insights index or wildcard</b>: uses the hyphen-separated cluster prefix
+   *       used by DI data streams and aliases.
    * </ul>
    *
    * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
@@ -1164,8 +1182,13 @@ public class SearchRepository {
   }
 
   private String resolveSingleAliasToken(String token, String clusterPrefix) {
-    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+    if (clusterPrefix != null
+        && (token.startsWith(clusterPrefix)
+            || token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX)))) {
       return token;
+    }
+    if (token.startsWith(DI_SEARCH_INDEX_PREFIX)) {
+      return getStringWithClusterAlias(clusterAlias, token);
     }
     IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
     if (mapping == null && aliasIndexMap != null) {

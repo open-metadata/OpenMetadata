@@ -53,6 +53,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   filterTreeNodeOptions,
   findItemByFqn,
+  injectMissingInitialOptions,
 } from '../../../utils/GlossaryPureUtils';
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
@@ -178,6 +179,7 @@ const filterMutuallyExclusiveSiblings = (
 
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
+  value: formValue,
   initialOptions,
   tagType,
   isSubmitLoading,
@@ -200,6 +202,16 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
   const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
+
+  const normalizedValue = useMemo(() => {
+    if (isUndefined(formValue)) {
+      return undefined;
+    }
+
+    return !isMultiSelect && Array.isArray(formValue)
+      ? formValue[0]
+      : formValue;
+  }, [formValue, isMultiSelect]);
 
   const form = Form.useFormInstance();
   const handleSubmit = () => {
@@ -247,7 +259,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, []);
 
   const treeData = useMemo(() => {
-    return convertGlossaryTermsToTreeOptions(
+    const tree = convertGlossaryTermsToTreeOptions(
       isNull(searchOptions)
         ? (glossaries as ModifiedGlossaryTerm[])
         : (searchOptions as unknown as ModifiedGlossaryTerm[]),
@@ -255,7 +267,13 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       isParentSelectable,
       false
     );
-  }, [glossaries, searchOptions, isParentSelectable]);
+
+    if (initialOptions?.length) {
+      injectMissingInitialOptions(tree, initialOptions);
+    }
+
+    return tree;
+  }, [glossaries, searchOptions, isParentSelectable, initialOptions]);
 
   const nodeParentMap = useMemo(() => {
     const map = new Map<
@@ -589,6 +607,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
+      {...(!isUndefined(formValue) ? { value: normalizedValue } : {})}
       onKeyDown={handleKeyDown}
     />
   );

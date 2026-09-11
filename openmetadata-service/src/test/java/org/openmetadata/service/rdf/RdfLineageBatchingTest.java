@@ -24,8 +24,13 @@ import java.io.StringReader;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.update.UpdateAction;
 import org.apache.jena.update.UpdateFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -51,45 +56,101 @@ class RdfLineageBatchingTest {
     ArgumentCaptor<String> updateCaptor = ArgumentCaptor.forClass(String.class);
     verify(storage, times(1)).executeSparqlUpdate(updateCaptor.capture());
     String update = updateCaptor.getValue();
-    assertTrue(update.contains("DELETE WHERE"));
+    assertEquals(1, countOccurrences(update, "WHERE"), update);
+    assertTrue(update.contains("DELETE {"));
     assertTrue(update.contains("INSERT DATA"));
     assertTrue(update.indexOf("DELETE") < update.indexOf("INSERT DATA"));
     assertDoesNotThrow(() -> UpdateFactory.create(update));
   }
 
   @Test
-  void lineageDeleteBuilderPreservesTheReconciliationBlock() {
+  void lineageDeleteBuilderPreservesTheReconciliationScope() {
     RdfRepository repository = repository(mock(RdfStorageInterface.class));
     UUID fromId = UUID.randomUUID();
     UUID toId = UUID.randomUUID();
     String fromUri = BASE_URI + "entity/table/" + fromId;
     String toUri = BASE_URI + "entity/table/" + toId;
     String detailsUri = BASE_URI + "lineageDetails/" + fromId + "/" + toId;
-    String expected =
-        String.format(
-            "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
-                + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
-                + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
-                + " DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), \"%s\")) } };"
-                + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
-            KNOWLEDGE_GRAPH,
-            fromUri,
-            toUri,
-            KNOWLEDGE_GRAPH,
-            toUri,
-            fromUri,
-            KNOWLEDGE_GRAPH,
-            fromUri,
-            detailsUri,
-            KNOWLEDGE_GRAPH,
-            KNOWLEDGE_GRAPH,
-            detailsUri,
-            KNOWLEDGE_GRAPH,
-            detailsUri,
-            KNOWLEDGE_GRAPH,
-            detailsUri);
+    String update = repository.buildLineageDeleteStatements(fromUri, toUri, detailsUri);
+    Dataset dataset = DatasetFactory.createTxnMem();
+    Model graph = dataset.getNamedModel(KNOWLEDGE_GRAPH);
+    Resource from = graph.createResource(fromUri);
+    Resource to = graph.createResource(toUri);
+    Resource details = graph.createResource(detailsUri);
+    Resource columnLineage = graph.createResource(detailsUri + "/column/1");
+    Resource plan = graph.createResource(detailsUri + "/plan");
+    Resource activity = graph.createResource("urn:activity");
+    Resource unrelated = graph.createResource("urn:unrelated");
+    Property upstream = graph.createProperty("https://open-metadata.org/ontology/UPSTREAM");
+    Property wasDerivedFrom = graph.createProperty("http://www.w3.org/ns/prov#wasDerivedFrom");
+    Property hasDetails =
+        graph.createProperty("https://open-metadata.org/ontology/hasLineageDetails");
+    Property hasColumnLineage =
+        graph.createProperty("https://open-metadata.org/ontology/hasColumnLineage");
+    Property hadPlan = graph.createProperty("http://www.w3.org/ns/prov#hadPlan");
+    Property generated = graph.createProperty("http://www.w3.org/ns/prov#generated");
+    Property value = graph.createProperty("urn:value");
+    graph.add(from, upstream, to);
+    graph.add(to, wasDerivedFrom, from);
+    graph.add(from, hasDetails, details);
+    graph.add(details, hasColumnLineage, columnLineage);
+    graph.add(details, hadPlan, plan);
+    graph.add(details, value, "details");
+    graph.add(columnLineage, value, "column");
+    graph.add(plan, value, "plan");
+    graph.add(activity, generated, details);
+    graph.add(unrelated, value, "preserved");
 
-    assertEquals(expected, repository.buildLineageDeleteStatements(fromUri, toUri, detailsUri));
+    assertEquals(1, countOccurrences(update, "WHERE"), update);
+    assertTrue(update.contains(fromUri), update);
+    assertTrue(update.contains(toUri), update);
+    assertTrue(update.contains(detailsUri), update);
+    assertTrue(update.contains("hasColumnLineage"), update);
+    assertTrue(update.contains("hadPlan"), update);
+    assertTrue(update.contains("prov#generated"), update);
+    assertDoesNotThrow(() -> UpdateAction.parseExecute(update, dataset));
+    assertFalse(graph.contains(from, upstream, to));
+    assertFalse(graph.contains(to, wasDerivedFrom, from));
+    assertFalse(graph.contains(from, hasDetails, details));
+    assertFalse(graph.contains(details, null));
+    assertFalse(graph.contains(columnLineage, null));
+    assertFalse(graph.contains(plan, null));
+    assertFalse(graph.contains(activity, generated, details));
+    assertTrue(graph.contains(unrelated, value, "preserved"));
+    dataset.close();
+  }
+
+  @Test
+  void lineageDeleteBuilderNeverScansTheWholeGraph() {
+    RdfRepository repository = repository(mock(RdfStorageInterface.class));
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    String fromUri = BASE_URI + "entity/table/" + fromId;
+    String toUri = BASE_URI + "entity/table/" + toId;
+    String detailsUri = BASE_URI + "lineageDetails/" + fromId + "/" + toId;
+
+    String statements = repository.buildLineageDeleteStatements(fromUri, toUri, detailsUri);
+
+    // A STRSTARTS/regex prefix filter over ?s forces an unbound full-graph scan per
+    // edge; every delete pattern must anchor on a ground subject or object instead.
+    assertFalse(statements.contains("STRSTARTS"));
+    assertEquals(1, countOccurrences(statements, "WHERE"), statements);
+    assertDoesNotThrow(() -> UpdateAction.parseExecute(statements, DatasetFactory.createTxnMem()));
+  }
+
+  @Test
+  void reconcileBatchUsesOneWhereBearingOperation() {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfRepository repository = repository(storage);
+
+    repository.bulkAddLineage(List.of(edge("SELECT 1"), edge("SELECT 2")), RdfWriteMode.RECONCILE);
+
+    ArgumentCaptor<String> updateCaptor = ArgumentCaptor.forClass(String.class);
+    verify(storage).executeSparqlUpdate(updateCaptor.capture());
+    String update = updateCaptor.getValue();
+    assertEquals(1, countOccurrences(update, "WHERE"), update);
+    assertTrue(update.contains("INSERT DATA"), update);
+    assertDoesNotThrow(() -> UpdateAction.parseExecute(update, DatasetFactory.createTxnMem()));
   }
 
   @Test
@@ -136,5 +197,15 @@ class RdfLineageBatchingTest {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(update.substring(start, end)), null, "N-TRIPLES");
     return model;
+  }
+
+  private static int countOccurrences(String haystack, String needle) {
+    int count = 0;
+    int from = 0;
+    while ((from = haystack.indexOf(needle, from)) >= 0) {
+      count++;
+      from += needle.length();
+    }
+    return count;
   }
 }

@@ -78,13 +78,20 @@ export const useGlossaryStore = create<{
     // Update the active glossary
     set({ activeGlossary: updatedGlossary });
 
-    // Update the corresponding glossary in the glossaries list
+    // Update the corresponding glossary in the glossaries list. Build a fresh
+    // array reference (rather than mutating in place) so referentially-keyed
+    // consumers — e.g. the `menuItems` useMemo in `GlossaryLeftPanel` — observe
+    // the change after a `displayName`-only edit that skips `fetchGlossaryList`.
     const index = glossaries.findIndex(
       (g) => g.fullyQualifiedName === updatedGlossary.fullyQualifiedName
     );
 
     if (index !== -1) {
-      glossaries[index] = updatedGlossary;
+      set({
+        glossaries: glossaries.map((g, i) =>
+          i === index ? updatedGlossary : g
+        ),
+      });
     }
   },
   insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => {
