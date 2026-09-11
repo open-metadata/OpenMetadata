@@ -49,7 +49,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       title,
       subtitle,
       actions,
-      'data-testid': dataTestId = 'header-shell',
+      'data-testid': dataTestId = 'page-header',
     }: any) => (
       <div data-testid={dataTestId}>
         {breadcrumb}
