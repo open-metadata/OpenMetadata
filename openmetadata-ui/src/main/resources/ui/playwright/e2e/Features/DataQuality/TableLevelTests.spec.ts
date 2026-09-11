@@ -17,6 +17,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   clickUpdateButton,
@@ -872,12 +873,10 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
-        await page.click('#testCaseFormV1_params_strategy');
-        await page
-          .getByRole('option')
-          .filter({ hasText: 'ROWS' })
-          .first()
-          .click();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'ROWS' })
+        );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
 
@@ -924,8 +923,10 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(' update');
-        await page.getByRole('button', { name: 'ROWS Strategy' }).click();
-        await page.getByRole('option', { name: 'COUNT' }).click();
+        await selectOptionWithRetry(
+          page.getByRole('button', { name: 'ROWS Strategy' }),
+          page.getByRole('option', { name: 'COUNT' })
+        );
         await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
         });

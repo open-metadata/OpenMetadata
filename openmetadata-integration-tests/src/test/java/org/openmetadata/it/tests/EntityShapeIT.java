@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.abort;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.Optional;
@@ -29,6 +30,7 @@ import org.openmetadata.it.search.shape.EntityShapeRegistry;
 import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.ShapeCanary;
+import org.openmetadata.it.search.shape.ShapeCanary.ShapeTransportException;
 import org.openmetadata.it.search.shape.ShapeResult;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -63,8 +65,7 @@ class EntityShapeIT {
   @ParameterizedTest(name = "{0}")
   @MethodSource("cases")
   void sweep(final PlannedCase plannedCase) {
-    final ShapeResult result =
-        canary.index(plannedCase.entityType(), plannedCase.entity().get(), plannedCase.probe());
+    final ShapeResult result = indexAllowingOneTransportRetry(plannedCase);
     final Outcome observed = result.outcome();
     final Optional<AcceptedLimits.Accepted> accepted =
         AcceptedLimits.find(
@@ -88,5 +89,32 @@ class EntityShapeIT {
               + (result.detail().isBlank() ? "" : " [" + result.detail() + "]")
               + ". Fix the cause, or opt-in via AcceptedLimits if this limit is acceptable.");
     }
+  }
+
+  /**
+   * Ramped cases push multi-megabyte and 10k-nested-object documents at the engine, and a single
+   * case has been measured at over 80s. When the engine misses its deadline the case was never
+   * observed -- it says nothing about whether the shape is indexable -- so retry once and, if the
+   * engine still cannot answer, skip rather than report a limit the run never actually tested.
+   */
+  private ShapeResult indexAllowingOneTransportRetry(final PlannedCase plannedCase) {
+    try {
+      return index(plannedCase);
+    } catch (final ShapeTransportException first) {
+      LOG.warn("{}: engine did not answer, retrying once — {}", plannedCase.label(), first);
+      try {
+        return index(plannedCase);
+      } catch (final ShapeTransportException second) {
+        return abort(
+            plannedCase.label()
+                + " not observed: the search engine did not answer on either attempt ("
+                + second.getMessage()
+                + ")");
+      }
+    }
+  }
+
+  private ShapeResult index(final PlannedCase plannedCase) {
+    return canary.index(plannedCase.entityType(), plannedCase.entity().get(), plannedCase.probe());
   }
 }
