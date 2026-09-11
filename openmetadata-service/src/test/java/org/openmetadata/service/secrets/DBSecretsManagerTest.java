@@ -31,6 +31,8 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.drive.SftpConnection;
+import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
@@ -70,6 +72,26 @@ public class DBSecretsManagerTest {
   @Test
   void testDecryptDatabaseServiceConnectionConfig() {
     testDecryptServiceConnection();
+  }
+
+  /**
+   * A secret behind a {@code oneOf} used to reach the database in the clear: the property is
+   * generated as a bare {@code Object}, so the encryption walk skipped the map Jackson left there.
+   */
+  @Test
+  void testEncryptSecretNestedInAOneOfProperty() {
+    SftpConnection connection =
+        new SftpConnection()
+            .withHost("sftp.example.com")
+            .withAuthType(
+                new SftpBasicAuth().withUsername("sftp-user").withPassword(DECRYPTED_VALUE));
+
+    SftpConnection encrypted =
+        (SftpConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                connection, "Sftp", "test", ServiceType.DRIVE);
+
+    assertEquals(ENCRYPTED_VALUE, ((SftpBasicAuth) encrypted.getAuthType()).getPassword());
   }
 
   @Test

@@ -13,7 +13,15 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
-import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
+import {
+  get,
+  isArray,
+  isEmpty,
+  isNull,
+  isObject,
+  isString,
+  startCase,
+} from 'lodash';
 import { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
@@ -126,6 +134,76 @@ const renderFilterPattern = (
   );
 };
 
+const MAX_SCHEMA_RESOLUTION_DEPTH = 10;
+
+// Follows a local `#/definitions/...` pointer, as deep as the schema chains them.
+const resolveRef = (
+  node: Record<string, unknown>,
+  schema: Record<string, unknown>
+): Record<string, unknown> => {
+  let current = node;
+  for (let depth = 0; depth < MAX_SCHEMA_RESOLUTION_DEPTH; depth++) {
+    const ref = current?.$ref;
+    if (!isString(ref) || !ref.startsWith('#/')) {
+      return current;
+    }
+    const resolved = get(schema, ref.slice(2).split('/'));
+    if (!isObject(resolved)) {
+      return current;
+    }
+    current = resolved as Record<string, unknown>;
+  }
+
+  return current;
+};
+
+/**
+ * Resolves the `properties` of a nested config, walking `$ref` and `oneOf`/`anyOf`.
+ *
+ * Many connectors keep their credentials inside a `oneOf` branch -- SFTP `authType`, every
+ * `sslConfig`, the Alation/Databricks/OpenSearch auth types. Reading `schemaProperty.properties`
+ * alone yields `{}` for those, which drops the `format: password` marker and renders the secret
+ * as a readable text input. Branches are merged so a secret declared in any branch stays masked,
+ * with the branch matching the stored value last so it wins on the fields it shares.
+ */
+export const getSchemaProperties = (
+  schemaProperty: unknown,
+  value: unknown,
+  schema: Record<string, unknown>,
+  depth = 0
+): Record<string, unknown> => {
+  if (!isObject(schemaProperty) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+    return {};
+  }
+
+  const node = resolveRef(schemaProperty as Record<string, unknown>, schema);
+  if (isObject(node.properties)) {
+    return node.properties as Record<string, unknown>;
+  }
+
+  const branches = node.oneOf ?? node.anyOf;
+  if (!isArray(branches)) {
+    return {};
+  }
+
+  const valueKeys = isObject(value) ? Object.keys(value) : [];
+  let merged: Record<string, unknown> = {};
+  let bestMatch: Record<string, unknown> = {};
+  let bestScore = 0;
+
+  branches.forEach((branch) => {
+    const properties = getSchemaProperties(branch, value, schema, depth + 1);
+    merged = { ...properties, ...merged };
+    const score = valueKeys.filter((key) => key in properties).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = properties;
+    }
+  });
+
+  return { ...merged, ...bestMatch };
+};
+
 export const getKeyValues = ({
   obj,
   schemaPropertyObject,
@@ -234,18 +312,6 @@ const handleSpecialServiceConfig = (
     });
   }
 
-  // Database service - GCP credentials
-  if (serviceType === EntityType.DATABASE_SERVICE && key === 'credentials') {
-    const gcpSchema = schemaPropertyObject[key].definitions.gcpCredentialsPath;
-
-    return getKeyValues({
-      obj: value,
-      schemaPropertyObject: gcpSchema,
-      schema,
-      serviceCategory,
-    });
-  }
-
   // Metadata service - Security config
   if (serviceType === EntityType.METADATA_SERVICE && key === 'securityConfig') {
     return renderOneOfSchema({
@@ -293,10 +359,13 @@ const handleDatabaseConfigSource = (
           'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
           {}
         )
-      : get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
-          {}
+      : getSchemaProperties(
+          get(
+            schema,
+            'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath'
+          ),
+          value,
+          schema
         );
 
     return getKeyValues({
@@ -336,7 +405,11 @@ const handleDatabaseConfigSource = (
 
     return getKeyValues({
       obj: value,
-      schemaPropertyObject: schema.definitions[definition],
+      schemaPropertyObject: getSchemaProperties(
+        get(schema, ['definitions', String(definition)]),
+        value,
+        schema
+      ),
       schema,
       serviceCategory,
     });
@@ -388,7 +461,11 @@ const getNestedConfigValue = ({
 
   return getKeyValues({
     obj: value,
-    schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
+    schemaPropertyObject: getSchemaProperties(
+      schemaPropertyObject[key],
+      value,
+      schema
+    ),
     schema,
     serviceCategory,
   });
