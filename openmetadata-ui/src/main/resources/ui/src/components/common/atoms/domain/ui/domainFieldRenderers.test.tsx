@@ -137,11 +137,7 @@ describe('renderDomainNameCell', () => {
 
 describe('renderDomainOwnersCell', () => {
   it('forwards showDashPlaceholder to OwnerLabel', () => {
-    render(
-      <>
-        {renderDomainOwnersCell({ owners: [] }, { showDashPlaceholder: true })}
-      </>
-    );
+    render(<>{renderDomainOwnersCell({ owners: [] }, true)}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -149,7 +145,7 @@ describe('renderDomainOwnersCell', () => {
     );
   });
 
-  it('defaults showDashPlaceholder to undefined when no options are passed', () => {
+  it('defaults showDashPlaceholder to undefined when the argument is omitted', () => {
     render(<>{renderDomainOwnersCell({ owners: [] })}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
@@ -161,11 +157,7 @@ describe('renderDomainOwnersCell', () => {
 
 describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', () => {
   it('forwards emptyPlaceholder to TagBadgeList for glossary terms', () => {
-    render(
-      <>
-        {renderDomainGlossaryTagsCell({ tags: [] }, { emptyPlaceholder: '--' })}
-      </>
-    );
+    render(<>{renderDomainGlossaryTagsCell({ tags: [] }, '--')}</>);
 
     expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
       'data-empty-placeholder',
@@ -174,14 +166,7 @@ describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', ()
   });
 
   it('forwards emptyPlaceholder to TagBadgeList for classification tags', () => {
-    render(
-      <>
-        {renderDomainClassificationTagsCell(
-          { tags: [] },
-          { emptyPlaceholder: '--' }
-        )}
-      </>
-    );
+    render(<>{renderDomainClassificationTagsCell({ tags: [] }, '--')}</>);
 
     expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
       'data-empty-placeholder',
