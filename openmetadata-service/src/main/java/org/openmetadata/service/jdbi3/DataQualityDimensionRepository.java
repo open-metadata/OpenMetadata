@@ -138,21 +138,30 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
             .toList();
     String dimensionName = entity.getName();
 
-    AsyncService.getInstance()
-        .executeDatabaseTask(
-            DatabaseOperation.TEST_CASE_CLEANUP,
-            "dq-dimension-delete:" + dimensionName,
-            () -> {
-              try {
-                clearDanglingTestDefinitionReferences(dimensionName);
-                reindexTestCases(overriddenTestCaseIds);
-              } catch (RuntimeException e) {
-                LOG.error(
-                    "Failed to clean up references to deleted data quality dimension [{}]",
-                    dimensionName,
-                    e);
-              }
-            });
+    // Deferred to the post-commit drain for the same reason as the reclassification path: this
+    // runs inside the delete transaction, and the cleanup re-reads test definitions and rebuilds
+    // search documents on its own connection. Submitting here would race the commit.
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            AsyncService.getInstance()
+                .executeDatabaseTask(
+                    DatabaseOperation.TEST_CASE_CLEANUP,
+                    "dq-dimension-delete:" + dimensionName,
+                    () -> {
+                      try {
+                        clearDanglingTestDefinitionReferences(dimensionName);
+                        reindexTestCases(overriddenTestCaseIds);
+                      } catch (RuntimeException e) {
+                        LOG.error(
+                            "Failed to clean up references to deleted data quality dimension [{}]",
+                            dimensionName,
+                            e);
+                      }
+                    }),
+        "cleanupDeletedDataQualityDimension",
+        entity.getId() != null ? entity.getId().toString() : null,
+        dimensionName,
+        DATA_QUALITY_DIMENSION);
   }
 
   private static boolean isInheritedRow(String relationshipJson) {

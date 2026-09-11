@@ -128,16 +128,16 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
    * marked inherited move; a dimension set on the test case itself is an override and stays.
    *
    * <p>The search documents of the affected test cases carry the dimension too, so they are
-   * re-indexed. That is deliberately left to the async indexer: a test definition can back tens of
-   * thousands of test cases and the caller must not wait for them.
+   * re-indexed asynchronously — a test definition can back tens of thousands of test cases and the
+   * caller must not wait for them — but only once this transaction has committed.
    */
   private void propagateDimensionToTestCases(
       UUID testDefinitionId, String previousDimension, String newDimension) {
-    EntityReference previous = findDimensionOrNull(previousDimension);
-    EntityReference current = findDimensionOrNull(newDimension);
     if (Objects.equals(previousDimension, newDimension)) {
       return;
     }
+    EntityReference previous = findDimensionOrNull(previousDimension);
+    EntityReference current = findDimensionOrNull(newDimension);
 
     int moved;
     if (previous == null) {
@@ -198,14 +198,24 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
         newDimension);
 
     // The dimension is denormalized into each test case's search document, so the documents have
-    // to be rebuilt or the Data Quality dashboards keep reporting the old dimension. Handed to the
-    // async executor and walked a page at a time: the relational change is already committed and
-    // authoritative, and a definition can back a hundred thousand test cases.
-    AsyncService.getInstance()
-        .executeDatabaseTask(
-            DatabaseOperation.TEST_CASE_CLEANUP,
-            "dq-dimension-reclassify:" + testDefinitionId,
-            () -> reindexTestCasesOf(testDefinitionId));
+    // to be rebuilt or the Data Quality dashboards keep reporting the old dimension.
+    //
+    // Handed to the async executor because a definition can back a hundred thousand test cases —
+    // but the handoff itself is deferred to the post-commit drain. This method runs inside the
+    // updater's @Transaction and the worker re-reads the relationships on its own connection, so
+    // submitting here would race the commit: a worker that won would rebuild the documents from
+    // the pre-repoint rows, and nothing would re-trigger it.
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            AsyncService.getInstance()
+                .executeDatabaseTask(
+                    DatabaseOperation.TEST_CASE_CLEANUP,
+                    "dq-dimension-reclassify:" + testDefinitionId,
+                    () -> reindexTestCasesOf(testDefinitionId)),
+        "reindexTestCasesForDimension",
+        testDefinitionId.toString(),
+        null,
+        Entity.TEST_DEFINITION);
   }
 
   /** Rebuilds the search documents of a test definition's test cases, one page at a time. */
