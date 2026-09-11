@@ -654,7 +654,8 @@
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
-        "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts"
+        "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },
     {
@@ -689,6 +690,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
@@ -1535,6 +1537,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -2713,6 +2716,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -4387,6 +4391,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -5648,6 +5653,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
@@ -5826,6 +5832,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TestSummary/TestSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },
     {
@@ -9198,6 +9212,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/TestLibrary/TestLibraryPage.tsx"
       ],
       "specs": [
@@ -9635,6 +9657,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -10446,6 +10469,14 @@
       ],
       "specs": [
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },
     {
