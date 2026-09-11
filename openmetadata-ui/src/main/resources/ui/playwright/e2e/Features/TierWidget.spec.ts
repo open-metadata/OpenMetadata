@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TableClass } from '../../support/entity/TableClass';
-import { expect, test } from '../../support/fixtures/base';
+import { expect, test } from '@playwright/test';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addTierWidget } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
