@@ -18,8 +18,8 @@ import {
 import { WidgetProps } from '@rjsf/utils';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../constants/regex.constants';
+import { CredentialFileFieldType } from '../../../../enums/CredentialFileField.enum';
 import {
-  CredentialFileFieldType,
   getCredentialFileLabels,
   getCredentialFileValidationMessages,
   isCredentialFileFieldType,

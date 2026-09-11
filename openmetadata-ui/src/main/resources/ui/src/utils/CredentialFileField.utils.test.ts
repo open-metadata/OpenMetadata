@@ -13,10 +13,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import {
-  CredentialFileFieldType,
-  isCredentialFileFieldType,
-} from './CredentialFileField.utils';
+import { CredentialFileFieldType } from '../enums/CredentialFileField.enum';
+import { isCredentialFileFieldType } from './CredentialFileField.utils';
 
 describe('isCredentialFileFieldType', () => {
   it.each([

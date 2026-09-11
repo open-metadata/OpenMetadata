@@ -18,18 +18,10 @@ import {
   getReadableFileSize,
 } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
+import { CredentialFileFieldType } from '../enums/CredentialFileField.enum';
 
-/**
- * Schema markers that turn a `format: password` string into a credential-file
- * field: `file` is upload-only, `fileOrInput` also accepts pasted content.
- *
- * Both JSON Schema form stacks read the same marker, so the mapping from schema
- * to `CredentialFileInput` props lives here rather than in either widget.
- */
-export enum CredentialFileFieldType {
-  FILE = 'file',
-  FILE_OR_INPUT = 'fileOrInput',
-}
+// Both JSON Schema form stacks read the same schema marker, so the mapping from
+// schema to `CredentialFileInput` props lives here rather than in either widget.
 
 export const isCredentialFileFieldType = (
   uiFieldType: unknown
