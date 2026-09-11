@@ -25,39 +25,6 @@ import { waitForResponseWithStatus } from './waitHelpers';
 
 const PANEL_SELECTOR = '[data-testid="entity-summary-panel-container"]';
 
-async function waitForCardVisibility(
-  page: Page,
-  cardTestId: string,
-  refreshPage: () => Promise<void>
-): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const card = page.getByTestId(cardTestId);
-        const count = await card.count();
-
-        if (
-          count > 0 &&
-          (await card
-            .first()
-            .isVisible()
-            .catch(() => false))
-        ) {
-          return true;
-        }
-
-        await refreshPage();
-
-        return false;
-      },
-      {
-        timeout: 120_000,
-        intervals: [1_000, 2_000, 5_000],
-      }
-    )
-    .toBe(true);
-}
-
 /**
  * Navigate to a glossary term's Assets tab, click the entity row to open the right panel.
  */
@@ -96,18 +63,29 @@ export async function navigateToTagAssetsAndOpenPanel(
   const url = `/tag/${encodeURIComponent(
     tag.responseData.fullyQualifiedName
   )}/assets`;
-  const tagCardTestId = `table-data-card_${entityFqn}`;
-  const loadAssetsPage = async () => {
-    await page.goto(url, { waitUntil: 'commit' });
-    await expect(page).toHaveURL(new RegExp(`/tag/.+/assets$`));
-    await waitForAllLoadersToDisappear(page);
-  };
+  const assetsResponse = waitForResponseWithStatus(
+    page,
+    (response) => {
+      const requestUrl = new URL(response.url());
 
-  await loadAssetsPage();
-  await waitForCardVisibility(page, tagCardTestId, loadAssetsPage);
+      return (
+        response.request().method() === 'GET' &&
+        requestUrl.pathname === '/api/v1/search/query' &&
+        requestUrl.searchParams.get('index') === 'all' &&
+        requestUrl.searchParams.get('size') === '15' &&
+        (requestUrl.searchParams
+          .get('query_filter')
+          ?.includes(tag.responseData.fullyQualifiedName) ??
+          false)
+      );
+    },
+    200
+  );
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await assetsResponse;
 
-  const tagCard = page.getByTestId(tagCardTestId);
-  await tagCard.waitFor({ state: 'visible' });
+  const tagCard = page.getByTestId(`table-data-card_${entityFqn}`);
+  await expect(tagCard).toBeVisible();
   await tagCard.dispatchEvent('click');
   await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }

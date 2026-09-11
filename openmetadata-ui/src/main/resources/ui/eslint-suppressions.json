@@ -1014,11 +1014,6 @@
       "count": 2
     }
   },
-  "playwright/utils/rightPanelNavigation.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/utils/searchRBAC.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1

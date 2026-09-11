@@ -33,7 +33,9 @@
  */
 
 import { Page } from '@playwright/test';
+import { Type } from '../../../../src/generated/entity/type';
 import { expect, test } from '../../../support/fixtures/base';
+import { okJson } from '../../../utils/apiResponse';
 import {
   fillDescriptionBox,
   getApiContext,
@@ -181,14 +183,29 @@ const deletePropertyViaApi = async (
     const typeRes = await apiContext.get(
       `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
     );
-    const typeData = await typeRes.json();
-    const remaining = (typeData.customProperties ?? []).filter(
-      (p: { name: string }) => p.name !== propertyName
+    const typeData = await okJson<Type>(typeRes, 'Read custom property type');
+    const propertyIndex = (typeData.customProperties ?? []).findIndex(
+      (property) => property.name === propertyName
     );
-    await apiContext.patch(`/api/v1/metadata/types/${typeData.id}`, {
-      data: [{ op: 'replace', path: '/customProperties', value: remaining }],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
+    expect(
+      propertyIndex,
+      `Custom property ${propertyName} exists`
+    ).toBeGreaterThanOrEqual(0);
+    const response = await apiContext.patch(
+      `/api/v1/metadata/types/${typeData.id}`,
+      {
+        data: [
+          {
+            op: 'test',
+            path: `/customProperties/${propertyIndex}/name`,
+            value: propertyName,
+          },
+          { op: 'remove', path: `/customProperties/${propertyIndex}` },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+    await okJson<Type>(response, `Delete custom property ${propertyName}`);
   } finally {
     await afterAction();
   }
@@ -197,6 +214,8 @@ const deletePropertyViaApi = async (
 // ── Admin tests ────────────────────────────────────────────────────────────────
 
 test.describe('Custom Properties Panel — AI Mode', () => {
+  // All cases edit the same table-type definition, whose PATCH paths use array indexes.
+  test.describe.configure({ mode: 'default' });
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   // ── Landing ──────────────────────────────────────────────────────────────────

@@ -55,6 +55,8 @@ const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
+      '**/AIMode/CustomPropertiesPanel.spec.ts',
+      '**/SearchIndexApplication.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
     ]
@@ -475,6 +477,7 @@ export default defineConfig({
           {
             name: 'Reindex',
             testMatch: [
+              '**/SearchIndexApplication.spec.ts',
               '**/SearchSeparation/*.spec.ts',
               '**/*AfterReindex.spec.ts',
             ],
@@ -486,7 +489,10 @@ export default defineConfig({
           },
           {
             name: 'GlobalSettings',
-            testMatch: '**/SearchSettings.spec.ts',
+            testMatch: [
+              '**/SearchSettings.spec.ts',
+              '**/AIMode/CustomPropertiesPanel.spec.ts',
+            ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },
             dependencies: authDependencies,
