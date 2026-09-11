@@ -24,11 +24,16 @@ const getOneOfOptionLabels = (optionName: string) => {
   return [...new Set([optionName, spacedLabel])];
 };
 
-// Callers name a oneOf branch by its schema title, but the form renders the title
-// through getFormDisplayLabel, which spaces camelCase and re-cases known acronyms —
-// `"DBT S3 Config"` is rendered as `"dbt S3 Config"`. Anchor the match so it stays as
-// strict as `exact: true`, but compare case-insensitively so that re-casing does not
-// have to be mirrored in every test.
+// Callers name a oneOf branch by its schema title, but CoreOneOfField renders every
+// option through `getFormDisplayLabel`, which spaces camelCase and re-cases known
+// acronyms — the title "DBT S3 Config" renders as "dbt S3 Config".
+//
+// Playwright may not import that function (app code outside src/generated and src/enums
+// is restricted), and copying its acronym table here would reintroduce the same drift
+// from the other side. Casing is the only thing the table changes, so matching the title
+// and its spaced form case-insensitively covers the transform without restating it.
+// The pattern stays anchored, so it is as strict as `exact: true` about substrings.
+// `getFormDisplayLabel`'s own behaviour is pinned in formBuilderV1LabelUtils.test.ts.
 const getOneOfOptionNamePattern = (optionName: string) =>
   new RegExp(
     `^(${getOneOfOptionLabels(optionName).map(escapeRegExp).join('|')})$`,
