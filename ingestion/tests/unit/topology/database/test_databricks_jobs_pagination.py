@@ -24,6 +24,7 @@ The client is pinned to 2.2 because 2.1 answers 200 with `settings.tasks` missin
 entirely for a job above that cap, giving no way to detect or recover the rest.
 """
 
+import itertools
 import json
 from unittest.mock import MagicMock, patch
 
@@ -33,6 +34,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.databricksPi
     DatabricksPipelineConnection,
 )
 from metadata.ingestion.source.database.databricks.client import (
+    RUNS_PAGE_SIZE,
     DatabricksClient,
     DatabricksClientException,
 )
@@ -318,18 +320,77 @@ def test_test_connection_raises_on_an_unreachable_workspace():
 
 
 @pytest.mark.usefixtures("_no_auth")
-def test_a_repeated_page_token_stops_instead_of_looping():
+def test_a_repeated_page_token_raises_instead_of_looping():
     """A service that hands back the token it was given must not spin forever."""
     fake = FakeJobsApi(total_jobs=3000)
     calls = {"n": 0}
 
     def always_the_same_token(url, **kwargs):
         calls["n"] += 1
-        assert calls["n"] < 50, "pagination looped instead of stopping"
+        assert calls["n"] < 50, "pagination looped instead of raising"
         return _response(200, {"jobs": [{"job_id": 1}], "next_page_token": "stuck"})
 
     fake.get = always_the_same_token
 
-    jobs = list(build_client(fake).list_jobs())
+    with pytest.raises(DatabricksClientException, match="reissued a page token"):
+        list(build_client(fake).list_jobs())
 
-    assert len(jobs) == 2, "one page, then the repeat is detected and pagination stops"
+
+@pytest.mark.usefixtures("_no_auth")
+def test_alternating_page_tokens_raise_instead_of_looping():
+    """
+    A->B->A->B never repeats a token back-to-back, so comparing against only the
+    previous token walks it forever. Every token seen has to be remembered.
+    """
+    fake = FakeJobsApi(total_jobs=3000)
+    tokens = itertools.cycle(["A", "B"])
+    calls = {"n": 0}
+
+    def alternating(url, **kwargs):
+        calls["n"] += 1
+        assert calls["n"] < 50, "pagination looped instead of raising"
+        return _response(200, {"jobs": [{"job_id": 1}], "next_page_token": next(tokens)})
+
+    fake.get = alternating
+
+    with pytest.raises(DatabricksClientException, match="reissued a page token"):
+        list(build_client(fake).list_jobs())
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_an_endless_stream_of_fresh_tokens_hits_the_page_cap():
+    """No token ever repeats here, so only the page cap can stop it."""
+    fake = FakeJobsApi(total_jobs=3000)
+    counter = itertools.count()
+
+    def always_a_fresh_token(url, **kwargs):
+        return _response(200, {"jobs": [{"job_id": 1}], "next_page_token": f"t{next(counter)}"})
+
+    fake.get = always_a_fresh_token
+
+    with pytest.raises(DatabricksClientException, match="without ending"):
+        list(build_client(fake).list_jobs())
+
+
+@pytest.mark.usefixtures("_no_auth")
+def test_a_failed_runs_page_keeps_what_it_already_yielded():
+    """
+    get_job_runs degrades where list_jobs raises, so a later page failing must not
+    lose the runs already read nor escape as an exception into pipeline status.
+    """
+    fake = FakeJobsApi(total_jobs=1, runs=120)
+    healthy = fake.get
+    calls = {"n": 0}
+
+    def fail_on_the_third_page(url, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            return _response(500, {"error_code": "INTERNAL_ERROR", "message": "boom"})
+        return healthy(url, **kwargs)
+
+    fake.get = fail_on_the_third_page
+
+    runs = list(build_client(fake).get_job_runs(job_id=1_000_000))
+
+    assert len(runs) == 2 * RUNS_PAGE_SIZE, "the two good pages survive"
+    assert len(runs) < 120, "and the job is knowingly incomplete rather than failed"

@@ -63,6 +63,9 @@ API_VERSION = "/api/2.0"
 JOB_API_VERSION = "/api/2.2"
 # runs/list rejects any limit above 26, unlike jobs/list which allows up to 100.
 RUNS_PAGE_SIZE = 25
+# A walk longer than this is a misbehaving service rather than a large workspace:
+# it is a million jobs at PAGE_SIZE. It also bounds the seen-token set.
+MAX_PAGES = 10_000
 SCIM_SERVICE_PRINCIPALS_PATH = "/preview/scim/v2/ServicePrincipals"
 SCIM_GROUPS_PATH = "/preview/scim/v2/Groups"
 
@@ -301,10 +304,13 @@ class DatabricksClient:
         and because API 2.2 drops the root-level `has_more` that the offset loop needed
         to know when to stop.
 
-        Stops if a page hands back the token that produced it, which would otherwise
-        refetch the same page forever.
+        Raises rather than stops if the walk cannot terminate, either because a token
+        is reissued (any cycle, not only an immediate repeat) or because the service
+        never stops handing out fresh ones. Stopping quietly would be one more way to
+        truncate a listing while reporting success.
         """
         page_params = dict(params)
+        seen_tokens: set[str] = set()
         while True:
             payload = self._get_json(url, page_params)
             yield payload
@@ -312,9 +318,16 @@ class DatabricksClient:
             next_page_token = payload.get("next_page_token")
             if not next_page_token:
                 return
-            if next_page_token == page_params.get("page_token"):
-                logger.warning("Databricks repeated page token for [%s], stopping pagination early", url)
-                return
+            if next_page_token in seen_tokens:
+                raise DatabricksClientException(
+                    f"Databricks reissued a page token already seen while paginating [{url}]. "
+                    f"Refusing to loop over the same pages."
+                )
+            if len(seen_tokens) >= MAX_PAGES:
+                raise DatabricksClientException(
+                    f"Pagination of [{url}] passed {MAX_PAGES} pages without ending. Refusing to keep requesting."
+                )
+            seen_tokens.add(next_page_token)
             page_params["page_token"] = next_page_token
 
     def _paginate_items(self, url: str, params: dict, key: str) -> Iterable[dict]:
