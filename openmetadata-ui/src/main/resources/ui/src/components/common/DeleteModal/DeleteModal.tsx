@@ -39,7 +39,10 @@ export const DeleteModal = ({
       data-testid="delete-modal"
       isDismissable={!isDeleting}
       isOpen={open}
-      style={{ zIndex: 999 }}
+      // Delete confirmation must win over any ancestor antd Drawer/Modal
+      // (@zindex-modal / @zindex-modal-mask are both 1000), otherwise a click
+      // here lands on the drawer's mask instead of this dialog.
+      style={{ zIndex: 1001 }}
       onOpenChange={(isOpen) => !isOpen && !isDeleting && onCancel()}>
       <Modal>
         <Dialog width={400} onClose={onCancel}>

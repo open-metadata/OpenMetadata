@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import {
   Task,
   TaskCategory,
@@ -50,6 +51,10 @@ jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn(({ name }) => (
     <div data-testid={`profile-${name}`}>Avatar</div>
   ));
+});
+
+jest.mock('../../common/PopOverCard/UserPopOverCard', () => {
+  return jest.fn(({ children }) => children);
 });
 
 const mockRichTextPreview = jest.fn();
@@ -106,7 +111,11 @@ const mockTask = {
 const renderCard = (
   props: Partial<React.ComponentProps<typeof TaskCommentCard>> = {}
 ) =>
-  render(<TaskCommentCard comment={mockComment} task={mockTask} {...props} />);
+  render(
+    <MemoryRouter>
+      <TaskCommentCard comment={mockComment} task={mockTask} {...props} />
+    </MemoryRouter>
+  );
 
 describe('TaskCommentCard', () => {
   beforeEach(() => {
@@ -151,12 +160,34 @@ describe('TaskCommentCard', () => {
       renderCard({ currentUser: { name: 'alice' } });
 
       expect(screen.getByTestId('task-comment-card')).toHaveClass(
-        'relative',
+        'tw:relative',
         'tw:group'
       );
       expect(screen.getByTestId('delete-task-comment')).toHaveClass(
         'tw:absolute'
       );
+    });
+
+    it('should link the author name and avatar to their profile', () => {
+      renderCard();
+
+      const authorLink = screen.getByTestId('author-name');
+
+      expect(authorLink).toHaveAttribute('href', '/users/alice');
+      expect(screen.getByTestId('profile-alice')).toBeInTheDocument();
+    });
+
+    it('should fall back to plain text when the comment has no author name', () => {
+      renderCard({
+        comment: {
+          ...mockComment,
+          author: { id: 'user-1', type: 'user' },
+        },
+      });
+
+      const authorName = screen.getByTestId('author-name');
+
+      expect(authorName).not.toHaveAttribute('href');
     });
   });
 
@@ -227,6 +258,12 @@ describe('TaskCommentCard', () => {
     it('should open the confirmation modal from the keyboard alone', async () => {
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       renderCard({ currentUser: { name: 'alice' } });
+
+      // Tab order: author-name link (now focusable, see the profile-link tests
+      // above) comes before the delete affordance.
+      await user.tab();
+
+      expect(screen.getByTestId('author-name')).toHaveFocus();
 
       await user.tab();
 

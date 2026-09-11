@@ -15,8 +15,11 @@ import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Delete as DeleteIcon } from '@openmetadata/ui-core-components/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { deleteTaskComment, Task, TaskComment } from '../../../rest/tasksAPI';
 import {
@@ -25,8 +28,10 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
+import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 interface TaskCommentCardProps {
@@ -34,7 +39,7 @@ interface TaskCommentCardProps {
   task: Task;
   isLastReply?: boolean;
   closeFeedEditor?: () => void;
-  currentUser?: { name?: string; isAdmin?: boolean };
+  currentUser?: Pick<User, 'name' | 'isAdmin'>;
   onCommentDeleted?: () => void;
 }
 
@@ -80,23 +85,50 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
     }
   };
 
+  const authorUserName = comment.author?.name;
+
+  const profilePicture = (
+    <ProfilePicture
+      displayName={authorName}
+      name={authorUserName ?? ''}
+      width="32"
+    />
+  );
+
+  const authorNameText = (
+    <Typography.Text className="font-medium" data-testid="author-name">
+      {authorName}
+    </Typography.Text>
+  );
+
   return (
     <div
-      className={`p-y-md p-x-sm relative tw:group ${
-        !isLastReply ? 'border-bottom' : ''
-      }`}
+      className={classNames('p-y-md p-x-sm tw:relative tw:group', {
+        'border-bottom': !isLastReply,
+      })}
       data-testid="task-comment-card">
       <Space align="start" className="w-full" size={12}>
-        <ProfilePicture
-          displayName={authorName}
-          name={comment.author?.name ?? ''}
-          width="32"
-        />
+        {authorUserName ? (
+          <UserPopOverCard userName={authorUserName}>
+            {profilePicture}
+          </UserPopOverCard>
+        ) : (
+          profilePicture
+        )}
         <div className="flex-1">
           <Space className="w-full" size={4}>
-            <Typography.Text className="font-medium" data-testid="author-name">
-              {authorName}
-            </Typography.Text>
+            {authorUserName ? (
+              <UserPopOverCard userName={authorUserName}>
+                <Link
+                  className="font-medium"
+                  data-testid="author-name"
+                  to={getUserPath(authorUserName)}>
+                  {authorName}
+                </Link>
+              </UserPopOverCard>
+            ) : (
+              authorNameText
+            )}
             {comment.createdAt && (
               <Tooltip title={formatDateTime(comment.createdAt)}>
                 <Typography.Text
@@ -118,7 +150,7 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
         // Stays mounted so it is reachable by Tab, and is revealed on card hover or
         // on its own focus rather than on a mouse-only hover state.
         <ButtonUtility
-          className="tw:absolute tw:top-3 tw:right-2 tw:opacity-0 tw:transition-opacity tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
+          className="tw:absolute tw:top-3 tw:right-2 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
           color="tertiary"
           data-testid="delete-task-comment"
           icon={DeleteIcon}
