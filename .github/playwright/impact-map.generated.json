@@ -2903,6 +2903,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/apiResponse.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -2923,6 +2924,7 @@
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts"
       ]
     },
@@ -10346,6 +10348,14 @@
       "specs": [
         "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/type.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
