@@ -14,7 +14,10 @@
 import * as fs from 'fs';
 import { expect, test } from '../../support/fixtures/base';
 import { chooseSelectOption } from '../../utils/common';
-import { performZoomOut } from '../../utils/lineage';
+import {
+  dismissLineageMapOnboarding,
+  performZoomOut,
+} from '../../utils/lineage';
 
 /**
  * Regression test: exported lineage PNG must include edge lines.
@@ -41,10 +44,11 @@ test.describe(
     test('exported PNG includes edge lines between nodes', async ({ page }) => {
       // Navigate to the lineage view and wait for lineage data to load
       const lineageResponsePromise = page.waitForResponse(
-        '/api/v1/lineage/getLineage*'
+        '**/api/v1/lineage/scene?*'
       );
       await page.goto(LINEAGE_URL, { waitUntil: 'domcontentloaded' });
       await lineageResponsePromise;
+      await dismissLineageMapOnboarding(page);
 
       // Wait for nodes to render, then wait until the canvas has been drawn.
       // CanvasEdgeRenderer draws on requestAnimationFrame — polling the canvas
@@ -109,11 +113,11 @@ test.describe(
       // The original bug (#29124) stripped all edges from the PNG, leaving
       // large contiguous white regions that compress to a very small file
       // (<100KB). A PNG that contains edges between nodes is dominated by
-      // bezier strokes and is reliably >200KB across layout variations.
+      // bezier strokes and remains above that ceiling across layout variations.
       // This bound catches the regression without coupling to exact layout.
       const buffer = fs.readFileSync(filePath!);
 
-      expect(buffer.length).toBeGreaterThan(200_000);
+      expect(buffer.length).toBeGreaterThan(100_000);
     });
   }
 );

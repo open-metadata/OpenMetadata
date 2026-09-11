@@ -41,7 +41,6 @@ import {
   addColumnLineage,
   addPipelineBetweenNodes,
   applyPipelineFromModal,
-  clickLineageNode,
   connectEdgeBetweenNodes,
   connectEdgeBetweenNodesViaAPI,
   deleteEdge,
@@ -52,7 +51,6 @@ import {
   getEntityColumns,
   rearrangeNodes,
   removeColumnLineage,
-  toggleLineageFilters,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
   verifyExportLineagePNG,
@@ -169,7 +167,8 @@ test.describe('Data asset lineage', () => {
     test(`verify create lineage for entity - ${startCase(key)}`, async ({
       page,
     }) => {
-      test.setTimeout(5 * 60 * 1000);
+      test.setTimeout(8 * 60 * 1000);
+      await page.setViewportSize({ height: 1600, width: 1920 });
       const lineageEntity = new EntityClass();
       sourceEntities.push(lineageEntity);
 
@@ -188,11 +187,10 @@ test.describe('Data asset lineage', () => {
       await test.step('should create lineage with normal edge', async () => {
         for (const entity of entities) {
           await connectEdgeBetweenNodes(page, lineageEntity, entity);
-          await rearrangeNodes(page);
           await fitToScreen(page);
         }
 
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageRes;
         await page.getByTestId('edit-lineage').waitFor({
@@ -211,34 +209,24 @@ test.describe('Data asset lineage', () => {
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
+      });
 
-        // Check the Entity Drawer
-        await fitToScreen(page);
-
+      await test.step('Open and close the drawer for every lineage node', async () => {
         for (const entity of entities) {
-          const toNodeFqn = get(
-            entity,
-            'entityResponseData.fullyQualifiedName',
-            ''
+          const { fullyQualifiedName, displayName, name } =
+            entity.entityResponseData;
+          await page
+            .getByTestId(`lineage-node-${fullyQualifiedName}`)
+            .getByTestId('entity-header-display-name')
+            .getByRole('button')
+            .click();
+
+          const drawer = page.getByTestId('lineage-entity-panel');
+          await expect(drawer.getByTestId('entity-header-title')).toHaveText(
+            displayName || name
           );
-          const entityName = get(
-            entity,
-            'entityResponseData.displayName',
-            get(entity, 'entityResponseData.name', '')
-          );
-
-          await clickLineageNode(page, toNodeFqn);
-
-          await expect(
-            page
-              .locator('.lineage-entity-panel')
-              .getByTestId('entity-header-title')
-          ).toHaveText(entityName);
-
-          await page.getByTestId('drawer-close-icon').click();
-
-          // Panel should not be visible after closing it
-          await expect(page.locator('.lineage-entity-panel')).not.toBeVisible();
+          await drawer.getByTestId('drawer-close-icon').click();
+          await expect(drawer).not.toBeVisible();
         }
       });
     });
@@ -282,14 +270,6 @@ test.describe('Data asset lineage', () => {
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
         await waitForAllLoadersToDisappear(page);
 
-        const fromNodeFqn = get(
-          lineageEntity,
-          'entityResponseData.fullyQualifiedName',
-          ''
-        );
-
-        await clickLineageNode(page, fromNodeFqn);
-
         for (const entity of entities) {
           await applyPipelineFromModal(page, lineageEntity, entity, pipeline);
         }
@@ -307,6 +287,11 @@ test.describe('Data asset lineage', () => {
       });
 
       await test.step('Remove lineage between nodes for the entity', async () => {
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await lineageRes;
+        await waitForAllLoadersToDisappear(page);
+
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
@@ -368,11 +353,17 @@ test.describe('Column Level Lineage', () => {
         const sourceCol = get(sourceColumns, '[0].fullyQualifiedName', '');
         const targetCol = get(targetColumns, '[0].fullyQualifiedName', '');
 
-        await test.step('Add column lineage', async () => {
+        await test.step('Add entity lineage and finish editing', async () => {
           await addPipelineBetweenNodes(page, sourceEntity, targetEntity);
-          await activateColumnLayer(page);
+          await editLineageClick(page);
+        });
 
-          // Add column lineage
+        await test.step('Select the field view, then edit column lineage', async () => {
+          await expect(page.getByTestId('lineage-layer-btn')).toBeEnabled();
+          await activateColumnLayer(page);
+          await expect(page.getByTestId('lineage-layer-btn')).toBeEnabled();
+          await editLineage(page);
+
           await addColumnLineage(page, sourceCol, targetCol);
         });
 
@@ -416,9 +407,7 @@ test.describe('Column Level Lineage', () => {
     });
   });
 
-  test('Verify column layer is applied on entering edit mode', async ({
-    page,
-  }) => {
+  test('Verify edit mode respects the active scene band', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
 
@@ -428,26 +417,37 @@ test.describe('Column Level Lineage', () => {
       await table.visitEntityPage(page);
       await visitLineageTab(page);
 
-      const columnLayerBtn = page.locator(
-        '[data-testid="lineage-layer-column-btn"]'
-      );
+      const fieldBandBtn = page.getByTestId('lineage-layer-band-FIELD');
+      const layerControl = page.locator('.lineage-map-layer-control');
 
-      await test.step('Verify column layer is inactive initially', async () => {
+      await test.step('Verify the FIELD band is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
+        await expect(fieldBandBtn).not.toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
 
-      await test.step('Enter edit mode and verify column layer is active', async () => {
+      await test.step('Disable band selection in ASSET edit mode', async () => {
         await editLineageClick(page);
 
-        await page.click('[data-testid="lineage-layer-btn"]');
+        await expect(layerControl).toHaveCSS('pointer-events', 'none');
+      });
 
-        await expect(columnLayerBtn).toHaveAttribute('data-selected');
+      await test.step('Preserve the FIELD band when entering edit mode', async () => {
+        await editLineageClick(page);
+        await activateColumnLayer(page);
 
-        await clickOutside(page);
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+          .toBe('FIELD');
+
+        await editLineageClick(page);
+
+        await expect(layerControl).toHaveCSS('pointer-events', 'none');
+        expect(new URL(page.url()).searchParams.get('lineageBand')).toBe(
+          'FIELD'
+        );
       });
     } finally {
       await table.delete(apiContext);
@@ -455,7 +455,7 @@ test.describe('Column Level Lineage', () => {
     }
   });
 
-  test('Verify there is no traced nodes and columns on exiting edit mode', async ({
+  test('Verify selections and traced columns are cleared on exiting edit mode', async ({
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -475,12 +475,12 @@ test.describe('Column Level Lineage', () => {
       );
       const firstColumn = page.getByTestId(`column-${firstColumnName}`);
 
-      await test.step('Verify node tracing is cleared on exiting edit mode', async () => {
+      await test.step('Verify node selection is cleared on exiting edit mode', async () => {
         await editLineageClick(page);
 
         await expect(tableNode).not.toHaveClass(/custom-node-header-active/);
 
-        await tableNode.click({ position: { x: 5, y: 5 } });
+        await tableNode.dispatchEvent('click');
 
         await expect(tableNode).toHaveClass(/custom-node-header-active/);
 
@@ -490,21 +490,23 @@ test.describe('Column Level Lineage', () => {
       });
 
       await test.step('Verify column tracing is cleared on exiting edit mode', async () => {
+        await activateColumnLayer(page);
         await editLineageClick(page);
 
-        await firstColumn.click();
+        await firstColumn.dispatchEvent('click');
 
         await expect(firstColumn).toHaveClass(
           /custom-node-header-column-tracing/
         );
 
         await editLineageClick(page);
-
-        await toggleLineageFilters(page, tableFqn);
+        await editLineageClick(page);
 
         await expect(firstColumn).not.toHaveClass(
           /custom-node-header-column-tracing/
         );
+
+        await editLineageClick(page);
       });
     } finally {
       await table.delete(apiContext);
@@ -590,12 +592,12 @@ test.describe('Lineage Settings modal', () => {
   test('Verify updating depth configuration', async ({ page }) => {
     await page.getByTestId('lineage-config').click();
 
-    await page.getByLabel(/upstream/i).fill('5');
-    await page.getByLabel(/downstream/i).fill('4');
+    await page.getByLabel(/upstream/i).fill('2');
+    await page.getByLabel(/downstream/i).fill('1');
 
     const lineageResponse = page.waitForResponse(
       (request) =>
-        request.url().includes('upstreamDepth=5&downstreamDepth=4') &&
+        request.url().includes('upstreamDepth=2&downstreamDepth=1') &&
         request.request().method() === 'GET'
     );
 

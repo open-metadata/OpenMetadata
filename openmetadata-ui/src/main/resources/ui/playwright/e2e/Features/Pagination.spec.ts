@@ -36,7 +36,10 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import {
+  connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+} from '../../utils/lineage';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -1492,6 +1495,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
       await expect(
@@ -1541,6 +1548,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
 

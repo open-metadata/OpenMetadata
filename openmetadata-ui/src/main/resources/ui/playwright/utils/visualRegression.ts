@@ -25,6 +25,14 @@ export const SCREENSHOT_OPTS = {
   maxDiffPixelRatio: 0.01,
 };
 
+const FREEZE_CSS = `
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  * { scroll-behavior: auto !important; }
+`;
+
 /**
  * Navigate with a frozen clock so relative timestamps ("x minutes ago")
  * render identically on every run, then quiesce the page.
@@ -40,10 +48,19 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.clock.setFixedTime(FIXED_DATE);
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForPageLoaded(page);
-  await page.addStyleTag({
-    content: 'html { scroll-behavior: auto !important; }',
+  await page.addStyleTag({ content: FREEZE_CSS });
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    (document.scrollingElement ?? document.documentElement).scrollTo(0, 0);
+    // Entity pages and drawers can scroll independently of the document.
+    document
+      .querySelectorAll<HTMLElement>('body, body *')
+      .forEach((element) => {
+        if (element.scrollTop || element.scrollLeft) {
+          element.scrollTo(0, 0);
+        }
+      });
   });
-  await page.evaluate(() => window.scrollTo(0, 0));
 };
 
 export const gotoVisualGlossary = async (page: Page) => {
