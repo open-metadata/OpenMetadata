@@ -380,7 +380,7 @@ test.describe(
       ).toBeDisabled();
     });
 
-    test('should not be able to edit system test definitions', async ({
+    test('should be able to edit only the dimension of system test definitions', async ({
       dataStewardPage,
     }) => {
       await redirectToHomePage(dataStewardPage);
@@ -391,12 +391,13 @@ test.describe(
         throw new Error('System test definition not found');
       }
 
-      // Verify edit button does not exist for system test definition
+      // The form opens for a system test definition because its data quality dimension can be
+      // reclassified; every other field in it stays read-only.
       const editButton = dataStewardPage.getByTestId(
         `edit-test-definition-${systemTestDef.name}`
       );
 
-      await expect(editButton).toBeDisabled();
+      await expect(editButton).toBeEnabled();
 
       // Verify enabled switch exists and can be toggled
       const enabledSwitch = dataStewardPage.getByTestId(
