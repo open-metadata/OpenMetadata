@@ -67,12 +67,10 @@ describe('TableAliases', () => {
 
     render(<TableAliases />);
 
-    // The full FQN is surfaced by the design-system Tooltip on hover (a
-    // react-aria overlay that jsdom does not render). What is verifiable here is
-    // that the truncated name is a Focusable tooltip trigger — Focusable clones
-    // tabindex="-1" onto it — rather than plain text; the hover overlay itself is
-    // covered by playwright/e2e/Pages/TableAliases.spec.ts.
-    expect(screen.getByText('mayur')).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByText('mayur')).toHaveAttribute(
+      'title',
+      'svc.analytics_core.dbo.mayur'
+    );
   });
 
   it('does not split a quoted name part that contains a dot', () => {

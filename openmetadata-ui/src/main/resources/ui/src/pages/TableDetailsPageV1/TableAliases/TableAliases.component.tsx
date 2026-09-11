@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
-import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import Table from '../../../components/common/Table/Table';
 import { TableComponentProps } from '../../../components/common/Table/Table.interface';
@@ -76,14 +74,13 @@ export const TableAliases = ({
         key: 'name',
         ellipsis: true,
         render: (name: string, record: AliasRow) => (
-          // Focusable lets the truncated name consume the Tooltip's hover
-          // context without a wrapper element, so the cell's ellipsis is
-          // preserved; excludeFromTabOrder keeps it out of the tab order.
-          <Tooltip title={record.fqn}>
-            <Focusable excludeFromTabOrder>
-              <span>{name}</span>
-            </Focusable>
-          </Tooltip>
+          // Native title, not the design-system <Tooltip>: this cell lives in an
+          // antd Table `ellipsis` column, whose own overflow tooltip is native
+          // title-based, and react-aria's Tooltip does not reliably open on hover
+          // when nested inside that cell. A native title carrying the full FQN is
+          // the column's idiomatic overflow affordance.
+          // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- see comment above
+          <span title={record.fqn}>{name}</span>
         ),
       },
     ],
