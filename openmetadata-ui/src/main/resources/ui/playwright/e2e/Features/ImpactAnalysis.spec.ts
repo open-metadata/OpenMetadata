@@ -504,15 +504,21 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Tier').click();
 
+    // Match the option row's data-testid (the lowercased tag FQN); it is stable
+    // across the Tooltip migration and the option's name-vs-FQN label.
     await expect(
       page
         .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+        .getByTestId(
+          EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
+        )
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+      .getByTestId(
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
+      )
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
@@ -1003,7 +1009,7 @@ test.describe('Impact Analysis', () => {
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(
+      .getByTestId(
         EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
       )
       .click();

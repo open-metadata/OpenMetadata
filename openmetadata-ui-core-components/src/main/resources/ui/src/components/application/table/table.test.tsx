@@ -167,4 +167,50 @@ describe('Table', () => {
       '3'
     );
   });
+
+  it('can omit the selection cell for a full-width synthetic row in single-selection mode', () => {
+    // The same gate (`selectionBehavior === 'toggle'`) drives the selection
+    // cell for both selection modes, so a `hideSelectionCell` synthetic row
+    // must not crash under single selection either.
+    render(
+      <Table
+        aria-label="Metrics"
+        selectionBehavior="toggle"
+        selectionMode="single">
+        <Table.Header>
+          <Table.Head id="metric" label="Metric" />
+          <Table.Head id="description" label="Description" />
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="metric-row">
+            <Table.Cell>Gross margin</Table.Cell>
+            <Table.Cell>Margin after costs</Table.Cell>
+          </Table.Row>
+          <Table.Row hideSelectionCell id="group-row">
+            <Table.Cell colSpan={3}>Profitability</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const metricRow = screen.getByText('Gross margin').closest('tr');
+    const groupRow = screen.getByText('Profitability').closest('tr');
+
+    expect(metricRow).not.toBeNull();
+    expect(groupRow).not.toBeNull();
+    // A normal row still gets its single-selection control: the gate must
+    // hide the cell only for the `hideSelectionCell` row, not every row.
+    expect(
+      within(metricRow as HTMLElement).getByRole('checkbox')
+    ).toBeVisible();
+    // The synthetic row must not emit a selection cell — react-aria otherwise
+    // throws "Cell count must match column count" at render.
+    expect(
+      within(groupRow as HTMLElement).queryByRole('checkbox')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Profitability').closest('td')).toHaveAttribute(
+      'colspan',
+      '3'
+    );
+  });
 });

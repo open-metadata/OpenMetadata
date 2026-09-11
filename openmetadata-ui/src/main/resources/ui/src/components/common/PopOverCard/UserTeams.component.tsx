@@ -14,15 +14,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNonDeletedTeams } from '../../../utils/TeamUtils';
 import { UserTeamsProps } from './UserPopOverCard.interface';
 
-export const UserTeams = React.memo(({ userName }: UserTeamsProps) => {
-  const { userProfilePics } = useApplicationStore();
-  const userData = userProfilePics[userName];
-  const teams = getNonDeletedTeams(userData?.teams ?? []);
+export const UserTeams = React.memo(({ user }: UserTeamsProps) => {
+  const teams = getNonDeletedTeams(user?.teams ?? []);
   const { t } = useTranslation();
 
   return teams?.length ? (
