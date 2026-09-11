@@ -425,7 +425,10 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
               field is absent from the DOM, so destroying the collapsed panel silently
               swallowed both client and server validation errors for fields like
               tokenValidity instead of surfacing them. */}
-          <Collapse.Panel forceRender header={t('label.advanced-config')} key="1">
+          <Collapse.Panel
+            forceRender
+            header={t('label.advanced-config')}
+            key="1">
             <div
               className={classNames({
                 'sso-field-group-box': shouldApplyGrouping,
