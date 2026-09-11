@@ -469,6 +469,26 @@ export const waitForToastToDisappear = async (
 };
 
 /**
+ * Waits until the toast stack holds no toast, so a click on something beneath it
+ * cannot be swallowed.
+ *
+ * The toast region renders fixed at bottom-center — the same spot as many
+ * dialogs' action buttons (Test Connection's Done/OK, for one). The backend fans
+ * async-delete notifications from parallel workers' cleanup out to every socket
+ * of the logged-in user, so unrelated "…deleted successfully!" toasts can pile up
+ * over a button and intercept the click. A count assertion is used instead of a
+ * message-filtered `waitFor` because the intercepting toast can be any of them —
+ * `toHaveCount(0)` retries until the whole stack has drained and never trips
+ * strict mode.
+ */
+export const waitForToastStackToClear = async (
+  page: Page,
+  timeout?: number
+) => {
+  await expect(page.getByTestId('alert-bar')).toHaveCount(0, { timeout });
+};
+
+/**
  * Asserts that the page is showing no error toast, optionally narrowed to the
  * ones carrying `message`.
  *
@@ -1679,6 +1699,9 @@ export interface PaginationTestConfig {
   searchParamName?: string;
   waitForLoadSelector?: string;
   deleteBtnTestId?: string;
+  // Set true when the search value is kept in component state rather than the
+  // URL (e.g. Impact Analysis), so the URL-param check after search is skipped.
+  skipUrlParamCheck?: boolean;
 }
 
 export const testCompletePaginationWithSearch = async (
@@ -1693,6 +1716,7 @@ export const testCompletePaginationWithSearch = async (
     searchParamName = 'endpoint',
     waitForLoadSelector = 'table',
     deleteBtnTestId = 'show-deleted',
+    skipUrlParamCheck = false,
   } = config;
 
   await page.goto(`${baseUrl}`);
@@ -1726,8 +1750,12 @@ export const testCompletePaginationWithSearch = async (
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
 
-  const urlAfterSearch = new URL(page.url());
-  expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
+  if (!skipUrlParamCheck) {
+    const urlAfterSearch = new URL(page.url());
+    expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(
+      searchTestTerm
+    );
+  }
 
   await expect(page.getByTestId('previous')).toBeDisabled();
   const paginationAfterSearch = page.locator('[data-testid="page-indicator"]');

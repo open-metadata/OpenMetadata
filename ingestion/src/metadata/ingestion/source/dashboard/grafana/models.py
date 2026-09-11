@@ -15,7 +15,7 @@ Grafana API response models
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class GrafanaUser(BaseModel):
@@ -61,7 +61,8 @@ class GrafanaTarget(BaseModel):
 
     refId: str | None = None  # noqa: N815
     datasource: str | dict[str, Any] | None = None
-    rawSql: str | None = None  # noqa: N815
+    # The Trino/Athena plugins persist the SQL as "rawSQL", the core SQL plugins as "rawSql"
+    raw_sql: str | None = Field(default=None, validation_alias=AliasChoices("rawSql", "rawSQL"))
     query: str | None = None
     expr: str | None = None  # For Prometheus queries
     format: Any | None = None

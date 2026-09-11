@@ -33,7 +33,11 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA, ROUTES } from '../../constants/constants';
+import {
+  NO_DATA,
+  NO_DATA_PLACEHOLDER,
+  ROUTES,
+} from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
@@ -88,6 +92,7 @@ const renderDataProductNameCell = (
     <Box
       align="center"
       className={NAME_CELL_CLIP_CLASS}
+      data-testid="entity-name"
       direction="row"
       gap={3}
       onClick={handleNameClick}>
@@ -244,6 +249,7 @@ const DataProductListPage = ({
         case 'owners':
           return (
             <OwnerLabel
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
               owners={entity.owners}
@@ -251,16 +257,27 @@ const DataProductListPage = ({
             />
           );
         case 'glossaryTerms':
-          return <TagBadgeList size="lg" tags={getGlossaryTags(entity.tags)} />;
+          return (
+            <TagBadgeList
+              emptyPlaceholder={NO_DATA_PLACEHOLDER}
+              size="lg"
+              tags={getGlossaryTags(entity.tags)}
+            />
+          );
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
           return (
-            <TagBadgeList size="sm" tags={getClassificationTags(entity.tags)} />
+            <TagBadgeList
+              emptyPlaceholder={NO_DATA_PLACEHOLDER}
+              size="sm"
+              tags={getClassificationTags(entity.tags)}
+            />
           );
         case 'experts':
           return (
             <OwnerLabel
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
               owners={entity.experts}
