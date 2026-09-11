@@ -20,7 +20,6 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -40,7 +39,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
@@ -207,29 +206,30 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     [navigate]
   );
 
+  // Consumer via prop (`apiEndpointPermissions: OperationPermission`, raw contract kept — fed
+  // straight through to DataAssetsHeader/GenericProvider verbatim, GenericProvider
+  // precedent). Two derivations (TableDetailsPageV1.tsx precedent): the edit flags are
+  // gated on `deleted` (the old raw expressions explicitly ANDed `!deleted` themselves);
+  // view flags never are, so a second, ungated call supplies those.
   const {
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditCustomFields) &&
-        !deleted,
-      editLineagePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditLineage) &&
-        !deleted,
-      viewAllPermission: apiEndpointPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        apiEndpointPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [apiEndpointPermissions, deleted]
-  );
+  } = useMemo(() => {
+    const gatedFlags = getDerivedPermissionFlags(
+      apiEndpointPermissions,
+      Boolean(deleted)
+    );
+    const ungatedFlags = getDerivedPermissionFlags(apiEndpointPermissions);
+
+    return {
+      editCustomAttributePermission: gatedFlags.canEditCustomFields,
+      editLineagePermission: gatedFlags.canEditLineage,
+      viewAllPermission: ungatedFlags.canViewAll,
+      viewCustomPropertiesPermission: ungatedFlags.canViewCustomFields,
+    };
+  }, [apiEndpointPermissions, deleted]);
 
   useEffect(() => {
     fetchTaskCounts();

@@ -108,35 +108,37 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
 
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
-  options?: { showDashPlaceholder?: boolean }
+  showDashPlaceholder?: boolean
 ): ReactNode => (
   <OwnerLabel
     isCompactView={false}
     maxVisibleOwners={4}
     owners={entity.owners}
-    showDashPlaceholder={options?.showDashPlaceholder}
+    showDashPlaceholder={showDashPlaceholder}
     showLabel={false}
   />
 );
 
 export const renderDomainGlossaryTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize; emptyPlaceholder?: string }
+  emptyPlaceholder?: string,
+  size?: TagSize
 ): ReactNode => (
   <TagBadgeList
-    emptyPlaceholder={options?.emptyPlaceholder}
-    size={options?.size}
+    emptyPlaceholder={emptyPlaceholder}
+    size={size}
     tags={getGlossaryTags(entity.tags)}
   />
 );
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize; emptyPlaceholder?: string }
+  emptyPlaceholder?: string,
+  size?: TagSize
 ): ReactNode => (
   <TagBadgeList
-    emptyPlaceholder={options?.emptyPlaceholder}
-    size={options?.size}
+    emptyPlaceholder={emptyPlaceholder}
+    size={size}
     tags={getClassificationTags(entity.tags)}
   />
 );
