@@ -74,6 +74,7 @@
     "mlFeature": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.MlFeature",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for an ML Feature used in an ML Model.",
       "additionalProperties": false,
       "properties": {
