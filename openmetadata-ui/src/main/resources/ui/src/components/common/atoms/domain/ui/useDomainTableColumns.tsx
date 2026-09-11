@@ -25,13 +25,11 @@ import {
 
 interface UseDomainTableColumnsOptions {
   nameLabelKey?: string;
-  tagSize?: 'sm' | 'lg';
   onEntityClick?: (entity: Domain) => void;
 }
 
 export const useDomainTableColumns = ({
   nameLabelKey = 'label.domain',
-  tagSize = 'sm',
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
@@ -67,7 +65,7 @@ export const useDomainTableColumns = ({
           return null;
       }
     },
-    [tagSize, onEntityClick]
+    [onEntityClick]
   );
 
   return { columns, renderCell };
