@@ -18,7 +18,10 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import Description from '../../../components/common/EntityDescription/Description';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
 
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -112,18 +115,36 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <p>TitleBreadcrumb.component</p>)
 );
 
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
+// PersonaDetailsPage now fetches its own permission via useEntityPermissions rather than the
+// raw PermissionProvider.getEntityPermissionByFqn REST boundary — mock the hook directly
+// (TableDetailsPageV1.test.tsx pattern), since this test file's `render` never wraps a
+// QueryClientProvider.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<Record<string, boolean>> = {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock(
@@ -160,6 +181,10 @@ jest.mock('../../../rest/userAPI', () => {
 });
 
 describe('PersonaDetailsPage', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('Component should render', async () => {
     render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
@@ -230,5 +255,29 @@ describe('PersonaDetailsPage', () => {
         },
       },
     ]);
+  });
+
+  it('fetches its own permission via useEntityPermissions with the persona fqn', async () => {
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.PERSONA,
+      'fqn'
+    );
+  });
+
+  it('denies description edit access when EditDescription is explicitly false, even with EditAll true (explicit-deny-wins)', async () => {
+    setMockPermissions({ EditAll: true, EditDescription: false });
+
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
+
+    await screen.findByText('Description.component');
+
+    expect(Description).toHaveBeenCalledWith(
+      expect.objectContaining({ hasEditAccess: false }),
+      expect.anything()
+    );
   });
 });
