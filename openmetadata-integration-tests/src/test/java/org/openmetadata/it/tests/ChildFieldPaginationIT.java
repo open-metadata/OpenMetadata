@@ -13,10 +13,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
@@ -185,6 +189,31 @@ public class ChildFieldPaginationIT {
     assertEquals(0, root.get("paging").get("total").asInt());
     assertEquals(cursor(0), root.get("paging").get("before").asText());
     assertEquals(cursor(50), root.get("paging").get("after").asText());
+  }
+
+  /** Entity type to the collection segment its paginated child endpoint lives under. */
+  static Stream<Arguments> newChildEndpoints() {
+    return Stream.of(
+        Arguments.of("topic", "topics"),
+        Arguments.of("pipeline", "pipelines"),
+        Arguments.of("mlmodel", "mlmodels"),
+        Arguments.of("container", "containers"),
+        Arguments.of("searchIndex", "searchIndexes"),
+        Arguments.of("apiEndpoint", "apiEndpoints"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("newChildEndpoints")
+  void everyNewChildEndpoint_servesItsParentsChildren(
+      String entityType, String collection, TestNamespace ns) throws Exception {
+    // One case per endpoint. A route registered under the wrong collection segment, or a type
+    // whose required fields do not actually load its children, shows up here and nowhere else.
+    ColumnChildTypesIT.ChildFixture fixture = ColumnChildTypesIT.createFixture(entityType, ns);
+    JsonNode root = readChildPage(collection, fixture.parentFqn(), "");
+
+    assertEquals(1, root.get("paging").get("total").asInt(), entityType);
+    String childName = fixture.childFqn().substring(fixture.childFqn().lastIndexOf('.') + 1);
+    assertEquals(childName, root.get("data").get(0).get("name").asText(), entityType);
   }
 
   @Test
