@@ -21,6 +21,7 @@ import {
   assignDomain,
   descriptionBox,
   fillDescriptionBox,
+  getApiContext,
   redirectToHomePage,
   uuid,
   waitForAntdPopupToSettle,
@@ -31,6 +32,7 @@ import {
   waitForAllLoadersToDisappear,
 } from './entity';
 import { validateFormNameFieldInput } from './form';
+import { waitForOwnedAssetCount } from './polling';
 import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -555,6 +557,16 @@ export const verifyAssetsInTeamsPage = async (
   assetCount: number
 ) => {
   const fullyQualifiedName = table.entityResponseData?.['fullyQualifiedName'];
+
+  // Same one-shot count fetch as verifyTeamListingAssetCount: the badge is read
+  // while the team page loads, so the ownership PATCH must already be indexed.
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForOwnedAssetCount(apiContext, team.responseData.id, assetCount);
+  } finally {
+    await afterAction();
+  }
+
   await table.visitEntityPage(page);
 
   await expect(
@@ -584,6 +596,20 @@ export const verifyTeamListingAssetCount = async (
   team: TeamClass,
   expectedCount: number
 ) => {
+  // The team page reads its asset count once while loading and never refreshes
+  // it, so an ownership PATCH that has not been indexed yet pins the badge at 0
+  // for the life of the page. Settle the index before the page is opened.
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForOwnedAssetCount(
+      apiContext,
+      team.responseData.id,
+      expectedCount
+    );
+  } finally {
+    await afterAction();
+  }
+
   await page
     .goto(`/settings/members/teams/${encodeURIComponent(team.data.name)}`, {
       waitUntil: 'commit',

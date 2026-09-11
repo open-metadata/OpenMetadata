@@ -115,3 +115,78 @@ export const waitForPageLoaded = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
   await waitForWidgetsToRender(page);
 };
+
+/**
+ * Polls the search API until an owner's asset count reaches `expectedCount`.
+ *
+ * Ownership PATCHes re-index asynchronously, and the team page reads its asset
+ * count once on load without ever refreshing it, so opening the page before the
+ * index catches up pins the badge at a stale value for the life of the page.
+ */
+export const waitForOwnedAssetCount = async (
+  apiContext: APIRequestContext,
+  ownerId: string | undefined,
+  expectedCount: number,
+  options?: { timeout?: number; intervals?: number[] }
+) => {
+  if (!ownerId) {
+    throw new Error('waitForOwnedAssetCount called with empty owner id');
+  }
+
+  const timeout = options?.timeout ?? 30_000;
+  const intervals = options?.intervals ?? [500, 1_000, 2_000, 5_000];
+  const start = Date.now();
+  let intervalIdx = 0;
+  let lastTotal = -1;
+
+  // Mirrors the query the team page issues for its assets count, down to the
+  // nested wrapper `owners` requires, so a match here is the number the badge
+  // will render rather than an approximation of it.
+  const queryFilter = encodeURIComponent(
+    JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            {
+              nested: {
+                path: 'owners',
+                query: { term: { 'owners.id': ownerId } },
+              },
+            },
+          ],
+          must_not: [
+            { term: { entityType: 'tableColumn' } },
+            { term: { entityType: 'dataProduct' } },
+          ],
+        },
+      },
+    })
+  );
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(
+      `/api/v1/search/query?q=&index=all&from=0&size=0&query_filter=${queryFilter}`
+    );
+    const data = await okJson<{ hits?: { total?: { value?: number } } }>(
+      response,
+      `Owned asset indexing readiness for ${ownerId}`
+    );
+    lastTotal = data.hits?.total?.value ?? 0;
+    if (lastTotal >= expectedCount) {
+      return;
+    }
+
+    const delay = intervals[Math.min(intervalIdx, intervals.length - 1)];
+    intervalIdx++;
+    await new Promise((resolve) =>
+      setTimeout(
+        resolve,
+        Math.min(delay, Math.max(0, timeout - (Date.now() - start)))
+      )
+    );
+  }
+
+  throw new Error(
+    `Owner "${ownerId}" had ${lastTotal} indexed assets, expected at least ${expectedCount}, after ${timeout}ms`
+  );
+};
