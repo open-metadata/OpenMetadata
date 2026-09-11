@@ -25,34 +25,34 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-    ChangeDescription,
-    TagLabel,
-    TestCase,
-    TestCaseParameterValue
+  ChangeDescription,
+  TagLabel,
+  TestCase,
+  TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { useChangeSummary } from '../../../../hooks/useChangeSummary';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { ChangeSummaryEntry } from '../../../../rest/changeSummaryAPI';
 import {
-    getTestDefinitionById,
-    updateTestCaseById
+  getTestDefinitionById,
+  updateTestCaseById,
 } from '../../../../rest/testAPI';
 import { getComputeRowCountDiffDisplay } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import {
-    getEntityVersionByField,
-    getEntityVersionTags
+  getEntityVersionByField,
+  getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
-    getTagsWithoutTier,
-    getTierTags
+  getTagsWithoutTier,
+  getTierTags,
 } from '../../../../utils/TablePureUtils';
 import { createTagObject } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import testCaseResultTabClassBase, {
-    AdditionalComponentInterface
+  AdditionalComponentInterface,
 } from './TestCaseResultTabClassBase';
 
 export interface ParameterDisplayItem {
@@ -341,14 +341,13 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     isVersionPage,
   ]);
 
-  // The test case keeps its own dimension only when it overrides the test definition's, so fall
-  // back to the definition's to show the dimension the results are actually categorised under.
+  // Every test case carries its own dimension, inherited ones included, so there is nothing to
+  // fall back to: an absent dimension means the test case genuinely has none.
   const dataQualityDimension = useMemo(
     () =>
       testCaseData?.dataQualityDimension?.displayName ??
-      testCaseData?.dataQualityDimension?.name ??
-      testDefinition?.dataQualityDimension,
-    [testCaseData?.dataQualityDimension, testDefinition?.dataQualityDimension]
+      testCaseData?.dataQualityDimension?.name,
+    [testCaseData?.dataQualityDimension]
   );
 
   const parameterItems = useMemo(() => {

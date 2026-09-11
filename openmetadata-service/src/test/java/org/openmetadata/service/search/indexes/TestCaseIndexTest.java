@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -124,12 +125,16 @@ class TestCaseIndexTest {
   }
 
   @Test
-  void testDataQualityDimensionFallsBackToTestDefinition() {
+  void testDataQualityDimensionDoesNotFallBackToTestDefinition() {
+    // Every test case carries its own dimension relationship -- inherited ones are materialised at
+    // create time, backfilled for pre-2.1.0 rows and repointed when a test definition is
+    // reclassified -- so an absent dimension on the test case means it genuinely has none rather
+    // than that it should be read off the test definition.
     TestCase tc = createTestCaseWithDimensions("Accuracy", null);
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
 
-    assertEquals("Accuracy", result.get("dataQualityDimension"));
+    assertNull(result.get("dataQualityDimension"));
   }
 
   @Test

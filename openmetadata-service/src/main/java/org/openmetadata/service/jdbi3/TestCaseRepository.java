@@ -29,6 +29,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -177,9 +178,43 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             : test.getIncidentStatus());
     // Always resolved rather than gated on `fields`: the dimension is not stored on the test case
     // and every consumer (search indexing, the UI, the DQ dashboards) expects it to be there.
-    test.setDataQualityDimension(
-        getFromEntityRef(
-            test.getId(), Relationship.RELATED_TO, Entity.DATA_QUALITY_DIMENSION, false));
+    test.setDataQualityDimension(readDataQualityDimension(test.getId()));
+  }
+
+  /**
+   * Reads the dimension straight off the relationship rather than through getFromEntityRef so the
+   * inherited marker stored on the row survives into the reference the API returns.
+   */
+  private EntityReference readDataQualityDimension(UUID testCaseId) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFromRecords(
+            testCaseId, TEST_CASE, Relationship.RELATED_TO, Entity.DATA_QUALITY_DIMENSION);
+    if (nullOrEmpty(records)) {
+      return null;
+    }
+    CollectionDAO.EntityRelationshipRecord record = records.get(0);
+    try {
+      return Entity.getEntityReferenceById(Entity.DATA_QUALITY_DIMENSION, record.getId(), ALL)
+          .withInherited(isInheritedMarker(record.getJson()));
+    } catch (EntityNotFoundException e) {
+      // Relationship left behind by a dimension that is gone: report no dimension rather than fail
+      // the read of the test case.
+      return null;
+    }
+  }
+
+  /** True when the relationship row carries the marker written by {@link #inheritedMarker}. */
+  static Boolean isInheritedMarker(String relationshipJson) {
+    if (nullOrEmpty(relationshipJson)) {
+      return null;
+    }
+    try {
+      JsonNode node = JsonUtils.readTree(relationshipJson).get("inherited");
+      return node != null && node.asBoolean() ? true : null;
+    } catch (Exception e) {
+      LOG.debug("Unreadable relationship json [{}]", relationshipJson, e);
+      return null;
+    }
   }
 
   private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
@@ -385,7 +420,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     for (CollectionDAO.EntityRelationshipObject relation : dimensionRecords) {
       EntityReference ref = refMap.get(UUID.fromString(relation.getFromId()));
       if (ref != null) {
-        byTestCase.put(UUID.fromString(relation.getToId()), ref);
+        // Copied per test case: the same dimension reference is shared across the page, but the
+        // inherited marker is a property of each individual relationship row.
+        byTestCase.put(
+            UUID.fromString(relation.getToId()),
+            new EntityReference()
+                .withId(ref.getId())
+                .withType(ref.getType())
+                .withName(ref.getName())
+                .withFullyQualifiedName(ref.getFullyQualifiedName())
+                .withDisplayName(ref.getDisplayName())
+                .withDescription(ref.getDescription())
+                .withDeleted(ref.getDeleted())
+                .withInherited(isInheritedMarker(relation.getJson())));
       }
     }
 
@@ -1069,8 +1116,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // case with ALL, so a soft-deleted dimension comes back on the entity and re-resolving it
       // strictly here would make that test case permanently un-updatable — nothing ever flips the
       // relationship row to deleted, so there would be no way out of the state.
+      // Explicitly supplied, so it is the test case's own dimension: inherited stays unset and the
+      // relationship is left alone when the test definition is later reclassified.
       test.setDataQualityDimension(
-          Entity.getEntityReference(dimension.withType(Entity.DATA_QUALITY_DIMENSION), ALL));
+          Entity.getEntityReference(dimension.withType(Entity.DATA_QUALITY_DIMENSION), ALL)
+              .withInherited(null));
       return;
     }
     String defaultDimension = testDefinition.getDataQualityDimension();
@@ -1084,8 +1134,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // A dimension is a label: one that has since been deleted must not make the test type
     // uncreatable, so a default that no longer resolves degrades to no dimension at all.
     try {
+      // Marked inherited so that reclassifying the test definition later moves this test case with
+      // it, while a dimension the user picked themselves stays put. The marker is persisted on the
+      // relationship row by storeRelationships.
       test.setDataQualityDimension(
-          Entity.getEntityReferenceByName(Entity.DATA_QUALITY_DIMENSION, defaultDimension, ALL));
+          Entity.getEntityReferenceByName(Entity.DATA_QUALITY_DIMENSION, defaultDimension, ALL)
+              .withInherited(true));
     } catch (EntityNotFoundException e) {
       LOG.warn(
           "Test definition [{}] is classified under data quality dimension [{}], which no longer "
@@ -1151,9 +1205,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           test.getId(),
           Entity.DATA_QUALITY_DIMENSION,
           TEST_CASE,
-          Relationship.RELATED_TO);
+          Relationship.RELATED_TO,
+          inheritedMarker(test.getDataQualityDimension()),
+          false);
     }
   }
+
+  /**
+   * Relationship payload marking a dimension the test case took from its test definition rather
+   * than one the user chose. {@link TestDefinitionRepository} reclassifies only the marked rows, so
+   * a dimension set on the test case itself survives a reclassification of its test definition.
+   */
+  static String inheritedMarker(EntityReference dimension) {
+    return Boolean.TRUE.equals(dimension.getInherited()) ? INHERITED_DIMENSION_JSON : null;
+  }
+
+  public static final String INHERITED_DIMENSION_JSON = "{\"inherited\":true}";
 
   @Override
   protected void postDelete(TestCase testCase, boolean hardDelete) {
@@ -1659,6 +1726,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    /**
+     * Rewrites the dimension relationship by hand rather than through updateFromRelationship: the
+     * generic helper cannot carry the inherited marker, and losing it would make a dimension the
+     * user picked look inherited and get overwritten the next time its test definition is
+     * reclassified.
+     */
+    private void updateDataQualityDimension() {
+      EntityReference originalDimension = original.getDataQualityDimension();
+      EntityReference updatedDimension = updated.getDataQualityDimension();
+      recordChange("dataQualityDimension", originalDimension, updatedDimension, true);
+
+      if (originalDimension != null) {
+        deleteRelationship(
+            originalDimension.getId(),
+            Entity.DATA_QUALITY_DIMENSION,
+            original.getId(),
+            TEST_CASE,
+            Relationship.RELATED_TO);
+      }
+      if (updatedDimension != null) {
+        addRelationship(
+            updatedDimension.getId(),
+            original.getId(),
+            Entity.DATA_QUALITY_DIMENSION,
+            TEST_CASE,
+            Relationship.RELATED_TO,
+            inheritedMarker(updatedDimension),
+            false);
+      }
+    }
+
     @Override
     protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
       return false;
@@ -1750,17 +1848,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "topDimensions", original.getTopDimensions(), updated.getTopDimensions()));
-      compareAndUpdate(
-          "dataQualityDimension",
-          () ->
-              updateFromRelationship(
-                  "dataQualityDimension",
-                  Entity.DATA_QUALITY_DIMENSION,
-                  original.getDataQualityDimension(),
-                  updated.getDataQualityDimension(),
-                  Relationship.RELATED_TO,
-                  TEST_CASE,
-                  original.getId()));
+      compareAndUpdate("dataQualityDimension", this::updateDataQualityDimension);
       compareAndUpdate(
           "testCaseStatus",
           () ->

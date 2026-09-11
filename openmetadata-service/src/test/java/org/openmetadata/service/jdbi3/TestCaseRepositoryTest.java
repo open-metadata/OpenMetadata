@@ -152,8 +152,12 @@ class TestCaseRepositoryTest {
             .withName("Accuracy");
 
     try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      // The inherited case resolves the test definition's dimension by name, not from a reference.
       entityMock
-          .when(() -> Entity.getEntityReference(any(EntityReference.class), any()))
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.DATA_QUALITY_DIMENSION), eq("Accuracy"), any()))
           .thenReturn(accuracy);
 
       TestCase withoutDimension = new TestCase();

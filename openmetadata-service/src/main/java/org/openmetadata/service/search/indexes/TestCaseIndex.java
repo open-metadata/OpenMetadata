@@ -90,15 +90,14 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
                 Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
         doc.put("testPlatforms", testDefinition.getTestPlatforms());
         // The dimension is indexed by name so that the existing keyword filters and aggregations
-        // keep working: system dimension names are exactly the values the enum used to hold. The
-        // test case dimension overrides the test definition one; test cases created before
-        // dimensions could be set on them have none, so they still fall back to the definition.
-        String dimensionName = null;
-        if (testCase.getDataQualityDimension() != null) {
-          dimensionName = testCase.getDataQualityDimension().getName();
-        } else if (testDefinition.getDataQualityDimension() != null) {
-          dimensionName = testDefinition.getDataQualityDimension();
-        }
+        // keep working: system dimension names are exactly the values the enum used to hold.
+        // No fallback to the test definition: every test case carries its own dimension
+        // relationship, inherited ones included (backfilled in 2.1.0 and repointed by
+        // TestDefinitionRepository when a definition is reclassified).
+        String dimensionName =
+            testCase.getDataQualityDimension() != null
+                ? testCase.getDataQualityDimension().getName()
+                : null;
         // The "No Dimension" filter is a must_not-exists on this field, so an effective
         // NoDimension has to stay unset in the document instead of being indexed by name.
         doc.put(

@@ -108,3 +108,36 @@ SET json = jsonb_set(
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataRetentionApplication'
   AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+-- Data quality dimensions became entities in 2.1.0 (issue #30362) and a test case now holds its
+-- dimension as a `relatedTo` relationship written at create time. Test cases that already existed
+-- have no such row and nothing else creates one, so without this backfill the REST API returns no
+-- dimension for every pre-upgrade test case and the Data Quality settings page counts them all as
+-- zero -- including in the delete confirmation. The search index and the UI hide it by falling
+-- back to the test definition, which is why it is invisible in the product but wrong on the API.
+--
+-- This mirrors exactly what TestCaseRepository does for a new test case: inherit whatever
+-- dimension the test definition carries at this moment, then freeze it. Reclassifying a test
+-- definition later does not move existing test cases, before or after this migration.
+--
+-- relation 15 = relatedTo, relation 0 = contains (type/entityRelationship.json ordinals).
+-- Test definitions set to `NoDimension`, or to a name with no dimension entity, drop out of the
+-- join and are left with no relationship -- the same result as creating one today.
+INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation, relationType, deleted, json)
+SELECT dqd.id, tc.id, 'dataQualityDimension', 'testCase', 15, '', false, '{"inherited": true}'::jsonb
+FROM test_case tc
+JOIN entity_relationship td_rel
+  ON td_rel.toId = tc.id
+ AND td_rel.toEntity = 'testCase'
+ AND td_rel.fromEntity = 'testDefinition'
+ AND td_rel.relation = 0
+JOIN test_definition td
+  ON td.id = td_rel.fromId
+JOIN data_quality_dimension dqd
+  ON dqd.name = td.json ->> 'dataQualityDimension'
+LEFT JOIN entity_relationship existing
+  ON existing.toId = tc.id
+ AND existing.toEntity = 'testCase'
+ AND existing.fromEntity = 'dataQualityDimension'
+ AND existing.relation = 15
+WHERE existing.toId IS NULL;
