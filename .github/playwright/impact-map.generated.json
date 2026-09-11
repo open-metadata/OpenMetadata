@@ -1977,6 +1977,7 @@
         "playwright/e2e/Features/EntitySummaryPanel.spec.ts",
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivityDataProductTree.spec.ts",
@@ -2729,6 +2730,7 @@
         "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
@@ -4513,7 +4515,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
-        "playwright/e2e/Features/ActivityFeed.spec.ts"
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
       ]
     },
     {
@@ -4521,7 +4524,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityFeed.spec.ts"
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
       ]
     },
     {
@@ -4561,6 +4565,7 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
@@ -4577,6 +4582,7 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
@@ -4616,7 +4622,8 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts"
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
       ]
     },
     {
@@ -4653,7 +4660,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
       ]
     },
     {
@@ -9033,6 +9041,7 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
@@ -9148,7 +9157,8 @@
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
       ]
     },
     {
@@ -9654,6 +9664,7 @@
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
         "playwright/e2e/Features/GlobalSearchSuggestions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
