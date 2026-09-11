@@ -515,6 +515,11 @@ export const FilterSelect = ({
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Consume the keystroke: this listener runs in the capture phase, and
+        // letting it continue hands Escape to the host drawer/modal as well,
+        // tearing down the surface the filter sits in.
+        event.stopPropagation();
+        event.preventDefault();
         handleOpenChange(false);
       }
     };
