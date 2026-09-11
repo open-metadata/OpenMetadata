@@ -114,6 +114,7 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.onboarding.OnboardingWorker;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -448,6 +449,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerUserActivityTracking(environment);
 
     environment.lifecycle().manage(new ManagedShutdown());
+    environment.lifecycle().manage(new OnboardingWorker());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
     environment

@@ -23,6 +23,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.onboarding.OnboardingEvaluator;
+import org.openmetadata.service.governance.onboarding.OnboardingStore;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +58,9 @@ public final class IntakeFormValidator {
    */
   public static void validate(EntityInterface entity, String entityType) {
     IntakeForm form = loadIntakeForm(entityType);
-    if (form == null) return;
+    if (form == null
+        || (form.getOnboarding() != null && Boolean.TRUE.equals(form.getOnboarding().getEnabled()))
+        || OnboardingStore.find(entity.getId()) != null) return;
 
     List<String> intakeMissing = checkIntakeFormRequiredFields(entity, form);
     if (!intakeMissing.isEmpty()) {
@@ -109,7 +113,7 @@ public final class IntakeFormValidator {
   private static boolean isNativeFieldSet(EntityInterface entity, String fieldName) {
     try {
       JsonNode node = MAPPER.valueToTree(entity);
-      return hasMeaningfulValue(node.get(fieldName));
+      return hasMeaningfulValue(OnboardingEvaluator.valueAt(node, fieldName));
     } catch (Exception e) {
       LOG.debug("Could not resolve native field '{}' on entity: {}", fieldName, e.getMessage());
       return false;

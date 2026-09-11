@@ -1,6 +1,21 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import type { AriaAttributes } from 'react';
 import { cx as clx, sortCx } from '@/utils/cx';
 
-interface ProgressBarProps {
+interface ProgressBarProps
+  extends Pick<AriaAttributes, 'aria-label' | 'aria-labelledby'> {
   value: number;
   min?: number;
   max?: number;
@@ -52,6 +67,8 @@ const sizes = sortCx({
 
 export const ProgressBarCircle = ({
   value,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   min = 0,
   max = 100,
   size,
@@ -77,6 +94,8 @@ export const ProgressBarCircle = ({
   return (
     <div className="tw:flex tw:flex-col tw:items-center tw:gap-0.5">
       <div
+        aria-label={ariaLabel ?? label}
+        aria-labelledby={ariaLabelledBy}
         aria-valuemax={max}
         aria-valuemin={min}
         aria-valuenow={value}
@@ -139,6 +158,8 @@ export const ProgressBarCircle = ({
 
 export const ProgressBarHalfCircle = ({
   value,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   min = 0,
   max = 100,
   size,
@@ -168,6 +189,8 @@ export const ProgressBarHalfCircle = ({
   return (
     <div className="tw:flex tw:flex-col tw:items-center tw:gap-0.5">
       <div
+        aria-label={ariaLabel ?? label}
+        aria-labelledby={ariaLabelledBy}
         aria-valuemax={max}
         aria-valuemin={min}
         aria-valuenow={value}

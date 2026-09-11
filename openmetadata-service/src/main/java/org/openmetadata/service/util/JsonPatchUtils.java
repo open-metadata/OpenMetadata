@@ -37,6 +37,8 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 
 @Slf4j
 public class JsonPatchUtils {
+  private static final String VERSION_PATH = "/version";
+  private static final String TEST_OPERATION = "test";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private JsonPatchUtils() {}
@@ -165,9 +167,11 @@ public class JsonPatchUtils {
   public static MetadataOperation getMetadataOperation(
       Object jsonPatchObject, String resourceType) {
     String path;
+    String operation;
 
     // Handle jakarta JSON patch objects efficiently
     if (jsonPatchObject instanceof JsonObject jsonPatchObj) {
+      operation = jsonPatchObj.getString("op", "");
       JsonValue pathValue = jsonPatchObj.get("path");
       if (pathValue instanceof JsonString) {
         path = ((JsonString) pathValue).getString();
@@ -178,9 +182,13 @@ public class JsonPatchUtils {
       // Fallback for other object types
       Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
       path = jsonPatchMap.get("path").toString();
+      operation = String.valueOf(jsonPatchMap.get("op"));
     }
 
-    return getMetadataOperation(path, resourceType);
+    // A version precondition does not edit metadata, but PATCH still returns the asset.
+    return VERSION_PATH.equals(path) && TEST_OPERATION.equals(operation)
+        ? MetadataOperation.VIEW_ALL
+        : getMetadataOperation(path, resourceType);
   }
 
   public static MetadataOperation getMetadataOperation(String path) {

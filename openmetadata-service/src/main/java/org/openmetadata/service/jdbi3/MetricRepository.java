@@ -72,6 +72,7 @@ import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -123,6 +124,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void prepare(Metric metric, boolean update) {
+    IntakeFormValidator.validate(metric, Entity.METRIC);
     validateRelatedTerms(metric, metric.getRelatedMetrics());
     validateCustomUnitOfMeasurement(metric);
     metric.setAssets(EntityUtil.populateEntityReferences(metric.getAssets()));

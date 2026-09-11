@@ -70,6 +70,34 @@ class JsonPatchUtilsTest {
   }
 
   @Test
+  void versionPreconditionsRequireReadPermissionAlongsideTheEditedField() {
+    JsonPatch patch =
+        Json.createPatchBuilder()
+            .test("/version", Json.createValue(0.1))
+            .add("/displayName", "Reviewed name")
+            .build();
+    assertEquals(
+        Set.of(MetadataOperation.VIEW_ALL, MetadataOperation.EDIT_DISPLAY_NAME),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch));
+    assertEquals(
+        MetadataOperation.EDIT_ALL,
+        JsonPatchUtils.getMetadataOperation(
+            Json.createObjectBuilder()
+                .add("op", "replace")
+                .add("path", "/version")
+                .add("value", 1)
+                .build()));
+    assertEquals(
+        MetadataOperation.EDIT_ALL,
+        JsonPatchUtils.getMetadataOperation(
+            Json.createObjectBuilder()
+                .add("op", "test")
+                .add("path", "/unknown")
+                .add("value", 1)
+                .build()));
+  }
+
+  @Test
   void testGetMetadataOperation() {
     Object[][] patchPathToOperations = {
       {"/" + Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_DESCRIPTION},

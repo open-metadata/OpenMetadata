@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStageTiming.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStageTiming",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStageTiming",
+  "type": "object",
+  "properties": {
+    "stage": {
+      "$ref": "./onboardingStage.json"
+    },
+    "enteredAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "exitedAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    }
+  },
+  "required": [
+    "stage",
+    "enteredAt",
+    "exitedAt"
+  ],
+  "additionalProperties": false
+}

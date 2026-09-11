@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingTaskBinding.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingTaskBinding",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingTaskBinding",
+  "type": "object",
+  "properties": {
+    "stepId": {
+      "type": "string",
+      "description": "Stable step identifier."
+    },
+    "taskId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fingerprint": {
+      "type": "string",
+      "description": "Fingerprint of metadata covered by the approval."
+    },
+    "workflowDefinitionId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowInstanceId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "approved": {
+      "type": "boolean"
+    },
+    "decidedAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    }
+  },
+  "required": [
+    "stepId",
+    "taskId",
+    "attempt"
+  ],
+  "additionalProperties": false
+}

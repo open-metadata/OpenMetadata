@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingInstance.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingInstance",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingInstance",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "entity": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "configuration": {
+      "$ref": "../intakeForm.json"
+    },
+    "creator": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "stage": {
+      "$ref": "./onboardingStage.json"
+    },
+    "enteredAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "revision": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 0
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingTaskBinding.json"
+      },
+      "default": []
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingStepResult.json"
+      },
+      "default": []
+    },
+    "stageHistory": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingStageTiming.json"
+      },
+      "default": []
+    },
+    "creationCompleted": {
+      "description": "Creation checks passed when enrolled or after revising a backfilled asset.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "entity",
+    "configuration",
+    "stage",
+    "enteredAt",
+    "revision"
+  ],
+  "additionalProperties": false
+}

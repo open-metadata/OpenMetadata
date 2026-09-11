@@ -10,6 +10,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_IN
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.google.common.collect.Lists;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
@@ -1312,6 +1313,22 @@ public class WorkflowHandler {
    */
   public boolean hasActiveRuntimeTask(UUID customTaskId) {
     return isTaskStillOpen(customTaskId);
+  }
+
+  /** Returns the custom task IDs with active runtime work, in bounded database batches. */
+  public Set<UUID> activeRuntimeTasks(List<UUID> customTaskIds) {
+    Set<UUID> active = new HashSet<>();
+    for (var batch : Lists.partition(customTaskIds, 100)) {
+      var query = processEngine.getTaskService().createTaskQuery().active().or();
+      batch.forEach(id -> query.processVariableValueEquals("customTaskId", id.toString()));
+      for (Task task : query.endOr().includeProcessVariables().list()) {
+        Object id = task.getProcessVariables().get("customTaskId");
+        if (id != null) {
+          active.add(UUID.fromString(id.toString()));
+        }
+      }
+    }
+    return active;
   }
 
   public boolean isAwaitingAdditionalVotes(UUID customTaskId) {

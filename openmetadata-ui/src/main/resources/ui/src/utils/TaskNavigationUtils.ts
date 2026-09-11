@@ -21,6 +21,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { TaskEntityStatus, type Task as TaskEntity } from '../rest/tasksAPI';
 import {
+  getDomainDetailsPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
   getTestCaseDetailPagePath,
@@ -85,6 +86,8 @@ export const getTaskDetailPathFromTask = (task: TaskEntity) => {
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
     );
+  } else if (entityType === EntityType.DOMAIN) {
+    return getDomainDetailsPath(entityFqn);
   }
 
   return getEntityDetailsPath(
