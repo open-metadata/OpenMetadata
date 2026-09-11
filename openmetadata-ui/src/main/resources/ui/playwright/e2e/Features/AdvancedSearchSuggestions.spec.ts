@@ -93,9 +93,12 @@ test.describe('Advanced Search Suggestions', () => {
 
       await aggregateRes2;
 
+      // Tag-like fields (tags, tier, certification) render the original-cased
+      // FQN from the top_hits source while the typed search text stays
+      // lowercased, so match the option title case-insensitively.
       await test
         .expect(
-          page.locator(`.ant-select-dropdown:visible [title="${searchText}"]`)
+          page.locator('.ant-select-dropdown:visible').getByTitle(searchText)
         )
         .toBeVisible();
     });
