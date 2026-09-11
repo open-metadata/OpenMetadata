@@ -20,7 +20,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataTypeString } from '../../../utils/TablePureUtils';
 import { prepareConstraintIcon } from '../../../utils/TableUtils';
-import TagChip from '../atoms/TagChip/TagChip';
+import { ClassificationTag, GlossaryTag } from '../atoms/Tag';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
 
@@ -131,20 +131,25 @@ const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
         <div
           className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
           ref={containerRef}>
-          {items.map((item) => (
-            <span
-              className={itemClassName}
-              data-testid={`${testIdPrefix}-${item.tagFQN}`}
-              key={item.tagFQN}>
-              <TagChip
-                icon={item.style?.iconURL}
+          {items.map((item) => {
+            const isGlossaryTerm = item.source === TagSource.Glossary;
+            const TagComponent = isGlossaryTerm
+              ? GlossaryTag
+              : ClassificationTag;
+
+            return (
+              <TagComponent
+                className={itemClassName}
+                color={item?.style?.color}
+                data-testid={`${testIdPrefix}-${item.tagFQN}`}
+                icon={item?.style?.iconURL}
+                key={item.tagFQN}
                 label={getEntityName(item)}
-                size="small"
-                tagColor={item.style?.color}
-                variant="blueGray"
+                maxWidth={120}
+                tooltip={getEntityName(item)}
               />
-            </span>
-          ))}
+            );
+          })}
           {showMoreButton && (
             <Button
               className={moreButtonClassName}
