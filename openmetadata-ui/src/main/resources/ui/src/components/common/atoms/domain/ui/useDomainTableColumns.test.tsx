@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import {
   renderDomainClassificationTagsCell,
@@ -104,27 +103,19 @@ describe('useDomainTableColumns', () => {
     );
   });
 
-  it('passes emptyPlaceholder through for the glossaryTerms column', () => {
+  it('renders the glossaryTerms column via renderDomainGlossaryTagsCell', () => {
     const { result } = renderHook(() => useDomainTableColumns());
 
     result.current.renderCell(DOMAIN, 'glossaryTerms');
 
-    expect(renderDomainGlossaryTagsCell).toHaveBeenCalledWith(
-      DOMAIN,
-      NO_DATA_PLACEHOLDER,
-      'sm'
-    );
+    expect(renderDomainGlossaryTagsCell).toHaveBeenCalledWith(DOMAIN);
   });
 
-  it('passes emptyPlaceholder through for the tags column', () => {
+  it('renders the tags column via renderDomainClassificationTagsCell', () => {
     const { result } = renderHook(() => useDomainTableColumns());
 
     result.current.renderCell(DOMAIN, 'tags');
 
-    expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(
-      DOMAIN,
-      NO_DATA_PLACEHOLDER,
-      'sm'
-    );
+    expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(DOMAIN);
   });
 });
