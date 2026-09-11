@@ -461,7 +461,7 @@ export const loginAsUser = async (
   user: UserClass
 ): Promise<Page> => {
   const page = await browser.newPage();
-  await user.login(page);
+  await user.signIn(page);
 
   return page;
 };

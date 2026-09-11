@@ -44,6 +44,7 @@ const isAppModePreferenceDelete = (response: Response) =>
  * "remember" toggle, which lives on the AI-sidebar AppModeSwitcher.
  */
 const openSwitcherAsAi = async (page: Page, user: UserClass) => {
+  // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
   await user.login(page);
   await switchToAiModeViaProfileToggle(page);
   await expect(page.getByTestId('ask-sidebar')).toBeVisible();

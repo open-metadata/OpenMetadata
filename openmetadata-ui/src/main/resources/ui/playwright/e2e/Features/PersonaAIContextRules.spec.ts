@@ -51,7 +51,7 @@ const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const admin = new AdminClass();
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },

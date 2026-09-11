@@ -35,8 +35,9 @@ Highest-value constraints, all machine-enforced:
   `freshUserPage` (one per test) — both create *and delete* the account, so there is no
   `beforeAll`/`afterAll` bookkeeping to get wrong. Never call `UserClass.login()`: it drives the
   sign-in form (nine UI interactions). `UserClass.signIn()` establishes the same session with one
-  POST and runs the identical post-sign-in steps; only a spec testing the form itself should drive
-  `login()`. Creating a user as *test data* is unrelated and unaffected.
+  POST and runs the identical post-sign-in steps. The rule is at **error** with no suppressions —
+  only the nine specs that are testing the sign-in flow itself carry a justified disable. Creating a
+  user as *test data* is fine; signing one in through the form is what the rule flags.
 - Never `await page.waitForResponse(...)` inline — hoist the listener above the action that
   triggers it, or use `clickAndWaitFor()` from `playwright/utils/waitHelpers.ts`. The rule bans the
   inline shape; it does not verify ordering, so an aliased call slips past it.
