@@ -49,6 +49,7 @@ import { PipelineType } from '../../../../generated/api/services/ingestionPipeli
 import { TagSource } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { DataQualityDimension } from '../../../../generated/tests/dataQualityDimension';
 import {
   EntityType,
   TestDefinition,
@@ -56,6 +57,7 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
+import { getDataQualityDimensions } from '../../../../rest/dataQualityDimensionAPI';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
@@ -85,6 +87,7 @@ import {
   TestLevelOption,
 } from './TestCaseFormV1.interface';
 import TestCaseSchedulerSection from './TestCaseSchedulerSection';
+import { toDataQualityDimensionItem } from './transformTestCaseFormData';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
@@ -258,6 +261,7 @@ const TestTypeCard: FC<{
   handleActiveField: (id: string) => void;
   isComputeRowCountFieldVisible: boolean;
   computeRowCountField: FieldProp;
+  dataQualityDimensionField: FieldProp;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -275,6 +279,7 @@ const TestTypeCard: FC<{
   handleActiveField,
   isComputeRowCountFieldVisible,
   computeRowCountField,
+  dataQualityDimensionField,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -314,6 +319,10 @@ const TestTypeCard: FC<{
     )}
 
     {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+
+    {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
+        the test case result page. */}
+    {getField(dataQualityDimensionField)}
   </div>
 );
 
@@ -456,6 +465,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   const [isTestNameManuallyEdited, setIsTestNameManuallyEdited] =
     useState(false);
+  const [isDimensionManuallyEdited, setIsDimensionManuallyEdited] =
+    useState(false);
+  const [dataQualityDimensions, setDataQualityDimensions] = useState<
+    DataQualityDimension[]
+  >([]);
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -480,6 +494,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const dimensionColumnsValue = useWatch({
     control: form.control,
     name: 'dimensionColumns',
+  });
+  const dataQualityDimensionValue = useWatch({
+    control: form.control,
+    name: 'dataQualityDimension',
   });
 
   const selectedTableFqn = fqnFromSelectItem(
@@ -644,6 +662,43 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
     return result;
   }, [columnOptions, selectedColumn, dimensionColumnsValue]);
+
+  // Dimensions are entities managed in Settings > Preferences > Data Quality, so the picker
+  // lists what exists there. The dimension already set on the test case is kept as an option
+  // even if it has since been removed, so opening the form does not silently clear it.
+  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(() => {
+    const options = new Map<string, FormSelectItem>();
+    dataQualityDimensions.forEach((dimension) => {
+      options.set(dimension.name, {
+        id: dimension.name,
+        label: dimension.displayName ?? dimension.name,
+      });
+    });
+    [
+      selectedTestDefinition?.dataQualityDimension,
+      fqnFromSelectItem(
+        dataQualityDimensionValue as FormSelectItem | string | null
+      ),
+    ].forEach((dimension) => {
+      if (dimension && !options.has(dimension)) {
+        options.set(dimension, { id: dimension, label: dimension });
+      }
+    });
+
+    return Array.from(options.values());
+  }, [
+    dataQualityDimensions,
+    selectedTestDefinition,
+    dataQualityDimensionValue,
+  ]);
+
+  useEffect(() => {
+    getDataQualityDimensions({ limit: 1000 })
+      .then(({ data }) => setDataQualityDimensions(data))
+      // The field falls back to the test definition's dimension, so a failure here degrades
+      // the picker rather than blocking test case creation.
+      .catch(() => setDataQualityDimensions([]));
+  }, []);
 
   const fetchTables = useCallback(
     async (searchValue = '') => {
@@ -1035,6 +1090,18 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     form,
   ]);
 
+  // The test definition carries the default dimension of its test cases. Keep
+  // following it while the user hasn't picked a dimension of their own, the
+  // same way the test name follows the selected test type.
+  useEffect(() => {
+    if (!isEditMode && !isDimensionManuallyEdited) {
+      form.setValue(
+        'dataQualityDimension',
+        toDataQualityDimensionItem(selectedTestDefinition?.dataQualityDimension)
+      );
+    }
+  }, [isEditMode, isDimensionManuallyEdited, selectedTestDefinition, form]);
+
   useEffect(() => {
     onContextChange?.({
       selectedDefinition: selectedTestDefinition,
@@ -1189,6 +1256,26 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       options: testTypeOptions,
       onItemInserted: (key?: string | number | null) =>
         handleActiveField(key ? `root/${key}` : ROOT_TEST_TYPE_PATH),
+    },
+  };
+
+  const dataQualityDimensionField: FieldProp = {
+    name: 'dataQualityDimension',
+    label: t('label.data-quality-dimension'),
+    type: FieldTypes.SELECT,
+    required: false,
+    id: 'root/dataQualityDimension',
+    doc:
+      fieldDocs.dataQualityDimension ??
+      t('message.doc-field-data-quality-dimension'),
+    placeholder: t('label.select-field', {
+      field: t('label.data-quality-dimension'),
+    }),
+    props: {
+      'data-testid': 'data-quality-dimension',
+      options: dataQualityDimensionOptions,
+      onItemInserted: () => setIsDimensionManuallyEdited(true),
+      onItemCleared: () => setIsDimensionManuallyEdited(true),
     },
   };
 
@@ -1364,6 +1451,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       <TestTypeCard
         additionalFields={additionalFields}
         computeRowCountField={computeRowCountField}
+        dataQualityDimensionField={dataQualityDimensionField}
         fieldDocs={fieldDocs}
         form={form}
         handleActiveField={handleActiveField}

@@ -193,6 +193,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
+    mockUseTestCaseStore.testCase.dataQualityDimension = undefined;
     mockUseTestCaseStore.isTabExpanded = false;
     mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
@@ -364,6 +365,45 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
     expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
     expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+  });
+
+  it('should show the data quality dimension of the test case in the parameter box', async () => {
+    mockUseTestCaseStore.testCase.dataQualityDimension = {
+      id: 'dim-1',
+      type: 'dataQualityDimension',
+      name: 'Timeliness',
+      displayName: 'Timeliness of data',
+    };
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(
+      screen.getByText('label.data-quality-dimension:')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Timeliness of data')).toBeInTheDocument();
+  });
+
+  it('should not fall back to the test definition when the test case has no dimension', async () => {
+    // Every test case carries its own dimension relationship — inherited ones are materialised
+    // when it is created, backfilled for pre-2.1.0 rows, and repointed when the test definition
+    // is reclassified. So an absent dimension means the test case genuinely has none, and
+    // reading one off the test definition here would contradict what the API reports.
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      dataQualityDimension: 'Accuracy',
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(
+      screen.queryByText('label.data-quality-dimension:')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Accuracy')).not.toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {

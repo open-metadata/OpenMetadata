@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -92,7 +93,24 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
     if (testDefinition != null) {
-      esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+      Map<String, Object> testDefinitionMap = JsonUtils.getMap(testDefinition);
+      // Dimension filters and aggregations read the denormalized test definition, so the dimension
+      // set on the test case — a custom one or an override of the definition default — wins here.
+      // The dimension is resolved when the result document is indexed and changing it on the test
+      // case does not rewrite the documents of results already indexed: historical results keep the
+      // dimension they were recorded under. That is intentional for this iteration.
+      if (testCase.getDataQualityDimension() != null) {
+        testDefinitionMap.put("dataQualityDimension", testCase.getDataQualityDimension().getName());
+      }
+      // Mirrors TestCaseIndex: the "No Dimension" filter is a must_not-exists on this field, so an
+      // effective NoDimension must stay unset instead of being indexed by name. Otherwise the same
+      // dataQualityDimension=NoDimension filter answers differently on /testCases/search/list and
+      // /testCases/testCaseResults/search/list.
+      if (DataQualityDimensionRepository.NO_DIMENSION.equals(
+          testDefinitionMap.get("dataQualityDimension"))) {
+        testDefinitionMap.put("dataQualityDimension", null);
+      }
+      esDoc.put("testDefinition", testDefinitionMap);
     }
     if (!nullOrEmpty(testCase.getDomains())) {
       esDoc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));

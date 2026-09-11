@@ -273,6 +273,32 @@ SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracled
 WHERE serviceType = 'Oracle'
   AND json #>> '{connection,config,scheme}' = 'oracle+cx_oracle';
 
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, every insert failed with "null value in column
+-- id". The table is dropped unconditionally rather than patched: it is new in this unreleased
+-- version, so any existing copy is either empty (the broken shape could not be inserted into) or
+-- holds nothing but the system dimensions, which are re-seeded from
+-- json/data/dataQualityDimension on the next startup.
+DROP TABLE IF EXISTS data_quality_dimension;
+CREATE TABLE data_quality_dimension (
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    json jsonb NOT NULL,
+    fqnHash character varying(768) NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    provider character varying(32) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_data_quality_dimension_fqn_hash UNIQUE (fqnhash)
+);
+CREATE INDEX IF NOT EXISTS idx_data_quality_dimension_name ON data_quality_dimension (name);
+
 CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   name VARCHAR(64) NOT NULL,
   json JSONB NOT NULL,

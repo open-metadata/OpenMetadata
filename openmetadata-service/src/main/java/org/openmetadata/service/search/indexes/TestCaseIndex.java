@@ -17,6 +17,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -88,7 +89,22 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
             Entity.getEntity(
                 Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
         doc.put("testPlatforms", testDefinition.getTestPlatforms());
-        doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
+        // The dimension is indexed by name so that the existing keyword filters and aggregations
+        // keep working: system dimension names are exactly the values the enum used to hold.
+        // No fallback to the test definition: every test case carries its own dimension
+        // relationship, inherited ones included (backfilled in 2.1.0 and repointed by
+        // TestDefinitionRepository when a definition is reclassified).
+        String dimensionName =
+            testCase.getDataQualityDimension() != null
+                ? testCase.getDataQualityDimension().getName()
+                : null;
+        // The "No Dimension" filter is a must_not-exists on this field, so an effective
+        // NoDimension has to stay unset in the document instead of being indexed by name.
+        doc.put(
+            "dataQualityDimension",
+            DataQualityDimensionRepository.NO_DIMENSION.equals(dimensionName)
+                ? null
+                : dimensionName);
         doc.put("testCaseType", testDefinition.getEntityType());
       } catch (EntityNotFoundException ex) {
         LOG.warn(

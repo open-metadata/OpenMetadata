@@ -40,13 +40,14 @@ import { useTranslation } from 'react-i18next';
 import { TEST_DEFINITION_FORM } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
+import { DataQualityDimension } from '../../../generated/tests/dataQualityDimension';
 import {
-  DataQualityDimensions,
   DataType,
   EntityType,
   TestDataType,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TestDefinitionFormBodyProps } from './TestDefinitionForm.interface';
@@ -69,9 +70,6 @@ const toOptions = (values: string[]): FormSelectItem[] =>
 // lost and the popover closed with the field left empty.
 const ENTITY_TYPE_OPTIONS = toOptions(Object.values(EntityType));
 const TEST_PLATFORM_OPTIONS = toOptions(Object.values(TestPlatform));
-const DATA_QUALITY_DIMENSION_OPTIONS = toOptions(
-  Object.values(DataQualityDimensions)
-);
 const SUPPORTED_SERVICE_OPTIONS = toOptions(Object.values(DatabaseServiceType));
 const SUPPORTED_DATA_TYPE_OPTIONS = toOptions(Object.values(DataType));
 const TEST_DATA_TYPE_OPTIONS = toOptions(Object.values(TestDataType));
@@ -94,6 +92,42 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   // The SQL editor is wired manually (not via getField); useWatch keeps its value
   // reactive to form.reset and programmatic setValue, unlike a render-time getValues.
   const sqlExpression = useWatch({ control, name: 'sqlExpression' });
+  const dataQualityDimensionValue = useWatch({
+    control,
+    name: 'dataQualityDimension',
+  });
+
+  // Dimensions are entities managed in Settings > Preferences > Data Quality, so the picker
+  // lists what exists there — custom dimensions included — instead of the built-in names only.
+  const [dataQualityDimensions, setDataQualityDimensions] = useState<
+    DataQualityDimension[]
+  >([]);
+
+  useEffect(() => {
+    getDataQualityDimensions({ limit: 1000 })
+      // A failure degrades the picker to the dimension already set rather than blocking the
+      // rest of the form.
+      .then(({ data }) => setDataQualityDimensions(data))
+      .catch(() => setDataQualityDimensions([]));
+  }, []);
+
+  // The dimension already set on the test definition is kept as an option even if it has since
+  // been removed, so opening the form does not silently clear it.
+  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(() => {
+    const options = new Map<string, FormSelectItem>();
+    dataQualityDimensions.forEach((dimension) => {
+      options.set(dimension.name, {
+        id: dimension.name,
+        label: dimension.displayName ?? dimension.name,
+      });
+    });
+    const currentValue = dataQualityDimensionValue?.id;
+    if (currentValue && !options.has(currentValue)) {
+      options.set(currentValue, { id: currentValue, label: currentValue });
+    }
+
+    return Array.from(options.values());
+  }, [dataQualityDimensions, dataQualityDimensionValue]);
 
   // Per-field "Form Hint" text is sourced from the same TestDefinitionForm.md
   // that backs the classic documentation panel, so the modal popover and the
@@ -290,7 +324,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         }),
         props: {
           'data-testid': 'data-quality-dimension',
-          options: DATA_QUALITY_DIMENSION_OPTIONS,
+          options: dataQualityDimensionOptions,
         } as FieldProp['props'],
       },
       {
@@ -345,7 +379,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         } as FieldProp['props'],
       },
     ],
-    [t, resolveDoc, isReadOnlyField, form]
+    [t, resolveDoc, isReadOnlyField, form, dataQualityDimensionOptions]
   );
 
   const enabledField: FieldProp = {

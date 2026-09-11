@@ -61,7 +61,9 @@ import org.openmetadata.service.seeding.SeedDataGate;
             + "that run against data to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestDefinitions")
+// Seeded after the data quality dimensions (order 0) the shipped test definitions reference:
+// a test definition is rejected when its dimension does not exist yet.
+@Collection(name = "TestDefinitions", order = 1)
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
   private final TestDefinitionMapper mapper = new TestDefinitionMapper();

@@ -19,7 +19,6 @@ import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_FILTERS_LABELS,
   TEST_CASE_PLATFORM_OPTION,
@@ -43,11 +42,12 @@ const DEFAULT_SELECTED_FILTERS = [
   TEST_CASE_FILTERS.tags,
 ];
 
+// The dimension filter is deliberately absent: dimensions are entities, so its options are
+// fetched alongside the other async ones in useTestCaseFilterOptions rather than hard-coded.
 const STATIC_OPTIONS: Record<string, DefaultOptionType[]> = {
   [TEST_CASE_FILTERS.platform]: TEST_CASE_PLATFORM_OPTION,
   [TEST_CASE_FILTERS.type]: TEST_CASE_TYPE_OPTION,
   [TEST_CASE_FILTERS.status]: TEST_CASE_STATUS_FILTER_OPTIONS,
-  [TEST_CASE_FILTERS.dimension]: TEST_CASE_DIMENSIONS_OPTION,
 };
 
 const MULTI_SELECT_FILTERS = new Set<string>([

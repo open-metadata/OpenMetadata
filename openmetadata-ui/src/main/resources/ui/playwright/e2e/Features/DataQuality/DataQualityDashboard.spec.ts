@@ -12,8 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { DataQualityDimensions } from '../../../../src/enums/DataQuality.enum';
 import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
-import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';

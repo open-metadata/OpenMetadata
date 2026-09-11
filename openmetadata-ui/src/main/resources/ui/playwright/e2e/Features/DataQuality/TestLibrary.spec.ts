@@ -510,17 +510,18 @@ test.describe(
       expect(tagCount).toBeGreaterThan(0);
     });
 
-    test('should not show edit and delete buttons for system test definitions', async ({
+    test('should keep system test definitions editable but not deletable', async ({
       page,
     }) => {
       const systemTestDef = await findSystemTestDefinition(page);
 
-      // Verify edit button does not exist for system test definition
+      // The form opens for a system test definition because its data quality dimension can be
+      // reclassified — every other field stays read-only — but it can never be deleted.
       const editButton = page.getByTestId(
         `edit-test-definition-${systemTestDef.name}`
       );
 
-      await expect(editButton).toBeDisabled();
+      await expect(editButton).toBeEnabled();
 
       // Verify delete button does not exist for system test definition
       const deleteButton = page.getByTestId(

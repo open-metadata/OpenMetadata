@@ -75,6 +75,7 @@ export interface UseTestCaseResultTabResult {
   withSqlParams: TestCaseParameterValue[];
   withoutSqlParams: TestCaseParameterValue[];
   parameterItems: ParameterDisplayItem[] | null;
+  dataQualityDimension: string | undefined;
   description: string | undefined;
   descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined;
   updatedTags: TagLabel[];
@@ -348,6 +349,15 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     isVersionPage,
   ]);
 
+  // Every test case carries its own dimension, inherited ones included, so there is nothing to
+  // fall back to: an absent dimension means the test case genuinely has none.
+  const dataQualityDimension = useMemo(
+    () =>
+      testCaseData?.dataQualityDimension?.displayName ??
+      testCaseData?.dataQualityDimension?.name,
+    [testCaseData?.dataQualityDimension]
+  );
+
   const parameterItems = useMemo(() => {
     const items: ParameterDisplayItem[] = [];
 
@@ -382,12 +392,20 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
       });
     }
 
+    if (dataQualityDimension) {
+      items.push({
+        label: t('label.data-quality-dimension'),
+        value: dataQualityDimension,
+      });
+    }
+
     return items.length > 0 ? items : null;
   }, [
     withoutSqlParams,
     testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
+    dataQualityDimension,
     isVersionPage,
     t,
   ]);
@@ -406,6 +424,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     withSqlParams,
     withoutSqlParams,
     parameterItems,
+    dataQualityDimension,
     description,
     descriptionChangeSummaryEntry: changeSummary?.['description'],
     updatedTags,

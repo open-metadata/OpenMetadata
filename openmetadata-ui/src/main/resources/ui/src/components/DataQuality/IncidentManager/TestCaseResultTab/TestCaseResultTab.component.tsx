@@ -217,6 +217,7 @@ const TestCaseResultTab = ({
     hasEditGlossaryTermsPermission,
     withSqlParams,
     parameterItems,
+    dataQualityDimension,
     description,
     descriptionChangeSummaryEntry,
     updatedTags,
@@ -382,7 +383,8 @@ const TestCaseResultTab = ({
                   {shouldShowEditParameterButton(
                     hasEditPermission,
                     testCaseData,
-                    showComputeRowCount
+                    showComputeRowCount,
+                    Boolean(dataQualityDimension)
                   ) && (
                     <EditIconButton
                       newLook

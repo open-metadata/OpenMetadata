@@ -33,7 +33,10 @@ import {
 } from '../../../rest/testAPI';
 import { monospaceParameterNames } from '../../../utils/DataQuality/FormHintDocUtils';
 import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
-import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
+import {
+  isExternalTestDefinition,
+  isSystemTestDefinition,
+} from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
@@ -62,9 +65,18 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   const isEditMode = Boolean(initialValues);
   const isModalVariant = variant === 'modal';
 
-  const isReadOnlyField = useMemo(
-    () => isEditMode && isExternalTestDefinition(initialValues),
+  // A system test definition is editable, but only its data quality dimension is: every other
+  // field is rendered read-only, exactly like an externally-managed definition.
+  const isSystemProvider = useMemo(
+    () => isEditMode && isSystemTestDefinition(initialValues),
     [initialValues, isEditMode]
+  );
+
+  const isReadOnlyField = useMemo(
+    () =>
+      isSystemProvider ||
+      (isEditMode && isExternalTestDefinition(initialValues)),
+    [initialValues, isEditMode, isSystemProvider]
   );
 
   const form = useForm<TestDefinitionFormValues>({
@@ -92,7 +104,10 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       const patch = buildEditPatch(
         initialValues,
         values,
-        form.formState.dirtyFields
+        form.formState.dirtyFields,
+        // The server rejects anything else on a system test definition, so a stray op — a
+        // field the form normalized differently, say — would fail the whole update.
+        isSystemProvider
       );
       if (patch.length === 0) {
         onSuccess();
@@ -107,7 +122,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       );
       onSuccess(result);
     },
-    [form, initialValues, onSuccess, t]
+    [form, initialValues, isSystemProvider, onSuccess, t]
   );
 
   const submitCreate = useCallback(

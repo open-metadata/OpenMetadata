@@ -108,3 +108,14 @@ SET json = jsonb_set(
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataRetentionApplication'
   AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+-- Data quality dimensions became entities in 2.1.0 (issue #30362) and a test case now holds its
+-- dimension as a `relatedTo` relationship. Pre-existing test cases have no such row and need one
+-- backfilled from their test definition.
+--
+-- That backfill deliberately is NOT here. It has to join against data_quality_dimension, and the
+-- system dimensions do not exist yet at this point on an upgrading deployment -- they are seeded
+-- from JSON resources, which a SQL script cannot do. Joining anyway matches an empty table and
+-- inserts nothing, silently and permanently, since the statement is then checksummed as applied
+-- and never runs again. It is done in DataQualityDimensionMigration.backfillTestCaseDimensions(),
+-- which seeds the dimensions first.

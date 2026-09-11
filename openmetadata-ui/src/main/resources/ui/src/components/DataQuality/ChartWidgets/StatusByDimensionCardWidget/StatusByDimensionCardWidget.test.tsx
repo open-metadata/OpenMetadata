@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
+import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import { DataQualityDashboardChartFilters } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   fetchTestCaseSummaryByDimension,

@@ -1234,6 +1234,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return jdbi;
   }
 
+  /** The dialect the suite is running against, for tests that exercise dual-dialect SQL. */
+  public static ConnectionType getConnectionType() {
+    if (DATABASE_CONTAINER == null) {
+      throw new IllegalStateException(
+          "Database is not initialized. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return ConnectionType.from(DATABASE_CONTAINER.getDriverClassName());
+  }
+
   public static OpenMetadataApplicationConfig createApplicationConfigCopy() {
     if (APP == null || DATABASE_CONTAINER == null || searchHost == null) {
       throw new IllegalStateException(

@@ -56,6 +56,16 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
 }));
 
+jest.mock('../../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({
+    data: [
+      { id: 'dim-1', name: 'Accuracy', displayName: 'Accuracy' },
+      { id: 'dim-2', name: 'Timeliness', displayName: 'Timeliness' },
+    ],
+    paging: { total: 2 },
+  }),
+}));
+
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn(),
 }));
@@ -388,6 +398,39 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+  });
+
+  it('defaults the data quality dimension to the selected test definition one', async () => {
+    mockGetListTestDefinitions.mockResolvedValue({
+      data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+      paging: { total: 1 },
+    } as never);
+
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    await waitFor(() => {
+      expect(mockGetListTestDefinitions).toHaveBeenCalled();
+    });
+
+    expect(
+      await screen.findByTestId('data-quality-dimension')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    await waitFor(() => {
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Accuracy',
+        label: 'Accuracy',
+      });
+    });
   });
 
   it('does not expose distribution-only fields from a schema capability alone', async () => {
@@ -843,6 +886,33 @@ describe('TestCaseFormBody', () => {
       expect(formRef?.getValues('dimensionColumns')).toEqual(['id']);
       expect(formRef?.getValues('topDimensions')).toBe(5);
     });
+
+    it('keeps the prefilled custom dimension instead of the test definition one', async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody(
+          { table: SELECTED_TABLE, isEditMode: true },
+          {
+            testLevel: TestLevel.TABLE,
+            selectedTable: TABLE_FQN,
+            dataQualityDimension: { id: 'Timeliness', label: 'Timeliness' },
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Timeliness',
+        label: 'Timeliness',
+      });
+    });
   });
 
   describe('showOnlyParameter', () => {
@@ -855,6 +925,16 @@ describe('TestCaseFormBody', () => {
       expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('test-details-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    });
+
+    it('keeps the dimension field, it is edited from the parameter box', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, showOnlyParameter: true });
+      });
+
+      expect(
+        await screen.findByTestId('data-quality-dimension')
+      ).toBeInTheDocument();
     });
   });
 });

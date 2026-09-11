@@ -1,0 +1,8 @@
+{
+  "name": "Accuracy",
+  "fullyQualifiedName": "Accuracy",
+  "displayName": "Accuracy",
+  "description": "Values correctly represent the real-world facts they describe.",
+  "style": { "color": "#067647" },
+  "provider": "system"
+}

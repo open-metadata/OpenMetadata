@@ -2,13 +2,14 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
@@ -133,7 +134,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
       return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeDoubleQuotes(domain));
+          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
     }
     return "";
   }
@@ -169,7 +170,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String createdBy = getQueryParam("createdBy");
     if (!nullOrEmpty(createdBy)) {
       return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeDoubleQuotes(createdBy));
+          "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeJsonString(createdBy));
     }
     return "";
   }
@@ -187,7 +188,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           Arrays.stream(assets.split(","))
               .map(String::trim)
               .filter(id -> !id.isEmpty())
-              .map(this::escapeDoubleQuotes)
+              .map(this::escapeJsonString)
               .collect(Collectors.joining("\", \"", "\"", "\""));
       if (!assetIds.isEmpty()) {
         conditions.add(
@@ -255,7 +256,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (tags != null) {
       String tagsList =
           Arrays.stream(tags.split(","))
-              .map(this::escapeDoubleQuotes)
+              .map(this::escapeJsonString)
               .collect(Collectors.joining("\", \"", "\"", "\""));
       conditions.add(
           String.format(
@@ -267,21 +268,20 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\":{\"tier.tagFQN\":\"%s\"}}",
-              escapeDoubleQuotes(tier.toLowerCase(java.util.Locale.ROOT))));
+              escapeJsonString(tier.toLowerCase(java.util.Locale.ROOT))));
     }
 
     if (serviceName != null) {
       conditions.add(
           String.format(
-              "{\"term\": {\"%s\": \"%s\"}}", FIELD_SERVICE_NAME, escapeDoubleQuotes(serviceName)));
+              "{\"term\": {\"%s\": \"%s\"}}", FIELD_SERVICE_NAME, escapeJsonString(serviceName)));
     }
 
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
               ? getTestCaseForEntityCondition(entityFQN, "entityFQN")
-              : String.format(
-                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
+              : String.format("{\"term\": {\"entityFQN\": \"%s\"}}", escapeJsonString(entityFQN)));
     }
 
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
@@ -313,7 +313,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"%s\": \"%s\"}}",
-              FIELD_DATA_PRODUCTS_FQN, escapeDoubleQuotes(dataProductFqn)));
+              FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
     }
 
     if (followedBy != null) {
@@ -325,7 +325,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"wildcard\": {\"entityLink\": \"*::columns::%s>\"}}",
-              escapeDoubleQuotes(columnName)));
+              escapeJsonString(columnName)));
     }
 
     return addCondition(conditions);
@@ -356,7 +356,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
               "{\"bool\":{\"should\": ["
                   + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
                   + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
-              escapeDoubleQuotes(testCaseFQN)));
+              escapeJsonString(testCaseFQN)));
     }
     if (testCaseStatus != null)
       conditions.add(
@@ -390,14 +390,21 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
-              escapeDoubleQuotes(fullyQualifiedName)));
+              escapeJsonString(fullyQualifiedName)));
     }
 
     return addCondition(conditions);
   }
 
-  private String escapeDoubleQuotes(String str) {
-    return str.replace("\"", "\\\"");
+  /**
+   * Escapes a value for safe interpolation into a JSON string literal: double quotes, backslashes
+   * and control characters alike. None of the values interpolated by this class is enum-bounded —
+   * they are FQNs, names, owners and dimensions, all free-form user input — so every one of them
+   * goes through this rather than through a quotes-only escape that leaves malformed filter JSON
+   * one backslash away.
+   */
+  private String escapeJsonString(String str) {
+    return new String(JsonStringEncoder.getInstance().quoteAsString(str));
   }
 
   /** Comma separated statuses are matched as an OR, a single status still matches exactly. */
@@ -406,7 +413,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         Arrays.stream(status.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(this::escapeDoubleQuotes)
+            .map(this::escapeJsonString)
             .toList();
     String condition = "";
     if (!statuses.isEmpty()) {
@@ -437,18 +444,17 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         "{\"bool\":{\"should\": ["
             + "{\"prefix\": {\"%s\": \"%s%s\"}},"
             + "{\"term\": {\"%s\": \"%s\"}}]}}",
-        field,
-        escapeDoubleQuotes(entityFQN),
-        Entity.SEPARATOR,
-        field,
-        escapeDoubleQuotes(entityFQN));
+        field, escapeJsonString(entityFQN), Entity.SEPARATOR, field, escapeJsonString(entityFQN));
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
-    if (DataQualityDimensions.NO_DIMENSION.value().equals(dataQualityDimension)) {
+    if (DataQualityDimensionRepository.NO_DIMENSION.equals(dataQualityDimension)) {
       return String.format("{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"%s\"}}]}}", field);
     }
-    return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
+    // Dimensions are free-form on a test case (custom dimensions), so the value needs full JSON
+    // escaping - a backslash or control character would otherwise break the filter JSON.
+    return String.format(
+        "{\"term\": {\"%s\": \"%s\"}}", field, escapeJsonString(dataQualityDimension));
   }
 
   private String getTestCaseResolutionStatusCondition() {
@@ -472,21 +478,21 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\": {\"testCaseResolutionStatusType\": \"%s\"}}",
-              escapeDoubleQuotes(testCaseResolutionStatusType)));
+              escapeJsonString(testCaseResolutionStatusType)));
     }
 
     if (assignee != null) {
       conditions.add(
           String.format(
               "{\"term\": {\"testCaseResolutionStatusDetails.assignee.name\": \"%s\"}}",
-              escapeDoubleQuotes(assignee)));
+              escapeJsonString(assignee)));
     }
 
     if (testCaseFqn != null) {
       conditions.add(
           String.format(
               "{\"term\": {\"testCase.fullyQualifiedName.keyword\": \"%s\"}}",
-              escapeDoubleQuotes(testCaseFqn)));
+              escapeJsonString(testCaseFqn)));
     }
 
     if (originEntityFQN != null) {
