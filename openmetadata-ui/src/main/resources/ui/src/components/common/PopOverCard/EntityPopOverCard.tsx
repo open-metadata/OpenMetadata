@@ -42,6 +42,13 @@ const ExploreSearchCard = withSuspenseFallback(
   lazy(() => import('../../ExploreV1/ExploreSearchCard/ExploreSearchCard'))
 );
 
+// FQNs the current user is not allowed to read. A forbidden entity is fetched
+// once and then never again for the rest of the session: the card can say
+// nothing useful about it, so it is not opened at all. Successful lookups are
+// already cached in `cachedEntityData`; only failures would otherwise refetch
+// on every hover.
+const forbiddenEntityFQNs = new Set<string>();
+
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
@@ -53,10 +60,10 @@ export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
   extraInfo?: React.ReactNode;
-}> = ({ entityFQN, entityType, extraInfo }) => {
+  onForbidden?: () => void;
+}> = ({ entityFQN, entityType, extraInfo, onForbidden }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [isForbidden, setIsForbidden] = useState(false);
   const { cachedEntityData, updateCachedEntityData } = useApplicationStore();
 
   const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
@@ -81,7 +88,6 @@ export const PopoverContent: React.FC<{
   const getData = useCallback(async () => {
     const fields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS}`;
     setLoading(true);
-    setIsForbidden(false);
 
     const promise = entityUtilClassBase.getEntityByFqn(
       entityType,
@@ -94,19 +100,22 @@ export const PopoverContent: React.FC<{
         const res = await promise;
         updateCachedEntityData({ id: entityFQN, entityDetails: res });
       } catch (error) {
-        // A 403 means the entity exists but is not readable by this user. Saying
-        // "no data found" for that case reports a permission problem as missing
-        // data, so the two are kept apart.
-        setIsForbidden(
+        // A 403 means the entity exists but is not readable by this user. The
+        // card has nothing useful to show for it, so the owner is told to stop
+        // opening it rather than rendering "no data found" over a permission
+        // problem.
+        if (
           (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-        );
+        ) {
+          onForbidden?.();
+        }
       } finally {
         setLoading(false);
       }
     } else {
       setLoading(false);
     }
-  }, [entityType, entityFQN, updateCachedEntityData]);
+  }, [entityType, entityFQN, updateCachedEntityData, onForbidden]);
 
   useEffect(() => {
     const entityData = cachedEntityData[entityFQN];
@@ -120,12 +129,6 @@ export const PopoverContent: React.FC<{
 
   if (loading) {
     return <Loader size="small" />;
-  }
-
-  if (isForbidden) {
-    return (
-      <Typography.Text>{t('message.no-permission-to-view')}</Typography.Text>
-    );
   }
 
   if (isUndefined(entityData)) {
@@ -150,9 +153,21 @@ const EntityPopOverCard: FC<Props> = ({
   extraInfo,
   defaultOpen = false,
 }) => {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(
+    () => defaultOpen && !forbiddenEntityFQNs.has(entityFQN)
+  );
   const { pathname } = useLocation();
   const lastPathname = useRef(pathname);
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => setOpen(next && !forbiddenEntityFQNs.has(entityFQN)),
+    [entityFQN]
+  );
+
+  const handleForbidden = useCallback(() => {
+    forbiddenEntityFQNs.add(entityFQN);
+    setOpen(false);
+  }, [entityFQN]);
 
   // rc-trigger hides the popup only on mouseleave. When the trigger unmounts
   // under the cursor -- a feed refetch, a resolved task, a route change -- that
@@ -170,20 +185,20 @@ const EntityPopOverCard: FC<Props> = ({
 
   return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
           entityFQN={entityFQN}
           entityType={entityType}
           extraInfo={extraInfo}
+          onForbidden={handleForbidden}
         />
       }
       open={open}
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}
-      onOpenChange={setOpen}>
+      onOpenChange={handleOpenChange}>
       {children as ReactNode}
     </Popover>
   );
