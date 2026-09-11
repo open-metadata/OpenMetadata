@@ -22,11 +22,6 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchemaProfilerConfig,
 )
 from metadata.generated.schema.entity.data.table import Table, TableProfilerConfig
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-    SampleDataStorageConfig,
-)
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
@@ -79,21 +74,12 @@ class ProfilerInterfaceTest(TestCase):
             ),
         )
 
-        cls.schema_storage_config = SampleDataStorageConfig(
-            config=DataStorageConfig(
-                bucketName="bucket-a",
-                prefix="prefix-a",
-                storageConfig=AWSCredentials(awsRegion="us-east-2"),
-            )
-        )
-
         cls.schema_profiler_config = DatabaseSchemaProfilerConfig(
             sampleDataCount=102,
             profileSampleConfig=ProfileSampleConfig(
                 sampleConfigType="STATIC",
                 config={"profileSample": 12, "profileSampleType": "PERCENTAGE"},
             ),
-            sampleDataStorageConfig=cls.schema_storage_config,
         )
 
         cls.schema_entity = DatabaseSchema(
@@ -112,21 +98,12 @@ class ProfilerInterfaceTest(TestCase):
             ),
         )
 
-        cls.database_storage_config = SampleDataStorageConfig(
-            config=DataStorageConfig(
-                bucketName="bucket-b",
-                prefix="prefix-b",
-                storageConfig=AWSCredentials(awsRegion="us-east-1"),
-            )
-        )
-
         cls.database_profiler_config = DatabaseProfilerConfig(
             sampleDataCount=202,
             profileSampleConfig=ProfileSampleConfig(
                 sampleConfigType="STATIC",
                 config={"profileSample": 22, "profileSampleType": "PERCENTAGE"},
             ),
-            sampleDataStorageConfig=cls.database_storage_config,
         )
 
         cls.database_entity = Database(
@@ -273,7 +250,6 @@ class ProfilerInterfaceTest(TestCase):
             profileSample=200,
             profileSampleType=ProfileSampleType.PERCENTAGE,
             sampleDataCount=300,
-            sampleDataStorageConfig=self.schema_storage_config,
             fullyQualifiedName="demo",
         )
         self.assertEqual(
@@ -283,7 +259,6 @@ class ProfilerInterfaceTest(TestCase):
 
         expected = TableConfig(fullyQualifiedName="demo")
         schema_config = DatabaseAndSchemaConfig(
-            sampleDataStorageConfig=self.schema_storage_config,
             fullyQualifiedName="demo",
         )
         self.assertEqual(

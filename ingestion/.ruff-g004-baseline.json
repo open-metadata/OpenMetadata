@@ -2927,10 +2927,6 @@
       "809a56b7eebeae73782abbfb597be701e8a6bcf54c6dfd03051a6b6bc57e6e23": 1,
       "94c342c05b3faff877de82976780a7a080069a72ea7cbff7345a3561a4873fd7": 1
     },
-    "ingestion/src/metadata/profiler/processor/sample_data_handler.py": {
-      "641b73a84dde75185d71467f7f24cbe50901a432f8a4c069ac69217f87d14f39": 1,
-      "952b719987a486d58601b773c82090aacdf2f273a73c8edc2453708c65172d79": 1
-    },
     "ingestion/src/metadata/profiler/source/database/base/profiler_source.py": {
       "6e4760511c3fb0f7e6acf5cd8a7fb2e9c2d43cd891ccd2793549d86316536916": 1,
       "9449f1883b42fada9225ab897781b5ddba0956b418cd9bb13020c4d8cbf375fc": 1
