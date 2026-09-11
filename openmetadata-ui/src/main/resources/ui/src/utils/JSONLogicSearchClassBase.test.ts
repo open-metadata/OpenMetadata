@@ -546,7 +546,9 @@ describe('JSONLogicSearchClassBase', () => {
       const props = jsonLogicSearchClassBase.mainWidgetProps;
 
       expect(props.fullWidth).toBe(true);
-      expect(props.valueLabel).toContain('label.criteria');
+      // The canvas draws the Value column's own label, so the widget no longer
+      // carries a "Criteria:" prefix of its own.
+      expect(props.valueLabel).toContain('label.value');
     });
   });
 });
