@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterSelect } from './filter-select';
 import type { FilterSelectProps } from './filter-select.types';
@@ -314,10 +314,25 @@ describe('FilterSelect', () => {
 
     expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
-    expect(screen.getByTestId('snowflake-checkbox')).toBeInTheDocument();
+    // Each row carries the bare value on the row and the checked state on a
+    // real input, exactly as the legacy markup did.
+    expect(screen.getByTestId('snowflake')).toBeInTheDocument();
+    expect(screen.getByTestId('snowflake-checkbox')).not.toBeChecked();
     expect(screen.getByTestId('no-option-checkbox')).toBeInTheDocument();
     expect(screen.getByTestId('update-btn')).toBeInTheDocument();
     expect(screen.getByTestId('close-btn')).toBeInTheDocument();
+  });
+
+  it('mirrors the selection into the hidden state input, radio for single select', () => {
+    renderFilter({ selectedValues: ['snowflake'] });
+
+    expect(screen.getByTestId('snowflake-checkbox')).toBeChecked();
+    expect(screen.getByTestId('bigquery-checkbox')).not.toBeChecked();
+
+    cleanup();
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    expect(screen.getByTestId('snowflake-radio')).toBeChecked();
   });
 
   it('shows the empty state when nothing is displayed', () => {
