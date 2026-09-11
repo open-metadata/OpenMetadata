@@ -244,23 +244,29 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  void test_getDashboardDataModelFQN() {
+  void test_getParentEntityFQN_dashboardDataModelCases() {
+    // Kept from test_getDashboardDataModelFQN, which was deleted with the standalone
+    // getDashboardDataModelFQN helper once getParentEntityFQN became its only caller. The
+    // cases still matter, so they now run through the surviving public entry point.
     // Standard case
     assertEquals(
         "service.model.dataModel",
-        FullyQualifiedName.getDashboardDataModelFQN("service.model.dataModel.col1"));
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.dataModel.col1", "dashboardDataModel"));
     // Nested column
     assertEquals(
         "service.model.dataModel",
-        FullyQualifiedName.getDashboardDataModelFQN("service.model.dataModel.col1.child1"));
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.dataModel.col1.child1", "dashboardDataModel"));
     // Quoted names
     assertEquals(
         "service.model.\"data.model\"",
-        FullyQualifiedName.getDashboardDataModelFQN("service.model.\"data.model\".col1"));
+        FullyQualifiedName.getParentEntityFQN(
+            "service.model.\"data.model\".col1", "dashboardDataModel"));
     // Error: too few segments
     assertThrows(
         IllegalArgumentException.class,
-        () -> FullyQualifiedName.getDashboardDataModelFQN("service.model"));
+        () -> FullyQualifiedName.getParentEntityFQN("service.model", "dashboardDataModel"));
   }
 
   @Test
@@ -283,10 +289,34 @@ class FullyQualifiedNameTest {
         "service.model.dataModel",
         FullyQualifiedName.getParentEntityFQN(
             "service.model.dataModel.col1.child1", "dashboardDataModel"));
-    // Error: unsupported entity type
+    // mlmodel used to be rejected here, as an example of an unsupported type. It is now a
+    // registered child-bearing type (mlFeatures), so it resolves. This widening is the point of
+    // the registry, not an accident: the assertion was updated in the commit that caused it.
+    assertEquals(
+        "service.model",
+        FullyQualifiedName.getParentEntityFQN("service.model.feature1", "mlmodel"));
+    // Error: a type with no child container is still rejected. chart is the standing example:
+    // a chart is a separate entity with its own RBAC and is deliberately outside this registry.
     assertThrows(
         IllegalArgumentException.class,
-        () -> FullyQualifiedName.getParentEntityFQN("service.model.dataModel.col1", "mlmodel"));
+        () -> FullyQualifiedName.getParentEntityFQN("service.dash.chart1", "chart"));
+  }
+
+  @Test
+  void getParentEntityFQN_parityWithResolver_tableAndDataModel() {
+    List<String[]> matrix =
+        List.of(
+            new String[] {"svc.db.schema.tbl.col", "table"},
+            new String[] {"svc.db.schema.tbl.col.child.grandchild", "table"},
+            new String[] {"svc.db.schema.tbl.\"col.with.dot\"", "table"},
+            new String[] {"svc.model.dm.col", "dashboardDataModel"},
+            new String[] {"svc.model.dm.col.child", "dashboardDataModel"});
+    for (String[] input : matrix) {
+      assertEquals(
+          FullyQualifiedName.getParentEntityFQN(input[0], input[1]),
+          ChildFieldResolver.parentFqnOf(input[0], input[1]),
+          "parity failed for " + input[0]);
+    }
   }
 
   @Test
