@@ -15,7 +15,7 @@ import {
   Box,
   EmptyPlaceholder,
   FeaturedIcon,
-  PageHeader,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import React, { ReactNode, useCallback } from 'react';
@@ -75,7 +75,7 @@ const InboxPage: React.FC<InboxPageProps> = ({
       className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:gap-4 tw:overflow-hidden tw:p-2"
       data-testid="inbox-page"
       direction="col">
-      <PageHeader
+      <PageLayout.PageHeader
         className="tw:mb-0! tw:pb-0"
         footer={
           <Tabs

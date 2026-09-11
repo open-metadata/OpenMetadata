@@ -18,7 +18,7 @@ import {
   Dropdown,
   EmptyPlaceholder,
   Input,
-  PageHeader as CorePageHeader,
+  PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
   keepPreviousData,
@@ -1017,7 +1017,7 @@ const MetricListPage = () => {
   const renderHeaderSection = () => (
     <div>
       {isAiMode ? (
-        <CorePageHeader
+        <PageLayout.PageHeader
           actions={renderMetricActions()}
           badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}
           breadcrumb={

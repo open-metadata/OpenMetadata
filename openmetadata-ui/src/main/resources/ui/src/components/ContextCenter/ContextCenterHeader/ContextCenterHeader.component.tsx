@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Input, PageHeader } from '@openmetadata/ui-core-components';
+import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus, SearchMd } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +92,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   return (
     <div className="tw:mb-5" data-testid="context-center-header">
       {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
-      <PageHeader
+      <PageLayout.PageHeader
         actions={actionsEl}
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
         className={className}

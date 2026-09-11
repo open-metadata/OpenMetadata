@@ -48,7 +48,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
 }: PageLayoutProp) => {
   const location = useLocation();
 
-  // `compact` (uniform 8px) is for pages whose header is a core PageHeader —
+  // `compact` (uniform 8px) is for pages whose header is a core PageLayout.PageHeader —
   // the calling component decides. Everything else gets the default 16px
   // horizontal gutter.
   const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'tw:px-4';

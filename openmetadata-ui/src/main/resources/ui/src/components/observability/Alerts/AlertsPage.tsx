@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, PageHeader } from '@openmetadata/ui-core-components';
+import { Button, PageLayout } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -162,7 +162,7 @@ const AlertsPage = () => {
     <>
       <ObservabilityPageShell
         header={
-          <PageHeader
+          <PageLayout.PageHeader
             actions={
               alertResourcePermission?.Create ? (
                 <Button

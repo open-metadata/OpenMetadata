@@ -14,7 +14,7 @@
 import {
   Box,
   ButtonUtility,
-  PageHeader,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
@@ -343,7 +343,7 @@ const AlertDetailsPage = () => {
         <ObservabilityPageShell
           data-testid="alert-details-ai-page"
           header={
-            <PageHeader
+            <PageLayout.PageHeader
               actions={headerActions}
               breadcrumb={
                 <HeaderBreadcrumb

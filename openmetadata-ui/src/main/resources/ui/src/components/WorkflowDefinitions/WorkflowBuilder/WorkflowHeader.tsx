@@ -19,7 +19,7 @@ import {
   Input,
   Modal,
   ModalOverlay,
-  PageHeader,
+  PageLayout,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -180,7 +180,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   return (
     <>
       {isAiMode ? (
-        <PageHeader
+        <PageLayout.PageHeader
           actions={
             <>
               {workflowControls}

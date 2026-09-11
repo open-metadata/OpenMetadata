@@ -64,32 +64,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     isOpen: boolean;
   }) => (isOpen ? <>{children}</> : null),
-  PageHeader: ({
-    actions,
-    badge,
-    breadcrumb,
-    icon,
-    subtitle,
-    title,
-    'data-testid': dataTestId,
-  }: {
-    actions?: React.ReactNode;
-    badge?: React.ReactNode;
-    breadcrumb?: React.ReactNode;
-    icon?: React.ReactNode;
-    subtitle?: React.ReactNode;
-    title?: React.ReactNode;
-    'data-testid'?: string;
-  }) => (
-    <div data-testid={dataTestId}>
-      {breadcrumb}
-      {icon}
-      {title}
-      {badge}
-      {subtitle}
-      {actions}
-    </div>
-  ),
+  PageLayout: {
+    PageHeader: ({
+      actions,
+      badge,
+      breadcrumb,
+      icon,
+      subtitle,
+      title,
+      'data-testid': dataTestId,
+    }: {
+      actions?: React.ReactNode;
+      badge?: React.ReactNode;
+      breadcrumb?: React.ReactNode;
+      icon?: React.ReactNode;
+      subtitle?: React.ReactNode;
+      title?: React.ReactNode;
+      'data-testid'?: string;
+    }) => (
+      <div data-testid={dataTestId}>
+        {breadcrumb}
+        {icon}
+        {title}
+        {badge}
+        {subtitle}
+        {actions}
+      </div>
+    ),
+  },
   Tooltip: ({
     children,
     title,

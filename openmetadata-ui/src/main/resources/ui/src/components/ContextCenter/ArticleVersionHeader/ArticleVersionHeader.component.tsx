@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, PageHeader, Skeleton } from '@openmetadata/ui-core-components';
+import { Card, PageLayout, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
@@ -63,7 +63,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   return (
     <div className="tw:mb-5" data-testid="article-version-header">
       {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
-      <PageHeader
+      <PageLayout.PageHeader
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
         title={getKnowledgePageName(knowledgePage, t)}
         variant={isEmbedded ? 'gradient' : 'flat'}

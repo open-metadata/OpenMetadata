@@ -14,7 +14,7 @@
 import {
   Button,
   Dropdown,
-  PageHeader,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus, Upload01 } from '@untitledui/icons';
@@ -280,7 +280,7 @@ const DataQualityPage = () => {
     <DataQualityProvider createActions={createActions} isActive={ownsTheUrl}>
       <ObservabilityPageShell
         header={
-          <PageHeader
+          <PageLayout.PageHeader
             actions={trailing}
             badge={
               <LearningIcon

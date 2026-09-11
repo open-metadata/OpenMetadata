@@ -145,27 +145,29 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {testId}
       </button>
     ),
-    PageHeader: ({
-      footer,
-      meta,
-      subtitle,
-      title,
-      actions,
-    }: {
-      footer?: ReactNode;
-      meta?: ReactNode;
-      subtitle?: string;
-      title: string;
-      actions?: ReactNode;
-    }) => (
-      <div data-testid="page-header">
-        <span>{title}</span>
-        <span data-testid="page-header-subtitle">{subtitle}</span>
-        <div data-testid="header-metadata">{meta}</div>
-        <div data-testid="header-actions">{actions}</div>
-        {footer}
-      </div>
-    ),
+    PageLayout: {
+      PageHeader: ({
+        footer,
+        meta,
+        subtitle,
+        title,
+        actions,
+      }: {
+        footer?: ReactNode;
+        meta?: ReactNode;
+        subtitle?: string;
+        title: string;
+        actions?: ReactNode;
+      }) => (
+        <div data-testid="page-header">
+          <span>{title}</span>
+          <span data-testid="page-header-subtitle">{subtitle}</span>
+          <div data-testid="header-metadata">{meta}</div>
+          <div data-testid="header-actions">{actions}</div>
+          {footer}
+        </div>
+      ),
+    },
     Tabs,
   };
 });

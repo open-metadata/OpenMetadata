@@ -67,7 +67,9 @@ describe('AppShell', () => {
     expect(content).toContainElement(screen.getByTestId('route-content'));
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(shell).not.toContainElement(screen.getByTestId('overlay'));
-    expect(shell).not.toContainElement(screen.getByTestId('personal-space-modal'));
+    expect(shell).not.toContainElement(
+      screen.getByTestId('personal-space-modal')
+    );
     expect(mockPage).toHaveBeenCalledTimes(1);
   });
 });

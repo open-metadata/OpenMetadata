@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, PageHeader } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -78,7 +78,7 @@ const IncidentManagerPage = () => {
   return (
     <ObservabilityPageShell
       header={
-        <PageHeader
+        <PageLayout.PageHeader
           badge={
             <LearningIcon
               pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}

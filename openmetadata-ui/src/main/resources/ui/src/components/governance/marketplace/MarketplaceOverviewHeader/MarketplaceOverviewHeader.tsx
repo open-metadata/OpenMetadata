@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, PageHeader, Typography } from '@openmetadata/ui-core-components';
+import { Box, PageLayout, Typography } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
@@ -60,7 +60,7 @@ export const MarketplaceOverviewHeader: FC = () => {
   );
 
   return (
-    <PageHeader
+    <PageLayout.PageHeader
       breadcrumb={
         <HeaderBreadcrumb
           noMargin

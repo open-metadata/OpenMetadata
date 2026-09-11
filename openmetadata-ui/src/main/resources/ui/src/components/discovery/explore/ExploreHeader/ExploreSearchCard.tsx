@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, PageHeader } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -253,7 +253,7 @@ export const ExploreSearchCard = () => {
   );
 
   return (
-    <PageHeader
+    <PageLayout.PageHeader
       className="tw:min-h-[108px] tw:w-full tw:overflow-hidden tw:rounded-xl"
       data-testid="explore-search-card"
       title={headerLayout}

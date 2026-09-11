@@ -43,27 +43,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onClick?: (...args: unknown[]) => void;
   }) => <button onClick={onClick}>{children}</button>,
-  PageHeader: ({
-    breadcrumb,
-    title,
-    subtitle,
-    actions,
-    'data-testid': dataTestId = 'header-shell',
-  }: any) => (
-    <div data-testid={dataTestId}>
-      {breadcrumb}
-      <span>{title}</span>
-      <span>{subtitle}</span>
-      {actions}
-    </div>
-  ),
+  PageLayout: {
+    PageHeader: ({
+      breadcrumb,
+      title,
+      subtitle,
+      actions,
+      'data-testid': dataTestId = 'header-shell',
+    }: any) => (
+      <div data-testid={dataTestId}>
+        {breadcrumb}
+        <span>{title}</span>
+        <span>{subtitle}</span>
+        {actions}
+      </div>
+    ),
+  },
 }));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// PageHeader is mocked above; stub the breadcrumb separately because it owns
+// PageLayout.PageHeader is mocked above; stub the breadcrumb separately because it owns
 // router navigation, which this module gating test does not exercise.
 
 jest.mock(

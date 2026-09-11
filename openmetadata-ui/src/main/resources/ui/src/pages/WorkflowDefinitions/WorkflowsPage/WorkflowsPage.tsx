@@ -16,7 +16,7 @@ import {
   Button,
   EmptyPlaceholder,
   Input,
-  PageHeader as CorePageHeader,
+  PageLayout,
   SlideoutMenu,
   TextArea,
   Typography,
@@ -318,7 +318,7 @@ const WorkflowsPage = () => {
           { 'tw:mx-2': !isAiMode }
         )}>
         {isAiMode ? (
-          <CorePageHeader
+          <PageLayout.PageHeader
             actions={createWorkflowButton}
             badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}
             breadcrumb={

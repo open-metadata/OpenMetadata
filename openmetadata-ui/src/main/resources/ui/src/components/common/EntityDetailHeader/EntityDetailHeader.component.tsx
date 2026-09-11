@@ -14,7 +14,7 @@
 import {
   Box,
   FeaturedIcon,
-  PageHeader,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
@@ -129,7 +129,7 @@ const EntityDetailHeader = ({
   );
 
   return (
-    <PageHeader
+    <PageLayout.PageHeader
       actions={actions}
       badge={badge}
       breadcrumb={breadcrumb}

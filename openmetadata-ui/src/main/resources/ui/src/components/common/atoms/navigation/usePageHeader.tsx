@@ -16,7 +16,7 @@ import {
   Button,
   Card,
   FeaturedIcon,
-  PageHeader,
+  PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
@@ -48,7 +48,7 @@ interface PageHeaderConfig {
   iconColor?: 'brand' | 'gray' | 'success' | 'warning' | 'error';
   /** Inline search node (usually from useSearch) rendered in search/beta variants. */
   search?: ReactNode;
-  /** Breadcrumb row rendered above the title in shared PageHeader variants. */
+  /** Breadcrumb row rendered above the title in shared PageLayout.PageHeader variants. */
   breadcrumb?: ReactNode;
   /** i18n key for the greeting title. Defaults to 'label.hey-comma-name'. */
   greetingNameKey?: string;
@@ -177,7 +177,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       : displayTitle;
 
     return (
-      <PageHeader
+      <PageLayout.PageHeader
         actions={renderShellActions()}
         badge={renderBadge()}
         breadcrumb={config.breadcrumb}

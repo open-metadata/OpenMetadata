@@ -19,7 +19,7 @@ import {
   Card,
   Dot,
   Dropdown,
-  PageHeader,
+  PageLayout,
   Skeleton,
   Tabs,
   Tooltip,
@@ -744,7 +744,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
-      <PageHeader
+      <PageLayout.PageHeader
         actions={actionsEl}
         badge={entityStatusBadge}
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}

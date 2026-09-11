@@ -413,7 +413,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     workflowMetadata?.displayName || 'Workflow Builder';
   const workflowName = workflowMetadata?.name;
 
-  // AI-mode breadcrumb: rendered inside the PageHeader gradient header.
+  // AI-mode breadcrumb: rendered inside the PageLayout.PageHeader gradient header.
   const breadcrumb = useMemo(
     () => (
       <HeaderBreadcrumb

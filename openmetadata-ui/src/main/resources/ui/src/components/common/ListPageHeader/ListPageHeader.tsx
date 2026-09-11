@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, PageHeader } from '@openmetadata/ui-core-components';
+import { Button, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,9 +40,9 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
   ) : null;
 
   return (
-    <PageHeader
+    <PageLayout.PageHeader
       actions={
-        // PageHeader renders its actions box on any truthy value, so keep this
+        // PageLayout.PageHeader renders its actions box on any truthy value, so keep this
         // undefined when there is nothing to show rather than passing a fragment.
         search || addButton ? (
           <>

@@ -54,12 +54,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onPress?: () => void;
   }) => <button onClick={onPress}>{children}</button>,
-  PageHeader: ({ title, actions }: { title: string; actions?: ReactNode }) => (
-    <div data-testid="page-header">
-      <span>{title}</span>
-      {actions}
-    </div>
-  ),
+  PageLayout: {
+    PageHeader: ({
+      title,
+      actions,
+    }: {
+      title: string;
+      actions?: ReactNode;
+    }) => (
+      <div data-testid="page-header">
+        <span>{title}</span>
+        {actions}
+      </div>
+    ),
+  },
 }));
 
 jest.mock('@untitledui/icons', () => ({

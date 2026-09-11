@@ -57,26 +57,28 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
-  PageHeader: jest.fn(
-    ({
-      actions,
-      breadcrumb,
-      subtitle,
-      title,
-    }: {
-      actions?: React.ReactNode;
-      breadcrumb?: React.ReactNode;
-      subtitle?: React.ReactNode;
-      title: React.ReactNode;
-    }) => (
-      <div data-testid="page-header">
-        {breadcrumb}
-        <span>{title}</span>
-        <span>{subtitle}</span>
-        {actions}
-      </div>
-    )
-  ),
+  PageLayout: {
+    PageHeader: jest.fn(
+      ({
+        actions,
+        breadcrumb,
+        subtitle,
+        title,
+      }: {
+        actions?: React.ReactNode;
+        breadcrumb?: React.ReactNode;
+        subtitle?: React.ReactNode;
+        title: React.ReactNode;
+      }) => (
+        <div data-testid="page-header">
+          {breadcrumb}
+          <span>{title}</span>
+          <span>{subtitle}</span>
+          {actions}
+        </div>
+      )
+    ),
+  },
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

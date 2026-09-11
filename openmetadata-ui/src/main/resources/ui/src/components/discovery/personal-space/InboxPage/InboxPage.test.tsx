@@ -55,23 +55,25 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({ title }: { title?: ReactNode }) => (
       <div data-testid="inbox-empty">{title}</div>
     ),
-    PageHeader: ({
-      footer,
-      icon,
-      title,
-      variant,
-    }: {
-      footer?: ReactNode;
-      icon?: ReactNode;
-      title?: ReactNode;
-      variant?: string;
-    }) => (
-      <div data-testid="inbox-header" data-variant={variant}>
-        {icon}
-        {title}
-        {footer}
-      </div>
-    ),
+    PageLayout: {
+      PageHeader: ({
+        footer,
+        icon,
+        title,
+        variant,
+      }: {
+        footer?: ReactNode;
+        icon?: ReactNode;
+        title?: ReactNode;
+        variant?: string;
+      }) => (
+        <div data-testid="inbox-header" data-variant={variant}>
+          {icon}
+          {title}
+          {footer}
+        </div>
+      ),
+    },
     Tabs,
   };
 });

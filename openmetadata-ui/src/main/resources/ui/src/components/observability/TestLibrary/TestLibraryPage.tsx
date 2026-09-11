@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, PageHeader } from '@openmetadata/ui-core-components';
+import { Button, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -78,7 +78,7 @@ const TestLibraryPage = () => {
     <>
       <ObservabilityPageShell
         header={
-          <PageHeader
+          <PageLayout.PageHeader
             actions={
               createPermission ? (
                 <Button

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PageHeader } from '@openmetadata/ui-core-components';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -40,7 +40,7 @@ const ColumnBulkOperations = () => {
           'tw:gap-4': isAiMode,
         })}>
         {isAiMode ? (
-          <PageHeader
+          <PageLayout.PageHeader
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin
