@@ -72,6 +72,6 @@ export const GROUP_LABEL_KEYS: Record<string, string> = {
   [GROUP_DATABASE_STORAGE]: 'label.entity-group-database-and-storage',
   [GROUP_DASHBOARDS_REPORTING]: 'label.entity-group-dashboards-and-reporting',
   [GROUP_PIPELINES_ML]: 'label.entity-group-pipelines-and-ml',
-  [GROUP_API]: 'label.entity-group-api',
-  [GROUP_GOVERNANCE]: 'label.entity-group-governance',
+  [GROUP_API]: 'label.api-uppercase',
+  [GROUP_GOVERNANCE]: 'label.governance',
 };
