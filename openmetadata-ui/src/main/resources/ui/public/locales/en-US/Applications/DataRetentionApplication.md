@@ -45,6 +45,13 @@ Enter the retention period for Audit Log entries in days (e.g., 90 for three mon
 $$
 
 $$section
+### Automation Workflow Retention Period (days) $(id="workflowRetentionPeriod")
+
+Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.
+
+$$
+
+$$section
 ### Extension Retention Periods (days) $(id="extensions")
 
 Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. Leave a key out to use whatever default that extension defines.

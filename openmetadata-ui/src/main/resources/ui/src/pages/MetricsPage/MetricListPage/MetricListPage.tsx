@@ -108,6 +108,7 @@ import {
   MetricTableRow,
   MetricTreeNode,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
@@ -260,9 +261,11 @@ const MetricListPage = () => {
     queryFn: () => getResourcePermission(ResourceEntity.METRIC),
   });
 
-  const hasViewPermission = [permission.ViewAll, permission.ViewBasic].some(
-    Boolean
+  const permissionFlags = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
   );
+  const hasViewPermission = permissionFlags.hasViewAccess;
   const isTreeMode = !statusFilter;
 
   const {
@@ -1171,7 +1174,7 @@ const MetricListPage = () => {
           </Button>
         </LimitWrapper>
       )}
-      {permission.EditAll && (
+      {permissionFlags.canEditAll && (
         <Dropdown.Root
           isOpen={isMetricActionsOpen}
           onOpenChange={setIsMetricActionsOpen}>
@@ -1235,7 +1238,7 @@ const MetricListPage = () => {
           onPress={() => setSelectedMetricIds([])}>
           {t('label.clear')}
         </Button>
-        {permission.EditAll && (
+        {permissionFlags.canEditAll && (
           <Button
             className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
             color="link-color"
@@ -1298,7 +1301,7 @@ const MetricListPage = () => {
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown.Root>
-        {permission.EditAll && (
+        {permissionFlags.canEditAll && (
           <Button
             className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
             color="link-color"

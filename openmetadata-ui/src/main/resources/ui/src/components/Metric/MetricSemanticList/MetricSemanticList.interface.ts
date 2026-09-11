@@ -21,9 +21,9 @@ export interface MetricSemanticItem {
 }
 
 export interface MetricSemanticListProps<T extends MetricSemanticItem> {
-  metric: Metric;
-  permissions: OperationPermission;
-  onUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
+  metric?: Metric;
+  permissions?: OperationPermission;
+  onUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   items: T[];
   title: string;
   fieldKey: Extract<keyof Metric, 'dimensions' | 'measures'>;

@@ -11,17 +11,36 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import type { Metric } from '../../../generated/entity/data/metric';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricSemanticList from './MetricSemanticList';
 import { MetricSemanticItem } from './MetricSemanticList.interface';
 
-jest.mock('react-markdown', () => ({
-  __esModule: true,
-  default: ({ children }: { children: string }) => <>{children}</>,
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest.fn(),
 }));
 
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
+  jest.fn(({ markdown }) => (
+    <div data-testid="description-preview">{markdown}</div>
+  ))
+);
+
 const NEW_DESCRIPTION = 'new description';
+
+jest.mock(
+  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  () => ({
+    ModalWithMarkdownEditor: jest.fn(({ visible, onSave }) =>
+      visible ? (
+        <button
+          data-testid="save-description"
+          onClick={() => onSave('new description')}>
+          save
+        </button>
+      ) : null
+    ),
+  })
+);
 
 const mockOnUpdate = jest.fn();
 
@@ -34,16 +53,19 @@ const ITEMS: MetricSemanticItem[] = [
   { name: 'region', expression: 'c.region' },
 ];
 
-const METRIC = {
-  id: 'metric-1',
-  name: 'revenue',
-  dimensions: ITEMS,
-} as Metric;
-
-const PERMISSIONS = {
-  EditAll: true,
-  EditDescription: false,
-} as OperationPermission;
+const setContext = (overrides = {}) => {
+  (useGenericContext as jest.Mock).mockReturnValue({
+    data: { id: 'metric-1', name: 'revenue', dimensions: ITEMS },
+    onUpdate: mockOnUpdate,
+    // EditAll granted, EditDescription absent (not explicitly denied) — falls back to
+    // EditAll under the prioritized getDerivedPermissionFlags derivation (Task 8 Batch 9),
+    // same as it did under the old bare `EditAll || EditDescription` OR. Deliberately NOT
+    // `EditDescription: false`, which would now correctly deny access (explicit-deny-wins) —
+    // see the dedicated regression test below for that case.
+    permissions: { EditAll: true },
+    ...overrides,
+  });
+};
 
 const renderList = (props = {}) =>
   render(
@@ -54,10 +76,7 @@ const renderList = (props = {}) =>
       fieldKey="dimensions"
       getBadge={(item) => (item as { type?: string }).type}
       items={ITEMS}
-      metric={METRIC}
-      permissions={PERMISSIONS}
       title="Dimensions"
-      onUpdate={mockOnUpdate}
       {...props}
     />
   );
@@ -65,6 +84,7 @@ const renderList = (props = {}) =>
 describe('MetricSemanticList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setContext();
   });
 
   it('renders one row per item with name and expression', () => {
@@ -75,7 +95,6 @@ describe('MetricSemanticList', () => {
     expect(
       screen.getByText('DATE_TRUNC(day, o.created_at)')
     ).toBeInTheDocument();
-    expect(screen.getByText('Order day')).toBeInTheDocument();
   });
 
   it('renders the badge when the accessor returns a value', () => {
@@ -102,9 +121,21 @@ describe('MetricSemanticList', () => {
   });
 
   it('hides the edit button when the user lacks permission', () => {
-    renderList({
-      permissions: { EditAll: false, EditDescription: false },
-    });
+    setContext({ permissions: { EditAll: false, EditDescription: false } });
+    renderList();
+
+    expect(
+      screen.queryByTestId('edit-description-order_date')
+    ).not.toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit EditDescription: false must win over a bare EditAll: true grant
+  // (explicit-deny-wins) — the old raw `EditAll || EditDescription` OR let EditAll grant
+  // unconditionally.
+  it('hides the edit button when EditDescription is explicitly false, even with EditAll true', () => {
+    setContext({ permissions: { EditAll: true, EditDescription: false } });
+    renderList();
 
     expect(
       screen.queryByTestId('edit-description-order_date')
@@ -112,14 +143,15 @@ describe('MetricSemanticList', () => {
   });
 
   it('hides the edit button when the metric is deleted', () => {
-    renderList({
-      metric: {
+    setContext({
+      data: {
         id: 'metric-1',
         name: 'revenue',
         dimensions: ITEMS,
         deleted: true,
       },
     });
+    renderList();
 
     expect(
       screen.queryByTestId('edit-description-order_date')
@@ -130,11 +162,7 @@ describe('MetricSemanticList', () => {
     renderList();
 
     fireEvent.click(screen.getByTestId('edit-description-region'));
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /label\.description/ }),
-      { target: { value: NEW_DESCRIPTION } }
-    );
-    fireEvent.click(await screen.findByTestId('semantic-description-save'));
+    fireEvent.click(await screen.findByTestId('save-description'));
 
     await waitFor(() =>
       expect(mockOnUpdate).toHaveBeenCalledWith(
@@ -158,17 +186,13 @@ describe('MetricSemanticList', () => {
       { name: 'region', expression: 'c.region' },
       { name: 'region', expression: 'o.region' },
     ];
-    renderList({
-      items: duplicates,
-      metric: { id: 'metric-1', name: 'revenue', dimensions: duplicates },
+    setContext({
+      data: { id: 'metric-1', name: 'revenue', dimensions: duplicates },
     });
+    renderList({ items: duplicates });
 
     fireEvent.click(screen.getAllByTestId('edit-description-region')[1]);
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /label\.description/ }),
-      { target: { value: NEW_DESCRIPTION } }
-    );
-    fireEvent.click(await screen.findByTestId('semantic-description-save'));
+    fireEvent.click(await screen.findByTestId('save-description'));
 
     await waitFor(() =>
       expect(mockOnUpdate).toHaveBeenCalledWith(

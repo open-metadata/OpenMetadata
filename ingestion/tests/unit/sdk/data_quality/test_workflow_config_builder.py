@@ -18,6 +18,9 @@ import pytest
 
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -40,7 +43,12 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.data_quality.workflow_config_builder import WorkflowConfigBuilder
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.sdk.data_quality.workflow_config_builder import (
+    SERVER_PASSWORD_MASK,
+    WorkflowConfigBuilder,
+    _find_masked_fields,
+)
 
 
 @pytest.fixture
@@ -539,3 +547,81 @@ def test_build_without_table_raises_assertion(mock_ometa_client, test_definition
 
     with pytest.raises(AssertionError, match="Table entity not provided"):
         builder.build()
+
+
+@pytest.fixture
+def masked_service(mock_table):
+    """Service whose password the API masked, as it does for every non-bot caller"""
+    return _service_with_password(mock_table, SERVER_PASSWORD_MASK)
+
+
+@pytest.fixture
+def secret_ref_service(mock_table):
+    """Service whose password is a secrets-manager reference rather than a value"""
+    return _service_with_password(mock_table, "secret:/cluster/databaseservice/mysql/password")
+
+
+def _service_with_password(table, password):
+    """Build a mock service carrying the given raw password value"""
+    connection = DatabaseConnection.model_construct(
+        config=MysqlConnection.model_construct(
+            type="Mysql",
+            username="test_user",
+            hostPort="localhost:3306",
+            authType=BasicAuth(password=CustomSecretStr(password)),
+        )
+    )
+    return DatabaseService.model_construct(id=table.service.id, name=EntityName("MySQL"), connection=connection)
+
+
+def test_with_table_raises_when_credentials_are_masked(mock_ometa_client, masked_service):
+    """A masked password means the caller is not a bot, so fail before building anything"""
+    mock_ometa_client.get_by_id.return_value = masked_service
+    builder = WorkflowConfigBuilder(client=mock_ometa_client)
+
+    with pytest.raises(ValueError, match="came back masked") as exc_info:
+        builder.with_table("MySQL.default.test_db.test_table")
+
+    message = str(exc_info.value)
+    assert "config.authType.password" in message
+    assert "ingestion-bot" in message
+    # EntityName is a RootModel: str() would render "root='MySQL'" instead of the name
+    assert "service 'MySQL'" in message
+
+
+def test_with_table_allows_secret_manager_reference(mock_ometa_client, secret_ref_service):
+    """A `secret:` reference is a valid credential resolved at connection time, not a mask"""
+    mock_ometa_client.get_by_id.return_value = secret_ref_service
+    builder = WorkflowConfigBuilder(client=mock_ometa_client)
+
+    builder.with_table("MySQL.default.test_db.test_table")
+
+    password = builder.service_connection.config.authType.password
+    assert password.get_secret_value(skip_secret_manager=True).startswith("secret:")
+
+
+def test_with_table_allows_real_credentials(mock_ometa_client, mock_table):
+    """A real password passes through untouched"""
+    mock_ometa_client.get_by_id.return_value = _service_with_password(mock_table, "real-password")
+    builder = WorkflowConfigBuilder(client=mock_ometa_client)
+
+    builder.with_table("MySQL.default.test_db.test_table")
+
+    password = builder.service_connection.config.authType.password
+    assert password.get_secret_value(skip_secret_manager=True) == "real-password"
+
+
+def test_find_masked_fields_reports_every_masked_path():
+    """Nested dicts and lists are both walked, and non-masked values are ignored"""
+    payload = {
+        "config": {
+            "authType": {"password": SERVER_PASSWORD_MASK},
+            "username": "not-a-secret",
+            "extras": [{"token": SERVER_PASSWORD_MASK}, {"token": "secret:/a/b"}],
+        }
+    }
+
+    assert _find_masked_fields(payload) == [
+        "config.authType.password",
+        "config.extras[0].token",
+    ]

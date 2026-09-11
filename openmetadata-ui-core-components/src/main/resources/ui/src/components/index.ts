@@ -124,6 +124,8 @@ export type {
 } from './application/app-navigation/config';
 export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
+export * from './application/filter-select/filter-select';
+export * from './application/filter-select/filter-select.types';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';

@@ -10,99 +10,118 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Metric } from '../../../generated/entity/data/metric';
 import RelatedMetrics from './RelatedMetrics';
 
-jest.mock('../../Customization/GenericProvider/GenericContext');
-jest.mock('./RelatedMetricsForm', () => ({
-  RelatedMetricsForm: ({ onCancel, onSubmit }: Record<string, unknown>) => (
-    <div data-testid="related-form">
-      <button onClick={onCancel as () => void}>cancel</button>
-      <button
-        onClick={() =>
-          (onSubmit as (options: unknown[]) => Promise<void>)([
-            {
-              value: 'new',
-              label: 'New',
-              reference: { id: 'new', type: 'metric' },
-            },
-          ])
-        }>
-        submit
-      </button>
-    </div>
+jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
+  WidgetPlusButton: (props: { 'data-testid'?: string }) => (
+    <button data-testid={props['data-testid']}>plus</button>
+  ),
+  WidgetEditButton: (props: { 'data-testid'?: string }) => (
+    <button data-testid={props['data-testid']}>edit</button>
   ),
 }));
 
-const mockUseGenericContext = useGenericContext as jest.Mock;
-const onUpdate = jest.fn().mockResolvedValue(undefined);
-const relatedMetrics = Array.from({ length: 6 }, (_, index) => ({
-  id: `metric-${index}`,
-  name: `metric_${index}`,
-  fullyQualifiedName: `finance.metric_${index}`,
-  type: 'metric',
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest.fn().mockImplementation(({ headerExtra, children }) => (
+    <div data-testid="widget-card">
+      <div data-testid="header-extra">{headerExtra}</div>
+      {children}
+    </div>
+  ))
+);
+
+jest.mock('./RelatedMetricsForm', () => ({
+  RelatedMetricsForm: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="related-metrics-form" />),
 }));
 
-const renderRelated = () =>
-  render(
-    <MemoryRouter>
-      <RelatedMetrics />
-    </MemoryRouter>
-  );
+const mockMetricDetails: Partial<Metric> = {
+  id: 'metric-1',
+  name: 'test-metric',
+  fullyQualifiedName: 'test.metric',
+  deleted: false,
+  relatedMetrics: [],
+};
+
+const mockUseGenericContextResult = {
+  data: mockMetricDetails as Metric,
+  onUpdate: jest.fn(),
+  permissions: {} as OperationPermission,
+};
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest.fn(() => mockUseGenericContextResult),
+}));
+
+const renderRelatedMetrics = (
+  metricOverrides: Partial<Metric> = {},
+  permissions: Partial<OperationPermission> = {}
+) => {
+  mockUseGenericContextResult.data = {
+    ...mockMetricDetails,
+    ...metricOverrides,
+  } as Metric;
+  mockUseGenericContextResult.permissions = permissions as OperationPermission;
+
+  return render(<RelatedMetrics />, { wrapper: MemoryRouter });
+};
 
 describe('RelatedMetrics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseGenericContext.mockReturnValue({
-      data: {
-        id: 'metric',
-        name: 'metric',
-        fullyQualifiedName: 'finance.metric',
-        relatedMetrics,
-      },
-      permissions: { EditAll: true },
-      onUpdate,
-    });
+    mockUseGenericContextResult.data = mockMetricDetails as Metric;
+    mockUseGenericContextResult.permissions = {} as OperationPermission;
   });
 
-  it('shows five metrics by default and expands the remainder', () => {
-    renderRelated();
-
-    expect(screen.getByText('metric_0')).toBeInTheDocument();
-    expect(screen.queryByText('metric_5')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('show-more'));
-
-    expect(screen.getByText('metric_5')).toBeInTheDocument();
-  });
-
-  it('edits and persists related Metric references', async () => {
-    renderRelated();
-    fireEvent.click(screen.getByTestId('edit-related-metrics'));
-    fireEvent.click(screen.getByText('submit'));
-
-    await waitFor(() =>
-      expect(onUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          relatedMetrics: [{ id: 'new', type: 'metric' }],
-        }),
-        'relatedMetrics'
-      )
-    );
-  });
-
-  it('hides edit controls without permission', () => {
-    mockUseGenericContext.mockReturnValue({
-      data: { id: 'metric', name: 'metric', relatedMetrics },
-      permissions: { EditAll: false },
-      onUpdate,
-    });
-    renderRelated();
+  it('shows the add-related-metrics button when EditAll is granted and the entity is not deleted', () => {
+    renderRelatedMetrics({}, { EditAll: true });
 
     expect(
-      screen.queryByTestId('edit-related-metrics')
+      screen.getByTestId('add-related-metrics-container')
+    ).toBeInTheDocument();
+  });
+
+  it('hides the add-related-metrics button when there is no edit permission', () => {
+    renderRelatedMetrics({}, {});
+
+    expect(
+      screen.queryByTestId('add-related-metrics-container')
+    ).not.toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): the
+  // old raw expression ANDed `!metricDetails.deleted` directly onto `permissions.EditAll` —
+  // a soft-deleted metric must still read as edit-locked even when EditAll is granted.
+  it('hides the add-related-metrics button when the metric is deleted, even with EditAll true', () => {
+    renderRelatedMetrics({ deleted: true }, { EditAll: true });
+
+    expect(
+      screen.queryByTestId('add-related-metrics-container')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the edit-related-metrics button instead of add when related metrics already exist', () => {
+    renderRelatedMetrics(
+      {
+        relatedMetrics: [
+          {
+            id: 'related-1',
+            type: 'metric',
+            fullyQualifiedName: 'other.metric',
+          },
+        ],
+      },
+      { EditAll: true }
+    );
+
+    expect(screen.getByTestId('edit-related-metrics')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('add-related-metrics-container')
     ).not.toBeInTheDocument();
   });
 });

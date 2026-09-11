@@ -567,7 +567,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             page
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeVisible();
 
@@ -607,7 +607,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             cleanupPanelContainer
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeHidden();
 

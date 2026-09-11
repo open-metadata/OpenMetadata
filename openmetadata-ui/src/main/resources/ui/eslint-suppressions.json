@@ -513,11 +513,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Topic.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
