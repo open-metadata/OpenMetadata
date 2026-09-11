@@ -1640,6 +1640,9 @@ export interface PaginationTestConfig {
   searchParamName?: string;
   waitForLoadSelector?: string;
   deleteBtnTestId?: string;
+  // Set true when the search value is kept in component state rather than the
+  // URL (e.g. Impact Analysis), so the URL-param check after search is skipped.
+  skipUrlParamCheck?: boolean;
 }
 
 export const testCompletePaginationWithSearch = async (
@@ -1654,6 +1657,7 @@ export const testCompletePaginationWithSearch = async (
     searchParamName = 'endpoint',
     waitForLoadSelector = 'table',
     deleteBtnTestId = 'show-deleted',
+    skipUrlParamCheck = false,
   } = config;
 
   await page.goto(`${baseUrl}`);
@@ -1687,8 +1691,12 @@ export const testCompletePaginationWithSearch = async (
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
 
-  const urlAfterSearch = new URL(page.url());
-  expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
+  if (!skipUrlParamCheck) {
+    const urlAfterSearch = new URL(page.url());
+    expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(
+      searchTestTerm
+    );
+  }
 
   await expect(page.getByTestId('previous')).toBeDisabled();
   const paginationAfterSearch = page.locator('[data-testid="page-indicator"]');

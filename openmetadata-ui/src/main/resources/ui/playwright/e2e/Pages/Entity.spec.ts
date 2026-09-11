@@ -152,7 +152,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     });
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
       await entity.visitEntityPage(page);
     });
 
