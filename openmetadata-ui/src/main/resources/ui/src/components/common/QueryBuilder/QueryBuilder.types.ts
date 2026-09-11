@@ -17,7 +17,6 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import type { EntityType } from '../../../enums/entity.enum';
 import type { QueryFilterInterface } from '../../../interface/queryFilter.interface';
-import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
 import type { QueryBuilderConfigOverrides } from '../../../utils/queryBuilder/config';
 import type {
   ConjunctionMode,
@@ -25,6 +24,7 @@ import type {
   QueryBuilderSurface,
 } from '../../../utils/queryBuilder/types';
 import type { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
 
 /**
  * Everything a change produced, beyond the serialised value the caller

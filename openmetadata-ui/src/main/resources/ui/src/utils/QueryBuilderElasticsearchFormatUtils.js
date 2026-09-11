@@ -77,6 +77,7 @@ function buildEsGeoPoint(geoPointString) {
  *
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildEsRangeParameters(value, operator) {
   // -- if value is greater than 1 then we assume this is a between operator : BUG this is wrong,
   // a selectable list can have multiple values
@@ -464,6 +465,7 @@ function isRangeOperator(operator) {
  * @returns {object} - The nested ES query
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
   const mustClauses = [
     { term: { 'customPropertiesTyped.name': propertyName } },
@@ -530,6 +532,7 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
  * @returns {object} - The ES query for custom properties
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildExtensionQuery(
   propertyName,
   entityType,
@@ -777,6 +780,7 @@ function buildExtensionQuery(
  * @returns {object} - The ES rule
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildEsRule(fieldName, value, operator, config, valueSrc) {
   if (!fieldName || !operator || value === undefined) {
     return undefined;
@@ -1009,6 +1013,7 @@ function buildEsGroup(
   };
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   try {
     const extendedConfig = extendConfigUtils.ConfigUtils.extendConfig(
@@ -1146,6 +1151,7 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
     .some((child) => hasUnfinishedRule(child, config, syntax));
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 export function elasticSearchFormatForJSONLogic(
   tree,
   config,

@@ -27,8 +27,8 @@ import type {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { generateUUID } from './StringUtils';
 import { QUERY_BUILDER_CONJUNCTION } from './queryBuilder/types';
+import { generateUUID } from './StringUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,

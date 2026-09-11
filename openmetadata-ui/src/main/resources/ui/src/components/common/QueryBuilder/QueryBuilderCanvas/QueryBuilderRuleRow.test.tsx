@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
 import type {
   Actions,
   Config,
   FieldProps,
 } from '@react-awesome-query-builder/ui';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
 import { EXPLORE_BUTTON_PRESET } from '../QueryBuilderButton/QueryBuilderButton.constants';
 import QueryBuilderRuleRow from './QueryBuilderRuleRow';

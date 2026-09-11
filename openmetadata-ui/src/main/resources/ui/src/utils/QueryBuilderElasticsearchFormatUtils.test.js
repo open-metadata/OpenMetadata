@@ -377,6 +377,11 @@ describe('hasUnfinishedRule – entered rules on plain fields (Issue #31564)', (
 // positionally read `testCp` as the entity type and `keyword` as the property,
 // so those builders produced a query that could never match.
 describe('elasticSearchFormat – custom properties without an entity-type segment', () => {
+  const PINNED_FIELD = 'extension.testCp.keyword';
+  const DATE_VALUE = '2026-09-03';
+  const NAMED_TEST_CP = '"customPropertiesTyped.name":"testCp"';
+  const SCOPED_TO_TABLE = '"entityType":"table"';
+
   const pinnedConfig = {
     ...BasicConfig,
     fields: {
@@ -395,14 +400,14 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
 
   it('should build the nested customPropertiesTyped query for a pinned field', () => {
     const result = elasticSearchFormat(
-      makeTree('equal', ['2026-09-03'], 'extension.testCp.keyword'),
+      makeTree('equal', [DATE_VALUE], PINNED_FIELD),
       pinnedConfig
     );
     const json = JSON.stringify(result);
 
     expect(nestedQueryOf(result).length).toBeGreaterThan(0);
-    expect(json).toContain('"customPropertiesTyped.name":"testCp"');
-    expect(json).toContain('2026-09-03');
+    expect(json).toContain(NAMED_TEST_CP);
+    expect(json).toContain(DATE_VALUE);
     // `keyword` is a suffix on the field key, never the property name
     expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
   });
@@ -413,23 +418,20 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
   // the property name mistaken for a type.
   it('should scope to the entity type the builder was configured with', () => {
     const json = JSON.stringify(
-      elasticSearchFormat(
-        makeTree('equal', ['2026-09-03'], 'extension.testCp.keyword'),
-        {
-          ...pinnedConfig,
-          settings: { ...pinnedConfig.settings, omEntityType: 'table' },
-        }
-      )
+      elasticSearchFormat(makeTree('equal', [DATE_VALUE], PINNED_FIELD), {
+        ...pinnedConfig,
+        settings: { ...pinnedConfig.settings, omEntityType: 'table' },
+      })
     );
 
-    expect(json).toContain('"entityType":"table"');
-    expect(json).toContain('"customPropertiesTyped.name":"testCp"');
+    expect(json).toContain(SCOPED_TO_TABLE);
+    expect(json).toContain(NAMED_TEST_CP);
   });
 
   it('should omit the entityType clause when no type is configured', () => {
     const json = JSON.stringify(
       elasticSearchFormat(
-        makeTree('equal', ['2026-09-03'], 'extension.testCp.keyword'),
+        makeTree('equal', [DATE_VALUE], PINNED_FIELD),
         pinnedConfig
       )
     );
@@ -466,7 +468,7 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
     expect(json).toContain(
       '"customPropertiesTyped.name":"testCpTable.rows.name"'
     );
-    expect(json).toContain('"entityType":"table"');
+    expect(json).toContain(SCOPED_TO_TABLE);
     expect(json).not.toContain('"customPropertiesTyped.name":"rows"');
     expect(json).not.toContain('"entityType":"testCpTable"');
     // A table column holds a string. A column named `name` ends with `.name`,
@@ -485,6 +487,6 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
     );
 
     expect(json).toContain('"customPropertiesTyped.name":"myDate"');
-    expect(json).toContain('"entityType":"table"');
+    expect(json).toContain(SCOPED_TO_TABLE);
   });
 });

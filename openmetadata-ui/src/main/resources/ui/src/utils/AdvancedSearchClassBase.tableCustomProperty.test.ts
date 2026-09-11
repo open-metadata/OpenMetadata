@@ -23,7 +23,6 @@ jest.mock('./AdvancedSearchClassBase', () =>
   jest.requireActual('./AdvancedSearchClassBase')
 );
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const advancedSearchClassBase = jest.requireActual(
   './AdvancedSearchClassBase'
 ).default;

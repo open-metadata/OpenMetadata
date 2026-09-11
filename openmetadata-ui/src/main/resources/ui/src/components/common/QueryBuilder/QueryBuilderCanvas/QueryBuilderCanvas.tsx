@@ -12,18 +12,18 @@
  */
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { FC, Fragment, useMemo } from 'react';
+import QueryBuilderAddGroup from './QueryBuilderAddGroup';
+import type {
+  QueryBuilderCanvasProps,
+  QueryBuilderNode,
+} from './QueryBuilderCanvas.types';
 import {
   buildRuleIndex,
   countRules,
   QUERY_BUILDER_GROUP_TYPE,
 } from './QueryBuilderCanvas.utils';
-import QueryBuilderAddGroup from './QueryBuilderAddGroup';
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';
 import QueryBuilderGroupConnector from './QueryBuilderGroupConnector';
-import type {
-  QueryBuilderCanvasProps,
-  QueryBuilderNode,
-} from './QueryBuilderCanvas.types';
 
 /**
  * The builder's surface, in place of RAQB's `<Builder>`.

@@ -30,10 +30,10 @@ import {
 } from '../generated/type/personaContextDefinition';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
-import { getExplorePath } from './RouterUtils';
 import type { TreeNode } from './queryBuilder/url';
 import { withExploreFieldKeys } from './queryBuilder/url';
+import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
+import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
 
 export const normalizePersonaContextDefinition = (

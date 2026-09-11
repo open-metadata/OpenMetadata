@@ -17,11 +17,11 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { isArray } from 'lodash';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import advancedSearchClassBase from '../AdvancedSearchClassBase';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 import { PERSISTENT_EMPTY_TREE_SETTINGS, READONLY_SETTINGS } from './tree';
-import { EntityType } from '../../enums/entity.enum';
 import type {
   ConjunctionMode,
   GroupMode,

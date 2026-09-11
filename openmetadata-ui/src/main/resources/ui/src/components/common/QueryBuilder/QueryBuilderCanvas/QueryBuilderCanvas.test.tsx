@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type {
   Actions,
   Config,
   FieldProps,
 } from '@react-awesome-query-builder/ui';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';

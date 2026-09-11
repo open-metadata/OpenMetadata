@@ -12,8 +12,8 @@
  */
 
 import type { Bucket } from 'Models';
-import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
 import QueryBuilderCountBanner from '../components/common/QueryBuilder/QueryBuilderCountBanner/QueryBuilderCountBanner';
+import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';

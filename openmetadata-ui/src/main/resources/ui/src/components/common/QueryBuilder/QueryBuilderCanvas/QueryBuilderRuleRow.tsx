@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Select } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import { X } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {

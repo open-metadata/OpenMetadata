@@ -15,10 +15,10 @@ import type {
   ConfigContext,
 } from '@react-awesome-query-builder/ui';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import { SearchIndex } from '../../enums/search.enum';
-import { buildQueryBuilderConfig } from './config';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import advancedSearchClassBase from '../AdvancedSearchClassBase';
+import { buildQueryBuilderConfig } from './config';
 
 // setupTests.js globally stubs `advancedSearchClassBase.getQbConfigs` to `{}`
 // to paper over a circular-import problem. This suite is about the config that

@@ -45,15 +45,15 @@ import {
 import { getQueryBuilderExploreUrl } from '../../../utils/queryBuilder/url';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import QueryBuilderCanvas from './QueryBuilderCanvas/QueryBuilderCanvas';
+import type { QueryBuilderProps } from './QueryBuilder.types';
 import {
   COMPACT_BUTTON_PRESET,
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
 } from './QueryBuilderButton/QueryBuilderButton.constants';
 import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
+import QueryBuilderCanvas from './QueryBuilderCanvas/QueryBuilderCanvas';
 import QueryBuilderCountBanner from './QueryBuilderCountBanner/QueryBuilderCountBanner';
-import type { QueryBuilderProps } from './QueryBuilder.types';
 
 const COUNT_DEBOUNCE_MS = 300;
 

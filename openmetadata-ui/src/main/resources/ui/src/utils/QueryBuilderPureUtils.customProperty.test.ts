@@ -14,10 +14,10 @@ import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
 import { buildQueryBuilderConfig } from './queryBuilder/config';
 import { formatQuery } from './queryBuilder/formatters';
 import { QUERY_BUILDER_GROUP_MODE } from './queryBuilder/types';
+import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
 
 jest.mock('./AdvancedSearchClassBase', () =>
   jest.requireActual('./AdvancedSearchClassBase')

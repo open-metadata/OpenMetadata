@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { JsonTree } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
@@ -64,6 +70,8 @@ jest.mock('./QueryBuilderCanvas/QueryBuilderAddGroup', () => ({
     </div>
   ),
 }));
+
+const COUNT_DEBOUNCE_WINDOW = 1000;
 
 const { searchQuery } = jest.requireMock('../../../rest/searchAPI');
 const { getExplorePath } = jest.requireMock('../../../utils/RouterUtils');
@@ -734,5 +742,58 @@ describe('QueryBuilder – a table custom property', () => {
       'label.is',
       'karan',
     ]);
+  });
+});
+
+describe('QueryBuilder – a count left over from a cleared filter', () => {
+  const completeTree = {
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND', not: false },
+    children1: {
+      r1: {
+        type: 'rule',
+        id: 'r1',
+        properties: {
+          field: 'description',
+          operator: 'like',
+          value: ['sales'],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  } as never;
+
+  const renderWithCount = () =>
+    render(
+      <QueryBuilder
+        showCountPreview
+        entityType={EntityType.TABLE}
+        groupMode="flat"
+        outputType={SearchOutputType.ElasticSearch}
+        tree={completeTree}
+      />
+    );
+
+  const countBanner = () =>
+    screen.queryByTestId('view-assets-banner-count') ??
+    screen.queryByTestId('view-assets-banner-button');
+
+  beforeEach(() => jest.useFakeTimers());
+
+  afterEach(() => jest.useRealTimers());
+
+  it('should not run a count the user scheduled and then cleared', async () => {
+    renderWithCount();
+
+    fireEvent.click(screen.getAllByTestId('add-condition-button')[0]);
+    fireEvent.click(screen.getAllByTestId('delete-condition-button')[0]);
+
+    await act(async () => {
+      jest.advanceTimersByTime(COUNT_DEBOUNCE_WINDOW);
+    });
+
+    expect(searchQuery).not.toHaveBeenCalled();
+    expect(countBanner()).toBeNull();
   });
 });
