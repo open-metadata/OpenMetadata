@@ -170,7 +170,6 @@ const EntityPopOverCard: FC<Props> = ({
 
   return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
