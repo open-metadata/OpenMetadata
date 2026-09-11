@@ -13,7 +13,6 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import {
-  Field,
   FieldOrGroup,
   ListValues,
   RenderSettings,
@@ -268,24 +267,27 @@ export const processCustomPropertyField = (
   const subfieldsArray = Array.isArray(result) ? result : [result];
 
   subfieldsArray.forEach(({ subfieldsKey, dataObject }) => {
+    // Group fields (e.g. table-cp rows) carry no valueSources of their own
+    const fieldOrGroup: FieldOrGroup =
+      'valueSources' in dataObject
+        ? {
+            ...dataObject,
+            valueSources: dataObject.valueSources as ValueSource[],
+          }
+        : dataObject;
+
     // If entityType is specified, return subfields directly without entityType wrapper
     if (entityType) {
-      subfields[subfieldsKey] = {
-        ...dataObject,
-        valueSources: dataObject.valueSources as ValueSource[],
-      };
+      subfields[subfieldsKey] = fieldOrGroup;
     } else {
       // Create nested subfields for each entity type (e.g., table, database, etc.)
       const existingGroup = subfields[resEntityType];
-      const entitySubfields: Record<string, Field> =
+      const entitySubfields: Record<string, FieldOrGroup> =
         existingGroup && 'subfields' in existingGroup
           ? existingGroup.subfields ?? {}
           : {};
 
-      entitySubfields[subfieldsKey] = {
-        ...dataObject,
-        valueSources: dataObject.valueSources as ValueSource[],
-      };
+      entitySubfields[subfieldsKey] = fieldOrGroup;
 
       // Only create the entity type field if it has custom properties
       if (!isEmpty(entitySubfields)) {

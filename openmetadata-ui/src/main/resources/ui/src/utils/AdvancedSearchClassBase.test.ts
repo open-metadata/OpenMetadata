@@ -734,16 +734,20 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toHaveLength(2);
 
     expect(result[0].subfieldsKey).toBe('testInterval.start');
-    expect(result[0].dataObject.type).toBe('number');
-    expect(result[0].dataObject.label).toContain('label.start');
-    expect(result[0].dataObject.operators).toBe(NUMBER_FIELD_OPERATORS);
-    expect(result[0].dataObject.fieldSettings).toEqual({ min: 0 });
+    expect(result[0].dataObject).toMatchObject({
+      type: 'number',
+      label: expect.stringContaining('label.start'),
+      operators: NUMBER_FIELD_OPERATORS,
+      fieldSettings: { min: 0 },
+    });
 
     expect(result[1].subfieldsKey).toBe('testInterval.end');
-    expect(result[1].dataObject.type).toBe('number');
-    expect(result[1].dataObject.label).toContain('label.end');
-    expect(result[1].dataObject.operators).toBe(NUMBER_FIELD_OPERATORS);
-    expect(result[1].dataObject.fieldSettings).toEqual({ min: 0 });
+    expect(result[1].dataObject).toMatchObject({
+      type: 'number',
+      label: expect.stringContaining('label.end'),
+      operators: NUMBER_FIELD_OPERATORS,
+      fieldSettings: { min: 0 },
+    });
   });
 
   it('should return array with subfields for each column in table-cp type', () => {
@@ -772,16 +776,95 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toHaveLength(3);
 
     expect(result[0].subfieldsKey).toBe('testTable.rows.Col1');
-    expect(result[0].dataObject.type).toBe('text');
-    expect(result[0].dataObject.label).toContain('Col1');
-    expect(result[0].dataObject.operators).toBe(TEXT_FIELD_OPERATORS);
-    expect(result[0].dataObject.valueSources).toEqual(['value']);
+    expect(result[0].dataObject).toMatchObject({
+      type: 'text',
+      label: expect.stringContaining('Col1'),
+      operators: TEXT_FIELD_OPERATORS,
+      valueSources: ['value'],
+    });
 
     expect(result[1].subfieldsKey).toBe('testTable.rows.Col2');
     expect(result[1].dataObject.label).toContain('Col2');
 
     expect(result[2].subfieldsKey).toBe('testTable.rows.Col3');
     expect(result[2].dataObject.label).toContain('Col3');
+  });
+
+  it('should return a some-mode group for table-cp type with JSONLogic output', () => {
+    const mockField = {
+      name: 'testTable',
+      type: 'table-cp',
+      customPropertyConfig: {
+        config: {
+          columns: ['Col1', 'Col2'],
+        },
+      },
+    };
+    const mockLabel = 'Test Table';
+    mockGetEntityName.mockReturnValue(mockLabel);
+
+    const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+      mockField as CustomPropertySummary,
+      SearchOutputType.JSONLogic
+    );
+
+    expect(Array.isArray(result)).toBe(true);
+
+    if (!Array.isArray(result)) {
+      return;
+    }
+
+    expect(result).toHaveLength(1);
+    expect(result[0].subfieldsKey).toBe('testTable.rows');
+
+    const dataObject = result[0].dataObject;
+
+    expect(dataObject.type).toBe('!group');
+    expect(dataObject).toMatchObject({
+      mode: 'some',
+      label: mockLabel,
+      defaultField: 'Col1',
+    });
+
+    const subfields =
+      'subfields' in dataObject ? dataObject.subfields : undefined;
+
+    expect(Object.keys(subfields ?? {})).toEqual(['Col1', 'Col2']);
+    expect(subfields?.Col1).toEqual({
+      type: 'text',
+      label: 'Col1',
+      operators: TEXT_FIELD_OPERATORS,
+      valueSources: ['value'],
+    });
+  });
+
+  it('should keep flat column fields for table-cp type with ElasticSearch output', () => {
+    const mockField = {
+      name: 'testTable',
+      type: 'table-cp',
+      customPropertyConfig: {
+        config: {
+          columns: ['Col1', 'Col2'],
+        },
+      },
+    };
+    const mockLabel = 'Test Table';
+    mockGetEntityName.mockReturnValue(mockLabel);
+
+    const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
+    );
+
+    expect(Array.isArray(result)).toBe(true);
+
+    if (!Array.isArray(result)) {
+      return;
+    }
+
+    expect(result).toHaveLength(2);
+    expect(result[0].subfieldsKey).toBe('testTable.rows.Col1');
+    expect(result[1].subfieldsKey).toBe('testTable.rows.Col2');
   });
 
   it('should return empty array when table-cp has no columns defined', () => {
