@@ -24,6 +24,17 @@ const getOneOfOptionLabels = (optionName: string) => {
   return [...new Set([optionName, spacedLabel])];
 };
 
+// Callers name a oneOf branch by its schema title, but the form renders the title
+// through getFormDisplayLabel, which spaces camelCase and re-cases known acronyms —
+// `"DBT S3 Config"` is rendered as `"dbt S3 Config"`. Anchor the match so it stays as
+// strict as `exact: true`, but compare case-insensitively so that re-casing does not
+// have to be mirrored in every test.
+const getOneOfOptionNamePattern = (optionName: string) =>
+  new RegExp(
+    `^(${getOneOfOptionLabels(optionName).map(escapeRegExp).join('|')})$`,
+    'i'
+  );
+
 export const selectOneOfOption = async (
   page: Page,
   fieldId: string,
@@ -31,17 +42,14 @@ export const selectOneOfOption = async (
   optionName: string
 ) => {
   const field = page.locator(`[data-field-id="${fieldId}"]`);
+  const optionNamePattern = getOneOfOptionNamePattern(optionName);
 
-  for (const optionLabel of getOneOfOptionLabels(optionName)) {
-    const tab = field.getByRole('tab', {
-      name: new RegExp(`^${escapeRegExp(optionLabel)}$`, 'i'),
-    });
+  const tab = field.getByRole('tab', { name: optionNamePattern });
 
-    if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await tab.click();
+  if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await tab.click();
 
-      return;
-    }
+    return;
   }
 
   const selectWidget = page.getByTestId(selectTestId);
@@ -50,7 +58,7 @@ export const selectOneOfOption = async (
     const trigger = selectWidget.getByRole('button');
     const option = page
       .locator('.core-one-of-field-select-popover')
-      .getByRole('option', { name: optionName, exact: true });
+      .getByRole('option', { name: optionNamePattern });
 
     await selectOptionWithRetry(trigger, option);
 
