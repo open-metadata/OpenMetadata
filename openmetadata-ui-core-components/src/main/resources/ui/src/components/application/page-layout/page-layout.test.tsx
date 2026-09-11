@@ -89,6 +89,7 @@ describe('PageLayout', () => {
     const header = screen.getByRole('banner');
 
     expect(header).toHaveTextContent('Toolbar');
+    expect(header).toHaveClass('tw:w-full');
     expect(header.style.gridArea).toBe('header');
   });
 

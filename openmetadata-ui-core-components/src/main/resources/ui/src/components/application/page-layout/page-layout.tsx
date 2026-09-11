@@ -129,7 +129,7 @@ const PageLayoutHeader = ({
 }: PageLayoutHeaderProps) => (
   <header
     {...props}
-    className={cx('tw:min-w-0', className)}
+    className={cx('tw:w-full tw:min-w-0', className)}
     style={{ gridArea: 'header', ...style }}>
     {children}
   </header>
