@@ -14,9 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL_COLUMN;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -33,11 +31,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -73,11 +74,19 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ColumnRepository {
+
+  /**
+   * The types {@code /v1/columns} serves. The child-field registry knows nine types, but this
+   * endpoint's request and response shapes are Column-shaped, so admitting a type here is a wire
+   * decision made per type rather than inherited from the registry.
+   */
+  private static final Set<String> V1_COLUMNS_TYPES = Set.of(TABLE, DASHBOARD_DATA_MODEL);
+
   private final Authorizer authorizer;
   private final ColumnAggregator columnAggregator;
 
@@ -110,63 +119,69 @@ public class ColumnRepository {
       Include include) {
     Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
     validateEntityType(entityType);
+    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityType);
     String parentFQN = extractParentFQN(columnFQN, entityType);
-    return switch (entityType) {
-      case TABLE -> fetchTableColumnByFQN(
-          columnFQN, parentFQN, fieldsParam, include, securityContext);
-      case DASHBOARD_DATA_MODEL -> fetchDataModelColumnByFQN(
-          columnFQN, parentFQN, fieldsParam, include, securityContext);
-      default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
+    EntityInterface parent = fetchAuthorizedParent(securityContext, spec, parentFQN, include);
+    ChildFieldResolver.ensureChildFqns(parent, entityType);
+    FieldInterface child =
+        ChildFieldResolver.locate(parent, entityType, columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    return enrichChild(securityContext, spec, parent, (Column) child, fieldsParam);
+  }
+
+  private EntityInterface fetchAuthorizedParent(
+      SecurityContext securityContext,
+      ChildFieldResolver.ChildContainerSpec spec,
+      String parentFQN,
+      Include include) {
+    String entityType = spec.entityType();
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityInterface parent =
+        repository.getByName(
+            null,
+            parentFQN,
+            repository.getFields(spec.requiredFields() + ",owners"),
+            include,
+            false);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        resourceContextFor(entityType, parent, repository));
+    return parent;
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private ResourceContextInterface resourceContextFor(
+      String entityType, EntityInterface entity, EntityRepository<?> repository) {
+    return new ResourceContext(entityType, entity, repository);
+  }
+
+  /**
+   * Per-type response enrichment. This is genuinely type-specific (a table column carries owners,
+   * PII masking and profile data; a data-model column carries its extension), not a child-shape
+   * concern, so it stays an explicit dispatch rather than moving into the registry.
+   */
+  private Column enrichChild(
+      SecurityContext securityContext,
+      ChildFieldResolver.ChildContainerSpec spec,
+      EntityInterface parent,
+      Column column,
+      String fieldsParam) {
+    return switch (spec.entityType()) {
+      case TABLE -> ((TableRepository) Entity.getEntityRepository(TABLE))
+          .enrichSingleColumnFields(
+              (Table) parent,
+              column,
+              fieldsParam,
+              ((Table) parent).getOwners(),
+              authorizer,
+              securityContext);
+      case DASHBOARD_DATA_MODEL -> ((DashboardDataModelRepository)
+              Entity.getEntityRepository(DASHBOARD_DATA_MODEL))
+          .enrichSingleColumnFields((DashboardDataModel) parent, column, fieldsParam);
+      default -> column;
     };
-  }
-
-  private Column fetchTableColumnByFQN(
-      String columnFQN,
-      String parentFQN,
-      String fieldsParam,
-      Include include,
-      SecurityContext securityContext) {
-    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
-    Table table =
-        tableRepo.getByName(null, parentFQN, tableRepo.getFields("owners"), include, false);
-    ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, table, tableRepo);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(TABLE, MetadataOperation.VIEW_BASIC),
-        resourceContext);
-
-    ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
-    Column column =
-        findColumnInHierarchy(table.getColumns(), columnFQN)
-            .orElseThrow(
-                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
-    return tableRepo.enrichSingleColumnFields(
-        table, column, fieldsParam, table.getOwners(), authorizer, securityContext);
-  }
-
-  private Column fetchDataModelColumnByFQN(
-      String columnFQN,
-      String parentFQN,
-      String fieldsParam,
-      Include include,
-      SecurityContext securityContext) {
-    DashboardDataModelRepository dataModelRepo =
-        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-    DashboardDataModel dataModel =
-        dataModelRepo.getByName(null, parentFQN, dataModelRepo.getFields("owners"), include, false);
-    ResourceContext<DashboardDataModel> resourceContext =
-        new ResourceContext<>(DASHBOARD_DATA_MODEL, dataModel, dataModelRepo);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(DASHBOARD_DATA_MODEL, MetadataOperation.VIEW_BASIC),
-        resourceContext);
-
-    setDataModelColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
-    Column column =
-        findColumnInHierarchy(dataModel.getColumns(), columnFQN)
-            .orElseThrow(
-                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
-    return dataModelRepo.enrichSingleColumnFields(dataModel, column, fieldsParam);
   }
 
   public Column updateColumnByFQN(
@@ -184,161 +199,125 @@ public class ColumnRepository {
 
     // Validate entity type first before any other processing
     validateEntityType(entityType);
-
-    String parentFQN = extractParentFQN(columnFQN, entityType);
-    EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
-    String user = securityContext.getUserPrincipal().getName();
-
-    return switch (entityType) {
-      case TABLE -> updateTableColumn(
-          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
-      case DASHBOARD_DATA_MODEL -> updateDashboardDataModelColumn(
-          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
-      default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
-    };
+    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityType);
+    return (Column) updateChildByFQN(uriInfo, securityContext, columnFQN, spec, updateColumn, null);
   }
 
   private void validateEntityType(String entityType) {
-    if (entityType == null) {
+    if (entityType == null || !V1_COLUMNS_TYPES.contains(entityType)) {
+      // Prefix pinned by ColumnResourceIT.test_updateColumn_entityType_validation.
       throw new IllegalArgumentException(
-          "Entity type is required. Supported types are: table, dashboardDataModel");
-    }
-    if (!TABLE.equals(entityType) && !DASHBOARD_DATA_MODEL.equals(entityType)) {
-      throw new IllegalArgumentException(
-          "Unsupported entity type: %s. Supported types are: %s, %s"
-              .formatted(entityType, TABLE, DASHBOARD_DATA_MODEL));
+          "Unsupported entity type: %s. Supported types are: %s"
+              .formatted(entityType, String.join(", ", new TreeSet<>(V1_COLUMNS_TYPES))));
     }
   }
 
   private String extractParentFQN(String columnFQN, String entityType) {
     try {
-      return FullyQualifiedName.getParentEntityFQN(columnFQN, entityType);
+      return ChildFieldResolver.parentFqnOf(columnFQN, entityType);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Invalid column FQN format: %s. Error: %s".formatted(columnFQN, e.getMessage()), e);
     }
   }
 
-  private Column updateTableColumn(
+  private FieldInterface updateChildByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
-      String user,
       String columnFQN,
+      ChildFieldResolver.ChildContainerSpec spec,
       UpdateColumn updateColumn,
-      EntityReference parentEntityRef) {
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    Table originalTable =
-        tableRepository.get(
+      ChangeSource changeSource) {
+    String entityType = spec.entityType();
+    String parentFQN = extractParentFQN(columnFQN, entityType);
+    EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
+    String user = securityContext.getUserPrincipal().getName();
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+
+    EntityInterface original =
+        repository.get(
             null,
             parentEntityRef.getId(),
-            tableRepository.getFields("columns,tags,tableConstraints"),
+            repository.getFields(spec.requiredFields()),
             Include.NON_DELETED,
             false);
+    EntityInterface updated = deepCopy(original);
+    ChildFieldResolver.ensureChildFqns(updated, entityType);
 
-    Table updatedTable = JsonUtils.deepCopy(originalTable, Table.class);
-    ColumnUtil.setColumnFQN(updatedTable.getFullyQualifiedName(), updatedTable.getColumns());
-
-    Column column =
-        findColumnInHierarchy(updatedTable.getColumns(), columnFQN)
+    FieldInterface child =
+        ChildFieldResolver.locate(updated, entityType, columnFQN)
             .orElseThrow(
                 () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    applyChildUpdates(child, updateColumn, spec);
 
-    applyColumnUpdates(column, updateColumn, TABLE_COLUMN, true);
-
-    JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
-
-    // Debug logging
-    LOG.info(
-        "Column update - columnFQN: {}, updateColumn: displayName={}, description={}, tags={}",
-        columnFQN,
-        updateColumn.getDisplayName(),
-        updateColumn.getDescription(),
-        updateColumn.getTags() != null ? updateColumn.getTags().size() : "null");
-    LOG.info(
-        "Column after update - displayName={}, description={}, tags={}",
-        column.getDisplayName(),
-        column.getDescription(),
-        column.getTags() != null ? column.getTags().size() : "null");
-    LOG.info("JSON Patch operations: {}", jsonPatch.toJsonArray().toString());
-
-    authorizeAndPatch(securityContext, TABLE, parentEntityRef, jsonPatch);
-
-    RestUtil.PatchResponse<Table> patchResponse =
-        tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+    JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
+    authorizeAndPatch(securityContext, entityType, parentEntityRef, jsonPatch);
+    RestUtil.PatchResponse<? extends EntityInterface> patchResponse =
+        patchParent(repository, uriInfo, parentEntityRef, user, jsonPatch, changeSource);
     triggerParentChangeEvent(patchResponse.entity(), user);
 
-    return column;
+    return child;
   }
 
-  private Column updateDashboardDataModelColumn(
+  /**
+   * The 4-argument overload is what both write paths called before consolidation, so a null
+   * changeSource keeps the change summary byte-identical on the wire. The parameter exists so the
+   * 5-argument overload can be wired in when changeSource becomes a real request parameter.
+   */
+  private RestUtil.PatchResponse<? extends EntityInterface> patchParent(
+      EntityRepository<? extends EntityInterface> repository,
       UriInfo uriInfo,
-      SecurityContext securityContext,
+      EntityReference parentEntityRef,
       String user,
-      String columnFQN,
-      UpdateColumn updateColumn,
-      EntityReference parentEntityRef) {
-    DashboardDataModelRepository dataModelRepository =
-        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-
-    DashboardDataModel originalDataModel =
-        dataModelRepository.get(
-            null,
-            parentEntityRef.getId(),
-            dataModelRepository.getFields("columns,tags"),
-            Include.NON_DELETED,
-            false);
-
-    DashboardDataModel updatedDataModel =
-        JsonUtils.deepCopy(originalDataModel, DashboardDataModel.class);
-
-    setDataModelColumnFQN(updatedDataModel.getFullyQualifiedName(), updatedDataModel.getColumns());
-
-    Column column =
-        findColumnInHierarchy(updatedDataModel.getColumns(), columnFQN)
-            .orElseThrow(
-                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
-
-    applyColumnUpdates(column, updateColumn, DASHBOARD_DATA_MODEL_COLUMN, false);
-
-    JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
-    authorizeAndPatch(securityContext, DASHBOARD_DATA_MODEL, parentEntityRef, jsonPatch);
-
-    RestUtil.PatchResponse<DashboardDataModel> patchResponse =
-        dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
-    triggerParentChangeEvent(patchResponse.entity(), user);
-
-    return column;
+      JsonPatch jsonPatch,
+      ChangeSource changeSource) {
+    return changeSource == null
+        ? repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch)
+        : repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
   }
 
-  private void applyColumnUpdates(
-      Column column,
-      UpdateColumn updateColumn,
-      String columnEntityType,
-      boolean supportsConstraints) {
+  @SuppressWarnings("unchecked")
+  private EntityInterface deepCopy(EntityInterface original) {
+    return JsonUtils.deepCopy(original, (Class<EntityInterface>) original.getClass());
+  }
+
+  private void applyChildUpdates(
+      FieldInterface child, UpdateColumn updateColumn, ChildFieldResolver.ChildContainerSpec spec) {
     Optional.ofNullable(updateColumn.getDisplayName())
-        .ifPresent(name -> column.setDisplayName(name.trim().isEmpty() ? null : name));
+        .ifPresent(name -> child.setDisplayName(name.trim().isEmpty() ? null : name));
 
     Optional.ofNullable(updateColumn.getDescription())
-        .ifPresent(desc -> column.setDescription(desc.trim().isEmpty() ? null : desc));
+        .ifPresent(desc -> child.setDescription(desc.trim().isEmpty() ? null : desc));
 
     Optional.ofNullable(updateColumn.getTags())
-        .ifPresent(tags -> column.setTags(addDerivedTags(tags)));
+        .ifPresent(tags -> child.setTags(addDerivedTags(tags)));
 
-    if (supportsConstraints) {
-      if (Boolean.TRUE.equals(updateColumn.getRemoveConstraint())) {
-        column.setConstraint(null);
-      } else {
-        Optional.ofNullable(updateColumn.getConstraint()).ifPresent(column::setConstraint);
-      }
+    if (child instanceof Column column) {
+      applyColumnOnlyUpdates(column, updateColumn, spec);
     }
+  }
 
-    Optional.ofNullable(updateColumn.getExtension())
-        .ifPresent(
-            ext -> {
-              Object transformedExtension =
-                  EntityRepository.validateAndTransformExtension(ext, columnEntityType);
-              column.setExtension(transformedExtension);
-            });
+  private void applyColumnOnlyUpdates(
+      Column column, UpdateColumn updateColumn, ChildFieldResolver.ChildContainerSpec spec) {
+    if (TABLE.equals(spec.entityType())) {
+      applyConstraintUpdate(column, updateColumn);
+    }
+    if (spec.childExtensionType() != null) {
+      Optional.ofNullable(updateColumn.getExtension())
+          .ifPresent(
+              ext ->
+                  column.setExtension(
+                      EntityRepository.validateAndTransformExtension(
+                          ext, spec.childExtensionType())));
+    }
+  }
+
+  private void applyConstraintUpdate(Column column, UpdateColumn updateColumn) {
+    if (Boolean.TRUE.equals(updateColumn.getRemoveConstraint())) {
+      column.setConstraint(null);
+    } else {
+      Optional.ofNullable(updateColumn.getConstraint()).ifPresent(column::setConstraint);
+    }
   }
 
   private void authorizeAndPatch(
@@ -353,55 +332,9 @@ public class ColumnRepository {
     authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
-  private void setDataModelColumnFQN(String parentFQN, List<Column> columns) {
-    if (columns == null) {
-      return;
-    }
-    columns.forEach(
-        c -> {
-          FullyQualifiedName.validateFqnName(c.getName());
-          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
-          c.setFullyQualifiedName(columnFqn);
-          if (c.getChildren() != null) {
-            setDataModelColumnFQN(columnFqn, c.getChildren());
-          }
-        });
-  }
-
   private EntityReference getParentEntityByFQN(String parentFQN, String entityType) {
-    return switch (entityType) {
-      case TABLE -> {
-        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-        Table table = tableRepository.findByName(parentFQN, Include.NON_DELETED);
-        yield table.getEntityReference();
-      }
-      case DASHBOARD_DATA_MODEL -> {
-        DashboardDataModelRepository dataModelRepository =
-            (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-        DashboardDataModel dataModel =
-            dataModelRepository.findByName(parentFQN, Include.NON_DELETED);
-        yield dataModel.getEntityReference();
-      }
-      default -> throw new IllegalArgumentException(
-          "Unsupported entity type: %s".formatted(entityType));
-    };
-  }
-
-  Optional<Column> findColumnInHierarchy(List<Column> columns, String columnFQN) {
-    if (columns == null) {
-      return Optional.empty();
-    }
-
-    return columns.stream()
-        .map(
-            column -> {
-              if (columnFQN.equals(column.getFullyQualifiedName())) {
-                return Optional.of(column);
-              }
-              return findColumnInHierarchy(column.getChildren(), columnFQN);
-            })
-        .flatMap(Optional::stream)
-        .findFirst();
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    return repository.findByName(parentFQN, Include.NON_DELETED).getEntityReference();
   }
 
   private void triggerParentChangeEvent(Object parent, String user) {
@@ -432,12 +365,10 @@ public class ColumnRepository {
     Map<String, List<ColumnOccurrence>> groupedColumns = new HashMap<>();
 
     for (String entityType : entityTypeList) {
-      if (TABLE.equals(entityType.trim())) {
-        searchTablesForColumn(
-            groupedColumns, columnName, serviceName, databaseName, schemaName, domainId);
-      } else if (DASHBOARD_DATA_MODEL.equals(entityType.trim())) {
-        searchDashboardDataModelsForColumn(
-            groupedColumns, columnName, serviceName, databaseName, schemaName, domainId);
+      String trimmed = entityType.trim();
+      if (V1_COLUMNS_TYPES.contains(trimmed)) {
+        searchEntitiesForColumn(
+            groupedColumns, columnName, trimmed, serviceName, databaseName, schemaName, domainId);
       }
     }
 
@@ -453,67 +384,72 @@ public class ColumnRepository {
     return responses;
   }
 
-  private void searchTablesForColumn(
+  private void searchEntitiesForColumn(
       Map<String, List<ColumnOccurrence>> groupedColumns,
       String columnName,
+      String entityType,
       String serviceName,
       String databaseName,
       String schemaName,
       String domainId) {
 
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    ListFilter filter =
+        buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
 
-    if (serviceName != null) {
-      filter.addQueryParam("service", serviceName);
-    }
-    if (databaseName != null) {
-      filter.addQueryParam("database", databaseName);
-    }
-    if (schemaName != null) {
-      filter.addQueryParam("databaseSchema", schemaName);
-    }
-    if (domainId != null) {
-      filter.addQueryParam("domain", domainId);
-    }
+    List<? extends EntityInterface> parents =
+        repository.listAll(repository.getFields(searchFieldsFor(entityType)), filter);
 
-    List<Table> tables =
-        tableRepository.listAll(
-            tableRepository.getFields("columns,tags,service,database,databaseSchema"), filter);
-
-    for (Table table : tables) {
-      if (table.getColumns() != null) {
-        searchColumnsInHierarchy(table.getColumns(), columnName, TABLE, table, groupedColumns);
-      }
+    for (EntityInterface parent : parents) {
+      ChildFieldResolver.ensureChildFqns(parent, entityType);
+      searchColumnsInHierarchy(columnsOf(parent), columnName, entityType, parent, groupedColumns);
     }
   }
 
-  private void searchDashboardDataModelsForColumn(
-      Map<String, List<ColumnOccurrence>> groupedColumns,
-      String columnName,
+  /**
+   * Only the service filter applies to every type. The database, schema and domain filters are
+   * table-only because a dashboardDataModel FQN has no database or schema level, and ListFilter
+   * would turn either into an FQN-prefix condition that matches nothing.
+   */
+  private ListFilter buildSearchFilter(
+      String entityType,
       String serviceName,
       String databaseName,
       String schemaName,
       String domainId) {
-
-    DashboardDataModelRepository dataModelRepository =
-        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-
     if (serviceName != null) {
       filter.addQueryParam("service", serviceName);
     }
-
-    List<DashboardDataModel> dataModels =
-        dataModelRepository.listAll(dataModelRepository.getFields("columns,tags,service"), filter);
-
-    for (DashboardDataModel dataModel : dataModels) {
-      if (dataModel.getColumns() != null) {
-        setDataModelColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
-        searchColumnsInHierarchy(
-            dataModel.getColumns(), columnName, DASHBOARD_DATA_MODEL, dataModel, groupedColumns);
-      }
+    if (TABLE.equals(entityType)) {
+      addIfPresent(filter, "database", databaseName);
+      addIfPresent(filter, "databaseSchema", schemaName);
+      addIfPresent(filter, "domain", domainId);
     }
+    return filter;
+  }
+
+  private void addIfPresent(ListFilter filter, String param, String value) {
+    if (value != null) {
+      filter.addQueryParam(param, value);
+    }
+  }
+
+  /** The relations each type's ColumnOccurrence reads back; see createColumnOccurrence. */
+  private String searchFieldsFor(String entityType) {
+    return TABLE.equals(entityType)
+        ? "columns,tags,service,database,databaseSchema"
+        : "columns,tags,service";
+  }
+
+  /**
+   * The live child list of a Column-shaped parent. Safe for the two types this endpoint serves:
+   * both declare "columns" as their container path, so the registry returns the entity's own list
+   * and searchColumnsInHierarchy's null guard still covers a parent that has none.
+   */
+  @SuppressWarnings("unchecked")
+  private List<Column> columnsOf(EntityInterface parent) {
+    return (List<Column>) ChildFieldResolver.containerListFor(parent, "columns");
   }
 
   private void searchColumnsInHierarchy(
@@ -594,8 +530,7 @@ public class ColumnRepository {
       try {
         // Fetch current column values by getting the parent entity and finding the column
         Column currentColumn =
-            getColumnForPreview(
-                securityContext, columnUpdate.getColumnFQN(), columnUpdate.getEntityType());
+            getColumnForPreview(columnUpdate.getColumnFQN(), columnUpdate.getEntityType());
 
         if (currentColumn != null) {
           ColumnUpdatePreview previewItem = new ColumnUpdatePreview();
@@ -664,41 +599,36 @@ public class ColumnRepository {
     return preview;
   }
 
-  private Column getColumnForPreview(
-      SecurityContext securityContext, String columnFQN, String entityType) {
+  private Column getColumnForPreview(String columnFQN, String entityType) {
+    Column result = null;
     try {
-      String parentFQN = FullyQualifiedName.getParentEntityFQN(columnFQN, entityType);
-      EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
-
-      if (TABLE.equals(entityType)) {
-        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-        Table table =
-            tableRepository.get(
-                null,
-                parentEntityRef.getId(),
-                tableRepository.getFields("columns,tags"),
-                Include.NON_DELETED,
-                false);
-        ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
-        return findColumnInHierarchy(table.getColumns(), columnFQN).orElse(null);
-
-      } else if (DASHBOARD_DATA_MODEL.equals(entityType)) {
-        DashboardDataModelRepository dataModelRepository =
-            (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-        DashboardDataModel dataModel =
-            dataModelRepository.get(
-                null,
-                parentEntityRef.getId(),
-                dataModelRepository.getFields("columns,tags"),
-                Include.NON_DELETED,
-                false);
-        ColumnUtil.setColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
-        return findColumnInHierarchy(dataModel.getColumns(), columnFQN).orElse(null);
+      if (V1_COLUMNS_TYPES.contains(entityType)) {
+        result = (Column) loadChildForPreview(columnFQN, entityType).orElse(null);
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch column for preview: {}", columnFQN, e);
     }
-    return null;
+    return result;
+  }
+
+  /**
+   * Preview reads the stored child without authorizing: the caller already authorized the bulk
+   * update request upstream, and a failure here is reported as an un-previewable column rather than
+   * raised.
+   */
+  private Optional<FieldInterface> loadChildForPreview(String columnFQN, String entityType) {
+    String parentFQN = ChildFieldResolver.parentFqnOf(columnFQN, entityType);
+    EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityInterface parent =
+        repository.get(
+            null,
+            parentEntityRef.getId(),
+            repository.getFields("columns,tags"),
+            Include.NON_DELETED,
+            false);
+    ChildFieldResolver.ensureChildFqns(parent, entityType);
+    return ChildFieldResolver.locate(parent, entityType, columnFQN);
   }
 
   private boolean tagsEqual(List<TagLabel> tags1, List<TagLabel> tags2) {
