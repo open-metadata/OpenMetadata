@@ -16,6 +16,7 @@ import {
   Button,
   EmptyPlaceholder,
   Input,
+  PageHeader as CorePageHeader,
   SlideoutMenu,
   TextArea,
   Typography,
@@ -29,7 +30,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -318,7 +318,7 @@ const WorkflowsPage = () => {
           { 'tw:mx-2': !isAiMode }
         )}>
         {isAiMode ? (
-          <HeaderShell
+          <CorePageHeader
             actions={createWorkflowButton}
             badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}
             breadcrumb={
@@ -332,7 +332,6 @@ const WorkflowsPage = () => {
               />
             }
             className="tw:mb-0!"
-            padding="comfortable"
             subtitle={t('message.workflow-subtitle')}
             title={t('label.workflow-plural')}
             variant="gradient"

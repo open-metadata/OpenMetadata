@@ -19,6 +19,7 @@ import {
   Card,
   Dot,
   Dropdown,
+  PageHeader,
   Skeleton,
   Tabs,
   Tooltip,
@@ -76,7 +77,6 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
@@ -744,14 +744,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
-      <HeaderShell
+      <PageHeader
         actions={actionsEl}
         badge={entityStatusBadge}
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
         className="tw:pb-0! tw:pr-3"
         footer={footerEl}
         meta={metaEl}
-        padding="comfortable"
         title={
           <Typography ellipsis as="h3" className="tw:truncate">
             {getKnowledgePageName(knowledgePage, t)}

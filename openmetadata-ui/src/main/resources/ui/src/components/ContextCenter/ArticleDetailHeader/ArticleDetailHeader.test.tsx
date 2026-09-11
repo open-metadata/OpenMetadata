@@ -209,6 +209,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  PageHeader: jest.fn(
+    ({
+      actions,
+      badge,
+      breadcrumb,
+      footer,
+      meta,
+      title,
+      'data-testid': dataTestId,
+    }: {
+      actions?: React.ReactNode;
+      badge?: React.ReactNode;
+      breadcrumb?: React.ReactNode;
+      footer?: React.ReactNode;
+      meta?: React.ReactNode;
+      title: React.ReactNode;
+      'data-testid'?: string;
+    }) => (
+      <div data-testid={dataTestId}>
+        {breadcrumb}
+        {title}
+        {badge}
+        {meta}
+        {actions}
+        {footer}
+      </div>
+    )
+  ),
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tabs: Object.assign(
     jest.fn(

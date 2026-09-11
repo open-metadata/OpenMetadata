@@ -221,4 +221,15 @@ describe('PageLayout', () => {
 
     expect(node).toBe(screen.getByTestId('page-layout'));
   });
+
+  it('uses a caller-provided test id on the root element', () => {
+    render(
+      <PageLayout data-testid="custom-page-layout">
+        <PageLayout.Content>Body</PageLayout.Content>
+      </PageLayout>
+    );
+
+    expect(screen.getByTestId('custom-page-layout')).toBeInTheDocument();
+    expect(screen.queryByTestId('page-layout')).not.toBeInTheDocument();
+  });
 });

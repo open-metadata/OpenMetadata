@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, PageHeader } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -163,7 +162,7 @@ const AlertsPage = () => {
     <>
       <ObservabilityPageShell
         header={
-          <HeaderShell
+          <PageHeader
             actions={
               alertResourcePermission?.Create ? (
                 <Button
@@ -196,7 +195,6 @@ const AlertsPage = () => {
                 showHome={false}
               />
             }
-            padding="comfortable"
             subtitle={t('message.alerts-description')}
             title={t('label.observability-alert')}
             variant="gradient"

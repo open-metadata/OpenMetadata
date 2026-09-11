@@ -19,6 +19,7 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  PageHeader,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -31,7 +32,6 @@ import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { WorkflowControls } from './WorkflowControls';
 
 const getInitialDisplayName = (title?: string) => title ?? '';
@@ -180,7 +180,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   return (
     <>
       {isAiMode ? (
-        <HeaderShell
+        <PageHeader
           actions={
             <>
               {workflowControls}
@@ -195,7 +195,8 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           }
           breadcrumb={breadcrumb}
           data-testid="workflow-header"
-          leading={workflowIcon}
+          density="compact"
+          icon={workflowIcon}
           subtitle={
             workflowName ? (
               <Typography

@@ -54,6 +54,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onPress?: () => void;
   }) => <button onClick={onPress}>{children}</button>,
+  PageHeader: ({ title, actions }: { title: string; actions?: ReactNode }) => (
+    <div data-testid="page-header">
+      <span>{title}</span>
+      {actions}
+    </div>
+  ),
 }));
 
 jest.mock('@untitledui/icons', () => ({
@@ -94,19 +100,6 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
       </div>
     ) : null,
 }));
-
-jest.mock(
-  '../../../components/common/HeaderShell/HeaderShell.component',
-  () => ({
-    __esModule: true,
-    default: ({ title, actions }: { title: string; actions?: ReactNode }) => (
-      <div data-testid="page-header">
-        <span>{title}</span>
-        {actions}
-      </div>
-    ),
-  })
-);
 
 jest.mock('./ObservabilityAlertsAiTable.component', () => ({
   __esModule: true,

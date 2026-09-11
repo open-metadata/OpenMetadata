@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, PageHeader } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -20,7 +20,6 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import IncidentManagerTable from '../../IncidentManager/IncidentManagerTable.component';
 import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -79,7 +78,7 @@ const IncidentManagerPage = () => {
   return (
     <ObservabilityPageShell
       header={
-        <HeaderShell
+        <PageHeader
           badge={
             <LearningIcon
               pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
@@ -100,7 +99,6 @@ const IncidentManagerPage = () => {
               showHome={false}
             />
           }
-          padding="comfortable"
           subtitle={t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader)}
           title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
           variant="gradient"

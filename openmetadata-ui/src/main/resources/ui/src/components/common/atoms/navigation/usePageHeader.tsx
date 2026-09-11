@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   FeaturedIcon,
+  PageHeader,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
@@ -24,7 +25,6 @@ import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
-import HeaderShell from '../../HeaderShell/HeaderShell.component';
 import ProfilePicture from '../../ProfilePicture/ProfilePicture';
 
 export type PageHeaderVariant = 'default' | 'greeting' | 'search' | 'beta';
@@ -40,7 +40,7 @@ interface PageHeaderConfig {
   learningPageId?: string;
   /**
    * Visual variant. Defaults to 'default', which renders the original card
-   * header unchanged. 'greeting' | 'search' | 'beta' render through HeaderShell.
+   * header unchanged. 'greeting' | 'search' | 'beta' use the shared PageHeader.
    */
   variant?: PageHeaderVariant;
   /** Leading icon for search/beta/default variants; wrapped in a FeaturedIcon tile. */
@@ -48,7 +48,7 @@ interface PageHeaderConfig {
   iconColor?: 'brand' | 'gray' | 'success' | 'warning' | 'error';
   /** Inline search node (usually from useSearch) rendered in search/beta variants. */
   search?: ReactNode;
-  /** Breadcrumb row rendered above the title in HeaderShell variants. */
+  /** Breadcrumb row rendered above the title in shared PageHeader variants. */
   breadcrumb?: ReactNode;
   /** i18n key for the greeting title. Defaults to 'label.hey-comma-name'. */
   greetingNameKey?: string;
@@ -177,13 +177,14 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       : displayTitle;
 
     return (
-      <HeaderShell
+      <PageHeader
         actions={renderShellActions()}
         badge={renderBadge()}
         breadcrumb={config.breadcrumb}
         className="tw:mb-5"
         data-testid="page-header-container"
-        leading={renderLeading()}
+        density="compact"
+        icon={renderLeading()}
         subtitle={displayDescription}
         title={title}
         variant="gradient"
