@@ -24,15 +24,14 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Paging } from '../../generated/type/paging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -46,10 +45,6 @@ import {
 } from '../../rest/queries/pipelineQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
@@ -66,32 +61,36 @@ const PipelineDetailsPage = () => {
     type: EntityType.PIPELINE,
   });
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [paging] = useState<Paging>({} as Paging);
 
-  const [pipelinePermissions, setPipelinePermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Fetch-owner, by fqn. Deliberately kept even though PipelineDetails (child) also calls
+  // useEntityPermissions itself (by id, for its own edit-tier flags — canEditLineage,
+  // canEditCustomFields, viewAllPermission, viewCustomPropertiesPermission): this page's
+  // view-tier flags gate the pipeline-entity query below (canViewUsage decides whether
+  // USAGE_SUMMARY is requested; hasViewAccess decides whether the query fires and drives
+  // the permission-denied placeholder), and the child only exists once pipelineId is known.
+  // NOTE: two network requests — this page fetches by fqn while PipelineDetails fetches by
+  // id (different query keys, different REST calls — NOT the same shared-cache situation as
+  // TableDetailsPageV1's own two same-fqn calls). Consolidation candidate: pass one
+  // identifier form through or drop the page fetch if the child's data suffices.
+  const {
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    canViewUsage: viewUsagePermission,
+    hasViewAccess: canViewPipeline,
+  } = useEntityPermissions(ResourceEntity.PIPELINE, decodedPipelineFQN, {
+    enabled: Boolean(decodedPipelineFQN),
+  });
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        pipelinePermissions,
-        PermissionOperation.ViewUsage
-      ),
-    [pipelinePermissions]
-  );
-
-  const canViewPipeline = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        pipelinePermissions,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [pipelinePermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: decodedPipelineFQN,
+        })
+      );
+    }
+  }, [permissionsError]);
 
   const pipelineFields = useMemo(() => {
     let fields = defaultFields;
@@ -185,24 +184,6 @@ const PipelineDetailsPage = () => {
     () => followers.some(({ id }) => id === USERId),
     [followers, USERId]
   );
-
-  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.PIPELINE,
-        entityFqn
-      );
-      setPipelinePermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', { entity: entityFqn })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const saveUpdatedPipelineData = useCallback(
     (updatedData: Pipeline) => {
@@ -414,10 +395,6 @@ const PipelineDetailsPage = () => {
     [setPipelineDetails]
   );
 
-  useEffect(() => {
-    fetchResourcePermission(decodedPipelineFQN);
-  }, [decodedPipelineFQN]);
-
   if (permissionsLoading || pipelineLoading) {
     return <PageLoader />;
   }
@@ -430,7 +407,7 @@ const PipelineDetailsPage = () => {
     );
   }
 
-  if (!pipelinePermissions.ViewAll && !pipelinePermissions.ViewBasic) {
+  if (!canViewPipeline) {
     return (
       <ErrorPlaceHolder
         className="border-none"

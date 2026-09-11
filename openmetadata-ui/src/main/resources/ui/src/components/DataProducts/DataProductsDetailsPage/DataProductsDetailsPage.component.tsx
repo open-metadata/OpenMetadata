@@ -33,11 +33,7 @@ import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   EntityTabs,
   EntityType,
@@ -50,13 +46,13 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { PageType } from '../../../generated/system/ui/page';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
@@ -92,10 +88,6 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-} from '../../../utils/PermissionsUtils';
 import {
   getDataProductDetailsPath,
   getDomainPath,
@@ -338,7 +330,8 @@ const getCoverImageProps = (
 function DataProductActionButtons(
   props: Readonly<{
     isVersionsView: boolean;
-    dataProductPermission: OperationPermission;
+    /** Derived Create flag replacing the raw permission read. */
+    canCreate: boolean;
     openAssetDrawer: () => void;
     t: TranslateFn;
     dataContractLatestResultButton: JSX.Element | null;
@@ -357,7 +350,7 @@ function DataProductActionButtons(
 ) {
   const {
     isVersionsView,
-    dataProductPermission,
+    canCreate,
     openAssetDrawer,
     t,
     dataContractLatestResultButton,
@@ -378,7 +371,7 @@ function DataProductActionButtons(
     <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
       {dataProductClassBase.getRequestDataAccessButton()}
 
-      {!isVersionsView && dataProductPermission.Create && (
+      {!isVersionsView && canCreate && (
         <Button
           data-testid="data-product-details-add-button"
           type="primary"
@@ -485,12 +478,12 @@ const DataProductsDetailsPage = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
   }>();
   const { fqn: dataProductFqn } = useFqn();
+
   // The "Data Product Domain Validation" rule is a cross-cutting data-asset
   // rule; read it against TABLE as a representative asset type since the "Add
   // Assets" picker spans every asset type. Hold the strict domain-scoped
@@ -499,8 +492,36 @@ const DataProductsDetailsPage = ({
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TABLE);
   const requireDomainForDataProduct =
     !isRulesLoaded || entityRules.requireDomainForDataProduct;
-  const [dataProductPermission, setDataProductPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  // Single useEntityPermissions call, by id — mirrors DomainDetails.component.tsx (same batch)
+  // and MlModelDetail.component.tsx (Task 7C): `dataProduct` (and therefore `dataProduct.id`)
+  // is already available on first render via props, no ordering cycle. No `deleted` option:
+  // the generated `DataProduct` type carries no top-level `deleted` field (confirmed via
+  // generated/entity/domains/dataProduct.ts — data products aren't soft-deletable), matching
+  // the old component, which never referenced one either. `dataProductPermission` keeps its
+  // original name (aliased from the hook's `permissions`) to minimize the diff — it is still
+  // consumed as a raw OperationPermission by GenericProvider, dataProductClassBase, and the
+  // inline `dataProductPermission.Create` JSX check below.
+  const {
+    permissions: dataProductPermission,
+    error: dataProductPermissionError,
+    canEditAll,
+    canEditDisplayName,
+    canCreate,
+    canDelete,
+  } = useEntityPermissions(ResourceEntity.DATA_PRODUCT, { id: dataProduct.id });
+
+  useEffect(() => {
+    if (dataProductPermissionError) {
+      // Preserved verbatim: the old fetchDataProductPermission catch called
+      // showErrorToast(error as AxiosError) with no message/entity interpolation — same
+      // distinctive bare-error-object shape as DomainDetails.component.tsx (same batch) and
+      // APICollectionPage.tsx (Task 7C, File 3), not the majority
+      // `server.fetch-entity-permissions-error` pattern.
+      showErrorToast(dataProductPermissionError as AxiosError);
+    }
+  }, [dataProductPermissionError]);
+
   const [showActions, setShowActions] = useState(false);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
@@ -660,6 +681,13 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct, isVersionsView]);
 
+  // isVersionsView forces every edit/delete affordance off, regardless of the actual
+  // permissions — a read-only mode, not a permission value. Matches the old useMemo's
+  // isVersionsView branch (which omitted editDisplayNamePermission/deleteDataProductPermission
+  // from its returned object, leaving them `undefined` — falsy, same as `false` at every call
+  // site below, which only ever treat these as booleans in `? [] : []` / prop-boolean
+  // position). editDescriptionPermission/editOwnerPermission from the old memo were computed
+  // but never destructured/consumed anywhere — confirmed dead, dropped (Task 7C precedent).
   const {
     editDisplayNamePermission,
     editAllPermission,
@@ -667,29 +695,18 @@ const DataProductsDetailsPage = ({
   } = useMemo(() => {
     if (isVersionsView) {
       return {
-        editDescriptionPermission: false,
-        editOwnerPermission: false,
+        editDisplayNamePermission: false,
         editAllPermission: false,
+        deleteDataProductPermission: false,
       };
     }
 
     return {
-      editDescriptionPermission: getPrioritizedEditPermission(
-        dataProductPermission,
-        Operation.EditDescription
-      ),
-      editOwnerPermission: getPrioritizedEditPermission(
-        dataProductPermission,
-        Operation.EditOwners
-      ),
-      editAllPermission: dataProductPermission.EditAll,
-      editDisplayNamePermission: getPrioritizedEditPermission(
-        dataProductPermission,
-        Operation.EditDisplayName
-      ),
-      deleteDataProductPermission: dataProductPermission.Delete,
+      editDisplayNamePermission: canEditDisplayName,
+      editAllPermission: canEditAll,
+      deleteDataProductPermission: canDelete,
     };
-  }, [dataProductPermission, isVersionsView]);
+  }, [isVersionsView, canEditDisplayName, canEditAll, canDelete]);
 
   const { currentUser } = useApplicationStore();
 
@@ -732,18 +749,6 @@ const DataProductsDetailsPage = ({
       }
     }
   };
-
-  const fetchDataProductPermission = useCallback(async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.DATA_PRODUCT,
-        dataProduct.id
-      );
-      setDataProductPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [dataProduct]);
 
   const fetchPortCounts = useCallback(async () => {
     try {
@@ -931,7 +936,6 @@ const DataProductsDetailsPage = ({
   }, [dataProduct]);
 
   useEffect(() => {
-    fetchDataProductPermission();
     fetchDataProductAssets();
     fetchTaskCounts();
     fetchActivityCount();
@@ -1056,9 +1060,9 @@ const DataProductsDetailsPage = ({
             <div className="tw:shrink-0 tw:max-w-full">
               <DataProductActionButtons
                 activeAnnouncement={activeAnnouncement}
+                canCreate={canCreate}
                 dataContractLatestResultButton={dataContractLatestResultButton}
                 dataProduct={dataProduct}
-                dataProductPermission={dataProductPermission}
                 handleOpenAnnouncementDrawer={handleOpenAnnouncementDrawer}
                 handleVersionClick={handleVersionClick}
                 handleVoteChange={handleVoteChange}

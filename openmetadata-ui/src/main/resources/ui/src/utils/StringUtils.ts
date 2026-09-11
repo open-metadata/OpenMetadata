@@ -72,10 +72,20 @@ export const removeOuterEscapes = (input: string) => {
 };
 
 /**
+ * `btoa` alone treats every JS character as a Latin-1 byte, so non-ASCII input
+ * is silently corrupted (`\u00a3` -> `a3` instead of `c2 a3`) and input above
+ * U+00FF throws. Encode to UTF-8 bytes first, since consumers (the login API)
+ * decode the base64 as UTF-8. See issue #28694.
+ *
  * @param text plain text
- * @returns base64 encoded text
+ * @returns base64 encoding of the UTF-8 bytes of `text`
  */
-export const getBase64EncodedString = (text: string): string => btoa(text);
+export const getBase64EncodedString = (text: string): string =>
+  btoa(
+    Array.from(new TextEncoder().encode(text), (byte) =>
+      String.fromCharCode(byte)
+    ).join('')
+  );
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replaceAll(' ', slugString);

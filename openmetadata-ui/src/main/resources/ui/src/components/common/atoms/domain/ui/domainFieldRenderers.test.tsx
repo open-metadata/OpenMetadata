@@ -70,12 +70,13 @@ jest.mock('../../../OwnerLabel/OwnerLabel.component', () => ({
   ),
 }));
 
-jest.mock('../../../TagBadgeList/TagBadgeList.component', () => ({
+jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
   __esModule: true,
-  default: ({ emptyPlaceholder }: { emptyPlaceholder?: string }) => (
+  default: ({ sizeCap, tags }: { sizeCap?: number; tags?: unknown[] }) => (
     <div
-      data-empty-placeholder={emptyPlaceholder}
-      data-testid="tag-badge-list"
+      data-size-cap={sizeCap}
+      data-tags-length={tags?.length}
+      data-testid="tags-viewer"
     />
   ),
 }));
@@ -137,11 +138,7 @@ describe('renderDomainNameCell', () => {
 
 describe('renderDomainOwnersCell', () => {
   it('forwards showDashPlaceholder to OwnerLabel', () => {
-    render(
-      <>
-        {renderDomainOwnersCell({ owners: [] }, { showDashPlaceholder: true })}
-      </>
-    );
+    render(<>{renderDomainOwnersCell({ owners: [] }, true)}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -149,7 +146,7 @@ describe('renderDomainOwnersCell', () => {
     );
   });
 
-  it('defaults showDashPlaceholder to undefined when no options are passed', () => {
+  it('defaults showDashPlaceholder to undefined when the argument is omitted', () => {
     render(<>{renderDomainOwnersCell({ owners: [] })}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
@@ -160,33 +157,16 @@ describe('renderDomainOwnersCell', () => {
 });
 
 describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', () => {
-  it('forwards emptyPlaceholder to TagBadgeList for glossary terms', () => {
-    render(
-      <>
-        {renderDomainGlossaryTagsCell({ tags: [] }, { emptyPlaceholder: '--' })}
-      </>
-    );
+  it('renders TagsViewer for glossary terms', () => {
+    render(<>{renderDomainGlossaryTagsCell({ tags: [] })}</>);
 
-    expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
-      'data-empty-placeholder',
-      '--'
-    );
+    expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
   });
 
-  it('forwards emptyPlaceholder to TagBadgeList for classification tags', () => {
-    render(
-      <>
-        {renderDomainClassificationTagsCell(
-          { tags: [] },
-          { emptyPlaceholder: '--' }
-        )}
-      </>
-    );
+  it('renders TagsViewer for classification tags', () => {
+    render(<>{renderDomainClassificationTagsCell({ tags: [] })}</>);
 
-    expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
-      'data-empty-placeholder',
-      '--'
-    );
+    expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
   });
 });
 
@@ -305,17 +285,11 @@ describe('useDomainCardTemplates > renderDataProductCard', () => {
     );
   });
 
-  it('requests the -- placeholder for both glossary terms and tags', () => {
+  it('renders TagsViewer for both glossary terms and tags', () => {
     const { result } = renderHook(() => useDomainCardTemplates());
 
     render(<>{result.current.renderDataProductCard(DATA_PRODUCT_BASE)}</>);
 
-    const tagBadgeLists = screen.getAllByTestId('tag-badge-list');
-
-    expect(tagBadgeLists).toHaveLength(2);
-
-    tagBadgeLists.forEach((el) =>
-      expect(el).toHaveAttribute('data-empty-placeholder', '--')
-    );
+    expect(screen.getAllByTestId('tags-viewer')).toHaveLength(2);
   });
 });

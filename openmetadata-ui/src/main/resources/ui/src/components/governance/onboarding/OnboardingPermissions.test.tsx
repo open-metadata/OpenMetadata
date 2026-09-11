@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   FieldKind,
   OnboardingStage,
@@ -23,6 +24,41 @@ import { OnboardingJourney } from './OnboardingJourney';
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+it.each([
+  { name: 'edit all', grant: { EditAll: true }, allowed: true },
+  { name: 'all operations', grant: { All: true }, allowed: true },
+  {
+    name: 'field editing only',
+    grant: { EditDescription: true },
+    allowed: false,
+  },
+  { name: 'view only', grant: { ViewAll: true }, allowed: false },
+])('retains transition authorization for $name', async ({ grant, allowed }) => {
+  const advance = jest.fn();
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  render(
+    <OnboardingJourney
+      advance={advance}
+      loadField={jest.fn()}
+      permissions={{ ...DEFAULT_ENTITY_PERMISSION, ...grant }}
+      progress={{
+        stage: OnboardingStage.Draft,
+        canAdvance: true,
+        blockingSteps: [],
+        steps: [],
+      }}
+      refresh={jest.fn()}
+    />
+  );
+  const button = screen.getByTestId('onboarding-advance');
+
+  expect(button).toHaveProperty('disabled', !allowed);
+
+  await user.click(button);
+
+  expect(advance).toHaveBeenCalledTimes(allowed ? 1 : 0);
+});
 
 it('lets the assigned user edit reviewers with the existing EditReviewers permission', async () => {
   const viewer = { id: 'producer' };

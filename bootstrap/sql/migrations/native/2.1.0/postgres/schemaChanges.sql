@@ -292,6 +292,13 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_event_type_ts
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity_type_ts
   ON audit_log_event (entity_type, event_ts DESC);
 
+-- Index automations_workflow.updatedat for the DataRetention app's workflow cleanup, which
+-- selects the oldest expired rows with `WHERE updatedAt < ? ORDER BY updatedAt LIMIT ?` once per
+-- batch. Without it that is a full scan plus a top-k sort of a table that grows unbounded with
+-- test connection, query runner and reverse ingestion runs.
+CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
+  ON automations_workflow (updatedat);
+
 CREATE TABLE IF NOT EXISTS onboarding_instance (
   id VARCHAR(36) NOT NULL PRIMARY KEY,
   entityId VARCHAR(36) NOT NULL UNIQUE,

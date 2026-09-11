@@ -41,6 +41,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useInRouterContext } from 'react-router-dom';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   OnboardingStepResult,
   Type,
@@ -62,6 +63,7 @@ import {
   isCheckComplete,
   journeyInitialStep,
 } from '../../../utils/governance/onboarding/OnboardingJourney.utils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
 import { NavigationGuardModal } from '../../common/NavigationGuardModal/NavigationGuardModal';
@@ -389,7 +391,8 @@ const JourneyAdvance = ({
   const allowed = renderApprovalActions
     ? progress.canAdvance
     : canRequestTransition(progress);
-  const editable = permissions.All || permissions.EditAll;
+  const flags = getDerivedPermissionFlags(permissions);
+  const editable = flags.can(Operation.All) || flags.canEditAll;
   const nextStage = ONBOARDING_STAGES.find(
     (stage) => String(stage) === progress.nextStatus
   );
