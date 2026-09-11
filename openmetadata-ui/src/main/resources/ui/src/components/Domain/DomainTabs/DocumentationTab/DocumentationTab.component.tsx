@@ -22,14 +22,10 @@ import {
   TagSource,
 } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -57,6 +53,21 @@ const DocumentationTab = ({
     permissions,
   } = useGenericContext<Domain | DataProduct>();
 
+  // Named-flag derivation (Task 8 prop-contract migration): `permissions` here is the raw
+  // OperationPermission read off useGenericContext(), sourced from whichever owner rendered
+  // this tab (DomainDetails.component.tsx or DataProductsDetailsPage.component.tsx — same
+  // batch). No `deleted` argument: neither Domain nor DataProduct carries a `deleted` field
+  // (confirmed against their generated types), and the old derivation never referenced one
+  // either, so getDerivedPermissionFlags defaults to its `deleted = false` — nothing to gate.
+  // Every flag below is a pure rename of an already-prioritized call
+  // (getPrioritizedEditPermission/getPrioritizedViewPermission → the named flag that encodes
+  // the identical computation) — not a raw-to-prioritized semantic change, so none of these
+  // need the canViewTests-style citation.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+
   const {
     editDescriptionPermission,
     editCustomAttributePermission,
@@ -67,43 +78,21 @@ const DocumentationTab = ({
     if (isVersionsView) {
       return {
         editDescriptionPermission: false,
-        editOwnerPermission: false,
-        editAllPermission: false,
         editCustomAttributePermission: false,
         editTagsPermission: false,
         editGlossaryTermsPermission: false,
+        viewCustomPropertiesPermission: false,
       };
     }
 
     return {
-      editDescriptionPermission: getPrioritizedEditPermission(
-        permissions,
-        Operation.EditDescription
-      ),
-      editOwnerPermission: getPrioritizedEditPermission(
-        permissions,
-        Operation.EditOwners
-      ),
-      editAllPermission: permissions?.EditAll,
-      editCustomAttributePermission: getPrioritizedEditPermission(
-        permissions,
-        Operation.EditCustomFields
-      ),
-      editTagsPermission: getPrioritizedEditPermission(
-        permissions,
-        Operation.EditTags
-      ),
-      editGlossaryTermsPermission: getPrioritizedEditPermission(
-        permissions,
-        Operation.EditGlossaryTerms
-      ),
-      viewAllPermission: permissions?.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        permissions,
-        Operation.ViewCustomFields
-      ),
+      editDescriptionPermission: flags.canEditDescription,
+      editCustomAttributePermission: flags.canEditCustomFields,
+      editTagsPermission: flags.canEditTags,
+      editGlossaryTermsPermission: flags.canEditGlossaryTerms,
+      viewCustomPropertiesPermission: flags.canViewCustomFields,
     };
-  }, [permissions, isVersionsView, resourceType]);
+  }, [flags, isVersionsView]);
 
   const description = useMemo(
     () =>

@@ -14,7 +14,7 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -24,14 +24,11 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import QueryCard from '../../components/Database/TableQueries/QueryCard';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Query } from '../../generated/entity/data/query';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getQueryById,
@@ -41,7 +38,6 @@ import {
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -55,49 +51,40 @@ const QueryPage = () => {
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [isLoading, setIsLoading] = useState({ permission: true, query: true });
-  const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  const [isQueryLoading, setIsQueryLoading] = useState(true);
   const [query, setQuery] = useState<Query>();
 
-  const { getEntityPermission } = usePermissionProvider();
-
-  const isViewAllowed = useMemo(
-    () =>
-      queryPermissions.ViewAll ||
-      queryPermissions.ViewBasic ||
-      queryPermissions.ViewQueries,
-    [queryPermissions]
+  // Fetch-owner, by id (old code used getEntityPermission, not getEntityPermissionByFqn) —
+  // matches the `{ id }` identifier form. `queryPermissions` stays raw — fed straight to
+  // QueryCard's `permission` prop below (rule 2).
+  const {
+    permissions: queryPermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess,
+    canViewQueries,
+  } = useEntityPermissions(
+    ResourceEntity.QUERY,
+    { id: queryId || '' },
+    { enabled: Boolean(queryId) }
   );
 
-  const fetchResourcePermission = async () => {
-    setIsLoading((pre) => ({ ...pre, permission: true }));
+  // 3-term OR in the old code (`ViewAll || ViewBasic || ViewQueries`): `hasViewAccess` covers
+  // the first two terms exactly (ViewBasic || ViewAll); `canViewQueries` replaces the old raw
+  // `ViewQueries` read — provably equivalent here because `hasViewAccess` already carries the
+  // ViewAll fallback `canViewQueries` would apply on its own when the ViewQueries key is
+  // absent, so there is no behavior this substitution could change.
+  const isViewAllowed = hasViewAccess || canViewQueries;
 
-    try {
-      const permission = await getEntityPermission(
-        ResourceEntity.QUERY,
-        queryId || ''
-      );
-      setQueryPermissions(permission);
-    } catch {
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
         })
       );
-    } finally {
-      setIsLoading((pre) => ({ ...pre, permission: false }));
     }
-  };
-
-  useEffect(() => {
-    if (queryId) {
-      fetchResourcePermission();
-    } else {
-      setIsLoading((pre) => ({ ...pre, permission: false }));
-    }
-  }, [queryId]);
+  }, [permissionsError]);
 
   const fetchEntityDetails = async () => {
     try {
@@ -130,7 +117,7 @@ const QueryPage = () => {
   }, [datasetFQN]);
 
   const fetchQueryById = async () => {
-    setIsLoading((pre) => ({ ...pre, query: true }));
+    setIsQueryLoading(true);
     try {
       const queryResponse = await getQueryById(queryId, {
         fields: [TabSpecificField.VOTES, TabSpecificField.QUERY_USED_IN],
@@ -139,7 +126,7 @@ const QueryPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading((pre) => ({ ...pre, query: false }));
+      setIsQueryLoading(false);
     }
   };
 
@@ -147,9 +134,9 @@ const QueryPage = () => {
     if (queryId && isViewAllowed) {
       fetchQueryById();
     } else {
-      setIsLoading((pre) => ({ ...pre, query: false }));
+      setIsQueryLoading(false);
     }
-  }, [queryId, queryPermissions]);
+  }, [queryId, isViewAllowed]);
 
   const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {
     if (isUndefined(query)) {
@@ -181,7 +168,7 @@ const QueryPage = () => {
     navigate(-1);
   };
 
-  if (isLoading.permission || isLoading.query) {
+  if (isPermissionsLoading || isQueryLoading) {
     return <Loader />;
   }
   if (!isViewAllowed) {
