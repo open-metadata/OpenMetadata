@@ -32,6 +32,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import {
@@ -108,7 +109,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   const tableColumns = useMemo(() => getTableColumns(t), [t]);
 
-  const hasEditPermission = permission.EditAll;
+  const hasEditPermission = permission[Operation.EditAll];
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!propertyToDelete || !typeDetail) {
