@@ -326,7 +326,7 @@ test.describe('Lineage Filters', () => {
           const lineageRes = page.waitForResponse(
             '/api/v1/lineage/getLineage?*'
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await lineageRes;
 
           await rearrangeNodes(page);
@@ -372,7 +372,7 @@ test.describe('Lineage Filters', () => {
           const lineageRes = page.waitForResponse(
             '/api/v1/lineage/getLineageByEntityCount?*'
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await lineageRes;
 
           for (const entity of entitiesToShow) {
@@ -507,7 +507,7 @@ test.describe('Lineage Filters', () => {
           );
         });
 
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         expect((await lineageResponse).status()).toBe(200);
 
         for (const entity of entitiesToShow) {
@@ -599,8 +599,8 @@ test.describe('Lineage Filters', () => {
           (_, idx) => idx !== index
         );
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await expect(page.getByRole('button', { name: 'Update' })).toBeHidden();
+        await page.getByTestId('update-btn').click();
+        await expect(page.getByTestId('update-btn')).toBeHidden();
 
         await rearrangeNodes(page);
         await fitToScreen(page);
@@ -683,7 +683,7 @@ test.describe('Lineage Filters', () => {
         const lineageRes = page.waitForResponse(
           '/api/v1/lineage/getLineageByEntityCount?*'
         );
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         await lineageRes;
 
         for (const entity of entitiesToShow) {
@@ -764,7 +764,7 @@ test.describe('Lineage Filters', () => {
         );
 
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         await lineageRes;
 
         await rearrangeNodes(page);
@@ -859,7 +859,7 @@ test.describe('Lineage Filters', () => {
       await page.getByTitle(databaseName).click();
 
       const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -904,7 +904,7 @@ test.describe('Lineage Filters', () => {
       await page.getByTitle(databaseSchemaName).click();
 
       const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -949,7 +949,7 @@ test.describe('Lineage Filters', () => {
       await page.getByTitle(columnName).click();
 
       const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
