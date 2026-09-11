@@ -10,24 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const useSlotInset = () => {
-  const ref = useRef<HTMLDivElement>(null);
   const [inset, setInset] = useState(0);
+  const observerRef = useRef<ResizeObserver | null>(null);
 
-  useLayoutEffect(() => {
-    const node = ref.current;
+  // A callback ref rather than a `useEffect`-attached `useRef`: the measured node can mount *after*
+  // this hook's host first renders — e.g. a page that returns a loader on its first paint and only
+  // renders the footer slot once its data settles. A one-shot effect keyed on `[]` would run while
+  // the ref is still null, attach nothing, and never re-run, leaving the inset stuck at 0. The
+  // callback fires whenever React attaches or detaches the node, so the observer follows it.
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+
     if (!node) {
+      setInset(0);
+
       return;
     }
-    const update = () => setInset(node.offsetHeight);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
 
-    return () => observer.disconnect();
+    setInset(node.offsetHeight);
+    observerRef.current = new ResizeObserver(() => setInset(node.offsetHeight));
+    observerRef.current.observe(node);
   }, []);
+
+  useEffect(() => () => observerRef.current?.disconnect(), []);
 
   return { ref, inset };
 };
