@@ -499,10 +499,50 @@ const clickAssociatedTagSave = async (page: Page) => {
   await saveButton.waitFor({ state: 'detached' });
 };
 
-export const fillOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+// The owner cell mounts a react-aria picker that is force-opened on mount
+// (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
+// mount + paint cycle to position the overlay, which intermittently races the
+// react-data-grid editor lifecycle: a single Enter on the selected cell can
+// leave the cell selected but the picker never opened (seen on CI for both the
+// first open and the team-owner re-open). Mirror the text/description editors:
+// try several ways to enter edit mode and re-check until select-owner-tabs is
+// visible, escaping between attempts so a stale editor cannot linger.
+const getOwnerPickerOpenActions = (page: Page) => {
+  return [
+    async () => page.keyboard.press('Enter', { delay: 100 }),
+    async () => {
+      await clickActiveGridCell(page);
+      await page.keyboard.press('Enter', { delay: 100 });
+    },
+    async () => page.keyboard.press('F2'),
+    async () => doubleClickActiveGridCell(page),
+  ];
+};
 
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+const openOwnerPickerEditor = async (page: Page, maxAttempts = 2) => {
+  const ownerTabs = page.getByTestId('select-owner-tabs');
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (const openPicker of getOwnerPickerOpenActions(page)) {
+      try {
+        await openPicker();
+
+        if (await waitForVisibleLocator(ownerTabs, EDITOR_OPEN_TIMEOUT)) {
+          return;
+        }
+      } catch {
+        // fall through to the next strategy
+      }
+
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+  }
+
+  await expect(ownerTabs).toBeVisible();
+};
+
+export const fillOwnerDetails = async (page: Page, owners: string[]) => {
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('domcontentloaded');
@@ -551,9 +591,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 };
 
 export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
 
