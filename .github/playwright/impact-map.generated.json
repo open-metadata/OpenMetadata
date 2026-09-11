@@ -4516,6 +4516,7 @@
       "specs": [
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
         "playwright/e2e/Features/Container.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",

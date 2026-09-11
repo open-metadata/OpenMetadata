@@ -14,6 +14,7 @@ import { expect, test } from '@playwright/test';
 import { buildSync } from 'esbuild';
 import { resolve } from 'path';
 import { chooseSelectOption } from '../utils/common';
+import { removeTier } from '../utils/entity';
 import { openMatchingFieldsPanel } from '../utils/searchSettingUtils';
 
 const bundle = buildSync({
@@ -21,10 +22,14 @@ const bundle = buildSync({
     contents: `import React, { useState } from 'react';
       import { createRoot } from 'react-dom/client';
       import Collapse from 'rc-collapse';
+      import { Button, Popover, Typography } from 'antd';
       import { Select, PaginationCardWithControls } from '@openmetadata/ui-core-components';
       function App() {
         const [strategy, setStrategy] = useState('COUNT');
         const [pageSize, setPageSize] = useState(25);
+        const [tier, setTier] = useState('Tier4');
+        const [tierOpen, setTierOpen] = useState(false);
+        const [tierClickOpacity, setTierClickOpacity] = useState('');
         return <>
           <Collapse accordion prefixCls="ant-collapse" defaultActiveKey="ranking">
             <Collapse.Panel header="Ranking Details" key="ranking">Ranking configuration</Collapse.Panel>
@@ -43,6 +48,16 @@ const bundle = buildSync({
             <PaginationCardWithControls page={1} total={1000} pageSize={pageSize} onPageChange={() => {}} onPageSizeChange={setPageSize}/>
           </div>
           <output data-testid="selected-page-size">{pageSize}</output>
+          <output data-testid="Tier">{tier}</output>
+          <output data-testid="tier-click-opacity">{tierClickOpacity}</output>
+          <Popover open={tierOpen} onOpenChange={setTierOpen} trigger="click" overlayClassName="tier-card-popover"
+            content={<Typography.Text data-testid="clear-tier" tabIndex={0} onClick={async (event) => {
+              setTierClickOpacity(getComputedStyle(event.currentTarget.closest('.ant-popover')).opacity);
+              const response = await fetch('/api/v1/tables/fixture', { method: 'PATCH' });
+              if (response.ok) { setTier('--'); setTierOpen(false); }
+            }}>Clear</Typography.Text>}>
+            <Button data-testid="edit-tier">Edit Tier</Button>
+          </Popover>
         </>;
       }
       createRoot(document.getElementById('root')).render(<App />);`,
@@ -60,12 +75,33 @@ const bundle = buildSync({
 }).outputFiles[0].text;
 
 test.beforeEach(async ({ page }) => {
-  await page.setContent('<div id="root"></div>');
+  await page.route('http://forms.test/**', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<div id="root"></div>',
+    })
+  );
+  await page.goto('http://forms.test/', { waitUntil: 'domcontentloaded' });
   await page.addStyleTag({ path: 'node_modules/antd/dist/antd.css' });
   await page.addStyleTag({
     path: 'node_modules/@openmetadata/ui-core-components/dist/ui-core-components.css',
   });
   await page.addScriptTag({ content: bundle });
+});
+
+test('clearing a tier waits for the popover zoom motion', async ({ page }) => {
+  await page.route('http://forms.test/api/v1/tables/fixture', (route) =>
+    route.fulfill({ json: {} })
+  );
+  await page.addStyleTag({
+    content:
+      '.ant-zoom-big-appear, .ant-zoom-big-enter { animation-delay: 400ms !important; }',
+  });
+
+  await removeTier(page, 'tables');
+
+  await expect(page.getByTestId('Tier')).toHaveText('--');
+  await expect(page.getByTestId('tier-click-opacity')).toHaveText('1');
 });
 
 test('matching fields opens when its accessible name also contains an Add button', async ({

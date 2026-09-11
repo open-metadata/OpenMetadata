@@ -47,7 +47,10 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
-import { waitForResponseWithStatus } from './waitHelpers';
+import {
+  waitForAntOverlayToOpen,
+  waitForResponseWithStatus,
+} from './waitHelpers';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -593,7 +596,9 @@ export const assignTier = async (
   await editButton.waitFor({ state: 'visible' });
   await editButton.click();
 
-  // Wait for all loaders to disappear
+  await waitForAntOverlayToOpen(
+    page.locator('.tier-card-popover').filter({ visible: true })
+  );
   await waitForAllLoadersToDisappear(page);
 
   // Wait for the tier selection radio buttons to be visible
@@ -630,6 +635,9 @@ export const assignTier = async (
 
 export const removeTier = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
+  await waitForAntOverlayToOpen(
+    page.locator('.tier-card-popover').filter({ visible: true })
+  );
   await waitForAllLoadersToDisappear(page);
   const patchRequest = page.waitForResponse(
     (response) =>

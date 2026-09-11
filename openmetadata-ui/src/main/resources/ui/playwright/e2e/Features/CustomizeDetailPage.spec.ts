@@ -461,11 +461,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
 
-        // Under CI load the react-grid-layout is still settling after the
-        // "Add tab" dialog closes; the first click can land on a detaching
-        // element and never open the widget picker. Retry until the picker's
-        // inner content appears — `add-widget-modal` itself is the antd
-        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        // Opening a tab leaves this placeholder below the viewport. Complete
+        // scrolling and focus before Playwright measures the click position.
+        await addWidgetButton.scrollIntoViewIfNeeded();
+        await addWidgetButton.focus();
         const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
         await addWidgetButton.click();
         await expect(widgetInfoTabs).toBeVisible();

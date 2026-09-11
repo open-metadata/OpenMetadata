@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Locator, Page, Response } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
+
+export const waitForAntOverlayToOpen = async (overlay: Locator) => {
+  await expect(overlay).toBeVisible();
+  // Ant's invisible enter-start frame has a stable box, so click auto-waiting
+  // can finish before the zoom motion starts changing the target's position.
+  await expect(overlay).not.toHaveClass(/\bant-zoom-big(?:-|\b)/);
+  await expect(overlay).toHaveCSS('opacity', '1');
+};
 
 /** Match the request first so a later HTTP 200 cannot hide its earlier failure. */
 export const waitForResponseWithStatus = (

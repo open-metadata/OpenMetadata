@@ -907,10 +907,10 @@ test.describe('Context Center Articles', () => {
     await expect(card.getByTestId('updated-at')).toBeVisible();
 
     await verifyArticleSearch(page, articleEntity.responseData.displayName);
-    const viewedCard = page
-      .getByTestId('knowledge-page-listing')
-      .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
-    await expect(viewedCard).toBeVisible();
+    const viewedCard = await scrollListingToCard(
+      page,
+      articleEntity.responseData.displayName
+    );
 
     await viewedCard.getByTestId('knowledge-page-link').first().click();
     await page.waitForURL(

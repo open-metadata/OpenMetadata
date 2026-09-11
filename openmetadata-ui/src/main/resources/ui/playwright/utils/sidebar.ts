@@ -17,6 +17,7 @@ import {
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForAntOverlayToOpen } from './waitHelpers';
 
 export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
@@ -28,23 +29,35 @@ export const clickOnLogo = async (page: Page) => {
 };
 
 export const clickSidebarLink = async (page: Page, testId: string) => {
-  const targetElement = page.getByTestId(testId).filter({ visible: true });
+  const navigation = page
+    .getByTestId('left-sidebar')
+    .or(page.locator('.ant-menu-submenu-popup'));
+  const targetElement = navigation
+    .getByTestId(testId)
+    .filter({ visible: true });
   await expect(targetElement).toBeVisible();
   const popup = page
     .locator('.ant-menu-submenu-popup')
     .filter({ has: page.getByTestId(testId) });
   if (await popup.count()) {
-    // Ant's appear-start phase has a stable box before its zoom animation starts.
-    // Playwright considers even an opacity-zero link visible during that phase.
-    await expect(popup).not.toHaveClass(/\bant-zoom-big(?:-|\b)/);
-    await expect(popup).toHaveCSS('opacity', '1');
+    await waitForAntOverlayToOpen(popup);
   }
   await targetElement.focus();
   const href = await targetElement.getAttribute('href');
   await targetElement.click();
   if (href) {
     const pathname = new URL(href, page.url()).pathname;
-    await expect.poll(() => new URL(page.url()).pathname).toBe(pathname);
+    // Sections such as Glossary immediately select a child route on entry.
+    await expect
+      .poll(() => {
+        const currentPathname = new URL(page.url()).pathname;
+
+        return (
+          currentPathname === pathname ||
+          currentPathname.startsWith(`${pathname}/`)
+        );
+      })
+      .toBe(true);
   }
 };
 

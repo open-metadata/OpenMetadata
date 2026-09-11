@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
+import { User } from '../../../../generated/entity/teams/user';
 import { TeamsPageTab } from './team.interface';
 import TeamDetailsV1 from './TeamDetailsV1';
 import { TeamDetailsProp } from './TeamDetailsV1.interface';
@@ -31,8 +33,9 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+let mockCurrentUser: Partial<User> = { id: 'admin-id' };
 jest.mock('../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'admin-id' } }),
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
 let mockLocationSearch = '';
@@ -180,6 +183,51 @@ const renderComponent = (props: Partial<TeamDetailsProp> = {}) =>
       <TeamDetailsV1 {...defaultProps} {...props} />
     </BrowserRouter>
   );
+
+describe('TeamDetailsV1 membership actions', () => {
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
+  afterEach(() => {
+    mockCurrentUser = { id: 'admin-id' };
+    jest.useFakeTimers();
+  });
+
+  it.each([{ users: undefined }, { users: [] }])(
+    'opens leave confirmation when team users are $users',
+    async ({ users }) => {
+      mockCurrentUser = {
+        id: 'member-id',
+        teams: [{ id: 'group-id', type: 'team' }],
+      };
+      renderComponent({
+        currentTeam: {
+          ...ORGANIZATION_TEAM,
+          id: 'group-id',
+          name: 'group-team',
+          teamType: TeamType.Group,
+          users,
+        },
+      });
+
+      await userEvent.click(await screen.findByTestId('leave-team-button'));
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'label.leave-team',
+      });
+
+      expect(dialog).toBeVisible();
+
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: 'label.cancel' })
+      );
+      await waitFor(() => expect(dialog).not.toBeVisible());
+
+      expect(screen.getByTestId('leave-team-button')).toBeVisible();
+    }
+  );
+});
 
 describe('TeamDetailsV1 Import/Export permission gating', () => {
   beforeEach(() => {
