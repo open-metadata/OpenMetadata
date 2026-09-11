@@ -14,7 +14,7 @@
 
 import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
-import { debounce, escape, isNil } from 'lodash';
+import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
@@ -82,6 +82,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
   ) => {
     const { t, i18n } = useTranslation();
     const editorRef = useRef<ReactQuill>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const [value, setValue] = useState(() =>
       getSanitizeContent(defaultValue ?? '')
     );
@@ -91,11 +92,12 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
     const { userProfilePics } = useApplicationStore();
 
     const handleClickOutside = useCallback((event: MouseEvent) => {
-      const emojiContainer = document.querySelector(
-        '#om-quill-editor #textarea-emoji'
+      const root = rootRef.current;
+      const emojiContainer = root?.querySelector(
+        '#textarea-emoji'
       ) as HTMLElement;
-      const emojiToggleButton = document.querySelector(
-        '#om-quill-editor .textarea-emoji-control.ql-list'
+      const emojiToggleButton = root?.querySelector(
+        '.textarea-emoji-control.ql-list'
       ) as HTMLElement;
 
       if (
@@ -158,57 +160,47 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       }
     };
 
-    const renderItems = useCallback(
-      (item: MentionSuggestionsItem) => {
-        if (['user', 'team'].includes(item.type as string)) {
-          return item.avatarEle;
-        }
+    const renderItems = useCallback((item: MentionSuggestionsItem) => {
+      if (['user', 'team'].includes(item.type as string)) {
+        return item.avatarEle;
+      }
 
-        // Escape all search-index-sourced values (names are user-editable)
-        // before interpolating into the innerHTML template below
-        const breadcrumbsData = item.breadcrumbs
-          ? item.breadcrumbs
-              .map((obj: { name: string }) => escape(obj.name))
-              .join('/')
-          : '';
-
-        const breadcrumbEle = breadcrumbsData
-          ? `<div class="d-flex flex-wrap">
-              <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
-            </div>`
-          : '';
-
-        const iconString = ReactDOMServer.renderToString(
-          searchClassBase.getEntityIconWithBg(
-            item.type ?? '',
-            EntityIconSize.Size14
-          )
-        );
-
-        const typeSpan = !breadcrumbEle
-          ? `<span class="text-grey-muted text-xs">${escape(item.type)}</span>`
-          : '';
-
-        const result = `<div class="d-flex items-center gap-2">
-          ${iconString}
+      const breadcrumbsData = item.breadcrumbs
+        ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
+        : '';
+      const icon = searchClassBase.getEntityIconWithBg(
+        item.type ?? '',
+        EntityIconSize.Size14
+      );
+      const markup = ReactDOMServer.renderToStaticMarkup(
+        <div className="d-flex items-center gap-2">
+          {icon}
           <div>
-            ${breadcrumbEle}
-            <div class="d-flex flex-col">
-              ${typeSpan}
-              <span class="font-medium truncate w-56">${escape(
-                item.name
-              )}</span>
+            {breadcrumbsData ? (
+              <div className="d-flex flex-wrap">
+                <span className="text-grey-muted truncate w-max-200 text-xss">
+                  {breadcrumbsData}
+                </span>
+              </div>
+            ) : (
+              <span className="text-grey-muted text-xs">{item.type}</span>
+            )}
+            <div className="d-flex flex-col">
+              <span className="font-medium truncate w-56">{item.name}</span>
             </div>
           </div>
-        </div>`;
+        </div>
+      );
+      const renderedDocument = new DOMParser().parseFromString(
+        markup,
+        'text/html'
+      );
+      const renderedItem = renderedDocument.body.firstElementChild;
 
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = result;
-
-        return wrapper;
-      },
-      [userProfilePics]
-    );
+      return renderedItem
+        ? (document.importNode(renderedItem, true) as HTMLElement)
+        : document.createElement('div');
+    }, []);
     /**
      * Prepare modules for editor
      */
@@ -341,7 +333,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
 
     useEffect(() => {
       // get the editor container
-      const container = document.getElementById('om-quill-editor');
+      const container = rootRef.current;
 
       if (container && editorRef.current) {
         // get the editor instance
@@ -364,9 +356,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
 
     return (
       <div
-        className={className}
+        className={classNames(className, 'feed-editor-root')}
         data-testid="editor-wrapper"
-        id="om-quill-editor">
+        ref={rootRef}>
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}

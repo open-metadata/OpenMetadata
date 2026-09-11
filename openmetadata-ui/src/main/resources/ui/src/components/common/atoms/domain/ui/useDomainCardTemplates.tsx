@@ -25,6 +25,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
+import { DataProductDescriptionField } from './DataProductDescriptionField';
 import {
   CARD_NAME_CLIP_CLASS,
   CLIPPED_NAME_CLASS,
@@ -127,20 +128,41 @@ export const useDomainCardTemplates = () => {
           </Box>
 
           <Grid gap="4">
+            <Grid.Item span={24}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.description')}
+                </Typography>
+                <DataProductDescriptionField description={entity.description} />
+              </Box>
+            </Grid.Item>
+          </Grid>
+
+          <Grid gap="4">
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
                   {t('label.owner-plural')}
                 </Typography>
-                {renderDomainOwnersCell(entity)}
+                {renderDomainOwnersCell(entity, true)}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
                   {t('label.expert-plural')}
                 </Typography>
                 <OwnerLabel
+                  showDashPlaceholder
                   isCompactView={false}
                   maxVisibleOwners={4}
                   owners={entity.experts}
@@ -153,7 +175,10 @@ export const useDomainCardTemplates = () => {
           <Grid gap="4">
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
                   {t('label.glossary-term-plural')}
                 </Typography>
                 {renderDomainGlossaryTagsCell(entity)}
@@ -161,7 +186,12 @@ export const useDomainCardTemplates = () => {
             </Grid.Item>
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">{t('label.tag-plural')}</Typography>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.tag-plural')}
+                </Typography>
                 {renderDomainClassificationTagsCell(entity)}
               </Box>
             </Grid.Item>

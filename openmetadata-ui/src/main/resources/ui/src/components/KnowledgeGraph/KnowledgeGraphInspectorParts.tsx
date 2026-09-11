@@ -12,17 +12,15 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { ChevronRight } from '@untitledui/icons';
+import { ChevronRight, Database01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { ComponentType, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { getColorSetForType } from '../../utils/KnowledgeGraph.utils';
 import { getNodeIcon } from './GraphElements/CustomNode';
 import { getRelationStyle, RelationCategory } from './KnowledgeGraph.relations';
 
-type IconComponent = ComponentType<{
-  'aria-hidden'?: boolean | 'true';
-  size?: number;
-}>;
+/** Every icon in the set shares one component type; any member stands in for it. */
+type IconComponent = typeof Database01;
 
 interface TileProps {
   icon: IconComponent;
@@ -42,7 +40,7 @@ export const InspectorTile = ({
     aria-hidden="true"
     className={classNames('kg-inspector-tile', 'kg-inspector-tile-' + size)}
     style={{ color, backgroundColor: background, borderColor: color }}>
-    <Icon aria-hidden size={size === 'md' ? 18 : 14} />
+    <Icon aria-hidden="true" size={size === 'md' ? 18 : 14} />
   </span>
 );
 

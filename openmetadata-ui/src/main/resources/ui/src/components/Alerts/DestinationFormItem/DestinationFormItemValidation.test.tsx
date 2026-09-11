@@ -115,6 +115,18 @@ function ParentFormDestinationChangeHarness() {
 }
 
 describe('DestinationFormItem validation', () => {
+  it('does not show a required error before submission', () => {
+    const onFinish = jest.fn();
+    render(<ValidationHarness onFinish={onFinish} />);
+
+    expect(
+      screen.queryByText('message.minimum-count-error')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.length-validator-error')
+    ).not.toBeInTheDocument();
+  });
+
   it('shows the minimum destination error when required submission is blocked', async () => {
     const onFinish = jest.fn();
     render(<ValidationHarness onFinish={onFinish} />);
@@ -171,6 +183,33 @@ describe('DestinationFormItem validation', () => {
       'message.minimum-count-error'
     );
     expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('clears a timeout error when the corrected value is blurred', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          ...OAUTH_DESTINATION_VALUES,
+          readTimeout: 12,
+          timeout: 10,
+        }}
+        onFinish={onFinish}
+      />
+    );
+    const readTimeoutInput = screen.getByTestId('read-timeout-input');
+
+    fireEvent.change(readTimeoutInput, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('label.field-invalid');
+
+    fireEvent.change(readTimeoutInput, { target: { value: '12' } });
+    fireEvent.blur(readTimeoutInput);
+
+    await waitFor(() =>
+      expect(screen.queryByText('label.field-invalid')).not.toBeInTheDocument()
+    );
   });
 
   it('keeps a destination input focused when the parent form echoes its value', async () => {

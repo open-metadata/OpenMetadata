@@ -172,6 +172,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
+// The real wrapper div in GlossaryTermTab.component.tsx now carries these
+// same testids (for Playwright), so the mocks render plain content instead
+// of duplicating them — a duplicate testid makes screen.getByTestId ambiguous.
+jest.mock('../../common/EmptyPlaceholder', () => ({
+  NoFilteredResultsPlaceholder: jest
+    .fn()
+    .mockImplementation(({ description }: { description?: ReactNode }) => (
+      <div>{description}</div>
+    )),
+  NoSearchResultsPlaceholder: jest.fn().mockImplementation(() => <div />),
+}));
+
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -576,6 +588,78 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(statusDropdown).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Filter/Search Empty State', () => {
+    beforeEach(() => {
+      // Unlike the sibling blocks above, this one needs the table's own
+      // zero-rows branch (`glossaryTerms.length > 0` in renderTableSection),
+      // which reads the store's glossaryChildTerms directly — not the
+      // mocked API response, since setGlossaryChildTerms is a no-op mock
+      // here. A prior describe block's beforeEach leaves this non-empty, so
+      // it's reset here rather than copying the sibling pattern verbatim.
+      mockUseGlossaryStore.glossaryChildTerms = [];
+    });
+
+    it('should render NoSearchResultsPlaceholder for the empty-terms + active-search branch', async () => {
+      // The table's own zero-rows state comes from the store's
+      // glossaryChildTerms (reset to [] above), not this response — so this
+      // covers the isSearchActive placeholder-selection branch, not a real
+      // API-driven zero-result search flow.
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 0, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const searchInput = await screen.findByPlaceholderText(
+        'label.search-entity'
+      );
+      fireEvent.change(searchInput, { target: { value: 'doesnotexist' } });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('no-search-results-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('no-filtered-results-placeholder')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render NoFilteredResultsPlaceholder with the translated description for the empty-terms + no-search branch', async () => {
+      // As above, the store's glossaryChildTerms (not this response's
+      // `data`) is what makes the table show zero rows; `paging.total: 5`
+      // only exists to keep totalTermsCount non-zero so the render reaches
+      // this branch instead of the "Add first term" onboarding placeholder.
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 5, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        const placeholder = screen.getByTestId(
+          'no-filtered-results-placeholder'
+        );
+
+        expect(placeholder).toBeInTheDocument();
+        expect(placeholder).toHaveTextContent(
+          'message.filter-no-matching-terms'
+        );
+      });
+
+      expect(
+        screen.queryByTestId('no-search-results-placeholder')
+      ).not.toBeInTheDocument();
     });
   });
 

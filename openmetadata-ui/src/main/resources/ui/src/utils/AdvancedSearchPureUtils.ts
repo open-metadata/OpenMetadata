@@ -10,12 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OldJsonTree } from '@react-awesome-query-builder/ui';
-import { isArray, isEmpty, toLower } from 'lodash';
+import type { OldJsonTree } from '@react-awesome-query-builder/antd';
+import { escapeRegExp, isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
-import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import type { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
@@ -30,8 +27,13 @@ import {
   EntityFields,
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import type {
+  ExploreQuickFilterField,
+  SearchDropdownOption,
+} from '../interface/quickFilter.interface';
 import type {
   ContainerSearchSource,
   DashboardSearchSource,
@@ -43,6 +45,7 @@ import type {
   TopicSearchSource,
 } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
+import { getNameFromFQN } from './FqnUtils';
 import { extractSourceValue } from './SearchPureUtils';
 import { generateUUID } from './StringUtils';
 
@@ -74,13 +77,28 @@ export const getAssetsPageQuickFilters = (
 };
 
 export const getSearchLabel = (itemLabel: string, searchKey: string) => {
-  const regex = new RegExp(searchKey, 'gi');
+  const htmlCharacterMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (character) => htmlCharacterMap[character]);
+
+  const escapedLabel = escapeHtml(itemLabel);
   if (searchKey) {
-    const result = itemLabel.replace(regex, (match) => `<mark>${match}</mark>`);
+    const escapedSearchKey = escapeHtml(searchKey);
+    const regex = new RegExp(escapeRegExp(escapedSearchKey), 'gi');
+    const result = escapedLabel.replace(
+      regex,
+      (match) => `<mark>${match}</mark>`
+    );
 
     return result;
   } else {
-    return itemLabel;
+    return escapedLabel;
   }
 };
 
@@ -218,6 +236,26 @@ export const getQuickFilterSourceFields = (
 ): string | undefined =>
   field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
 
+// The filter value stays the raw tier FQN (tier.tier1); only the visible
+// label becomes the tier name. Default tiers render as Tier1…Tier5 even when
+// the bucket key is lowercased; custom tiers keep their name untouched.
+const formatTierLabel = (value: string): string => {
+  const tierName = getNameFromFQN(value);
+  const defaultTier = tierName.match(/^tier(\d+)$/i);
+
+  return defaultTier ? `Tier${defaultTier[1]}` : tierName;
+};
+
+/**
+ * Per-field label formatter shared by every place a quick-filter value becomes
+ * visible text — dropdown options, selected chips, and labels restored after a
+ * URL round trip — so the same value cannot render differently per surface.
+ */
+export const getQuickFilterLabelFormatter = (
+  key: string
+): ((value: string) => string) | undefined =>
+  key === EntityFields.TIER ? formatTierLabel : undefined;
+
 const findSourceLabel = (
   sources: unknown[],
   path: string,
@@ -297,10 +335,12 @@ export const hydrateQuickFilterLabels = (
 
   return applyQuickFilterLabels(fields, (field, optionKey) => {
     const sourceFields = getQuickFilterSourceFields(field);
-
-    return sourceFields
+    const label = sourceFields
       ? findSourceLabel(sources, sourceFields, optionKey)
       : undefined;
+    const formatter = getQuickFilterLabelFormatter(field.key);
+
+    return label && formatter ? formatter(label) : label;
   });
 };
 
@@ -319,7 +359,7 @@ export const getOptionsFromAggregationBucket = (
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
     .map((option) => {
-      let label = labelFormatter ? labelFormatter(option.key) : option.key;
+      let label = option.key;
 
       if (sourceFields) {
         const topHitsData = (option as Record<string, unknown>)[
@@ -338,6 +378,12 @@ export const getOptionsFromAggregationBucket = (
         if (extracted) {
           label = extracted;
         }
+      }
+
+      // Runs after the sourceFields resolution so formatters (entity type,
+      // tier) see the original-cased value, not the lowercased bucket key.
+      if (labelFormatter) {
+        label = labelFormatter(label);
       }
 
       return { key: option.key, label, count: option.doc_count ?? 0 };

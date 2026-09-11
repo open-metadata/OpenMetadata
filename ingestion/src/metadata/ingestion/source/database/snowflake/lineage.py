@@ -44,6 +44,9 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.connection import (
     probe_access_history_available,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     AccessHistoryRow,
     CopyHistoryRow,
@@ -172,7 +175,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = self.stored_procedure_query.format(
             start_date=start,
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
         )
 
         return query  # noqa: RET504
@@ -358,7 +361,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         the window still yields.
         """
         sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
             start_time=window_start,
             end_time=window_end,
             filter_condition=self._build_filter_condition_clause(),
@@ -491,7 +494,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         single malformed or unresolvable row so it doesn't drop the remaining rows.
         """
         sql_statement = SNOWFLAKE_COPY_HISTORY_LINEAGE.format(
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
             start_time=self.start,
             end_time=self.end,
         )

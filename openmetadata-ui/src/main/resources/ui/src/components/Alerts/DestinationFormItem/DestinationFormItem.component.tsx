@@ -48,10 +48,9 @@ import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem
 
 function DestinationFormItem({
   isViewMode = false,
-  isRequired = false,
 }: Readonly<DestinationFormItemProps>) {
   const { t } = useTranslation();
-  const { control, setError, clearErrors, formState } = useFormContext();
+  const { control, clearErrors, formState } = useFormContext();
 
   const { fields, append, remove } = useFieldArray({
     name: 'destinations',
@@ -76,19 +75,13 @@ function DestinationFormItem({
 
   const selectedSource = selectedResources[0];
 
+  // Submit owns required validation; this only removes its stale error after
+  // the user adds a destination, avoiding an error on untouched create forms.
   useEffect(() => {
-    if (fields.length === 0 && isRequired) {
-      setError('destinations', {
-        type: 'manual',
-        message: t('message.minimum-count-error', {
-          field: t('label.destination'),
-          count: 1,
-        }),
-      });
-    } else {
+    if (fields.length > 0) {
       clearErrors('destinations');
     }
-  }, [fields.length, setError, clearErrors, t, isRequired]);
+  }, [fields.length, clearErrors]);
 
   const isExternalDestinationSelected = useMemo(
     () => hasExternalDestination(destinations),
@@ -181,10 +174,12 @@ function DestinationFormItem({
               control={control}
               defaultValue={10}
               name="timeout"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <Input
+                  hint={fieldState.error?.message}
                   inputDataTestId="connection-timeout-input"
                   isDisabled={isViewMode}
+                  isInvalid={Boolean(fieldState.error)}
                   placeholder={`${t('label.connection-timeout')} (${t(
                     'label.second-plural'
                   )})`}
@@ -192,9 +187,21 @@ function DestinationFormItem({
                   type="number"
                   value={field.value === undefined ? '' : String(field.value)}
                   onBlur={field.onBlur}
-                  onChange={(val) => field.onChange(val)}
+                  onChange={(val) =>
+                    field.onChange(val === '' ? undefined : Number(val))
+                  }
                 />
               )}
+              rules={{
+                required: t('label.field-required', {
+                  field: t('label.connection-timeout'),
+                }),
+                validate: (v) =>
+                  (Number.isInteger(Number(v)) && Number(v) > 0) ||
+                  t('label.field-invalid', {
+                    field: t('label.connection-timeout'),
+                  }),
+              }}
             />
           </Grid.Item>
 
@@ -215,10 +222,12 @@ function DestinationFormItem({
               control={control}
               defaultValue={DEFAULT_READ_TIMEOUT}
               name="readTimeout"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <Input
+                  hint={fieldState.error?.message}
                   inputDataTestId="read-timeout-input"
                   isDisabled={isViewMode}
+                  isInvalid={Boolean(fieldState.error)}
                   placeholder={`${t('label.read-type', {
                     type: t('label.timeout'),
                   })} (${t('label.second-plural')})`}
@@ -226,9 +235,21 @@ function DestinationFormItem({
                   type="number"
                   value={field.value === undefined ? '' : String(field.value)}
                   onBlur={field.onBlur}
-                  onChange={(val) => field.onChange(val)}
+                  onChange={(val) =>
+                    field.onChange(val === '' ? undefined : Number(val))
+                  }
                 />
               )}
+              rules={{
+                required: t('label.field-required', {
+                  field: t('label.read-type', { type: t('label.timeout') }),
+                }),
+                validate: (v) =>
+                  (Number.isInteger(Number(v)) && Number(v) > 0) ||
+                  t('label.field-invalid', {
+                    field: t('label.read-type', { type: t('label.timeout') }),
+                  }),
+              }}
             />
           </Grid.Item>
 
