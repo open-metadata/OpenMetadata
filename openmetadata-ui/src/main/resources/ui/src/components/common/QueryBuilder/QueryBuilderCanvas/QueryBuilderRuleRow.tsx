@@ -21,6 +21,7 @@ import {
   QUERY_BUILDER_CONTROL_HEIGHT,
   QUERY_BUILDER_FIELD_MIN_WIDTH,
   QUERY_BUILDER_FIELD_TEST_ID,
+  QUERY_BUILDER_VALUE_MIN_WIDTH,
 } from './QueryBuilderCanvas.constants';
 import type { QueryBuilderRuleRowProps } from './QueryBuilderCanvas.types';
 import {
@@ -180,7 +181,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
 
         <QueryBuilderCell label={t('label.value')}>
           <div
-            className="tw:flex tw:min-w-0 tw:gap-2"
+            className="tw:flex tw:min-w-0 tw:flex-wrap tw:gap-2"
             data-testid="advanced-search-value">
             {/* Until the field and operator name a widget there is nothing to
                 edit, but the column still reads as part of the row — an empty
@@ -201,7 +202,14 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
               </Select>
             ) : (
               valueCells.map((cell) => (
-                <div className="tw:min-w-0 tw:flex-1" key={cell.id}>
+                /* A two-valued operator keeps both slots readable: they share
+                   the column when it is wide enough and wrap when it is not. */
+                <div
+                  className={classNames(
+                    'tw:flex-1',
+                    QUERY_BUILDER_VALUE_MIN_WIDTH
+                  )}
+                  key={cell.id}>
                   {cell.node}
                 </div>
               ))

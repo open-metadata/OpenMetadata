@@ -18,7 +18,11 @@ import { useTranslation } from 'react-i18next';
 // DateInput from @openmetadata/ui-core-components is not publicly exported and requires
 // @internationalized/date CalendarDate objects, which are incompatible with the query
 // builder's string-based date values. Native <input> is used instead.
+// `w-full tw:min-w-0` is load-bearing: a native date input is intrinsically
+// wide, so without it the input overflows its slot and a two-valued operator's
+// second input covers the first, swallowing clicks meant for it.
 const classNameValue =
+  'tw:w-full tw:min-w-0 ' +
   'tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary ' +
   'tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary ' +
   'tw:transition-[outline-color,outline-width] tw:duration-100 tw:focus:outline-2 tw:focus:-outline-offset-1 tw:focus:outline-brand ' +

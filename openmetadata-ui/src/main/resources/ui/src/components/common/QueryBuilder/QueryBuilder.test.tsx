@@ -649,9 +649,10 @@ describe('QueryBuilder – a custom property in a JSONLogic builder', () => {
       />
     );
 
-    // A wrapping level used to take the delete button onto the second line.
-    expect(screen.getByTestId('query-builder-rule-0').innerHTML).not.toContain(
-      'flex-wrap'
+    // The button aligns to the row's first line rather than its last, so a row
+    // that wraps cannot drag it away from the rule it removes.
+    expect(screen.getByTestId('query-builder-rule-0')).toHaveClass(
+      'tw:items-start'
     );
   });
 

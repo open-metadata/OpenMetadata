@@ -43,3 +43,9 @@ export const QUERY_BUILDER_FIELD_MIN_WIDTH = 'tw:min-w-[140px]';
 
 /** Control height, so the delete button sits level with the row's first line. */
 export const QUERY_BUILDER_CONTROL_HEIGHT = 'tw:h-10';
+
+/**
+ * Narrowest a value slot may get before a two-valued operator's slots wrap.
+ * Below this a date input has no room left to read.
+ */
+export const QUERY_BUILDER_VALUE_MIN_WIDTH = 'tw:min-w-[130px]';
