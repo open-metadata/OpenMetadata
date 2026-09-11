@@ -4479,6 +4479,7 @@
     "request-tags-message": "Запрос тегов",
     "request-test-case-failure-resolution-message": "Запрос отчета по ошибкам тестов",
     "request-update-description": "Запросить обновление описания",
+    "reserved-column-name": "Имя столбца «{{name}}» зарезервировано для внутреннего использования и не может быть использовано как столбец пользовательского свойства типа «таблица».",
     "reset-layout-confirmation": "Вы уверены что хотите применить \"Default Layout\"?",
     "reset-link-has-been-sent": "Ссылка для сброса отправлена на вашу электронную почту",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

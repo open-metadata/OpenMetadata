@@ -13,13 +13,11 @@
 import {
   Alert,
   Badge,
-  BadgeWithButton,
   Box,
   Button,
   ButtonUtility,
   Card,
   Dialog,
-  Dot,
   FieldProp,
   FieldTypes,
   FormField,
@@ -99,6 +97,7 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { ClassificationTag } from '../../common/atoms/Tag';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
   CreateMemoryModalProps,
@@ -618,50 +617,19 @@ const MemoryTagsRow: FC<{
       </div>
       <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
         {isViewOnly && selectedTags.length === 0 && <EmptyTags />}
-        {selectedTags.map((tag) =>
-          isViewOnly ? (
-            <Badge
-              className="tw:max-w-40 tw:min-w-0"
-              key={String(tag.tagFQN ?? '')}
-              size="sm"
-              type="modern">
-              {tag.style?.color && (
-                <div className="tw:shrink-0">
-                  <Dot
-                    size="sm"
-                    style={{ color: tag.style?.color, marginRight: '6px' }}
-                  />
-                </div>
-              )}
-              <Typography ellipsis className="tw:text-secondary" size="text-xs">
-                {tag.tagFQN}
-              </Typography>
-            </Badge>
-          ) : (
-            <BadgeWithButton
-              color="gray"
-              key={tag.tagFQN}
-              type="modern"
-              onButtonClick={() => handleRemoveTag(tag.tagFQN)}>
-              <div className="tw:max-w-40 tw:flex tw:items-center">
-                {tag.style?.color && (
-                  <div className="tw:shrink-0">
-                    <Dot
-                      size="sm"
-                      style={{ color: tag.style?.color, marginRight: '6px' }}
-                    />
-                  </div>
-                )}
-                <Typography
-                  ellipsis
-                  className="tw:text-secondary"
-                  size="text-xs">
-                  {tag.tagFQN}
-                </Typography>
-              </div>
-            </BadgeWithButton>
-          )
-        )}
+        {selectedTags.map((tag) => (
+          <ClassificationTag
+            color={tag.style?.color}
+            icon={tag.style?.iconURL}
+            key={String(tag.tagFQN ?? '')}
+            label={tag.tagFQN ?? ''}
+            maxWidth={160}
+            size="sm"
+            onDelete={
+              isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
+            }
+          />
+        ))}
         {!isViewOnly && (
           <Button
             color="link-color"
@@ -1081,7 +1049,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
         <Dialog showCloseButton title="" width={600} onClose={handleClose}>
-          <Dialog.Content className="tw:p-0!">
+          <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
             <div ref={modalContainerRef}>
               <ConfigProvider
                 getPopupContainer={() =>

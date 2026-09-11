@@ -222,6 +222,16 @@ public interface WorkflowDocStoreDAOs {
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition);
+
+    /**
+     * Ids of workflows untouched since {@code cutoffTs}, oldest first, for the DataRetention app.
+     * Every workflow type here is a record of one finished run rather than configuration, so age
+     * alone decides: a run still in flight has a recent {@code updatedAt}.
+     */
+    @SqlQuery(
+        "SELECT id FROM automations_workflow WHERE updatedAt < :cutoffTs "
+            + "ORDER BY updatedAt LIMIT :limit")
+    List<String> listIdsBeforeCutoff(@Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
   }
 
   interface DataModelDAO extends EntityDAO<DashboardDataModel> {

@@ -25,6 +25,17 @@ import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.in
 import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 import TableTypePropertyView from './TableTypePropertyView';
 
+/**
+ * Internal row identifier key used by the grid edit controller to track rows.
+ * This key is stripped before saving so it never leaks into the persisted data.
+ * It MUST NOT collide with any user-defined column name. A bare `id` was
+ * previously used but collides with a legitimate user column named "id"
+ * (reserved-name rejection is enforced at definition time in AddCustomProperty
+ * and TypeRepository); this prefixed key is defense-in-depth so even legacy
+ * data with an `id` column is preserved.
+ */
+const ROW_ID_KEY = '__row_id__';
+
 export const getGridColumns = (columns: string[]) => {
   return columns.map((column) => ({
     key: column,
@@ -51,7 +62,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
 
   const [dataSource, setDataSource] = useState<
     TableTypePropertyValueType['rows']
-  >(() => rows.map((row, index) => ({ ...row, id: index + '' })));
+  >(() => rows.map((row, index) => ({ ...row, [ROW_ID_KEY]: index + '' })));
 
   const filterColumns = useMemo(() => getGridColumns(columns), [columns]);
 
@@ -65,6 +76,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     dataSource,
     setDataSource,
     columns: filterColumns,
+    rowIdKey: ROW_ID_KEY,
   });
 
   const handlePaste = actualHandlePaste as unknown as () => Record<
@@ -74,7 +86,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
 
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource
-      .map((row) => omit(row, 'id'))
+      .map((row) => omit(row, ROW_ID_KEY))
       // if the row is empty, filter it out
       .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
     await onSave({ rows: modifiedRows, columns });
