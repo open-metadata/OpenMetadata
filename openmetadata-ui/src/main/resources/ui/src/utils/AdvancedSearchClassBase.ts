@@ -1494,8 +1494,7 @@ class AdvancedSearchClassBase {
 
   private buildMultiValueCustomPropertySubFields(
     field: CustomPropertySummary,
-    label: string,
-    searchOutputType: SearchOutputType
+    label: string
   ): Array<{ subfieldsKey: string; dataObject: Field }> {
     switch (field.type) {
       case 'timeInterval':
@@ -1552,10 +1551,6 @@ class AdvancedSearchClassBase {
           return [];
         }
 
-        if (searchOutputType === SearchOutputType.JSONLogic) {
-          return this.buildTableCustomPropertyGroup(field, label, columns);
-        }
-
         return columns.map((columnName) => ({
           subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
@@ -1589,42 +1584,10 @@ class AdvancedSearchClassBase {
     }
 
     if (MULTI_VALUE_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
-      return this.buildMultiValueCustomPropertySubFields(
-        field,
-        label,
-        searchOutputType
-      );
+      return this.buildMultiValueCustomPropertySubFields(field, label);
     }
 
     return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);
-  }
-
-  private buildTableCustomPropertyGroup(
-    field: CustomPropertySummary,
-    label: string,
-    columns: string[]
-  ): Array<{ subfieldsKey: string; dataObject: Field }> {
-    return [
-      {
-        subfieldsKey: `${field.name}.rows`,
-        dataObject: {
-          type: '!group',
-          mode: 'some',
-          label,
-          subfields: Object.fromEntries(
-            columns.map((columnName) => [
-              columnName,
-              {
-                type: 'select',
-                label: columnName,
-                operators: LIST_VALUE_OPERATORS,
-                valueSources: ['value'],
-              },
-            ])
-          ),
-        } as unknown as Field,
-      },
-    ];
   }
 }
 

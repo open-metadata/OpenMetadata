@@ -806,6 +806,137 @@ class JSONLogicSearchClassBase {
     };
   };
 
+  private static readonly TABLE_CP_ROWS_RE = /^extension\.(.+?)\.rows\.(.+)$/;
+
+  private static readonly COMPARISON_OPS = [
+    '==',
+    '!=',
+    '<',
+    '<=',
+    '>',
+    '>=',
+    'in',
+    'like',
+  ];
+
+  private static findComparisonOp(node: Record<string, unknown>) {
+    for (const op of JSONLogicSearchClassBase.COMPARISON_OPS) {
+      const args = node[op];
+      if (Array.isArray(args) && args.length >= 2) {
+        return { op, args };
+      }
+    }
+
+    return undefined;
+  }
+
+  private static getVarString(
+    obj: Record<string, unknown> | undefined
+  ): string | undefined {
+    if (obj?.var && typeof obj.var === 'string') {
+      return obj.var;
+    }
+
+    return undefined;
+  }
+
+  private static mapLogicChildren(
+    node: Record<string, unknown>,
+    fn: (child: Record<string, unknown>) => Record<string, unknown>
+  ): Record<string, unknown> {
+    for (const key of ['and', 'or']) {
+      if (Array.isArray(node[key])) {
+        return {
+          [key]: (node[key] as unknown[]).map((item) =>
+            fn(item as Record<string, unknown>)
+          ),
+        };
+      }
+    }
+
+    return node;
+  }
+
+  rewriteTableCpRulesToSome = (
+    logic: Record<string, unknown>
+  ): Record<string, unknown> => {
+    const rewriteRule = (
+      node: Record<string, unknown>
+    ): Record<string, unknown> => {
+      if (!node || typeof node !== 'object') {
+        return node;
+      }
+
+      const found = JSONLogicSearchClassBase.findComparisonOp(node);
+      if (found) {
+        const varPath = JSONLogicSearchClassBase.getVarString(
+          found.args[0] as Record<string, unknown>
+        );
+        const match = varPath
+          ? JSONLogicSearchClassBase.TABLE_CP_ROWS_RE.exec(varPath)
+          : null;
+        if (match) {
+          const [, cpName, columnName] = match;
+
+          return {
+            some: [
+              { var: `extension.${cpName}.rows` },
+              { [found.op]: [{ var: columnName }, ...found.args.slice(1)] },
+            ],
+          };
+        }
+      }
+
+      return JSONLogicSearchClassBase.mapLogicChildren(node, rewriteRule);
+    };
+
+    return rewriteRule(logic);
+  };
+
+  rewriteTableCpSomeToFlat = (
+    logic: Record<string, unknown>
+  ): Record<string, unknown> => {
+    const rewriteRule = (
+      node: Record<string, unknown>
+    ): Record<string, unknown> => {
+      if (!node || typeof node !== 'object') {
+        return node;
+      }
+
+      if (Array.isArray(node.some)) {
+        const [varObj, condition] = node.some as [
+          Record<string, unknown>,
+          Record<string, unknown>
+        ];
+        const arrayPath = JSONLogicSearchClassBase.getVarString(varObj);
+        if (
+          arrayPath?.startsWith('extension.') &&
+          arrayPath.endsWith('.rows') &&
+          condition
+        ) {
+          const found = JSONLogicSearchClassBase.findComparisonOp(condition);
+          const innerVar = found
+            ? JSONLogicSearchClassBase.getVarString(
+                found.args[0] as Record<string, unknown>
+              )
+            : undefined;
+          if (found && innerVar) {
+            return {
+              [found.op]: [
+                { var: `${arrayPath}.${innerVar}` },
+                ...found.args.slice(1),
+              ],
+            };
+          }
+        }
+      }
+
+      return JSONLogicSearchClassBase.mapLogicChildren(node, rewriteRule);
+    };
+
+    return rewriteRule(logic);
+  };
+
   // Custom handling for array_not_contains and is_null (Is Not Set) operators
   // on group/some fields (e.g. Owners, Domain, Data Product).
   // react-awesome-query-builder emits `{"some": [var, condition]}` for these

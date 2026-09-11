@@ -50,6 +50,7 @@ import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.int
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEmptyJsonTreeForQueryBuilder } from '../../../utils/AdvancedSearchPureUtils';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
+import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import {
   elasticSearchFormat,
   hasUnfinishedRule,
@@ -248,7 +249,10 @@ const QueryBuilderWidgetV1: FC<{
       lastEmittedTreeRef.current = jsonTree;
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
-        onChange?.(JSON.stringify(jsonLogic.logic ?? ''), jsonTree);
+        const rewritten = jsonLogicSearchClassBase.rewriteTableCpRulesToSome(
+          jsonLogic.logic as Record<string, unknown>
+        );
+        onChange?.(JSON.stringify(rewritten ?? ''), jsonTree);
       } catch {
         onChange?.('', jsonTree);
       }
