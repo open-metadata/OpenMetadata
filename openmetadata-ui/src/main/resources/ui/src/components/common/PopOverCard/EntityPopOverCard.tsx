@@ -12,6 +12,7 @@
  */
 
 import { Popover, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import {
   FC,
@@ -21,9 +22,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -52,6 +56,7 @@ export const PopoverContent: React.FC<{
 }> = ({ entityFQN, entityType, extraInfo }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
   const { cachedEntityData, updateCachedEntityData } = useApplicationStore();
 
   const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
@@ -76,6 +81,7 @@ export const PopoverContent: React.FC<{
   const getData = useCallback(async () => {
     const fields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS}`;
     setLoading(true);
+    setIsForbidden(false);
 
     const promise = entityUtilClassBase.getEntityByFqn(
       entityType,
@@ -88,7 +94,12 @@ export const PopoverContent: React.FC<{
         const res = await promise;
         updateCachedEntityData({ id: entityFQN, entityDetails: res });
       } catch (error) {
-        // Error
+        // A 403 means the entity exists but is not readable by this user. Saying
+        // "no data found" for that case reports a permission problem as missing
+        // data, so the two are kept apart.
+        setIsForbidden(
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        );
       } finally {
         setLoading(false);
       }
@@ -109,6 +120,12 @@ export const PopoverContent: React.FC<{
 
   if (loading) {
     return <Loader size="small" />;
+  }
+
+  if (isForbidden) {
+    return (
+      <Typography.Text>{t('message.no-permission-to-view')}</Typography.Text>
+    );
   }
 
   if (isUndefined(entityData)) {
@@ -133,8 +150,27 @@ const EntityPopOverCard: FC<Props> = ({
   extraInfo,
   defaultOpen = false,
 }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const { pathname } = useLocation();
+  const lastPathname = useRef(pathname);
+
+  // rc-trigger hides the popup only on mouseleave. When the trigger unmounts
+  // under the cursor -- a feed refetch, a resolved task, a route change -- that
+  // event never fires and the portal is left floating over whatever renders
+  // next. Closing on navigation bounds how long a stale popup can survive.
+  // The first run is skipped so `defaultOpen` still opens the popup on mount.
+  useEffect(() => {
+    if (lastPathname.current === pathname) {
+      return;
+    }
+
+    lastPathname.current = pathname;
+    setOpen(false);
+  }, [pathname]);
+
   return (
     <Popover
+      destroyTooltipOnHide
       align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
@@ -143,10 +179,11 @@ const EntityPopOverCard: FC<Props> = ({
           extraInfo={extraInfo}
         />
       }
-      defaultOpen={defaultOpen}
+      open={open}
       overlayClassName="entity-popover-card"
       trigger="hover"
-      zIndex={9999}>
+      zIndex={9999}
+      onOpenChange={setOpen}>
       {children as ReactNode}
     </Popover>
   );

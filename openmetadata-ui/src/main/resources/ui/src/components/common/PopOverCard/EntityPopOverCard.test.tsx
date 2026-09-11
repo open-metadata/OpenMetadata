@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategoryPlural } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -243,7 +244,8 @@ describe('Test EntityPopoverCard component', () => {
         entityFQN={MOCK_TAG_ENCODED_FQN}
         entityType={EntityType.TAG}>
         <div data-testid="popover-container">Test_Popover</div>
-      </EntityPopOverCard>
+      </EntityPopOverCard>,
+      { wrapper: MemoryRouter }
     );
 
     expect(screen.getByTestId('popover-container')).toBeInTheDocument();
@@ -294,6 +296,62 @@ describe('Test EntityPopoverCard component', () => {
     });
 
     expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+  });
+
+  it('EntityPopoverCard should show permission placeholder when the api returns 403', async () => {
+    (getTagByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: { status: 403, data: { message: 'Forbidden!' } },
+      })
+    );
+
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}
+        />
+      );
+    });
+
+    expect(
+      screen.getByText('message.no-permission-to-view')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.no-data-found')).toBeNull();
+  });
+
+  it('EntityPopoverCard should close the popover on navigation', async () => {
+    const NavigateAway = () => {
+      const navigate = useNavigate();
+
+      return (
+        <button data-testid="navigate-away" onClick={() => navigate('/next')}>
+          navigate
+        </button>
+      );
+    };
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/current']}>
+          <EntityPopOverCard
+            defaultOpen
+            entityFQN={MOCK_TAG_ENCODED_FQN}
+            entityType={EntityType.TAG}>
+            <div data-testid="popover-container">Test_Popover</div>
+          </EntityPopOverCard>
+          <NavigateAway />
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('label.no-data-found')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('navigate-away'));
+    });
+
+    expect(screen.queryByText('label.no-data-found')).toBeNull();
   });
 
   it('EntityPopoverCard should call tags api if entity type is tag card', async () => {
