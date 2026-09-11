@@ -10,16 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Modal, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { DataQualityDimension } from '../../generated/tests/dataQualityDimension';
 
 export interface DeleteDimensionModalProps {
   /** The dimension pending deletion; `undefined` keeps the modal closed. */
   dimension?: DataQualityDimension;
-  /** Test cases that reference it — they fall back to their test definition's dimension. */
+  /** Test cases that reference it — they lose the dimension when it goes. */
   testCaseCount: number;
-  /** Test definitions classified with it — these break outright, so they are called out. */
+  /** Test definitions classified with it — these are cleared too, so they are called out. */
   testDefinitionCount: number;
   isDeleting: boolean;
   onCancel: () => void;
@@ -35,50 +42,84 @@ const DeleteDimensionModal = ({
   onConfirm,
 }: DeleteDimensionModalProps) => {
   const { t } = useTranslation();
-  const title = dimension?.displayName ?? dimension?.name ?? '';
+
+  if (!dimension) {
+    return null;
+  }
+
+  const title = t('label.delete-entity', {
+    entity: dimension.displayName ?? dimension.name,
+  });
   const hasReferences = testCaseCount > 0 || testDefinitionCount > 0;
 
   return (
-    <Modal
-      cancelText={t('label.cancel')}
-      confirmLoading={isDeleting}
-      data-testid="delete-dimension-modal"
-      okButtonProps={{ danger: true }}
-      okText={t('label.delete-entity', { entity: t('label.dimension') })}
-      open={Boolean(dimension)}
-      title={t('label.delete-entity', { entity: title })}
-      onCancel={onCancel}
-      onOk={onConfirm}>
-      <Typography.Paragraph>
-        {t('message.delete-dimension-confirmation')}
-      </Typography.Paragraph>
-      {hasReferences && (
-        <div className="dimension-delete-warning">
-          {testCaseCount > 0 && (
-            <>
-              <Typography.Text strong>
-                {t('message.dimension-in-use-count', { count: testCaseCount })}
-              </Typography.Text>
-              <Typography.Paragraph className="m-b-0">
-                {t('message.dimension-delete-fallback')}
-              </Typography.Paragraph>
-            </>
-          )}
-          {testDefinitionCount > 0 && (
-            <>
-              <Typography.Text strong>
-                {t('message.dimension-in-use-test-definition-count', {
-                  count: testDefinitionCount,
-                })}
-              </Typography.Text>
-              <Typography.Paragraph className="m-b-0">
-                {t('message.dimension-delete-test-definition-fallback')}
-              </Typography.Paragraph>
-            </>
-          )}
-        </div>
-      )}
-    </Modal>
+    <ModalOverlay isOpen>
+      <Modal>
+        <Dialog
+          aria-label={title}
+          data-testid="delete-dimension-modal"
+          width={480}
+          onClose={onCancel}>
+          <Dialog.Header>
+            <Typography as="h3" size="text-lg" weight="semibold">
+              {title}
+            </Typography>
+          </Dialog.Header>
+          <Dialog.Content>
+            <Box direction="col" gap={3}>
+              <Typography size="text-sm">
+                {t('message.delete-dimension-confirmation')}
+              </Typography>
+              {hasReferences && (
+                <Box
+                  className="dimension-delete-warning"
+                  direction="col"
+                  gap={2}>
+                  {testCaseCount > 0 && (
+                    <Box direction="col" gap={1}>
+                      <Typography size="text-sm" weight="semibold">
+                        {t('message.dimension-in-use-count', {
+                          count: testCaseCount,
+                        })}
+                      </Typography>
+                      <Typography size="text-sm">
+                        {t('message.dimension-delete-fallback')}
+                      </Typography>
+                    </Box>
+                  )}
+                  {testDefinitionCount > 0 && (
+                    <Box direction="col" gap={1}>
+                      <Typography size="text-sm" weight="semibold">
+                        {t('message.dimension-in-use-test-definition-count', {
+                          count: testDefinitionCount,
+                        })}
+                      </Typography>
+                      <Typography size="text-sm">
+                        {t('message.dimension-delete-test-definition-fallback')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" size="lg" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary-destructive"
+              data-testid="confirm-delete-dimension"
+              isDisabled={isDeleting}
+              isLoading={isDeleting}
+              size="lg"
+              onClick={onConfirm}>
+              {t('label.delete-entity', { entity: t('label.dimension') })}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Form, FormInstance, Input, Row, Space, Typography } from 'antd';
+import {
+  Box,
+  Grid,
+  Input,
+  TextArea,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Controller, useWatch, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 
@@ -22,116 +29,130 @@ export interface DimensionFormValues {
 }
 
 export interface DimensionFormProps {
-  form: FormInstance<DimensionFormValues>;
-  initialValues: DimensionFormValues;
-  /** Remounts the form so fields start from the dimension being edited. */
-  formKey: string;
+  hookForm: UseFormReturn<DimensionFormValues>;
   isEditing: boolean;
-  watchedColor: string;
-  /** Pre-resolved so the preview needs no fallback chain of its own. */
-  previewLabel: string;
-  onFinish: (values: DimensionFormValues) => void;
 }
 
-const DimensionForm = ({
-  form,
-  initialValues,
-  formKey,
-  isEditing,
-  watchedColor,
-  previewLabel,
-  onFinish,
-}: DimensionFormProps) => {
+const DimensionForm = ({ hookForm, isEditing }: DimensionFormProps) => {
   const { t } = useTranslation();
+  const { control, setValue } = hookForm;
+
+  // Watched rather than held in local state so the preview tracks every keystroke and every
+  // swatch click from the one source of truth.
+  const color = useWatch({ control, name: 'color' });
+  const name = useWatch({ control, name: 'name' });
+  const displayName = useWatch({ control, name: 'displayName' });
+  const previewLabel = displayName || name || t('label.dimension');
 
   return (
-    <Form<DimensionFormValues>
-      className="new-form-style"
-      form={form}
-      initialValues={initialValues}
-      key={formKey}
-      layout="vertical"
-      onFinish={onFinish}>
-      <Row className="dimension-form" gutter={[24, 0]}>
-        <Col span={15}>
-          <Form.Item
-            extra={
-              isEditing
-                ? t('message.dimension-name-is-fixed-after-creation')
-                : t('message.dimension-name-help')
-            }
-            label={t('label.name')}
+    <Grid colGap="6">
+      <Grid.Item span={15}>
+        <Box direction="col" gap={5}>
+          <Controller
+            control={control}
             name="name"
-            rules={[
-              {
-                required: true,
-                message: t('label.field-required', { field: t('label.name') }),
-              },
-              {
-                pattern: /^[\w-]+$/,
+            render={({ field, fieldState }) => (
+              <Input
+                {...field}
+                isRequired
+                // The name is referenced by the API and by every test case relationship, so it
+                // is read-only once the dimension exists.
+                hint={
+                  fieldState.error?.message ??
+                  (isEditing
+                    ? t('message.dimension-name-is-fixed-after-creation')
+                    : t('message.dimension-name-help'))
+                }
+                inputDataTestId="dimension-name"
+                isDisabled={isEditing}
+                isInvalid={Boolean(fieldState.error)}
+                label={t('label.name')}
+              />
+            )}
+            rules={{
+              required: t('label.field-required', { field: t('label.name') }),
+              pattern: {
+                value: /^[\w-]+$/,
                 message: t('message.dimension-name-help'),
               },
-            ]}>
-            {/* The name is referenced by the API and by every test case relationship, so it is
-                read-only once the dimension exists. */}
-            <Input data-testid="dimension-name" disabled={isEditing} />
-          </Form.Item>
-          <Form.Item
-            extra={t('message.dimension-display-name-help')}
-            label={t('label.display-name')}
-            name="displayName">
-            <Input data-testid="dimension-display-name" />
-          </Form.Item>
-          <Form.Item label={t('label.description')} name="description">
-            <Input.TextArea
-              data-testid="dimension-description"
-              placeholder={t('message.dimension-description-placeholder')}
-              rows={4}
-            />
-          </Form.Item>
-          {/* The colour is held by the form itself — the swatches below write to it — so that
-              the preview re-renders from a watcher instead of from local state. */}
-          <Form.Item hidden name="color">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t('label.color')}>
-            <Space wrap size={8}>
-              {DIMENSION_COLOR_PALETTE.map((color) => (
+            }}
+          />
+
+          <Controller
+            control={control}
+            name="displayName"
+            render={({ field }) => (
+              <Input
+                {...field}
+                hint={t('message.dimension-display-name-help')}
+                inputDataTestId="dimension-display-name"
+                label={t('label.display-name')}
+                value={field.value ?? ''}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <TextArea
+                {...field}
+                data-testid="dimension-description"
+                label={t('label.description')}
+                placeholder={t('message.dimension-description-placeholder')}
+                rows={4}
+                value={field.value ?? ''}
+              />
+            )}
+          />
+
+          <Box direction="col" gap={2}>
+            <Typography as="label" size="text-sm" weight="medium">
+              {t('label.color')}
+            </Typography>
+            <Box gap={2} wrap="wrap">
+              {DIMENSION_COLOR_PALETTE.map((swatch) => (
                 <button
-                  aria-label={color}
-                  aria-pressed={watchedColor === color}
+                  aria-label={swatch}
+                  aria-pressed={color === swatch}
                   className={`dimension-color-swatch${
-                    watchedColor === color ? ' selected' : ''
+                    color === swatch ? ' selected' : ''
                   }`}
-                  data-testid={`color-${color}`}
-                  key={color}
-                  style={{ backgroundColor: color }}
+                  data-testid={`color-${swatch}`}
+                  key={swatch}
+                  style={{ backgroundColor: swatch }}
                   type="button"
-                  onClick={() => form.setFieldValue('color', color)}
+                  onClick={() =>
+                    setValue('color', swatch, { shouldDirty: true })
+                  }
                 />
               ))}
-            </Space>
-          </Form.Item>
-        </Col>
-        <Col span={9}>
-          <div className="dimension-side-panel">
-            <Typography.Text type="secondary">
-              {t('label.preview')}
-            </Typography.Text>
-            <div className="dimension-preview">
-              <span
-                className="dimension-color-dot"
-                style={{ backgroundColor: watchedColor }}
-              />
-              <Typography.Text strong>{previewLabel}</Typography.Text>
-            </div>
-            <Typography.Paragraph className="m-b-0" type="secondary">
-              {t('message.data-quality-dimensions-description')}
-            </Typography.Paragraph>
-          </div>
-        </Col>
-      </Row>
-    </Form>
+            </Box>
+          </Box>
+        </Box>
+      </Grid.Item>
+
+      <Grid.Item span={9}>
+        <Box className="dimension-side-panel" direction="col" gap={3}>
+          <Typography color="secondary" size="text-sm">
+            {t('label.preview')}
+          </Typography>
+          <Box align="center" className="dimension-preview" gap={2}>
+            <span
+              className="dimension-color-dot"
+              style={{ backgroundColor: color }}
+            />
+            <Typography size="text-sm" weight="semibold">
+              {previewLabel}
+            </Typography>
+          </Box>
+          <Typography color="secondary" size="text-sm">
+            {t('message.data-quality-dimensions-description')}
+          </Typography>
+        </Box>
+      </Grid.Item>
+    </Grid>
   );
 };
 

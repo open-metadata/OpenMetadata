@@ -10,13 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Space, Tag, Typography } from 'antd';
+import {
+  Badge,
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { PlusCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../components/common/atoms/drawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import {
   DeleteIconButton,
@@ -48,7 +55,7 @@ import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './data-quality-settings-page.less';
 import DeleteDimensionModal from './DeleteDimensionModal';
-import DimensionForm, { DimensionFormValues } from './DimensionForm';
+import DimensionForm, { type DimensionFormValues } from './DimensionForm';
 
 const DEFAULT_COLOR = DIMENSION_COLOR_PALETTE[0];
 
@@ -59,7 +66,17 @@ const countFor = (
 
 const DataQualitySettingsPage = () => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<DimensionFormValues>();
+  // react-hook-form rather than antd's: the drawer's hook variant drives validation and submit
+  // off it, and the form fields are core-components inputs bound with Controller.
+  const hookForm = useForm<DimensionFormValues>({
+    mode: 'onSubmit',
+    defaultValues: {
+      name: '',
+      displayName: '',
+      description: '',
+      color: DEFAULT_COLOR,
+    },
+  });
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,12 +94,6 @@ const DataQualitySettingsPage = () => {
   // `undefined` closes the drawer, `null` opens it in create mode.
   const [editing, setEditing] = useState<DataQualityDimension | null>();
   const [deleting, setDeleting] = useState<DataQualityDimension>();
-
-  // The colour lives in the form rather than in component state so that the preview below
-  // re-renders on every keystroke, not only when a swatch is clicked.
-  const watchedName = Form.useWatch('name', form);
-  const watchedDisplayName = Form.useWatch('displayName', form);
-  const watchedColor = Form.useWatch('color', form) ?? DEFAULT_COLOR;
 
   const breadcrumbs = useMemo(
     () =>
@@ -129,8 +140,8 @@ const DataQualitySettingsPage = () => {
     );
   }, [dimensions, searchTerm]);
 
-  // Remounting the form on every open (see the `key` below) is what makes these apply, so the
-  // drawer never shows the previously edited dimension.
+  // Fed to form.reset when the drawer opens: react-hook-form keeps one instance for the page, so
+  // the values are pushed in rather than applied by remounting the form.
   const initialValues: DimensionFormValues = useMemo(
     () => ({
       name: editing?.name ?? '',
@@ -211,20 +222,23 @@ const DataQualitySettingsPage = () => {
         dataIndex: 'name',
         key: 'name',
         render: (name: string, record) => (
-          <Space align="start" data-testid={`dimension-${name}`} size={8}>
+          <Box align="start" data-testid={`dimension-${name}`} gap={2}>
             <span
               className="dimension-color-dot"
               style={{ backgroundColor: record.style?.color ?? DEFAULT_COLOR }}
             />
-            <div>
-              <Typography.Text strong>
+            <Box direction="col">
+              <Typography size="text-sm" weight="semibold">
                 {record.displayName ?? name}
-              </Typography.Text>
-              <Typography.Paragraph className="dimension-technical-name">
+              </Typography>
+              <Typography
+                className="dimension-technical-name"
+                color="secondary"
+                size="text-xs">
                 {name}
-              </Typography.Paragraph>
-            </div>
-          </Space>
+              </Typography>
+            </Box>
+          </Box>
         ),
       },
       ...descriptionTableObject<DataQualityDimension>(),
@@ -234,11 +248,13 @@ const DataQualitySettingsPage = () => {
         key: 'provider',
         width: '120px',
         render: (provider?: ProviderType) => (
-          <Tag color={provider === ProviderType.System ? 'default' : 'blue'}>
+          <Badge
+            color={provider === ProviderType.System ? 'gray' : 'blue'}
+            size="sm">
             {provider === ProviderType.System
               ? t('label.system')
               : t('label.custom')}
-          </Tag>
+          </Badge>
         ),
       },
       {
@@ -261,7 +277,7 @@ const DataQualitySettingsPage = () => {
             : undefined;
 
           return (
-            <Space size={4}>
+            <Box gap={1}>
               <EditIconButton
                 data-testid={`edit-${record.name}`}
                 disabled={isSystem}
@@ -282,7 +298,7 @@ const DataQualitySettingsPage = () => {
                 }
                 onClick={() => setDeleting(record)}
               />
-            </Space>
+            </Box>
           );
         },
       },
@@ -291,15 +307,7 @@ const DataQualitySettingsPage = () => {
   );
 
   const dimensionForm = (
-    <DimensionForm
-      form={form}
-      formKey={editing?.id ?? 'new-dimension'}
-      initialValues={initialValues}
-      isEditing={Boolean(editing)}
-      previewLabel={watchedDisplayName || watchedName || t('label.dimension')}
-      watchedColor={watchedColor}
-      onFinish={handleSave}
-    />
+    <DimensionForm hookForm={hookForm} isEditing={Boolean(editing)} />
   );
 
   // Every dismissal path — cancel, the header X, Escape and the backdrop — ends up in the base
@@ -307,13 +315,11 @@ const DataQualitySettingsPage = () => {
   // and stops the effect from immediately reopening it.
   const handleDrawerClose = useCallback(() => {
     setEditing(undefined);
-    // Reopening in create mode reuses the same form key, so clear it here rather than relying
-    // on a remount.
-    form.resetFields();
-  }, [form]);
+    hookForm.reset();
+  }, [hookForm]);
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
-    useFormDrawerWithRef<DimensionFormValues>({
+    useFormDrawerWithHook<DimensionFormValues>({
       className: 'dimension-form-drawer',
       testId: 'dimension-drawer',
       title: editing
@@ -322,21 +328,23 @@ const DataQualitySettingsPage = () => {
       // Same three-quarter panel the create test case drawer uses.
       width: '75%',
       form: dimensionForm,
-      formRef: form,
+      hookForm,
       submitLabel: editing ? t('label.save') : t('label.create'),
       submitTestId: 'save-dimension',
       submitLoading: isSaving,
       onClose: handleDrawerClose,
-      onSubmit: () => form.submit(),
+      onSubmit: handleSave,
     });
 
   useEffect(() => {
     if (editing !== undefined) {
+      // Seeded on open rather than on mount: one form instance serves both create and edit.
+      hookForm.reset(initialValues);
       openDrawer();
     } else if (isOpen) {
       closeDrawer();
     }
-  }, [editing, isOpen, openDrawer, closeDrawer]);
+  }, [editing, initialValues, hookForm, isOpen, openDrawer, closeDrawer]);
 
   if (isLoading) {
     return <Loader />;
@@ -350,8 +358,8 @@ const DataQualitySettingsPage = () => {
       <div className="m-b-mlg">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </div>
-      <Row className="data-quality-settings-page" gutter={[0, 16]}>
-        <Col span={12}>
+      <Grid className="data-quality-settings-page" rowGap="4">
+        <Grid.Item span={12}>
           <PageHeader
             data={{
               header: t('label.data-quality'),
@@ -359,21 +367,22 @@ const DataQualitySettingsPage = () => {
             }}
             title={t('label.data-quality')}
           />
-        </Col>
-        <Col span={12}>
-          <Space align="center" className="w-full justify-end" size={16}>
+        </Grid.Item>
+        <Grid.Item span={12}>
+          <Box align="center" gap={4} justify="end">
             <Button
+              color="primary"
               data-testid="add-dimension"
-              icon={<PlusOutlined />}
-              type="primary"
+              iconLeading={PlusCircle}
+              size="md"
               onClick={() => setEditing(null)}>
               {t('label.add-entity', {
                 entity: t('label.dimension'),
               })}
             </Button>
-          </Space>
-        </Col>
-        <Col span={24}>
+          </Box>
+        </Grid.Item>
+        <Grid.Item span={24}>
           {/* The shared table renders the search box in its own toolbar, so the dimension list
               looks like every other settings list instead of carrying its own chrome. */}
           <Table
@@ -411,8 +420,8 @@ const DataQualitySettingsPage = () => {
             }}
             size="small"
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {formDrawer}
 
