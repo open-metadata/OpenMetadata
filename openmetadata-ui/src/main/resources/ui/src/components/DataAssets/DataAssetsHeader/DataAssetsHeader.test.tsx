@@ -181,24 +181,67 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
+// Captures the `editDisplayNamePermission` prop directly instead of rendering an opaque
+// div — needed to assert the rename affordance stays ungated on soft-deleted entities
+// (behavior parity with base commit 9cf866cd23: `permissions?.EditAll ||
+// permissions?.EditDisplayName`, unconditional, never gated by `deleted`).
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
-  () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          editDisplayNamePermission,
+        }: {
+          editDisplayNamePermission?: boolean;
+        }) => (
+          <div
+            data-edit-display-name-permission={String(
+              Boolean(editDisplayNamePermission)
+            )}
+            data-testid="manage-button">
+            ManageButton.component
+          </div>
+        )
+      )
 );
+// `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
+// drawer open through the *widget* path — the reachable path for a deleted entity, since
+// ManageButton's announcement menu item is independently gated on `!deleted` inside
+// ManageButton itself (ManageButton.tsx), regardless of the `onAnnouncementClick` value
+// DataAssetsHeader passes in.
 jest.mock(
   '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
     jest
       .fn()
-      .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
+      .mockImplementation(({ onViewAll }: { onViewAll?: () => void }) => (
+        <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+          AnnouncementsWidgetV3Body.component
+        </button>
+      ))
 );
 jest.mock('../../../rest/announcementsAPI', () => ({
   getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
 }));
+// Captures the `createPermission` prop directly instead of rendering an opaque div — needed
+// to assert `createPermission` stays ungated on soft-deleted entities (behavior parity with
+// base commit 9cf866cd23: `createPermission={permissions?.EditAll}`, unconditional, never
+// gated by `deleted`).
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
+    jest
+      .fn()
+      .mockImplementation(
+        ({ createPermission }: { createPermission?: boolean }) => (
+          <div
+            data-create-permission={String(Boolean(createPermission))}
+            data-testid="announcement-drawer"
+          />
+        )
+      )
 );
 
 jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
@@ -986,6 +1029,131 @@ describe('DataAssetsHeader component', () => {
     expect(
       screen.queryByTestId('request-data-access-button')
     ).not.toBeInTheDocument();
+  });
+
+  // Behavior parity with base commit 9cf866cd23: `createPermission={permissions?.EditAll}`
+  // is unconditional — never gated by `deleted`. Driven through the AnnouncementsWidgetV3Body
+  // "view all" click rather than ManageButton — that's the reachable path for a *deleted*
+  // entity, since ManageButton's own `onAnnouncementClick` menu item is independently gated
+  // on `!deleted` inside ManageButton itself and would never surface the drawer for a
+  // deleted entity in the first place.
+  describe('AnnouncementDrawer.createPermission wiring', () => {
+    it('grants createPermission for a soft-deleted entity reached via the AnnouncementsWidgetV3Body view-all click, when EditAll is granted', async () => {
+      (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'announcement-1' }],
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId('announcements-widget-view-all')
+      );
+
+      expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'true'
+      );
+    });
+
+    it('grants createPermission when EditAll is granted and the entity is not deleted', async () => {
+      (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'announcement-1' }],
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: false }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId('announcements-widget-view-all')
+      );
+
+      expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'true'
+      );
+    });
+  });
+
+  // Behavior parity with base commit 9cf866cd23: editDisplayNamePermission (ManageButton's
+  // rename affordance) was NOT deleted-gated in the pre-refactor code (`permissions?.EditAll
+  // || permissions?.EditDisplayName`, unconditional) — same as createPermission/
+  // onAnnouncementClick above, all three read raw `permissions?.EditAll` ungated in base. It
+  // must stay ungated: the only way back from soft-delete lives behind this same
+  // ManageButton, so gating its other affordances on `deleted` would strand the entity
+  // (TeamDetailsV1 `ungatedFlags` precedent).
+  describe('ManageButton.editDisplayNamePermission wiring', () => {
+    it('keeps the rename affordance enabled for a soft-deleted entity when EditAll is granted', () => {
+      // DEFAULT_ENTITY_PERMISSION sets EditDisplayName: false explicitly, and the
+      // field-priority derivation (kept per the ruling — deny-wins is convention) would let
+      // that explicit false win over EditAll. Omit the field key entirely so the
+      // prioritized lookup falls through to EditAll, isolating the assertion to the
+      // deleted-gating fix under test rather than field-vs-EditAll priority.
+      const { EditDisplayName: _omitted, ...permissionsWithoutFieldOverride } =
+        DEFAULT_ENTITY_PERMISSION;
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={
+            {
+              ...permissionsWithoutFieldOverride,
+              EditAll: true,
+            } as typeof DEFAULT_ENTITY_PERMISSION
+          }
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'true'
+      );
+    });
+
+    it('keeps the rename affordance enabled for a soft-deleted entity when EditDisplayName is explicitly granted', () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: false,
+            EditDisplayName: true,
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'true'
+      );
+    });
+
+    it('denies the rename affordance when EditAll and EditDisplayName are both denied, deleted or not', () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: false }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: false }}
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'false'
+      );
+    });
   });
 
   describe('dataContractLatestResultButton', () => {

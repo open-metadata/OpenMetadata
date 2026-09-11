@@ -24,7 +24,6 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import type { Tag } from '../../../generated/entity/classification/tag';
 import type { Topic } from '../../../generated/entity/data/topic';
 import type { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import type { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -45,10 +44,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
@@ -348,6 +344,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     []
   );
 
+  // Consumer via prop (Task 8 rule 2): `topicPermissions` is the raw
+  // OperationPermission fed from TopicDetailsPage (this file's owner) — contract
+  // kept raw (Task 7A precedent). Single `deleted`-gated derivation: every prior
+  // `getPrioritizedEditPermission(...) && !deleted` call is a pure rename to its
+  // matching `canEditX` flag (edit() ANDs !deleted internally), and every prior
+  // ungated `getPrioritizedViewPermission(...)` call is a pure rename to its
+  // matching `canViewX` flag (view() is never deleted-gated) — `deleted` only
+  // ever affected the edit half in the old code, exactly mirroring
+  // getDerivedPermissionFlags's own edit/view split. `editAllPermission` and
+  // `viewAllPermission` were the 2 flagged raw `topicPermissions.EditAll`/
+  // `.ViewAll` reads — now `canEditAll`/`canViewAll`, also pure renames.
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
@@ -358,42 +365,21 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(topicPermissions, Operation.EditTags) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          topicPermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          topicPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          topicPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: topicPermissions.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(topicPermissions, Operation.EditLineage) &&
-        !deleted,
-      viewSampleDataPermission: getPrioritizedViewPermission(
-        topicPermissions,
-        Operation.ViewSampleData
-      ),
-      viewAllPermission: topicPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        topicPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [topicPermissions, deleted]
-  );
+  } = useMemo(() => {
+    const flags = getDerivedPermissionFlags(topicPermissions, deleted);
+
+    return {
+      editTagsPermission: flags.canEditTags,
+      editGlossaryTermsPermission: flags.canEditGlossaryTerms,
+      editDescriptionPermission: flags.canEditDescription,
+      editCustomAttributePermission: flags.canEditCustomFields,
+      editAllPermission: flags.canEditAll,
+      editLineagePermission: flags.canEditLineage,
+      viewSampleDataPermission: flags.canViewSampleData,
+      viewAllPermission: flags.canViewAll,
+      viewCustomPropertiesPermission: flags.canViewCustomFields,
+    };
+  }, [topicPermissions, deleted]);
 
   useEffect(() => {
     fetchTaskCounts();
