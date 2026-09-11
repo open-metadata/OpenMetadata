@@ -313,10 +313,14 @@ const DataQualitySettingsPage = () => {
   // Every dismissal path — cancel, the header X, Escape and the backdrop — ends up in the base
   // drawer's onClose, so clearing `editing` there keeps the state below in step with the drawer
   // and stops the effect from immediately reopening it.
+  //
+  // Deliberately does NOT reset the form. onClose fires twice — once from our own closeDrawer
+  // and again when the overlay finishes its transition — and that second, late call lands after
+  // the user may already have reopened the drawer, wiping the values the open path had just
+  // seeded. Seeding on open is what keeps the form clean, so there is nothing to clear here.
   const handleDrawerClose = useCallback(() => {
     setEditing(undefined);
-    hookForm.reset();
-  }, [hookForm]);
+  }, []);
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<DimensionFormValues>({
