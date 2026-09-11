@@ -79,7 +79,7 @@ test.describe('Task Assignee Management', () => {
   test('admin can reassign an existing metadata task from the task details page', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
     await page.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(page);

@@ -2297,7 +2297,7 @@ test.describe('Right Panel Test Suite', () => {
         const page = await context.newPage();
 
         try {
-          await viewBasicUser.login(page);
+          await viewBasicUser.signIn(page);
           await viewBasicTable.visitEntityPage(page);
 
           const panelContainer = await openColumnDetailPanel({
@@ -2338,7 +2338,7 @@ test.describe('Right Panel Test Suite', () => {
         });
 
         try {
-          await viewBasicUser.login(page);
+          await viewBasicUser.signIn(page);
           await viewBasicTable.visitEntityPage(page);
 
           await openColumnDetailPanel({

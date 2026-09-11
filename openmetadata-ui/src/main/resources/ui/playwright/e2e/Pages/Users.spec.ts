@@ -122,19 +122,19 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -501,7 +501,7 @@ test.describe('User with Data Consumer Roles', () => {
 
     await dataConsumerUser.logout(dataConsumerPage);
 
-    await dataConsumerUser.login(
+    await dataConsumerUser.signIn(
       dataConsumerPage,
       dataConsumerUser.data.email,
       updatedUserDetails.newPassword
@@ -580,7 +580,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await dataStewardUser.logout(dataStewardPage);
 
-    await dataStewardUser.login(
+    await dataStewardUser.signIn(
       dataStewardPage,
       dataStewardUser.data.email,
       updatedUserDetails.newPassword

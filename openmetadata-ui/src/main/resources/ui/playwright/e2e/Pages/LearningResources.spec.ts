@@ -34,7 +34,7 @@ async function goToLearningResourcesAdmin(page: Page) {
   await page.waitForLoadState('domcontentloaded');
 
   if (page.url().includes('/signin')) {
-    await admin.login(page);
+    await admin.signIn(page);
   }
 
   await page.waitForURL(

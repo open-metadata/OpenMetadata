@@ -96,7 +96,7 @@ test.describe('Activity Feed - Home Page Widget', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should display activity feed widget on home page', async ({ page }) => {
@@ -225,7 +225,7 @@ test.describe('Activity Feed - Filters', () => {
   });
 
   test('All filter should show all activity', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -247,7 +247,7 @@ test.describe('Activity Feed - Filters', () => {
   test('My Data filter should show only owned entity activity', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -269,7 +269,7 @@ test.describe('Activity Feed - Filters', () => {
   });
 
   test('Tasks filter should show only tasks', async ({ page }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -295,7 +295,7 @@ test.describe('Activity Feed - Filters', () => {
   test('Activity Feed widget filters should switch between All Activity, My Data, and Following', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page, false);
 
     const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
@@ -328,7 +328,7 @@ test.describe('Activity Feed - Filters', () => {
   test('assignee should see assigned tasks in Tasks filter', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -416,7 +416,7 @@ test.describe('Activity Feed - Entity Page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should display activity feed tab on entity page', async ({ page }) => {
@@ -565,7 +565,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
   test('creating task should immediately appear in entity feed', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     // Go to activity feed
@@ -644,7 +644,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
       expect(patchResponse.ok()).toBe(true);
 
       const page = await browser.newPage();
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await table.visitEntityPage(page);
 
       // Go to activity feed
@@ -703,7 +703,7 @@ test.describe('Activity Feed - Following', () => {
   test('following an entity should show its activity in Following filter', async ({
     page,
   }) => {
-    await regularUser.login(page);
+    await regularUser.signIn(page);
     await table.visitEntityPage(page);
 
     // Follow the entity
@@ -791,7 +791,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('entity tab badge totals conversations, activity and tasks', async ({

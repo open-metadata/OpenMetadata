@@ -44,7 +44,7 @@ const createTaskAsAdmin = async (
 
 const getUserApiContext = async (browser: Browser, user: UserClass) => {
   const page = await browser.newPage();
-  await user.login(page);
+  await user.signIn(page);
   const { apiContext, afterAction } = await getApiContext(page);
 
   return {
@@ -336,7 +336,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   test('assignee (owner) should see approve/reject buttons', async ({
     page,
   }) => {
-    await ownerUser.login(page);
+    await ownerUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -363,7 +363,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   test('non-assignee without permissions should NOT see approve/reject buttons', async ({
     page,
   }) => {
-    await nonOwnerUser.login(page);
+    await nonOwnerUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -388,7 +388,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   });
 
   test('admin should always see approve/reject buttons', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -488,7 +488,7 @@ test.describe('Task Permissions - Team Assignment', () => {
   test('team member CAN resolve task assigned to team (team owns entity)', async ({
     page,
   }) => {
-    await teamMember.login(page);
+    await teamMember.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -511,7 +511,7 @@ test.describe('Task Permissions - Team Assignment', () => {
   });
 
   test('non-team member should NOT see approve button', async ({ page }) => {
-    await nonTeamMember.login(page);
+    await nonTeamMember.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -621,7 +621,7 @@ test.describe('Task Permissions - Task Creator', () => {
 
     // Try to close as creator user (who did NOT create this task)
     const page = await browser.newPage();
-    await creatorUser.login(page);
+    await creatorUser.signIn(page);
 
     // Navigate to task and try to close
     await table.visitEntityPage(page);

@@ -356,7 +356,7 @@ test.describe(
       const ownerPage = await browser.newPage();
 
       try {
-        await ownerUser.login(ownerPage);
+        await ownerUser.signIn(ownerPage);
         await redirectToHomePage(ownerPage);
         await ownerTeam.visitTeamPage(ownerPage);
         await waitForAllLoadersToDisappear(ownerPage);
@@ -437,7 +437,7 @@ test.describe(
 
         await test.step('Verify member cannot edit subscriptions', async () => {
           const memberPage = await browser.newPage();
-          await memberUser.login(memberPage);
+          await memberUser.signIn(memberPage);
           await redirectToHomePage(memberPage);
           await memberTeam.visitTeamPage(memberPage);
           await waitForAllLoadersToDisappear(memberPage);
@@ -490,7 +490,7 @@ test.describe(
       const page = await browser.newPage();
 
       await test.step('Login as data consumer and visit team page', async () => {
-        await dataConsumerUser.login(page);
+        await dataConsumerUser.signIn(page);
         await redirectToHomePage(page);
         await restrictedTeam.visitTeamPage(page);
         await waitForAllLoadersToDisappear(page);
@@ -539,7 +539,7 @@ test.describe(
       const page = await browser.newPage();
 
       await test.step('Login as data steward and visit team page', async () => {
-        await dataStewardUser.login(page);
+        await dataStewardUser.signIn(page);
         await redirectToHomePage(page);
         await stewardTeam.visitTeamPage(page);
         await waitForAllLoadersToDisappear(page);
