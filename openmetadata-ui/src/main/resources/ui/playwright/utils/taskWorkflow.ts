@@ -74,7 +74,7 @@ const selectTagSuggestion = async ({
   await waitForAntdPopupToSettle(page);
   await tagOption.click();
   await tagsInput.press('Escape');
-  await expect(tagSelector.getByTestId(tagTestId)).toBeVisible();
+  await expect(tagSelector.getByTestId(`selected-${tagTestId}`)).toBeVisible();
 };
 
 const clickDropdownMenuItem = async ({

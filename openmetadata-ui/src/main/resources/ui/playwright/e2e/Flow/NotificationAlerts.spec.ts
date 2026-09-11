@@ -588,7 +588,7 @@ test('destination should work properly', async ({ page }) => {
             page
               .getByTestId(`destination-${isGChat ? 0 : 1}`)
               .getByRole('alert')
-              .getByText(Status.Success, { exact: true })
+              .getByText('Status: 200 Success OK', { exact: true })
           )
           .toBeAttached();
       }
