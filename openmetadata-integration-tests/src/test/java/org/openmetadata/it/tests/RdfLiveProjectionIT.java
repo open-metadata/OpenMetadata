@@ -24,6 +24,8 @@ import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.jena.rdf.model.Model;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -50,8 +52,11 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfLiveWrite;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
+import org.openmetadata.service.rdf.RdfLiveWriter;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.testcontainers.containers.GenericContainer;
@@ -181,7 +186,8 @@ public class RdfLiveProjectionIT {
                 model.createResource("https://open-metadata.org/entity/table/" + table.getId()),
                 model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
                 model.createResource(
-                    "https://open-metadata.org/entity/glossaryTerm/" + term.getId())));
+                    "https://open-metadata.org/entity/glossaryTerm/" + term.getId())),
+            () -> "Expected glossary term " + term.getId() + " in table projection: " + model);
       } finally {
         model.close();
       }
@@ -189,6 +195,66 @@ public class RdfLiveProjectionIT {
     GlossaryTestFactory.delete(glossary);
     Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
     assertEquals(RdfProjectionState.READY, status());
+  }
+
+  @Test
+  void updatesInOneDrainReadTheLatestCommittedMetadata(final TestNamespace namespace)
+      throws Exception {
+    RdfUpdater.initialize(servingConfig);
+    final var store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
+    RdfUpdater.stop();
+    final var glossary = GlossaryTestFactory.createWithName(namespace, "liveUpdates");
+    final var term = GlossaryTermTestFactory.createWithName(namespace, glossary, "linkedTerm");
+    final var service = DatabaseServiceTestFactory.createPostgres(namespace);
+    final var schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+    final var table = TableTestFactory.createSimple(namespace, schema.getFullyQualifiedName());
+    final var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/tags/-")
+        .set(
+            "value",
+            JsonUtils.valueToTree(
+                new TagLabel()
+                    .withTagFQN(term.getFullyQualifiedName())
+                    .withSource(TagLabel.TagSource.GLOSSARY)
+                    .withLabelType(TagLabel.LabelType.MANUAL)
+                    .withState(TagLabel.State.CONFIRMED)));
+    final var command = new RdfLiveWrite.EntityUpdate(Entity.TABLE, table.getId());
+    store.enqueue(JsonUtils.pojoToJson(command));
+    store.enqueue(JsonUtils.pojoToJson(command));
+    final var firstWrite = new AtomicBoolean(true);
+    try (var executor = Executors.newSingleThreadExecutor();
+        var writer =
+            new RdfLiveWriter(
+                store,
+                update -> {
+                  update.apply(RdfRepository.getInstance());
+                  if (firstWrite.getAndSet(false)) {
+                    // Commit through another request while the same drain still has work.
+                    SdkClients.adminClient().tables().patch(table.getId(), patch);
+                  }
+                },
+                executor)) {
+      writer.start();
+      Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
+      try (var storage = new JenaFusekiStorage(servingConfig)) {
+        final Model model = storage.getEntity(Entity.TABLE, table.getId());
+        try {
+          assertTrue(
+              model.contains(
+                  model.createResource("https://open-metadata.org/entity/table/" + table.getId()),
+                  model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
+                  model.createResource(
+                      "https://open-metadata.org/entity/glossaryTerm/" + term.getId())),
+              "The second write in a drain must include the committed glossary assignment");
+        } finally {
+          model.close();
+        }
+      }
+    }
   }
 
   @Test

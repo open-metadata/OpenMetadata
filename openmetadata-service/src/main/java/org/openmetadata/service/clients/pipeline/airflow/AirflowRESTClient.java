@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
@@ -396,17 +397,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
       ServiceEntityInterface service,
       Map<String, Object> config) {
     String pipelineName = ingestionPipeline.getName();
+    String runId = UUID.randomUUID().toString();
     HttpResponse<String> response;
     try {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
+      requestPayload.put("run_id", runId);
       if (config != null) {
         requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
       }
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return getResponse(200, response.body());
+        return getResponse(200, response.body()).withRunId(runId);
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
