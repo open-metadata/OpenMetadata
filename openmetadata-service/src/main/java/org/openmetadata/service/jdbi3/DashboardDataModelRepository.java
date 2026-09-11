@@ -28,6 +28,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -255,7 +257,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       DashboardDataModel updated,
       Operation operation,
       ChangeSource changeSource) {
-    return new DataModelUpdater(original, updated, operation);
+    return new DataModelUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -267,8 +269,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public class DataModelUpdater extends ColumnEntityUpdater {
 
     public DataModelUpdater(
-        DashboardDataModel original, DashboardDataModel updated, Operation operation) {
-      super(original, updated, operation);
+        DashboardDataModel original,
+        DashboardDataModel updated,
+        Operation operation,
+        ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -317,35 +322,35 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     DashboardDataModel fullDataModel =
         get(null, dataModel.getId(), getFields(Set.of("columns")), include, false);
 
-    List<Column> allColumns = fullDataModel.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
-    }
+    // A null sortBy keeps the stored column order, which is this endpoint's contract and differs
+    // from the table endpoint's name-ascending default.
+    ResultList<FieldInterface> page =
+        new ChildFieldPageReader(this, ChildFieldResolver.specFor(Entity.DASHBOARD_DATA_MODEL))
+            .read(
+                fullDataModel,
+                limit,
+                offset,
+                fieldsParam,
+                null,
+                null,
+                (parent, columns, requestedFields) ->
+                    addColumnExtensions(dataModel, columns, requestedFields));
 
-    // Apply pagination
-    int total = allColumns.size();
-    int fromIndex = Math.min(offset, total);
-    int toIndex = Math.min(offset + limit, total);
+    ResultList<Column> result = new ResultList<>();
+    result.setData(page.getData().stream().map(Column.class::cast).toList());
+    result.setPaging(page.getPaging());
+    return result;
+  }
 
-    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
-
-    // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
-      populateEntityFieldTags(
-          entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
-    }
-
+  private List<FieldInterface> addColumnExtensions(
+      DashboardDataModel dataModel, List<FieldInterface> page, String fieldsParam) {
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      for (Column column : paginatedColumns) {
-        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+      for (FieldInterface field : page) {
+        ((Column) field)
+            .setExtension(getColumnExtension(dataModel.getId(), field.getFullyQualifiedName()));
       }
     }
-
-    // Calculate pagination metadata
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-    return new ResultList<>(paginatedColumns, before, after, total);
+    return page;
   }
 
   public Column enrichSingleColumnFields(

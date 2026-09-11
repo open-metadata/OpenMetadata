@@ -205,9 +205,11 @@ public class ColumnChildTypesIT {
                                         new Field()
                                             .withName("userId")
                                             .withDataType(FieldDataType.STRING)))));
+        // An apiEndpoint schema field's FQN carries the schema segment: the endpoint has two
+        // schemas and a bare <endpoint>.<field> would be ambiguous between them.
         yield new ChildFixture(
             entityType,
-            endpoint.getFullyQualifiedName() + ".userId",
+            endpoint.getFullyQualifiedName() + ".responseSchema.userId",
             endpoint.getFullyQualifiedName());
       }
       default -> throw new IllegalArgumentException("No fixture for " + entityType);
@@ -281,11 +283,18 @@ public class ColumnChildTypesIT {
     ChildFixture fixture = createFixture("pipeline", ns);
     OpenMetadataClient client = SdkClients.adminClient();
     String body = OBJECT_MAPPER.writeValueAsString(Map.of("displayName", "Extract step"));
-    client.getHttpClient().executeForString(HttpMethod.PUT, childUrl(fixture), body);
+    String putResponse =
+        client.getHttpClient().executeForString(HttpMethod.PUT, childUrl(fixture), body);
+    assertTrue(
+        OBJECT_MAPPER.readTree(putResponse).path("displayName").asText().equals("Extract step"),
+        "the write must apply displayName to the returned child: " + putResponse);
 
     String getResponse =
         client.getHttpClient().executeForString(HttpMethod.GET, childUrl(fixture), null);
-    assertEquals("Extract step", OBJECT_MAPPER.readTree(getResponse).get("displayName").asText());
+    assertEquals(
+        "Extract step",
+        OBJECT_MAPPER.readTree(getResponse).path("displayName").asText(),
+        "displayName must survive the round trip: " + getResponse);
   }
 
   @Test
@@ -334,17 +343,19 @@ public class ColumnChildTypesIT {
         .getHttpClient()
         .executeForString(HttpMethod.PUT, childUrl(fixture) + "&changeSource=Automated", body);
 
-    String parent =
+    // changeSummary has its own endpoint; it is not a projectable field on the entity.
+    String topic =
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET,
-                "/v1/topics/name/"
-                    + encodeURIComponent(fixture.parentFqn())
-                    + "?fields=changeSummary",
-                null);
-    JsonNode changeSummary = OBJECT_MAPPER.readTree(parent).get("changeSummary");
-    assertNotNull(changeSummary, "changeSummary must be present when requested via fields");
+                HttpMethod.GET, "/v1/topics/name/" + encodeURIComponent(fixture.parentFqn()), null);
+    String topicId = OBJECT_MAPPER.readTree(topic).get("id").asText();
+    String summaryResponse =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/changeSummary/topic/" + topicId, null);
+    JsonNode changeSummary = OBJECT_MAPPER.readTree(summaryResponse).get("changeSummary");
+    assertNotNull(changeSummary, "the changeSummary endpoint must return a changeSummary object");
 
     // Assert the entry for THIS child. A body-wide contains("Automated") would pass on any
     // unrelated field's change source.

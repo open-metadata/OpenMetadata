@@ -390,7 +390,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityRepository<MlModel>.EntityUpdater getUpdater(
       MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
-    return new MlModelUpdater(original, updated, operation);
+    return new MlModelUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -435,8 +435,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
-    public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
-      super(original, updated, operation);
+    public MlModelUpdater(
+        MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
