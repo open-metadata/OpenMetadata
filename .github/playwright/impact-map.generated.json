@@ -8432,11 +8432,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/EntitySummaryDetails/EntitySummaryDetails.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
-        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
