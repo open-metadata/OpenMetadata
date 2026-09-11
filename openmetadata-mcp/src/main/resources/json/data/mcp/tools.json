@@ -52,7 +52,7 @@
       },
       "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. This is also how you answer 'show me everything tagged X': a 'term' clause on 'tags.tagFQN' in 'queryFilter' matches every asset carrying that classification tag OR glossary term, since both land in the 'tags' array. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
-        "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
+        "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties. The active persona's search scope is applied automatically; only search beyond it after a scoped miss and with the user's agreement.",
         "type": "object",
         "properties": {
           "query": {
@@ -106,6 +106,11 @@
               "type": "string"
             },
             "description": "Entity types to drop from the results, e.g. ['tableColumn']. Column documents sit inside the default 'dataAsset' scope, so a broad sweep can return mostly columns inheriting their parent's tags or certification. Excluded hits are removed and counted under 'excludedByType'."
+          },
+          "ignorePersonaScope": {
+            "type": "boolean",
+            "description": "Bypass the active persona's default search scope. Keep false on the first search. Set true only after the scoped search returns no results or clearly misses the request, and the user asks or agrees to search beyond their persona scope.",
+            "default": false
           }
         },
         "required": [],
@@ -188,7 +193,7 @@
       },
       "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns compact entity summaries: name, description, column NAMES (not full column definitions), and metadata. References (service, database, databaseSchema, owners, domains) and tags are returned as fully-qualified-name strings rather than nested objects, so they can be passed straight to another tool. Column name lists are capped per hit and flagged with 'columnNamesTruncated'/'totalColumns'. Use get_entity_details for full column definitions. Metric results additionally carry 'metricExpression', 'metricType', 'granularity' and 'unitOfMeasurement' — enough to tell similarly named metrics apart (e.g. daily vs monthly active users) and shortlist the right one without fetching each candidate. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information, including custom properties ('extension'), which summaries never include. One result is returned per entity: the best-matching passage represents it.",
       "parameters": {
-        "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
+        "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags. The active persona's search scope is applied automatically; only search beyond it after a scoped miss and with the user's agreement.",
         "type": "object",
         "properties": {
           "query": {
@@ -229,6 +234,11 @@
           "cursor": {
             "type": "string",
             "description": "Opaque pagination token. Pass the 'nextCursor' value from a previous response to fetch the next page. Omit for the first page."
+          },
+          "ignorePersonaScope": {
+            "type": "boolean",
+            "description": "Bypass the active persona's default search scope. Keep false on the first search. Set true only after the scoped search returns no results or clearly misses the request, and the user asks or agrees to search beyond their persona scope.",
+            "default": false
           }
         },
         "required": [

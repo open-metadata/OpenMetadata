@@ -568,6 +568,152 @@ class UserUtilTest {
   }
 
   @Test
+  void getRolesFromAuthorizationTokenKeepsNullDistinctFromEmpty() {
+    // A token with no roles claim must stay null all the way to the sync, otherwise it is
+    // indistinguishable from a provider that revoked every role.
+    CatalogSecurityContext noRolesClaim =
+        new CatalogSecurityContext(
+            () -> "alice", "https", CatalogSecurityContext.OPENID_AUTH, null);
+    CatalogSecurityContext emptyRolesClaim =
+        new CatalogSecurityContext(
+            () -> "alice", "https", CatalogSecurityContext.OPENID_AUTH, Set.of());
+
+    assertNull(UserUtil.getRolesFromAuthorizationToken(noRolesClaim));
+    assertEquals(Set.of(), UserUtil.getRolesFromAuthorizationToken(emptyRolesClaim));
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenLeavesRolesAloneWhenProviderSentNoRolesClaim() {
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice", "DataSteward");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, null));
+
+      assertEquals(List.of("DataSteward"), roleNames(user));
+      verifyNoInteractions(userRepository);
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenRevokesEveryRoleWhenProviderSendsAnEmptyClaim() {
+    UUID userId = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice", "DataSteward").withId(userId);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
+
+      assertEquals(List.of(), roleNames(user));
+      verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenIsANoOpWhenBothSidesHaveNoRoles() {
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
+
+      verifyNoInteractions(userRepository);
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenDropsNonAdminRolesWhenProviderSendsOnlyAdmin() {
+    UUID userId = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice", "DataSteward").withId(userId);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(ADMIN_ROLE)));
+
+      assertTrue(user.getIsAdmin());
+      assertEquals(List.of(), roleNames(user));
+      verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenDoesNotDemoteAdminsWhenProviderOmitsTheAdminRole() {
+    // adminPrincipals grants admin outside the provider, so a missing admin role in the token is
+    // not enough to conclude the user should lose it.
+    UUID userId = UUID.randomUUID();
+    Role dataConsumerRole =
+        new Role()
+            .withId(UUID.randomUUID())
+            .withName("DataConsumer")
+            .withFullyQualifiedName("DataConsumer");
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice").withId(userId).withIsAdmin(true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.ROLE, "DataConsumer", "id", NON_DELETED, true))
+          .thenReturn(dataConsumerRole);
+
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer")));
+
+      assertTrue(user.getIsAdmin());
+      assertEquals(List.of("DataConsumer"), roleNames(user));
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenSkipsRolesThatDoNotExistInOpenMetadata() {
+    UUID userId = UUID.randomUUID();
+    Role dataConsumerRole =
+        new Role()
+            .withId(UUID.randomUUID())
+            .withName("DataConsumer")
+            .withFullyQualifiedName("DataConsumer");
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice", "OldRole").withId(userId);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.ROLE, "DataConsumer", "id", NON_DELETED, true))
+          .thenReturn(dataConsumerRole);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.ROLE, "GhostRole", "id", NON_DELETED, true))
+          .thenThrow(EntityNotFoundException.class);
+
+      assertTrue(
+          UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer", "GhostRole")));
+
+      assertEquals(List.of("DataConsumer"), roleNames(user));
+    }
+  }
+
+  private static User userWithRoles(String name, String... roleNames) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withIsAdmin(false)
+        .withRoles(
+            java.util.Arrays.stream(roleNames)
+                .map(roleName -> new EntityReference().withName(roleName))
+                .toList());
+  }
+
+  private static List<String> roleNames(User user) {
+    return user.getRoles().stream().map(EntityReference::getName).toList();
+  }
+
+  @Test
   void getUserOrBotFallsBackToBotWhenUserDoesNotExist() {
     EntityReference botReference =
         new EntityReference()

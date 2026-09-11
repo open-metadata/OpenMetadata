@@ -275,6 +275,104 @@ class MigrationWorkflowReprocessingTest {
     assertFalse(toApply.get(1).isReprocessing());
   }
 
+  // --- Java data migration rollout (issue #31478) ---
+
+  @Test
+  void testDataMigrationAddedToAnAlreadyRecordedVersionIsNotApplied() throws IOException {
+    // The release-1-13 state: 1.13.5 shipped, was recorded, and 1.13.6 was recorded after it. A
+    // Java data migration added to v1135 afterwards can never run — 1.13.5 is not the release
+    // train's highest recorded version, so processNativeMigrations drops it outright. This is why
+    // the #31478 chart rewrite moved out of 1.13.5 (see the 1.13.6 SQL migration).
+    MigrationFile v1134 = createMigrationDir("1.13.4", "ALTER TABLE test ADD COLUMN a INT;");
+    MigrationFile v1135 = createMigrationDir("1.13.5", "ALTER TABLE test ADD COLUMN b INT;");
+    MigrationFile v1136 = createMigrationDir("1.13.6", "ALTER TABLE test ADD COLUMN c INT;");
+
+    List<MigrationFile> available = List.of(v1134, v1135, v1136);
+    List<String> executed = List.of("1.13.4", "1.13.5", "1.13.6");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+    List<String> toApply =
+        workflow.getMigrationsToApply(executed, available).stream().map(m -> m.version).toList();
+
+    assertFalse(toApply.contains("1.13.5"), "1.13.5 must not be reachable once 1.13.6 is recorded");
+    assertEquals(List.of("1.13.6"), toApply);
+  }
+
+  @Test
+  void testDataMigrationOnTheHighestRecordedVersionIsDroppedWithoutNewSql() throws IOException {
+    // Even while it is still the highest recorded version, a version whose SQL has already run is
+    // dropped by filterAndGetMigrationsToRun (isReprocessing() && !hasNewStatements()), so
+    // runDataMigration() is never reached and a Java data migration added to it silently no-ops.
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn("already ran");
+
+    MigrationFile v1134 = createMigrationDir("1.13.4", "ALTER TABLE test ADD COLUMN a INT;");
+    MigrationFile v1135 = createMigrationDir("1.13.5", "ALTER TABLE test ADD COLUMN b INT;");
+
+    List<MigrationFile> available = List.of(v1134, v1135);
+    List<String> executed = List.of("1.13.4", "1.13.5");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+    List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
+
+    assertEquals(1, toApply.size());
+    MigrationFile reprocessed = toApply.getFirst();
+    assertEquals("1.13.5", reprocessed.version);
+    assertTrue(reprocessed.isReprocessing());
+    reprocessed.parseSQLFiles();
+    assertFalse(reprocessed.hasNewStatements());
+  }
+
+  @Test
+  void testNewSqlInAnOlderRecordedVersionDoesNotBringItBack() throws IOException {
+    // Adding a statement to 1.13.5 to force hasNewStatements() does not help once 1.13.6 is
+    // recorded: 1.13.5 and 1.13.6 share a ReleaseTrain, so only 1.13.6 is a reprocessing
+    // candidate and 1.13.5 is dropped by processNativeMigrations before its SQL is ever parsed.
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
+
+    MigrationFile v1134 = createMigrationDir("1.13.4", "ALTER TABLE test ADD COLUMN a INT;");
+    MigrationFile v1135 = createMigrationDir("1.13.5", "SELECT 1;");
+    MigrationFile v1136 = createMigrationDir("1.13.6", "ALTER TABLE test ADD COLUMN c INT;");
+
+    List<MigrationFile> available = List.of(v1134, v1135, v1136);
+    List<String> executed = List.of("1.13.4", "1.13.5", "1.13.6");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+    List<String> toApply =
+        workflow.getMigrationsToApply(executed, available).stream().map(m -> m.version).toList();
+
+    assertEquals(List.of("1.13.6"), toApply);
+  }
+
+  @Test
+  void testNewSqlOnTheHighestRecordedVersionDoesBringItBack() throws IOException {
+    // Why the #31478 repair is SQL in the release train's highest version rather than Java in an
+    // older one: that version still reprocesses, and a statement whose checksum is absent from
+    // SERVER_MIGRATION_SQL_LOGS makes hasNewStatements() true, so the version is kept and its SQL
+    // runs. runSchemaChanges/runPostDDLChanges are not behind shouldRunDataMigration, so unlike
+    // runDataMigration() the SQL reaches a deployment that already recorded the version.
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
+
+    MigrationFile v1134 = createMigrationDir("1.13.4", "ALTER TABLE test ADD COLUMN a INT;");
+    MigrationFile v1135 = createMigrationDir("1.13.5", "SELECT 1;");
+
+    List<MigrationFile> available = List.of(v1134, v1135);
+    List<String> executed = List.of("1.13.4", "1.13.5");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+    List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
+
+    assertEquals(1, toApply.size());
+    MigrationFile reprocessed = toApply.getFirst();
+    assertEquals("1.13.5", reprocessed.version);
+    assertTrue(reprocessed.isReprocessing());
+    reprocessed.parseSQLFiles();
+    assertTrue(reprocessed.hasNewStatements());
+  }
+
   // --- FlywayMigrationFile tests ---
 
   @Test
