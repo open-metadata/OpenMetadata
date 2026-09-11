@@ -456,6 +456,7 @@
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
@@ -2065,6 +2066,7 @@
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/ApiDocs.spec.ts",
@@ -2779,6 +2781,7 @@
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
@@ -2856,6 +2859,7 @@
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
@@ -3145,6 +3149,7 @@
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
@@ -3606,6 +3611,7 @@
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
@@ -6991,6 +6997,7 @@
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerLocaleLayout.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -7949,6 +7956,7 @@
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -7959,6 +7967,7 @@
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -7969,6 +7978,7 @@
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -7995,6 +8005,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -8028,6 +8039,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -8596,6 +8608,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     },
@@ -8798,6 +8811,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilderWidgetV1/QueryBuilderWidgetV1.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     },
@@ -9785,6 +9799,7 @@
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
@@ -10995,7 +11010,8 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/AdvancedSearchUtils.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AdvancedSearch.spec.ts"
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/Workflows/TableCpCheckCondition.spec.ts"
       ]
     },
     {
