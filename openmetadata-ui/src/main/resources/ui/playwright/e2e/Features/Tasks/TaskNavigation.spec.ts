@@ -150,7 +150,7 @@ const expectTaskDestination = async (page: Page, { table }: NavigationData) => {
   const expectedPath = `/table/${encodeURIComponent(
     getTableFqn(table)
   )}/activity_feed/tasks`;
-  await expect(page).toHaveURL((url) => url.pathname === expectedPath);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(expectedPath);
   await expect(page.getByTestId('entity-header-name')).toHaveText(
     table.entityResponseData.name
   );

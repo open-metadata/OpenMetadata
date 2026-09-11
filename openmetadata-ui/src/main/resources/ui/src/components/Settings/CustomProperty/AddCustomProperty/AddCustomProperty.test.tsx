@@ -116,7 +116,7 @@ describe('AddCustomProperty form validation', () => {
     });
     (
       addPropertyToEntity as jest.MockedFunction<typeof addPropertyToEntity>
-    ).mockResolvedValue(tableType);
+    ).mockImplementation(async (_entityTypeId, property) => property);
   });
 
   it.each([

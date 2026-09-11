@@ -22,6 +22,8 @@ export default {
     messages: {
       navigationLoad:
         "Use an explicit waitUntil: 'domcontentloaded' (or 'commit') and assert the destination UI/API state. The default load event can hang on unrelated external resources.",
+      urlPredicateLoad:
+        'The toHaveURL predicate waits for the full load event. Use expect.poll on page.url() for URL predicates so unrelated resources cannot block SPA navigation.',
     },
   },
   create(context) {
@@ -30,6 +32,16 @@ export default {
         if (node.callee.type !== 'MemberExpression' || node.callee.computed)
           return;
         const method = node.callee.property.name;
+        if (
+          method === 'toHaveURL' &&
+          ['ArrowFunctionExpression', 'FunctionExpression'].includes(
+            node.arguments[0]?.type
+          )
+        ) {
+          context.report({ node, messageId: 'urlPredicateLoad' });
+
+          return;
+        }
         if (
           ![
             'goto',

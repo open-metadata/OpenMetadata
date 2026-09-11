@@ -83,13 +83,13 @@ test.describe('Home activity and task widgets', () => {
     await getTaskCard(page, task.responseData!.taskId, widget)
       .getByTestId('redirect-task-button-link')
       .click();
-    await expect(page).toHaveURL(
-      (url) =>
-        url.pathname ===
+    await expect
+      .poll(() => new URL(page.url()).pathname)
+      .toBe(
         `/table/${encodeURIComponent(
           getTableFqn(data.table)
         )}/activity_feed/tasks`
-    );
+      );
     await expect(page.getByTestId('entity-header-name')).toHaveText(
       data.table.entityResponseData.name
     );

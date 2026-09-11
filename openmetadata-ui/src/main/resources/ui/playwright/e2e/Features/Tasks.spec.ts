@@ -139,11 +139,11 @@ const openTasks = async (page: Page, table: TableClass) => {
 };
 
 const expectDestination = async (page: Page, table: TableClass) => {
-  await expect(page).toHaveURL(
-    (url) =>
-      url.pathname ===
+  await expect
+    .poll(() => new URL(page.url()).pathname)
+    .toBe(
       `/table/${encodeURIComponent(getTableFqn(table))}/activity_feed/tasks`
-  );
+    );
   await expect(page.getByTestId('entity-header-name')).toHaveText(
     table.entityResponseData.name
   );

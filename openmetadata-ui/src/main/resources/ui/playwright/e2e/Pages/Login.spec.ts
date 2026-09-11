@@ -123,9 +123,9 @@ test.describe(
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(
-        (url) => url.pathname === '/' || url.pathname === '/my-data'
-      );
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toMatch(/^\/(?:my-data)?$/);
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
@@ -156,9 +156,9 @@ test.describe(
         await nonAsciiUser.create(apiContext);
         await nonAsciiUser.login(page);
 
-        await expect(page).toHaveURL(
-          (url) => !url.pathname.includes('/signin')
-        );
+        await expect
+          .poll(() => new URL(page.url()).pathname)
+          .not.toContain('/signin');
 
         await page.getByTestId('dropdown-profile').click();
 

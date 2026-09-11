@@ -63,8 +63,13 @@ for (const collapsed of [true, false]) {
     page,
   }) => {
     await page.route('http://sidebar.test/**', (route) =>
-      route.fulfill({ contentType: 'text/html', body: '<div id="root"></div>' })
+      route.fulfill({
+        contentType: 'text/html',
+        body: '<div id="root"></div><img src="/slow-image" alt="">',
+      })
     );
+    // An unrelated image must not hold SPA navigation open until window.load.
+    await page.route('http://sidebar.test/slow-image', () => undefined);
     await page.goto(`http://sidebar.test/my-data?collapsed=${collapsed}`, {
       waitUntil: 'domcontentloaded',
     });

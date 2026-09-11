@@ -30,6 +30,9 @@ tester.run('no-implicit-navigation-load', rule, {
     "page.waitForURL('**/table/test', { waitUntil: 'domcontentloaded', timeout: 1000 });",
     "page.waitForLoadState('domcontentloaded');",
     "page.getByRole('button').click();",
+    "expect(page).toHaveURL('/table/test');",
+    'expect(page).toHaveURL(/table/);',
+    "expect.poll(() => new URL(page.url()).pathname).toBe('/table/test');",
   ],
   invalid: [
     "page.goto('/table/test');",
@@ -43,4 +46,12 @@ tester.run('no-implicit-navigation-load', rule, {
     'page.waitForLoadState();',
     "page.waitForLoadState('load');",
   ].map((code) => ({ code, errors: [{ messageId: 'navigationLoad' }] })),
+});
+
+tester.run('no-implicit-navigation-load URL predicates', rule, {
+  valid: [],
+  invalid: [
+    "expect(page).toHaveURL((url) => url.pathname === '/table/test');",
+    "expect(page).not.toHaveURL(function (url) { return url.pathname === '/signin'; });",
+  ].map((code) => ({ code, errors: [{ messageId: 'urlPredicateLoad' }] })),
 });

@@ -44,7 +44,7 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
   await targetElement.click();
   if (href) {
     const pathname = new URL(href, page.url()).pathname;
-    await expect(page).toHaveURL((url) => url.pathname === pathname);
+    await expect.poll(() => new URL(page.url()).pathname).toBe(pathname);
   }
 };
 
