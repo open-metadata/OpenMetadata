@@ -46,9 +46,10 @@ def _make_user_mixin() -> OMetaUserMixin:
     return mixin
 
 
-def _make_create_query_request(sql: str) -> CreateQueryRequest:
+def _make_create_query_request(sql: str, service: str = "default_service") -> CreateQueryRequest:
     request = MagicMock()
     request.query.root = sql
+    request.service = service
     request.model_dump_json.return_value = "{}"
     return request
 
@@ -77,9 +78,7 @@ class TestQueryGetOrCreateCache:
         mixin.get_suffix = MagicMock(return_value="/queries")
 
         request_a = _make_create_query_request("SELECT * FROM customers")
-        with patch(
-            "metadata.ingestion.ometa.mixins.query_mixin.Query", return_value=query_entity
-        ):
+        with patch("metadata.ingestion.ometa.mixins.query_mixin.Query", return_value=query_entity):
             result_a = mixin._get_or_create_query(request_a)
 
         assert result_a is query_entity
@@ -144,3 +143,39 @@ class TestCachedUserReference:
         assert result_a is ref_a
         assert result_b is ref_b
         assert mixin.get_entity_reference.call_count == 2
+
+
+class TestQueryCacheKeyIncludesService:
+    def test_same_sql_different_services_are_cached_separately(self):
+        mixin = _make_query_mixin()
+        entity_a = MagicMock(spec=Query)
+        entity_b = MagicMock(spec=Query)
+
+        def get_by_name_side_effect(entity, fqn):
+            if fqn == "service_a.SAME_HASH":
+                return entity_a
+            if fqn == "service_b.SAME_HASH":
+                return entity_b
+            return None
+
+        mixin.get_by_name = MagicMock(side_effect=get_by_name_side_effect)
+        mixin._get_query_hash = MagicMock(return_value="SAME_HASH")
+
+        request_a = _make_create_query_request("SELECT * FROM orders", service="service_a")
+        request_b = _make_create_query_request("SELECT * FROM orders", service="service_b")
+
+        result_a = mixin._get_or_create_query(request_a)
+        result_b = mixin._get_or_create_query(request_b)
+
+        assert result_a is entity_a
+        assert result_b is entity_b, (
+            "identical SQL under a different service must not reuse the first service's cached Query entity"
+        )
+        assert mixin.get_by_name.call_count == 2
+
+        # Second call for each should now hit the cache, not call get_by_name again.
+        result_a_again = mixin._get_or_create_query(
+            _make_create_query_request("SELECT * FROM orders", service="service_a")
+        )
+        assert result_a_again is entity_a
+        assert mixin.get_by_name.call_count == 2, "second lookup for service_a should be cached"

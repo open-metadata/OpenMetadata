@@ -26,7 +26,6 @@ from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.models import Either
