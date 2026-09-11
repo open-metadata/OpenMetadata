@@ -244,8 +244,12 @@ jest.mock(
       )
 );
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div>TagsV1.component</div>)
+jest.mock('../../common/atoms/Tag/ClassificationTag', () =>
+  jest
+    .fn()
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    ))
 );
 
 jest.mock('../../../rest/storageAPI', () => ({
@@ -306,6 +310,7 @@ jest.mock('../../Modals/IconColorModal', () =>
 );
 
 jest.mock('../../../utils/RouterUtils', () => ({
+  ...jest.requireActual('../../../utils/RouterUtils'),
   getEntityDetailsPath: jest.fn(),
 }));
 
@@ -518,7 +523,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(screen.getByText('TagsV1.component')).toBeInTheDocument();
+    expect(screen.getByTestId('Tier')).toBeInTheDocument();
   });
 
   it('should not render the Tier data if not  present', () => {
