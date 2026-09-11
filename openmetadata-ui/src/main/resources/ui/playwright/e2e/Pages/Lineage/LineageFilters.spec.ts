@@ -72,6 +72,9 @@ interface LineageFilterConfig {
   ) => Promise<void>;
   filterValue: string;
   searchField?: string;
+  // Value to match in the search index when it differs from the label the
+  // filter dropdown renders (tier shows the tag name, the index stores the FQN).
+  searchValue?: string;
 }
 
 // Contains list of entity supported
@@ -302,13 +305,22 @@ test.describe('Lineage Filters', () => {
           });
         }
       },
-      filterValue: EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+      // The tier option renders the tag name, not the FQN
+      filterValue: EntityDataClass.tierTag1.responseData.name,
       searchField: 'tier.tagFQN',
+      searchValue: EntityDataClass.tierTag1.responseData.fullyQualifiedName,
     },
   ];
 
   filterConfigs.forEach(
-    ({ filterName, filterTestId, setupMetadata, filterValue, searchField }) => {
+    ({
+      filterName,
+      filterTestId,
+      setupMetadata,
+      filterValue,
+      searchField,
+      searchValue,
+    }) => {
       test(`Verify ${filterName} filter for Lineage`, async ({ page }) => {
         const { apiContext, afterAction } = await getApiContext(page);
 
@@ -331,7 +343,7 @@ test.describe('Lineage Filters', () => {
           const queryFilter = JSON.stringify({
             query: {
               bool: {
-                must: [{ term: { [searchField]: filterValue } }],
+                must: [{ term: { [searchField]: searchValue ?? filterValue } }],
               },
             },
           });

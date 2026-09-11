@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
@@ -151,7 +150,7 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.owner-plural')}
                 </Typography>
-                {renderDomainOwnersCell(entity, { showDashPlaceholder: true })}
+                {renderDomainOwnersCell(entity, true)}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -182,9 +181,7 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.glossary-term-plural')}
                 </Typography>
-                {renderDomainGlossaryTagsCell(entity, {
-                  emptyPlaceholder: NO_DATA_PLACEHOLDER,
-                })}
+                {renderDomainGlossaryTagsCell(entity)}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -195,9 +192,7 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.tag-plural')}
                 </Typography>
-                {renderDomainClassificationTagsCell(entity, {
-                  emptyPlaceholder: NO_DATA_PLACEHOLDER,
-                })}
+                {renderDomainClassificationTagsCell(entity)}
               </Box>
             </Grid.Item>
           </Grid>

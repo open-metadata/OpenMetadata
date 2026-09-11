@@ -21,6 +21,7 @@ import { TableClass } from '../support/entity/TableClass';
 import {
   fetchCompletedCsvAsyncJobResult,
   getApiContext,
+  redirectToHomePage,
   toastNotification,
   uuid,
 } from './common';
@@ -908,4 +909,26 @@ export const performE2EExportImportFlow = async (
     await expect(page.getByText(/ - Updated via Bulk Edit/)).toBeVisible();
     await expect(page.getByText(/ - Bulk Edited/)).toBeVisible();
   });
+};
+
+/**
+ * Open a test case's details page and wait for it to settle.
+ *
+ * App mode is the caller's choice — seed it (see `enableAiAppMode`) before
+ * calling this, so the helper stays usable from either mode's specs and
+ * `playwright/utils` keeps its one-way dependency on `playwright/e2e`.
+ */
+export const openTestCaseDetailsPage = async (
+  page: Page,
+  testCaseFqn: string
+): Promise<void> => {
+  await redirectToHomePage(page);
+  await page.goto(
+    `/observability/test-case/${encodeURIComponent(
+      testCaseFqn
+    )}/test-case-results`
+  );
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
 };

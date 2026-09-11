@@ -50,6 +50,7 @@ import {
 import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -111,10 +112,20 @@ export const TableProfilerProvider = ({
     return subTab ?? defaultTab;
   }, [subTab, isTourOpen]);
 
+  // `permissions` stays raw here — TableProfilerContextInterface exposes it verbatim to
+  // consumers (context contract, kept raw per the GenericProvider precedent). `viewTest` is
+  // purely internal (never exposed via context), so it derives from named flags: hasViewAccess
+  // is a byte-for-byte match for the old raw `ViewAll || ViewBasic` (getDerivedPermissionFlags
+  // computes it from the same two raw fields, unprioritized), and since it already covers the
+  // ViewAll case, ORing in canViewTests (prioritized ViewTests-over-ViewAll) reproduces the old
+  // 3-way flat OR exactly — not an explicit-deny-wins change, because the old ViewAll term
+  // already makes the whole expression true whenever canViewTests' own ViewAll fallback would
+  // have mattered.
   const viewTest = useMemo(() => {
-    return (
-      permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests
-    );
+    const { hasViewAccess, canViewTests } =
+      getDerivedPermissionFlags(permissions);
+
+    return hasViewAccess || canViewTests;
   }, [permissions]);
 
   const getProfileSampleValue = () => {

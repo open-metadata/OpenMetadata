@@ -23,7 +23,12 @@ import {
   waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { performZoomOut, visitLineageTab } from '../../../utils/lineage';
+import {
+  dismissLineageMapOnboarding,
+  performZoomOut,
+  verifyExportLineagePNG,
+  visitLineageTab,
+} from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
@@ -54,159 +59,254 @@ test.beforeAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.beforeEach(async ({ page }) => {
-  await table.visitEntityPage(page);
-  await visitLineageTab(page);
-  await performZoomOut(page);
+test.describe('Entity Lineage tab', () => {
+  test.beforeEach(async ({ page }) => {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+    await performZoomOut(page);
+  });
+
+  test(
+    'Verify table search with special characters as handled',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    async ({ page }) => {
+      await redirectToHomePage(page);
+      const db = table.databaseResponseData.name;
+
+      await sidebarClick(page, SidebarItem.LINEAGE);
+
+      await page.getByTestId('search-entity-select').waitFor();
+      await page.getByTestId('search-entity-select').click();
+
+      const searchRequest = page.waitForRequest(
+        (req) =>
+          req.url().includes('/api/v1/search/query') &&
+          req.url().includes('deleted=false')
+      );
+      await page.fill(
+        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+        table.entity.name
+      );
+      await searchRequest;
+
+      await page.locator('.ant-select-dropdown').waitFor();
+      await waitForAntdPopupToSettle(page);
+
+      const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
+      const dbFqn = get(
+        table,
+        'entityResponseData.database.fullyQualifiedName',
+        ''
+      );
+      const schemaFqn = get(
+        table,
+        'entityResponseData.databaseSchema.fullyQualifiedName',
+        ''
+      );
+      const tableSceneResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+          new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
+      );
+      await page.getByTestId(`node-suggestion-${nodeFqn}`).click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname === `/lineage/table/${encodeURIComponent(nodeFqn)}`
+      );
+      expect((await tableSceneResponse).ok()).toBeTruthy();
+
+      await expect(
+        page.locator('[data-testid="lineage-details"]')
+      ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${nodeFqn}`)).toBeVisible();
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.LINEAGE);
+      await page.getByTestId('search-entity-select').waitFor();
+      await page.click('[data-testid="search-entity-select"]');
+
+      await page.fill(
+        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
+        db
+      );
+      await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
+      await waitForAntdPopupToSettle(page);
+      const databaseSceneResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+          new URL(response.url()).searchParams.get('focusFqn') === dbFqn
+      );
+      await page.getByTestId(`node-suggestion-${dbFqn}`).click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname === `/lineage/database/${encodeURIComponent(dbFqn)}`
+      );
+      expect((await databaseSceneResponse).ok()).toBeTruthy();
+
+      await expect(page.getByTestId('lineage-details')).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${schemaFqn}`)).toBeVisible();
+    }
+  );
+
+  test(
+    'Verify service platform view',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    async ({ page }) => {
+      await page.getByTestId('lineage-layer-btn').click();
+
+      const serviceBtn = page.getByTestId('lineage-layer-lens-service');
+      await expect(serviceBtn).toBeVisible();
+      await expect(serviceBtn).toHaveAttribute('data-selected');
+    }
+  );
+
+  test(
+    'Verify domain platform view',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    async ({ page }) => {
+      await page.getByTestId('lineage-layer-btn').click();
+
+      const domainBtn = page.getByTestId('lineage-layer-lens-domain');
+      await expect(domainBtn).toBeVisible();
+
+      const domainSceneResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+          new URL(response.url()).searchParams.get('lens') === 'domain'
+      );
+      await domainBtn.click();
+      expect((await domainSceneResponse).ok()).toBeTruthy();
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(domainBtn).toHaveAttribute('data-selected');
+
+      await page.keyboard.press('Escape');
+
+      await waitForAllLoadersToDisappear(page);
+    }
+  );
+
+  test(
+    'Verify platform view switching',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    async ({ page }) => {
+      await page.getByTestId('lineage-layer-btn').click();
+
+      const serviceBtn = page.getByTestId('lineage-layer-lens-service');
+      const domainBtn = page.getByTestId('lineage-layer-lens-domain');
+
+      await expect(serviceBtn).toHaveAttribute('data-selected');
+      await expect(domainBtn).not.toHaveAttribute('data-selected');
+
+      const domainSceneResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+          new URL(response.url()).searchParams.get('lens') === 'domain'
+      );
+      await domainBtn.click();
+      expect((await domainSceneResponse).ok()).toBeTruthy();
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(domainBtn).toHaveAttribute('data-selected');
+      await expect(serviceBtn).not.toHaveAttribute('data-selected');
+
+      await serviceBtn.click();
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get('lineageLens'))
+        .toBe('service');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(serviceBtn).toHaveAttribute('data-selected');
+      await expect(domainBtn).not.toHaveAttribute('data-selected');
+    }
+  );
 });
 
-test(
-  'Verify table search with special characters as handled',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  async ({ page }) => {
-    await redirectToHomePage(page);
-    const db = table.databaseResponseData.name;
+test.describe('Platform Lineage page (/lineage)', () => {
+  test('Verify Platform Lineage View', async ({ page }) => {
+    // Slow unconditionally: verifyExportLineagePNG waits up to 120s for the
+    // download event, so the outer test timeout must exceed that. The base
+    // 60s left PR runs (where PLAYWRIGHT_IS_OSS is set) unable to ever reach
+    // the download event -- the test timed out mid-render every time.
+    test.slow();
 
-    await sidebarClick(page, SidebarItem.LINEAGE);
+    // Keep PNG rendering within the download-event budget on CI runners.
+    const MAX_NODES = 100;
 
-    await page.getByTestId('search-entity-select').waitFor();
-    await page.getByTestId('search-entity-select').click();
-
-    const searchRequest = page.waitForRequest(
-      (req) =>
-        req.url().includes('/api/v1/search/query') &&
-        req.url().includes('deleted=false')
-    );
-    await page.fill(
-      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-      table.entity.name
-    );
-    await searchRequest;
-
-    await page.locator('.ant-select-dropdown').waitFor();
-    await waitForAntdPopupToSettle(page);
-
-    const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    const dbFqn = get(
-      table,
-      'entityResponseData.database.fullyQualifiedName',
-      ''
-    );
-    const schemaFqn = get(
-      table,
-      'entityResponseData.databaseSchema.fullyQualifiedName',
-      ''
-    );
-    const tableSceneResponse = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-        new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
-    );
-    await page.getByTestId(`node-suggestion-${nodeFqn}`).click();
-    await expect(page).toHaveURL(
-      (url) => url.pathname === `/lineage/table/${encodeURIComponent(nodeFqn)}`
-    );
-    expect((await tableSceneResponse).ok()).toBeTruthy();
-
-    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${nodeFqn}`)).toBeVisible();
+    await page.route('**/api/v1/lineage/scene?*', async (route) => {
+      const requestUrl = new URL(route.request().url());
+      requestUrl.searchParams.set('size', String(MAX_NODES));
+      await route.continue({ url: requestUrl.toString() });
+    });
 
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.LINEAGE);
-    await page.getByTestId('search-entity-select').waitFor();
-    await page.click('[data-testid="search-entity-select"]');
-
-    await page.fill(
-      '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-      db
-    );
-    await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
-    await waitForAntdPopupToSettle(page);
-    const databaseSceneResponse = page.waitForResponse(
+    const lineageRes = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-        new URL(response.url()).searchParams.get('focusFqn') === dbFqn
+        new URL(response.url()).searchParams.get('lens') === 'service'
     );
-    await page.getByTestId(`node-suggestion-${dbFqn}`).click();
-    await expect(page).toHaveURL(
-      (url) => url.pathname === `/lineage/database/${encodeURIComponent(dbFqn)}`
-    );
-    expect((await databaseSceneResponse).ok()).toBeTruthy();
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    expect((await lineageRes).ok()).toBeTruthy();
+    await dismissLineageMapOnboarding(page);
 
-    await expect(page.getByTestId('lineage-details')).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${schemaFqn}`)).toBeVisible();
-  }
-);
+    // Verify PNG export
+    await verifyExportLineagePNG(page, true);
 
-test(
-  'Verify service platform view',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  async ({ page }) => {
     await page.getByTestId('lineage-layer-btn').click();
 
-    const serviceBtn = page.getByTestId('lineage-layer-lens-service');
-    await expect(serviceBtn).toBeVisible();
-    await expect(serviceBtn).toHaveAttribute('data-selected');
-  }
-);
+    const domainButton = page.getByTestId('lineage-layer-lens-domain');
+    await expect(domainButton).not.toHaveAttribute('data-selected');
 
-test(
-  'Verify domain platform view',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  async ({ page }) => {
-    await page.getByTestId('lineage-layer-btn').click();
-
-    const domainBtn = page.getByTestId('lineage-layer-lens-domain');
-    await expect(domainBtn).toBeVisible();
-
-    const domainSceneResponse = page.waitForResponse(
+    const domainRes = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
         new URL(response.url()).searchParams.get('lens') === 'domain'
     );
-    await domainBtn.click();
-    expect((await domainSceneResponse).ok()).toBeTruthy();
+    await domainButton.click();
+    expect((await domainRes).ok()).toBeTruthy();
 
     await page.getByTestId('lineage-layer-btn').click();
-    await expect(domainBtn).toHaveAttribute('data-selected');
-
-    await page.keyboard.press('Escape');
-
-    await waitForAllLoadersToDisappear(page);
-  }
-);
-
-test(
-  'Verify platform view switching',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  async ({ page }) => {
-    await page.getByTestId('lineage-layer-btn').click();
-
-    const serviceBtn = page.getByTestId('lineage-layer-lens-service');
-    const domainBtn = page.getByTestId('lineage-layer-lens-domain');
-
-    await expect(serviceBtn).toHaveAttribute('data-selected');
-    await expect(domainBtn).not.toHaveAttribute('data-selected');
-
-    const domainSceneResponse = page.waitForResponse(
+    const dataProductRes = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-        new URL(response.url()).searchParams.get('lens') === 'domain'
+        new URL(response.url()).searchParams.get('lens') === 'dataProduct'
     );
-    await domainBtn.click();
-    expect((await domainSceneResponse).ok()).toBeTruthy();
+    await page.getByTestId('lineage-layer-lens-dataProduct').click();
+    expect((await dataProductRes).ok()).toBeTruthy();
+  });
 
-    await page.getByTestId('lineage-layer-btn').click();
-    await expect(domainBtn).toHaveAttribute('data-selected');
-    await expect(serviceBtn).not.toHaveAttribute('data-selected');
+  test('Settings depth change refetches platform lineage', async ({ page }) => {
+    // Regression: on /lineage the settings modal used to write into local
+    // page state instead of the shared Zustand store the fetch effect
+    // listens to, so changing upstream/downstream depth silently produced
+    // no network call. Assert the scene refetch fires with the new depths.
+    await redirectToHomePage(page);
+    const initialRes = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+        new URL(response.url()).searchParams.get('lens') === 'service'
+    );
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    expect((await initialRes).ok()).toBeTruthy();
+    await dismissLineageMapOnboarding(page);
 
-    await serviceBtn.click();
-    await expect
-      .poll(() => new URL(page.url()).searchParams.get('lineageLens'))
-      .toBe('service');
+    await page.getByTestId('lineage-config').click();
+    await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
+    await page.getByTestId('field-upstream').fill('2');
+    await page.getByTestId('field-downstream').fill('2');
 
-    await page.getByTestId('lineage-layer-btn').click();
-    await expect(serviceBtn).toHaveAttribute('data-selected');
-    await expect(domainBtn).not.toHaveAttribute('data-selected');
-  }
-);
+    const refetch = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/lineage/scene') &&
+        url.searchParams.get('upstreamDepth') === '2' &&
+        url.searchParams.get('downstreamDepth') === '2'
+      );
+    });
+
+    await page.getByRole('button', { name: 'OK', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    expect((await refetch).ok()).toBeTruthy();
+  });
+});

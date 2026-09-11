@@ -65,7 +65,6 @@ const TagSelectForm = ({
             mode="multiple"
             optionClassName="tag-select-box"
             placeholder={placeholder}
-            tagType={tagType}
             onCancel={onCancel}
           />
         ) : (
@@ -76,7 +75,6 @@ const TagSelectForm = ({
             isSubmitLoading={isSubmitLoading}
             optionClassName="tag-select-box"
             placeholder={placeholder}
-            tagType={tagType}
             onCancel={onCancel}
           />
         )}
