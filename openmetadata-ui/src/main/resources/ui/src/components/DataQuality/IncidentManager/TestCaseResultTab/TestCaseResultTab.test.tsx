@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-    fireEvent,
-    queryByTestId,
-    queryByText,
-    render,
-    screen
+  fireEvent,
+  queryByTestId,
+  queryByText,
+  render,
+  screen,
 } from '@testing-library/react';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
 import {
-    LabelType,
-    State,
-    TagSource
+  LabelType,
+  State,
+  TagSource,
 } from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -379,7 +379,11 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByText('Timeliness of data')).toBeInTheDocument();
   });
 
-  it("should fall back to the test definition's dimension when the test case has none", async () => {
+  it('should not fall back to the test definition when the test case has no dimension', async () => {
+    // Every test case carries its own dimension relationship — inherited ones are materialised
+    // when it is created, backfilled for pre-2.1.0 rows, and repointed when the test definition
+    // is reclassified. So an absent dimension means the test case genuinely has none, and
+    // reading one off the test definition here would contradict what the API reports.
     mockGetTestDefinitionById.mockResolvedValue({
       id: '48063740-ac35-4854-9ab3-b1b542c820fe',
       name: 'tableColumnCountToEqual',
@@ -391,9 +395,9 @@ describe('TestCaseResultTab', () => {
     await screen.findByTestId('parameter-container');
 
     expect(
-      await screen.findByText('label.data-quality-dimension:')
-    ).toBeInTheDocument();
-    expect(await screen.findByText('Accuracy')).toBeInTheDocument();
+      screen.queryByText('label.data-quality-dimension:')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Accuracy')).not.toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {
