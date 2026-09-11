@@ -22,14 +22,13 @@ import { useTranslation } from 'react-i18next';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
 import { ServicesType } from '../../../interface/service.interface';
 import { ServicePageData } from '../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMainTabContent';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import Description from '../../common/EntityDescription/Description';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
@@ -73,26 +72,12 @@ const DataAssetsTab = ({
   const allTags = serviceDetails?.tags ?? [];
 
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(servicePermission, Operation.EditTags) &&
-        !serviceDetails.deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          servicePermission,
-          Operation.EditGlossaryTerms
-        ) && !serviceDetails.deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          servicePermission,
-          Operation.EditDescription
-        ) && !serviceDetails.deleted,
-    }),
-    [servicePermission, serviceDetails]
+    () => getDerivedPermissionFlags(servicePermission, serviceDetails.deleted),
+    [servicePermission, serviceDetails.deleted]
   );
 
   const handleTagsUpdate = useCallback(

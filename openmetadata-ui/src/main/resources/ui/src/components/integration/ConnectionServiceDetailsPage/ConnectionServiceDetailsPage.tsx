@@ -77,6 +77,7 @@ import {
   SlotContribution,
   TabContribution,
 } from '../../../utils/ExtensionPointTypes';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getCountLabel,
@@ -275,6 +276,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const isServiceDeleted = useMemo(
     () => serviceDetails.deleted ?? false,
     [serviceDetails.deleted]
+  );
+
+  // Ungated derivation (no `deleted` arg): the manage-surface and edit reads below were all
+  // unconditional in the migrated source, and restore must keep working on a soft-deleted
+  // service — the only path back from soft-delete lives behind the same menu. Mirrors
+  // DataAssetsHeader's `ungatedFlags`.
+  const { canEditAll, canViewAll, canEditDisplayName, canDelete } = useMemo(
+    () => getDerivedPermissionFlags(servicePermission),
+    [servicePermission]
   );
 
   const categoryBreadcrumb = useMemo(
@@ -493,8 +503,8 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   );
 
   const isTestingDisabled = useMemo(
-    () => !servicePermission.EditAll || !connectionDetails,
-    [servicePermission.EditAll, connectionDetails]
+    () => !canEditAll || !connectionDetails,
+    [canEditAll, connectionDetails]
   );
 
   const goToEditConnection = useCallback(() => {
@@ -732,15 +742,14 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 </Button>
                 <Dropdown.Popover placement="bottom right">
                   <Dropdown.Menu aria-label={t('label.setting-plural')}>
-                    {servicePermission.EditAll && (
+                    {canEditAll && (
                       <Dropdown.Item
                         id="announcement"
                         label={t('label.announcement-plural')}
                         onAction={handleOpenAnnouncementDrawer}
                       />
                     )}
-                    {(servicePermission.EditAll ||
-                      servicePermission.EditDisplayName) && (
+                    {(canEditAll || canEditDisplayName) && (
                       <Dropdown.Item
                         id="rename"
                         label={t('label.rename')}
@@ -748,7 +757,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                       />
                     )}
                     {supportsImportExport &&
-                      servicePermission.EditAll &&
+                      canEditAll &&
                       !isServiceDeleted && (
                         <Dropdown.Item
                           id="import"
@@ -757,7 +766,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                         />
                       )}
                     {supportsImportExport &&
-                      servicePermission.ViewAll &&
+                      canViewAll &&
                       !isServiceDeleted && (
                         <Dropdown.Item
                           id="export"
@@ -765,7 +774,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                           onAction={handleExportClick}
                         />
                       )}
-                    {servicePermission.Delete && !isServiceDeleted && (
+                    {canDelete && !isServiceDeleted && (
                       <Dropdown.Item
                         id="delete"
                         label={t('label.delete')}
@@ -775,7 +784,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                     {/* A soft delete is meant to be reversible, but without this the page offers
                         no way back — matching classic, where restore replaces delete once the
                         service is deleted. */}
-                    {servicePermission.EditAll && isServiceDeleted && (
+                    {canEditAll && isServiceDeleted && (
                       <Dropdown.Item
                         id="restore"
                         label={t('label.restore')}
@@ -852,7 +861,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 (serviceDetails as unknown as { domains?: EntityReference[] })
                   .domains
               }
-              hasEditPermission={servicePermission.EditAll}
+              hasEditPermission={canEditAll}
               owners={serviceDetails.owners}
               tags={serviceDetails.tags}
               onUpdateDomain={onUpdateDomain}
@@ -929,7 +938,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                   <Button
                     color="secondary-brand"
                     data-testid="edit-connection-button"
-                    isDisabled={!servicePermission.EditAll}
+                    isDisabled={!canEditAll}
                     size="sm"
                     onPress={goToEditConnection}>
                     {t('label.edit-entity', { entity: t('label.connection') })}
@@ -991,7 +1000,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
 
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createPermission={servicePermission.EditAll}
+          createPermission={canEditAll}
           entityFQN={serviceDetails.fullyQualifiedName ?? ''}
           entityType={serviceEntityType}
           open={isAnnouncementDrawerOpen}
