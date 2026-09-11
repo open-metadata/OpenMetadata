@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -81,11 +80,15 @@ import org.openmetadata.service.util.RestUtil;
 public class ColumnRepository {
 
   /**
-   * The types {@code /v1/columns} serves. The child-field registry knows nine types, but this
-   * endpoint's request and response shapes are Column-shaped, so admitting a type here is a wire
-   * decision made per type rather than inherited from the registry.
+   * The two types whose children are {@code Column} instances. The /search and bulk-preview paths
+   * are limited to these: their response types read Column-only accessors and carry database and
+   * schema names that mean nothing for a topic field or a pipeline task. GET and PUT by FQN serve
+   * every registry type.
    */
-  private static final Set<String> V1_COLUMNS_TYPES = Set.of(TABLE, DASHBOARD_DATA_MODEL);
+  private static final Set<String> COLUMN_SHAPED_TYPES = Set.of(TABLE, DASHBOARD_DATA_MODEL);
+
+  /** Types that tolerate a constraint in the update payload; only table actually applies it. */
+  private static final Set<String> CONSTRAINT_TOLERANT_TYPES = Set.of(TABLE, DASHBOARD_DATA_MODEL);
 
   private final Authorizer authorizer;
   private final ColumnAggregator columnAggregator;
@@ -111,15 +114,27 @@ public class ColumnRepository {
     return columnAggregator.aggregateColumns(request);
   }
 
+  /**
+   * Legacy Column-typed read. Both types it serves have Column children, so the cast is total.
+   * New callers should use {@link #getChildByFQN}, which serves every registry type.
+   */
   public Column getColumnByFQN(
       SecurityContext securityContext,
       String columnFQN,
       String entityType,
       String fieldsParam,
       Include include) {
+    return (Column) getChildByFQN(securityContext, columnFQN, entityType, fieldsParam, include);
+  }
+
+  public FieldInterface getChildByFQN(
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      String fieldsParam,
+      Include include) {
     Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
-    validateEntityType(entityType);
-    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityType);
+    ChildFieldResolver.ChildContainerSpec spec = validateEntityType(entityType);
     String parentFQN = extractParentFQN(columnFQN, entityType);
     EntityInterface parent = fetchAuthorizedParent(securityContext, spec, parentFQN, include);
     ChildFieldResolver.ensureChildFqns(parent, entityType);
@@ -127,7 +142,9 @@ public class ColumnRepository {
         ChildFieldResolver.locate(parent, entityType, columnFQN)
             .orElseThrow(
                 () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
-    return enrichChild(securityContext, spec, parent, (Column) child, fieldsParam);
+    return child instanceof Column column
+        ? enrichChild(securityContext, spec, parent, column, fieldsParam)
+        : child;
   }
 
   private EntityInterface fetchAuthorizedParent(
@@ -184,12 +201,28 @@ public class ColumnRepository {
     };
   }
 
+  /**
+   * Legacy Column-typed write. Both types it serves have Column children, so the cast is total.
+   * New callers should use {@link #updateChildByFQN}, which serves every registry type and accepts
+   * a change source.
+   */
   public Column updateColumnByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
       String entityType,
       UpdateColumn updateColumn) {
+    return (Column)
+        updateChildByFQN(uriInfo, securityContext, columnFQN, entityType, updateColumn, null);
+  }
+
+  public FieldInterface updateChildByFQN(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      UpdateColumn updateColumn,
+      ChangeSource changeSource) {
     Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
     Objects.requireNonNull(updateColumn, "updateColumn cannot be null");
 
@@ -198,17 +231,40 @@ public class ColumnRepository {
     }
 
     // Validate entity type first before any other processing
-    validateEntityType(entityType);
-    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityType);
-    return (Column) updateChildByFQN(uriInfo, securityContext, columnFQN, spec, updateColumn, null);
+    ChildFieldResolver.ChildContainerSpec spec = validateEntityType(entityType);
+    validateUpdateForType(spec, updateColumn);
+    return updateChildByFQN(uriInfo, securityContext, columnFQN, spec, updateColumn, changeSource);
   }
 
-  private void validateEntityType(String entityType) {
-    if (entityType == null || !V1_COLUMNS_TYPES.contains(entityType)) {
-      // Prefix pinned by ColumnResourceIT.test_updateColumn_entityType_validation.
+  /**
+   * The registry is the gate. Its message already carries the "Unsupported entity type" prefix that
+   * ColumnResourceIT.test_updateColumn_entityType_validation pins.
+   */
+  private ChildFieldResolver.ChildContainerSpec validateEntityType(String entityType) {
+    return ChildFieldResolver.specFor(entityType);
+  }
+
+  /**
+   * Rejects payload fields the target type has nowhere to put, rather than accepting them and
+   * silently dropping the value. dashboardDataModel is the one exception: it has always accepted
+   * and ignored a constraint, and that stays as it is so existing clients do not start failing.
+   */
+  private void validateUpdateForType(
+      ChildFieldResolver.ChildContainerSpec spec, UpdateColumn updateColumn) {
+    boolean constraintRequested =
+        updateColumn.getConstraint() != null
+            || Boolean.TRUE.equals(updateColumn.getRemoveConstraint());
+    if (constraintRequested && !CONSTRAINT_TOLERANT_TYPES.contains(spec.entityType())) {
       throw new IllegalArgumentException(
-          "Unsupported entity type: %s. Supported types are: %s"
-              .formatted(entityType, String.join(", ", new TreeSet<>(V1_COLUMNS_TYPES))));
+          "Column constraints are not supported for entity type " + spec.entityType());
+    }
+    if (updateColumn.getExtension() != null && spec.childExtensionType() == null) {
+      throw new IllegalArgumentException(
+          "Column extension is not supported for entity type " + spec.entityType());
+    }
+    if (updateColumn.getDisplayName() != null && !spec.supportsDisplayName()) {
+      throw new IllegalArgumentException(
+          "displayName is not supported for entity type " + spec.entityType());
     }
   }
 
@@ -252,28 +308,14 @@ public class ColumnRepository {
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
     authorizeAndPatch(securityContext, entityType, parentEntityRef, jsonPatch);
+    // A null changeSource makes this identical to the 4-argument overload the two per-type write
+    // paths called before consolidation (EntityRepository delegates both to the same method with
+    // changeSource null), so an unattributed write stays byte-identical on the wire.
     RestUtil.PatchResponse<? extends EntityInterface> patchResponse =
-        patchParent(repository, uriInfo, parentEntityRef, user, jsonPatch, changeSource);
+        repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
     triggerParentChangeEvent(patchResponse.entity(), user);
 
     return child;
-  }
-
-  /**
-   * The 4-argument overload is what both write paths called before consolidation, so a null
-   * changeSource keeps the change summary byte-identical on the wire. The parameter exists so the
-   * 5-argument overload can be wired in when changeSource becomes a real request parameter.
-   */
-  private RestUtil.PatchResponse<? extends EntityInterface> patchParent(
-      EntityRepository<? extends EntityInterface> repository,
-      UriInfo uriInfo,
-      EntityReference parentEntityRef,
-      String user,
-      JsonPatch jsonPatch,
-      ChangeSource changeSource) {
-    return changeSource == null
-        ? repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch)
-        : repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
   }
 
   @SuppressWarnings("unchecked")
@@ -366,7 +408,7 @@ public class ColumnRepository {
 
     for (String entityType : entityTypeList) {
       String trimmed = entityType.trim();
-      if (V1_COLUMNS_TYPES.contains(trimmed)) {
+      if (COLUMN_SHAPED_TYPES.contains(trimmed)) {
         searchEntitiesForColumn(
             groupedColumns, columnName, trimmed, serviceName, databaseName, schemaName, domainId);
       }
@@ -602,7 +644,7 @@ public class ColumnRepository {
   private Column getColumnForPreview(String columnFQN, String entityType) {
     Column result = null;
     try {
-      if (V1_COLUMNS_TYPES.contains(entityType)) {
+      if (COLUMN_SHAPED_TYPES.contains(entityType)) {
         result = (Column) loadChildForPreview(columnFQN, entityType).orElse(null);
       }
     } catch (Exception e) {
