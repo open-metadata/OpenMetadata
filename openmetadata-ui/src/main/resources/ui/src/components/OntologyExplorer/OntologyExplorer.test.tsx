@@ -199,6 +199,7 @@ function createExplorerState(
     setSelectedNode: jest.fn(),
     settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
     ontologySummary: undefined,
+    isolatedTermDetails: [],
     totalTermCount: 1,
     ...overrides,
   };
@@ -213,6 +214,48 @@ function useStatefulExplorerMock(): ReturnType<typeof useOntologyExplorer> {
 describe('OntologyExplorer Studio data controls', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('renders a hydrated display name instead of an isolated term UUID', () => {
+    const isolatedId = '002e5485-0c59-45cc-912e-15fbc7e350bf';
+    const isolatedNode: OntologyNode = {
+      fullyQualifiedName: `Finance.${isolatedId}`,
+      id: isolatedId,
+      label: isolatedId,
+      type: 'glossaryTermIsolated',
+    };
+    const graphData = { edges: [], nodes: [isolatedNode] };
+    mockUseOntologyExplorer.mockReturnValue(
+      createExplorerState({
+        combinedGraphData: graphData,
+        filteredGraphData: graphData,
+        graphDataToShow: graphData,
+        isolatedTermDetails: [
+          {
+            description: 'Customer account concept',
+            displayName: 'Customer Account',
+            fullyQualifiedName: 'Finance.customer_account',
+            glossary: {
+              id: 'cf650c10-4f15-4775-b737-d7936f3a43cb',
+              name: 'Finance',
+              type: 'glossary',
+            },
+            id: isolatedId,
+            name: 'customer_account',
+          },
+        ],
+      })
+    );
+
+    render(<OntologyExplorer showHealth scope="global" />);
+
+    const connectButton = screen.getByTestId(`ontology-connect-${isolatedId}`);
+
+    expect(connectButton).toHaveTextContent('Customer Account');
+    expect(connectButton).not.toHaveTextContent(isolatedId);
+    expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
+      '1'
+    );
   });
 
   it('exposes global Model and Data modes and dispatches the typed selection', () => {
