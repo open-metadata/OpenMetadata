@@ -501,41 +501,47 @@ const clickAssociatedTagSave = async (page: Page) => {
 
 // The owner cell mounts a react-aria picker that is force-opened on mount
 // (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
-// mount + paint cycle to position the overlay, which intermittently races the
-// react-data-grid editor lifecycle: a single Enter on the selected cell can
-// leave the cell selected but the picker never opened. Mirror the
-// text/description editors: try several ways to enter edit mode and re-check
-// until select-owner-tabs is visible, escaping between attempts so a stale
-// editor cannot linger (but never after the final attempt, so the closing
-// assertion can still catch a slow open).
-const getOwnerPickerOpenActions = (page: Page) => {
-  return [
-    async () => page.keyboard.press('Enter', { delay: 100 }),
-    async () => {
-      await clickActiveGridCell(page);
-      await page.keyboard.press('Enter', { delay: 100 });
-    },
-    async () => page.keyboard.press('F2'),
-    async () => doubleClickActiveGridCell(page),
-  ];
-};
+// mount + paint cycle to position the overlay, which races the react-data-grid
+// editor lifecycle, so entering edit mode once does not reliably show the
+// picker in CI. Two failure modes were seen: (1) a keyboard trigger no-ops
+// because focus sits on document.body (e.g. after a prior portal interaction),
+// so the grid never enters edit mode; (2) the popover opens slightly slower
+// than a short poll window and a premature Escape closes it.
+//
+// Make the open robust: each pass first CLICKS the active owner cell (which
+// focuses the grid and may itself open the force-open picker), then asks rdg
+// for edit mode via Enter and F2, waiting generously after each. Only Escape
+// and retry when nothing became visible in the whole pass.
+const OWNER_PICKER_OPEN_TIMEOUT = 4000;
+const OWNER_PICKER_OPEN_ATTEMPTS = 6;
 
 const openOwnerPickerEditor = async (page: Page) => {
   const ownerTabs = page.getByTestId('select-owner-tabs');
-  const openActions = getOwnerPickerOpenActions(page);
 
-  for (let index = 0; index < openActions.length; index++) {
+  for (let attempt = 0; attempt < OWNER_PICKER_OPEN_ATTEMPTS; attempt++) {
     try {
-      await openActions[index]();
-
+      await clickActiveGridCell(page);
       if (await waitForVisibleLocator(ownerTabs, EDITOR_OPEN_TIMEOUT)) {
         return;
       }
+
+      await page.keyboard.press('Enter', { delay: 100 });
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
+
+      await page.keyboard.press('F2');
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
     } catch {
-      // fall through to the next strategy
+      // fall through and retry after resetting edit mode
     }
 
-    if (index < openActions.length - 1) {
+    // Reset edit mode before retrying, but never after the final attempt so the
+    // closing assertion can still catch a picker that opened just after the
+    // last poll window.
+    if (attempt < OWNER_PICKER_OPEN_ATTEMPTS - 1) {
       await page.keyboard.press('Escape').catch(() => undefined);
     }
   }
