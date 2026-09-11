@@ -16,6 +16,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
+import pytest
+
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -1585,25 +1587,37 @@ def _lineage_source_with(source_config: DatabaseServiceQueryLineagePipeline) -> 
         )
 
 
-def test_sql_pass_failure_does_not_stop_the_repository_pass() -> None:
-    """A failing SQL pass must not take the _SYS_REPO pass down with it.
+def test_query_history_failure_is_contained() -> None:
+    """An unreadable plan cache must not stop the other passes.
 
-    LineageSource.yield_table_query does not guard its own execute, so an unreadable
-    SYS.M_SQL_PLAN_CACHE raises. On an on-premise instance that would otherwise cost
-    the calculation-view lineage that already worked.
+    yield_table_query does not guard its own execute, so a restricted
+    SYS.M_SQL_PLAN_CACHE raises. Only that pass is guarded, so view lineage still runs.
     """
     source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
 
     def explode(*_, **__):
         raise RuntimeError("insufficient privilege: SYS.M_SQL_PLAN_CACHE")
 
+    with patch.object(LineageSource, "yield_query_lineage", side_effect=explode):
+        assert list(source.yield_query_lineage()) == []
+
+
+def test_view_pass_failure_still_surfaces() -> None:
+    """A view-pass failure must not be swallowed.
+
+    On SAP HANA Cloud the view pass is the entire result, so hiding its failure would
+    report success while producing no lineage at all.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    def explode(*_, **__):
+        raise RuntimeError("view definition parsing blew up")
+
     with (
         patch.object(LineageSource, "_iter", side_effect=explode),
-        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([])) as cdata,
+        pytest.raises(RuntimeError, match="view definition parsing blew up"),
     ):
         list(source._iter())
-
-    cdata.assert_called_once()
 
 
 def test_query_filters_match_real_statement_shapes() -> None:

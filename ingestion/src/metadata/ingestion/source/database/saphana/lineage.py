@@ -101,30 +101,18 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         """
         sql_edges = 0
         sql_queries = 0
-        try:
-            for either in super()._iter():
-                if isinstance(either.right, AddLineageRequest):
-                    sql_edges += 1
-                elif isinstance(either.right, CreateQueryRequest):
-                    sql_queries += 1
-                yield either
-        except Exception as exc:
-            # yield_table_query does not guard its own execute, so an unreadable plan
-            # cache raises here and would otherwise take the repository pass with it.
-            logger.warning(
-                "SAP HANA SQL lineage pass failed and produced %d edges before stopping. The repository "
-                "pass still runs. Cause: %s",
-                sql_edges,
-                exc,
-            )
-            logger.debug(traceback.format_exc())
-        else:
-            logger.info(
-                "SAP HANA SQL lineage produced %d edges from view definitions and query history, "
-                "alongside %d query records",
-                sql_edges,
-                sql_queries,
-            )
+        for either in super()._iter():
+            if isinstance(either.right, AddLineageRequest):
+                sql_edges += 1
+            elif isinstance(either.right, CreateQueryRequest):
+                sql_queries += 1
+            yield either
+        logger.info(
+            "SAP HANA SQL lineage produced %d edges from view definitions and query history, "
+            "alongside %d query records",
+            sql_edges,
+            sql_queries,
+        )
 
         cdata_edges = 0
         # Repository models are views, so the flag that governs the shared view pass
@@ -152,6 +140,23 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 "processQueryLineage is enabled, and that the ingestion user holds CATALOG READ, without "
                 "which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own statements."
             )
+
+    def yield_query_lineage(self) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
+        """Query-history lineage, guarded so a restricted plan cache is not fatal.
+
+        yield_table_query does not guard its own execute, so an unreadable
+        SYS.M_SQL_PLAN_CACHE raises. Only this pass is wrapped: a failure in the view
+        pass must still surface, because on Cloud that pass is the whole result.
+        """
+        try:
+            yield from super().yield_query_lineage()
+        except Exception as exc:
+            logger.warning(
+                "SAP HANA query-history lineage failed, so no table-to-table edges were read. View "
+                "lineage is unaffected. Check that the ingestion user holds CATALOG READ. Cause: %s",
+                exc,
+            )
+            logger.debug(traceback.format_exc())
 
     def yield_cdata_lineage(self) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Lineage for calculation, analytic and attribute views, from _SYS_REPO.
