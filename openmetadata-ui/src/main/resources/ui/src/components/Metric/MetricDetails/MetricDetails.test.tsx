@@ -13,6 +13,7 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Metric, MetricType } from '../../../generated/entity/data/metric';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -108,10 +109,12 @@ jest.mock('../../AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((component) => component),
 }));
 
+const mockGetMetricDetailPageTabs = jest.fn().mockReturnValue([]);
 jest.mock('../../../utils/MetricEntityUtils/MetricDetailsClassBase', () => ({
   __esModule: true,
   default: {
-    getMetricDetailPageTabs: jest.fn().mockReturnValue([]),
+    getMetricDetailPageTabs: (...args: unknown[]) =>
+      mockGetMetricDetailPageTabs(...args),
   },
 }));
 
@@ -140,6 +143,73 @@ describe('MetricDetails component', () => {
         pageTitle: 'testEntityName',
       }),
       expect.anything()
+    );
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins) — the old
+  // raw/prioritized expressions here already used getPrioritizedEditPermission for these two
+  // fields, so this also guards against a future collapse-refactor accidentally reintroducing
+  // a bare `EditAll ||` OR.
+  it('denies custom-attribute and lineage edit when explicitly denied, even with EditAll true', () => {
+    render(
+      <MetricDetails
+        {...mockProps}
+        metricPermissions={
+          {
+            EditAll: true,
+            EditCustomFields: false,
+            EditLineage: false,
+            ViewAll: true,
+          } as OperationPermission
+        }
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(mockGetMetricDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editCustomAttributePermission: false,
+        editLineagePermission: false,
+      })
+    );
+  });
+
+  it('grants custom-attribute and lineage edit via EditAll when the field-specific keys are absent', () => {
+    render(
+      <MetricDetails
+        {...mockProps}
+        metricPermissions={{ EditAll: true } as OperationPermission}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(mockGetMetricDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editCustomAttributePermission: true,
+        editLineagePermission: true,
+      })
+    );
+  });
+
+  it('gates edit flags on deleted but leaves view flags ungated', () => {
+    render(
+      <MetricDetails
+        {...mockProps}
+        metricDetails={{ ...mockMetricDetails, deleted: true }}
+        metricPermissions={
+          { EditAll: true, ViewAll: true } as OperationPermission
+        }
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(mockGetMetricDetailPageTabs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editCustomAttributePermission: false,
+        editLineagePermission: false,
+        viewAllPermission: true,
+      })
     );
   });
 });

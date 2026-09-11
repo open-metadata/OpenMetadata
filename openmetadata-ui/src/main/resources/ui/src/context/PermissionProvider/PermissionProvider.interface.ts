@@ -113,7 +113,3 @@ export interface PermissionContextType {
     resource: ResourceEntity
   ) => Promise<OperationPermission>;
 }
-
-export interface EntityPermissionMap {
-  [key: string]: OperationPermission;
-}
