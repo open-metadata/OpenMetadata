@@ -329,4 +329,22 @@ class FullyQualifiedNameTest {
         IllegalArgumentException.class,
         () -> FullyQualifiedName.getParentEntityFQN("service.db.schema", "table"));
   }
+
+  @Test
+  void getParentEntityFQN_table_quotedDottedColumnName() {
+    // Not covered by test_getParentEntityFQN: a column whose own name contains dots is
+    // stored quoted, and the parent must be the first 4 parts, not a naive lastIndexOf('.').
+    assertEquals(
+        "svc.db.schema.tbl",
+        FullyQualifiedName.getParentEntityFQN("svc.db.schema.tbl.\"col.with.dot\"", "table"));
+  }
+
+  @Test
+  void getParentEntityFQN_table_structGrandchildColumn() {
+    // test_getParentEntityFQN covers one struct level (col1.child1); this pins two levels,
+    // which is what the resolver's recursive locate() will have to agree with in Task 9.
+    assertEquals(
+        "svc.db.schema.tbl",
+        FullyQualifiedName.getParentEntityFQN("svc.db.schema.tbl.col.child.grandchild", "table"));
+  }
 }
