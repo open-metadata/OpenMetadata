@@ -27,6 +27,9 @@ Highest-value constraints, all machine-enforced:
 
 - No positional locators (`.first()`, `.last()`, `.nth()`) — narrow the locator, or use
   `getRowByName()` from `playwright/utils/scopedLocators.ts`.
+- **`beforeAll` is not a per-worker hook.** Under `fullyParallel` it runs once per *group* of the
+  file's tests dispatched to a worker, with `afterAll` in between — so it can run twice in one
+  worker. Rebuild describe-scope state at the top of the hook; never `.push()` into it.
 - Never `await page.waitForResponse(...)` inline — hoist the listener above the action that
   triggers it, or use `clickAndWaitFor()` from `playwright/utils/waitHelpers.ts`. The rule bans the
   inline shape; it does not verify ordering, so an aliased call slips past it.
