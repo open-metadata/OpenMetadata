@@ -47,6 +47,7 @@ const DqSearchFilterChip = ({
     <FilterSelect
       hideCounts
       searchable
+      showSelectAll
       commitMode="staged"
       data-testid={`search-dropdown-${searchKey}`}
       isOpen={isOpen}

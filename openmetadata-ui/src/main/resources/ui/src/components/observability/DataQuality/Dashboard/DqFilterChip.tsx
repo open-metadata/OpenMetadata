@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 import { ChevronDown } from '@untitledui/icons';
+import classNames from 'classnames';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
-import { chipLabel, chipTriggerClassName } from './dqFilterChip.utils';
+import {
+  chipCountBadgeClassName,
+  chipTriggerClassName,
+  chipTriggerSelectedClassName,
+} from './dqFilterChip.utils';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
 const DqFilterChip = ({
@@ -42,11 +47,23 @@ const DqFilterChip = ({
           onOpenChange(false);
         }}>
         <button
-          className={chipTriggerClassName}
+          className={classNames(chipTriggerClassName, {
+            [chipTriggerSelectedClassName]: filter.selectedOwnerKeys.length > 0,
+          })}
           data-testid={`search-dropdown-${filter.key}`}
           type="button">
-          {chipLabel(filter.label, filter.selectedOwnerKeys.length)}
-          <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+          {filter.label}
+          {filter.selectedOwnerKeys.length > 0 && (
+            <span
+              className={chipCountBadgeClassName}
+              data-testid="filter-count-badge">
+              {filter.selectedOwnerKeys.length}
+            </span>
+          )}
+          <ChevronDown
+            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
+            data-icon="true"
+          />
         </button>
       </UserTeamSelectableList>
     );
