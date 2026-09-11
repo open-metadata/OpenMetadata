@@ -58,7 +58,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
         <div data-testid={testId}>
           {selectedValues.length > 0
-            ? `${label} · ${selectedValues.length}`
+            ? `${label} ${selectedValues.length}`
             : label}
         </div>
         <input
@@ -303,7 +303,7 @@ describe('DqFilterBar', () => {
     render(<DqFilterBar {...(props as any)} />);
 
     expect(screen.getByTestId('search-dropdown-tags')).toHaveTextContent(
-      'Tags · 1'
+      'Tags 1'
     );
   });
 

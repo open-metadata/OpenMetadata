@@ -93,8 +93,11 @@ describe('DqFilterChip', () => {
 
     expect(screen.getByTestId('user-team-selectable-list')).toBeInTheDocument();
     expect(screen.getByTestId('search-dropdown-owner')).toHaveTextContent(
-      'Owner · 1'
+      'Owner'
     );
+    // The count renders as the same badge FilterSelect puts on its trigger,
+    // not as a "Label · N" string, so the owner chip matches its siblings.
+    expect(screen.getByTestId('filter-count-badge')).toHaveTextContent('1');
     expect(
       screen.queryByTestId('dq-search-filter-chip')
     ).not.toBeInTheDocument();
