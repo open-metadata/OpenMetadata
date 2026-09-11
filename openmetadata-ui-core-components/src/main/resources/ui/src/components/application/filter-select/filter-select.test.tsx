@@ -101,7 +101,7 @@ describe('FilterSelect', () => {
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining(['redshift', 'snowflake'])
@@ -121,7 +121,7 @@ describe('FilterSelect', () => {
     );
 
     rerender(<FilterSelect {...props} isOpen selectedValues={['snowflake']} />);
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith(['snowflake']);
   });
@@ -130,7 +130,7 @@ describe('FilterSelect', () => {
     const { onChange } = renderFilter({ commitMode: 'staged' });
 
     fireEvent.click(screen.getByText('Snowflake'));
-    fireEvent.click(screen.getByTestId('cancel-filter-btn'));
+    fireEvent.click(screen.getByTestId('close-btn'));
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -292,6 +292,24 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('exposes the legacy dropdown test ids the E2E suite drives', () => {
+    // The Playwright suite addresses filters through the ids the component
+    // this replaced used. Renaming them silently breaks ~160 references across
+    // 23 spec files, so the contract is pinned here rather than in the specs.
+    renderFilter({
+      searchable: true,
+      commitMode: 'staged',
+      nullOption: { value: 'OM_NULL_FIELD', label: 'No Service' },
+    });
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('search-input')).toBeInTheDocument();
+    expect(screen.getByTestId('snowflake-checkbox')).toBeInTheDocument();
+    expect(screen.getByTestId('no-option-checkbox')).toBeInTheDocument();
+    expect(screen.getByTestId('update-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('close-btn')).toBeInTheDocument();
+  });
+
   it('shows the empty state when nothing is displayed', () => {
     renderFilter({ options: [] });
 
@@ -338,7 +356,7 @@ describe('FilterSelect', () => {
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith([]);
   });
@@ -372,14 +390,12 @@ describe('FilterSelect', () => {
   it('apply carries the staged count, and drops it when nothing is staged', () => {
     renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
 
-    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent(
-      'Apply (1)'
-    );
+    expect(screen.getByTestId('update-btn')).toHaveTextContent('Apply (1)');
 
     fireEvent.click(screen.getByTestId('clear-filter-btn'));
 
-    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent('Apply');
-    expect(screen.getByTestId('apply-filter-btn')).not.toHaveTextContent('(');
+    expect(screen.getByTestId('update-btn')).toHaveTextContent('Apply');
+    expect(screen.getByTestId('update-btn')).not.toHaveTextContent('(');
   });
 
   it('staged clear all is disabled until something is staged', () => {
@@ -430,7 +446,7 @@ describe('FilterSelect', () => {
     renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
 
     expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
-    expect(screen.getByTestId('apply-filter-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('update-btn')).toBeInTheDocument();
   });
 
   it('removing a chip does not open the popover', () => {

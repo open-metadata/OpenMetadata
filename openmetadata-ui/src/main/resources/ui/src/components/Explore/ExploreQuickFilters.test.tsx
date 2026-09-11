@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { FilterSelectProps } from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -22,7 +23,6 @@ import userEvent from '@testing-library/user-event';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
-import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
@@ -34,6 +34,18 @@ const mockUseCustomLocation = jest.fn();
 const mockQueryFilter = {};
 const mockUseAdvanceSearch = jest.fn();
 const mockUseSearchStore = jest.fn();
+
+const mockDebounceCancel = jest.fn();
+
+jest.mock('lodash', () => ({
+  ...jest.requireActual('lodash'),
+  // The component debounces search; tests drive it synchronously and only
+  // assert that closing a dropdown cancels a pending keystroke.
+  debounce: (fn: (...args: unknown[]) => unknown) =>
+    Object.assign((...args: unknown[]) => fn(...args), {
+      cancel: mockDebounceCancel,
+    }),
+}));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => ({
   __esModule: true,
@@ -57,75 +69,67 @@ jest.mock('../../hooks/useSearchStore', () => ({
 const mockOnFieldValueSelect = jest.fn();
 const mockGetAggregationOptions = jest.fn();
 
-jest.mock('../SearchDropdown/SearchDropdown', () => ({
-  __esModule: true,
-  default: ({
+jest.mock('@openmetadata/ui-core-components', () => ({
+  FilterSelect: ({
+    'data-testid': testId,
     options,
-    searchKey,
-    isSuggestionsLoading,
+    selectedValues,
+    selectionMode,
+    nullOption,
+    hideCounts,
+    isLoading,
     onChange,
     onSearch,
-    onGetInitialOptions,
-    selectedKeys,
-    hasNullOption,
-    hideCounts,
-    independent,
-    showSelectedCounts,
-    singleSelect,
-    getPopupContainer,
-    index: dropdownIndex,
-  }: SearchDropdownProps) => (
-    <div data-testid={`search-dropdown-${searchKey}`} title="search-dropdown">
-      <span data-testid={`label-${searchKey}`}>{searchKey}</span>
-      <span data-testid={`single-select-${searchKey}`}>
-        {singleSelect ? 'true' : 'false'}
-      </span>
-      <span data-testid={`index-${searchKey}`}>{dropdownIndex}</span>
-      <span data-testid={`has-null-option-${searchKey}`}>
-        {hasNullOption ? 'true' : 'false'}
-      </span>
-      <span data-testid={`hide-counts-${searchKey}`}>
-        {hideCounts ? 'true' : 'false'}
-      </span>
-      <span data-testid={`independent-${searchKey}`}>
-        {independent ? 'true' : 'false'}
-      </span>
-      <span data-testid={`show-selected-counts-${searchKey}`}>
-        {showSelectedCounts ? 'true' : 'false'}
-      </span>
-      <span data-testid={`popup-container-${searchKey}`}>
-        {getPopupContainer ? 'true' : 'false'}
-      </span>
-      <span data-testid={`selected-count-${searchKey}`}>
-        {selectedKeys?.length ?? 0}
-      </span>
-      <span data-testid={`suggestions-loading-${searchKey}`}>
-        {isSuggestionsLoading ? 'true' : 'false'}
-      </span>
-      {options.map((option, index) => (
-        <div data-testid={`option-${searchKey}-${index}`} key={option.key}>
-          {option.label} - {option.count}
-        </div>
-      ))}
-      <button
-        data-testid={`onGetInitialOptions-${searchKey}`}
-        onClick={() => onGetInitialOptions?.(searchKey)}>
-        Get Initial Options
-      </button>
-      <button
-        data-testid={`onSearch-${searchKey}`}
-        onClick={() => onSearch('test', searchKey)}>
-        Search
-      </button>
-      <button
-        data-testid={`onChange-${searchKey}`}
-        onClick={() =>
-          onChange([{ key: 'test-key', label: 'test-label' }], searchKey)
-        }>
-        Change
-      </button>
-    </div>
-  ),
+    onOpenChange,
+  }: FilterSelectProps) => {
+    const searchKey = (testId ?? '').replace('search-dropdown-', '');
+
+    return (
+      <div data-testid={testId} title="search-dropdown">
+        <span data-testid={`label-${searchKey}`}>{searchKey}</span>
+        <span data-testid={`single-select-${searchKey}`}>
+          {selectionMode === 'single' ? 'true' : 'false'}
+        </span>
+        <span data-testid={`has-null-option-${searchKey}`}>
+          {nullOption ? 'true' : 'false'}
+        </span>
+        <span data-testid={`hide-counts-${searchKey}`}>
+          {hideCounts ? 'true' : 'false'}
+        </span>
+        <span data-testid={`selected-count-${searchKey}`}>
+          {selectedValues?.length ?? 0}
+        </span>
+        <span data-testid={`suggestions-loading-${searchKey}`}>
+          {isLoading ? 'true' : 'false'}
+        </span>
+        {options.map((option, index) => (
+          <div data-testid={`option-${searchKey}-${index}`} key={option.value}>
+            {option.label} - {option.count}
+          </div>
+        ))}
+        <button
+          data-testid={`onGetInitialOptions-${searchKey}`}
+          onClick={() => onOpenChange?.(true)}>
+          Get Initial Options
+        </button>
+        <button
+          data-testid={`onSearch-${searchKey}`}
+          onClick={() => onSearch?.('test')}>
+          Search
+        </button>
+        <button
+          data-testid={`onClose-${searchKey}`}
+          onClick={() => onOpenChange?.(false)}>
+          Close
+        </button>
+        <button
+          data-testid={`onChange-${searchKey}`}
+          onClick={() => onChange(['test-key'])}>
+          Change
+        </button>
+      </div>
+    );
+  },
 }));
 
 jest.mock('../../utils/ExploreUtils', () => ({
@@ -210,36 +214,6 @@ describe('ExploreQuickFilters component', () => {
   });
 
   describe('Props handling', () => {
-    it('should pass independent prop to SearchDropdown', () => {
-      render(<ExploreQuickFilters {...mockProps} independent />);
-
-      mockFields.forEach((field) => {
-        expect(
-          screen.getByTestId(`independent-${field.key}`)
-        ).toHaveTextContent('true');
-      });
-    });
-
-    it('should pass showSelectedCounts prop to SearchDropdown', () => {
-      render(<ExploreQuickFilters {...mockProps} showSelectedCounts />);
-
-      mockFields.forEach((field) => {
-        expect(
-          screen.getByTestId(`show-selected-counts-${field.key}`)
-        ).toHaveTextContent('true');
-      });
-    });
-
-    it('should pass popup container override to SearchDropdown', () => {
-      render(<ExploreQuickFilters {...mockProps} />);
-
-      mockFields.forEach((field) => {
-        expect(
-          screen.getByTestId(`popup-container-${field.key}`)
-        ).toHaveTextContent('true');
-      });
-    });
-
     it('should pass hasNullOption for fields in fieldsWithNullValues', () => {
       const fieldsWithNullValues = ['owner.displayName' as EntityFields];
       render(
@@ -678,6 +652,18 @@ describe('ExploreQuickFilters component', () => {
     });
   });
 
+  describe('Debounce cancellation', () => {
+    it('should cancel a pending debounced search when the dropdown closes', async () => {
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      await act(async () => {
+        screen.getByTestId('onClose-database.name').click();
+      });
+
+      expect(mockDebounceCancel).toHaveBeenCalled();
+    });
+  });
+
   describe('onChange handling', () => {
     it('should call onFieldValueSelect when filter value changes', async () => {
       render(
@@ -696,7 +682,7 @@ describe('ExploreQuickFilters component', () => {
       expect(mockOnFieldValueSelect).toHaveBeenCalledWith({
         label: 'Database',
         key: 'database.name',
-        value: [{ key: 'test-key', label: 'test-label' }],
+        value: [{ key: 'test-key', label: 'test-key' }],
       });
     });
 
@@ -711,7 +697,7 @@ describe('ExploreQuickFilters component', () => {
 
       const updatedFields = mockFields.map((f) =>
         f.key === 'database.name'
-          ? { ...f, value: [{ key: 'test-key', label: 'test-label' }] }
+          ? { ...f, value: [{ key: 'test-key', label: 'test-key' }] }
           : f
       );
 
@@ -1147,21 +1133,6 @@ describe('ExploreQuickFilters component', () => {
       expect(
         screen.getByTestId('single-select-database.name')
       ).toHaveTextContent('true');
-    });
-  });
-
-  describe('Multi-index display', () => {
-    it('should pass first index as display index to SearchDropdown', () => {
-      const multiIndexProps = {
-        ...mockProps,
-        index: [SearchIndex.TABLE, SearchIndex.TOPIC] as unknown as SearchIndex,
-      };
-
-      render(<ExploreQuickFilters {...multiIndexProps} />);
-
-      expect(screen.getByTestId('index-database.name')).toHaveTextContent(
-        SearchIndex.TABLE
-      );
     });
   });
 
