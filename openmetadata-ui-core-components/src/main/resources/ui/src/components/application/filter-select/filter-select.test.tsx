@@ -507,6 +507,31 @@ describe('FilterSelect', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
+  it('consumes Escape so a host drawer does not also dismiss', () => {
+    const hostKeyDown = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
+      <div onKeyDown={hostKeyDown} onKeyDownCapture={hostKeyDown}>
+        <FilterSelect
+          isOpen
+          searchable
+          label="Service"
+          options={OPTIONS}
+          selectedValues={[]}
+          onChange={() => undefined}
+          onOpenChange={onOpenChange}
+        />
+      </div>
+    );
+
+    fireEvent.keyDown(screen.getByTestId('search-input'), { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // The document-level capture listener stops the event before it reaches
+    // any element handler — including the host's own capture handler.
+    expect(hostKeyDown).not.toHaveBeenCalled();
+  });
+
   it('shows the placeholder on an empty input trigger', () => {
     renderFilter({
       isOpen: false,
