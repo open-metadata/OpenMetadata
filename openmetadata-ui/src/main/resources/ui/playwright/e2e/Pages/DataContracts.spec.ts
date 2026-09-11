@@ -140,8 +140,12 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
+    // Quarantined: for the Table variant the contract's quality/test-suite run
+    // can finish without producing a result, so `qualityValidation` never
+    // populates and `contractExecutionStatus` hangs on `Running` — the poll
+    // then times out. See playwright/QUARANTINE.md.
     const testDetails = entitySupportsQuality(entityType)
-      ? PLAYWRIGHT_INGESTION_TAG_OBJ
+      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] }
       : {};
     const testTitle = `Create Data Contract and validate for ${entityType}`;
 
