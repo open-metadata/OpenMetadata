@@ -612,7 +612,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testCase.fullyQualifiedName
       )}/test-case-results`;
       actorPage = await browser.newPage();
-      await user1.login(actorPage);
+      await user1.signIn(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
@@ -742,7 +742,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Resolve incident', async () => {
       const currentUrl = actorPage.url();
       actorPage = await browser.newPage();
-      await user3.login(actorPage);
+      await user3.signIn(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );

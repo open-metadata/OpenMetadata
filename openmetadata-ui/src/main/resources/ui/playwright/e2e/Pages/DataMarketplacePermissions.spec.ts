@@ -39,7 +39,7 @@ const test = base.extend<{
   },
   consumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await consumerUser.login(page);
+    await consumerUser.signIn(page);
     await use(page);
     await page.close();
   },
