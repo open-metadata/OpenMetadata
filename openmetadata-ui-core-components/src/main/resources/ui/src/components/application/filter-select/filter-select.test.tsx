@@ -387,7 +387,9 @@ describe('FilterSelect', () => {
       selectedValues: ['snowflake', 'bigquery'],
     });
 
-    expect(screen.getByTestId('selected-count')).toHaveTextContent('2 selected');
+    expect(screen.getByTestId('selected-count')).toHaveTextContent(
+      '2 selected'
+    );
 
     fireEvent.click(screen.getByTestId('clear-filter-btn'));
 
