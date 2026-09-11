@@ -108,3 +108,11 @@ SET json = jsonb_set(
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataRetentionApplication'
   AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+-- Normalize user emails to lowercase: email is the primary identity lookup key and the
+-- application always compares lowercased values. No collision guard is needed -- the 1.5.0
+-- migration already deleted rows duplicated by LOWER(email) and lowercased the survivors, and
+-- every write since normalizes, so at most one row can hold any given lowercased address.
+UPDATE user_entity
+SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
+WHERE json ->> 'email' <> lower(json ->> 'email');

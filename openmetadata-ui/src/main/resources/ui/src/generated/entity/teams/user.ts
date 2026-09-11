@@ -71,6 +71,13 @@ export interface User {
      */
     id: string;
     /**
+     * Subject ('sub') claim recorded from the identity provider on first email-first login.
+     * Email addresses can be reassigned to a new person; binding the immutable subject lets a
+     * later login with the same address but a different subject be rejected instead of
+     * inheriting the previous owner's account. Distinct from externalId, which SCIM owns.
+     */
+    identityProviderSubject?: string;
+    /**
      * Bot user that performed the action on behalf of the actual user.
      */
     impersonatedBy?: string;

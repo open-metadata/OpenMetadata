@@ -291,3 +291,11 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_event_type_ts
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity_type_ts
   ON audit_log_event (entity_type, event_ts DESC);
+
+-- Email-first identity: email/name lookups on the authentication hot path compare LOWER()
+-- values. Postgres columns are case-sensitive, so functional indexes are required to avoid a
+-- full table scan per login. Uniqueness is not restated here: user_entity already has UNIQUE
+-- constraints on email and name, and every write normalizes to lowercase, so the plain
+-- constraints already bound each lowercased value to one row.
+CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));

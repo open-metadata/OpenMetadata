@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 
 import com.auth0.jwt.interfaces.Claim;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.system.TestLoginDomainCheck;
 import org.openmetadata.schema.system.TestLoginResult;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.JwtIdentityResolver;
 import org.openmetadata.service.security.SecurityUtil;
 
 /**
@@ -86,11 +88,23 @@ public final class TestLoginService {
       Map<String, String> mapping =
           SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
       List<String> order = listOrEmpty(authConfig.getJwtPrincipalClaims());
-      String principal = SecurityUtil.findUserNameFromClaims(mapping, order, claims);
-      String email =
-          SecurityUtil.findEmailFromClaims(
-              mapping, order, claims, authzConfig.getPrincipalDomain());
-      result = buildResolved(authConfig, authzConfig, claims, mapping, order, principal, email);
+      // Resolve through the same resolver the request path uses, so the dry-run agrees with real
+      // login about which claim wins, whether email-first applies, and whether an unverified
+      // email is rejected. The username resolver is deliberately the pure local-part derivation:
+      // this method must not touch the database, and the dry-run is validating configuration
+      // rather than predicting the stored username of an account that may not exist yet.
+      JwtIdentityResolver.ResolvedIdentity identity =
+          new JwtIdentityResolver(
+                  authConfig.getEmailClaim(),
+                  mapping,
+                  order,
+                  SecurityUtil.resolvePrincipalDomain(
+                      authzConfig.getPrincipalDomain(),
+                      authzConfig.getAllowedEmailDomains(),
+                      authzConfig.getAllowedDomains()),
+                  TestLoginService::localPartOf)
+              .resolve(claims, SecurityUtil.isBot(claims));
+      result = buildResolved(authConfig, authzConfig, claims, mapping, order, identity);
     } catch (Exception e) {
       LOG.debug("Test login could not resolve identity from claims", e);
       result =
@@ -106,9 +120,11 @@ public final class TestLoginService {
       Map<String, Claim> claims,
       Map<String, String> mapping,
       List<String> order,
-      String principal,
-      String email) {
-    TestLoginDomainCheck domainCheck = checkDomain(authzConfig, mapping, order, claims, email);
+      JwtIdentityResolver.ResolvedIdentity identity) {
+    String principal = identity.userName();
+    String email = identity.email();
+    TestLoginDomainCheck domainCheck =
+        checkDomain(authzConfig, mapping, order, claims, email, identity.emailFirstFlow());
     boolean domainOk = Boolean.TRUE.equals(domainCheck.getPassed());
     TestLoginResult result =
         new TestLoginResult()
@@ -128,22 +144,41 @@ public final class TestLoginService {
     return result;
   }
 
+  /** Pure stand-in for the request path's repository lookup; see resolveIdentityFromClaims. */
+  private static String localPartOf(String email) {
+    return email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
+  }
+
   private static TestLoginDomainCheck checkDomain(
       AuthorizerConfiguration authzConfig,
       Map<String, String> mapping,
       List<String> order,
       Map<String, Claim> claims,
-      String email) {
-    boolean enforce = authzConfig.getEnforcePrincipalDomain();
+      String email,
+      boolean emailFirstFlow) {
+    boolean enforce = Boolean.TRUE.equals(authzConfig.getEnforcePrincipalDomain());
     boolean passed = true;
     try {
-      SecurityUtil.validateDomainEnforcement(
-          mapping,
-          order,
-          claims,
-          authzConfig.getPrincipalDomain(),
-          authzConfig.getAllowedDomains(),
-          enforce);
+      // Mirror the branch the request path takes: email-first logins are checked against
+      // allowedEmailDomains, legacy logins against the principal-domain rules.
+      if (emailFirstFlow) {
+        SecurityUtil.validateConfiguredEmailDomain(
+            email,
+            authzConfig.getAllowedEmailDomains() != null
+                ? new ArrayList<>(authzConfig.getAllowedEmailDomains())
+                : new ArrayList<>(),
+            authzConfig.getPrincipalDomain(),
+            authzConfig.getAllowedDomains(),
+            authzConfig.getEnforcePrincipalDomain());
+      } else {
+        SecurityUtil.validateDomainEnforcement(
+            mapping,
+            order,
+            claims,
+            authzConfig.getPrincipalDomain(),
+            authzConfig.getAllowedDomains(),
+            enforce);
+      }
     } catch (Exception e) {
       LOG.debug("Test login domain enforcement rejected the resolved identity", e);
       passed = false;
