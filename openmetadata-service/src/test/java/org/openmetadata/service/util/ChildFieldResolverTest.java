@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MlFeature;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
@@ -279,6 +281,105 @@ class ChildFieldResolverTest {
   @Test
   void containerListFor_unknownContainerOrTypeReturnsNull() {
     assertNull(ChildFieldResolver.containerListFor(new Table(), "mlFeatures"));
+    assertNull(ChildFieldResolver.containerListFor(new Glossary(), "columns"));
+  }
+
+  // The "columns" alias. One test per registry type, because the point is that the alias is
+  // uniform and not a special case for the types that already happened to work.
+
+  @Test
+  void columnsAlias_tableAndDashboardDataModelAndWorksheet_returnTheSameLiveListAsBefore() {
+    // For these three the registry's container path IS "columns", so alias and declared path
+    // coincide. assertSame is the proof: the very same list instance comes back, so nothing
+    // downstream can observe a difference.
+    Table table = new Table().withColumns(List.of(new Column().withName("id")));
+    assertSame(table.getColumns(), ChildFieldResolver.containerListFor(table, "columns"));
+
+    DashboardDataModel model =
+        new DashboardDataModel().withColumns(List.of(new Column().withName("id")));
+    assertSame(model.getColumns(), ChildFieldResolver.containerListFor(model, "columns"));
+
+    Worksheet worksheet = new Worksheet().withColumns(List.of(new Column().withName("id")));
+    assertSame(worksheet.getColumns(), ChildFieldResolver.containerListFor(worksheet, "columns"));
+  }
+
+  @Test
+  void columnsAlias_topicResolvesToMessageSchemaFields() {
+    Topic topic =
+        new Topic()
+            .withMessageSchema(
+                new MessageSchema().withSchemaFields(List.of(new Field().withName("customer_id"))));
+    List<?> children = ChildFieldResolver.containerListFor(topic, "columns");
+    assertEquals(1, children.size());
+    assertEquals("customer_id", ((Field) children.getFirst()).getName());
+  }
+
+  @Test
+  void columnsAlias_pipelineResolvesToTasks() {
+    Pipeline pipeline = new Pipeline().withTasks(List.of(new Task().withName("extract")));
+    assertEquals(
+        "extract",
+        ((Task) ChildFieldResolver.containerListFor(pipeline, "columns").getFirst()).getName());
+  }
+
+  @Test
+  void columnsAlias_mlModelResolvesToMlFeatures() {
+    MlModel model = new MlModel().withMlFeatures(List.of(new MlFeature().withName("age")));
+    assertEquals(
+        "age",
+        ((MlFeature) ChildFieldResolver.containerListFor(model, "columns").getFirst()).getName());
+  }
+
+  @Test
+  void columnsAlias_searchIndexResolvesToFields() {
+    SearchIndex index =
+        new SearchIndex().withFields(List.of(new SearchIndexField().withName("title")));
+    assertEquals(
+        "title",
+        ((SearchIndexField) ChildFieldResolver.containerListFor(index, "columns").getFirst())
+            .getName());
+  }
+
+  @Test
+  void columnsAlias_containerResolvesToDataModelColumns() {
+    Container container =
+        new Container()
+            .withDataModel(
+                new ContainerDataModel().withColumns(List.of(new Column().withName("payload"))));
+    assertEquals(
+        "payload",
+        ((Column) ChildFieldResolver.containerListFor(container, "columns").getFirst()).getName());
+  }
+
+  @Test
+  void columnsAlias_apiEndpointConcatenatesBothSchemasRequestFirst() {
+    // The only two-path type. The alias must see BOTH schemas, and the declaration order in
+    // containerPaths (request, then response) is the tie-break when a name exists in both.
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withRequestSchema(
+                new APISchema().withSchemaFields(List.of(new Field().withName("shared"))))
+            .withResponseSchema(
+                new APISchema()
+                    .withSchemaFields(
+                        List.of(new Field().withName("shared"), new Field().withName("userId"))));
+    List<?> children = ChildFieldResolver.containerListFor(endpoint, "columns");
+    assertEquals(3, children.size());
+    assertSame(endpoint.getRequestSchema().getSchemaFields().getFirst(), children.getFirst());
+  }
+
+  @Test
+  void columnsAlias_registryTypeWithNullContainer_returnsEmptyNotNull() {
+    // childrenOf is null-tolerant, so the alias yields an empty list rather than null. Callers
+    // then get "field not found" rather than "unknown container", which is the same outcome with
+    // a clearer log line. Pinned so the distinction is deliberate.
+    assertEquals(List.of(), ChildFieldResolver.containerListFor(new Topic(), "columns"));
+  }
+
+  @Test
+  void columnsAlias_doesNotApplyToNonRegistryTypes() {
+    // Glossary has no registered child container. The alias must not invent one; FieldPathUtils'
+    // plain getter path still serves types the registry does not cover.
     assertNull(ChildFieldResolver.containerListFor(new Glossary(), "columns"));
   }
 

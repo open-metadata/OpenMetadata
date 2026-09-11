@@ -47,6 +47,23 @@ public final class ChildFieldResolver {
   public static final int LONGEST_PREFIX = -1;
   private static final int MIN_PARENT_PARTS = 2;
 
+  /**
+   * The container segment any caller may use to mean "this entity's child container", whatever that
+   * container is actually called in the entity's JSON.
+   *
+   * <p>Needed because the suggestion tool builds child suggestion field paths as
+   * {@code columns.<name>.<property>} for every entity type. Without this alias those paths resolve
+   * to nothing on the six registry types whose child container is not literally named "columns", so
+   * an accepted suggestion writes nothing and still reports success.
+   *
+   * <p>The alias applies to every registry type, table included. For table, dashboardDataModel and
+   * worksheet the declared container path already is "columns", so the declared-path branch serves
+   * them and returns the entity's own live list; the alias is what the remaining six need. Aliasing
+   * only where the direct lookup fails was rejected: correctness would then depend on which
+   * reflective getters happen to exist, which is the accident that produced the bug.
+   */
+  public static final String CHILD_CONTAINER_ALIAS = "columns";
+
   public record ChildContainerSpec(
       String entityType,
       String childExtensionType,
@@ -196,6 +213,12 @@ public final class ChildFieldResolver {
     List<?> result = null;
     if (supports(entityType)) {
       result = listForDeclaredPath(entity, specFor(entityType), containerName);
+      if (result == null && CHILD_CONTAINER_ALIAS.equals(containerName)) {
+        // Registry type whose child container is not named "columns": serve the alias.
+        // childrenOf concatenates every containerPath, which is what apiEndpoint's two
+        // schemas need, and copies element references so writes still land on the entity.
+        result = childrenOf(entity, entityType);
+      }
     }
     return result;
   }

@@ -30,7 +30,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.APISchema;
@@ -38,6 +41,9 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.MlFeature;
+import org.openmetadata.schema.type.SearchIndexField;
+import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.FieldPathUtils.FieldPathComponents;
 
@@ -543,14 +549,10 @@ class FieldPathUtilsTest {
   }
 
   @Test
-  void updateFieldDescription_columnsContainerOnTopic_silentlyDoesNothingToday() {
-    // CHARACTERIZATION OF A BUG, deliberately pinning the broken behavior so the fix is visible
-    // as a diff. SuggestionTool builds every child suggestion's fieldPath as
-    // "columns.<name>.description" regardless of entity type, and FieldPathUtils resolves
-    // "columns" by calling getColumns(), which Topic does not have; handleNestedContainer then
-    // matches only the literal names messageSchema / dataModel / requestSchema / responseSchema,
-    // none of which is "columns". So an accepted suggestion on a topic schema field writes
-    // nothing and reports nothing. Task 10 step 4 flips this test.
+  void updateFieldDescription_columnsAliasOnTopic_writesTheSchemaField() {
+    // Was updateFieldDescription_columnsContainerOnTopic_silentlyDoesNothingToday, the
+    // characterization of the bug. "columns" is now the registry-resolved alias for the entity's
+    // child container, so the fieldPath the suggestion tool emits for every type finally lands.
     Topic topic =
         new Topic()
             .withId(UUID.randomUUID())
@@ -561,14 +563,144 @@ class FieldPathUtilsTest {
                         new ArrayList<>(List.of(new Field().withName("customer_id")))));
     EntityRepository<?> repository = mock(EntityRepository.class);
 
-    assertFalse(
+    assertTrue(
         FieldPathUtils.updateFieldDescription(
             topic,
             repository,
             "admin",
             "columns::customer_id::description",
             "Customer identifier"));
-    assertNull(topic.getMessageSchema().getSchemaFields().get(0).getDescription());
+    assertEquals(
+        "Customer identifier", topic.getMessageSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasOnPipelineTask() {
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("etl")
+            .withTasks(new ArrayList<>(List.of(new Task().withName("extract"))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            pipeline, repository, "admin", "columns::extract::description", "Extract step"));
+    assertEquals("Extract step", pipeline.getTasks().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasOnMlFeature() {
+    MlModel model =
+        new MlModel()
+            .withId(UUID.randomUUID())
+            .withName("churn")
+            .withMlFeatures(new ArrayList<>(List.of(new MlFeature().withName("age"))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            model, repository, "admin", "columns::age::description", "Customer age"));
+    assertEquals("Customer age", model.getMlFeatures().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasOnSearchIndexField() {
+    SearchIndex index =
+        new SearchIndex()
+            .withId(UUID.randomUUID())
+            .withName("catalog")
+            .withFields(new ArrayList<>(List.of(new SearchIndexField().withName("title"))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            index, repository, "admin", "columns::title::description", "Document title"));
+    assertEquals("Document title", index.getFields().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasOnContainerDataModelColumn() {
+    Container container =
+        new Container()
+            .withId(UUID.randomUUID())
+            .withName("bucket")
+            .withDataModel(
+                new ContainerDataModel()
+                    .withColumns(new ArrayList<>(List.of(new Column().withName("payload")))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            container, repository, "admin", "columns::payload::description", "Raw payload"));
+    assertEquals("Raw payload", container.getDataModel().getColumns().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasOnApiEndpoint_writesEitherSchemaField() {
+    // The two-container-path type. A response-schema field must be reachable through the same
+    // "columns" alias as a request-schema one.
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("getUser")
+            .withRequestSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("query")))))
+            .withResponseSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("userId")))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            endpoint, repository, "admin", "columns::userId::description", "The user id"));
+    assertEquals(
+        "The user id", endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasReachesNestedStructChild() {
+    // The alias must not lose the recursion into children: a struct child of a container
+    // dataModel column is addressed as "columns::parent.child::description".
+    Container container =
+        new Container()
+            .withId(UUID.randomUUID())
+            .withName("bucket")
+            .withDataModel(
+                new ContainerDataModel()
+                    .withColumns(
+                        new ArrayList<>(
+                            List.of(
+                                new Column()
+                                    .withName("profile")
+                                    .withChildren(
+                                        new ArrayList<>(
+                                            List.of(new Column().withName("full_name"))))))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            container,
+            repository,
+            "admin",
+            "columns::profile.full_name::description",
+            "Full name"));
+    assertEquals(
+        "Full name",
+        container.getDataModel().getColumns().get(0).getChildren().get(0).getDescription());
+  }
+
+  @Test
+  void updateFieldDescription_columnsAliasOnNonRegistryType_stillFails() {
+    // The alias is not a wildcard: a type with no registered child container still resolves
+    // nothing, so it cannot start writing to an unrelated list that happens to exist.
+    Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("business");
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertFalse(
+        FieldPathUtils.updateFieldDescription(
+            glossary, repository, "admin", "columns::anything::description", "x"));
     verifyNoInteractions(repository);
   }
 
