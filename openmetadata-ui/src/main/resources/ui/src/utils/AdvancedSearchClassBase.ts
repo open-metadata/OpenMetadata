@@ -15,7 +15,6 @@ import {
   type AsyncFetchListValuesResult,
   type BasicConfig,
   type Field,
-  type FieldOrGroup,
   type Fields,
   type ListItem,
   type ListValues,
@@ -72,9 +71,7 @@ const MULTI_VALUE_CUSTOM_PROPERTY_TYPES: string[] = [
   'table-cp',
 ];
 
-type OMField = FieldOrGroup & {
-  __omPropertyType: CustomPropertySummary['type'];
-};
+type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
   baseConfig = OMConfig;
@@ -1363,7 +1360,7 @@ class AdvancedSearchClassBase {
     const result = this.buildCustomPropertiesSubFields(field, searchOutputType);
     const attachType = (entry: {
       subfieldsKey: string;
-      dataObject: FieldOrGroup;
+      dataObject: Field;
     }): { subfieldsKey: string; dataObject: OMField } => ({
       subfieldsKey: entry.subfieldsKey,
       dataObject: {
@@ -1499,7 +1496,7 @@ class AdvancedSearchClassBase {
     field: CustomPropertySummary,
     label: string,
     searchOutputType: SearchOutputType
-  ): Array<{ subfieldsKey: string; dataObject: FieldOrGroup }> {
+  ): Array<{ subfieldsKey: string; dataObject: Field }> {
     switch (field.type) {
       case 'timeInterval':
         return [
@@ -1555,34 +1552,8 @@ class AdvancedSearchClassBase {
           return [];
         }
 
-        // `extension.<name>.rows` is an array of row objects, so JsonLogic must
-        // match columns per-row with `{"some": [rows, {"==": [column, value]}]}`.
-        // A flat dotted path (`rows.<column>`) never resolves and the rule
-        // always evaluates false. ElasticSearch keeps the flat path since the
-        // search index flattens the rows.
         if (searchOutputType === SearchOutputType.JSONLogic) {
-          return [
-            {
-              subfieldsKey: `${field.name}.rows`,
-              dataObject: {
-                type: '!group',
-                mode: 'some',
-                label,
-                defaultField: columns[0],
-                subfields: Object.fromEntries(
-                  columns.map((columnName) => [
-                    columnName,
-                    {
-                      type: 'text',
-                      label: columnName,
-                      operators: TEXT_FIELD_OPERATORS,
-                      valueSources: ['value'],
-                    },
-                  ])
-                ),
-              },
-            },
-          ];
+          return this.buildTableCustomPropertyGroup(field, label, columns);
         }
 
         return columns.map((columnName) => ({
@@ -1605,8 +1576,8 @@ class AdvancedSearchClassBase {
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType
   ):
-    | { subfieldsKey: string; dataObject: FieldOrGroup }
-    | Array<{ subfieldsKey: string; dataObject: FieldOrGroup }> {
+    | { subfieldsKey: string; dataObject: Field }
+    | Array<{ subfieldsKey: string; dataObject: Field }> {
     const label = getEntityName(field);
     const subfieldsKey = this.resolveCustomPropertySubfieldsKey(
       field,
@@ -1626,6 +1597,34 @@ class AdvancedSearchClassBase {
     }
 
     return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);
+  }
+
+  private buildTableCustomPropertyGroup(
+    field: CustomPropertySummary,
+    label: string,
+    columns: string[]
+  ): Array<{ subfieldsKey: string; dataObject: Field }> {
+    return [
+      {
+        subfieldsKey: `${field.name}.rows`,
+        dataObject: {
+          type: '!group',
+          mode: 'some',
+          label,
+          subfields: Object.fromEntries(
+            columns.map((columnName) => [
+              columnName,
+              {
+                type: 'select',
+                label: columnName,
+                operators: LIST_VALUE_OPERATORS,
+                valueSources: ['value'],
+              },
+            ])
+          ),
+        } as unknown as Field,
+      },
+    ];
   }
 }
 

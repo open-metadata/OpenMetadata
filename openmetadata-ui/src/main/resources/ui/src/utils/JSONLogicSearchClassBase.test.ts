@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
-import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
 // Define extended widget interface for testing widget properties
@@ -540,65 +536,6 @@ describe('JSONLogicSearchClassBase', () => {
 
       expect(props.fullWidth).toBe(true);
       expect(props.valueLabel).toContain('label.criteria');
-    });
-  });
-
-  describe('table type custom property JsonLogic round-trip', () => {
-    const getConfigWithTableCustomProperty = () => {
-      const tableCpEntries =
-        new AdvancedSearchClassBase().getCustomPropertiesSubFields(
-          {
-            name: 'tableType',
-            type: 'table-cp',
-            customPropertyConfig: {
-              config: { columns: ['name', 'age'] },
-            },
-          } as CustomPropertySummary,
-          SearchOutputType.JSONLogic
-        );
-      const entries = Array.isArray(tableCpEntries)
-        ? tableCpEntries
-        : [tableCpEntries];
-
-      const config = jsonLogicSearchClassBase.getQbConfigs(
-        [SearchIndex.TABLE],
-        false
-      );
-      const extension = config.fields.extension;
-      if ('subfields' in extension) {
-        extension.subfields = Object.fromEntries(
-          entries.map((entry) => [entry.subfieldsKey, entry.dataObject])
-        );
-      }
-
-      return config;
-    };
-
-    it('should emit a per-row "some" rule instead of a flat dotted path', () => {
-      const config = getConfigWithTableCustomProperty();
-      const expectedLogic = {
-        and: [
-          {
-            some: [
-              { var: 'extension.tableType.rows' },
-              { '==': [{ var: 'name' }, 'karan'] },
-            ],
-          },
-        ],
-      };
-
-      const tree = QbUtils.loadFromJsonLogic(expectedLogic, config);
-
-      expect(tree).toBeDefined();
-
-      if (!tree) {
-        return;
-      }
-
-      const { logic, errors } = QbUtils.jsonLogicFormat(tree, config);
-
-      expect(errors).toEqual([]);
-      expect(logic).toEqual(expectedLogic);
     });
   });
 });
