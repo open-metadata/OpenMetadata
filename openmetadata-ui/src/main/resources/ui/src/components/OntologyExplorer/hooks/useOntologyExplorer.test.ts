@@ -223,6 +223,58 @@ describe('useOntologyExplorer', () => {
     );
   });
 
+  it('hydrates a bounded isolated-term preview when the summary is unavailable', async () => {
+    const isolatedIds = [
+      '002e5485-0c59-45cc-912e-15fbc7e350bf',
+      '102e5485-0c59-45cc-912e-15fbc7e350bf',
+      '202e5485-0c59-45cc-912e-15fbc7e350bf',
+      '302e5485-0c59-45cc-912e-15fbc7e350bf',
+      '402e5485-0c59-45cc-912e-15fbc7e350bf',
+      '502e5485-0c59-45cc-912e-15fbc7e350bf',
+    ];
+    const unresolvedTerms: GlossaryTerm[] = isolatedIds.map((id) => ({
+      description: 'Unresolved isolated term',
+      fullyQualifiedName: `LoadedGlossary.${id}`,
+      glossary: {
+        id: loadedGlossary.id,
+        name: loadedGlossary.name,
+        type: 'glossary',
+      },
+      id,
+      name: id,
+    }));
+    const hydratedTerms: GlossaryTerm[] = unresolvedTerms
+      .slice(0, 5)
+      .map((term, index) => ({
+        ...term,
+        displayName: `Customer Account ${index + 1}`,
+        name: `customer_account_${index + 1}`,
+      }));
+    mockGetOntologySummary.mockRejectedValue(
+      new Error('Ontology summary is unavailable')
+    );
+    mockGetGlossaryTerms.mockImplementation(({ glossary }) =>
+      Promise.resolve({
+        data: glossary === loadedGlossary.id ? unresolvedTerms : [],
+        paging: {},
+      })
+    );
+    mockGetGlossaryTermsByIds.mockResolvedValue(hydratedTerms);
+
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() =>
+      expect(mockGetGlossaryTermsByIds).toHaveBeenCalledWith(
+        isolatedIds.slice(0, 5)
+      )
+    );
+    await waitFor(() =>
+      expect(result.current.isolatedTermDetails).toEqual(hydratedTerms)
+    );
+  });
+
   it('loads global Data mode with one bounded request and no asset fanout', async () => {
     mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
     const { result } = renderHook(() =>
