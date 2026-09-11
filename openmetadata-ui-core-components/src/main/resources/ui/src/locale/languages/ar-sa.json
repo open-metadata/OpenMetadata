@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "تطبيق",
+    "cancel": "إلغاء",
+    "clear-all": "مسح الكل",
     "close": "إغلاق",
     "close-navigation-menu": "إغلاق قائمة التنقل",
     "copy-link": "نسخ الرابط",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "مسارات التنقل المخفية",
     "loading": "جارٍ التحميل…",
     "next-page": "الانتقال إلى الصفحة التالية",
+    "no-data-found": "لم يتم العثور على بيانات",
     "open-menu": "فتح القائمة",
     "page": "صفحة",
     "pagination": "ترقيم الصفحات",
@@ -19,6 +23,8 @@
     "previous-page": "الانتقال إلى الصفحة السابقة",
     "records": "السجلات",
     "remove-filter": "إزالة التصفية",
+    "search": "بحث",
+    "select-all": "تحديد الكل",
     "select-dates": "اختر التواريخ",
     "select-only-one-row": "حدد صفًا واحدًا",
     "show-hidden-breadcrumbs": "إظهار مسارات التنقل المخفية",

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
+import type { ReactNode } from 'react';
+import type { SearchIndex } from '../enums/search.enum';
 
-export interface QuickFilterDropdownProps {
+export interface SearchDropdownOption {
+  key: string;
   label: string;
-  searchKey: string;
-  options: SearchDropdownOption[];
-  selectedKeys: SearchDropdownOption[];
-  isSuggestionsLoading?: boolean;
+  labelKeyOptions?: Record<string, string | number | boolean>;
+  count?: number;
+  description?: string;
+  icon?: ReactNode;
+}
+
+export interface ExploreQuickFilterField {
+  key: string;
+  label: string;
+  labelKeyOptions?: Record<string, string | number | boolean>;
+  options?: SearchDropdownOption[];
+  value?: SearchDropdownOption[];
   hideCounts?: boolean;
   hideSearchBar?: boolean;
-  hasNullOption?: boolean;
+  searchIndex?: SearchIndex;
+  searchKey?: string;
+  dropdownClassName?: string;
   singleSelect?: boolean;
-  showSelectedCounts?: boolean;
-  independent?: boolean;
-  onChange: (values: SearchDropdownOption[], searchKey: string) => void;
-  onSearch: (value: string, searchKey: string) => void;
-  onGetInitialOptions?: (searchKey: string) => void;
+  sourceFields?: string;
 }

@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Uygula",
+    "cancel": "İptal",
+    "clear-all": "Tümünü temizle",
     "close": "Kapat",
     "close-navigation-menu": "Gezinme menüsünü kapat",
     "copy-link": "Bağlantıyı kopyala",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Gizli içerik haritası",
     "loading": "Yükleniyor…",
     "next-page": "Sonraki sayfaya git",
+    "no-data-found": "Veri bulunamadı",
     "open-menu": "Menüyü aç",
     "page": "Sayfa",
     "pagination": "Sayfalandırma",
@@ -19,6 +23,8 @@
     "previous-page": "Önceki sayfaya git",
     "records": "Kayıtlar",
     "remove-filter": "Filtreyi kaldır",
+    "search": "Ara",
+    "select-all": "Tümünü seç",
     "select-dates": "Tarihleri seç",
     "select-only-one-row": "Bir satır seçin",
     "show-hidden-breadcrumbs": "Gizli içerik haritasını göster",

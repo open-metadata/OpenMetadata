@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "החל",
+    "cancel": "ביטול",
+    "clear-all": "נקה הכל",
     "close": "סגור",
     "close-navigation-menu": "סגור תפריט ניווט",
     "copy-link": "העתק קישור",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "פירורי לחם מוסתרים",
     "loading": "טוען…",
     "next-page": "עבור לעמוד הבא",
+    "no-data-found": "לא נמצאו נתונים",
     "open-menu": "פתח תפריט",
     "page": "עמוד",
     "pagination": "מספור עמודים",
@@ -19,6 +23,8 @@
     "previous-page": "עבור לעמוד הקודם",
     "records": "רשומות",
     "remove-filter": "הסר סינון",
+    "search": "חיפוש",
+    "select-all": "בחר הכל",
     "select-dates": "בחר תאריכים",
     "select-only-one-row": "בחר שורה אחת",
     "show-hidden-breadcrumbs": "הצג פירורי לחם מוסתרים",

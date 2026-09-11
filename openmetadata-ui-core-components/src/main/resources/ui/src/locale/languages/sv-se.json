@@ -1,5 +1,8 @@
 {
   "label": {
+    "apply": "Tillämpa",
+    "cancel": "Avbryt",
+    "clear-all": "Rensa alla",
     "close": "Stäng",
     "close-navigation-menu": "Stäng navigeringsmeny",
     "copy-link": "Kopiera länk",
@@ -12,6 +15,7 @@
     "hidden-breadcrumbs": "Dolda brödsmulor",
     "loading": "Läser in…",
     "next-page": "Gå till nästa sida",
+    "no-data-found": "Ingen data hittades",
     "open-menu": "Öppna meny",
     "page": "Sida",
     "pagination": "Sidnumrering",
@@ -19,6 +23,8 @@
     "previous-page": "Gå till föregående sida",
     "records": "Poster",
     "remove-filter": "Ta bort filter",
+    "search": "Sök",
+    "select-all": "Välj alla",
     "select-dates": "Välj datum",
     "select-only-one-row": "Välj en rad",
     "show-hidden-breadcrumbs": "Visa dolda brödsmulor",
