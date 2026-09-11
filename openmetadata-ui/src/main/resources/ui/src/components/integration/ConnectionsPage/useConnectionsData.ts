@@ -162,6 +162,7 @@ const countByCategory = (
  * same predicate), and neither the connector nor the health selection narrows the sidebar badges
  * or either dropdown's own option list — only the search term does.
  */
+/* eslint-disable sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity */
 export const useConnectionsData = ({
   searchTerm,
   category,
@@ -170,6 +171,7 @@ export const useConnectionsData = ({
   showDeleted = false,
   pageSizeOptions = LIST_PAGE_SIZE_OPTIONS,
 }: UseConnectionsDataArgs) => {
+  /* eslint-enable sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity */
   const queryClient = useQueryClient();
   const {
     currentPage: page,

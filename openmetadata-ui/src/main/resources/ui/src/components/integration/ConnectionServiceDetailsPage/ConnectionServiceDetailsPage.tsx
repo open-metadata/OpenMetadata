@@ -129,6 +129,28 @@ const getActionButtonColor = (action: ActionContribution) => {
   return action.type === 'primary' ? 'primary' : 'secondary';
 };
 
+const getTabItemClassName = ({
+  isSelected,
+  isHovered,
+}: {
+  isSelected: boolean;
+  isHovered: boolean;
+}): string => {
+  const base = 'tw:py-2 tw:px-0 tw:text-sm tw:font-medium tw:transition-colors';
+
+  if (isSelected) {
+    return `${base} tw:border-fg-brand-primary tw:text-fg-brand-primary`;
+  }
+
+  const hover = isHovered ? 'tw:border-gray-300 tw:text-secondary' : '';
+
+  return `${base} tw:border-transparent tw:text-tertiary ${hover}`;
+};
+
+// This page mirrors the classic ServiceDetailsPage's breadth (tabs, actions, CRUD, export,
+// permissions) in one component, so its branching is inherently high; splitting it would scatter
+// tightly-coupled state without reducing real complexity.
+// eslint-disable-next-line sonarjs/cyclomatic-complexity
 const ConnectionServiceDetailsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -793,17 +815,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 {tabs.map((detailsTab) => (
                   <Tabs.Item
                     badge={detailsTab.badge}
-                    className={({ isSelected, isHovered }) =>
-                      `tw:py-2 tw:px-0 tw:text-sm tw:font-medium tw:transition-colors ${
-                        isSelected
-                          ? 'tw:border-fg-brand-primary tw:text-fg-brand-primary'
-                          : `tw:border-transparent tw:text-tertiary ${
-                              isHovered
-                                ? 'tw:border-gray-300 tw:text-secondary'
-                                : ''
-                            }`
-                      }`
-                    }
+                    className={getTabItemClassName}
                     data-testid={`${detailsTab.key}-tab`}
                     id={detailsTab.key}
                     key={detailsTab.key}

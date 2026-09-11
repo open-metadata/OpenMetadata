@@ -29,11 +29,13 @@ export const useConnectionsViewMode = () => {
     setPreference,
   } = useCurrentUserPreferences();
   const viewModeParam = searchParams.get(VIEW_MODE_PARAM);
-  const viewMode = isConnectionsViewMode(viewModeParam)
-    ? viewModeParam
-    : isConnectionsViewMode(connectionsViewMode)
-    ? connectionsViewMode
-    : 'grid';
+
+  let viewMode: ConnectionsViewMode = 'grid';
+  if (isConnectionsViewMode(viewModeParam)) {
+    viewMode = viewModeParam;
+  } else if (isConnectionsViewMode(connectionsViewMode)) {
+    viewMode = connectionsViewMode;
+  }
 
   const setViewMode = useCallback(
     (nextViewMode: ConnectionsViewMode) => {

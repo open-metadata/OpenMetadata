@@ -144,6 +144,10 @@ interface ConnectionsListViewProps {
   onCategoryChange: (category: ConnectionsCategory) => void;
 }
 
+// Owns the whole browse view — search, filters, view mode, tabs, paging, the onboarding hand-off and
+// the empty/error/loading states — so its branch count reflects those independent surfaces, not one
+// tangled decision. Splitting it would push tightly-coupled URL/state wiring across files.
+/* eslint-disable sonarjs/cyclomatic-complexity */
 const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
   bottomInset = 0,
   category,
@@ -152,6 +156,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
   viewToggle,
   onCategoryChange,
 }) => {
+  /* eslint-enable sonarjs/cyclomatic-complexity */
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -474,6 +479,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
     [onboardingContributions, totalConnections, isLoading, isNarrowed]
   );
 
+  // The list body switches between skeleton, error, empty-first-run placeholder and the populated
+  // grid/table; each is a distinct render path, so the branching is breadth, not tangle.
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity
   const serviceList = useMemo(() => {
     if (isLoading) {
       return <ConnectionsPageSkeleton variant={viewMode} />;

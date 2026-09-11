@@ -82,9 +82,28 @@ export type ConnectionsFilterButtonProps =
  * `selectionMode`/`disallowEmptySelection` defaults before spreading props, so both are overridable
  * from here without touching the core component.
  */
+const getOptionTextClass = (state: {
+  isDisabled: boolean;
+  isSelected: boolean;
+}): string => {
+  if (state.isDisabled) {
+    return 'tw:text-disabled';
+  }
+
+  if (state.isSelected) {
+    return 'tw:text-brand-700';
+  }
+
+  return 'tw:text-secondary';
+};
+
+// One trigger drives search, single/multi-select, an optional "all" row and per-option icons, so the
+// branching reflects those independent features rather than one convoluted decision.
+/* eslint-disable sonarjs/cyclomatic-complexity */
 export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
   props
 ) => {
+  /* eslint-enable sonarjs/cyclomatic-complexity */
   const {
     label,
     options,
@@ -105,12 +124,13 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
   // trigger carries a tooltip naming them — otherwise "3 selected" is unreadable without
   // reopening the menu.
   const selectedLabels = selectedValues.map((value) => labelOf(value) ?? value);
-  const triggerLabel =
-    selectedValues.length === 1
-      ? selectedLabels[0]
-      : selectedValues.length === 0
-      ? label
-      : t('label.n-selected', { count: selectedValues.length });
+
+  let triggerLabel = label;
+  if (selectedValues.length === 1) {
+    triggerLabel = selectedLabels[0];
+  } else if (selectedValues.length > 1) {
+    triggerLabel = t('label.n-selected', { count: selectedValues.length });
+  }
   const triggerTitle =
     selectedLabels.length > 1 ? selectedLabels.join(', ') : undefined;
 
@@ -226,11 +246,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
                       <span
                         className={[
                           'tw:grow tw:truncate tw:text-sm',
-                          state.isDisabled
-                            ? 'tw:text-disabled'
-                            : state.isSelected
-                            ? 'tw:text-brand-700'
-                            : 'tw:text-secondary',
+                          getOptionTextClass(state),
                         ].join(' ')}>
                         {opt.label}
                       </span>

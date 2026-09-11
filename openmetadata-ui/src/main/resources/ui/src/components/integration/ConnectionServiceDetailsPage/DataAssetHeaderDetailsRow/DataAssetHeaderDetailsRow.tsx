@@ -33,6 +33,10 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { DataAssetHeaderDetailsRowProps } from './DataAssetHeaderDetailsRow.interface';
 import './DataAssetHeaderDetailsRow.less';
 
+// Renders every header facet (owners, domain, tier, usage, retention …) with per-facet
+// edit-permission gating, so the branch count tracks the number of facets rather than any one
+// decision; splitting it would fragment the row layout without simplifying the logic.
+/* eslint-disable sonarjs/cyclomatic-complexity */
 const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
   owners,
   domains,
@@ -44,6 +48,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
   onUpdateTier,
   className,
 }) => {
+  /* eslint-enable sonarjs/cyclomatic-complexity */
   const { t } = useTranslation();
   const [tierPopoverOpen, setTierPopoverOpen] = useState(false);
   const tier = getTierTags(tags ?? []);

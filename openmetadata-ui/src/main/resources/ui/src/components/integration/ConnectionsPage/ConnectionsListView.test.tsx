@@ -289,6 +289,18 @@ jest.mock('./ConnectionsFilterButton', () => ({
       .filter((option) => selected.includes(option.value))
       .map((option) => option.value);
 
+    const nextSelection = (optionValue: string): string | string[] => {
+      if (!multiple) {
+        return optionValue;
+      }
+
+      if (offeredSelection.includes(optionValue)) {
+        return offeredSelection.filter((entry) => entry !== optionValue);
+      }
+
+      return [...offeredSelection, optionValue];
+    };
+
     return (
       <div>
         <button data-testid={testId} type="button">
@@ -300,15 +312,7 @@ jest.mock('./ConnectionsFilterButton', () => ({
             data-testid={`${testId}-option-${option.value}`}
             key={option.value}
             type="button"
-            onClick={() =>
-              onChange(
-                multiple
-                  ? offeredSelection.includes(option.value)
-                    ? offeredSelection.filter((entry) => entry !== option.value)
-                    : [...offeredSelection, option.value]
-                  : option.value
-              )
-            }>
+            onClick={() => onChange(nextSelection(option.value))}>
             {`${option.label}:${option.supportingText ?? ''}`}
           </button>
         ))}
