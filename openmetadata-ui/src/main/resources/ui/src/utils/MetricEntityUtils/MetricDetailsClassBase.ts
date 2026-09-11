@@ -93,17 +93,16 @@ class MetricDetailsClassBase {
   public getMetricDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.OVERVIEW,
-      EntityTabs.LINEAGE,
-      EntityTabs.ASSETS,
-      EntityTabs.DATA_OBSERVABILITY,
+      EntityTabs.EXPRESSION,
       EntityTabs.ACTIVITY_FEED,
-      EntityTabs.APPROVAL,
+      EntityTabs.LINEAGE,
+      EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
       displayName:
         tab === EntityTabs.ACTIVITY_FEED
-          ? i18n.t('label.activity-and-task-plural')
+          ? i18n.t('label.activity-feed-and-task-plural')
           : getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
       editable: tab === EntityTabs.OVERVIEW,
@@ -130,16 +129,16 @@ class MetricDetailsClassBase {
         y: 0,
         children: [
           {
-            h: this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY],
-            i: DetailPageWidgetKeys.METRIC_HIERARCHY,
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
             w: 1,
             x: 0,
             y: 0,
             static: false,
           },
           {
-            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-            i: DetailPageWidgetKeys.DESCRIPTION,
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY],
+            i: DetailPageWidgetKeys.METRIC_HIERARCHY,
             w: 1,
             x: 0,
             y: 1,

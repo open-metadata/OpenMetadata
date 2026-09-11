@@ -22,20 +22,19 @@ jest.mock('./MetricUtils', () => ({
 describe('MetricDetailsClassBase', () => {
   const metricDetails = new MetricDetailsClassBase();
 
-  it('exposes exactly the six primary Metric tabs', () => {
+  it('exposes exactly the five primary Metric tabs', () => {
     const tabs = metricDetails.getMetricDetailPageTabsIds();
 
     expect(tabs.map(({ id }) => id)).toEqual([
       EntityTabs.OVERVIEW,
-      EntityTabs.LINEAGE,
-      EntityTabs.ASSETS,
-      EntityTabs.DATA_OBSERVABILITY,
+      EntityTabs.EXPRESSION,
       EntityTabs.ACTIVITY_FEED,
-      EntityTabs.APPROVAL,
+      EntityTabs.LINEAGE,
+      EntityTabs.CUSTOM_PROPERTIES,
     ]);
     expect(
       tabs.find(({ id }) => id === EntityTabs.ACTIVITY_FEED)?.displayName
-    ).toBe('label.activity-and-task-plural');
+    ).toBe('label.activity-feed-and-task-plural');
   });
 
   it('keeps custom properties inside the Overview layout', () => {
@@ -60,8 +59,8 @@ describe('MetricDetailsClassBase', () => {
     const childKeys = leftPanel?.children?.map((child) => child.i);
 
     expect(childKeys).toEqual([
-      DetailPageWidgetKeys.METRIC_HIERARCHY,
       DetailPageWidgetKeys.DESCRIPTION,
+      DetailPageWidgetKeys.METRIC_HIERARCHY,
       DetailPageWidgetKeys.METRIC_DEFINITION,
       DetailPageWidgetKeys.METRIC_DIMENSIONS,
       DetailPageWidgetKeys.METRIC_MEASURES,
