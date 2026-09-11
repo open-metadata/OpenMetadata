@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategoryPlural } from '../../../enums/service.enum';
@@ -304,51 +298,26 @@ describe('Test EntityPopoverCard component', () => {
     expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
   });
 
-  it('EntityPopoverCard should not open, or refetch, once the entity returns 403', async () => {
-    const forbiddenFQN = 'forbidden.tag.fqn';
-    const mockTagAPI = getTagByFqn as jest.Mock;
-    mockTagAPI.mockImplementation(() =>
-      Promise.reject({ response: { status: 403 } })
+  it('EntityPopoverCard should show permission placeholder when the api returns 403', async () => {
+    (getTagByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: { status: 403, data: { message: 'Forbidden!' } },
+      })
     );
 
-    const callsBefore = mockTagAPI.mock.calls.length;
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}
+        />
+      );
+    });
 
-    const { unmount } = render(
-      <MemoryRouter>
-        <EntityPopOverCard
-          defaultOpen
-          entityFQN={forbiddenFQN}
-          entityType={EntityType.TAG}>
-          <div data-testid="popover-container">Test_Popover</div>
-        </EntityPopOverCard>
-      </MemoryRouter>
-    );
-
-    // the popup opened, hit the 403, and closed itself
-    await waitFor(() =>
-      expect(screen.queryByText('label.no-data-found')).toBeNull()
-    );
-
-    expect(mockTagAPI.mock.calls.length).toBe(callsBefore + 1);
-
-    unmount();
-
-    render(
-      <MemoryRouter>
-        <EntityPopOverCard
-          defaultOpen
-          entityFQN={forbiddenFQN}
-          entityType={EntityType.TAG}>
-          <div data-testid="popover-container">Test_Popover</div>
-        </EntityPopOverCard>
-      </MemoryRouter>
-    );
-
+    expect(
+      screen.getByText('message.no-permission-to-view')
+    ).toBeInTheDocument();
     expect(screen.queryByText('label.no-data-found')).toBeNull();
-    expect(mockTagAPI.mock.calls.length).toBe(callsBefore + 1);
-
-    // restore the suite-wide default for the tests that follow
-    mockTagAPI.mockImplementation(() => Promise.resolve({}));
   });
 
   it('EntityPopoverCard should close the popover on navigation', async () => {
@@ -377,19 +346,12 @@ describe('Test EntityPopoverCard component', () => {
     });
 
     expect(await screen.findByText('label.no-data-found')).toBeInTheDocument();
-    expect(document.querySelector('.ant-popover')).not.toHaveClass(
-      'ant-popover-hidden'
-    );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('navigate-away'));
     });
 
-    // the popup is kept mounted (no destroyTooltipOnHide, so a re-hover does
-    // not refetch) but is hidden, which is what left it floating before
-    expect(document.querySelector('.ant-popover')).toHaveClass(
-      'ant-popover-hidden'
-    );
+    expect(screen.queryByText('label.no-data-found')).toBeNull();
   });
 
   it('EntityPopoverCard should call tags api if entity type is tag card', async () => {
