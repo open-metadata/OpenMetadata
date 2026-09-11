@@ -958,7 +958,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     // Pin the MinIO image to a known-good release so a newly-published :latest tag
     // cannot break integration tests without a code change.
     MINIO_CONTAINER =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+        new GenericContainer<>("quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z")
             .withExposedPorts(9000)
             .withEnv("MINIO_ROOT_USER", "minio")
             .withEnv("MINIO_ROOT_PASSWORD", "minio123")
