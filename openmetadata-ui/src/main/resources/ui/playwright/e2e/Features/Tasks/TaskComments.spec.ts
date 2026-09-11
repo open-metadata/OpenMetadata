@@ -21,7 +21,11 @@ import {
   test,
 } from '../../../support/fixtures/taskActivity';
 import { UserClass } from '../../../support/user/UserClass';
-import { okJson } from '../../../utils/apiResponse';
+import {
+  assertFulfilled,
+  deleteFixtureEntity,
+  okJson,
+} from '../../../utils/apiResponse';
 import { getApiContext, uuid } from '../../../utils/common';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
@@ -141,6 +145,59 @@ test('typing a mention shows the matching user suggestion', async ({
     page.locator(`[data-value="@${data.outsider.responseData.name}"]`)
   ).toBeVisible();
   expect(await getPersistedComments(data, task)).toHaveLength(0);
+});
+
+test('mention suggestions retain the closest match among alphabetical fuzzy matches', async ({
+  page,
+  activityData: data,
+}) => {
+  const names = [
+    'bright2e46f9c8.koalaf1acea3d',
+    'calm83fdc6d3.zebraf148de17',
+    'lively1b7cf3e8.fox2c76ab9d',
+    'nobled9733f8d.zebra03bdfcbe',
+    'pwteam1803d8d3d',
+    'sillyadaa0d14.zebra5e979e91',
+  ];
+  const suffix = uuid();
+  const users: Array<{ id: string; name: string }> = [];
+
+  try {
+    for (const name of names) {
+      users.push(
+        await okJson<{ id: string; name: string }>(
+          await data.apiContext.post('/api/v1/users', {
+            data: {
+              name: `${name}.${suffix}`,
+              email: `${name}.${suffix}@example.com`,
+              displayName: name.replaceAll('.', ''),
+              isBot: false,
+              isAdmin: false,
+            },
+          }),
+          'Create competing mention candidates'
+        )
+      );
+    }
+    const target = users[users.length - 1];
+    const task = await createActivityTask(data, data.member.responseData.name);
+    const panel = await openInboxTask(page, data, task, data.member);
+    const editor = panel
+      .getByTestId('inbox-comment-composer')
+      .locator('.ql-editor[contenteditable="true"]');
+
+    await editor.pressSequentially('@sillyadaa0d1');
+    await expect(page.locator(`[data-value="@${target.name}"]`)).toBeVisible();
+    expect(await getPersistedComments(data, task)).toHaveLength(0);
+  } finally {
+    assertFulfilled(
+      await Promise.allSettled(
+        users.map(({ id }) =>
+          deleteFixtureEntity(data.apiContext, `/api/v1/users/${id}`)
+        )
+      )
+    );
+  }
 });
 
 test('selecting a mention saves the intended user and comment', async ({

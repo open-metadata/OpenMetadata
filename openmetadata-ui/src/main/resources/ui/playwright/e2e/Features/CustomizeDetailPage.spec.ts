@@ -46,6 +46,21 @@ import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
+const openPlaceholderWidgetPicker = async (page: Page) => {
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await page.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
+  const addWidgetButton = page
+    .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+    .getByTestId('add-widget-button');
+
+  // Focus can scroll this grid after the pointer position has been measured.
+  // Complete both transitions before dispatching the single click.
+  await addWidgetButton.scrollIntoViewIfNeeded();
+  await addWidgetButton.focus();
+  await addWidgetButton.click();
+  await expect(page.getByTestId('widget-info-tabs')).toBeVisible();
+};
+
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
 const navigationPersona = new PersonaClass();
@@ -448,26 +463,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           adminPage.getByText('Customize Custom Tab Widgets')
         ).toBeVisible();
 
-        // Wait for dialog to close before interacting with grid layout
-        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-        await adminPage
-          .locator('.ant-modal-wrap')
-          .waitFor({ state: 'detached' });
-
-        // Get locator after dialog closes to avoid layout shift issues
-        const addWidgetButton = adminPage
-          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-          .getByTestId('add-widget-button');
-        await expect(addWidgetButton).toBeVisible();
-        await expect(addWidgetButton).toBeEnabled();
-
-        // Opening a tab leaves this placeholder below the viewport. Complete
-        // scrolling and focus before Playwright measures the click position.
-        await addWidgetButton.scrollIntoViewIfNeeded();
-        await addWidgetButton.focus();
-        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await addWidgetButton.click();
-        await expect(widgetInfoTabs).toBeVisible();
+        await openPlaceholderWidgetPicker(adminPage);
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -598,27 +594,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           adminPage.getByText('Customize Custom Tab Widgets')
         ).toBeVisible();
 
-        // Wait for dialog to close before interacting with grid layout
-        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-        await adminPage
-          .locator('.ant-modal-wrap')
-          .waitFor({ state: 'detached' });
-
-        // Get locator after dialog closes to avoid layout shift issues
-        const addWidgetButton = adminPage
-          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-          .getByTestId('add-widget-button');
-        await expect(addWidgetButton).toBeVisible();
-        await expect(addWidgetButton).toBeEnabled();
-
-        // Under CI load the react-grid-layout is still settling after the
-        // "Add tab" dialog closes; the first click can land on a detaching
-        // element and never open the widget picker. Retry until the picker's
-        // inner content appears — `add-widget-modal` itself is the antd
-        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
-        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await addWidgetButton.click();
-        await expect(widgetInfoTabs).toBeVisible();
+        await openPlaceholderWidgetPicker(adminPage);
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -629,7 +605,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await expect(adminPage.getByTestId('add-widget-modal')).toBeHidden();
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 

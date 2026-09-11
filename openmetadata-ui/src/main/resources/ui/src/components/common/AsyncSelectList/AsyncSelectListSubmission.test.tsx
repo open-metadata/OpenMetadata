@@ -28,17 +28,28 @@ const personal = {
   value: 'PersonalData.Personal',
 };
 
-function TagForm({ fetchOptions }: Pick<AsyncSelectListProps, 'fetchOptions'>) {
+function TagForm({
+  fetchOptions,
+  initialOptions = [personal],
+}: Pick<AsyncSelectListProps, 'fetchOptions' | 'initialOptions'>) {
   const [saved, setSaved] = useState<unknown>();
 
   return (
     <>
-      <Form initialValues={{ tags: [personal.value] }} onFinish={setSaved}>
+      <Form
+        initialValues={{ tags: initialOptions.map((option) => option.value) }}
+        onFinish={({ tags }: { tags: Array<string | { value: string }> }) =>
+          setSaved({
+            tags: tags.map((tag) =>
+              typeof tag === 'string' ? tag : tag.value
+            ),
+          })
+        }>
         <Form.Item name="tags">
           <AsyncSelectList
             open
             fetchOptions={fetchOptions}
-            initialOptions={[personal]}
+            initialOptions={initialOptions}
             mode="multiple"
             onCancel={() => undefined}
           />
@@ -49,9 +60,30 @@ function TagForm({ fetchOptions }: Pick<AsyncSelectListProps, 'fetchOptions'>) {
   );
 }
 
-it.each(['pending', 'empty'] as const)(
-  'submits the selected tag when a later search is %s',
-  async (searchState) => {
+it('prevents an empty update when there are no existing tags or selectable options', async () => {
+  render(
+    <TagForm
+      fetchOptions={async () => ({ data: [], paging: { total: 0 } })}
+      initialOptions={[]}
+    />
+  );
+  const save = await screen.findByTestId('saveAssociatedTag');
+
+  expect(save).toBeDisabled();
+
+  userEvent.click(save);
+
+  expect(screen.getByTestId('saved-tags')).toBeEmptyDOMElement();
+});
+
+it.each([
+  ['pending', 'existing'],
+  ['empty', 'existing'],
+  ['pending', 'new'],
+  ['empty', 'new'],
+] as const)(
+  'submits after a %s search with the %s selection',
+  async (searchState, selection) => {
     let finishSearch: (() => void) | undefined;
     render(
       <TagForm
@@ -66,9 +98,14 @@ it.each(['pending', 'empty'] as const)(
 
           return { data: [], paging: { total: 0 } };
         }}
+        initialOptions={selection === 'existing' ? [personal] : []}
       />
     );
-    await screen.findByTestId(`tag-${personal.value}`);
+    const option = await screen.findByTestId(`tag-${personal.value}`);
+    if (selection === 'new') {
+      userEvent.click(option);
+      await screen.findByTestId(`selected-tag-${personal.value}`);
+    }
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'no-matching-tags' },
     });
@@ -82,11 +119,13 @@ it.each(['pending', 'empty'] as const)(
     expect(save).toBeEnabled();
 
     userEvent.click(save);
-    await waitFor(() =>
-      expect(screen.getByTestId('saved-tags')).toHaveTextContent(
-        JSON.stringify({ tags: [personal.value] })
-      )
-    );
+    await waitFor(() => {
+      const saved = JSON.parse(
+        screen.getByTestId('saved-tags').textContent || '{}'
+      );
+
+      expect(saved.tags).toEqual([personal.value]);
+    });
     await act(async () => finishSearch?.());
   }
 );

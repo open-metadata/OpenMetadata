@@ -29,7 +29,13 @@
  * {@link registerFilterSeparationSuite} with an entity factory.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Page,
+  Response,
+  test,
+} from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../../constant/sidebar';
 import { EntityClass } from '../../../support/entity/EntityClass';
@@ -39,10 +45,7 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createAdminApiContext } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
-import {
-  checkExploreSearchFilter,
-  waitForAllLoadersToDisappear,
-} from '../../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
   searchAndClickOnOption,
@@ -345,95 +348,65 @@ async function assertReindexedDocPreservesSeparation(
   return { serviceDisplayName };
 }
 
-async function checkExploreFilterWithServiceBase(
-  page: Page,
-  filterLabel: string,
-  filterKey: string,
-  filterValue: string,
-  entity: FilterSeparationEntity,
-  serviceName: string
-): Promise<void> {
-  await sidebarClick(page, SidebarItem.EXPLORE);
-  await waitForAllLoadersToDisappear(page);
+type ExploreFacet = { label: string; key: string; value: string };
 
-  await page.getByTestId('search-dropdown-Service').click();
-  const serviceApplyRes = page.waitForResponse('/api/v1/search/query?*');
-  await searchAndClickOnOption(
-    page,
-    {
-      label: 'Service',
-      key: 'service.displayName.keyword',
-      value: serviceName,
-    },
-    true
+const isExploreResult = (response: Response) => {
+  const url = new URL(response.url());
+
+  return (
+    response.request().method() === 'GET' &&
+    url.pathname === '/api/v1/search/query' &&
+    url.searchParams.get('index') === 'dataAsset' &&
+    Number(url.searchParams.get('size')) > 0
   );
-  await clickUpdateButtonIfVisible(page);
-  await serviceApplyRes;
-  await waitForAllLoadersToDisappear(page);
+};
 
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  const filterApplyRes = page.waitForResponse('/api/v1/search/query?*');
-  await searchAndClickOnOption(
-    page,
-    { label: filterLabel, key: filterKey, value: filterValue },
-    true
+const containsFacet = (query: unknown, facet: ExploreFacet): boolean => {
+  if (!query || typeof query !== 'object') {
+    return false;
+  }
+
+  return Object.entries(query).some(
+    ([key, value]) =>
+      (key === facet.key && value === facet.value.toLowerCase()) ||
+      containsFacet(value, facet)
   );
+};
+
+async function applyExploreFacet(page: Page, facet: ExploreFacet) {
+  const dropdown = page.getByTestId(`search-dropdown-${facet.label}`);
+  await dropdown.click();
+  const result = page.waitForResponse((response) => {
+    if (!isExploreResult(response)) {
+      return false;
+    }
+    const query = new URL(response.url()).searchParams.get('query_filter');
+
+    return containsFacet(JSON.parse(query ?? '{}'), facet);
+  });
+
+  await searchAndClickOnOption(page, facet, true);
   await clickUpdateButtonIfVisible(page);
-  await filterApplyRes;
-  await page.keyboard.press('Escape');
-  await waitForAllLoadersToDisappear(page);
+  const response = await result;
+  expect(response.status(), response.url()).toBe(200);
+  if (await page.getByTestId('search-input').isVisible()) {
+    await dropdown.click();
+  }
+  await expect(page.getByTestId('search-input')).toBeHidden();
 
-  await expect(
-    page.getByTestId(
-      `table-data-card_${entity.entityResponseData.fullyQualifiedName}`
-    )
-  ).toBeVisible();
-
-  await page.click('[data-testid="clear-all-chips"]');
-  await entity.visitEntityPage(page);
+  return response;
 }
-async function checkExploreFilterWithTagBase(
-  page: Page,
-  filterLabel: string,
-  filterKey: string,
-  filterValue: string,
-  entity: FilterSeparationEntity,
-  uniqueTagFqn: string
-): Promise<void> {
-  await sidebarClick(page, SidebarItem.EXPLORE);
-  await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('search-dropdown-Tag').click();
-  const tagApplyRes = page.waitForResponse('/api/v1/search/query?*');
-  await searchAndClickOnOption(
-    page,
-    { label: 'Tag', key: 'tags.tagFQN', value: uniqueTagFqn },
-    true
+async function clearExploreFacets(page: Page) {
+  const result = page.waitForResponse(
+    (response) =>
+      isExploreResult(response) &&
+      !new URL(response.url()).searchParams.has('query_filter')
   );
-  await clickUpdateButtonIfVisible(page);
-  await tagApplyRes;
-  await waitForAllLoadersToDisappear(page);
-
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  const filterApplyRes = page.waitForResponse('/api/v1/search/query?*');
-  await searchAndClickOnOption(
-    page,
-    { label: filterLabel, key: filterKey, value: filterValue },
-    true
-  );
-  await clickUpdateButtonIfVisible(page);
-  await filterApplyRes;
-  await page.keyboard.press('Escape');
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(
-    page.getByTestId(
-      `table-data-card_${entity.entityResponseData.fullyQualifiedName}`
-    )
-  ).toBeVisible();
-
-  await page.click('[data-testid="clear-all-chips"]');
-  await entity.visitEntityPage(page);
+  await page.getByTestId('clear-all-chips').click();
+  const response = await result;
+  expect(response.status(), response.url()).toBe(200);
+  await expect(page.getByTestId('clear-all-chips')).toBeHidden();
 }
 
 async function assertAllFourFiltersWork(
@@ -446,14 +419,19 @@ async function assertAllFourFiltersWork(
   const svcData = entity.serviceResponseData;
   const serviceName =
     serviceDisplayName || svcData?.displayName || svcData?.name;
-
-  const classificationTagFqn =
-    classificationTag.responseData.fullyQualifiedName;
-  const glossaryTermFqn = glossaryTerm.responseData.fullyQualifiedName;
-
-  // Tier and Certification are constant values shared across all parallel test runs.
-  // classificationTag and glossaryTerm FQNs contain a per-run UUID so they are unique.
-  const sharedFilters: Array<{ label: string; key: string; value: string }> = [
+  const classificationFacet = {
+    label: 'Tag',
+    key: 'tags.tagFQN',
+    value: classificationTag.responseData.fullyQualifiedName,
+  };
+  const serviceFacet = serviceName
+    ? {
+        label: 'Service',
+        key: 'service.displayName.keyword',
+        value: serviceName,
+      }
+    : undefined;
+  const sharedFacets: ExploreFacet[] = [
     { label: 'Tier', key: 'tier.tagFQN', value: TIER_FQN },
     {
       label: 'Certification',
@@ -461,54 +439,42 @@ async function assertAllFourFiltersWork(
       value: CERTIFICATION_FQN,
     },
   ];
-
-  const uniqueFilters: Array<{ label: string; key: string; value: string }> = [
-    { label: 'Tag', key: 'tags.tagFQN', value: classificationTagFqn },
-    { label: 'Tag', key: 'tags.tagFQN', value: glossaryTermFqn },
+  const uniqueFacets: ExploreFacet[] = [
+    classificationFacet,
+    {
+      label: 'Tag',
+      key: 'tags.tagFQN',
+      value: glossaryTerm.responseData.fullyQualifiedName,
+    },
   ];
+  const card = page.getByTestId(
+    `table-data-card_${entity.entityResponseData.fullyQualifiedName}`
+  );
 
-  if (serviceName) {
-    await checkExploreSearchFilter(
-      page,
-      'Service',
-      'service.displayName.keyword',
-      serviceName,
-      entity
+  // Each filter starts from an empty selection on the same Explore page.
+  // Revisiting the entity between facets needlessly reloads the application.
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await waitForAllLoadersToDisappear(page);
+  if (serviceFacet) {
+    await applyExploreFacet(page, serviceFacet);
+    await expect(card).toBeVisible();
+    await clearExploreFacets(page);
+  }
+  for (const facet of [...sharedFacets, ...uniqueFacets]) {
+    // Shared tiers/certifications need a unique base to keep this entity on
+    // page one alongside other tests. Unique tags can be checked alone.
+    const baseFacet =
+      serviceFacet ??
+      (sharedFacets.includes(facet) ? classificationFacet : undefined);
+    if (baseFacet) {
+      await applyExploreFacet(page, baseFacet);
+    }
+    const response = await applyExploreFacet(page, facet);
+    const body = await response.json();
+    expect(body.hits.hits.map((hit: { _id: string }) => hit._id)).toContain(
+      entity.entityResponseData.id
     );
-    for (const filter of [...sharedFilters, ...uniqueFilters]) {
-      await checkExploreFilterWithServiceBase(
-        page,
-        filter.label,
-        filter.key,
-        filter.value,
-        entity,
-        serviceName
-      );
-    }
-  } else {
-    // Shared filters: pre-narrow by the per-run unique classificationTag so the
-    // target entity is always on page 1, regardless of how many other parallel-run
-    // entities also carry Tier.Tier1 or Certification.Gold.
-    for (const filter of sharedFilters) {
-      await checkExploreFilterWithTagBase(
-        page,
-        filter.label,
-        filter.key,
-        filter.value,
-        entity,
-        classificationTagFqn
-      );
-    }
-    // Unique filters: classificationTag and glossaryTerm FQNs are unique per run,
-    // so a standalone check is sufficient — only this test's entity has them.
-    for (const filter of uniqueFilters) {
-      await checkExploreSearchFilter(
-        page,
-        filter.label,
-        filter.key,
-        filter.value,
-        entity
-      );
-    }
+    await expect(card).toBeVisible();
+    await clearExploreFacets(page);
   }
 }
