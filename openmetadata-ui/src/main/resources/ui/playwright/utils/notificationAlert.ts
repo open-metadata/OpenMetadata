@@ -32,6 +32,7 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import {
+  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getDescriptionBox,
@@ -173,7 +174,7 @@ export const addInternalDestination = async ({
       await dropdownTrigger.focus();
       await dropdownTrigger.click();
       const searchInput = resultsDropdown.getByTestId('search-input-field');
-      await expect(searchInput).toBeVisible();
+      await expect(searchInput).toBeFocused();
       const getSearchResult = page.waitForResponse((response) => {
         const url = new URL(response.url());
         return (
@@ -242,12 +243,17 @@ export const editSingleFilterAlert = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
-  // Update source
-  await page.click('[data-testid="source-select"]');
-  await page
-    .getByTestId(`${sourceName}-option`)
-    .getByText(sourceDisplayName)
-    .click();
+  const source = page.getByTestId('source-select');
+  await chooseSelectOption(
+    source,
+    page
+      .locator('.ant-select-dropdown:visible')
+      .getByTestId(`${sourceName}-option`)
+      .getByText(sourceDisplayName, { exact: true })
+  );
+  await expect(source.locator('.ant-select-selection-item')).toHaveText(
+    sourceDisplayName
+  );
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();

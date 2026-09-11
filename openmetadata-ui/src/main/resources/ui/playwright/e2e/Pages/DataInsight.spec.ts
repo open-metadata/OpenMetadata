@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
+import { Kpi } from '../../../src/generated/dataInsight/kpi/kpi';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { okJson } from '../../utils/apiResponse';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
@@ -25,46 +27,65 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.configure({ mode: 'serial' });
 
-const DESCRIPTION_WITH_PERCENTAGE =
-  'playwright-description-with-percentage-percentage';
+const kpiData = KPI_DATA.map((data) => ({
+  ...data,
+  displayName: `${data.displayName} ${uuid()}`,
+}));
+const createdKpis: Awaited<ReturnType<typeof addKpi>>[] = [];
+const metrics: MetricClass[] = [];
 
-const DESCRIPTION_WITH_OWNER = 'playwright-owner-with-percentage-percentage';
+const getCreatedKpi = (displayName: string) => {
+  const kpi = createdKpis.find((item) => item.displayName === displayName);
+  if (!kpi) {
+    throw new Error(`KPI fixture was not created: ${displayName}`);
+  }
 
-const navigateToDataInsightPage = async (
-  page: Page,
-  waitOnLatestKPI = false
-) => {
+  return kpi;
+};
+
+const navigateToDataInsightPage = async (page: Page) => {
   const descriptionChartPromise = page.waitForResponse(
     '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
   );
-  const latestKpiPromise = waitOnLatestKPI
-    ? page.waitForResponse(
-        '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
-      )
-    : undefined;
   await sidebarClick(page, SidebarItem.DATA_INSIGHT);
   await descriptionChartPromise;
-  if (latestKpiPromise) await latestKpiPromise;
 };
 
 test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   test.beforeAll(async ({ browser }) => {
+    createdKpis.length = 0;
+    metrics.length = 0;
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Delete all existing KPIs before running the test
-    await deleteKpiRequest(apiContext);
 
     const metricWithDesc1 = new MetricClass();
     await metricWithDesc1.create(apiContext);
+    metrics.push(metricWithDesc1);
 
     const metricWithDesc2 = new MetricClass();
     await metricWithDesc2.create(apiContext);
+    metrics.push(metricWithDesc2);
 
     const metricWithoutDesc = new MetricClass();
     metricWithoutDesc.entity.description = '';
     await metricWithoutDesc.create(apiContext);
+    metrics.push(metricWithoutDesc);
 
     await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    try {
+      await deleteKpiRequest(
+        apiContext,
+        createdKpis.map((kpi) => kpi.id)
+      );
+      for (const metric of metrics) {
+        await metric.delete(apiContext);
+      }
+    } finally {
+      await afterAction();
+    }
   });
 
   test.beforeEach('Visit Data Insight Page', async ({ page }) => {
@@ -76,10 +97,10 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
-    for (const data of KPI_DATA) {
+    for (const data of kpiData) {
       await page.getByTestId('add-kpi-btn').click();
 
-      await addKpi(page, data);
+      createdKpis.push(await addKpi(page, data));
     }
   });
 
@@ -225,7 +246,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
     const latestKPIResponse = page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+      `/api/v1/kpi/${
+        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
+      }/latestKpiResult`
     );
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
@@ -236,10 +259,18 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await expect(page.getByTestId('kpi-card')).toBeVisible();
     await expect(
-      page.locator(`[data-row-key=${DESCRIPTION_WITH_PERCENTAGE}]`)
+      page.locator(
+        `[data-row-key=${
+          getCreatedKpi(kpiData[0].displayName).fullyQualifiedName
+        }]`
+      )
     ).toBeVisible();
     await expect(
-      page.locator(`[data-row-key=${DESCRIPTION_WITH_OWNER}]`)
+      page.locator(
+        `[data-row-key=${
+          getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
+        }]`
+      )
     ).toBeVisible();
   });
 
@@ -248,7 +279,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
     const latestKPIResponse = page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+      `/api/v1/kpi/${
+        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
+      }/latestKpiResult`
     );
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
@@ -256,11 +289,25 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
-    for (const data of KPI_DATA) {
+    for (const data of kpiData) {
       await page.getByTestId(`edit-action-${data.displayName}`).click();
 
       await page.getByRole('spinbutton').fill('50');
+      const kpi = getCreatedKpi(data.displayName);
+      const updatedResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname === `/api/v1/kpi/${kpi.id}`
+      );
       await page.getByTestId('submit-btn').click();
+      const updated = await okJson<Kpi>(
+        await updatedResponse,
+        'Update KPI target'
+      );
+      expect(updated.targetValue).toBe(50);
+      await expect(
+        page.getByTestId(`edit-action-${data.displayName}`)
+      ).toBeVisible();
     }
   });
 
@@ -269,7 +316,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
     const latestKPIResponse = page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+      `/api/v1/kpi/${
+        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
+      }/latestKpiResult`
     );
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
@@ -293,7 +342,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
     const latestKPIResponse = page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+      `/api/v1/kpi/${
+        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
+      }/latestKpiResult`
     );
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
@@ -301,14 +352,21 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
-    for (const data of KPI_DATA) {
+    for (const data of kpiData) {
+      const kpi = getCreatedKpi(data.displayName);
       await page.getByTestId(`delete-action-${data.displayName}`).click();
       const deleteResponse = page.waitForResponse(
-        `/api/v1/kpi/*?hardDelete=true&recursive=false`
+        (response) =>
+          response.request().method() === 'DELETE' &&
+          new URL(response.url()).pathname === `/api/v1/kpi/${kpi.id}`
       );
       await page.getByTestId('confirm-button').click();
 
-      await deleteResponse;
+      const deleted = await okJson<Kpi>(await deleteResponse, 'Delete KPI');
+      expect(deleted.id).toBe(kpi.id);
+      await expect(
+        page.getByTestId(`delete-action-${data.displayName}`)
+      ).toBeHidden();
     }
   });
 });

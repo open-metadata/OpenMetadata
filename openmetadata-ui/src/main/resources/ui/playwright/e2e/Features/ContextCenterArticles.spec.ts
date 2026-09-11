@@ -23,6 +23,7 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
   createNewPage,
   getApiContext,
@@ -347,7 +348,11 @@ test.describe('Context Center Articles', () => {
 
   test('Article listing paginates search results', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const prefix = `pagination${uuid()}`;
+    // The search analyzer splits mixed letters/digits into additional tokens,
+    // which can match unrelated fixtures and change the number of pages.
+    const prefix = `pagination${uuid().replace(/\d/g, (digit) =>
+      String.fromCharCode(103 + Number(digit))
+    )}`;
     const articles: Awaited<ReturnType<typeof createArticleViaApi>>[] = [];
     try {
       for (let index = 0; index < 26; index++) {
@@ -371,8 +376,12 @@ test.describe('Context Center Articles', () => {
           url.searchParams.get('from') === '25'
         );
       });
-      await scrollListingToCard(page, articles[0].displayName);
+      await listing
+        .locator('..')
+        .getByTestId('observer-element')
+        .scrollIntoViewIfNeeded();
       expect((await nextPage).status()).toBe(200);
+      await expect(listing.getByTestId('knowledge-card-title')).toHaveCount(26);
       for (const article of articles) {
         await expect(
           listing.getByTestId(`knowledge-card-${article.displayName}`)
@@ -978,65 +987,95 @@ test.describe('Context Center Articles', () => {
 
     const parent = listKnowledgeCenter.knowledgePages[0];
     const { apiContext, afterAction } = await getApiContext(page);
-    const child = await createArticleViaApi(apiContext, {
-      displayName: `CC Hierarchy Child ${uuid()}`,
-      name: `cc_hierarchy_child_${uuid()}`,
-    });
+    let child: KnowledgeCenterResponseDataType | undefined;
+    try {
+      child = await createArticleViaApi(apiContext, {
+        displayName: `CC Hierarchy Child ${uuid()}`,
+        name: `cc_hierarchy_child_${uuid()}`,
+      });
 
-    await apiContext.patch(`/api/v1/contextCenter/pages/${child.id}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/parent',
-          value: {
-            id: parent.id,
-            type: 'page',
-            fullyQualifiedName: parent.fullyQualifiedName,
-            displayName: parent.displayName,
+      const updated = await okJson<KnowledgeCenterResponseDataType>(
+        await apiContext.patch(`/api/v1/contextCenter/pages/${child.id}`, {
+          data: [
+            {
+              op: 'add',
+              path: '/parent',
+              value: {
+                id: parent.id,
+                type: 'page',
+                fullyQualifiedName: parent.fullyQualifiedName,
+                displayName: parent.displayName,
 
-            name: parent.name,
-          },
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-    await afterAction();
+                name: parent.name,
+              },
+            },
+          ],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }),
+        'reparent hierarchy article'
+      );
+      expect(updated.fullyQualifiedName).toBe(
+        `${parent.fullyQualifiedName}.${child.name}`
+      );
+      const indexedChildren = await okJson<{
+        data: { id: string; fullyQualifiedName: string }[];
+      }>(
+        await apiContext.get('/api/v1/contextCenter/pages/search/hierarchy', {
+          params: { parent: parent.fullyQualifiedName },
+        }),
+        'read indexed article hierarchy after reparenting'
+      );
+      expect(
+        indexedChildren.data,
+        'Reparented child must be searchable before expanding the tree'
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: child.id,
+            fullyQualifiedName: updated.fullyQualifiedName,
+          }),
+        ])
+      );
 
-    await navigateToArticles(page);
-    await scrollHierarchyToNode(page, parent.displayName);
-    const ExpandIcon = page.getByRole('button', {
-      name: `Expand ${parent.displayName}`,
-    });
-    await expect(ExpandIcon).toBeVisible();
-    await ExpandIcon.click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).toBeVisible();
-    const collapseIcon = page.getByRole('button', {
-      name: `Collapse ${parent.displayName}`,
-    });
-    await collapseIcon.click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).not.toBeVisible();
+      await navigateToArticles(page);
+      await scrollHierarchyToNode(page, parent.displayName);
+      const ExpandIcon = page.getByRole('button', {
+        name: `Expand ${parent.displayName}`,
+      });
+      await expect(ExpandIcon).toBeVisible();
+      await ExpandIcon.click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).toBeVisible();
+      const collapseIcon = page.getByRole('button', {
+        name: `Collapse ${parent.displayName}`,
+      });
+      await collapseIcon.click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).not.toBeVisible();
 
-    await page.getByLabel('Expand All').click();
-    await expect(page.getByLabel('Collapse All')).toBeVisible();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).toBeVisible();
-    await page.getByLabel('Collapse All').click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).not.toBeVisible();
-
-    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-      await getApiContext(page);
-    await deleteArticleByFqn(
-      cleanupContext,
-      `${parent.fullyQualifiedName}.${child.name}`
-    );
-    await cleanupAfterAction();
+      await page.getByLabel('Expand All').click();
+      await expect(page.getByLabel('Collapse All')).toBeVisible();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).toBeVisible();
+      await page.getByLabel('Collapse All').click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).not.toBeVisible();
+    } finally {
+      try {
+        if (child) {
+          await deleteFixtureEntity(
+            apiContext,
+            `/api/v1/contextCenter/pages/${child.id}?hardDelete=true&recursive=true`
+          );
+        }
+      } finally {
+        await afterAction();
+      }
+    }
   });
 
   test('Expanding a multi-level hierarchy does not throw and renders no duplicate nodes', async ({

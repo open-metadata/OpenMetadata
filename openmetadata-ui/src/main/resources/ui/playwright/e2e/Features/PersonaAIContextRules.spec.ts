@@ -455,18 +455,16 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await openAddRuleDrawer(page);
 
       await test.step('switch to a knowledge entity type', async () => {
-        // The popover can close on its own right after opening, while the drawer
-        // is still settling (the match preview and filter builder re-render as
-        // their requests land). The pending option click then waits out the test
-        // budget for a listbox that never comes back. selectOptionWithRetry
-        // reopens the popover and retries, as the entity-type switch test does.
         // Each option carries its EntityType as data-key. Matching the
         // "Knowledge" supporting text instead would match all three knowledge
         // types and leave DOM order to decide which one the test exercises.
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           page.getByTestId('context-rule-entity-type'),
           page.getByRole('listbox').locator('[data-key="glossaryTerm"]')
         );
+        await expect(
+          page.getByTestId('context-rule-entity-type')
+        ).toContainText('Glossary Term');
       });
 
       await test.step('Fully rendered switch must be checked and disabled', async () => {

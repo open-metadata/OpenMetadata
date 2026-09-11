@@ -33,6 +33,11 @@ jest.mock('../rest/miscAPI', () => ({
   ),
 }));
 
+const mockGetAggregateFieldOptions =
+  getAggregateFieldOptions as jest.MockedFunction<
+    typeof getAggregateFieldOptions
+  >;
+
 jest.mock('./JSONLogicSearchClassBase', () => ({
   getQueryBuilderFields: jest.fn(),
 }));
@@ -61,20 +66,24 @@ describe('autocomplete request ordering', () => {
     return { promise, resolve, reject };
   };
 
-  const responseFor = (value: string) =>
-    ({
-      data: {
-        aggregations: {
-          [`sterms#${EntityFields.NAME_KEYWORD}`]: {
-            buckets: [{ key: value, doc_count: 1 }],
-          },
+  const responseFor = (value: string): AggregateResponse => ({
+    data: {
+      hits: { total: { value: 1 }, hits: [] },
+      aggregations: {
+        [`sterms#${EntityFields.NAME_KEYWORD}`]: {
+          buckets: [{ key: value, doc_count: 1 }],
         },
       },
-    } as AggregateResponse);
+    },
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  });
 
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.mocked(getAggregateFieldOptions).mockReset();
+    mockGetAggregateFieldOptions.mockReset();
   });
 
   afterEach(() => {
@@ -86,8 +95,7 @@ describe('autocomplete request ordering', () => {
     async (order) => {
       const older = deferredResponse();
       const newer = deferredResponse();
-      jest
-        .mocked(getAggregateFieldOptions)
+      mockGetAggregateFieldOptions
         .mockReturnValueOnce(older.promise)
         .mockReturnValueOnce(newer.promise);
       const search = new AdvancedSearchClassBase().autocomplete({
@@ -205,7 +213,7 @@ describe('autocomplete', () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.mocked(getAggregateFieldOptions).mockReset();
+    mockGetAggregateFieldOptions.mockReset();
   });
 
   afterEach(() => {
@@ -214,9 +222,7 @@ describe('autocomplete', () => {
   });
 
   it('settles superseded searches while debouncing the latest request', async () => {
-    jest
-      .mocked(getAggregateFieldOptions)
-      .mockResolvedValue(responseFor('table'));
+    mockGetAggregateFieldOptions.mockResolvedValue(responseFor('table'));
     const autocomplete = createAutocomplete();
     const previous = autocomplete('ta');
     const latest = autocomplete('table');
@@ -234,8 +240,7 @@ describe('autocomplete', () => {
 
   it('cancels only debounced searches while an earlier request is in flight', async () => {
     const earlierResponse = deferredResponse();
-    jest
-      .mocked(getAggregateFieldOptions)
+    mockGetAggregateFieldOptions
       .mockReturnValueOnce(earlierResponse.promise)
       .mockResolvedValueOnce(responseFor('table'));
     const autocomplete = createAutocomplete();
@@ -265,8 +270,7 @@ describe('autocomplete', () => {
 
   it('does not clear a newer search when an earlier request fails', async () => {
     const previousResponse = deferredResponse();
-    jest
-      .mocked(getAggregateFieldOptions)
+    mockGetAggregateFieldOptions
       .mockReturnValueOnce(previousResponse.promise)
       .mockResolvedValueOnce(responseFor('table'));
     const autocomplete = createAutocomplete();
@@ -284,9 +288,7 @@ describe('autocomplete', () => {
   });
 
   it('returns empty options when the current request fails', async () => {
-    jest
-      .mocked(getAggregateFieldOptions)
-      .mockRejectedValue(new Error('Search failed'));
+    mockGetAggregateFieldOptions.mockRejectedValue(new Error('Search failed'));
     const result = createAutocomplete()('table');
     await jest.advanceTimersByTimeAsync(300);
 

@@ -17,7 +17,13 @@ import DataProductsSelectList from './DataProductsSelectList';
 
 const option = (name: string): DataProductSelectOption => ({
   label: name,
-  value: { id: name, name, displayName: name, fullyQualifiedName: name },
+  value: {
+    id: name,
+    name,
+    displayName: name,
+    fullyQualifiedName: name,
+    description: '',
+  },
 });
 const response = (name: string) => ({
   data: [option(name)],

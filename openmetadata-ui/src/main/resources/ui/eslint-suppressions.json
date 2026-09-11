@@ -1029,11 +1029,6 @@
       "count": 1
     }
   },
-  "playwright/utils/sidebar.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/utils/sso-providers/keycloak-saml.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3

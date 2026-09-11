@@ -73,6 +73,7 @@ import {
 import { getEntityMissingMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
+import { getGlossaryCatalogState } from '../../../utils/GlossaryPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -313,10 +314,11 @@ const GlossaryPage = () => {
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
   const isRightPanelLoading = isTermView && glossaryTermFetching;
-  const isGlossaryNotFound =
-    isGlossaryActive &&
-    Boolean(glossaryFqn) &&
-    !glossaries.some((glossary) => glossary.fullyQualifiedName === glossaryFqn);
+  const { isCatalogEmpty, isGlossaryNotFound } = getGlossaryCatalogState(
+    glossaries,
+    glossaryFqn,
+    isGlossaryActive
+  );
 
   const isTermNotFound = useMemo(
     () =>
@@ -521,7 +523,7 @@ const GlossaryPage = () => {
     );
   };
 
-  if (glossaries.length === 0 && !isLoading && !glossaryFqn) {
+  if (isCatalogEmpty) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         <EmptyPlaceholder

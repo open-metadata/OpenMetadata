@@ -43,13 +43,20 @@ function TeamAndUserSelectItem({
 }: Readonly<TeamAndUserSelectItemProps>) {
   const { t } = useTranslation();
   const { setValue, control } = useFormContext();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const searchVersion = useRef(0);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [options, setOptions] = useState<SelectOption[]>([]);
+
+  const focusDropdown = useCallback((element: HTMLDivElement | null) => {
+    dropdownRef.current = element;
+    // The portal can mount after the open-state effect. Focus when its content
+    // exists, without an ancestor scroll that would dismiss the popover.
+    element?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
 
   const fieldPath = `destinations.${fieldName.join('.')}`;
   const selectedOptions: string[] =
@@ -257,10 +264,8 @@ function TeamAndUserSelectItem({
         }}>
         <div
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
-          ref={dropdownRef}>
+          ref={focusDropdown}>
           <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- search box must focus when dropdown opens
-            autoFocus
             data-testid="search-input"
             inputDataTestId="search-input-field"
             placeholder={t('label.search-by-type', { type: entityType })}

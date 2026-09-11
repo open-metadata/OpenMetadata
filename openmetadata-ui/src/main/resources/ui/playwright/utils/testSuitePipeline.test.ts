@@ -43,11 +43,12 @@ for (const scenario of [
 ]) {
   test(`test suite pipeline: ${scenario.name}`, async ({ playwright }) => {
     const server = createServer(async (request, response) => {
-      const chunks: Buffer[] = [];
+      request.setEncoding('utf8');
+      let payload = '';
       for await (const chunk of request) {
-        chunks.push(Buffer.from(chunk));
+        payload += chunk;
       }
-      const body = JSON.parse(Buffer.concat(chunks).toString());
+      const body = JSON.parse(payload);
       response.setHeader('Content-Type', 'application/json');
       if (request.url === '/api/v1/dataQuality/testSuites/basic') {
         response.writeHead(201);

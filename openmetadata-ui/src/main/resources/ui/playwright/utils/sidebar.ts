@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import {
   SETTINGS_OPTIONS_PATH,
   SETTING_CUSTOM_PROPERTIES_PATH,
@@ -27,26 +27,36 @@ export const clickOnLogo = async (page: Page) => {
   await page.mouse.move(1280, 0); // Move mouse to top right corner
 };
 
+export const clickSidebarLink = async (page: Page, testId: string) => {
+  const targetElement = page.getByTestId(testId).filter({ visible: true });
+  await expect(targetElement).toBeVisible();
+  const popup = page
+    .locator('.ant-menu-submenu-popup')
+    .filter({ has: page.getByTestId(testId) });
+  if (await popup.count()) {
+    // Ant's appear-start phase has a stable box before its zoom animation starts.
+    // Playwright considers even an opacity-zero link visible during that phase.
+    await expect(popup).not.toHaveClass(/\bant-zoom-big(?:-|\b)/);
+    await expect(popup).toHaveCSS('opacity', '1');
+  }
+  await targetElement.focus();
+  const href = await targetElement.getAttribute('href');
+  await targetElement.click();
+  if (href) {
+    const pathname = new URL(href, page.url()).pathname;
+    await expect(page).toHaveURL((url) => url.pathname === pathname);
+  }
+};
+
 export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
     await page.mouse.move(0, 0); // Dismiss any open tooltips before interacting with sidebar
     await page.hover('[data-testid="left-sidebar"]');
     await page.click(`[data-testid="${items[0]}"]`);
-
-    const targetElement = page
-      .locator(`[data-testid="app-bar-item-${items[1]}"]`)
-      .first();
-    await targetElement.waitFor({ state: 'visible' });
-    await targetElement.click();
-  } else {
-    const targetElement = page
-      .locator(`[data-testid="app-bar-item-${id}"]`)
-      .first();
-    await targetElement.waitFor({ state: 'visible' });
-    await targetElement.click();
   }
 
+  await clickSidebarLink(page, `app-bar-item-${items ? items[1] : id}`);
   await page.mouse.move(1280, 0); // Move mouse to top right corner
 };
 

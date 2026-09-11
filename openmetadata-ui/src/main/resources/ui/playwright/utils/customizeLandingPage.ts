@@ -465,57 +465,37 @@ export const addCuratedAssetPlaceholder = async ({
   ).toBeVisible();
 };
 
-// Helper function to select asset types in the dropdown
 export const selectAssetTypes = async (
   page: Page,
   assetTypes: string[] | 'all'
 ) => {
-  // Click on asset type selector to open dropdown
-  await page.locator('[data-testid="asset-type-select"]').click();
+  const field = page.getByTestId('asset-type-select');
+  const search = field.getByRole('combobox');
+  await search.focus();
+  await search.press('ArrowDown');
+  const tree = page.getByRole('tree');
+  await expect(tree).toBeVisible();
+  await search.clear();
 
-  // Wait for dropdown to be visible
-  await page.locator('.ant-select-dropdown').waitFor({
-    state: 'visible',
-    timeout: 5000,
-  });
-
-  // Wait for the tree to load
-  await page.locator('.ant-select-tree').waitFor({
-    state: 'visible',
-    timeout: 5000,
-  });
-
-  if (assetTypes === 'all') {
-    // Select all asset types using the checkbox
-    await page.locator('[data-testid="all-option"]').click();
-  } else {
-    // Select specific asset types
-    for (const assetType of assetTypes) {
-      // Find the corresponding config for search term
-      const config = ENTITY_TYPE_CONFIGS.find(
-        (c) => c.name === assetType || c.displayName === assetType
-      );
-      const searchTerm = config?.searchTerm || assetType;
-      const index = config?.index || assetType.toLowerCase();
-
-      // Search for the asset type
-      await page.keyboard.type(searchTerm);
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-      await page.waitForTimeout(500);
-
-      // Try to click the filtered result
-      const filteredElement = page.locator(`[data-testid="${index}-option"]`);
-
-      if (await filteredElement.isVisible()) {
-        await filteredElement.click();
-      }
-
-      await page.getByText('Select Asset Type').click();
-    }
+  const types = assetTypes === 'all' ? ['all'] : assetTypes;
+  for (const assetType of types) {
+    const config = ENTITY_TYPE_CONFIGS.find(
+      (entry) => entry.name === assetType || entry.displayName === assetType
+    );
+    const index = assetType === 'all' ? 'all' : config?.index;
+    expect(index, `Asset type configuration for ${assetType}`).toBeTruthy();
+    // TreeSelect filters its value, and virtualized options may not be mounted
+    // until filtered. Display labels can differ (the page value is "Article").
+    await search.fill(index ?? '');
+    const option = tree.getByTestId(`${index}-option`);
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(field.getByTestId(`${index}-option`)).toBeAttached();
   }
 
-  // Close the dropdown
-  await page.getByText('Select Asset Type').click();
+  // Escape also dismisses the parent modal when TreeSelect has already closed.
+  await search.press('Tab');
+  await expect(tree).toBeHidden();
 };
 
 // Helper function to test widget footer "View More" button

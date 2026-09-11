@@ -35,10 +35,11 @@ const selectOwnedOption = async ({
   if (!listboxId) {
     throw new Error('Destination popup did not expose aria-controls');
   }
-  await page
-    .locator(`[role="listbox"][id="${listboxId}"]`)
-    .getByRole('option', { exact: true, name: optionName })
-    .click();
+  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+  await listbox.getByRole('option', { exact: true, name: optionName }).click();
+  // The exiting overlay still owns focus until it unmounts. Opening the next
+  // picker during that transition can restore focus into the old control.
+  await expect(listbox).toBeHidden();
 };
 
 export const selectComboBoxOption = async ({

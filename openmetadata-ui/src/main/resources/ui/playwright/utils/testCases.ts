@@ -946,7 +946,8 @@ export const openTestCaseDetailsPage = async (
   await page.goto(
     `/observability/test-case/${encodeURIComponent(
       testCaseFqn
-    )}/test-case-results`
+    )}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 

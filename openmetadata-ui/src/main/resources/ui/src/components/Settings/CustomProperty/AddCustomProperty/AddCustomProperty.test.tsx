@@ -33,11 +33,13 @@ const stringType: Type = {
   id: '05e7b2f2-cf1e-4f9f-ae8b-3011372f361e',
   name: 'string',
   displayName: 'String',
+  description: 'String field type',
   category: Category.Field,
 };
 const tableType: Type = {
   id: '153a0c07-6480-404e-990b-555a42c8a7b5',
   name: 'table',
+  description: 'Table entity type',
   category: Category.Entity,
 };
 const invalidNameMessage = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;
@@ -103,12 +105,18 @@ describe('AddCustomProperty form validation', () => {
   });
 
   beforeEach(() => {
-    jest.mocked(getTypeByFQN).mockResolvedValue(tableType);
-    jest.mocked(getTypeListByCategory).mockResolvedValue({
+    (
+      getTypeByFQN as jest.MockedFunction<typeof getTypeByFQN>
+    ).mockResolvedValue(tableType);
+    (
+      getTypeListByCategory as jest.MockedFunction<typeof getTypeListByCategory>
+    ).mockResolvedValue({
       data: [stringType],
       paging: { total: 1 },
     });
-    jest.mocked(addPropertyToEntity).mockResolvedValue(tableType);
+    (
+      addPropertyToEntity as jest.MockedFunction<typeof addPropertyToEntity>
+    ).mockResolvedValue(tableType);
   });
 
   it.each([

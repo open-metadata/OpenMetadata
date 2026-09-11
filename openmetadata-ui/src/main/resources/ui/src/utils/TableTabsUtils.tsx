@@ -132,6 +132,15 @@ const DataObservabilityTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
+export const preloadTourTableTabs = () =>
+  Promise.all([
+    import('../components/Database/SampleDataTable/SampleDataTable.component'),
+    import(
+      '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+    ),
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab'),
+  ]);
+
 const EntityLineageTab = withSuspenseFallback(
   lazy(() =>
     import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -318,6 +327,7 @@ export const getTableDetailPageBaseTabs = ({
       ),
 
       key: EntityTabs.SAMPLE_DATA,
+      forceRender: isTourOpen,
       children: getSampleDataTabChildren({
         isTourOpen,
         viewSampleDataPermission,
@@ -359,6 +369,9 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
+      // The tour measures this panel immediately when advancing to it. Mount
+      // tour targets with the table, so tab activation cannot race Suspense.
+      forceRender: isTourOpen,
       children: (
         <DataObservabilityTab
           permissions={tablePermissions}
@@ -374,6 +387,7 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.LINEAGE,
+      forceRender: isTourOpen,
       children: (
         <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <EntityLineageTab

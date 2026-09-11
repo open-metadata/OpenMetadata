@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Kpi } from '../../src/generated/dataInsight/kpi/kpi';
 import { KPIData } from '../constant/dataInsight.interface';
+import { deleteFixtureEntity, okJson, settleAll } from './apiResponse';
 import { fillDescriptionBox } from './common';
 
-export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
-  const kpis = await apiRequest.get('/api/v1/kpi').then((res) => res.json());
-
-  if (kpis.data.length > 0) {
-    for (const element of kpis.data) {
-      await apiRequest.delete(
-        `/api/v1/kpi/${element.id}?hardDelete=true&recursive=false`
-      );
-    }
-  }
+export const deleteKpiRequest = async (
+  apiRequest: APIRequestContext,
+  kpiIds: string[]
+) => {
+  await settleAll(
+    kpiIds.map((id) =>
+      deleteFixtureEntity(
+        apiRequest,
+        `/api/v1/kpi/${id}?hardDelete=true&recursive=false`
+      )
+    )
+  );
 };
 
 export const addKpi = async (page: Page, data: KPIData) => {
@@ -65,8 +69,20 @@ export const addKpi = async (page: Page, data: KPIData) => {
 
   await fillDescriptionBox(page, 'Playwright KPI test description');
 
+  const createdKpiResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/v1/kpi' &&
+      response.request().method() === 'POST' &&
+      response.request().postDataJSON()?.displayName === data.displayName
+  );
   await page.getByTestId('submit-btn').click();
+  const kpi = await okJson<Kpi>(await createdKpiResponse, 'Create KPI');
+  if (!kpi.id || !kpi.fullyQualifiedName) {
+    throw new Error(`Created KPI is missing its identity: ${data.displayName}`);
+  }
   await page.waitForURL('**/data-insights/kpi', {
     waitUntil: 'domcontentloaded',
   });
+
+  return { ...kpi, id: kpi.id, fullyQualifiedName: kpi.fullyQualifiedName };
 };

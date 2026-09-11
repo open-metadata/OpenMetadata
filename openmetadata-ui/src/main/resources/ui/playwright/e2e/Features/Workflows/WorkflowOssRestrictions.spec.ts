@@ -17,6 +17,7 @@ import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { clickSidebarLink } from '../../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -41,7 +42,7 @@ async function navigateToWorkflowsListPage(page: Page) {
       response.request().method() === 'GET'
   );
 
-  await page.click('[data-testid="app-bar-item-workflows"]');
+  await clickSidebarLink(page, 'app-bar-item-workflows');
   await listResponse;
   await waitForAllLoadersToDisappear(page);
 }

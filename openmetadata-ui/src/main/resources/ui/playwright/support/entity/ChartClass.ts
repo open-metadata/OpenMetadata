@@ -16,10 +16,7 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import {
-  visitEntityPageByFqn,
-  visitEntityPageWithCustomSearchBox,
-} from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -154,14 +151,6 @@ export class ChartClass extends EntityClass {
       page,
       endpoint: this.endpoint,
       fqn: this.entityResponseData?.fullyQualifiedName ?? '',
-    });
-  }
-
-  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
-    await visitEntityPageWithCustomSearchBox({
-      page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }
 
