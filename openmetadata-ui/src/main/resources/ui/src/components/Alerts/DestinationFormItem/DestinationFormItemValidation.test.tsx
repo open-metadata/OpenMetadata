@@ -115,6 +115,18 @@ function ParentFormDestinationChangeHarness() {
 }
 
 describe('DestinationFormItem validation', () => {
+  it('does not show a required error before submission', () => {
+    const onFinish = jest.fn();
+    render(<ValidationHarness onFinish={onFinish} />);
+
+    expect(
+      screen.queryByText('message.minimum-count-error')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.length-validator-error')
+    ).not.toBeInTheDocument();
+  });
+
   it('shows the minimum destination error when required submission is blocked', async () => {
     const onFinish = jest.fn();
     render(<ValidationHarness onFinish={onFinish} />);
