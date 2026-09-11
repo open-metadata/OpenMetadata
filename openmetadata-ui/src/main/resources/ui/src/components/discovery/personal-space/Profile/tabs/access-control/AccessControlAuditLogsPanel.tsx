@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   DateRangePicker,
   Dialog,
   EmptyPlaceholder,
@@ -32,7 +33,7 @@ import { SearchLg, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../../../../../assets/svg/ic-download.svg';
 import AccessControlAuditLogFilters from './AccessControlAuditLogFilters';
@@ -79,7 +80,14 @@ interface ExportJob {
   total?: number;
 }
 
-const AccessControlAuditLogsPanel = () => {
+interface AccessControlAuditLogsPanelProps {
+  /** Callback to inject action buttons into the page header. */
+  onSetHeaderActions?: (actions: React.ReactNode) => void;
+}
+
+const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = ({
+  onSetHeaderActions,
+}) => {
   const { t } = useTranslation();
   const { socket } = useWebSocketConnector();
 
@@ -346,6 +354,23 @@ const AccessControlAuditLogsPanel = () => {
     return undefined;
   }, [socket, handleExportWebSocketMessage]);
 
+  // Inject the Export button into the page header.
+  useEffect(() => {
+    if (!onSetHeaderActions) {
+      return;
+    }
+
+    onSetHeaderActions(
+      <Button
+        color="primary"
+        data-testid="export-audit-logs-button"
+        iconLeading={<ExportIcon height={16} width={16} />}
+        onPress={() => setIsExportModalOpen(true)}>
+        {t('label.export')}
+      </Button>
+    );
+  }, [onSetHeaderActions, t]);
+
   const handleExport = useCallback(async () => {
     if (!exportDateRange) {
       return;
@@ -418,139 +443,130 @@ const AccessControlAuditLogsPanel = () => {
       className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6"
       data-testid="audit-logs-page">
 
-      {/* Header row */}
-      <Box
-        className="tw:flex tw:justify-between tw:items-center tw:mb-4 tw:shrink-0"
-        direction="row">
-        <Box />
-        <Button
-          color="primary"
-          data-testid="export-audit-logs-button"
-          iconLeading={<ExportIcon height={16} width={16} />}
-          onPress={() => setIsExportModalOpen(true)}>
-          {t('label.export')}
-        </Button>
-      </Box>
-
-      {/* Filters row */}
-      <Box className="tw:shrink-0 tw:mb-3" direction='col'>
-        <Box className="tw:flex tw:items-center tw:gap-4" direction="row">
-          <Box
-            className="tw:shrink-0"
-            data-testid="audit-log-search-container">
-            <Input
-              className="tw:max-w-86"
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              icon={SearchLg as any}
-              inputDataTestId="audit-log-search"
-              placeholder={t('label.search-audit-logs')}
-              value={searchInputValue}
-              onChange={(value) => {
-                setSearchInputValue(value);
-                debouncedSearch(value);
-              }}
-            />
-          </Box>
-          <AccessControlAuditLogFilters
-            activeFilters={activeFilters}
-            onFiltersChange={handleFiltersChange}
-          />
-        </Box>
-
-        {hasActiveFilters && (
-          <Box
-            className="tw:flex tw:items-center tw:w-full tw:mt-2"
-            data-testid="filter-selection-container"
-            direction="row">
-            <Box className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1" direction="row">
-              {activeFilters.map((filter) => (
-                <Badge
-                  className="tw:outline-0 tw:gap-1"
-                  color="brand"
-                  key={filter.category}
-                  size="lg"
-                  type="color">
-                  <Box
-                    className="tw:flex tw:items-center tw:gap-1"
-                    data-testid={`filter-chip-${filter.category}`}
-                    direction="row">
-                    <Typography
-                      className="tw:text-tertiary"
-                      weight="medium">
-                      {filter.categoryLabel}:{' '}
-                    </Typography>
-                    <Box className="tw:max-w-80">
-                      <Typography
-                        ellipsis
-                        as="p"
-                        className="tw:text-brand-600"
-                        title={filter.value.label}
-                        weight="medium">
-                        {filter.category === 'time' &&
-                        filter.value.key === CUSTOM_DATE_RANGE_KEY
-                          ? t('label.custom-range')
-                          : filter.value.label}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <ButtonUtility
-                    aria-label="Remove filter"
-                    color="tertiary"
-                    data-testid={`remove-filter-${filter.category}`}
-                    icon={<XClose size={14} />}
-                    onClick={() => handleRemoveFilter(filter.category)}
-                  />
-                </Badge>
-              ))}
+      {/* Card wrapping filters + log list */}
+      <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mb-3">
+        {/* Filters row inside card */}
+        <Box
+          className="tw:shrink-0 tw:p-4 tw:border-b tw:border-secondary"
+          direction="col">
+          <Box className="tw:flex tw:items-center tw:gap-4" direction="row">
+            <Box
+              className="tw:shrink-0"
+              data-testid="audit-log-search-container">
+              <Input
+                className="tw:max-w-86"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                icon={SearchLg as any}
+                inputDataTestId="audit-log-search"
+                placeholder={t('label.search-audit-logs')}
+                value={searchInputValue}
+                onChange={(value) => {
+                  setSearchInputValue(value);
+                  debouncedSearch(value);
+                }}
+              />
             </Box>
-            <Button
-              color="link-color"
-              data-testid="clear-filters"
-              onPress={handleClearFilters}>
-              {t('label.clear-entity', {
-                entity: t('label.all-lowercase'),
-              })}
-            </Button>
-          </Box>
-        )}
-      </Box>
-
-      {/* Log list */}
-      <Box className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
-        {!isLoading && logs.length === 0 ? (
-          <Box className="tw:flex tw:items-center tw:justify-center tw:h-full tw:py-12">
-            <EmptyPlaceholder
-              title={t('label.no-entity-found', {
-                entity: t('label.audit-log-plural'),
-              })}
+            <AccessControlAuditLogFilters
+              activeFilters={activeFilters}
+              onFiltersChange={handleFiltersChange}
             />
           </Box>
-        ) : (
-          <AuditLogList isLoading={isLoading} logs={logs} />
-        )}
-      </Box>
 
-      {/* Pagination */}
-      {(paging.total ?? 0) > pageSize && (
-        <Box className="tw:shrink-0">
-          <PaginationCardWithControls
-            page={currentPage}
-            pageSize={pageSize}
-            pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
-            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
-            onPageChange={(newPage) => {
-              if (newPage > currentPage && paging.after) {
-                setCurrentPage(newPage);
-                fetchAuditLogs({ after: paging.after });
-              } else if (newPage < currentPage && paging.before) {
-                setCurrentPage(newPage);
-                fetchAuditLogs({ before: paging.before });
-              }
-            }}
-            onPageSizeChange={handlePageSizeChange}
-          />
+          {hasActiveFilters && (
+            <Box
+              className="tw:flex tw:items-center tw:w-full tw:mt-2"
+              data-testid="filter-selection-container"
+              direction="row">
+              <Box className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1" direction="row">
+                {activeFilters.map((filter) => (
+                  <Badge
+                    className="tw:outline-0 tw:gap-1"
+                    color="brand"
+                    key={filter.category}
+                    size="lg"
+                    type="color">
+                    <Box
+                      className="tw:flex tw:items-center tw:gap-1"
+                      data-testid={`filter-chip-${filter.category}`}
+                      direction="row">
+                      <Typography
+                        className="tw:text-tertiary"
+                        weight="medium">
+                        {filter.categoryLabel}:{' '}
+                      </Typography>
+                      <Box className="tw:max-w-80">
+                        <Typography
+                          ellipsis
+                          as="p"
+                          className="tw:text-brand-600"
+                          title={filter.value.label}
+                          weight="medium">
+                          {filter.category === 'time' &&
+                          filter.value.key === CUSTOM_DATE_RANGE_KEY
+                            ? t('label.custom-range')
+                            : filter.value.label}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <ButtonUtility
+                      aria-label="Remove filter"
+                      color="tertiary"
+                      data-testid={`remove-filter-${filter.category}`}
+                      icon={<XClose size={14} />}
+                      onClick={() => handleRemoveFilter(filter.category)}
+                    />
+                  </Badge>
+                ))}
+              </Box>
+              <Button
+                color="link-color"
+                data-testid="clear-filters"
+                onPress={handleClearFilters}>
+                {t('label.clear-entity', {
+                  entity: t('label.all-lowercase'),
+                })}
+              </Button>
+            </Box>
+          )}
         </Box>
-      )}
+
+        {/* Log list inside card */}
+        <Box className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
+          {!isLoading && logs.length === 0 ? (
+            <Box className="tw:flex tw:items-center tw:justify-center tw:h-full tw:py-12">
+              <EmptyPlaceholder
+                title={t('label.no-entity-found', {
+                  entity: t('label.audit-log-plural'),
+                })}
+              />
+            </Box>
+          ) : (
+            <AuditLogList isLoading={isLoading} logs={logs} />
+          )}
+        </Box>
+
+        {/* Pagination inside card */}
+        {(paging.total ?? 0) > pageSize && (
+          <Box className="tw:shrink-0 tw:border-t tw:border-secondary">
+            <PaginationCardWithControls
+              page={currentPage}
+              pageSize={pageSize}
+              pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+              total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
+              onPageChange={(newPage) => {
+                if (newPage > currentPage && paging.after) {
+                  setCurrentPage(newPage);
+                  fetchAuditLogs({ after: paging.after });
+                } else if (newPage < currentPage && paging.before) {
+                  setCurrentPage(newPage);
+                  fetchAuditLogs({ before: paging.before });
+                }
+              }}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </Box>
+        )}
+      </Card>
 
       {/* Export modal */}
       <ModalOverlay
@@ -576,13 +592,12 @@ const AccessControlAuditLogsPanel = () => {
                   size="text-md">
                   {`${t('label.date-range')} *`}
                 </Typography>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <DateRangePicker
                   data-testid="export-date-range-picker"
                   isDisabled={isExporting}
-                  maxValue={today(getLocalTimeZone()) as any}
-                  value={exportDateRange as any}
-                  onChange={(range: any) =>
+                  maxValue={today(getLocalTimeZone()) as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+                  value={exportDateRange as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+                  onChange={(range: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
                     setExportDateRange(
                       range
                         ? { start: range.start as DateValue, end: range.end as DateValue }

@@ -17,7 +17,6 @@
   background: var(--tw-color-bg-primary);
   border: 1px solid @border-color-1;
   border-left: none;
-  overflow: hidden;
 
   .audit-log-list-header {
     padding: @size-sm @size-md;
@@ -54,11 +53,10 @@
   }
 
   &.skeleton-item {
-    .ant-skeleton {
-      .ant-skeleton-avatar {
-        width: 32px;
-        height: 32px;
-      }
+    .skeleton-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
     }
   }
 
@@ -147,8 +145,7 @@
           align-items: center;
           gap: var(--om-space-4);
 
-          .profile-image-container,
-          .ant-avatar {
+          .profile-image-container {
             vertical-align: middle;
           }
         }

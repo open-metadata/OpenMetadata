@@ -13,8 +13,13 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ChangeEvent, EventType } from '../../generated/type/changeEvent';
 import { AuditLogEntry } from '../../types/auditLogs.interface';
 import AuditLogList from './AuditLogList.component';
+
+// Helper to create partial ChangeEvent mocks without strict type enforcement
+const mockChangeEvent = (partial: Partial<ChangeEvent>): ChangeEvent =>
+  partial as unknown as ChangeEvent;
 
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest
@@ -24,13 +29,25 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () =>
     ))
 );
 
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">No data</div>
-    ))
-);
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    EmptyPlaceholder: ({ title }: { title: string }) => (
+      <div data-testid="empty-placeholder">{title}</div>
+    ),
+    Skeleton: Object.assign(
+      ({ variant, className }: { variant?: string; className?: string }) => (
+        <span
+          className={`skeleton-mock ${className ?? ''} ${variant ?? ''}`}
+          data-testid="skeleton"
+        />
+      ),
+      {}
+    ),
+  };
+});
 
 const renderWithRouter = (ui: React.ReactElement) => {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -42,13 +59,13 @@ describe('AuditLogList', () => {
       id: 1,
       changeEventId: 'event-1',
       eventTs: Date.now() - 60000,
-      eventType: 'entityCreated',
+      eventType: EventType.EntityCreated,
       userName: 'admin',
       entityType: 'table',
       entityFQN: 'sample_data.ecommerce_db.shopify.orders',
-      changeEvent: {
+      changeEvent: mockChangeEvent({
         id: 'ce-1',
-        eventType: 'entityCreated',
+        eventType: EventType.EntityCreated,
         entityType: 'table',
         entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
         entity: {
@@ -63,19 +80,19 @@ describe('AuditLogList', () => {
           fieldsDeleted: [],
         },
         timestamp: Date.now() - 60000,
-      },
+      }),
     },
     {
       id: 2,
       changeEventId: 'event-2',
       eventTs: Date.now() - 120000,
-      eventType: 'entityUpdated',
+      eventType: EventType.EntityUpdated,
       userName: 'test_user',
       entityType: 'table',
       entityFQN: 'sample_data.ecommerce_db.shopify.products',
-      changeEvent: {
+      changeEvent: mockChangeEvent({
         id: 'ce-2',
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         entityType: 'table',
         entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.products',
         entity: {
@@ -97,7 +114,7 @@ describe('AuditLogList', () => {
           fieldsDeleted: [],
         },
         timestamp: Date.now() - 120000,
-      },
+      }),
     },
   ];
 
@@ -105,18 +122,18 @@ describe('AuditLogList', () => {
     jest.clearAllMocks();
   });
 
-  it('should render loading state', () => {
+  it('should render loading state with skeleton loaders', () => {
     renderWithRouter(<AuditLogList isLoading logs={[]} />);
 
-    const skeletons = document.querySelectorAll('.ant-skeleton');
+    const skeletons = screen.getAllByTestId('skeleton');
 
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('should render empty state when no logs', () => {
+  it('should render empty state with EmptyPlaceholder when no logs', () => {
     renderWithRouter(<AuditLogList isLoading={false} logs={[]} />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
   it('should render list with items', () => {
@@ -182,12 +199,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [
@@ -202,7 +219,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -219,12 +236,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [
@@ -243,7 +260,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -262,12 +279,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [
@@ -284,7 +301,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -301,12 +318,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [
@@ -323,7 +340,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -340,12 +357,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [
@@ -362,7 +379,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -379,12 +396,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'user',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'user',
           changeDescription: {
             fieldsAdded: [
@@ -403,7 +420,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -423,7 +440,7 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityCreated',
+        eventType: EventType.EntityCreated,
         userName: 'admin',
         entityType: 'table',
         summary: 'Created table orders with 5 columns',
@@ -443,7 +460,7 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         entityType: 'table',
       },
     ];
@@ -461,12 +478,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [
@@ -487,7 +504,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -507,12 +524,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [],
@@ -527,7 +544,7 @@ describe('AuditLogList', () => {
             ],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -544,12 +561,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'glossaryTerm',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'glossaryTerm',
           changeDescription: {
             fieldsAdded: [
@@ -568,7 +585,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -587,12 +604,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'domain',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'domain',
           changeDescription: {
             fieldsAdded: [
@@ -611,7 +628,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -628,12 +645,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'glossaryTerm',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'glossaryTerm',
           changeDescription: {
             fieldsAdded: [
@@ -652,7 +669,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -671,12 +688,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'table',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'table',
           changeDescription: {
             fieldsAdded: [],
@@ -698,7 +715,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -714,13 +731,13 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityCreated',
+        eventType: EventType.EntityCreated,
         userName: 'admin',
         entityType: 'table',
         entityFQN: 'sample_data.ecommerce_db.shopify.orders',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityCreated',
+          eventType: EventType.EntityCreated,
           entityType: 'table',
           entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
           entity: {
@@ -735,7 +752,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 
@@ -755,12 +772,12 @@ describe('AuditLogList', () => {
         id: 1,
         changeEventId: 'event-1',
         eventTs: Date.now(),
-        eventType: 'entityUpdated',
+        eventType: EventType.EntityUpdated,
         userName: 'admin',
         entityType: 'user',
-        changeEvent: {
+        changeEvent: mockChangeEvent({
           id: 'ce-1',
-          eventType: 'entityUpdated',
+          eventType: EventType.EntityUpdated,
           entityType: 'user',
           entity: {
             id: 'user-1',
@@ -774,7 +791,7 @@ describe('AuditLogList', () => {
             fieldsDeleted: [],
           },
           timestamp: Date.now(),
-        },
+        }),
       },
     ];
 

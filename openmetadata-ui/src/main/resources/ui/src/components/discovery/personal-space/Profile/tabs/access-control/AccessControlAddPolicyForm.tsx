@@ -15,13 +15,15 @@ import {
   Box,
   Button,
   Input,
-  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
-import React, { Dispatch, SetStateAction, useState } from 'react';
+import React, { Dispatch, SetStateAction, useRef, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import {
   CreatePolicy,
   Effect,
@@ -33,6 +35,10 @@ import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import AccessControlRuleForm from './AccessControlRuleForm';
 import type { AccessControlView } from './AccessControlPanel';
+
+interface FormValues {
+  name: string;
+}
 
 interface AccessControlAddPolicyFormProps {
   onNavigate: (view: AccessControlView) => void;
@@ -51,37 +57,35 @@ const AccessControlAddPolicyForm: React.FC<
   AccessControlAddPolicyFormProps
 > = ({ onNavigate }) => {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const descEditorRef = useRef<EditorContentRef>(null);
+
+  const {
+    control,
+    formState: { errors },
+    handleSubmit,
+  } = useForm<FormValues>({
+    defaultValues: { name: '' },
+  });
+
   const [ruleData, setRuleData] = useState<Rule>(INITIAL_RULE);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
-  const [nameError, setNameError] = useState('');
 
-  const handleSubmit = async () => {
-    const trimmedName = trim(name);
+  const onSubmit = async (data: FormValues) => {
+    const trimmedName = trim(data.name);
+    const description = descEditorRef.current?.getEditorContent() ?? '';
 
-    if (!trimmedName) {
-      setNameError(
-        t('label.field-required', { field: t('label.name') })
-      );
-
-      return;
-    }
-
-    setNameError('');
     setIsSaveLoading(true);
-
     try {
       const { condition, ...rest } = {
         ...ruleData,
         name: trim(ruleData.name),
       };
-      const data: CreatePolicy = {
+      const payload: CreatePolicy = {
         name: trimmedName,
         description,
         rules: [condition ? { ...rest, condition } : rest],
       };
-      await addPolicy(data);
+      await addPolicy(payload);
       onNavigate({ type: 'policies' });
     } catch (error) {
       showErrorToast(
@@ -89,7 +93,7 @@ const AccessControlAddPolicyForm: React.FC<
           ? t('server.entity-already-exist', {
               entity: t('label.policy'),
               entityPlural: t('label.policy-plural'),
-              name: trim(name),
+              name: trim(data.name),
             })
           : (error as AxiosError)
       );
@@ -101,71 +105,73 @@ const AccessControlAddPolicyForm: React.FC<
   return (
     <Box className="tw:flex tw:flex-col tw:h-full tw:min-h-0" direction="col">
       {/* Scrollable form area */}
-      <div className='tw:overflow-y-auto'>
-      <Box
-        className="tw:flex-1 tw:p-6 tw:flex tw:flex-col tw:gap-5 tw:max-w-[50%] tw:w-full tw:pt-0"
-        data-testid="add-policy-container"
-        direction="col">
-        <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
-          <Typography
-            className="tw:text-sm tw:font-medium tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {`${t('label.name')} *`}
-          </Typography>
-          <Input
-            data-testid="policy-name-input"
-            placeholder={t('label.policy-name')}
-            value={name}
-            onChange={(value) => {
-              setName(value);
-
-              if (value.trim()) {
-                setNameError('');
-              }
-            }}
-          />
-          {nameError && (
-            <Typography className="tw:text-xs tw:text-red-500">
-              {nameError}
-            </Typography>
-          )}
-        </Box>
-
-        <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
-          <Typography
-            className="tw:text-sm tw:font-medium tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.description')}
-          </Typography>
-          <TextArea
-            data-testid="policy-description-input"
-            placeholder={t('message.write-your-description')}
-            value={description}
-            onChange={(value: string) => setDescription(value)}
-          />
-        </Box>
-        {/* Rule section — reuse existing RuleForm component */}
-        <Box className="tw:flex tw:flex-col tw:gap-3" direction="col">
-          <Box
-            className="tw:border-t tw:border-secondary tw:pt-4"
-            direction="col">
+      <div className="tw:overflow-y-auto">
+        <Box
+          className="tw:flex-1 tw:p-6 tw:flex tw:flex-col tw:gap-5 tw:max-w-[50%] tw:w-full tw:pt-0"
+          data-testid="add-policy-container"
+          direction="col">
+          <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
             <Typography
-              className="tw:text-sm tw:font-semibold tw:text-primary"
+              className="tw:text-sm tw:font-medium tw:text-secondary"
               size="text-sm"
-              weight="semibold">
-              {t('label.add-entity', { entity: t('label.rule') })}
+              weight="medium">
+              {`${t('label.name')} *`}
             </Typography>
+            <Controller
+              control={control}
+              name="name"
+              render={({ field }) => (
+                <Input
+                  data-testid="policy-name-input"
+                  placeholder={t('label.policy-name')}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+              rules={{
+                required: t('label.field-required', { field: t('label.name') }),
+              }}
+            />
+            {errors.name && (
+              <Typography className="tw:text-xs tw:text-red-500">
+                {errors.name.message}
+              </Typography>
+            )}
           </Box>
-          <AccessControlRuleForm
-            ruleData={ruleData}
-            setRuleData={
-              setRuleData as Dispatch<SetStateAction<Rule>>
-            }
-          />
+
+          <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+            <Typography
+              className="tw:text-sm tw:font-medium tw:text-secondary"
+              size="text-sm"
+              weight="medium">
+              {t('label.description')}
+            </Typography>
+            <RichTextEditor
+              className="new-form-style"
+              data-testid="policy-description-input"
+              placeHolder={t('message.write-your-description')}
+              ref={descEditorRef}
+            />
+          </Box>
+
+          {/* Rule section */}
+          <Box className="tw:flex tw:flex-col tw:gap-3" direction="col">
+            <Box
+              className="tw:border-t tw:border-secondary tw:pt-4"
+              direction="col">
+              <Typography
+                className="tw:text-sm tw:font-semibold tw:text-primary"
+                size="text-sm"
+                weight="semibold">
+                {t('label.add-entity', { entity: t('label.rule') })}
+              </Typography>
+            </Box>
+            <AccessControlRuleForm
+              ruleData={ruleData}
+              setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
+            />
+          </Box>
         </Box>
-      </Box>
       </div>
 
       {/* Fixed footer */}
@@ -185,7 +191,7 @@ const AccessControlAddPolicyForm: React.FC<
           color="primary"
           data-testid="submit-btn"
           isLoading={isSaveLoading}
-          onPress={handleSubmit}>
+          onPress={() => handleSubmit(onSubmit)()}>
           {t('label.create')}
         </Button>
       </Box>

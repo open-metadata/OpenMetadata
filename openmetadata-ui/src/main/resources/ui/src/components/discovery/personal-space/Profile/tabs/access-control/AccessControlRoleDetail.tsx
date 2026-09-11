@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   EmptyPlaceholder,
+  Input,
   SelectItemType,
   Table,
   TableCard,
@@ -24,6 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
@@ -34,17 +36,22 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
@@ -53,6 +60,7 @@ import {
   getRoleByName,
   patchRole,
 } from '../../../../../../rest/rolesAPIV1';
+import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
@@ -62,6 +70,16 @@ import type { AccessControlView } from './AccessControlPanel';
 
 type RoleTab = 'policies' | 'teams' | 'users';
 type DetailColumnId = 'name' | 'description' | 'actions';
+
+// ─── Description cell renderer ────────────────────────────────────────────────
+
+const DescriptionCell: FC<{ value: string | undefined }> = ({ value }) => {
+  if (value) {
+    return <RichTextEditorPreviewerV1 markdown={value} />;
+  }
+
+  return <Typography className="tw:text-sm tw:text-tertiary">--</Typography>;
+};
 
 // ─── Cell renderer (outside component to keep component complexity low) ────────
 
@@ -83,11 +101,7 @@ const renderEntityCell = (
   }
 
   if (colId === 'description') {
-    return (
-      <Typography className="tw:text-sm tw:text-tertiary">
-        {item.description || '--'}
-      </Typography>
-    );
+    return <DescriptionCell value={item.description} />;
   }
 
   if (colId === 'actions' && showRemove) {
@@ -137,11 +151,14 @@ const EntityTable: FC<EntityTableProps> = ({
   onRemove,
   t,
 }) => (
-  <TableCard.Root className='tw:w-full' size="compact">
-    {headerAction && <TableCard.Header
-      className='tw:py-4'
-      contentTrailing={headerAction}
-    />}
+  <TableCard.Root className="tw:w-full" size="compact">
+    {headerAction && (
+      <TableCard.Header
+        className="tw:py-4"
+        contentTrailing={headerAction}
+        title=""
+      />
+    )}
     <Table aria-label={ariaLabel} size="compact">
       <Table.Header columns={columns}>
         {(col) => (
@@ -181,15 +198,199 @@ const EntityTable: FC<EntityTableProps> = ({
   </TableCard.Root>
 );
 
+// ─── Inline description editor ─────────────────────────────────────────────────
+
+interface InlineDescriptionEditorProps {
+  canEdit: boolean;
+  description: string | undefined;
+  isSaving: boolean;
+  editorRef: React.RefObject<EditorContentRef>;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  t: TFunction;
+}
+
+const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
+  canEdit,
+  description,
+  isSaving,
+  editorRef,
+  isEditing,
+  onStartEdit,
+  onCancel,
+  onSave,
+  t,
+}) => (
+  <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+      <Typography className="tw:text-primary" weight="medium">
+        {t('label.description')}
+      </Typography>
+      {canEdit && !isEditing && (
+        <Tooltip
+          placement="right"
+          title={t('label.edit-entity', { entity: t('label.description') })}>
+          <Button
+            color="tertiary"
+            data-testid="edit-description-btn"
+            size="xs"
+            onPress={onStartEdit}>
+            <Edit01 name={t('label.edit')} width="14px" />
+          </Button>
+        </Tooltip>
+      )}
+    </Box>
+
+    {isEditing ? (
+      <Box className="tw:flex tw:flex-col tw:gap-2" direction="col">
+        <RichTextEditor
+          className="new-form-style"
+          initialValue={description ?? ''}
+          ref={editorRef}
+        />
+        <Box className="tw:flex tw:gap-2 tw:justify-end" direction="row">
+          <Button
+            color="tertiary"
+            isDisabled={isSaving}
+            size="sm"
+            onPress={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            isLoading={isSaving}
+            size="sm"
+            onPress={onSave}>
+            {t('label.save')}
+          </Button>
+        </Box>
+      </Box>
+    ) : (
+      <DescriptionCell value={description} />
+    )}
+  </Box>
+);
+
+// ─── Rename input rendered inside the page header ─────────────────────────────
+
+interface RenameHeaderInputProps {
+  isSaving: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+  t: TFunction;
+}
+
+const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
+  isSaving,
+  value,
+  onChange,
+  onCancel,
+  onSave,
+  t,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+      <Input
+        className="tw:text-lg tw:font-bold"
+        data-testid="rename-input"
+        ref={inputRef}
+        value={value}
+        onChange={onChange}
+      />
+      <Button
+        color="tertiary"
+        isDisabled={isSaving}
+        size="sm"
+        onPress={onCancel}>
+        {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        isDisabled={!value.trim()}
+        isLoading={isSaving}
+        size="sm"
+        onPress={onSave}>
+        {t('label.save')}
+      </Button>
+    </Box>
+  );
+};
+
+// ─── Header action buttons (edit + delete) ────────────────────────────────────
+
+interface RoleHeaderActionsProps {
+  canDelete: boolean;
+  canEditAll: boolean;
+  displayName: string;
+  name: string;
+  onDelete: () => void;
+  onRename: (initial: string) => void;
+  t: TFunction;
+}
+
+const RoleHeaderActions: FC<RoleHeaderActionsProps> = ({
+  canDelete,
+  canEditAll,
+  displayName,
+  name,
+  onDelete,
+  onRename,
+  t,
+}) => (
+  <Box className="tw:flex tw:items-center tw:gap-1" direction="row">
+    <Tooltip
+      placement="left"
+      title={String(canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION))}>
+      <Button
+        color="tertiary"
+        data-testid="rename-role-btn"
+        isDisabled={!canEditAll}
+        size="sm"
+        onPress={() => onRename(displayName || name)}>
+        <Edit01 name={t('label.rename')} width="16px" />
+      </Button>
+    </Tooltip>
+    <Tooltip
+      placement="left"
+      title={String(canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION))}>
+      <Button
+        color="tertiary"
+        data-testid="delete-role-btn"
+        isDisabled={!canDelete}
+        size="sm"
+        onPress={onDelete}>
+        <Trash01 name={t('label.delete')} width="16px" />
+      </Button>
+    </Tooltip>
+  </Box>
+);
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface AccessControlRoleDetailProps {
   fqn: string;
   onNavigate: (view: AccessControlView) => void;
+  onSetHeaderActions?: (actions: React.ReactNode) => void;
+  onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
+  onSetHeaderTitleSuffix?: (titleSuffix: React.ReactNode) => void;
 }
 
 const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   fqn,
+  onNavigate,
+  onSetHeaderActions,
+  onSetHeaderTitleInput,
+  onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -202,13 +403,26 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     useState<OperationPermission | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<EntityReference>();
 
+  // Inline description editing
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [isSavingDesc, setIsSavingDesc] = useState(false);
+  const descEditorRef = useRef<EditorContentRef>(null);
+
+  // Inline rename via page header
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [isSavingRename, setIsSavingRename] = useState(false);
+
+  // Delete role modal
+  const [isDeleteRoleOpen, setIsDeleteRoleOpen] = useState(false);
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
+
   // Add policy state
   const [isAddingPolicy, setIsAddingPolicy] = useState(false);
   const [availablePolicies, setAvailablePolicies] = useState<Policy[]>([]);
   const [selectedNewPolicies, setSelectedNewPolicies] = useState<string[]>([]);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
 
-  // Track which kind of entity is being removed
   const [removeKind, setRemoveKind] = useState<'policy' | 'user'>('policy');
 
   const columns = useMemo(
@@ -241,6 +455,141 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   }, [fqn, getEntityPermissionByFqn]);
 
   const canEditAll = rolePermission?.EditAll ?? false;
+  const canDelete = rolePermission?.Delete ?? false;
+
+  const handleSaveRename = useCallback(async () => {
+    if (!role || !renameValue.trim()) {
+      return;
+    }
+
+    const updatedRole = { ...role, displayName: renameValue.trim() };
+
+    setIsSavingRename(true);
+    try {
+      const saved = await patchRole(compare(role, updatedRole), role.id);
+      setRole(saved);
+      setIsRenameOpen(false);
+      showSuccessToast(
+        t('server.entity-updated-successfully', { entity: t('label.role') })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingRename(false);
+    }
+  }, [role, renameValue, t]);
+
+  // Inject rename/delete actions + optional inline title into the page header.
+  useEffect(() => {
+    if (!role) {
+      return;
+    }
+
+    const titleInputNode: React.ReactNode = isRenameOpen ? (
+      <RenameHeaderInput
+        isSaving={isSavingRename}
+        t={t}
+        value={renameValue}
+        onCancel={() => {
+          setIsRenameOpen(false);
+          setRenameValue('');
+        }}
+        onChange={setRenameValue}
+        onSave={handleSaveRename}
+      />
+    ) : undefined;
+
+    const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
+      <Tooltip
+        placement="right"
+        title={String(canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION))}>
+        <Button
+          color="tertiary"
+          data-testid="rename-role-btn"
+          isDisabled={!canEditAll}
+          size="sm"
+          onPress={() => {
+            setRenameValue(role.displayName || role.name || '');
+            setIsRenameOpen(true);
+          }}>
+          <Edit01 name={t('label.rename')} width="16px" />
+        </Button>
+      </Tooltip>
+    );
+
+    const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
+      <Tooltip
+        placement="left"
+        title={String(canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION))}>
+        <Button
+          color="tertiary"
+          data-testid="delete-role-btn"
+          isDisabled={!canDelete}
+          size="sm"
+          onPress={() => setIsDeleteRoleOpen(true)}>
+          <Trash01 name={t('label.delete')} width="16px" />
+        </Button>
+      </Tooltip>
+    );
+
+    onSetHeaderTitleSuffix?.(renameButtonNode);
+    onSetHeaderActions?.(deleteButtonNode);
+    onSetHeaderTitleInput?.(titleInputNode);
+  }, [
+    role,
+    canEditAll,
+    canDelete,
+    isRenameOpen,
+    renameValue,
+    isSavingRename,
+    handleSaveRename,
+    t,
+    onSetHeaderActions,
+    onSetHeaderTitleInput,
+    onSetHeaderTitleSuffix,
+  ]);
+
+  const handleSaveDescription = useCallback(async () => {
+    if (!role || !descEditorRef.current) {
+      return;
+    }
+
+    const newDescription = descEditorRef.current.getEditorContent();
+    const updatedRole = { ...role, description: newDescription };
+
+    setIsSavingDesc(true);
+    try {
+      const saved = await patchRole(compare(role, updatedRole), role.id);
+      setRole(saved);
+      setIsEditingDesc(false);
+      showSuccessToast(
+        t('server.entity-updated-successfully', { entity: t('label.role') })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingDesc(false);
+    }
+  }, [role, t]);
+
+  const handleDeleteRole = useCallback(async () => {
+    if (!role) {
+      return;
+    }
+
+    setIsDeletingRole(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(role),
+      role.id ?? '',
+      EntityType.ROLE
+    );
+    setIsDeletingRole(false);
+    setIsDeleteRoleOpen(false);
+
+    if (isSuccess) {
+      onNavigate({ type: 'roles' });
+    }
+  }, [role, onNavigate]);
 
   const handleRemovePolicy = useCallback(
     async (policyRef: EntityReference) => {
@@ -325,13 +674,18 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     }
 
     const newPolicyRefs = selectedNewPolicies
-      .map((fqn) => {
+      .map((selectedFqn) => {
         const p = availablePolicies.find(
-          (ap) => ap.fullyQualifiedName === fqn || ap.name === fqn
+          (ap) => ap.fullyQualifiedName === selectedFqn || ap.name === selectedFqn
         );
 
         return p
-          ? ({ id: p.id, type: 'policy', fullyQualifiedName: p.fullyQualifiedName, name: p.name } as EntityReference)
+          ? ({
+              id: p.id,
+              type: 'policy',
+              fullyQualifiedName: p.fullyQualifiedName,
+              name: p.name,
+            } as EntityReference)
           : null;
       })
       .filter(Boolean) as EntityReference[];
@@ -368,12 +722,15 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
 
   const selectedPolicyItems = useMemo<SelectItemType[]>(
     () =>
-      selectedNewPolicies.map((fqn) => {
+      selectedNewPolicies.map((selectedFqn) => {
         const match = availablePolicies.find(
-          (p) => p.fullyQualifiedName === fqn || p.name === fqn
+          (p) => p.fullyQualifiedName === selectedFqn || p.name === selectedFqn
         );
 
-        return { id: fqn, label: match?.displayName || match?.name || fqn };
+        return {
+          id: selectedFqn,
+          label: match?.displayName || match?.name || selectedFqn,
+        };
       }),
     [selectedNewPolicies, availablePolicies]
   );
@@ -402,21 +759,25 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     return null;
   }
 
+  const roleName = getEntityName(role);
+
   return (
     <Box
       className="tw:flex tw:flex-col tw:gap-4"
       data-testid="role-detail-container"
       direction="col">
-      <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
-        <Typography className="tw:text-primary" weight="medium">
-          {t('label.description')}
-        </Typography>
-        {role.description && (
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {role.description}
-          </Typography>
-        )}
-      </Box>
+
+      <InlineDescriptionEditor
+        canEdit={canEditAll}
+        description={role.description}
+        editorRef={descEditorRef}
+        isEditing={isEditingDesc}
+        isSaving={isSavingDesc}
+        t={t}
+        onCancel={() => setIsEditingDesc(false)}
+        onSave={handleSaveDescription}
+        onStartEdit={() => setIsEditingDesc(true)}
+      />
 
       <Tabs
         selectedKey={activeTab}
@@ -436,7 +797,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
 
       <Box className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:p-1">
         {activeTab === 'policies' && (
-          <Box className="tw:w-full" direction='col' gap={3}>
+          <Box className="tw:w-full" direction="col" gap={3}>
             {isAddingPolicy && (
               <Box
                 className="tw:border tw:border-secondary tw:rounded-xl tw:p-4 tw:flex tw:flex-col tw:gap-4"
@@ -550,11 +911,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
 
       {selectedEntity && (
         <DeleteModal
-          entityTitle={getEntityName(selectedEntity)}
-          isDeleting={isLoadingOnSave}
-          message={t('message.remove-entity-from-role', {
+          entityTitle={t('label.remove-entity', {
             entity: getEntityName(selectedEntity),
-            role: getEntityName(role),
+          })}
+          isDeleting={isLoadingOnSave}
+          message={t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+            child: getEntityName(selectedEntity),
+            parent: roleName,
           })}
           open={!isUndefined(selectedEntity)}
           onCancel={() => setSelectedEntity(undefined)}
@@ -568,6 +931,17 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           }}
         />
       )}
+
+      <DeleteModal
+        entityTitle={roleName}
+        isDeleting={isDeletingRole}
+        message={t('message.permanently-delete-common-message', {
+          entity: roleName.toLowerCase(),
+        })}
+        open={isDeleteRoleOpen}
+        onCancel={() => setIsDeleteRoleOpen(false)}
+        onDelete={handleDeleteRole}
+      />
     </Box>
   );
 };

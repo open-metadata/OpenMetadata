@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Card,
   Button,
   Input,
   Select,
@@ -174,8 +175,9 @@ const AccessControlDebuggerPanel: React.FC = () => {
       : 'tw:text-red-600';
 
     return (
-      <Box
-        className="tw:mt-4 tw:rounded-xl tw:border tw:border-secondary tw:overflow-hidden"
+      <>
+      <Card
+        className="tw:mt-4 tw:overflow-hidden"
         data-testid="evaluation-result">
         <Box
           className={`tw:px-6 tw:py-4 tw:border-b-2 ${
@@ -319,16 +321,20 @@ const AccessControlDebuggerPanel: React.FC = () => {
             </Box>
           )}
         </Box>
-      </Box>
+      </Card>
+      </>
     );
   };
 
   return (
     <Box
       className="tw:flex tw:flex-col tw:gap-4 tw:pt-0"
-      data-testid="admin-permission-debugger">
-      {/* User search card */}
-      <Box className="tw:rounded-xl tw:border tw:border-secondary tw:p-6 tw:flex tw:flex-col tw:gap-4">
+      data-testid="admin-permission-debugger"
+      direction="col"
+      gap={4}>
+
+      {/* Card 1: Select a user */}
+      <Card className="tw:p-6 tw:flex tw:flex-col tw:gap-4">
         <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
           {t('label.select-user-to-debug-permissions')}
         </Typography>
@@ -337,7 +343,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
           <Select.ComboBox
             allowsEmptyCollection
             showSearchIcon
-            className='tw:min-w-80'
+            className="tw:min-w-80"
             items={userOptions}
             placeholder={t('label.search-entity', {
               entity: t('label.user'),
@@ -360,11 +366,11 @@ const AccessControlDebuggerPanel: React.FC = () => {
             <strong>{selectedUsername}</strong>
           </Typography>
         )}
-      </Box>
+      </Card>
 
-      {/* Evaluate permission card */}
-      <Box className="tw:rounded-xl tw:border tw:border-secondary tw:overflow-hidden">
-        <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary tw:bg-secondary">
+      {/* Card 2: Evaluate Permission */}
+      <Card className="tw:overflow-hidden">
+        <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
           <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
             {t('label.evaluate-permission')}
           </Typography>
@@ -457,30 +463,36 @@ const AccessControlDebuggerPanel: React.FC = () => {
             </Box>
           )}
         </Box>
-      </Box>
+      </Card>
 
+      {/* Card 3: Permission Evaluation Result (only after evaluating) */}
       {renderEvaluationResult()}
 
-      {loadingPermissions && (
-        <Box className="tw:flex tw:justify-center tw:py-8">
-          <Loader />
-        </Box>
-      )}
-
-      {permissionInfo && !loadingPermissions && (
-        <Box className="tw:rounded-xl tw:border tw:border-secondary tw:overflow-hidden">
-          <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary tw:bg-secondary">
+      {/* Card 4: Permissions for {username} (only after user is selected) */}
+      {selectedUsername && (
+        <Card className="tw:overflow-hidden tw:w-full">
+          <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
             <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
               {`${t('label.permissions-for')} ${selectedUsername}`}
             </Typography>
           </Box>
           <Box className="tw:p-6">
-            <AccessControlUserPermissions
-              isLoggedInUser={false}
-              username={selectedUsername}
-            />
+            {loadingPermissions ? (
+              <Box className="tw:flex tw:justify-center tw:py-8">
+                <Loader />
+              </Box>
+            ) : permissionInfo ? (
+              <AccessControlUserPermissions
+                isLoggedInUser={false}
+                username={selectedUsername}
+              />
+            ) : (
+              <Typography className="tw:text-sm tw:text-tertiary">
+                {t('message.select-user-first')}
+              </Typography>
+            )}
           </Box>
-        </Box>
+        </Card>
       )}
     </Box>
   );

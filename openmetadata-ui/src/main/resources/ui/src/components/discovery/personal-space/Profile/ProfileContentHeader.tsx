@@ -33,6 +33,12 @@ interface ProfileContentHeaderProps {
   breadcrumbs?: BreadcrumbItemType[];
   /** Called when the user clicks an interactive breadcrumb item. */
   onBreadcrumbAction?: (id: string | number) => void;
+  /** Action buttons rendered on the right of the title row. */
+  actions?: React.ReactNode;
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
 }
 
 /**
@@ -46,6 +52,9 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   breadcrumbRoot,
   breadcrumbs,
   onBreadcrumbAction,
+  actions,
+  titleInput,
+  titleSuffix,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -83,13 +92,18 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           size="md"
           theme="dark"
         />
-        <Box direction="col">
-          <Typography
-            className="tw:text-primary-900"
-            size="text-lg"
-            weight="bold">
-            {title}
-          </Typography>
+        <Box className="tw:flex-1" direction="col">
+          <Box align="center" direction="row" gap={1}>
+            {titleInput ?? (
+              <Typography
+                className="tw:text-primary-900"
+                size="text-lg"
+                weight="bold">
+                {title}
+              </Typography>
+            )}
+            {!titleInput && titleSuffix}
+          </Box>
           <Typography
             className="tw:text-tertiary"
             size="text-sm"
@@ -97,6 +111,11 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             {description}
           </Typography>
         </Box>
+        {actions && (
+          <Box className="tw:ml-auto tw:flex tw:items-center tw:gap-2" direction="row">
+            {actions}
+          </Box>
+        )}
       </Box>
     </Box>
   );

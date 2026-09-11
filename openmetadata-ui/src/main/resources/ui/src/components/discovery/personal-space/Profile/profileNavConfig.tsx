@@ -29,17 +29,19 @@ export type ProfileNavId =
   | 'access-control';
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
-export type ProfileNavGroup = 'account' | 'credentials';
+export type ProfileNavGroup = 'account' | 'administration' | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
 export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
+  administration: 'label.administration',
   credentials: 'label.credential-plural',
 };
 
 /** Group render order in the sidebar. */
 export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
+  'administration',
   'credentials',
 ];
 
@@ -49,6 +51,12 @@ export interface ProfileHeaderOverride {
   description: string;
   icon: FC<{ className?: string }>;
   onBreadcrumbAction?: (id: string | number) => void;
+  /** Action buttons rendered on the right of the header title row. */
+  actions?: React.ReactNode;
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
 }
 
 /**
@@ -116,7 +124,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
   },
   {
     id: 'access-control',
-    group: 'credentials',
+    group: 'administration',
     label: 'label.access-control',
     description: 'message.access-control-description',
     icon: AccessControlIcon,

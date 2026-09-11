@@ -25,10 +25,10 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';
-import { ROUTES } from '../../../../../../constants/constants';
+import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -69,7 +69,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
@@ -87,13 +86,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   } = usePaging();
 
   const { permissions } = usePermissionProvider();
-
-  const addPolicyPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.POLICY, permissions),
-    [permissions]
-  );
 
   const deletePolicyPermission = useMemo(
     () =>
@@ -140,6 +132,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchPolicies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePolicyDelete = useCallback(async () => {
@@ -157,14 +150,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     setSelectedPolicy(undefined);
     setIsDeleting(false);
   }, [selectedPolicy, handleAfterDeleteAction]);
-
-  const handleAddPolicy = () => {
-    if (onNavigate) {
-      onNavigate({ type: 'policies-add' });
-    } else {
-      navigate(ROUTES.ADD_POLICY);
-    }
-  };
 
   const handlePolicyClick = (policy: Policy) => {
     if (onNavigate) {
@@ -202,7 +187,46 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     } else {
       fetchPolicies();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize, pagingCursor]);
+
+  const renderRoleItem = (role: EntityReference) => {
+    const key = uniqueId();
+
+    if (!viewRolePermission) {
+      return (
+        <Tooltip key={key} title={t(NO_PERMISSION_TO_VIEW)}>
+          <Box className="tw:text-sm">{getEntityName(role)}</Box>
+        </Tooltip>
+      );
+    }
+
+    if (onNavigate) {
+      return (
+        <Button
+          color="link-color"
+          key={key}
+          size="sm"
+          onPress={() =>
+            onNavigate({
+              type: 'roles-detail',
+              fqn: role.fullyQualifiedName ?? '',
+              name: getEntityName(role),
+            })
+          }>
+          {getEntityName(role)}
+        </Button>
+      );
+    }
+
+    return (
+      <Link
+        key={key}
+        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+        {getEntityName(role)}
+      </Link>
+    );
+  };
 
   // Extracted to keep renderCell complexity under the threshold.
   const renderRolesCell = (roles: EntityReference[] | undefined) => {
@@ -218,68 +242,12 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         className="tw:flex tw:flex-wrap tw:gap-1"
         data-testid="role-link"
         direction="row">
-        {roles.slice(0, LIST_CAP).map((role) =>
-          viewRolePermission ? (
-            onNavigate ? (
-              <Button
-                color="link-color"
-                key={uniqueId()}
-                size="sm"
-                onPress={() =>
-                  onNavigate({
-                    type: 'roles-detail',
-                    fqn: role.fullyQualifiedName ?? '',
-                    name: getEntityName(role),
-                  })
-                }>
-                {getEntityName(role)}
-              </Button>
-            ) : (
-              <Link
-                key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
-                {getEntityName(role)}
-              </Link>
-            )
-          ) : (
-            <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
-              <Box className="tw:text-sm">{getEntityName(role)}</Box>
-            </Tooltip>
-          )
-        )}
+        {roles.slice(0, LIST_CAP).map(renderRoleItem)}
         {hasMore && (
           <Tooltip
             title={
               <Box className="tw:flex tw:flex-col tw:gap-1">
-                {roles.slice(LIST_CAP).map((role) =>
-                  viewRolePermission ? (
-                    onNavigate ? (
-                      <Button
-                        color="link-color"
-                        key={uniqueId()}
-                        size="sm"
-                        onPress={() =>
-                          onNavigate({
-                            type: 'roles-detail',
-                            fqn: role.fullyQualifiedName ?? '',
-                            name: getEntityName(role),
-                          })
-                        }>
-                        {getEntityName(role)}
-                      </Button>
-                    ) : (
-                      <Link
-                        key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName || '')}>
-                        {getEntityName(role)}
-                      </Link>
-                    )
-                  ) : (
-                    <Box className="tw:text-sm" key={uniqueId()}>
-                      {getEntityName(role)}
-                    </Box>
-                  )
-                )}
+                {roles.slice(LIST_CAP).map(renderRoleItem)}
               </Box>
             }>
             <Box
@@ -318,10 +286,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         );
 
       case 'description':
-        return (
-          <Box className="tw:text-sm tw:text-secondary">
-            {policy.description || '--'}
-          </Box>
+        return policy.description ? (
+          <RichTextEditorPreviewerV1 markdown={policy.description} />
+        ) : (
+          <span className="tw:text-sm tw:text-secondary">--</span>
         );
 
       case 'roles':
@@ -359,20 +327,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       className="tw:flex tw:flex-col tw:gap-4 tw:pt-1"
       data-testid="policies-list-container">
       <TableCard.Root size="compact">
-        <TableCard.Header
-          className='tw:py-4'
-          contentTrailing={
-            addPolicyPermission ? (
-              <Button
-                color="primary"
-                data-testid="add-policy"
-                size="sm"
-                onPress={handleAddPolicy}>
-                {t('label.add-entity', { entity: t('label.policy') })}
-              </Button>
-            ) : undefined
-          }
-        />
         {isLoading ? (
           <Box className="tw:flex tw:justify-center tw:p-8">
             <Loader />
@@ -392,13 +346,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
               renderEmptyState={() => (
                 <Box className="tw:min-h-32 tw:flex tw:items-center tw:justify-center tw:relative">
                   <EmptyPlaceholder
-                    description={
-                      addPolicyPermission
-                        ? t('message.add-entity-to-get-started', {
-                            entity: t('label.policy'),
-                          })
-                        : undefined
-                    }
                     title={t('label.no-entity-found', {
                       entity: t('label.policy-plural'),
                     })}

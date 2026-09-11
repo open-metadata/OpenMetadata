@@ -17,7 +17,6 @@ import {
   Input,
   Select,
   SelectItemType,
-  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -30,6 +29,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { useTranslation } from 'react-i18next';
 import {
   Effect,
@@ -313,11 +313,11 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
           weight="medium">
           {t('label.description')}
         </Typography>
-        <TextArea
+        <RichTextEditor
+          className="tw:[&_.ProseMirror]:min-h-[4rem] tw:[&_.ProseMirror]:max-h-[4rem] tw:[&_.ProseMirror]:overflow-y-auto"
           data-testid="rule-description"
-          placeholder={t('message.write-your-description')}
-          value={ruleData.description ?? ''}
-          onChange={(value: string) =>
+          initialValue={ruleData.description ?? ''}
+          onTextChange={(value) =>
             setRuleData((prev: Rule) => ({ ...prev, description: value }))
           }
         />

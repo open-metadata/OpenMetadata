@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import React, { FC, useCallback, useEffect } from 'react';
+import { PermissionDebugger as AccessControlIcon, Policy as PoliciesIcon, Role as RolesIcon, AuditLogs as AuditLogsIcon } from '@openmetadata/ui-core-components/icons';
+import { isEmpty } from 'lodash';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PermissionDebugger as AccessControlIcon, Policy as PoliciesIcon, Role as RolesIcon } from '@openmetadata/ui-core-components/icons';
-import { ReactComponent as ManagementIcon } from '../../../../../../assets/svg/setting-management.svg';
-import { ProfileHeaderOverride } from '../../profileNavConfig';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
 import AccessControlAddRoleForm from './AccessControlAddRoleForm';
 import AccessControlAuditLogsPanel from './AccessControlAuditLogsPanel';
@@ -44,6 +49,7 @@ interface AccessControlPanelProps {
 
 const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
   const [view, setView] = React.useState<AccessControlView>({
     type: 'landing',
   });
@@ -51,6 +57,43 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
   const onNavigate = useCallback((nextView: AccessControlView) => {
     setView(nextView);
   }, []);
+
+  // Precompute view type flags to avoid duplicate string literals in render.
+  const isAuditLogsView = view.type === 'audit-logs';
+
+  // Extra actions injected by sub-panels (e.g. audit-logs export button).
+  const [panelHeaderActions, setPanelHeaderActions] =
+    useState<React.ReactNode>(undefined);
+
+  // Actions and title input injected by detail panels (role/policy detail rename+delete).
+  const [detailHeaderActions, setDetailHeaderActions] =
+    useState<React.ReactNode>(undefined);
+  const [detailHeaderTitleInput, setDetailHeaderTitleInput] =
+    useState<React.ReactNode>(undefined);
+  const [detailHeaderTitleSuffix, setDetailHeaderTitleSuffix] =
+    useState<React.ReactNode>(undefined);
+
+  // Clear detail/panel header state when navigating away.
+  useEffect(() => {
+    setDetailHeaderActions(undefined);
+    setDetailHeaderTitleInput(undefined);
+    setDetailHeaderTitleSuffix(undefined);
+    setPanelHeaderActions(undefined);
+  }, [view.type]);
+
+  const canAddRole = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.ROLE, permissions),
+    [permissions]
+  );
+
+  const canAddPolicy = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.POLICY, permissions),
+    [permissions]
+  );
 
   // Push header updates up to ProfilePage whenever the internal view changes.
   useEffect(() => {
@@ -68,8 +111,17 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
     const addRole = t('label.add-entity', { entity: t('label.role') });
     const addPolicy = t('label.add-entity', { entity: t('label.policy') });
 
-    const roleName = view.type === 'roles-detail' ? view.name : '';
-    const policyName = view.type === 'policies-detail' ? view.name : '';
+    let roleName = '';
+    let policyName = '';
+    let isDetailView = false;
+
+    if (view.type === 'roles-detail') {
+      roleName = view.name;
+      isDetailView = true;
+    } else if (view.type === 'policies-detail') {
+      policyName = view.name;
+      isDetailView = true;
+    }
 
     const settingsItem: BreadcrumbItemType = {
       id: 'settings',
@@ -119,7 +171,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       'policies-add': PoliciesIcon,
       'policies-detail': PoliciesIcon,
       'permission-debugger': AccessControlIcon,
-      'audit-logs': ManagementIcon,
+      'audit-logs': AuditLogsIcon,
     };
 
     const titleByType: Record<string, string> = {
@@ -158,18 +210,74 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       }
     };
 
+    const actionsForView: React.ReactNode = (() => {
+      if (view.type === 'roles' && canAddRole) {
+        return (
+          <Button
+            color="primary"
+            data-testid="add-role"
+            size="sm"
+            onPress={() => onNavigate({ type: 'roles-add' })}>
+            {addRole}
+          </Button>
+        );
+      }
+
+      if (view.type === 'policies' && canAddPolicy) {
+        return (
+          <Button
+            color="primary"
+            data-testid="add-policy"
+            size="sm"
+            onPress={() => onNavigate({ type: 'policies-add' })}>
+            {addPolicy}
+          </Button>
+        );
+      }
+
+      // For audit-logs the export button is injected by the panel via panelHeaderActions.
+      if (isAuditLogsView) {
+        return panelHeaderActions;
+      }
+
+      // For detail views, rename/delete buttons are injected by the detail panel.
+      if (isDetailView) {
+        return detailHeaderActions;
+      }
+
+      return undefined;
+    })();
+
+    const titleInputForView = isDetailView ? detailHeaderTitleInput : undefined;
+    const titleSuffixForView = isDetailView ? detailHeaderTitleSuffix : undefined;
+
     onHeaderChange({
       breadcrumbs: crumbsByType[view.type] ?? base,
       title: titleByType[view.type] ?? acLabel,
       description: descByType[view.type] ?? '',
       icon: iconByType[view.type] ?? AccessControlIcon,
       onBreadcrumbAction,
+      actions: actionsForView,
+      titleInput: titleInputForView,
+      titleSuffix: titleSuffixForView,
     });
-  }, [view, onHeaderChange, t]);
+  }, [
+    view,
+    onHeaderChange,
+    t,
+    canAddRole,
+    canAddPolicy,
+    isAuditLogsView,
+    onNavigate,
+    panelHeaderActions,
+    detailHeaderActions,
+    detailHeaderTitleInput,
+    detailHeaderTitleSuffix,
+  ]);
 
-  // Audit logs manages its own height/scroll — render unwrapped.
-  if (view.type === 'audit-logs') {
-    return <AccessControlAuditLogsPanel />;
+  // Audit logs manages its own height/scroll and injects its own header actions.
+  if (isAuditLogsView) {
+    return <AccessControlAuditLogsPanel onSetHeaderActions={setPanelHeaderActions} />;
   }
 
   // All other views use the page-level padded scroll container.
@@ -187,7 +295,15 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
     }
 
     if (view.type === 'roles-detail') {
-      return <AccessControlRoleDetail fqn={view.fqn} onNavigate={onNavigate} />;
+      return (
+        <AccessControlRoleDetail
+          fqn={view.fqn}
+          onNavigate={onNavigate}
+          onSetHeaderActions={setDetailHeaderActions}
+          onSetHeaderTitleInput={setDetailHeaderTitleInput}
+          onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
+        />
+      );
     }
 
     if (view.type === 'policies') {
@@ -200,7 +316,13 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
 
     if (view.type === 'policies-detail') {
       return (
-        <AccessControlPolicyDetail fqn={view.fqn} onNavigate={onNavigate} />
+        <AccessControlPolicyDetail
+          fqn={view.fqn}
+          onNavigate={onNavigate}
+          onSetHeaderActions={setDetailHeaderActions}
+          onSetHeaderTitleInput={setDetailHeaderTitleInput}
+          onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
+        />
       );
     }
 

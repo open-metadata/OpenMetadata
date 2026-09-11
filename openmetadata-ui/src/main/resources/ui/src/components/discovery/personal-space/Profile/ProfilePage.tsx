@@ -202,11 +202,14 @@ const ProfilePage: React.FC = () => {
             className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
             direction="col">
             <ProfileContentHeader
+              actions={headerOverride?.actions}
               breadcrumbRoot={headerBreadcrumbRoot}
               breadcrumbs={headerBreadcrumbs}
               description={headerDescription}
               icon={headerIcon}
               title={headerTitle}
+              titleInput={headerOverride?.titleInput}
+              titleSuffix={headerOverride?.titleSuffix}
               onBreadcrumbAction={headerBreadcrumbAction}
             />
             <div

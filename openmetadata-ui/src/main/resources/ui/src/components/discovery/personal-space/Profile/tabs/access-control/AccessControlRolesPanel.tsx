@@ -25,10 +25,10 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';
-import { ROUTES } from '../../../../../../constants/constants';
+import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -67,7 +67,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>();
@@ -85,13 +84,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   } = usePaging();
 
   const { permissions } = usePermissionProvider();
-
-  const addRolePermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.ROLE, permissions),
-    [permissions]
-  );
 
   const viewPolicyPermission = useMemo(
     () =>
@@ -139,6 +131,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRoleDelete = useCallback(async () => {
@@ -156,14 +149,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     setSelectedRole(undefined);
     setIsDeleting(false);
   }, [selectedRole, handleAfterDeleteAction]);
-
-  const handleAddRole = () => {
-    if (onNavigate) {
-      onNavigate({ type: 'roles-add' });
-    } else {
-      navigate(ROUTES.ADD_ROLE);
-    }
-  };
 
   const handleRoleClick = (role: Role) => {
     if (onNavigate) {
@@ -201,7 +186,46 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     } else {
       fetchRoles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize, pagingCursor]);
+
+  const renderPolicyItem = (policy: EntityReference) => {
+    const key = uniqueId();
+
+    if (!viewPolicyPermission) {
+      return (
+        <Tooltip key={key} title={t(NO_PERMISSION_TO_VIEW)}>
+          <Box className="tw:text-sm">{getEntityName(policy)}</Box>
+        </Tooltip>
+      );
+    }
+
+    if (onNavigate) {
+      return (
+        <Button
+          color="link-color"
+          key={key}
+          size="sm"
+          onPress={() =>
+            onNavigate({
+              type: 'policies-detail',
+              fqn: policy.fullyQualifiedName ?? '',
+              name: getEntityName(policy),
+            })
+          }>
+          {getEntityName(policy)}
+        </Button>
+      );
+    }
+
+    return (
+      <Link
+        key={key}
+        to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
+        {getEntityName(policy)}
+      </Link>
+    );
+  };
 
   // Extracted to keep renderCell complexity under the threshold.
   const renderPoliciesCell = (policies: EntityReference[] | undefined) => {
@@ -217,70 +241,12 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         className="tw:flex tw:flex-wrap tw:gap-1"
         data-testid="policy-link"
         direction="row">
-        {policies.slice(0, LIST_CAP).map((policy) =>
-          viewPolicyPermission ? (
-            onNavigate ? (
-              <Button
-                color="link-color"
-                key={uniqueId()}
-                size="sm"
-                onPress={() =>
-                  onNavigate({
-                    type: 'policies-detail',
-                    fqn: policy.fullyQualifiedName ?? '',
-                    name: getEntityName(policy),
-                  })
-                }>
-                {getEntityName(policy)}
-              </Button>
-            ) : (
-              <Link
-                key={uniqueId()}
-                to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
-                {getEntityName(policy)}
-              </Link>
-            )
-          ) : (
-            <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
-              <Box className="tw:text-sm">{getEntityName(policy)}</Box>
-            </Tooltip>
-          )
-        )}
+        {policies.slice(0, LIST_CAP).map(renderPolicyItem)}
         {hasMore && (
           <Tooltip
             title={
               <Box className="tw:flex tw:flex-col tw:gap-1">
-                {policies.slice(LIST_CAP).map((policy) =>
-                  viewPolicyPermission ? (
-                    onNavigate ? (
-                      <Button
-                        color="link-color"
-                        key={uniqueId()}
-                        size="sm"
-                        onPress={() =>
-                          onNavigate({
-                            type: 'policies-detail',
-                            fqn: policy.fullyQualifiedName ?? '',
-                            name: getEntityName(policy),
-                          })
-                        }>
-                        {getEntityName(policy)}
-                      </Button>
-                    ) : (
-                      <Link
-                        key={uniqueId()}
-                        to={getPolicyWithFqnPath(
-                          policy.fullyQualifiedName || ''
-                        )}>
-                        {getEntityName(policy)}
-                      </Link>
-                    )
-                  ) : (
-                    <Box className="tw:text-sm" key={uniqueId()}>
-                      {getEntityName(policy)}
-                    </Box>
-                  )
-                )}
+                {policies.slice(LIST_CAP).map(renderPolicyItem)}
               </Box>
             }>
             <Box
@@ -315,10 +281,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         );
 
       case 'description':
-        return (
-          <Box className="tw:text-sm tw:text-secondary">
-            {role.description || '--'}
-          </Box>
+        return role.description ? (
+          <RichTextEditorPreviewerV1 markdown={role.description} />
+        ) : (
+          <span className="tw:text-sm tw:text-secondary">--</span>
         );
 
       case 'policies':
@@ -356,27 +322,13 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       className="tw:flex tw:flex-col tw:gap-4 tw:pt-1"
       data-testid="roles-list-container">
       <TableCard.Root size="compact">
-        <TableCard.Header
-          className='tw:py-4'
-          contentTrailing={
-            addRolePermission ? (
-              <Button
-                color="primary"
-                data-testid="add-role"
-                size="sm"
-                onPress={handleAddRole}>
-                {t('label.add-entity', { entity: t('label.role') })}
-              </Button>
-            ) : undefined
-          }
-        />
         {isLoading ? (
           <Box className="tw:flex tw:justify-center tw:p-8">
             <Loader />
           </Box>
         ) : (
           <Table
-            ariaLabel='label.role-plural'
+            aria-label={t('label.role-plural')}
             data-testid="roles-list-table"
             size="compact">
             <Table.Header columns={columns}>
@@ -389,13 +341,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
               renderEmptyState={() => (
                 <Box className="tw:min-h-32 tw:flex tw:items-center tw:justify-center tw:relative">
                   <EmptyPlaceholder
-                    description={
-                      addRolePermission
-                        ? t('message.add-entity-to-get-started', {
-                            entity: t('label.role'),
-                          })
-                        : undefined
-                    }
                     title={t('label.no-entity-found', {
                       entity: t('label.role-plural'),
                     })}

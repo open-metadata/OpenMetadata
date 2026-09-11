@@ -17,14 +17,15 @@ import {
   Button,
   Input,
   SelectItemType,
-  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { trim } from 'lodash';
 import type { Key } from 'react-aria-components';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import Loader from '../../../../../common/Loader/Loader';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
@@ -34,6 +35,10 @@ import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { AccessControlView } from './AccessControlPanel';
 
+interface FormValues {
+  name: string;
+}
+
 interface AccessControlAddRoleFormProps {
   onNavigate: (view: AccessControlView) => void;
 }
@@ -42,13 +47,20 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const descEditorRef = useRef<EditorContentRef>(null);
+
+  const {
+    control,
+    formState: { errors },
+    handleSubmit,
+  } = useForm<FormValues>({
+    defaultValues: { name: '' },
+  });
+
   const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
-  const [nameError, setNameError] = useState('');
 
   const fetchPolicies = async () => {
     setIsLoadingPolicies(true);
@@ -93,34 +105,21 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
     [selectedPolicies, policies]
   );
 
-  const handleItemInserted = useCallback(
-    (key: Key) => {
-      setSelectedPolicies((prev) => [...prev, String(key)]);
-    },
-    []
-  );
+  const handleItemInserted = useCallback((key: Key) => {
+    setSelectedPolicies((prev) => [...prev, String(key)]);
+  }, []);
 
   const handleItemCleared = useCallback((key: Key) => {
     setSelectedPolicies((prev) => prev.filter((id) => id !== String(key)));
   }, []);
 
-  const handleSubmit = async () => {
-    const trimmedName = trim(name);
+  const onSubmit = async (data: FormValues) => {
+    const description = descEditorRef.current?.getEditorContent() ?? '';
 
-    if (!trimmedName) {
-      setNameError(
-        t('label.field-required', { field: t('label.name') })
-      );
-
-      return;
-    }
-
-    setNameError('');
     setIsSaveLoading(true);
-
     try {
       await addRole({
-        name: trimmedName,
+        name: data.name.trim(),
         description,
         policies: selectedPolicies,
       });
@@ -131,7 +130,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
           ? t('server.entity-already-exist', {
               entity: t('label.role'),
               entityPlural: t('label.role-lowercase-plural'),
-              name: trimmedName,
+              name: data.name.trim(),
             })
           : (error as AxiosError)
       );
@@ -158,21 +157,22 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
             weight="medium">
             {`${t('label.name')} *`}
           </Typography>
-          <Input
-            data-testid="role-name-input"
-            placeholder={t('label.role-name')}
-            value={name}
-            onChange={(value) => {
-              setName(value);
-
-              if (value.trim()) {
-                setNameError('');
-              }
-            }}
+          <Controller
+            control={control}
+            name="name"
+            render={({ field }) => (
+              <Input
+                data-testid="role-name-input"
+                placeholder={t('label.role-name')}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+            rules={{ required: t('label.field-required', { field: t('label.name') }) }}
           />
-          {nameError && (
+          {errors.name && (
             <Typography className="tw:text-xs tw:text-red-500">
-              {nameError}
+              {errors.name.message}
             </Typography>
           )}
         </Box>
@@ -184,11 +184,11 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
             weight="medium">
             {t('label.description')}
           </Typography>
-          <TextArea
+          <RichTextEditor
+            className="new-form-style"
             data-testid="role-description-input"
-            placeholder={t('message.write-your-description')}
-            value={description}
-            onChange={(value: string) => setDescription(value)}
+            placeHolder={t('message.write-your-description')}
+            ref={descEditorRef}
           />
         </Box>
 
@@ -232,7 +232,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
           color="primary"
           data-testid="submit-btn"
           isLoading={isSaveLoading}
-          onPress={handleSubmit}>
+          onPress={() => handleSubmit(onSubmit)()}>
           {t('label.create')}
         </Button>
       </Box>

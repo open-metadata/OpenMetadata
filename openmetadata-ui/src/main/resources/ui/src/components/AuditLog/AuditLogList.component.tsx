@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Space, Typography } from 'antd';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { compact, startCase } from 'lodash';
 import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +38,6 @@ import {
   getUserPath,
 } from '../../utils/RouterUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   AuditLogListItemProps,
@@ -305,26 +309,26 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
 
   return (
     <div className="item-header" data-testid="item-header">
-      <Space size={4}>
+      <Box className="tw:flex tw:flex-wrap tw:items-center tw:gap-1" direction="row">
         {userLink}
-        <Typography.Text className="event-separator">–</Typography.Text>
-        <Typography.Text className="event-type" data-testid="event-type">
+        <Typography className="event-separator">–</Typography>
+        <Typography className="event-type" data-testid="event-type">
           {eventType}
-        </Typography.Text>
+        </Typography>
         {impersonatedBy && (
           <>
-            <Typography.Text className="event-separator">–</Typography.Text>
-            <Typography.Text
+            <Typography className="event-separator">–</Typography>
+            <Typography
               className="impersonated-by"
               data-testid="impersonated-by">
               {t('label.impersonated-by-with-colon')}
-            </Typography.Text>{' '}
+            </Typography>{' '}
             <Link className="user-link" to={getUserPath(impersonatedBy)}>
               {impersonatedBy}
             </Link>
           </>
         )}
-      </Space>
+      </Box>
     </div>
   );
 };
@@ -355,10 +359,10 @@ const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
         ))}
       </div>
     ) : (
-      <Space size={4}>
-        <Typography.Text className="action-text">{eventType}</Typography.Text>
+      <Box className="tw:flex tw:items-center tw:gap-1" direction="row">
+        <Typography className="action-text">{eventType}</Typography>
         {entityLink}
-      </Space>
+      </Box>
     )}
   </div>
 );
@@ -373,22 +377,25 @@ const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
   timestamp,
 }) => (
   <div className="item-meta" data-testid="item-meta">
-    <Space size={8} split={<span className="meta-separator">|</span>}>
+    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
       {entityType && (
-        <Typography.Text
+        <Typography
           className="meta-item entity-type-badge"
           data-testid="entity-type-badge">
           {startCase(entityType)}
-        </Typography.Text>
+        </Typography>
+      )}
+      {entityType && timestamp && (
+        <span className="meta-separator">|</span>
       )}
       {timestamp && (
-        <Typography.Text
+        <Typography
           className="meta-item timestamp"
           data-testid="timestamp">
           {getRelativeTime(timestamp)}
-        </Typography.Text>
+        </Typography>
       )}
-    </Space>
+    </Box>
   </div>
 );
 
@@ -590,9 +597,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     }
 
     return (
-      <Typography.Text className="entity-name">
+      <Typography className="entity-name">
         {entityLabel ?? entityFQN ?? '--'}
-      </Typography.Text>
+      </Typography>
     );
   }, [normalizedType, entityFQN, entityLabel, log]);
 
@@ -605,7 +612,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       );
     }
 
-    return <Typography.Text className="user-name">{userName}</Typography.Text>;
+    return <Typography className="user-name">{userName}</Typography>;
   }, [log.userName, userName]);
 
   return (
@@ -642,12 +649,24 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
     return (
       <div className="audit-log-list-container" data-testid="audit-log-list">
         <div className="audit-log-list-header">
-          <Skeleton.Input active size="small" style={{ width: 200 }} />
+          <Skeleton variant="text" width={200} />
         </div>
         <div className="audit-log-list">
           {[1, 2, 3, 4, 5].map((i) => (
             <div className="audit-log-list-item skeleton-item" key={i}>
-              <Skeleton active avatar paragraph={{ rows: 2 }} />
+              <Box className="tw:flex tw:gap-3 tw:w-full" direction="row">
+                <Skeleton
+                  className="tw:shrink-0 skeleton-avatar"
+                  variant="circular"
+                  height={32}
+                  width={32}
+                />
+                <Box className="tw:flex-1" direction="col" gap={1}>
+                  <Skeleton variant="text" width="60%" />
+                  <Skeleton variant="text" width="100%" />
+                  <Skeleton variant="text" width="75%" />
+                </Box>
+              </Box>
             </div>
           ))}
         </div>
@@ -659,12 +678,12 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
     return (
       <div className="audit-log-list-container" data-testid="audit-log-list">
         <div className="audit-log-list-header">
-          <Typography.Text className="header-text">
+          <Typography className="header-text">
             {t('label.event-plural')}
-          </Typography.Text>
+          </Typography>
         </div>
         <div className="audit-log-list empty">
-          <ErrorPlaceHolder />
+          <EmptyPlaceholder title={t('message.no-data-found')} />
         </div>
       </div>
     );
