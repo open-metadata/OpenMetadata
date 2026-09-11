@@ -29,6 +29,7 @@ import {
 import {
   addMultiOwner,
   addOwner,
+  expectNavigationResponseOk,
   removeOwner,
   updateOwner,
   visitEntityPage,
@@ -240,7 +241,10 @@ export class DatabaseClass extends EntityClass {
       `/api/v1/databases/name/*${this.entity.name}?**`
     );
     await page.getByTestId(this.entity.name).click();
-    await databaseResponse;
+    await expectNavigationResponseOk(
+      databaseResponse,
+      `visit database ${this.entity.name}`
+    );
   }
 
   async delete(apiContext: APIRequestContext) {
@@ -261,7 +265,10 @@ export class DatabaseClass extends EntityClass {
       `/api/v1/databaseSchemas/name/*${this.schema.name}?**`
     );
     await page.getByTestId(this.schema.name).click();
-    await databaseSchemaResponse;
+    await expectNavigationResponseOk(
+      databaseSchemaResponse,
+      `visit databaseSchema ${this.schema.name}`
+    );
 
     await visitEntityPage({
       page,
