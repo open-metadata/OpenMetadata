@@ -12,7 +12,6 @@
  */
 
 import { Key01, Trash01 } from '@untitledui/icons';
-import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Box } from '@/components/base/box/box';
 import { ButtonUtility } from '@/components/base/buttons/button-utility';
@@ -21,183 +20,27 @@ import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { PasswordInput } from '@/components/base/input/password-input';
 import { cx } from '@/utils/cx';
-import type { FileIconProps } from '../file-upload/file-upload';
 import {
   FileIcon,
   FileUploadDropZone,
   getReadableFileSize,
 } from '../file-upload/file-upload';
-
-/**
- * Ceiling for a credential file, in bytes.
- *
- * Credential material — PEM keys, X.509 certificates, GCP service-account JSON —
- * is measured in kilobytes. 1 MiB sits far above any legitimate payload while
- * staying small enough that reading it into memory and carrying it inside the
- * connection document costs nothing.
- */
-export const DEFAULT_CREDENTIAL_FILE_MAX_SIZE = 1024 * 1024;
-
-/** Why a chosen file was rejected. The field value is never touched on rejection. */
-export type CredentialFileErrorKind =
-  | 'unacceptedType'
-  | 'sizeLimit'
-  | 'binary'
-  | 'unreadable';
-
-export interface CredentialFileInputLabels {
-  clickToUpload?: string;
-  orDragAndDrop?: string;
-  /** Divider between the drop zone and the manual-input textarea. */
-  or?: string;
-  /** Accessible name of the manual-input textarea. */
-  manualInput?: string;
-  remove?: string;
-  /** Title of the row standing for a credential already stored server-side. */
-  savedValue?: string;
-  /** Secondary line on that row, explaining why no file name is shown. */
-  savedValueHint?: string;
-  /** Drop-zone hint. Receives the accepted extensions and the readable size cap. */
-  formatHint?: (acceptedTypes: string, maxSize: string) => string;
-}
-
-export type CredentialFileValidationMessages = Partial<
-  Record<CredentialFileErrorKind, string>
->;
-
-const DEFAULT_LABELS: Required<CredentialFileInputLabels> = {
-  clickToUpload: 'Click to upload',
-  orDragAndDrop: 'or drag and drop',
-  or: 'or',
-  manualInput: 'Enter file content',
-  remove: 'Remove',
-  savedValue: 'Saved credential',
-  savedValueHint:
-    'Hidden for security. Remove it to upload or paste a new one.',
-  formatHint: (acceptedTypes, maxSize) =>
-    acceptedTypes ? `${acceptedTypes} (max. ${maxSize})` : `max. ${maxSize}`,
-};
-
-const DEFAULT_VALIDATION_MESSAGES: Required<CredentialFileValidationMessages> =
-  {
-    unacceptedType: 'That file type is not accepted',
-    sizeLimit: 'That file exceeds the size limit',
-    binary:
-      'That file is not UTF-8 text. Upload the PEM or JSON text form of the credential',
-    unreadable: 'That file could not be read',
-  };
-
-export interface CredentialFileInputProps {
-  /** The credential content itself — this is the value submitted with the form. */
-  value?: string;
-  /** Called with the file's text content, or `undefined` when the value is cleared. */
-  onChange?: (value: string | undefined) => void;
-  /**
-   * Whether the credential may also be typed or pasted directly.
-   *
-   * Mirrors the schema contract: `uiFieldType: 'fileOrInput'` passes `true`;
-   * `uiFieldType: 'file'` passes `false` and the value becomes upload-only.
-   */
-  allowManualInput?: boolean;
-  /**
-   * A credential is already stored for this field, but its value is not
-   * readable — the API returns a mask rather than the secret.
-   *
-   * The field then stands for it with a chip instead of showing an empty drop
-   * zone, so the state is visible and removable. Without this the control would
-   * claim nothing is set, and there would be no way to clear what is.
-   */
-  hasStoredValue?: boolean;
-  /** Accepted file extensions, e.g. `['.pem', '.key']`. */
-  acceptedFileTypes?: string[];
-  /** Maximum accepted file size in bytes. @default DEFAULT_CREDENTIAL_FILE_MAX_SIZE */
-  maxSize?: number;
-  label?: string;
-  /** Helper text under the control. The active validation error replaces it. */
-  hint?: ReactNode;
-  /** Placeholder for the manual-input textarea. */
-  placeholder?: string;
-  id?: string;
-  isRequired?: boolean;
-  isDisabled?: boolean;
-  isReadOnly?: boolean;
-  isInvalid?: boolean;
-  /** Visible rows of the manual-input textarea. @default 6 */
-  rows?: number;
-  className?: string;
-  labels?: CredentialFileInputLabels;
-  validationMessages?: CredentialFileValidationMessages;
-  /** Fired on rejection so the host form can surface the failure too. */
-  onValidationError?: (message: string, kind: CredentialFileErrorKind) => void;
-  onBlur?: () => void;
-  onFocus?: () => void;
-  'data-testid'?: string;
-}
-
-interface SelectedFile {
-  name: string;
-  size?: number;
-}
-
-const getFileIconType = (name: string): FileIconProps['type'] => {
-  const parts = name.split('.');
-  const extension = parts.length > 1 ? parts.pop()?.toLowerCase() : undefined;
-
-  return (extension || 'empty') as FileIconProps['type'];
-};
-
-/** Thrown when a file decodes to something other than UTF-8 text. */
-class NonTextCredentialError extends Error {}
-
-const decodeCredentialText = (buffer: ArrayBuffer): string => {
-  let text: string;
-  try {
-    text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-  } catch {
-    throw new NonTextCredentialError('Credential file is not UTF-8 text');
-  }
-
-  if (text.includes('\u0000')) {
-    throw new NonTextCredentialError('Credential file contains NUL bytes');
-  }
-
-  return text;
-};
-
-/**
- * Read a credential file as UTF-8 text.
- *
- * The bytes are decoded strictly rather than through `File.text()`, which is
- * lenient: a DER or PKCS#12 payload comes back as replacement characters rather
- * than an error, and that mojibake would be saved as the secret only to fail
- * much later at connection time. `fatal: true` turns it into a rejection here
- * instead, and the NUL scan catches a binary payload that decodes cleanly.
- *
- * `FileReader` rather than `Blob.arrayBuffer()` because jsdom implements the
- * former and not the latter, and this path has to stay reachable from tests.
- */
-const readCredentialText = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(reader.error ?? new Error('Read failed'));
-    reader.onload = () => {
-      try {
-        resolve(decodeCredentialText(reader.result as ArrayBuffer));
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    reader.readAsArrayBuffer(file);
-  });
-
-const CREDENTIAL_ROW_CLASS = cx(
-  // Border drawn with outline, not a ring: WebKit does not pixel-snap
-  // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
-  'tw:w-full tw:rounded-xl tw:bg-primary tw:p-4',
-  'tw:outline-1 tw:-outline-offset-1 tw:outline-secondary'
-);
+import {
+  CREDENTIAL_ROW_CLASS,
+  DEFAULT_CREDENTIAL_FILE_MAX_SIZE,
+  DEFAULT_LABELS,
+  DEFAULT_VALIDATION_MESSAGES,
+} from './credential-file-input.constants';
+import type {
+  CredentialFileErrorKind,
+  CredentialFileInputProps,
+  SelectedFile,
+} from './credential-file-input.types';
+import {
+  getFileIconType,
+  NonTextCredentialError,
+  readCredentialText,
+} from './credential-file-input.utils';
 
 /**
  * Stands for a credential the form cannot read — the API returns a mask, so

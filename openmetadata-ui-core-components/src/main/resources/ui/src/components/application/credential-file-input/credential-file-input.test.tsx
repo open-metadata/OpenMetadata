@@ -14,10 +14,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  CredentialFileInput,
-  DEFAULT_CREDENTIAL_FILE_MAX_SIZE,
-} from './credential-file-input';
+import { CredentialFileInput } from './credential-file-input';
+import { DEFAULT_CREDENTIAL_FILE_MAX_SIZE } from './credential-file-input.constants';
 
 const PEM =
   '-----BEGIN PRIVATE KEY-----\nMIIEvg==\n-----END PRIVATE KEY-----\n';
