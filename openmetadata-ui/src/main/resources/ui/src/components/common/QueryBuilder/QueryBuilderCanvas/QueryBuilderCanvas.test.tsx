@@ -20,11 +20,11 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { QUERY_BUILDER_SURFACE } from '../../../../utils/queryBuilder/types';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilder from '../QueryBuilder';
+import QueryBuilderCanvas from './QueryBuilderCanvas';
 import {
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
 } from './QueryBuilderCanvas.constants';
-import QueryBuilderCanvas from './QueryBuilderCanvas';
 import QueryBuilderControl from './QueryBuilderControl';
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';
 

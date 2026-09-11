@@ -45,12 +45,12 @@ import { getQueryBuilderExploreUrl } from '../../../utils/queryBuilder/url';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import type { QueryBuilderProps } from './QueryBuilder.types';
+import QueryBuilderCanvas from './QueryBuilderCanvas/QueryBuilderCanvas';
 import {
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
 } from './QueryBuilderCanvas/QueryBuilderCanvas.constants';
 import type { QueryBuilderButtonPreset } from './QueryBuilderCanvas/QueryBuilderCanvas.types';
-import QueryBuilderCanvas from './QueryBuilderCanvas/QueryBuilderCanvas';
 import QueryBuilderCountBanner from './QueryBuilderCountBanner/QueryBuilderCountBanner';
 
 const COUNT_DEBOUNCE_MS = 300;
