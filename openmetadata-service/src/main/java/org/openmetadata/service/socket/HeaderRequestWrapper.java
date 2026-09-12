@@ -51,10 +51,14 @@ public class HeaderRequestWrapper extends HttpServletRequestWrapper {
 
   @Override
   public Enumeration<String> getHeaders(String name) {
-    List<String> values = Collections.list(super.getHeaders(name));
+    // When the filter overrides a header (e.g. validated UserId/SessionId), the wrapper value is
+    // authoritative and must shadow any client-supplied value. Returning the client value first
+    // would let a caller reading element 0 (engine.io Polling -> WebSocketManager) impersonate
+    // another user / bypass session revalidation. See
+    // SocketAddressFilterSpoofRevalidationBypassTest.
     if (headerMap.containsKey(name)) {
-      values.add(headerMap.get(name));
+      return Collections.enumeration(List.of(headerMap.get(name)));
     }
-    return Collections.enumeration(values);
+    return super.getHeaders(name);
   }
 }
