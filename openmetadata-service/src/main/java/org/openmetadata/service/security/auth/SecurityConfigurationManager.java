@@ -19,6 +19,7 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import io.dropwizard.core.setup.Environment;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -118,6 +120,7 @@ public class SecurityConfigurationManager {
           currentState.authenticationConfiguration() != null
               ? currentState.authenticationConfiguration().getProvider()
               : "null");
+      warnIfDbConfigDiffersFromYaml(config);
     } catch (Exception e) {
       LOG.warn(
           "Failed to load configuration from database, falling back to YAML: {}", e.getMessage());
@@ -262,5 +265,42 @@ public class SecurityConfigurationManager {
 
   public static boolean isNativePasswordProvider(AuthProvider provider) {
     return AuthProvider.BASIC.equals(provider) || AuthProvider.OPENMETADATA.equals(provider);
+  }
+
+  /**
+   * Warn if the DB-persisted security configuration differs from the yaml/env configuration.
+   * This prevents silent overrides in Helm/GitOps deployments where the yaml/env changes are
+   * ignored because a DB row already exists.
+   */
+  private void warnIfDbConfigDiffersFromYaml(OpenMetadataApplicationConfig config) {
+    AuthenticationConfiguration yamlAuthConfig = config.getAuthenticationConfiguration();
+    AuthorizerConfiguration yamlAuthzConfig = config.getAuthorizerConfiguration();
+    AuthenticationConfiguration dbAuthConfig = currentState.authenticationConfiguration();
+    AuthorizerConfiguration dbAuthzConfig = currentState.authorizerConfiguration();
+
+    // Compare yaml/env config with DB config. If yaml config is null, DB was seeded from
+    // yaml on first boot, so they should match — no need to warn.
+    if (yamlAuthConfig == null && yamlAuthzConfig == null) {
+      return;
+    }
+
+    boolean authDiffers =
+        yamlAuthConfig != null
+            && !Objects.equals(
+                JsonUtils.pojoToJson(yamlAuthConfig), JsonUtils.pojoToJson(dbAuthConfig));
+    boolean authzDiffers =
+        yamlAuthzConfig != null
+            && !Objects.equals(
+                JsonUtils.pojoToJson(yamlAuthzConfig), JsonUtils.pojoToJson(dbAuthzConfig));
+
+    if (authDiffers || authzDiffers) {
+      LOG.warn(
+          "DB-persisted security configuration differs from yaml/env configuration. "
+              + "The DB configuration will be used. "
+              + "To use the yaml/env configuration, remove the DB-persisted config via "
+              + "'./bootstrap/openmetadata-ops.sh remove-security-config' or "
+              + "DELETE FROM openmetadata_settings WHERE configType IN "
+              + "('authenticationConfiguration','authorizerConfiguration') and restart the server.");
+    }
   }
 }
