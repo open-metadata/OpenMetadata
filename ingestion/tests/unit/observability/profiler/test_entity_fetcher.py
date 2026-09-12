@@ -639,6 +639,186 @@ class TestGetTableEntities:
         assert EMPLOYEES_TABLE not in result
         assert result == [ORDERS_TABLE]
 
+    def test_conflicting_modes_substring_table_exclude_drops_table_client_side(self):
+        """Regression: with a substring-shaped table exclude (e.g. ``summary``)
+        plus a conflicting schema include, the table exclude is deferred to
+        the client. The client-side matcher must use unanchored semantics
+        (matching the server's POSIX ``!~`` / ``NOT REGEXP``) so the
+        substring exclude drops ``revenue_summary`` — not just names starting
+        with ``summary``. Before the fix the deferred path used ``re.match``
+        and silently kept the table."""
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        # Only the schema include is forwarded; the table exclude is deferred.
+        assert call_params["databaseSchemaRegex"] == "finance"
+        assert call_params["regexMode"] == "include"
+        assert "tableRegex" not in call_params
+        # Fixed behavior: the substring exclude drops "revenue_summary".
+        assert REVENUE_VIEW not in result
+        assert result == [ORDERS_TABLE]
+
+    def test_conflicting_modes_substring_schema_exclude_drops_table_client_side(self):
+        """Regression: a substring-shaped schema exclude (e.g. ``inanc``)
+        plus a conflicting table include must drop tables whose schema name
+        *contains* the pattern anywhere. Before the fix the deferred schema exclude
+        used start-anchored ``re.match`` and kept tables whose schema name
+        did not start with the pattern."""
+        # "f_inanc_e_schema" — schema name contains "inanc" as a substring,
+        # but does NOT start with it, so re.match (start-anchored) misses it
+        # while re.search (unanchored, server-aligned) catches it.
+        schema_ref = EntityReference(
+            id=uuid.uuid4(),
+            name="f_inanc_e_schema",
+            type="databaseSchema",
+            fullyQualifiedName="my_service.prod.f_inanc_e_schema",
+        )
+        ledger_table = Table(
+            id=uuid.uuid4(),
+            name="ledger",
+            fullyQualifiedName="my_service.prod.f_inanc_e_schema.ledger",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database=DB_REF,
+            databaseSchema=schema_ref,
+            tableType=TableType.Regular,
+        )
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"excludes": ["inanc"]},
+                "tableFilterPattern": {"includes": ["ledger"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ledger_table])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        # Only the table include is forwarded; the schema exclude is deferred.
+        assert call_params["tableRegex"] == "ledger"
+        assert call_params["regexMode"] == "include"
+        assert "databaseSchemaRegex" not in call_params
+        # Fixed behavior: the substring schema exclude drops the table.
+        assert ledger_table not in result
+        assert result == []
+
+    def test_non_conflicting_substring_exclude_forwards_to_server(self):
+        """Without a conflicting mode, a substring-shaped table exclude is
+        forwarded to the server (the param-shape that drives the server's
+        POSIX ``!~`` / ``NOT REGEXP``). The client does not re-filter, so
+        the server drops tables containing ``summary`` (e.g. the table named
+        ``revenue_summary``). This pairs with
+        ``test_conflicting_modes_substring_table_exclude_drops_table_client_side``
+        to assert that the same ``tableFilterPattern.excludes=["summary"]``
+        yields the same drop decision both paths."""
+        fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+        # The server returns whatever it returns — the client only asserts
+        # the param shape is forwarded. In a real PG/MySQL deployment the
+        # server's unanchored ``!~ 'summary'`` / ``NOT REGEXP 'summary'``
+        # drops ``revenue_summary``; that mechanism is established server-side
+        # in ListFilter#getFqnRegexCondition and is not exercised here.
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+
+        list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["tableRegex"] == "summary"
+        assert call_params["regexMode"] == "exclude"
+
+    def test_substring_table_exclude_drops_consistently_across_paths(self):
+        """Consistency guarantee: the same ``tableFilterPattern.excludes``
+        must produce the same drop decision whether the filter runs
+        server-side (no schema filter → forwarded) or client-side (conflicting
+        schema include → deferred). The mock makes the *server-side drop*
+        observable by having the server return only ``ORDERS_TABLE`` (the
+        table that survives the exclude), and the *client-side drop*
+        observable by having the server return both tables and letting the
+        deferred exclude remove ``REVENUE_VIEW``."""
+        server_path_fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+        # Server applied the exclude (returns only the survivor).
+        server_path_fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE])
+        server_path_result = list(server_path_fetcher._get_table_entities(PROD_DB))
+        # Server dropped revenue_summary server-side; only orders survives.
+        assert server_path_result == [ORDERS_TABLE]
+
+        client_path_fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+        # Server returns both (only the schema include was forwarded);
+        # the client must drop revenue_summary via the deferred exclude.
+        client_path_fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+        client_path_result = list(client_path_fetcher._get_table_entities(PROD_DB))
+
+        # Both paths yield the same survivor set for the same FilterPattern.
+        assert client_path_result == [ORDERS_TABLE]
+        assert server_path_result == client_path_result
+
+    def test_deferred_table_exclude_is_case_sensitive_postgres_aligned(self):
+        """The deferred client-side exclude matches the PostgreSQL server
+        operator ``!~`` which is case-sensitive: ``Summary`` (capital S) does
+        NOT drop ``revenue_summary`` (lowercase). MySQL ``NOT REGEXP`` is
+        case-insensitive by default, so full MySQL parity needs backend
+        detection (follow-up).
+
+        This test demonstrates the *case-sensitivity* divergence axis
+        separately from the anchoring axis. ``summary_daily`` (lowercase) is
+        a name that *starts with* the case-insensitive form of ``Summary`` —
+        so the buggy caller (``_filter`` with ``re.match`` + ``re.IGNORECASE``)
+        drops it (anchored + case-insensitive match), while the fixed caller
+        (``_filter_server_compatible`` with ``re.search`` and no ``IGNORECASE``)
+        keeps it (case-sensitive: ``Summary`` ≠ ``summary``) — matching the
+        case-sensitive PostgreSQL ``!~``. The bug report states these two
+        divergence axes (anchoring, case-sensitivity) push in *opposite*
+        directions depending on the pattern shape."""
+        summary_daily = Table(
+            id=uuid.uuid4(),
+            name="summary_daily",
+            fullyQualifiedName="my_service.prod.finance.summary_daily",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database=DB_REF,
+            databaseSchema=FINANCE_SCHEMA_REF,
+            tableType=TableType.Regular,
+        )
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["Summary"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW, summary_daily])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        # Case-sensitive: capital-S Summary does not match lowercase names
+        # (matches the PostgreSQL server's case-sensitive ``!~``).
+        assert REVENUE_VIEW in result
+        assert summary_daily in result
+        assert result == [ORDERS_TABLE, REVENUE_VIEW, summary_daily]
+
 
 class TestFetch:
     """Validate end-to-end fetch() pipeline across multiple databases"""
