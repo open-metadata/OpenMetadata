@@ -42,7 +42,7 @@
     "token-migrate": "node scripts/token-migrate.js --write",
     "token-gen": "node scripts/design-tokens/gen-tokens.js && node scripts/design-tokens/gen-token-reference.js",
     "token-drift": "node scripts/design-tokens/check-drift.js",
-    "token-test": "node scripts/design-tokens/scanner.test.js",
+    "token-test": "node --test scripts/design-tokens/*.test.js",
     "tw-audit": "node scripts/tw-audit.js",
     "tw-audit:report": "node scripts/tw-audit.js --report",
     "tw-guard": "node scripts/tw-deprecation-guard.js",
