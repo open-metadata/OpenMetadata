@@ -108,3 +108,25 @@ SET json = jsonb_set(
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataRetentionApplication'
   AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+-- External S3 sample-data storage support was removed (collate#5995).
+-- Strip the legacy S3 shape (bucketName / prefix / filePathPattern / overwriteData /
+-- storageConfig) from any stored service connection and profiler config so that
+-- upgraded instances parse under the tightened sampleDataStorageConfig schema and can
+-- never attempt an external S3 write. Removing the whole sampleDataStorageConfig node is
+-- equivalent to the retained OpenMetadata-hosted default (the field is optional). Empty
+-- configs are left untouched. Idempotent: re-running finds nothing to remove.
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,sampleDataStorageConfig}'
+WHERE jsonb_exists(json::jsonb #> '{connection,config,sampleDataStorageConfig,config}', 'storageConfig')
+   OR jsonb_exists(json::jsonb #> '{connection,config,sampleDataStorageConfig,config}', 'bucketName');
+
+UPDATE database_entity
+SET json = json::jsonb #- '{databaseProfilerConfig,sampleDataStorageConfig}'
+WHERE jsonb_exists(json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}', 'storageConfig')
+   OR jsonb_exists(json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}', 'bucketName');
+
+UPDATE database_schema_entity
+SET json = json::jsonb #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
+WHERE jsonb_exists(json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}', 'storageConfig')
+   OR jsonb_exists(json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}', 'bucketName');

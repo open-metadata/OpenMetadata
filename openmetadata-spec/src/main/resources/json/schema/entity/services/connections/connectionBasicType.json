@@ -118,21 +118,6 @@
       },
       "additionalProperties": false
     },
-    "dataStorageConfig": {
-      "description": "Storage config to store sample data",
-      "type": "object",
-      "properties": {
-        "storageConfig": {
-          "oneOf": [
-            {
-              "title": "OpenMetadata Storage",
-              "type": "object",
-              "additionalProperties": false
-            }
-          ]
-        }
-      }
-    },
     "sampleDataStorageConfig": {
       "description": "Storage config to store sample data",
       "type": "object",
@@ -146,8 +131,9 @@
               "additionalProperties": false
             },
             {
-              "title": "Sample Data Storage Config",
-              "$ref": "#/definitions/dataStorageConfig"
+              "title": "OpenMetadata Storage",
+              "type": "object",
+              "additionalProperties": false
             }
           ]
         }

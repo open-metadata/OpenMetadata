@@ -192,20 +192,9 @@
               "additionalProperties": false
             },
             {
-              "title": "Sample Data Storage Config",
-              "description": "Storage config to store sample data",
+              "title": "OpenMetadata Storage",
               "type": "object",
-              "properties": {
-                "storageConfig": {
-                  "oneOf": [
-                    {
-                      "title": "OpenMetadata Storage",
-                      "type": "object",
-                      "additionalProperties": false
-                    }
-                  ]
-                }
-              }
+              "additionalProperties": false
             }
           ]
         }

@@ -121,3 +121,25 @@ UPDATE entity_extension
 SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'DataRetentionApplication';
+
+-- External S3 sample-data storage support was removed (collate#5995).
+-- Strip the legacy S3 shape (bucketName / prefix / filePathPattern / overwriteData /
+-- storageConfig) from any stored service connection and profiler config so that
+-- upgraded instances parse under the tightened sampleDataStorageConfig schema and can
+-- never attempt an external S3 write. Removing the whole sampleDataStorageConfig node is
+-- equivalent to the retained OpenMetadata-hosted default (the field is optional). Empty
+-- configs are left untouched. Idempotent: re-running finds nothing to remove.
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.sampleDataStorageConfig')
+WHERE JSON_EXTRACT(json, '$.connection.config.sampleDataStorageConfig.config.storageConfig') IS NOT NULL
+   OR JSON_EXTRACT(json, '$.connection.config.sampleDataStorageConfig.config.bucketName') IS NOT NULL;
+
+UPDATE database_entity
+SET json = JSON_REMOVE(json, '$.databaseProfilerConfig.sampleDataStorageConfig')
+WHERE JSON_EXTRACT(json, '$.databaseProfilerConfig.sampleDataStorageConfig.config.storageConfig') IS NOT NULL
+   OR JSON_EXTRACT(json, '$.databaseProfilerConfig.sampleDataStorageConfig.config.bucketName') IS NOT NULL;
+
+UPDATE database_schema_entity
+SET json = JSON_REMOVE(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig')
+WHERE JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig.config.storageConfig') IS NOT NULL
+   OR JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig.config.bucketName') IS NOT NULL;

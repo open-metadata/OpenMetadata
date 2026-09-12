@@ -402,163 +402,34 @@ test.describe('Connection config layout', () => {
       )
     ).toBeHidden();
 
-    await chooseSelectOption(
-      page,
-      sampleStorageSelect,
-      'Sample Data Storage Config'
-    );
+    await chooseSelectOption(page, sampleStorageSelect, 'OpenMetadata Storage');
 
     const samplePanel = page.locator(
       '[data-field-id$="/sampleDataStorageConfig/config"]'
     );
-    const sampleBody = samplePanel
-      .locator('.core-object-field-template-body-grid')
-      .first();
-    const sampleField = (name: string) =>
-      sampleBody.locator(`:scope > [data-field-name="${name}"]`);
 
+    // External S3 sample-data storage was removed (collate#5995). The selector now
+    // offers only the fieldless "OpenMetadata Storage" choice: no bucket, prefix, file
+    // path, overwrite, or AWS credential fields, and no nested storage-config selector —
+    // so the panel renders without the previously reported empty box.
     await expect(samplePanel).toBeVisible();
-    expect(await getGridColumnCount(sampleBody)).toBe(2);
-
-    const bucket = sampleField('bucketName');
-    const prefix = sampleField('prefix');
-    const filePathPattern = sampleField('filePathPattern');
-    const overwriteData = sampleField('overwriteData');
-    const storageConfig = sampleField('storageConfig');
-
-    const bucketBox = await getBox(bucket);
-    const prefixBox = await getBox(prefix);
-    const filePathBox = await getBox(filePathPattern);
-    const overwriteBox = await getBox(overwriteData);
-
-    expect(Math.abs(bucketBox.y - prefixBox.y)).toBeLessThan(8);
-    expect(filePathBox.y).toBeGreaterThan(
-      Math.max(bucketBox.y + bucketBox.height, prefixBox.y + prefixBox.height)
-    );
-    expect(filePathBox.width).toBeGreaterThan(
-      bucketBox.width + prefixBox.width
-    );
-    expect(overwriteBox.y).toBeGreaterThan(filePathBox.y + filePathBox.height);
-
-    await expectNoOverlap(bucket, prefix, 'Bucket and prefix fields overlap');
-    await expectNoOverlap(
-      prefix,
-      filePathPattern,
-      'Prefix and file path fields overlap'
-    );
-    await expectNoOverlap(
-      filePathPattern,
-      overwriteData,
-      'File path and overwrite fields overlap'
-    );
-    await expectNoOverlap(
-      overwriteData,
-      storageConfig,
-      'Overwrite and storage config fields overlap'
-    );
-
-    await chooseSelectOption(
-      page,
+    await expect(
+      samplePanel.locator('[data-field-name="bucketName"]')
+    ).toHaveCount(0);
+    await expect(
+      samplePanel.locator('[data-field-name="filePathPattern"]')
+    ).toHaveCount(0);
+    await expect(
+      samplePanel.locator('[data-field-name="overwriteData"]')
+    ).toHaveCount(0);
+    await expect(
+      samplePanel.locator('[data-field-name="storageConfig"]')
+    ).toHaveCount(0);
+    await expect(
       page.locator(
         '[data-testid^="select-widget-root/sampleDataStorageConfig/config/storageConfig__"]'
-      ),
-      'AWS S3 Storage Config'
-    );
-
-    const storagePanel = page.locator(
-      '[data-field-id$="/sampleDataStorageConfig/config/storageConfig"]'
-    );
-    const storageBody = storagePanel
-      .locator('.core-object-field-template-credential-field-grid')
-      .first();
-    const storageField = (name: string) =>
-      storagePanel.locator(`[data-field-name="${name}"]`);
-
-    await expect(storagePanel).toBeVisible();
-    await expect(
-      storagePanel.getByTestId('storage-config-title-icon')
-    ).toBeVisible();
-    expect(await getGridColumnCount(storageBody)).toBe(2);
-
-    const enabled = storageField('enabled');
-    const accessKey = storageField('awsAccessKeyId');
-    const secretKey = storageField('awsSecretAccessKey');
-    const region = storageField('awsRegion');
-    const accessKeyInput = accessKey.locator('input');
-
-    const enabledBox = await getBox(enabled);
-    const accessKeyBox = await getBox(accessKey);
-    const secretKeyBox = await getBox(secretKey);
-    const regionBox = await getBox(region);
-
-    expect(accessKeyBox.y).toBeGreaterThan(enabledBox.y + enabledBox.height);
-    expect(Math.abs(accessKeyBox.y - secretKeyBox.y)).toBeLessThan(8);
-    expect(regionBox.y).toBeGreaterThan(
-      Math.max(
-        accessKeyBox.y + accessKeyBox.height,
-        secretKeyBox.y + secretKeyBox.height
       )
-    );
-
-    await expectNoOverlap(
-      enabled,
-      accessKey,
-      'IAM auth and access key fields overlap'
-    );
-    await expectNoOverlap(
-      accessKey,
-      secretKey,
-      'AWS access key and secret key fields overlap'
-    );
-    await expectNoOverlap(
-      accessKey,
-      region,
-      'AWS access key and region fields overlap'
-    );
-
-    await storagePanel
-      .getByRole('button', { name: /Show Advanced Config/ })
-      .click();
-
-    const sessionToken = storageField('awsSessionToken');
-    const endpoint = storageField('endPointURL');
-    const profile = storageField('profileName');
-    const currentRegionBox = await getBox(region);
-    const sessionTokenBox = await getBox(sessionToken);
-
-    expect(sessionTokenBox.y).toBeGreaterThan(
-      currentRegionBox.y + currentRegionBox.height
-    );
-    await expectNoOverlap(
-      region,
-      sessionToken,
-      'AWS region and session token fields overlap'
-    );
-    await expectNoOverlap(
-      endpoint,
-      profile,
-      'AWS endpoint and profile fields overlap'
-    );
-
-    await accessKeyInput.focus();
-
-    await enabled
-      .locator(
-        '[for="root/sampleDataStorageConfig/config/storageConfig/enabled"]'
-      )
-      .click();
-
-    await expect(
-      enabled
-        .locator('[data-selected="true"]')
-        .locator(
-          String.raw`#root\/sampleDataStorageConfig\/config\/storageConfig\/enabled`
-        )
-    ).toBeAttached();
-    await expect(accessKeyInput).toBeDisabled();
-    await expect(secretKey.locator('input')).toBeDisabled();
-    await expect(sessionToken.locator('input')).toBeDisabled();
-    await expect(accessKey).toHaveAttribute('aria-disabled', 'true');
+    ).toHaveCount(0);
   });
 
   test('should clear inactive Snowflake auth fields before test connection and unlock ingestion filters', async ({

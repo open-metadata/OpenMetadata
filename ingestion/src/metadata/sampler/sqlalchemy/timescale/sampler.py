@@ -21,9 +21,6 @@ from sqlalchemy import Column, select, text
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -69,7 +66,6 @@ class TimescaleSampler(PostgresSampler):
         sample_config: SampleConfig | None = None,
         partition_details: dict | None = None,
         sample_query: str | None = None,
-        storage_config: DataStorageConfig = None,
         sample_data_count: int | None = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
@@ -80,7 +76,6 @@ class TimescaleSampler(PostgresSampler):
             sample_config=sample_config,
             partition_details=partition_details,
             sample_query=sample_query,
-            storage_config=storage_config,
             sample_data_count=sample_data_count,
             **kwargs,
         )
