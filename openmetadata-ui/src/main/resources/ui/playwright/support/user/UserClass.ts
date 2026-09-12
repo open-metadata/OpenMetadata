@@ -18,6 +18,7 @@ import {
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
 import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { signInViaApi } from '../../utils/apiSignIn';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -297,6 +298,21 @@ export class UserClass {
       })
       .catch(() => undefined);
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+
+    await this.completeSignIn(page);
+  }
+
+  /**
+   * Everything a signed-in page owes its caller once the session exists.
+   *
+   * Shared by {@link login} and {@link signIn} so the two differ only in how
+   * the session is established. Call sites depend on all three: conditional
+   * reads off (so a test sees fresh entity state rather than a 304), the
+   * getting-started dialog dismissed, and the sidebar collapsed — the last one
+   * changes page geometry, so a sign-in path that skipped it would move every
+   * locator in the spec.
+   */
+  protected async completeSignIn(page: Page) {
     await disableEtagConditionalReads(page);
 
     const modal = await page
@@ -322,6 +338,37 @@ export class UserClass {
     if (hasOpenClass) {
       await page.getByTestId('sidebar-toggle').click();
     }
+  }
+
+  /**
+   * The same signed-in page as {@link login}, established through the API
+   * instead of the sign-in form.
+   *
+   * Prefer this everywhere except a spec that is testing the form itself.
+   * `login()` performs nine UI interactions before the test has done anything;
+   * this performs one POST. Everything after the session exists is identical —
+   * both funnel through {@link completeSignIn} — so swapping a call site over
+   * changes how the page got signed in and nothing else.
+   *
+   * Returns the access token, so callers that also need an API context can
+   * build one without a second round trip.
+   */
+  async signIn(
+    page: Page,
+    userName = this.data.email,
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
+  ): Promise<string> {
+    const token = await signInViaApi(page, {
+      email: userName,
+      password,
+      userName: this.responseData?.name ?? userName,
+      suppressWelcome: options.suppressWelcomeScreen ?? true,
+    });
+
+    await this.completeSignIn(page);
+
+    return token;
   }
 
   async logout(page: Page) {

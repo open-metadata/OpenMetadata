@@ -122,10 +122,19 @@ setup('authenticate all users', async ({ browser }) => {
 
     await loginAsAdmin(adminPage, admin);
 
-    // Create a new page to login with admin user after token expiry is set to 4 hours
-    // This is done to avoid logging out the user to get the new token
+    // Create a new page to sign the admin in after token expiry is set to 4
+    // hours. This is done to avoid logging out the user to get the new token.
+    //
+    // Every sign-in here goes through `UserClass.signIn()` — one POST to
+    // /api/v1/auth/login, then the token written where the app reads it —
+    // rather than driving the sign-in form eight times. The storage state this
+    // captures is what every worker in every lane reuses, so the only thing
+    // that matters is that the session is real; how it was established is not
+    // part of the fixture's contract. `loginAsAdmin` above already took this
+    // path. A spec that is testing the sign-in *form* drives
+    // `UserClass.login()` directly instead.
     const newAdminPage = await browser.newPage();
-    await admin.login(newAdminPage);
+    await admin.signIn(newAdminPage);
 
     await newAdminPage.waitForURL(
       (url) => url.pathname === '/' || url.pathname === '/my-data'
@@ -239,43 +248,43 @@ setup('authenticate all users', async ({ browser }) => {
       .storageState({ path: adminFile, indexedDB: true });
 
     // Save states for each user sequentially to avoid file operation conflicts
-    await dataConsumer.login(dataConsumerPage);
+    await dataConsumer.signIn(dataConsumerPage);
     await disableEtagConditionalReads(dataConsumerPage);
     await dataConsumerPage
       .context()
       .storageState({ path: dataConsumerFile, indexedDB: true });
 
-    await dataSteward.login(dataStewardPage);
+    await dataSteward.signIn(dataStewardPage);
     await disableEtagConditionalReads(dataStewardPage);
     await dataStewardPage
       .context()
       .storageState({ path: dataStewardFile, indexedDB: true });
 
-    await editDescriptionUser.login(editDescriptionPage);
+    await editDescriptionUser.signIn(editDescriptionPage);
     await disableEtagConditionalReads(editDescriptionPage);
     await editDescriptionPage
       .context()
       .storageState({ path: editDescriptionFile, indexedDB: true });
 
-    await editTagsUser.login(editTagsPage);
+    await editTagsUser.signIn(editTagsPage);
     await disableEtagConditionalReads(editTagsPage);
     await editTagsPage
       .context()
       .storageState({ path: editTagsFile, indexedDB: true });
 
-    await editGlossaryTermUser.login(editGlossaryTermPage);
+    await editGlossaryTermUser.signIn(editGlossaryTermPage);
     await disableEtagConditionalReads(editGlossaryTermPage);
     await editGlossaryTermPage
       .context()
       .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
-    await viewOnlyUser.login(viewOnlyPage);
+    await viewOnlyUser.signIn(viewOnlyPage);
     await disableEtagConditionalReads(viewOnlyPage);
     await viewOnlyPage
       .context()
       .storageState({ path: viewOnlyFile, indexedDB: true });
 
-    await ownerUser.login(ownerPage);
+    await ownerUser.signIn(ownerPage);
     await disableEtagConditionalReads(ownerPage);
     await ownerPage
       .context()
