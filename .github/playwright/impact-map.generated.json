@@ -8960,7 +8960,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/Table/TableV2.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/TeamsDragAndDrop.spec.ts"
+        "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
+        "playwright/e2e/Pages/ServiceListing.spec.ts"
       ]
     },
     {

@@ -20,7 +20,7 @@ const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
 const mockOnSearch = jest.fn();
 const mockHandleDeletedSwitchChange = jest.fn();
 
-jest.mock('../Table/Table', () => {
+jest.mock('../Table/TableV2', () => {
   return jest.fn(() => <p>Table</p>);
 });
 

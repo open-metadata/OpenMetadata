@@ -870,8 +870,13 @@ const editGlossaryCustomProperty = async (
         .getByRole('columnheader', { name: columns[0] })
     ).toBeVisible();
 
+    // values[0] is the first column: TableV2 renders the first column as a
+    // rowheader (not a cell), so match either role.
+    const cpTable = page.getByTestId(propertyName);
     await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: values[0] })
+      cpTable
+        .getByRole('rowheader', { name: values[0] })
+        .or(cpTable.getByRole('cell', { name: values[0] }))
     ).toBeVisible();
   }
 };

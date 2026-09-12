@@ -400,28 +400,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   });
 });
 
-jest.mock('../../common/Table/Table', () => {
-  return function MockTable({
-    dataSource,
-    loading,
-  }: {
-    dataSource?: Array<{ id: string; name: string }>;
-    loading?: boolean;
-  }) {
-    return (
-      <div data-testid="mock-table">
-        <div>Loading: {loading ? 'true' : 'false'}</div>
-        <div>Data Length: {dataSource?.length || 0}</div>
-        {dataSource?.map((item) => (
-          <div data-testid={`table-row-${item.id}`} key={item.id}>
-            {item.name}
-          </div>
-        ))}
-      </div>
-    );
-  };
-});
-
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({
