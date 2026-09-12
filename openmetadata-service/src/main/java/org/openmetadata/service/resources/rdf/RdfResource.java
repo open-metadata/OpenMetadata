@@ -1017,7 +1017,7 @@ public class RdfResource {
       @Parameter(description = "Entity ID", required = true) @QueryParam("entityId") UUID entityId,
       @Parameter(description = "Entity type", required = true) @QueryParam("entityType")
           String entityType,
-      @Parameter(description = "Depth of relationships to explore")
+      @Parameter(description = "Relationship steps to explore (0 returns only the selected entity)")
           @QueryParam("depth")
           @DefaultValue("2")
           int depth,
@@ -1062,7 +1062,7 @@ public class RdfResource {
       @Parameter(description = "Entity ID", required = true) @QueryParam("entityId") UUID entityId,
       @Parameter(description = "Entity type", required = true) @QueryParam("entityType")
           String entityType,
-      @Parameter(description = "Depth of relationships to explore")
+      @Parameter(description = "Relationship steps to explore (0 exports only the selected entity)")
           @QueryParam("depth")
           @DefaultValue("2")
           int depth,

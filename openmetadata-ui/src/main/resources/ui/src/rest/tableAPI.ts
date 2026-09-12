@@ -287,11 +287,13 @@ export type GetTableColumnsParams = {
 
 export const getTableColumnsById = async (
   id: string,
-  params?: GetTableColumnsParams
+  params?: GetTableColumnsParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<Table['columns']>>(
     `${BASE_URL}/${id}/columns`,
     {
+      signal,
       params: { ...params, include: params?.include ?? Include.All },
     }
   );

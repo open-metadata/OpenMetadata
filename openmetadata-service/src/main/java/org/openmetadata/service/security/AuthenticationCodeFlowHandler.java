@@ -259,7 +259,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     validatePrincipalClaimsMapping(claimsMapping);
     this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
-    this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    Integer configuredTokenValidity =
+        authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
+      LOG.warn(
+          "OIDC token validity must be positive; using the {} second default",
+          TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
+    }
+    this.tokenValidity = TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
