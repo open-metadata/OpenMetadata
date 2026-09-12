@@ -355,6 +355,14 @@ export default defineConfig(async ({ mode }) => {
         '@react-types/shared',
         'tailwind-merge',
         'react-hook-form',
+        // The linked component library registers no bundles of its own: the
+        // app calls `initCoreI18n(i18next)` on ITS instance, and the library's
+        // `useTranslation('core')` must read that same instance. Resolved from
+        // the library's own node_modules (which `preserveSymlinks` does),
+        // react-i18next backs a second default i18next with no `core` bundle,
+        // so every library string renders as its key.
+        'i18next',
+        'react-i18next',
       ],
     },
 
@@ -515,6 +523,10 @@ export default defineConfig(async ({ mode }) => {
         // React copy — an "Invalid hook call" (`useRef` of null) in every RHF
         // form. `dedupe` alone does not cover the dev pre-bundle path.
         'react-hook-form',
+        // Same reason as the `dedupe` entries: the dev pre-bundle path must
+        // not hand the linked library a second i18next.
+        'i18next',
+        'react-i18next',
       ],
       esbuildOptions: {
         target: 'esnext',

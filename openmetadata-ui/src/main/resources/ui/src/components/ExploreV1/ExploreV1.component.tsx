@@ -1144,7 +1144,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
     <div className="explore-page bg-grey" data-testid="explore-page">
       <Card className="p-xs card-padding-0 m-b-box">
         <Row className="tw:mr-2" gutter={[0, 8]}>
-          <Col>
+          {/* Zero flex-basis: with flex-wrap, a max-content basis would place
+              the sort controls on their own row before shrinking is even
+              considered; basis 0 keeps both columns on one line and lets the
+              toolbar wrap internally. */}
+          <Col className="tw:min-w-0" flex="1 1 0%">
             <ExploreQuickFilters
               immediateApply
               showSelectedCounts
@@ -1162,7 +1166,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               onFieldValueSelect={handleQuickFiltersValueSelect}
             />
           </Col>
-          <Col className="d-flex items-center justify-end gap-3" flex={410}>
+          {/* Content-sized: a grow factor here would swallow the free space the
+              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide). */}
+          <Col className="d-flex items-center justify-end gap-3" flex="none">
             <Button
               aria-label={t('label.sort-order')}
               className="tw:p-0"

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterSelect } from './filter-select';
 import type { FilterSelectProps } from './filter-select.types';
@@ -101,7 +101,7 @@ describe('FilterSelect', () => {
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining(['redshift', 'snowflake'])
@@ -121,7 +121,7 @@ describe('FilterSelect', () => {
     );
 
     rerender(<FilterSelect {...props} isOpen selectedValues={['snowflake']} />);
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith(['snowflake']);
   });
@@ -130,7 +130,7 @@ describe('FilterSelect', () => {
     const { onChange } = renderFilter({ commitMode: 'staged' });
 
     fireEvent.click(screen.getByText('Snowflake'));
-    fireEvent.click(screen.getByTestId('cancel-filter-btn'));
+    fireEvent.click(screen.getByTestId('close-btn'));
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -292,6 +292,49 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {
+    // The component this replaces put a second test id on an element inside
+    // the trigger, keyed by visible label rather than by filter key. A dozen
+    // specs click filters that way ("search-dropdown-Data Products").
+    renderFilter({ 'data-testid': 'search-dropdown-tier', label: 'Tier' });
+
+    expect(screen.getByTestId('search-dropdown-tier')).toBeInTheDocument();
+    expect(screen.getByTestId('search-dropdown-Tier')).toBeInTheDocument();
+  });
+
+  it('exposes the legacy dropdown test ids the E2E suite drives', () => {
+    // The Playwright suite addresses filters through the ids the component
+    // this replaced used. Renaming them silently breaks ~160 references across
+    // 23 spec files, so the contract is pinned here rather than in the specs.
+    renderFilter({
+      searchable: true,
+      commitMode: 'staged',
+      nullOption: { value: 'OM_NULL_FIELD', label: 'No Service' },
+    });
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('search-input')).toBeInTheDocument();
+    // Each row carries the bare value on the row and the checked state on a
+    // real input, exactly as the legacy markup did.
+    expect(screen.getByTestId('snowflake')).toBeInTheDocument();
+    expect(screen.getByTestId('snowflake-checkbox')).not.toBeChecked();
+    expect(screen.getByTestId('no-option-checkbox')).toBeInTheDocument();
+    expect(screen.getByTestId('update-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('close-btn')).toBeInTheDocument();
+  });
+
+  it('mirrors the selection into the hidden state input, radio for single select', () => {
+    renderFilter({ selectedValues: ['snowflake'] });
+
+    expect(screen.getByTestId('snowflake-checkbox')).toBeChecked();
+    expect(screen.getByTestId('bigquery-checkbox')).not.toBeChecked();
+
+    cleanup();
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    expect(screen.getByTestId('snowflake-radio')).toBeChecked();
+  });
+
   it('shows the empty state when nothing is displayed', () => {
     renderFilter({ options: [] });
 
@@ -338,7 +381,7 @@ describe('FilterSelect', () => {
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('apply-filter-btn'));
+    fireEvent.click(screen.getByTestId('update-btn'));
 
     expect(onChange).toHaveBeenCalledWith([]);
   });
@@ -372,14 +415,12 @@ describe('FilterSelect', () => {
   it('apply carries the staged count, and drops it when nothing is staged', () => {
     renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
 
-    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent(
-      'Apply (1)'
-    );
+    expect(screen.getByTestId('update-btn')).toHaveTextContent('Apply (1)');
 
     fireEvent.click(screen.getByTestId('clear-filter-btn'));
 
-    expect(screen.getByTestId('apply-filter-btn')).toHaveTextContent('Apply');
-    expect(screen.getByTestId('apply-filter-btn')).not.toHaveTextContent('(');
+    expect(screen.getByTestId('update-btn')).toHaveTextContent('Apply');
+    expect(screen.getByTestId('update-btn')).not.toHaveTextContent('(');
   });
 
   it('staged clear all is disabled until something is staged', () => {
@@ -430,7 +471,7 @@ describe('FilterSelect', () => {
     renderFilter({ commitMode: 'staged', selectedValues: ['snowflake'] });
 
     expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
-    expect(screen.getByTestId('apply-filter-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('update-btn')).toBeInTheDocument();
   });
 
   it('removing a chip does not open the popover', () => {
@@ -464,6 +505,31 @@ describe('FilterSelect', () => {
     fireEvent.click(screen.getByTestId('chips-trigger'));
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('consumes Escape so a host drawer does not also dismiss', () => {
+    const hostKeyDown = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
+      <div onKeyDown={hostKeyDown} onKeyDownCapture={hostKeyDown}>
+        <FilterSelect
+          isOpen
+          searchable
+          label="Service"
+          options={OPTIONS}
+          selectedValues={[]}
+          onChange={() => undefined}
+          onOpenChange={onOpenChange}
+        />
+      </div>
+    );
+
+    fireEvent.keyDown(screen.getByTestId('search-input'), { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // The document-level capture listener stops the event before it reaches
+    // any element handler — including the host's own capture handler.
+    expect(hostKeyDown).not.toHaveBeenCalled();
   });
 
   it('shows the placeholder on an empty input trigger', () => {

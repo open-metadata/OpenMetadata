@@ -390,7 +390,8 @@ test.describe('Context Center Articles', () => {
       expect(responseData.hits.total.value).toBeGreaterThan(0);
       await expect(
         page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: (1)');
+      ).toContainText('Data Assets');
+      await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
       await expect(
         page.getByTestId('search-error-placeholder')
       ).not.toBeVisible();
