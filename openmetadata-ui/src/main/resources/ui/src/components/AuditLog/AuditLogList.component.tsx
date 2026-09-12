@@ -44,7 +44,6 @@ import {
     AuditLogListItemProps,
     AuditLogListProps
 } from './AuditLogList.interface';
-import './AuditLogList.less';
 
 const getFieldLabel = (name?: string) => {
   if (!name) {
@@ -192,7 +191,10 @@ const renderEntityLinks = (
 
     if (link) {
       return (
-        <Link className="change-entity-link" key={entityKey} to={link}>
+        <Link
+          className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
+          key={entityKey}
+          to={link}>
           {label}
         </Link>
       );
@@ -269,7 +271,9 @@ const getUserEntityLink = (
   }
 
   return (
-    <Link className="entity-link" to={getUserPath(userNameForLink)}>
+    <Link
+      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
+      to={getUserPath(userNameForLink)}>
       {entityLabel ?? userNameForLink}
     </Link>
   );
@@ -289,7 +293,9 @@ const getTypedEntityLink = (
   }
 
   return (
-    <Link className="entity-link" to={link}>
+    <Link
+      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
+      to={link}>
       {entityLabel ?? entityFQN}
     </Link>
   );
@@ -309,28 +315,29 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="item-header" data-testid="item-header">
-      <Box className="tw:flex tw:flex-wrap tw:items-center tw:gap-1" direction="row">
-        {userLink}
-        <Typography className="event-separator">–</Typography>
-        <Typography className="event-type" data-testid="event-type">
-          {eventType}
-        </Typography>
-        {impersonatedBy && (
-          <>
-            <Typography className="event-separator">–</Typography>
-            <Typography
-              className="impersonated-by"
-              data-testid="impersonated-by">
-              {t('label.impersonated-by-with-colon')}
-            </Typography>{' '}
-            <Link className="user-link" to={getUserPath(impersonatedBy)}>
-              {impersonatedBy}
-            </Link>
-          </>
-        )}
-      </Box>
-    </div>
+    <Box align="center" data-testid="item-header" direction="row" gap={1} wrap="wrap">
+      {userLink}
+      <Typography className="tw:text-quaternary">–</Typography>
+      <Typography
+        className="tw:text-fg-brand-primary"
+        data-testid="event-type"
+        weight="medium">
+        {eventType}
+      </Typography>
+      {impersonatedBy && (
+        <>
+          <Typography className="tw:text-quaternary">–</Typography>
+          <Typography data-testid="impersonated-by">
+            {t('label.impersonated-by-with-colon')}
+          </Typography>{' '}
+          <Link
+            className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
+            to={getUserPath(impersonatedBy)}>
+            {impersonatedBy}
+          </Link>
+        </>
+      )}
+    </Box>
   );
 };
 
@@ -345,23 +352,23 @@ const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
   eventType,
   entityLink,
 }) => (
-  <div className="item-description">
+  <div>
     {descriptionNodes.length > 0 ? (
-      <div className="description-content">
+      <div>
         {descriptionNodes.map((node, idx) => (
-          <span
-            className="description-item"
-            key={isValidElement(node) ? node.key : undefined}>
+          <span key={isValidElement(node) ? node.key : undefined}>
             {node}
             {idx < descriptionNodes.length - 1 && (
-              <span className="description-separator">; </span>
+              <span className="tw:text-quaternary">; </span>
             )}
           </span>
         ))}
       </div>
     ) : (
-      <Box className="tw:flex tw:items-center tw:gap-1" direction="row">
-        <Typography className="action-text">{eventType}</Typography>
+      <Box align="center" direction="row" gap={1}>
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {eventType}
+        </Typography>
         {entityLink}
       </Box>
     )}
@@ -377,27 +384,29 @@ const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
   entityType,
   timestamp,
 }) => (
-  <div className="item-meta" data-testid="item-meta">
-    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
-      {entityType && (
-        <Typography
-          className="meta-item entity-type-badge"
-          data-testid="entity-type-badge">
-          {startCase(entityType)}
-        </Typography>
-      )}
-      {entityType && timestamp && (
-        <span className="meta-separator">|</span>
-      )}
-      {timestamp && (
-        <Typography
-          className="meta-item timestamp"
-          data-testid="timestamp">
-          {getRelativeTime(timestamp)}
-        </Typography>
-      )}
-    </Box>
-  </div>
+  <Box align="center" className="tw:mt-1" data-testid="item-meta" direction="row" gap={2}>
+    {entityType && (
+      <Typography
+        className="tw:text-fg-brand-primary"
+        data-testid="entity-type-badge"
+        size="text-xs">
+        {startCase(entityType)}
+      </Typography>
+    )}
+    {entityType && timestamp && (
+      <Typography className="tw:text-quaternary" size="text-xs">
+        |
+      </Typography>
+    )}
+    {timestamp && (
+      <Typography
+        className="tw:text-quaternary"
+        data-testid="timestamp"
+        size="text-xs">
+        {getRelativeTime(timestamp)}
+      </Typography>
+    )}
+  </Box>
 );
 
 const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
@@ -455,17 +464,18 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           const showProfilePic = isUserField(fieldName);
 
           return (
-            <span className="change-value-links">
+            <span className="tw:inline">
               {links.map((link, idx) => {
                 const entities = extractEntityInfo(value);
                 const entity = entities[idx];
 
                 return (
                   <span
-                    className="change-value-item"
+                    className="tw:inline-flex tw:items-center tw:gap-1"
                     key={`${keyPrefix}-wrap-${entity?.fqn ?? entity?.name}`}>
                     {showProfilePic && entity && (
                       <ProfilePicture
+                        className="tw:align-middle"
                         displayName={entity.displayName ?? entity.name}
                         height="16"
                         name={entity.name}
@@ -508,9 +518,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         );
 
         details.push(
-          <span className="change-detail" key={`added-${change.name}`}>
-            <span className="change-action">{addedLabel}</span>{' '}
-            <span className="change-field">{label || fallbackField}</span>
+          <span key={`added-${change.name}`}>
+            <span className="tw:text-tertiary">{addedLabel}</span>{' '}
+            <span className="tw:font-medium">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
           </span>
         );
@@ -533,9 +543,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           const hasValueChange = oldValueNode || newValueNode;
 
           details.push(
-            <span className="change-detail" key={`updated-${change.name}`}>
-              <span className="change-action">{updatedLabel}</span>{' '}
-              <span className="change-field">{label || fallbackField}</span>
+            <span key={`updated-${change.name}`}>
+              <span className="tw:text-tertiary">{updatedLabel}</span>{' '}
+              <span className="tw:font-medium">{label || fallbackField}</span>
               {hasValueChange && (
                 <>
                   : {oldValueNode}
@@ -556,9 +566,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         );
 
         details.push(
-          <span className="change-detail" key={`deleted-${change.name}`}>
-            <span className="change-action">{removedLabel}</span>{' '}
-            <span className="change-field">{label || fallbackField}</span>
+          <span key={`deleted-${change.name}`}>
+            <span className="tw:text-tertiary">{removedLabel}</span>{' '}
+            <span className="tw:font-medium">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
           </span>
         );
@@ -598,7 +608,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     }
 
     return (
-      <Typography className="entity-name">
+      <Typography size="text-sm">
         {entityLabel ?? entityFQN ?? '--'}
       </Typography>
     );
@@ -607,18 +617,24 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   const userLink = useMemo(() => {
     if (log.userName) {
       return (
-        <Link className="user-link" to={getUserPath(log.userName)}>
+        <Link
+          className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
+          to={getUserPath(log.userName)}>
           {userName}
         </Link>
       );
     }
 
-    return <Typography className="user-name">{userName}</Typography>;
+    return <Typography weight="semibold">{userName}</Typography>;
   }, [log.userName, userName]);
 
   return (
-    <div className="audit-log-list-item tw:hover:bg-secondary" data-testid="audit-log-list-item">
-      <div className="item-avatar" data-testid="item-avatar">
+    <Box
+      className="tw:p-4 tw:border-b tw:border-primary tw:transition-colors tw:hover:bg-secondary tw:last:border-b-0"
+      data-testid="audit-log-list-item"
+      direction="row"
+      gap={2}>
+      <div className="tw:shrink-0" data-testid="item-avatar">
         <ProfilePicture
           displayName={userName}
           height="32"
@@ -626,7 +642,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           width="32"
         />
       </div>
-      <div className="item-content">
+      <Box className="tw:flex-1 tw:min-w-0 tw:items-start" direction="col" gap={1}>
         <AuditLogItemHeader
           eventType={eventType}
           impersonatedBy={log.impersonatedBy}
@@ -638,8 +654,8 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           eventType={eventType}
         />
         <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
@@ -654,27 +670,29 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
   if (isLoading) {
     return (
-      <div className="audit-log-list-container" data-testid="audit-log-list">
-        <div className="audit-log-list-header">
+      <div data-testid="audit-log-list">
+        <div className="tw:px-4 tw:py-2 tw:bg-secondary tw:border-b tw:border-primary">
           <Skeleton variant="text" width={200} />
         </div>
-        <div className="audit-log-list">
+        <div>
           {[1, 2, 3, 4, 5].map((i) => (
-            <div className="audit-log-list-item skeleton-item" key={i}>
-              <Box className="tw:flex tw:gap-3 tw:w-full" direction="row">
-                <Skeleton
-                  className="tw:shrink-0 skeleton-avatar"
-                  height={32}
-                  variant="circular"
-                  width={32}
-                />
-                <Box className="tw:flex-1" direction="col" gap={1}>
-                  <Skeleton variant="text" width="60%" />
-                  <Skeleton variant="text" width="100%" />
-                  <Skeleton variant="text" width="75%" />
-                </Box>
+            <Box
+              className="tw:p-4 tw:border-b tw:border-primary tw:last:border-b-0"
+              direction="row"
+              gap={3}
+              key={i}>
+              <Skeleton
+                className="tw:shrink-0"
+                height={32}
+                variant="circular"
+                width={32}
+              />
+              <Box className="tw:flex-1" direction="col" gap={1}>
+                <Skeleton variant="text" width="60%" />
+                <Skeleton variant="text" width="100%" />
+                <Skeleton variant="text" width="75%" />
               </Box>
-            </div>
+            </Box>
           ))}
         </div>
       </div>
@@ -696,8 +714,8 @@ const AuditLogList: FC<AuditLogListProps> = ({
       : undefined;
 
     return (
-      <div className="audit-log-list-container" data-testid="audit-log-list">
-        <div className="audit-log-list empty">
+      <div data-testid="audit-log-list">
+        <div className="tw:p-8">
           {hasActiveSearch ? (
             <EmptyPlaceholder
               actions={clearAction}
@@ -725,8 +743,8 @@ const AuditLogList: FC<AuditLogListProps> = ({
   }
 
   return (
-    <div className="audit-log-list-container tw:w-full" data-testid="audit-log-list">
-      <div className="audit-log-list">
+    <div className="tw:w-full" data-testid="audit-log-list">
+      <div>
         {logs.map((log, index) => (
           <AuditLogListItem
             key={log.id?.toString() ?? log.changeEventId ?? index.toString()}

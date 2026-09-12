@@ -487,7 +487,7 @@ const AuditLogsPage = () => {
         {/* Content Paper */}
         <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
           {/* Filters */}
-          <div className="tw:shrink-0 tw:p-3">
+          <div className="tw:shrink-0 tw:p-3 tw:border-b tw:border-secondary">
             <div className="tw:flex tw:items-center tw:gap-4">
               <div
                 className="tw:shrink-0"
