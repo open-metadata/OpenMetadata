@@ -488,3 +488,51 @@ class StorageUnitTest(TestCase):
     def return_metadata_entry(self):
         container_config = StorageContainerConfig.model_validate(MOCK_METADATA_FILE_RESPONSE)
         return container_config.entries
+
+
+class TestFetchMetric(TestCase):
+    """Unit tests for GcsSource._fetch_metric value-type dispatch."""
+
+    def setUp(self):
+        from metadata.ingestion.source.storage.gcs.metadata import GCSMetric
+
+        self.GCSMetric = GCSMetric
+
+        self.source = Mock(spec=GcsSource)
+        self.source.gcs_clients = Mock()
+
+        # Wire _fetch_metric as the real implementation bound to self.source
+        self.source._fetch_metric = GcsSource._fetch_metric.__get__(
+            self.source, GcsSource
+        )
+        self.source._get_time_interval = Mock(return_value=Mock())
+
+    def _make_timeseries(self, double_value=0.0, int64_value=0):
+        point_value = Mock()
+        point_value.double_value = double_value
+        point_value.int64_value = int64_value
+        point = Mock()
+        point.value = point_value
+        ts = Mock()
+        ts.points = [point]
+        return [ts]
+
+    def test_bucket_size_bytes_uses_double_value(self):
+        self.source.gcs_clients.metrics_client.list_time_series.return_value = (
+            self._make_timeseries(double_value=1234.5, int64_value=0)
+        )
+        bucket = Mock()
+        bucket.name = "my-bucket"
+        bucket.project_id = "my-project"
+        result = self.source._fetch_metric(bucket, self.GCSMetric.BUCKET_SIZE_BYTES)
+        self.assertEqual(result, 1234.5)
+
+    def test_number_of_objects_uses_int64_value(self):
+        self.source.gcs_clients.metrics_client.list_time_series.return_value = (
+            self._make_timeseries(double_value=0.0, int64_value=42)
+        )
+        bucket = Mock()
+        bucket.name = "my-bucket"
+        bucket.project_id = "my-project"
+        result = self.source._fetch_metric(bucket, self.GCSMetric.NUMBER_OF_OBJECTS)
+        self.assertEqual(result, 42)
