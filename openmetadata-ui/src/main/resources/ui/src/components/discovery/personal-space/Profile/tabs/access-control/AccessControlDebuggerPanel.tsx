@@ -332,11 +332,11 @@ const AccessControlDebuggerPanel: React.FC = () => {
 
       {/* Card 1: Select a user */}
       <Card className="tw:p-6" direction="col" gap={4}>
-        <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
+        <Typography weight='semibold'>
           {t('label.select-user-to-debug-permissions')}
         </Typography>
 
-        <Box className="tw:max-w-100 tw:min-w-64">
+        <Box className="tw:max-w-100 tw:min-w-64 tw:mt-2">
           <Select.ComboBox
             allowsEmptyCollection
             showSearchIcon

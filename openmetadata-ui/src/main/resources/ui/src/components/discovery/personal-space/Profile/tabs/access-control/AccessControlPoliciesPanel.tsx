@@ -239,8 +239,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         {hasMore && (
           <PopoverTrigger>
             <Button
-              color="tertiary"
-              className='tw:py-0'
+              color="secondary"
+              className='tw:py-0.5 tw:bg-tertiary'
               data-testid="plus-more-count"
               size="xs">
               {`+${listLength - LIST_CAP} more`}
@@ -287,7 +287,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       case 'description':
         return policy.description ? (
-          <RichTextEditorPreviewerV1 markdown={policy.description} />
+          <RichTextEditorPreviewerV1 maxLength={200} markdown={policy.description} />
         ) : (
           <span className="tw:text-sm tw:text-secondary">--</span>
         );
@@ -344,12 +344,12 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
   return (
     <Box
-      className="tw:pt-1"
+      className="tw:pt-1 tw:h-full"
       data-testid="policies-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root size="compact">
-        <div className="tw:overflow-y-auto tw:max-h-[480px]">
+      <TableCard.Root className='tw:flex tw:flex-col' size="compact">
+        <div className="tw:overflow-y-auto">
           <Table
             className="tw:table-fixed"
             aria-label={t('label.policy-plural')}

@@ -238,8 +238,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         {hasMore && (
           <PopoverTrigger>
             <Button
-              color="tertiary"
-              className='tw:py-0'
+              color="secondary"
+              className='tw:py-0.5 tw:bg-tertiary'
               data-testid="plus-more-count"
               size="xs">
               {`+${listLength - LIST_CAP} more`}
@@ -282,7 +282,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'description':
         return role.description ? (
-          <RichTextEditorPreviewerV1 markdown={role.description} />
+          <RichTextEditorPreviewerV1 maxLength={200} markdown={role.description} />
         ) : (
           <span className="tw:text-sm tw:text-secondary">--</span>
         );
@@ -339,12 +339,12 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   return (
     <Box
-      className="tw:pt-1"
+      className="tw:pt-1 tw:h-full"
       data-testid="roles-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root size="compact">
-        <div className="tw:overflow-y-auto tw:max-h-[480px]">
+      <TableCard.Root className='tw:flex tw:flex-col' size="compact">
+        <div className="tw:overflow-y-auto">
           <Table
             className="tw:table-fixed"
             aria-label={t('label.role-plural')}
