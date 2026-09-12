@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
-import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
+import { FC, isValidElement, lazy, ReactNode, Suspense, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
@@ -44,6 +44,10 @@ import {
     AuditLogListItemProps,
     AuditLogListProps
 } from './AuditLogList.interface';
+
+const RichTextEditorPreviewerV1 = lazy(
+  () => import('../common/RichTextEditor/RichTextEditorPreviewerV1')
+);
 
 const getFieldLabel = (name?: string) => {
   if (!name) {
@@ -159,6 +163,9 @@ const findLinkableFieldKey = (field: string): string | undefined =>
   Object.keys(LINKABLE_FIELD_RESOLVERS).find(
     (key) => field === key || field.endsWith(`.${key}`)
   );
+
+const isDescriptionField = (fieldName: string): boolean =>
+  fieldName === 'description' || fieldName.endsWith('.description');
 
 const getEntityLinkForField = (
   fieldName: string,
@@ -356,12 +363,12 @@ const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
     {descriptionNodes.length > 0 ? (
       <div>
         {descriptionNodes.map((node, idx) => (
-          <span key={isValidElement(node) ? node.key : undefined}>
+          <div key={isValidElement(node) ? node.key : undefined}>
             {node}
             {idx < descriptionNodes.length - 1 && (
               <span className="tw:text-quaternary">; </span>
             )}
-          </span>
+          </div>
         ))}
       </div>
     ) : (
@@ -490,6 +497,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             </span>
           );
         }
+      }
+
+      if (isDescriptionField(fieldName)) {
+        const markdown = typeof value === 'string' ? value : formatChangeValue(value);
+
+        return (
+          <Suspense fallback={<span>{formatChangeValue(value)}</span>}>
+            <RichTextEditorPreviewerV1 markdown={markdown} />
+          </Suspense>
+        );
       }
 
       return <span>{formatChangeValue(value)}</span>;
