@@ -81,7 +81,7 @@ class OpenSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(openSearchBulkSink);
+    OpenSearchCustomBulkProcessor processor = getCustomBulkProcessor(openSearchBulkSink);
 
     // Shorten the wait so the test doesn't sleep a minute. 0 = immediate fail-fast on no-permit.
     processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
@@ -102,8 +102,7 @@ class OpenSearchBulkSinkSimpleTest {
     List<BulkOperation> buffer = getField(processor, "buffer", List.class);
     buffer.add(mock(BulkOperation.class));
 
-    Method flushInternal =
-        OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
+    Method flushInternal = OpenSearchCustomBulkProcessor.class.getDeclaredMethod("flushInternal");
     flushInternal.setAccessible(true);
     flushInternal.invoke(processor);
 
@@ -138,11 +137,11 @@ class OpenSearchBulkSinkSimpleTest {
     throw new NoSuchFieldException(name);
   }
 
-  private OpenSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(OpenSearchBulkSink sink)
+  private OpenSearchCustomBulkProcessor getCustomBulkProcessor(OpenSearchBulkSink sink)
       throws Exception {
     Field f = OpenSearchBulkSink.class.getDeclaredField("bulkProcessor");
     f.setAccessible(true);
-    return (OpenSearchBulkSink.CustomBulkProcessor) f.get(sink);
+    return (OpenSearchCustomBulkProcessor) f.get(sink);
   }
 
   @Test

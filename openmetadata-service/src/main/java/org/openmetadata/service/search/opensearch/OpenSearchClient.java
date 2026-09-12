@@ -1117,12 +1117,6 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void updateAssetDomainsForDataProduct(
-      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
-    entityManager.updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
-  }
-
-  @Override
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);

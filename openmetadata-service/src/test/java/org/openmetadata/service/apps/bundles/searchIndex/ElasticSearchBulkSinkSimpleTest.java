@@ -107,8 +107,7 @@ class ElasticSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    ElasticSearchBulkSink.CustomBulkProcessor processor =
-        getCustomBulkProcessor(elasticSearchBulkSink);
+    ElasticSearchCustomBulkProcessor processor = getCustomBulkProcessor(elasticSearchBulkSink);
 
     processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
 
@@ -127,7 +126,7 @@ class ElasticSearchBulkSinkSimpleTest {
     buffer.add(mock(BulkOperation.class));
 
     Method flushInternal =
-        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
+        ElasticSearchCustomBulkProcessor.class.getDeclaredMethod("flushInternal");
     flushInternal.setAccessible(true);
     flushInternal.invoke(processor);
 
@@ -158,10 +157,10 @@ class ElasticSearchBulkSinkSimpleTest {
     throw new NoSuchFieldException(name);
   }
 
-  private ElasticSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(
-      ElasticSearchBulkSink sink) throws Exception {
+  private ElasticSearchCustomBulkProcessor getCustomBulkProcessor(ElasticSearchBulkSink sink)
+      throws Exception {
     Field f = ElasticSearchBulkSink.class.getDeclaredField("bulkProcessor");
     f.setAccessible(true);
-    return (ElasticSearchBulkSink.CustomBulkProcessor) f.get(sink);
+    return (ElasticSearchCustomBulkProcessor) f.get(sink);
   }
 }

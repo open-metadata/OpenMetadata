@@ -167,6 +167,10 @@ import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.projection.DefaultProjectionSpec;
+import org.openmetadata.service.search.projection.MutationPlanner;
+import org.openmetadata.service.search.projection.PainlessComposer;
+import org.openmetadata.service.search.projection.ProjectionRollout;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -451,8 +455,13 @@ public class SearchRepository {
    *
    * <p>Keying by canonical index name lets any write site route correctly even if it does not
    * have the entity type in scope (deletes by FQN prefix, script updates, child propagation, …).
+   *
+   * <p>Routing is <b>cluster-wide</b>, not per-JVM: a reindex running on one node (or in the
+   * {@code openmetadata-ops.sh} process) is visible to every other node through the persisted
+   * {@code search_index_job} rows. See {@link StagedIndexRouting}.
    */
-  private final Map<String, String> activeStagedIndices = new ConcurrentHashMap<>();
+  private final StagedIndexRouting stagedIndexRouting =
+      new StagedIndexRouting(this::canonicalIndexFor, Entity::getCollectionDAO);
 
   private final String language;
 
@@ -473,6 +482,45 @@ public class SearchRepository {
 
   private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
+
+  /**
+   * Indexes swept by FQN prefix when a {@link Entity#DIRECTORY} is hard-deleted.
+   *
+   * <p>Includes {@code directory} itself so nested sub-directories go too. A {@code driveService}
+   * delete needs none of this: it lists all four types in its {@code childAliases} and every one of
+   * their documents carries {@code service} (via {@code ServiceBackedIndex}), so the id-keyed
+   * cascade reaches them.
+   */
+  private static final List<String> DIRECTORY_DESCENDANT_TYPES =
+      List.of(Entity.DIRECTORY, Entity.FILE, Entity.SPREADSHEET, Entity.WORKSHEET);
+
+  /**
+   * Indices that exist in the mapping but that no reindex source repopulates.
+   *
+   * <p>{@code pipelineStatus} holds two kinds of document: {@code pipelineStatus} records, and the
+   * {@code pipelineExecution} documents {@code PipelineRepository.indexPipelineExecutionInES} writes
+   * under a composite doc id to back the Metrics, Runtime Trend and Execution Trend APIs. Neither
+   * entity type is in {@code SearchIndexEntityTypes.TIME_SERIES_ENTITIES}, so a reindex has nothing
+   * to rebuild them from — only re-ingestion restores them.
+   *
+   * <p>This is why it matters here and not in the application path: {@link #createIndexes()}
+   * recreates every index in the mapping, so it empties this one, while the application recreates
+   * only the entity types it is about to rebuild. Naming the loss is all this does — deciding whether
+   * pipeline execution analytics <i>should</i> be reindexable (which needs a source that walks
+   * pipelines against their status history) is a product call, not something to infer here.
+   *
+   * <p>The mapping key is spelled out rather than taken from a constant on purpose: {@code
+   * pipelineStatus} is an index key, not a registered entity type, so no {@code Entity} constant
+   * describes it ({@code Entity.FIELD_PIPELINE_STATUS} is the entity <i>field</i> of the same name).
+   */
+  private static final List<String> INDICES_WITHOUT_REINDEX_SOURCE = List.of("pipelineStatus");
+
+  /**
+   * Declared-lineage planner, used only for the off-by-default shadow accounting in {@link
+   * #canUseScriptedPartialUpdate}. Stateless, so a single instance is fine.
+   */
+  private final MutationPlanner projectionPlanner =
+      new MutationPlanner(new DefaultProjectionSpec());
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
@@ -613,7 +661,26 @@ public class SearchRepository {
     return searchClient.getSearchType();
   }
 
+  /**
+   * Recreates every index in this process and promotes each one. Called only from
+   * {@code openmetadata-ops.sh}.
+   *
+   * <p>Unlike the SearchIndexingApplication, this path persists no {@code search_index_job} row, so
+   * {@link StagedIndexRouting} cannot publish its staged indices to other JVMs. Any API server
+   * serving traffic while this runs keeps writing through the canonical alias into the index that
+   * promotion then deletes, and those edits are lost. Reindex from the application when the
+   * deployment is live.
+   *
+   * <p>It also recreates <i>every</i> index in the mapping, including ones no reindex source
+   * repopulates — the application path recreates only the entity types it is about to rebuild. Those
+   * indices come back empty. See {@link #INDICES_WITHOUT_REINDEX_SOURCE}.
+   */
   public void createIndexes() {
+    LOG.warn(
+        "CLI reindex: staged indices are not published to other processes. Entity changes written "
+            + "by a running server during this reindex will be discarded at promotion. Use the "
+            + "SearchIndexingApplication to reindex a live deployment.");
+    warnAboutIndicesWithNoReindexSource();
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
     ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
     if (context != null) {
@@ -1028,7 +1095,7 @@ public class SearchRepository {
           entityType);
       return;
     }
-    activeStagedIndices.put(canonical, stagedIndex);
+    stagedIndexRouting.register(canonical, stagedIndex);
     LOG.info(
         "Routing live writes for canonical index '{}' (entity '{}') to staged index '{}' until reindex promotes it",
         canonical,
@@ -1045,7 +1112,7 @@ public class SearchRepository {
     if (canonical == null) {
       return;
     }
-    if (activeStagedIndices.remove(canonical, stagedIndex)) {
+    if (stagedIndexRouting.unregister(canonical, stagedIndex)) {
       LOG.info(
           "Cleared staged-index routing for canonical index '{}' (entity '{}', was '{}')",
           canonical,
@@ -1085,7 +1152,7 @@ public class SearchRepository {
     if (canonicalIndexName == null) {
       return null;
     }
-    String staged = activeStagedIndices.get(canonicalIndexName);
+    String staged = stagedIndexRouting.resolve(canonicalIndexName);
     return staged != null ? staged : canonicalIndexName;
   }
 
@@ -1119,17 +1186,17 @@ public class SearchRepository {
    */
   public List<String> getWriteFanoutTargets(String aliasOrIndex) {
     if (aliasOrIndex == null) {
-      return new ArrayList<>(activeStagedIndices.values());
+      return new ArrayList<>(stagedIndexRouting.stagedIndices());
     }
     List<String> targets = new ArrayList<>();
     targets.add(aliasOrIndex);
     if (isKnownCanonicalIndex(aliasOrIndex)) {
-      String staged = activeStagedIndices.get(aliasOrIndex);
+      String staged = stagedIndexRouting.resolve(aliasOrIndex);
       if (staged != null) {
         targets.add(staged);
       }
     } else {
-      targets.addAll(activeStagedIndices.values());
+      targets.addAll(stagedIndexRouting.stagedIndices());
     }
     return targets;
   }
@@ -1475,13 +1542,7 @@ public class SearchRepository {
    * ancestor the deleted entity is.
    */
   private void deleteDescendantColumns(EntityInterface entity, String entityType) {
-    String columnParentField =
-        switch (entityType) {
-          case Entity.DATABASE_SERVICE -> SERVICE_ID;
-          case Entity.DATABASE -> DATABASE_ID;
-          case Entity.DATABASE_SCHEMA -> DATABASE_SCHEMA_ID;
-          default -> null;
-        };
+    String columnParentField = columnParentFieldFor(entityType);
     if (columnParentField != null) {
       IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
       if (columnIndexMapping != null) {
@@ -1518,6 +1579,20 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Detects column changes by looking for {@code columns.*} entries in the change description.
+   *
+   * <p>A change that alters only a column's {@code fullyQualifiedName} — which is what a table
+   * rename or move produces — records no {@code columns.*} entry, so this returns false and the
+   * caller takes the cheap branch, which never rewrites a column document's own {@code id} /
+   * {@code fullyQualifiedName} / {@code fqnParts} / {@code fqnHash}. Those would then stay stale
+   * until the next full reindex.
+   *
+   * <p>Not reachable today: {@code name} is not among the fields
+   * {@code EntityRepository.EntityUpdater.updateInternal} compares, and no move or rename endpoint
+   * exists for tables — only {@code Tag} and {@code GlossaryTerm} have one. Adding a table move or
+   * rename makes this live, so handle column identity there.
+   */
   private boolean hasColumnsChanged(ChangeDescription changeDescription) {
     if (changeDescription == null) {
       return true; // Default to full reindex if no change description
@@ -2504,43 +2579,6 @@ public class SearchRepository {
     updateEntitiesIndex(entities);
   }
 
-  /**
-   * Bulk updates domain references for assets when a data product's domain changes. This is more
-   * efficient than updating each entity individually as it uses a single update-by-query operation.
-   *
-   * @param dataProductFqn the fully qualified name of the data product
-   * @param oldDomainFqns list of old domain FQNs to remove from assets
-   * @param newDomains list of new domain references to add to assets
-   */
-  public void updateAssetDomainsForDataProduct(
-      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
-            () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
-            "updateAssetDomainsForDataProduct",
-            null,
-            dataProductFqn,
-            null))) {
-      return;
-    }
-    Timer.Sample s = RequestLatencyContext.startSearchOperation();
-    if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(
-          null, dataProductFqn, "updateAssetDomainsForDataProduct: Search client unavailable");
-      return;
-    }
-    try {
-      getSearchClient().updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          null,
-          dataProductFqn,
-          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
-    } finally {
-      RequestLatencyContext.endSearchOperation(s);
-    }
-  }
-
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     if (deferSearchWrite(
@@ -3425,7 +3463,8 @@ public class SearchRepository {
   }
 
   private String generateAddTagLabelListScript() {
-    return """
+    return PainlessComposer.composeForTagWrite(
+        """
         if (ctx._source.tags == null) {
           ctx._source.tags = [];
         }
@@ -3444,12 +3483,12 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """);
   }
 
   private String generateDeleteTagLabelListScript() {
-    return """
+    return PainlessComposer.composeForTagWrite(
+        """
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
             for (int j = 0; j < params.tagDeleted.size(); j++) {
@@ -3460,12 +3499,12 @@ public class SearchRepository {
             }
           }
         }
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """);
   }
 
   private String generateUpdateTagLabelListScript() {
-    return """
+    return PainlessComposer.composeForTagWrite(
+        """
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
             for (int j = 0; j < params.tagDeleted.size(); j++) {
@@ -3494,8 +3533,7 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """);
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
@@ -3559,32 +3597,64 @@ public class SearchRepository {
 
   public void deleteEntityByFQNPrefix(EntityInterface entity) {
     if (entity != null) {
-      String entityType = entity.getEntityReference().getType();
-      String fqn = entity.getFullyQualifiedName();
-      if (!getSearchClient().isClientAvailable()) {
-        SearchIndexRetryQueue.enqueue(
-            entity.getId() != null ? entity.getId().toString() : null,
-            fqn,
-            "deleteEntityByFQNPrefix: Search client unavailable");
-        return;
+      deleteDescendantsByFQNPrefix(entity, List.of(entity.getEntityReference().getType()));
+    }
+  }
+
+  /** Names the indices this run will empty without being able to refill them. */
+  private void warnAboutIndicesWithNoReindexSource() {
+    List<String> affected =
+        INDICES_WITHOUT_REINDEX_SOURCE.stream().filter(entityIndexMap::containsKey).toList();
+    if (!affected.isEmpty()) {
+      LOG.warn(
+          "CLI reindex: {} will be recreated empty — no reindex source repopulates them, so the "
+              + "documents they hold (including the pipelineExecution records behind the pipeline "
+              + "Metrics / Runtime Trend / Execution Trend APIs) are lost until re-ingestion.",
+          affected);
+    }
+  }
+
+  /**
+   * Deletes every document whose FQN sits strictly beneath {@code entity}'s, from the index of each
+   * type in {@code descendantTypes}.
+   *
+   * <p>The prefix is terminated with {@link Entity#SEPARATOR}, because the underlying query is a raw
+   * prefix match on {@code fullyQualifiedName.keyword}: an unterminated prefix for {@code svc.dir1}
+   * also matches {@code svc.dir10}, so deleting one directory would wipe an unrelated sibling's
+   * subtree. Terminating it excludes the entity's own document too, which costs nothing — {@link
+   * #deleteEntityIndex} deletes that by id immediately before calling the cascade.
+   */
+  private void deleteDescendantsByFQNPrefix(EntityInterface entity, List<String> descendantTypes) {
+    String entityType = entity.getEntityReference().getType();
+    String fqn = entity.getFullyQualifiedName();
+    if (!getSearchClient().isClientAvailable()) {
+      SearchIndexRetryQueue.enqueue(
+          entity.getId() != null ? entity.getId().toString() : null,
+          fqn,
+          "deleteEntityByFQNPrefix: Search client unavailable");
+      return;
+    }
+    String fqnPrefix = fqn + Entity.SEPARATOR;
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    try {
+      for (String descendantType : descendantTypes) {
+        IndexMapping indexMapping = entityIndexMap.get(descendantType);
+        if (indexMapping != null) {
+          searchClient.deleteEntityByFQNPrefix(getWriteIndexName(indexMapping), fqnPrefix);
+        }
       }
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
-      try {
-        searchClient.deleteEntityByFQNPrefix(getWriteIndexName(indexMapping), fqn);
-      } catch (Exception ie) {
-        SearchIndexRetryQueue.enqueue(
-            entity.getId() != null ? entity.getId().toString() : null,
-            fqn,
-            SearchIndexRetryQueue.failureReason("deleteEntityByFQNPrefix", ie));
-        LOG.error(
-            "Issue deleting the search document for entityFQN [{}] and entityType [{}]",
-            fqn,
-            entityType,
-            ie);
-      } finally {
-        RequestLatencyContext.endSearchOperation(searchSample);
-      }
+    } catch (Exception ie) {
+      SearchIndexRetryQueue.enqueue(
+          entity.getId() != null ? entity.getId().toString() : null,
+          fqn,
+          SearchIndexRetryQueue.failureReason("deleteEntityByFQNPrefix", ie));
+      LOG.error(
+          "Issue deleting the search document for entityFQN [{}] and entityType [{}]",
+          fqn,
+          entityType,
+          ie);
+    } finally {
+      RequestLatencyContext.endSearchOperation(searchSample);
     }
   }
 
@@ -3648,6 +3718,8 @@ public class SearchRepository {
 
       if (Entity.TABLE.equals(entityType)) {
         softDeleteOrRestoreTableColumns((Table) entity, delete);
+      } else {
+        softDeleteOrRestoreDescendantColumns(entity, entityType, delete);
       }
     } catch (Exception ie) {
       SearchIndexRetryQueue.enqueue(
@@ -3662,6 +3734,50 @@ public class SearchRepository {
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
+  }
+
+  /**
+   * Flags descendant column docs when a table's ancestor (databaseService / database /
+   * databaseSchema) is soft-deleted or restored.
+   *
+   * <p>The soft-delete counterpart of {@link #deleteDescendantColumns} and the same gap: the
+   * ancestor's {@link #softDeleteOrRestoredChildren} cascade resolves targets from its
+   * {@code childAliases}, which list {@code table} but not {@code tableColumn}, and the recursive
+   * subtree soft delete dispatches no per-table event — so nothing reached the column docs and they
+   * stayed searchable as live while their table was marked deleted. A reindex rebuilds them from
+   * correctly-flagged rows, so the two paths disagreed until the next reindex; measured by
+   * {@code LiveVsReindexParityIT}.
+   */
+  private void softDeleteOrRestoreDescendantColumns(
+      EntityInterface entity, String entityType, boolean delete) {
+    String columnParentField = columnParentFieldFor(entityType);
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnParentField == null || columnIndexMapping == null) {
+      return;
+    }
+    SoftDeleteScript script = new SoftDeleteScript(delete);
+    try {
+      searchClient.updateChildren(
+          List.of(getWriteIndexName(columnIndexMapping)),
+          new ImmutablePair<>(columnParentField, entity.getId().toString()),
+          new ImmutablePair<>(script.painless(), null));
+    } catch (Exception e) {
+      LOG.error(
+          "Issue soft deleting/restoring descendant columns for {} [{}]: {}",
+          entityType,
+          entity.getFullyQualifiedName(),
+          e.getMessage());
+    }
+  }
+
+  /** The column-doc field carrying this ancestor's id, or null when it is not a column ancestor. */
+  private static String columnParentFieldFor(String entityType) {
+    return switch (entityType) {
+      case Entity.DATABASE_SERVICE -> SERVICE_ID;
+      case Entity.DATABASE -> DATABASE_ID;
+      case Entity.DATABASE_SCHEMA -> DATABASE_SCHEMA_ID;
+      default -> null;
+    };
   }
 
   private void softDeleteOrRestoreTableColumns(Table table, boolean delete) {
@@ -3754,6 +3870,15 @@ public class SearchRepository {
         // prefix; otherwise stale child docs survive in the index and re-appear in
         // hierarchy / search results until a full reindex.
       case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
+        // Same shape as PAGE, one level deeper: the drive subtree is FQN-nested but its
+        // documents are not id-reachable from a directory. The generic branch below matches
+        // "directory.id", which only ever names a *direct* child — a nested directory document
+        // carries "parent" and a worksheet document carries only "spreadsheet", so neither is
+        // reachable at any depth, and worksheet is not even in directory's childAliases. Every
+        // repository in this subtree also sets descendantsCoveredByAncestorCascade, which
+        // suppresses the per-entity delete that would otherwise have cleaned them up, so nothing
+        // removes these documents and they survive until a full reindex.
+      case Entity.DIRECTORY -> deleteDescendantsByFQNPrefix(entity, DIRECTORY_DESCENDANT_TYPES);
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -3941,10 +4066,16 @@ public class SearchRepository {
 
   private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
     Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
-    return !changedFieldNames.isEmpty()
-        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
-        && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
-        && !hasRelationshipReplacement(changeDescription, TESTS);
+    boolean canScript =
+        !changedFieldNames.isEmpty()
+            && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
+            && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
+            && !hasRelationshipReplacement(changeDescription, TESTS);
+    // Shadow only, and off by default: counts what the declared-lineage planner would have decided
+    // here so the 7-fields-to-all-declared claim is measured on real traffic before phase 4 acts on
+    // it. The decision returned is unchanged either way.
+    ProjectionRollout.recordShadowComparison(projectionPlanner, changeDescription, canScript);
+    return canScript;
   }
 
   private boolean hasRelationshipReplacement(

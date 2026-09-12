@@ -29,7 +29,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
@@ -659,17 +658,20 @@ public class SearchIndexRetryWorker implements Managed {
     if (indexMapping == null) {
       return;
     }
-    Object doc =
+    Map<String, Object> doc =
         searchRepository
             .getSearchIndexFactory()
             .buildIndex(entityType, entity)
             .buildSearchIndexDoc();
+    // Fenced on updatedAt: this document was rebuilt from a read taken when the queued failure was
+    // claimed, so a live update committed since then is already in the index and must win.
     searchRepository
         .getSearchClient()
-        .createEntity(
+        .updateEntity(
             searchRepository.getWriteIndexName(indexMapping),
             entity.getId().toString(),
-            JsonUtils.pojoToJson(doc));
+            doc,
+            SearchClient.STALE_GUARDED_UPDATE_SCRIPT);
   }
 
   private void addChildrenByRelation(

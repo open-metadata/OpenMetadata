@@ -81,6 +81,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -2315,8 +2316,13 @@ public class EntityCsvTest {
     failingCsv.pendingSearchIndexUpdates.add(failedEntity);
     SearchRepository failingRepository = mock(SearchRepository.class);
 
-    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> retryQueue =
+            Mockito.mockStatic(SearchIndexRetryQueue.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(failingRepository);
+      retryQueue
+          .when(() -> SearchIndexRetryQueue.failureReason(Mockito.anyString(), Mockito.any()))
+          .thenReturn("boom");
       Mockito.doThrow(new IllegalStateException("search bulk failed"))
           .when(failingRepository)
           .updateEntitiesBulk(List.of(failedEntity));
@@ -2324,6 +2330,14 @@ public class EntityCsvTest {
       failingCsv.flushPendingSearchIndexUpdates();
 
       assertTrue(failingCsv.pendingSearchIndexUpdates.isEmpty());
+      // Clearing the batch is only safe because the entities were handed to the retry queue first.
+      // Without this the failure was silent: the log promised an individual retry that never ran,
+      // and the documents stayed stale until the next full reindex. The entity's own reference
+      // supplies the type, so a mixed-type import queues each row under the right one.
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  null, "service.db.schema.payments", Entity.TABLE, "boom"));
     }
   }
 
