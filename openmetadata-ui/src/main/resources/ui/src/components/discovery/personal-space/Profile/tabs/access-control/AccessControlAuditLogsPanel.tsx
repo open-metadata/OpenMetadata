@@ -11,24 +11,23 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  DateRangePicker,
-  Dialog,
-  EmptyPlaceholder,
-  Input,
-  Modal,
-  ModalOverlay,
-  PaginationCardWithControls,
-  ProgressBarBase,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { getLocalTimeZone, today } from '@internationalized/date';
 import type { DateValue } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
+import {
+    Badge,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    DateRangePicker,
+    Dialog,
+    Input,
+    Modal,
+    ModalOverlay,
+    PaginationCardWithControls,
+    ProgressBarBase,
+    Typography
+} from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
@@ -36,34 +35,34 @@ import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../../../../../assets/svg/ic-download.svg';
-import AccessControlAuditLogFilters from './AccessControlAuditLogFilters';
 import AuditLogList from '../../../../../../components/AuditLog/AuditLogList.component';
 import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-  SOCKET_EVENTS,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM,
+    SOCKET_EVENTS
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
 import {
-  exportAuditLogs,
-  getAuditLogExportJob,
-  getAuditLogExportResult,
-  getAuditLogs,
+    exportAuditLogs,
+    getAuditLogExportJob,
+    getAuditLogExportResult,
+    getAuditLogs
 } from '../../../../../../rest/auditLogAPI';
 import {
-  AuditLogActiveFilter,
-  AuditLogEntry,
-  AuditLogListParams,
-  AuditLogListResponse,
+    AuditLogActiveFilter,
+    AuditLogEntry,
+    AuditLogListParams,
+    AuditLogListResponse
 } from '../../../../../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
 import { showErrorToast, showSuccessToast } from '../../../../../../utils/ToastUtils';
+import AccessControlAuditLogFilters from './AccessControlAuditLogFilters';
 
 const EXPORT_POLL_INTERVAL_MS = 5000;
 
@@ -410,8 +409,9 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
     }
   }, [isExporting]);
 
-  const hasActiveFilters =
-    activeFilters.length > 0 || Boolean(searchTerm.trim());
+  const hasActiveSearch = Boolean(searchTerm.trim());
+  const hasActiveFiltersOnly = activeFilters.length > 0;
+  const hasActiveFilters = hasActiveFiltersOnly || hasActiveSearch;
 
   const exportProgress =
     exportJob?.total && exportJob.total > 0
@@ -531,18 +531,14 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
         </Box>
 
         {/* Log list inside card */}
-        <Box className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
-          {!isLoading && logs.length === 0 ? (
-            <Box className="tw:flex tw:items-center tw:justify-center tw:h-full tw:py-12">
-              <EmptyPlaceholder
-                title={t('label.no-entity-found', {
-                  entity: t('label.audit-log-plural'),
-                })}
-              />
-            </Box>
-          ) : (
-            <AuditLogList isLoading={isLoading} logs={logs} />
-          )}
+        <Box className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative">
+          <AuditLogList
+            hasActiveFilters={hasActiveFiltersOnly}
+            hasActiveSearch={hasActiveSearch}
+            isLoading={isLoading}
+            logs={logs}
+            onClearFilters={handleClearFilters}
+          />
         </Box>
 
         {/* Pagination inside card */}

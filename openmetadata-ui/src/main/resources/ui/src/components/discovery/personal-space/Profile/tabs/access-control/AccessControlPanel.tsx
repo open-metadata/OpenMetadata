@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { PermissionDebugger as AccessControlIcon, Policy as PoliciesIcon, Role as RolesIcon, AuditLogs as AuditLogsIcon } from '@openmetadata/ui-core-components/icons';
+import { Button } from '@openmetadata/ui-core-components';
+import { AuditLogs as AuditLogsIcon, PermissionDebugger as AccessControlIcon, Policy as PoliciesIcon, Role as RolesIcon } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

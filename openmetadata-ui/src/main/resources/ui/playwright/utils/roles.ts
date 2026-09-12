@@ -33,9 +33,13 @@ export const getElementWithPagination = async (
   page: Page,
   locator: Locator,
   click = true,
-  maxPages = 50
+  maxPages = 50,
+  // Scopes prev/next button lookups to a specific container, avoiding strict-mode
+  // violations when multiple paginated components are mounted on the same page.
+  paginationContainer?: Locator
 ) => {
-  const previousBtn = page.locator('[data-testid="previous"]');
+  const scope = paginationContainer ?? page;
+  const previousBtn = scope.locator('[data-testid="previous"]');
   if (await previousBtn.isVisible()) {
     while (await previousBtn.isEnabled()) {
       await previousBtn.click();
@@ -53,7 +57,7 @@ export const getElementWithPagination = async (
       return;
     }
 
-    const nextBtn = page.locator('[data-testid="next"]');
+    const nextBtn = scope.locator('[data-testid="next"]');
     await nextBtn.waitFor({ state: 'visible' });
 
     await nextBtn.click();

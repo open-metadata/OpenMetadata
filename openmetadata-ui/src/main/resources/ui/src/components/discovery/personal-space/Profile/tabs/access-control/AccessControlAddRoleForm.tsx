@@ -12,27 +12,30 @@
  */
 
 import {
-  Autocomplete,
-  Box,
-  Button,
-  Input,
-  SelectItemType,
-  Typography,
+    Autocomplete,
+    Box,
+    Button,
+    Input,
+    SelectItemType,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import type { Key } from 'react-aria-components';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import Loader from '../../../../../common/Loader/Loader';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import Loader from '../../../../../common/Loader/Loader';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { AccessControlView } from './AccessControlPanel';
 
 interface FormValues {
@@ -123,6 +126,9 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
         description,
         policies: selectedPolicies,
       });
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.role') })
+      );
       onNavigate({ type: 'roles' });
     } catch (error) {
       showErrorToast(

@@ -411,8 +411,9 @@ const AuditLogsPage = () => {
     }
   }, [isExporting]);
 
-  const hasActiveFilters =
-    activeFilters.length > 0 || Boolean(searchTerm.trim());
+  const hasActiveSearch = Boolean(searchTerm.trim());
+  const hasActiveFiltersOnly = activeFilters.length > 0;
+  const hasActiveFilters = hasActiveFiltersOnly || hasActiveSearch;
 
   const renderExportProgress = () =>
     exportJob?.status === 'IN_PROGRESS' ? (
@@ -567,7 +568,13 @@ const AuditLogsPage = () => {
 
           {/* List */}
           <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
-            <AuditLogList isLoading={isLoading} logs={logs} />
+            <AuditLogList
+              hasActiveFilters={hasActiveFiltersOnly}
+              hasActiveSearch={hasActiveSearch}
+              isLoading={isLoading}
+              logs={logs}
+              onClearFilters={handleClearFilters}
+            />
           </div>
 
           {/* Pagination */}

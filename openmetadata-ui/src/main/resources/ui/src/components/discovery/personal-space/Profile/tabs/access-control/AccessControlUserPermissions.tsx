@@ -12,41 +12,38 @@
  */
 
 import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
-  Badge,
-  Card,
-  Box,
-  Typography,
+    Accordion,
+    AccordionHeader,
+    AccordionItem,
+    AccordionPanel,
+    Badge, Box, Card, Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import Loader from '../../../../../common/Loader/Loader';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import {
-  DirectRolePermission,
-  getMyPermissionDebugInfo,
-  getPermissionDebugInfo,
-  InheritedPermission,
-  PermissionDebugInfo,
-  PolicyInfo,
-  RolePermission,
-  RuleInfo,
-  TeamPermission,
+    DirectRolePermission,
+    getMyPermissionDebugInfo,
+    getPermissionDebugInfo,
+    InheritedPermission,
+    PermissionDebugInfo,
+    PolicyInfo,
+    RolePermission,
+    RuleInfo,
+    TeamPermission
 } from '../../../../../../rest/permissionAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-  getEntityDetailsPath,
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
+    getEntityDetailsPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath,
+    getTeamsWithFqnPath
 } from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import Loader from '../../../../../common/Loader/Loader';
 
 interface AccessControlUserPermissionsProps {
   username: string;
@@ -277,7 +274,7 @@ const AccessControlUserPermissions: React.FC<
       <SectionCard title={t('label.direct-role-plural')}>
         {permissionInfo?.directRoles.map(
           (rolePermission: DirectRolePermission) => (
-            <Box className="tw:mb-6" key={rolePermission.role.id} direction='col'>
+            <Box className="tw:mb-6" direction='col' key={rolePermission.role.id}>
               <Box
                 className="tw:flex tw:items-center tw:gap-2 tw:mb-3"
                 direction="row">
@@ -352,7 +349,7 @@ const AccessControlUserPermissions: React.FC<
       <SectionCard title={t('label.team-permission-plural')}>
         {permissionInfo?.teamPermissions.map(
           (teamPermission: TeamPermission) => (
-            <Box key={teamPermission.team.id} gap={2} direction='col'>
+            <Box direction='col' gap={2} key={teamPermission.team.id}>
               <Box
                 className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mb-3"
                 direction="row">

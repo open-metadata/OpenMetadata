@@ -12,29 +12,32 @@
  */
 
 import {
-  Box,
-  Button,
-  Input,
-  Typography,
+    Box,
+    Button,
+    Input,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import React, { Dispatch, SetStateAction, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import {
-  CreatePolicy,
-  Effect,
-  Rule,
+    CreatePolicy,
+    Effect,
+    Rule
 } from '../../../../../../generated/api/policies/createPolicy';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
-import { ERROR_MESSAGE } from '../../../../../../constants/constants';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import AccessControlRuleForm from './AccessControlRuleForm';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { AccessControlView } from './AccessControlPanel';
+import AccessControlRuleForm from './AccessControlRuleForm';
 
 interface FormValues {
   name: string;
@@ -86,6 +89,9 @@ const AccessControlAddPolicyForm: React.FC<
         rules: [condition ? { ...rest, condition } : rest],
       };
       await addPolicy(payload);
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.policy') })
+      );
       onNavigate({ type: 'policies' });
     } catch (error) {
       showErrorToast(

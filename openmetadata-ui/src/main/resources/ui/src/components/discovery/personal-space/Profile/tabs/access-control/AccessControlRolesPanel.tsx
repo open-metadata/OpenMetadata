@@ -12,13 +12,15 @@
  */
 
 import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-  PaginationCardWithControls,
-  Table,
-  TableCard,
-  Tooltip,
+    Box,
+    Button,
+    EmptyPlaceholder,
+    PaginationCardWithControls,
+    Popover,
+    PopoverTrigger,
+    Table,
+    TableCard,
+    Tooltip
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -26,36 +28,35 @@ import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
-import Loader from '../../../../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
 import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
+    NO_PERMISSION_FOR_ACTION,
+    NO_PERMISSION_TO_VIEW
 } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Paging } from '../../../../../../generated/type/paging';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-  checkPermission,
-  LIST_CAP,
-  userPermissions,
+    checkPermission,
+    LIST_CAP,
+    userPermissions
 } from '../../../../../../utils/PermissionsUtils';
 import {
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath
 } from '../../../../../../utils/RouterUtils';
-import type { AccessControlView } from './AccessControlPanel';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import Loader from '../../../../../common/Loader/Loader';
+import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import type { AccessControlView } from './AccessControlPanel';
 
 type RoleColumnId = 'name' | 'description' | 'policies' | 'actions';
 
@@ -71,17 +72,14 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [paging, setPaging] = useState<Paging>({ total: 0 });
 
-  const {
-    currentPage,
-    pageSize,
-    paging,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    showPagination,
-    pagingCursor,
-  } = usePaging();
+  const showPagination = useMemo(
+    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    [paging, pageSize]
+  );
 
   const { permissions } = usePermissionProvider();
 
@@ -121,7 +119,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       );
 
       setRoles(data.data || []);
-      handlePagingChange(data.paging);
+      setPaging(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -162,32 +160,23 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   const handlePageNavigation = (newPage: number) => {
     if (newPage > currentPage && paging?.after) {
-      fetchRoles({ after: paging.after, total: paging.total } as Paging);
-      handlePageChange(
-        newPage,
-        { cursorType: CursorType.AFTER, cursorValue: paging.after },
-        pageSize
-      );
+      setCurrentPage(newPage);
+      fetchRoles({ after: paging.after });
     } else if (newPage < currentPage && paging?.before) {
-      fetchRoles({ before: paging.before, total: paging.total } as Paging);
-      handlePageChange(
-        newPage,
-        { cursorType: CursorType.BEFORE, cursorValue: paging.before },
-        pageSize
-      );
+      setCurrentPage(newPage);
+      fetchRoles({ before: paging.before });
     }
   };
 
-  useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
-    if (cursorType && cursorValue) {
-      fetchRoles({ [cursorType]: cursorValue });
-    } else {
-      fetchRoles();
-    }
+  useEffect(() => {
+    fetchRoles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSize, pagingCursor]);
+  }, [pageSize]);
 
   const renderPolicyItem = (policy: EntityReference) => {
     const key = uniqueId();
@@ -243,18 +232,18 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         direction="row">
         {policies.slice(0, LIST_CAP).map(renderPolicyItem)}
         {hasMore && (
-          <Tooltip
-            title={
-              <Box className="tw:flex tw:flex-col tw:gap-1">
-                {policies.slice(LIST_CAP).map(renderPolicyItem)}
-              </Box>
-            }>
+          <PopoverTrigger>
             <Box
               className="tw:cursor-pointer tw:rounded tw:bg-secondary tw:px-1.5 tw:py-0.5 tw:text-xs tw:text-tertiary"
               data-testid="plus-more-count">
               {`+${listLength - LIST_CAP} more`}
             </Box>
-          </Tooltip>
+            <Popover>
+              <Box className="tw:flex tw:flex-col tw:gap-1 tw:p-3">
+                {policies.slice(LIST_CAP).map(renderPolicyItem)}
+              </Box>
+            </Popover>
+          </PopoverTrigger>
         )}
       </Box>
     );

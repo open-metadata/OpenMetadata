@@ -12,59 +12,59 @@
  */
 
 import {
-  Autocomplete,
-  Box,
-  Button,
-  EmptyPlaceholder,
-  Input,
-  SelectItemType,
-  Table,
-  TableCard,
-  Tabs,
-  Tooltip,
-  Typography,
+    Autocomplete,
+    Box,
+    Button,
+    EmptyPlaceholder,
+    Input,
+    SelectItemType,
+    Table,
+    TableCard,
+    Tabs,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
-import { Edit, Delete } from '@openmetadata/ui-core-components/icons';
+import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { isUndefined } from 'lodash';
-import type { Key } from 'react-aria-components';
 import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import {
+    OperationPermission,
+    ResourceEntity
+} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../../../enums/entity.enum';
+import { Policy } from '../../../../../../generated/entity/policies/policy';
+import { Role } from '../../../../../../generated/entity/teams/role';
+import { EntityReference } from '../../../../../../generated/entity/type';
+import {
+    getPolicies,
+    getRoleByName,
+    patchRole
+} from '../../../../../../rest/rolesAPIV1';
+import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import {
+    showErrorToast,
+    showSuccessToast
+} from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
-import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../../../enums/entity.enum';
-import { EntityReference } from '../../../../../../generated/entity/type';
-import { Role } from '../../../../../../generated/entity/teams/role';
-import { Policy } from '../../../../../../generated/entity/policies/policy';
-import {
-  getPolicies,
-  getRoleByName,
-  patchRole,
-} from '../../../../../../rest/rolesAPIV1';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../../../../utils/ToastUtils';
 import type { AccessControlView } from './AccessControlPanel';
 
 type RoleTab = 'policies' | 'teams' | 'users';
@@ -223,7 +223,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   t,
 }) => (
   <Box className='tw:mb-4' direction="col">
-    <Box align='center' gap={2} direction="row">
+    <Box align='center' direction="row" gap={2}>
       <Typography className="tw:text-primary" weight="medium">
         {t('label.description')}
       </Typography>

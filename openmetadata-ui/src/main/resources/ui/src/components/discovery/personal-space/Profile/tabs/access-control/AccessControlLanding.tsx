@@ -13,10 +13,10 @@
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import {
-  AuditLogs as AuditLogsIcon,
-  PermissionDebugger as PermissionDebuggerIcon,
-  Policy as PolicyIcon,
-  Role as RoleIcon,
+    AuditLogs as AuditLogsIcon,
+    PermissionDebugger as PermissionDebuggerIcon,
+    Policy as PolicyIcon,
+    Role as RoleIcon
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -12,19 +12,20 @@
  */
 
 import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Typography,
+    Box,
+    EmptyPlaceholder,
+    Skeleton,
+    Typography
 } from '@openmetadata/ui-core-components';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
 import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  ChangeDescription,
-  FieldChange,
+    ChangeDescription,
+    FieldChange
 } from '../../generated/type/changeEvent';
 import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
@@ -32,16 +33,16 @@ import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
-  getDomainPath,
-  getTagPath,
-  getTeamsWithFqnPath,
-  getUserPath,
+    getDomainPath,
+    getTagPath,
+    getTeamsWithFqnPath,
+    getUserPath
 } from '../../utils/RouterUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
-  AuditLogListItemProps,
-  AuditLogListProps,
+    AuditLogListItemProps,
+    AuditLogListProps
 } from './AuditLogList.interface';
 import './AuditLogList.less';
 
@@ -642,7 +643,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   );
 };
 
-const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
+const AuditLogList: FC<AuditLogListProps> = ({
+  logs,
+  isLoading,
+  hasActiveSearch,
+  hasActiveFilters,
+  onClearFilters,
+}) => {
   const { t } = useTranslation();
 
   if (isLoading) {
@@ -657,8 +664,8 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
               <Box className="tw:flex tw:gap-3 tw:w-full" direction="row">
                 <Skeleton
                   className="tw:shrink-0 skeleton-avatar"
-                  variant="circular"
                   height={32}
+                  variant="circular"
                   width={32}
                 />
                 <Box className="tw:flex-1" direction="col" gap={1}>
@@ -675,15 +682,43 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
   }
 
   if (logs.length === 0) {
+    const clearAction = onClearFilters
+      ? [
+          {
+            color: 'primary' as const,
+            key: 'clear',
+            label: t('label.clear-entity', {
+              entity: t('label.all-lowercase'),
+            }),
+            onPress: onClearFilters,
+          },
+        ]
+      : undefined;
+
     return (
       <div className="audit-log-list-container" data-testid="audit-log-list">
-        <div className="audit-log-list-header">
-          <Typography className="header-text">
-            {t('label.event-plural')}
-          </Typography>
-        </div>
         <div className="audit-log-list empty">
-          <EmptyPlaceholder title={t('message.no-data-found')} />
+          {hasActiveSearch ? (
+            <EmptyPlaceholder
+              actions={clearAction}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
+            />
+          ) : hasActiveFilters ? (
+            <EmptyPlaceholder
+              actions={clearAction}
+              description={t('message.no-results-for-filters-description')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-result-for-these-filter-plural')}
+            />
+          ) : (
+            <EmptyPlaceholder
+              description={t('message.no-audit-logs-description')}
+              title={t('label.no-audit-logs-yet')}
+              variant="blank"
+            />
+          )}
         </div>
       </div>
     );

@@ -25,22 +25,22 @@ import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
-  EXTENSION_POINTS,
-  PluginEntityDetailsContext,
-  TabContribution,
+    EXTENSION_POINTS,
+    PluginEntityDetailsContext,
+    TabContribution
 } from '../../../../utils/ExtensionPointTypes';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
-  DEFAULT_PROFILE_NAV_ID,
-  ProfileHeaderOverride,
-  ProfileNavGroup,
-  ProfileNavId,
-  ProfileNavItem,
-  PROFILE_NAV_GROUP_LABEL,
-  PROFILE_NAV_ITEMS,
+    DEFAULT_PROFILE_NAV_ID,
+    ProfileHeaderOverride,
+    ProfileNavGroup,
+    ProfileNavId,
+    ProfileNavItem,
+    PROFILE_NAV_GROUP_LABEL,
+    PROFILE_NAV_ITEMS
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
 

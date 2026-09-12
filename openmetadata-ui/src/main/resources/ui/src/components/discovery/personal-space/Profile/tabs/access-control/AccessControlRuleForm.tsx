@@ -12,40 +12,40 @@
  */
 
 import {
-  Autocomplete,
-  Box,
-  Input,
-  Select,
-  SelectItemType,
-  Typography,
+    Autocomplete,
+    Box,
+    Input,
+    Select,
+    SelectItemType,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
-import type { Key } from 'react-aria-components';
 import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    FC,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
-import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
-  Effect,
-  Operation,
-  Rule,
+    Effect,
+    Operation,
+    Rule
 } from '../../../../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { Function } from '../../../../../../generated/type/function';
 import {
-  getPolicyFunctions,
-  getPolicyResources,
-  validateRuleCondition,
+    getPolicyFunctions,
+    getPolicyResources,
+    validateRuleCondition
 } from '../../../../../../rest/rolesAPIV1';
 import { ALL_TYPE_RESOURCE_LIST } from '../../../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 
 export interface AccessControlRuleFormProps {
   ruleData: Rule;

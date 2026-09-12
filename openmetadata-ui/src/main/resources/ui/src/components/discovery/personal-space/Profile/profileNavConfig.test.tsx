@@ -31,11 +31,11 @@ jest.mock('./tabs/access-control/AccessControlPanel', () => ({
 }));
 
 import {
-  DEFAULT_PROFILE_NAV_ID,
-  getProfileNavItem,
-  PROFILE_NAV_GROUP_LABEL,
-  PROFILE_NAV_GROUP_ORDER,
-  PROFILE_NAV_ITEMS,
+    DEFAULT_PROFILE_NAV_ID,
+    getProfileNavItem,
+    PROFILE_NAV_GROUP_LABEL,
+    PROFILE_NAV_GROUP_ORDER,
+    PROFILE_NAV_ITEMS
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
@@ -52,7 +52,9 @@ describe('profileNavConfig', () => {
     const ids = new Set<string>();
     PROFILE_NAV_ITEMS.forEach((item) => {
       expect(ids.has(item.id)).toBe(false);
+
       ids.add(item.id);
+
       expect(typeof item.icon).toBe('function');
       expect(item.label).toMatch(/^(label|message)\./);
       expect(item.description).toMatch(/^(label|message)\./);

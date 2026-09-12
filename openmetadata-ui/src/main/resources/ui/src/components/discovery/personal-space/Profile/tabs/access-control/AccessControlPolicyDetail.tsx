@@ -12,59 +12,57 @@
  */
 
 import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-  Input,
-  Table,
-  TableCard,
-  Tabs,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    EmptyPlaceholder,
+    Input,
+    Table,
+    TableCard,
+    Tabs,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import {
-  Dispatch,
-  FC,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+import React, {
+    Dispatch,
+    FC,
+    SetStateAction,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission, ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../../../enums/entity.enum';
+import {
+    Effect,
+    Rule
+} from '../../../../../../generated/api/policies/createPolicy';
+import { Policy } from '../../../../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../../../../generated/entity/type';
+import {
+    getPolicyByName,
+    patchPolicy
+} from '../../../../../../rest/rolesAPIV1';
+import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import {
+    showErrorToast,
+    showSuccessToast
+} from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
-import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../../../enums/entity.enum';
-import {
-  Effect,
-  Rule,
-} from '../../../../../../generated/api/policies/createPolicy';
-import { EntityReference } from '../../../../../../generated/entity/type';
-import { Policy } from '../../../../../../generated/entity/policies/policy';
-import {
-  getPolicyByName,
-  patchPolicy,
-} from '../../../../../../rest/rolesAPIV1';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../../../../utils/ToastUtils';
-import AccessControlRuleForm from './AccessControlRuleForm';
 import type { AccessControlView } from './AccessControlPanel';
+import AccessControlRuleForm from './AccessControlRuleForm';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';
@@ -114,7 +112,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   t,
 }) => (
   <Box className="tw:mb-4" direction="col">
-    <Box direction="row" align="center" gap={2}>
+    <Box align="center" direction="row" gap={2}>
       <Typography className="tw:text-primary" weight="medium">
         {t('label.description')}
       </Typography>
@@ -490,7 +488,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
 
 // ─── Business-logic hook ──────────────────────────────────────────────────────
 
-// eslint-disable-next-line sonarjs/cyclomatic-complexity
+ 
 const usePolicyDetail = (fqn: string) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -701,7 +699,7 @@ interface AccessControlPolicyDetailProps {
   onSetHeaderTitleSuffix?: (titleSuffix: React.ReactNode) => void;
 }
 
-// eslint-disable-next-line sonarjs/cyclomatic-complexity
+ 
 const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   fqn,
   onNavigate,

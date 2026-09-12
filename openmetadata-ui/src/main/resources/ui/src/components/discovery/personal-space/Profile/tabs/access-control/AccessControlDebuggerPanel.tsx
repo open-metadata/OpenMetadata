@@ -12,34 +12,31 @@
  */
 
 import {
-  Box,
-  Card,
-  Button,
-  Input,
-  Select,
-  SelectItemType,
-  Typography,
+    Box, Button, Card, Input,
+    Select,
+    SelectItemType,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../../../../common/Loader/Loader';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
-  evaluatePermission,
-  getPermissionDebugInfo,
-  PermissionDebugInfo,
-  PermissionEvaluationDebugInfo,
+    evaluatePermission,
+    getPermissionDebugInfo,
+    PermissionDebugInfo,
+    PermissionEvaluationDebugInfo
 } from '../../../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import AccessControlUserPermissions from './AccessControlUserPermissions';
+import Loader from '../../../../../common/Loader/Loader';
 import {
-  PERMISSION_OPERATIONS,
-  PERMISSION_RESOURCES,
+    PERMISSION_OPERATIONS,
+    PERMISSION_RESOURCES
 } from '../../../../../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.constants';
+import AccessControlUserPermissions from './AccessControlUserPermissions';
 
 const RESOURCE_ITEMS: SelectItemType[] = PERMISSION_RESOURCES.map((r) => ({
   id: r,
@@ -213,7 +210,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
           </Box>
 
           {evaluationInfo.summary && (
-            <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="row" wrap='wrap' gap={4}>
+            <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="row" gap={4} wrap='wrap'>
               <Typography className="tw:text-sm tw:text-secondary">
                 {`${t('label.policies-evaluated')}: ${evaluationInfo.summary.totalPoliciesEvaluated}`}
               </Typography>
