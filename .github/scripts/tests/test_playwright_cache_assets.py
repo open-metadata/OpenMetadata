@@ -564,9 +564,23 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     # populate-playwright-caches.yml is the SINGLE main-scoped writer that
     # replaces them, and its warm job must stop before the shards.
     warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
-    assert "warm_caches_only: true" in warm
+    # Two depths, one writer. `push` stays warm-only — the next queue entry is
+    # waiting on those caches and must not wait out a 58-minute shard run.
+    # Every other event (the 2-hourly `schedule` main lane, and dispatch) runs
+    # the shards, which is what gives `main` a health signal of its own.
+    assert "warm_caches_only: ${{ github.event_name == 'push' }}" in warm
     assert "uses: ./.github/workflows/playwright-e2e-reusable.yml" in warm
     assert "!inputs.warm_caches_only" in workflow
+
+    # The depths must not cancel each other: a push-warm landing mid-lane
+    # would otherwise kill the lane run, and main would go back to having no
+    # signal at all.
+    warm_job = warm.split("  warm-fixture:", 1)[1].split("\n  main-health:", 1)[0]
+    assert (
+        "group: populate-playwright-caches-fixture-"
+        "${{ github.event_name == 'push' && 'warm' || 'lane' }}" in warm_job
+    )
+    assert "cancel-in-progress: ${{ github.event_name == 'push' }}" in warm_job
 
     # The push trigger must stay unfiltered: the fixture and distribution
     # fingerprints span far more than the apt/yarn/browser key inputs, and a
