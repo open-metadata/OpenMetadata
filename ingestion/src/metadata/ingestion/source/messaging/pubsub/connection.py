@@ -16,6 +16,8 @@ import os
 from dataclasses import dataclass
 
 from google.api_core.exceptions import GoogleAPIError
+from google.auth import default as auth_default
+from google.auth import impersonated_credentials
 from google.cloud import pubsub_v1
 from google.pubsub_v1.services.schema_service import SchemaServiceClient
 
@@ -36,7 +38,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import GOOGLE_CLOUD_SCOPES, set_google_credentials
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -107,12 +109,29 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
                 if PUBSUB_EMULATOR_HOST in os.environ:
                     del os.environ[PUBSUB_EMULATOR_HOST]
 
-            publisher = pubsub_v1.PublisherClient()
-            subscriber = pubsub_v1.SubscriberClient()
+            # Build the credential object; wrap with impersonated credentials when a
+            # target service account is configured so all Pub/Sub API calls run under
+            # the correct identity rather than falling back to ADC.
+            gcp_credentials = None
+            if not connection.useEmulator and connection.gcpConfig:
+                gcp_credentials, _ = auth_default()
+                impersonate = connection.gcpConfig.gcpImpersonateServiceAccount
+                if impersonate and impersonate.impersonateServiceAccount:
+                    target = impersonate.impersonateServiceAccount.strip()
+                    if target:
+                        gcp_credentials = impersonated_credentials.Credentials(
+                            source_credentials=gcp_credentials,
+                            target_principal=target,
+                            target_scopes=GOOGLE_CLOUD_SCOPES,
+                            lifetime=impersonate.lifetime or 3600,
+                        )
+
+            publisher = pubsub_v1.PublisherClient(credentials=gcp_credentials)
+            subscriber = pubsub_v1.SubscriberClient(credentials=gcp_credentials)
 
             schema_client = None
             if connection.schemaRegistryEnabled and not connection.useEmulator:
-                schema_client = SchemaServiceClient()
+                schema_client = SchemaServiceClient(credentials=gcp_credentials)
 
             project_id = _get_project_id(connection)
             if not project_id:
