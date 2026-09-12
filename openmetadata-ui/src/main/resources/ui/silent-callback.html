@@ -1,0 +1,38 @@
+<!--
+  Copyright 2026 Collate.
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!--
+  Dedicated HTML entry for the oidc-client silent-refresh iframe route.
+
+  Kept a separate Vite entry (not the SPA index.html) so its dependency
+  graph is exactly `oidc-client` + this bootstrap — no React, no antd, no
+  application vendor chunks. Rollup's `experimentalMinChunkSize` merger
+  will not fold shared app-utils into it because those helpers reach the
+  main entry chunk instead, keeping this entry a pure oidc-client shim.
+  Scenario 7 of `SsoScenarios.spec.ts` caps the total JS payload on
+  `/silent-callback` at 500 KB — an assertion that failed as long as the
+  URL rendered `index.html` and inherited its modulepreload set.
+
+  See `OpenMetadataAssetServlet` for the `/silent-callback` → this file
+  routing (with and without the deploy-time base-path prefix).
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Silent Callback</title>
+  </head>
+  <body>
+    <div aria-hidden="true"></div>
+    <script type="module" src="/src/silentCallbackEntry.ts"></script>
+  </body>
+</html>

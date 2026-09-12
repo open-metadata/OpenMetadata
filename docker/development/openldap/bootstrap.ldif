@@ -1,0 +1,39 @@
+# Copyright 2026 Collate
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Bootstrap tree for the LDAP SSO Playwright fixture.
+# Loaded by bitnami/openldap via LDAP_CUSTOM_LDIF_DIR=/ldifs at container init.
+# Password is written in plaintext; the LDAP simple bind will compare it byte-
+# for-byte against the stored userPassword attribute (no hashing required for
+# the ephemeral E2E container). Do not reuse this LDIF in any real environment.
+
+dn: dc=openmetadata,dc=org
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: OpenMetadata
+dc: openmetadata
+
+dn: ou=users,dc=openmetadata,dc=org
+objectClass: top
+objectClass: organizationalUnit
+ou: users
+
+dn: uid=ldapuser,ou=users,dc=openmetadata,dc=org
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: ldapuser
+cn: LDAP User
+sn: User
+mail: ldapuser@openmetadata.org
+userPassword: ldappass

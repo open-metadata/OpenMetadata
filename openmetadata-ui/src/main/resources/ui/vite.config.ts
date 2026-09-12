@@ -171,6 +171,16 @@ export default defineConfig(async ({ mode }) => {
       return 'vendor-react';
     }
 
+    // `oidc-client` is the only vendor the /silent-callback entry path
+    // needs. Pin it into its own chunk so the min-chunk-size merger
+    // cannot fold it into vendor-antd — that merge makes vendor-antd a
+    // static sibling of the entry chunk and pulls a >1 MB Antd chunk
+    // into the silent-refresh iframe, violating the scenario-7 budget
+    // in SsoScenarios.spec.
+    if (packageName === 'oidc-client') {
+      return 'vendor-oidc-client';
+    }
+
     if (
       packageName.startsWith('@react-aria/') ||
       packageName.startsWith('@react-stately/') ||
@@ -439,6 +449,32 @@ export default defineConfig(async ({ mode }) => {
       // count, and we're not the right project to be carrying it.
       modulePreload: { polyfill: false },
       rollupOptions: {
+        // `/silent-callback` renders a dedicated HTML entry so its
+        // dependency graph is exactly `oidc-client` + the tiny
+        // `silentCallbackEntry.ts` — no React, no antd, none of the
+        // shared app-utils that Rollup's `experimentalMinChunkSize`
+        // merger was folding into the small SPA entry (which pulled
+        // `vendor-antd` in as a `<link rel=modulepreload>` sibling and
+        // broke scenario 7 of SsoScenarios.spec). Playwright's coarse
+        // E2E build keeps a single entry — the merged
+        // `app-e2e-runtime`/`vendor-e2e-framework` layout depends on it
+        // (a second entry produces `Circular chunk: vendor-e2e-framework
+        // -> app-e2e-runtime -> vendor-e2e-framework`). We spread the
+        // multi-input record in only when the coarse-bundle mode is off;
+        // even an explicit `input: undefined` triggers Vite's default
+        // multi-page discovery of every root `.html`, which reintroduces
+        // the second entry we mean to avoid.
+        ...(isPlaywrightBundle
+          ? {}
+          : {
+              input: {
+                main: path.resolve(__dirname, 'index.html'),
+                silentCallback: path.resolve(
+                  __dirname,
+                  'silent-callback.html'
+                ),
+              },
+            }),
         onwarn(warning, warn) {
           if (isPlaywrightBundle && warning.code === 'CIRCULAR_CHUNK') {
             throw new Error(warning.message);

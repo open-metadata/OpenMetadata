@@ -102,7 +102,17 @@ export const applyProviderConfig = async (
     data: merged,
   });
 
-  expect(response.status()).toBe(200);
+  if (response.status() !== 200) {
+    // Surface the server's rejection reason instead of a bare
+    // `Received: 400`. Fixtures per-provider each land in different
+    // schema branches (basic vs oidc vs saml vs ldap); without the body
+    // it's guesswork which field the server disliked.
+    const body = await response.text().catch(() => '<no body>');
+
+    throw new Error(
+      `[applyProviderConfig] PUT ${SECURITY_CONFIG_ENDPOINT} → ${response.status()}. Body: ${body}`
+    );
+  }
 };
 
 export const restoreSecurityConfig = async (

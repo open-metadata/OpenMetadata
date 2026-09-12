@@ -30,7 +30,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockHandleResetPassword = jest.fn();
-jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/BasicAuthContext', () => {
   return {
     useBasicAuth: jest.fn().mockImplementation(() => ({
       handleResetPassword: mockHandleResetPassword,

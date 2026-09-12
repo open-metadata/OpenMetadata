@@ -16,7 +16,7 @@ import {
 } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { render, screen } from '@testing-library/react';
-import { act } from 'react';
+import React, { act } from 'react';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import MsalAuthenticator from './MsalAuthenticator';
@@ -37,14 +37,11 @@ jest.mock('../../../utils/AuthProvider.util', () => ({
   })),
 }));
 
-const updateRenewToken = jest.fn();
+const registerRenewer = jest.fn();
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({
-      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
-    }),
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
   },
 }));
 
@@ -223,6 +220,107 @@ describe('MsalAuthenticator', () => {
     expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
   });
 
+  it('getRenewer normalizes msal response to Renewer contract on the silent path', async () => {
+    const expiresOn = new Date(Date.now() + 5 * 60_000);
+    mockInstance.acquireTokenSilent.mockResolvedValueOnce({
+      idToken: 'azure-fresh',
+      expiresOn,
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    expect(renewer).toBeDefined();
+
+    const result = await renewer?.();
+
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true })
+    );
+    expect(mockInstance.acquireTokenPopup).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: 'azure-fresh',
+      expiresAt: expiresOn.getTime(),
+    });
+  });
+
+  it('getRenewer falls back to acquireTokenPopup on InteractionRequiredAuthError', async () => {
+    const expiresOn = new Date(Date.now() + 5 * 60_000);
+    const interactionError = new InteractionRequiredAuthError(
+      'interaction_required'
+    );
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
+    mockInstance.acquireTokenPopup.mockResolvedValueOnce({
+      idToken: 'azure-popup-fresh',
+      expiresOn,
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+    const result = await renewer?.();
+
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: 'azure-popup-fresh',
+      expiresAt: expiresOn.getTime(),
+    });
+  });
+
+  it('getRenewer propagates the error when the popup fallback also fails', async () => {
+    const interactionError = new InteractionRequiredAuthError(
+      'interaction_required'
+    );
+    const popupError = new Error('popup_failed');
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
+    mockInstance.acquireTokenPopup.mockRejectedValueOnce(popupError);
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    await expect(renewer?.()).rejects.toThrow('popup_failed');
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
+  });
+
+  it('getRenewer throws when the msal response has no expiresOn', async () => {
+    mockInstance.acquireTokenSilent.mockResolvedValueOnce({
+      idToken: 'azure-fresh',
+      expiresOn: null,
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    await expect(renewer?.()).rejects.toThrow(
+      'MSAL renewal returned no idToken or expiresOn'
+    );
+  });
+
   it('should show loader when interaction is in progress', () => {
     (useMsal as jest.Mock).mockReturnValue({
       instance: mockInstance,
@@ -240,24 +338,29 @@ describe('MsalAuthenticator', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  // Regression: renewer registration now lives here instead of in the
-  // parent AuthProvider's ref-deps useEffect.
-  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
-    const { unmount } = render(
-      <MsalAuthenticator
-        {...mockProps}
-        ref={(ref) => (authenticatorRef = ref)}
-      />
-    );
+  it('handleRedirect ref-guard blocks the StrictMode double effect invocation', async () => {
+    // React.StrictMode fires mount effects twice in dev, which used to
+    // send two concurrent instance.handleRedirectPromise() calls for the
+    // same OAuth redirect. Rendering inside <StrictMode> reproduces that
+    // shape without a real MSAL instance, and the ref-guard means only
+    // the first call actually hits the SDK. Regressing this brings the
+    // double /users/loggedInUser fetch back.
+    mockInstance.handleRedirectPromise.mockResolvedValueOnce({
+      account: { username: 'test@example.com' },
+    });
 
-    expect(updateRenewToken).toHaveBeenCalled();
+    await act(async () => {
+      render(
+        <React.StrictMode>
+          <MsalAuthenticator
+            {...mockProps}
+            ref={(ref) => (authenticatorRef = ref)}
+          />
+        </React.StrictMode>
+      );
+    });
 
-    const registered = updateRenewToken.mock.calls[0][0];
-
-    expect(typeof registered).toBe('function');
-
-    unmount();
-
-    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
+    expect(mockInstance.handleRedirectPromise).toHaveBeenCalledTimes(1);
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);
   });
 });
