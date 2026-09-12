@@ -15,7 +15,6 @@ Unit tests for NATS connector
 import asyncio
 import base64
 import json
-import os
 import ssl
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -448,46 +447,38 @@ class TestNatsBuildConnectOpts:
             keyfile="/tmp/key.pem",
         )
 
-    def test_failed_temp_certificate_write_removes_file(self, tmp_path):
-        cert_path = tmp_path / "partial-cert.pem"
-        fd = os.open(cert_path, os.O_CREAT | os.O_WRONLY)
+    def test_temp_certificate_is_written_and_tracked(self):
+        temp_files: list[str] = []
 
-        with (
-            patch(
-                "metadata.ingestion.source.messaging.nats.connection.tempfile.mkstemp",
-                return_value=(fd, str(cert_path)),
-            ),
-            patch(
-                "metadata.ingestion.source.messaging.nats.connection.os.write",
-                side_effect=OSError("disk full"),
-            ),
-            pytest.raises(OSError, match="disk full"),
-        ):
-            _write_temp_cert("certificate", [])
+        cert_path = _write_temp_cert("certificate-content", temp_files)
 
-        assert not Path(cert_path).exists()
+        try:
+            assert Path(cert_path).read_text(encoding="utf-8") == "certificate-content"
+            assert cert_path.endswith(".pem")
+            assert temp_files == [cert_path]
+        finally:
+            Path(cert_path).unlink(missing_ok=True)
 
-    def test_zero_byte_certificate_write_reports_cleanup_failure(self, tmp_path):
-        cert_path = tmp_path / "partial-cert.pem"
-        fd = os.open(cert_path, os.O_CREAT | os.O_WRONLY)
+    def test_failed_temp_certificate_write_is_not_tracked(self):
+        """
+        A path only joins the cleanup list once it exists.
+
+        Removing the partial file is `write_secret_temp_file`'s job and is covered
+        in tests/unit/utils/test_secure_tempfile.py; what matters here is that a
+        failed write leaves nothing for teardown to chase.
+        """
         temp_files: list[str] = []
 
         with (
             patch(
-                "metadata.ingestion.source.messaging.nats.connection.tempfile.mkstemp",
-                return_value=(fd, str(cert_path)),
+                "metadata.ingestion.source.messaging.nats.connection.write_secret_temp_file",
+                side_effect=OSError("disk full"),
             ),
-            patch(
-                "metadata.ingestion.source.messaging.nats.connection.os.write",
-                return_value=0,
-            ),
-            patch.object(Path, "unlink", side_effect=OSError("permission denied")),
-            pytest.raises(OSError, match="Could not write"),
+            pytest.raises(OSError, match="disk full"),
         ):
             _write_temp_cert("certificate", temp_files)
 
-        assert temp_files == [str(cert_path)]
-        cert_path.unlink()
+        assert temp_files == []
 
     def test_cleanup_retains_certificates_that_cannot_be_removed(self):
         temp_files = ["/tmp/client.pem"]

@@ -64,6 +64,7 @@
       "description": "PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow. Required when authType is OAuth2Credentials.",
       "type": "string",
       "format": "password",
+      "accept": [".pem", ".key"],
       "uiFieldType": "fileOrInput"
     },
     "tokenUrl": {

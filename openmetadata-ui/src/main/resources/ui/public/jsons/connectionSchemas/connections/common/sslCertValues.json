@@ -9,19 +9,36 @@
       "title": "CA Certificate Value",
       "description": "CA Certificate Value",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "accept": [
+        ".pem",
+        ".crt",
+        ".cer"
+      ],
+      "uiFieldType": "fileOrInput"
     },
     "clientCertValue": {
       "title": "Client Certificate Value",
       "description": "Client Certificate Value",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "accept": [
+        ".pem",
+        ".crt",
+        ".cer"
+      ],
+      "uiFieldType": "fileOrInput"
     },
     "privateKeyValue": {
       "title": "Private Key Value",
       "description": "Private Key Value",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "accept": [
+        ".pem",
+        ".key"
+      ],
+      "uiFieldType": "fileOrInput"
     },
     "stagingDir": {
       "title": "Staging Directory Path",

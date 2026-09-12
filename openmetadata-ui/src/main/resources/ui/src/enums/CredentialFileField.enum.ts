@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-export enum CertificationInputType {
-  FILE_UPLOAD = 'file-upload',
-  FILE_PATH = 'file-path',
+/**
+ * Schema markers that turn a `format: password` string into a credential-file
+ * field: `file` is upload-only, `fileOrInput` also accepts pasted content.
+ */
+export enum CredentialFileFieldType {
+  FILE = 'file',
+  FILE_OR_INPUT = 'fileOrInput',
 }
