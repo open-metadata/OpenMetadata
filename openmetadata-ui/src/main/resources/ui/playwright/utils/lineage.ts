@@ -276,6 +276,8 @@ export const deleteEdge = async (
   toNode: EntityClass
 ) => {
   const addPipeline = page.getByTestId('add-pipeline');
+  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
+  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   // clickEdgeBetweenNodes fires a synthetic click on a react-flow edge label,
   // and that takes no actionability wait: when the graph re-lays out between
@@ -286,6 +288,47 @@ export const deleteEdge = async (
   await expect(async () => {
     await clickEdgeBetweenNodes(page, fromNode, toNode, true);
     await expect(addPipeline).toBeVisible({ timeout: 5_000 });
+
+    // EdgeInteractionOverlay renders from the context's selectedEdge and pins
+    // its button to that edge's midpoint; nothing else in the DOM names the
+    // selection. Overlapping curves can hand a coordinate click to a neighbour,
+    // so check the toolbar came up on the marker we aimed at -- otherwise the
+    // delete below removes an edge this call never named and the loop only
+    // finds out several iterations later. Compared against every marker rather
+    // than a pixel budget, so it does not depend on a tuned threshold.
+    const nearestToToolbar = await page.evaluate(() => {
+      const toolbar = document.querySelector('[data-testid="add-pipeline"]');
+      if (!toolbar) {
+        return '';
+      }
+      const bounds = toolbar.getBoundingClientRect();
+      const toolbarX = bounds.x + bounds.width / 2;
+      const toolbarY = bounds.y + bounds.height / 2;
+      let nearest = '';
+      let shortest = Number.POSITIVE_INFINITY;
+      for (const marker of Array.from(
+        document.querySelectorAll<HTMLElement>('[data-edge-state]')
+      )) {
+        const box = marker.getBoundingClientRect();
+        const distance = Math.hypot(
+          box.x + box.width / 2 - toolbarX,
+          box.y + box.height / 2 - toolbarY
+        );
+        if (distance < shortest) {
+          shortest = distance;
+          nearest = marker.getAttribute('data-testid') ?? '';
+        }
+      }
+
+      return nearest;
+    });
+    expect(
+      [
+        `pipeline-label-${fromNodeFqn}-${toNodeFqn}`,
+        `edge-${fromNodeFqn}-${toNodeFqn}`,
+      ],
+      'the edge toolbar opened on a different edge'
+    ).toContain(nearestToToolbar);
   }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
 
   await addPipeline.click();
@@ -310,8 +353,6 @@ export const deleteEdge = async (
   // so a stale midpoint can select a neighbour: without this the run deletes
   // some other edge, reports success, and only fails several iterations later
   // when the edge it skipped is asked for and no longer exists.
-  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
-  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
   await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, true)).toHaveCount(0);
   await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, false)).toHaveCount(0);
 };
