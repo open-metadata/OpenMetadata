@@ -107,16 +107,43 @@ test.describe(
       await openDetailsPage(page);
 
       await expect(page.getByTestId('graph-container')).toBeVisible();
-      await expect(page.getByTestId('parameter-container')).toBeVisible();
 
+      // TCD-10a moved the configuration into the rail, so the chart is the
+      // first block in the main column and the card sits to its right.
       const chart = await page.getByTestId('graph-container').boundingBox();
-      const parameters = await page
-        .getByTestId('parameter-container')
+      const configuration = await page
+        .getByTestId('test-case-configuration-card')
         .boundingBox();
 
       expect(chart).not.toBeNull();
-      expect(parameters).not.toBeNull();
-      expect(chart?.y).toBeLessThan(Number(parameters?.y));
+      expect(configuration).not.toBeNull();
+      expect(configuration?.x).toBeGreaterThan(Number(chart?.x));
+    });
+
+    test('renders the configuration card for a table test', async ({
+      page,
+    }) => {
+      await openDetailsPage(page);
+
+      // TableClass seeds a `tableRowCountToBeBetween` test on the table
+      // itself — a table test with minValue 12 / maxValue 34.
+      const card = page.getByTestId('test-case-configuration-card');
+
+      await expect(card).toBeVisible();
+      await expect(page.getByTestId('test-case-rail')).toContainText(
+        'Configuration'
+      );
+      await expect(card.getByTestId('configuration-category')).toHaveText(
+        'Table test'
+      );
+
+      const minRow = card.getByTestId('configuration-parameter-minValue');
+      const maxRow = card.getByTestId('configuration-parameter-maxValue');
+
+      await expect(minRow).toContainText('minValue');
+      await expect(minRow).toContainText('12');
+      await expect(maxRow).toContainText('maxValue');
+      await expect(maxRow).toContainText('34');
     });
 
     test('aligns the page header card with the tab body content', async ({
