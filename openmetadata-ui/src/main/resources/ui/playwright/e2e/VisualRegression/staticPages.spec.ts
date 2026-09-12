@@ -61,7 +61,16 @@ const PAGES: {
   },
   { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },
-  { name: 'database-services', route: '/settings/services/databases' },
+  {
+    name: 'database-services',
+    route: '/settings/services/databases',
+    // Seeded database services carry per-run random name suffixes
+    // (pw-database-service-<hex>), so the Name column text differs every run
+    // (~2-3% of pixels) while the page chrome and the fixed sample services
+    // stay deterministic. A small ratio absorbs that name variance without
+    // re-minting the baseline each run.
+    maxDiffPixelRatio: 0.05,
+  },
   { name: 'data-quality', route: '/data-quality' },
   {
     name: 'incident-manager',
