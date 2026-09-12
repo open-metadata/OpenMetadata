@@ -56,7 +56,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   ];
 
   const glossary = new Glossary();
-  const createdTerms: { term: GlossaryTerm; status: string }[] = [];
+  let createdTerms: { term: GlossaryTerm; status: string }[] = [];
 
   // Helper to set term status via PATCH API
   const setTermStatus = async (
@@ -198,6 +198,8 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    createdTerms = [];
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);

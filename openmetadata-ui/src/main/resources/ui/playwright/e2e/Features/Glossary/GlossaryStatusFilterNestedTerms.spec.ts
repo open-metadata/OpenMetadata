@@ -54,10 +54,10 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   // Multi-children: Parent (Approved) -> [Child1 (Approved), Child2 (Draft), Child3 (In Review), Child4 (Rejected)]
   let multiChildrenParent: GlossaryTerm;
-  const multiChildren: GlossaryTerm[] = [];
+  let multiChildren: GlossaryTerm[] = [];
 
   // Deep hierarchy: 5 levels with different statuses
-  const deepTerms: GlossaryTerm[] = [];
+  let deepTerms: GlossaryTerm[] = [];
 
   // Helper to set term status via PATCH API
   const setTermStatus = async (
@@ -228,6 +228,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    multiChildren = [];
+    deepTerms = [];
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
