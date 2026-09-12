@@ -19,6 +19,9 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
+import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
@@ -31,6 +34,14 @@ public class UserTokenCache {
           .maximumSize(1000)
           .expireAfterWrite(2, TimeUnit.MINUTES)
           .build(new UserTokenLoader());
+  // Remote-pod hook, registered with CacheBundle: a peer that revoked a personal access token
+  // publishes the owner's name as fqn, and this pod drops its cached token set for that user.
+  private static final Invalidatable INVALIDATOR =
+      (type, id, fqn) -> {
+        if (CacheInvalidationPubSub.TYPE_USER_TOKEN.equals(type) && fqn != null) {
+          CACHE.invalidate(fqn);
+        }
+      };
   private static volatile boolean initialized = false;
   private static TokenRepository tokenRepository;
 
@@ -57,11 +68,28 @@ public class UserTokenCache {
     }
   }
 
+  public static Invalidatable invalidator() {
+    return INVALIDATOR;
+  }
+
   public static void invalidateToken(String userName) {
     try {
       CACHE.invalidate(userName);
+      publishRevocation(userName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate User token cache for User {}", userName, ex);
+    }
+  }
+
+  /** See {@code BotTokenCache#publishRevocation}: same per-JVM cache, same cross-pod gap. */
+  private static void publishRevocation(String userName) {
+    CacheInvalidationPubSub pubSub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubSub != null) {
+      pubSub.publish(
+          CacheInvalidationPubSub.TYPE_USER_TOKEN,
+          null,
+          userName,
+          CacheInvalidationPubSub.OP_REVOKE);
     }
   }
 

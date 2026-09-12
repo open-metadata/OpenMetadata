@@ -95,6 +95,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       registerInvalidatable(org.openmetadata.service.aicontext.PersonaContextCache.invalidator());
       registerInvalidatable(
           org.openmetadata.service.security.policyevaluator.SubjectCache.invalidator());
+      // Per-JVM credential caches JwtFilter consults on every bot-token / PAT request. Their
+      // invalidateToken() publishes on this channel, so a revoke on one pod evicts every pod.
+      registerInvalidatable(org.openmetadata.service.security.auth.BotTokenCache.invalidator());
+      registerInvalidatable(org.openmetadata.service.security.auth.UserTokenCache.invalidator());
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -114,10 +118,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                 }
                 return;
               }
-              // Non-entity signals ride this channel too (a persona context rebuild mutates no
-              // entity). Evicting entity caches for them would bump a write epoch and force a
-              // needless reload of an entity that did not change.
-              if (!CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(msg.type())) {
+              // Non-entity signals ride this channel too (a persona context rebuild or a token
+              // revocation mutates no entity). Evicting entity caches for them would bump a write
+              // epoch and force a needless reload of an entity that did not change.
+              if (CacheInvalidationPubSub.isEntityType(msg.type())) {
                 org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
                     msg.type(), msg.id(), msg.fqn());
                 if (msg.id() != null && cachedReadBundle != null) {
