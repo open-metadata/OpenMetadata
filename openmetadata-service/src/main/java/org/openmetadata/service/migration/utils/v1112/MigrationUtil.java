@@ -9,11 +9,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -501,5 +506,255 @@ public class MigrationUtil {
     }
 
     LOG.info("Fixed {} APIEndpoint entities with incorrect FQN hash", fixedCount);
+  }
+
+  /** Fix FQN and hash for Dashboard entities that have services with dots in their names. */
+  public static void fixDashboardFqnHash(Handle handle, CollectionDAO collectionDAO) {
+    LOG.info("Starting migration to fix Dashboard FQN hash for services with dots in names");
+
+    Set<UUID> serviceIds = findServicesWithDotsInName(handle, "dashboard_service_entity");
+    if (serviceIds.isEmpty()) {
+      LOG.info("No dashboard services with dots in names found. Skipping Dashboard FQN fix.");
+      return;
+    }
+    LOG.info("Found {} dashboard services with dots in names", serviceIds.size());
+
+    int fixedCount = 0;
+    for (UUID serviceId : serviceIds) {
+      try {
+        var service = collectionDAO.dashboardServiceDAO().findEntityById(serviceId);
+        if (service == null) continue;
+
+        String serviceFqn = service.getFullyQualifiedName();
+        if (serviceFqn == null || !serviceFqn.contains("\"")) continue;
+
+        Set<UUID> dashboardIds =
+            findChildEntityIds(
+                collectionDAO, Set.of(serviceId), Entity.DASHBOARD_SERVICE, Entity.DASHBOARD);
+
+        for (UUID dashboardId : dashboardIds) {
+          try {
+            Dashboard dashboard = collectionDAO.dashboardDAO().findEntityById(dashboardId);
+            if (dashboard == null) continue;
+
+            String expectedFqn = FullyQualifiedName.add(serviceFqn, dashboard.getName());
+            String currentFqn = dashboard.getFullyQualifiedName();
+
+            if (!expectedFqn.equals(currentFqn)) {
+              LOG.debug("Fixing Dashboard FQN: {} -> {}", currentFqn, expectedFqn);
+              dashboard.setFullyQualifiedName(expectedFqn);
+              collectionDAO.dashboardDAO().update(dashboard);
+              fixedCount++;
+            }
+          } catch (Exception e) {
+            LOG.warn("Error processing Dashboard entity {}: {}", dashboardId, e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Error processing service {}: {}", serviceId, e.getMessage());
+      }
+    }
+
+    LOG.info("Fixed {} Dashboard entities with incorrect FQN hash", fixedCount);
+  }
+
+  /** Fix FQN and hash for Chart entities that have services with dots in their names. */
+  public static void fixChartFqnHash(Handle handle, CollectionDAO collectionDAO) {
+    LOG.info("Starting migration to fix Chart FQN hash for services with dots in names");
+
+    Set<UUID> serviceIds = findServicesWithDotsInName(handle, "dashboard_service_entity");
+    if (serviceIds.isEmpty()) {
+      LOG.info("No dashboard services with dots in names found. Skipping Chart FQN fix.");
+      return;
+    }
+    LOG.info("Found {} dashboard services with dots in names", serviceIds.size());
+
+    int fixedCount = 0;
+    for (UUID serviceId : serviceIds) {
+      try {
+        var service = collectionDAO.dashboardServiceDAO().findEntityById(serviceId);
+        if (service == null) continue;
+
+        String serviceFqn = service.getFullyQualifiedName();
+        if (serviceFqn == null || !serviceFqn.contains("\"")) continue;
+
+        Set<UUID> chartIds =
+            findChildEntityIds(
+                collectionDAO, Set.of(serviceId), Entity.DASHBOARD_SERVICE, Entity.CHART);
+
+        for (UUID chartId : chartIds) {
+          try {
+            Chart chart = collectionDAO.chartDAO().findEntityById(chartId);
+            if (chart == null) continue;
+
+            String expectedFqn = FullyQualifiedName.add(serviceFqn, chart.getName());
+            String currentFqn = chart.getFullyQualifiedName();
+
+            if (!expectedFqn.equals(currentFqn)) {
+              LOG.debug("Fixing Chart FQN: {} -> {}", currentFqn, expectedFqn);
+              chart.setFullyQualifiedName(expectedFqn);
+              collectionDAO.chartDAO().update(chart);
+              fixedCount++;
+            }
+          } catch (Exception e) {
+            LOG.warn("Error processing Chart entity {}: {}", chartId, e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Error processing service {}: {}", serviceId, e.getMessage());
+      }
+    }
+
+    LOG.info("Fixed {} Chart entities with incorrect FQN hash", fixedCount);
+  }
+
+  /** Fix FQN and hash for Pipeline entities that have services with dots in their names. */
+  public static void fixPipelineFqnHash(Handle handle, CollectionDAO collectionDAO) {
+    LOG.info("Starting migration to fix Pipeline FQN hash for services with dots in names");
+
+    Set<UUID> serviceIds = findServicesWithDotsInName(handle, "pipeline_service_entity");
+    if (serviceIds.isEmpty()) {
+      LOG.info("No pipeline services with dots in names found. Skipping Pipeline FQN fix.");
+      return;
+    }
+    LOG.info("Found {} pipeline services with dots in names", serviceIds.size());
+
+    int fixedCount = 0;
+    for (UUID serviceId : serviceIds) {
+      try {
+        var service = collectionDAO.pipelineServiceDAO().findEntityById(serviceId);
+        if (service == null) continue;
+
+        String serviceFqn = service.getFullyQualifiedName();
+        if (serviceFqn == null || !serviceFqn.contains("\"")) continue;
+
+        Set<UUID> pipelineIds =
+            findChildEntityIds(
+                collectionDAO, Set.of(serviceId), Entity.PIPELINE_SERVICE, Entity.PIPELINE);
+
+        for (UUID pipelineId : pipelineIds) {
+          try {
+            Pipeline pipeline = collectionDAO.pipelineDAO().findEntityById(pipelineId);
+            if (pipeline == null) continue;
+
+            String expectedFqn = FullyQualifiedName.add(serviceFqn, pipeline.getName());
+            String currentFqn = pipeline.getFullyQualifiedName();
+
+            if (!expectedFqn.equals(currentFqn)) {
+              LOG.debug("Fixing Pipeline FQN: {} -> {}", currentFqn, expectedFqn);
+              pipeline.setFullyQualifiedName(expectedFqn);
+              collectionDAO.pipelineDAO().update(pipeline);
+              fixedCount++;
+            }
+          } catch (Exception e) {
+            LOG.warn("Error processing Pipeline entity {}: {}", pipelineId, e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Error processing service {}: {}", serviceId, e.getMessage());
+      }
+    }
+
+    LOG.info("Fixed {} Pipeline entities with incorrect FQN hash", fixedCount);
+  }
+
+  /** Fix FQN and hash for Topic entities that have services with dots in their names. */
+  public static void fixTopicFqnHash(Handle handle, CollectionDAO collectionDAO) {
+    LOG.info("Starting migration to fix Topic FQN hash for services with dots in names");
+
+    Set<UUID> serviceIds = findServicesWithDotsInName(handle, "messaging_service_entity");
+    if (serviceIds.isEmpty()) {
+      LOG.info("No messaging services with dots in names found. Skipping Topic FQN fix.");
+      return;
+    }
+    LOG.info("Found {} messaging services with dots in names", serviceIds.size());
+
+    int fixedCount = 0;
+    for (UUID serviceId : serviceIds) {
+      try {
+        var service = collectionDAO.messagingServiceDAO().findEntityById(serviceId);
+        if (service == null) continue;
+
+        String serviceFqn = service.getFullyQualifiedName();
+        if (serviceFqn == null || !serviceFqn.contains("\"")) continue;
+
+        Set<UUID> topicIds =
+            findChildEntityIds(
+                collectionDAO, Set.of(serviceId), Entity.MESSAGING_SERVICE, Entity.TOPIC);
+
+        for (UUID topicId : topicIds) {
+          try {
+            Topic topic = collectionDAO.topicDAO().findEntityById(topicId);
+            if (topic == null) continue;
+
+            String expectedFqn = FullyQualifiedName.add(serviceFqn, topic.getName());
+            String currentFqn = topic.getFullyQualifiedName();
+
+            if (!expectedFqn.equals(currentFqn)) {
+              LOG.debug("Fixing Topic FQN: {} -> {}", currentFqn, expectedFqn);
+              topic.setFullyQualifiedName(expectedFqn);
+              collectionDAO.topicDAO().update(topic);
+              fixedCount++;
+            }
+          } catch (Exception e) {
+            LOG.warn("Error processing Topic entity {}: {}", topicId, e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Error processing service {}: {}", serviceId, e.getMessage());
+      }
+    }
+
+    LOG.info("Fixed {} Topic entities with incorrect FQN hash", fixedCount);
+  }
+
+  /** Fix FQN and hash for MlModel entities that have services with dots in their names. */
+  public static void fixMlModelFqnHash(Handle handle, CollectionDAO collectionDAO) {
+    LOG.info("Starting migration to fix MlModel FQN hash for services with dots in names");
+
+    Set<UUID> serviceIds = findServicesWithDotsInName(handle, "mlmodel_service_entity");
+    if (serviceIds.isEmpty()) {
+      LOG.info("No mlmodel services with dots in names found. Skipping MlModel FQN fix.");
+      return;
+    }
+    LOG.info("Found {} mlmodel services with dots in names", serviceIds.size());
+
+    int fixedCount = 0;
+    for (UUID serviceId : serviceIds) {
+      try {
+        var service = collectionDAO.mlModelServiceDAO().findEntityById(serviceId);
+        if (service == null) continue;
+
+        String serviceFqn = service.getFullyQualifiedName();
+        if (serviceFqn == null || !serviceFqn.contains("\"")) continue;
+
+        Set<UUID> mlModelIds =
+            findChildEntityIds(
+                collectionDAO, Set.of(serviceId), Entity.MLMODEL_SERVICE, Entity.MLMODEL);
+
+        for (UUID mlModelId : mlModelIds) {
+          try {
+            MlModel mlModel = collectionDAO.mlModelDAO().findEntityById(mlModelId);
+            if (mlModel == null) continue;
+
+            String expectedFqn = FullyQualifiedName.add(serviceFqn, mlModel.getName());
+            String currentFqn = mlModel.getFullyQualifiedName();
+
+            if (!expectedFqn.equals(currentFqn)) {
+              LOG.debug("Fixing MlModel FQN: {} -> {}", currentFqn, expectedFqn);
+              mlModel.setFullyQualifiedName(expectedFqn);
+              collectionDAO.mlModelDAO().update(mlModel);
+              fixedCount++;
+            }
+          } catch (Exception e) {
+            LOG.warn("Error processing MlModel entity {}: {}", mlModelId, e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Error processing service {}: {}", serviceId, e.getMessage());
+      }
+    }
+
+    LOG.info("Fixed {} MlModel entities with incorrect FQN hash", fixedCount);
   }
 }

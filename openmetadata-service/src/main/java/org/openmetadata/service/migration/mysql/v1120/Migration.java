@@ -2,11 +2,16 @@ package org.openmetadata.service.migration.mysql.v1120;
 
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixApiCollectionFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixApiEndpointFqnHash;
+import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixChartFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixDashboardDataModelFqnHash;
+import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixDashboardFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixDatabaseFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixDatabaseSchemaFqnHash;
+import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixMlModelFqnHash;
+import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixPipelineFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixStoredProcedureFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixTableFqnHash;
+import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixTopicFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.updateClassificationAndRecognizers;
 
 import java.util.Map;
@@ -32,12 +37,23 @@ public class Migration extends MigrationProcessImpl {
     fixTableFqnHash(handle, collectionDAO);
     fixStoredProcedureFqnHash(handle, collectionDAO);
 
-    // Dashboard service hierarchy: Service -> DashboardDataModel
+    // Dashboard service hierarchy: Service -> Dashboard / Chart / DashboardDataModel
+    fixDashboardFqnHash(handle, collectionDAO);
+    fixChartFqnHash(handle, collectionDAO);
     fixDashboardDataModelFqnHash(handle, collectionDAO);
 
     // API service hierarchy: Service -> APICollection -> APIEndpoint
     fixApiCollectionFqnHash(handle, collectionDAO);
     fixApiEndpointFqnHash(handle, collectionDAO);
+
+    // Pipeline service hierarchy: Service -> Pipeline
+    fixPipelineFqnHash(handle, collectionDAO);
+
+    // Messaging service hierarchy: Service -> Topic
+    fixTopicFqnHash(handle, collectionDAO);
+
+    // MlModel service hierarchy: Service -> MlModel
+    fixMlModelFqnHash(handle, collectionDAO);
   }
 
   @Override
