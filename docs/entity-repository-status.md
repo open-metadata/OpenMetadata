@@ -22,7 +22,7 @@ Removing the file does not establish correctness or latency improvement.
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
 | Main merge validation | 1,406 service passes; 620 MCP passes and ten upstream dependency setup errors; 220 integration passes per database with Redis |
-| CI follow-up validation | Full service suite: 10,346 passes, one skip, zero failures/errors against CI's generated spec artifact |
+| CI follow-up validation | Full service: 10,346 passes; parallel integration selection: 473 passes across three profiles; UI: 31 unit tests and three tour flows pass |
 | Downstream Collate compilation | Open; Collate's repository families and callers still require migration to the composed Java APIs |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
@@ -76,7 +76,7 @@ preserves an existing source, author and timestamp. `EntityBulkPreparationTest` 
 All 26 targeted cases pass against CI's spec artifact.
 The full service suite also passes: 10,346 passes, one skip, zero failures/errors
 across 1,157 suites, using Java 21 and CI's JaCoCo 0.8.10. Spotless and repository
-pre-commit checks pass. This follow-up changes only tests and this status document.
+pre-commit checks pass. That follow-up changes only tests and this status document.
 
 The [Collate Maven build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34704141262)
 and [data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34704151401)
@@ -84,6 +84,62 @@ fail during Java compilation, before their tests start. Collate `main` still has
 repository families extending `EntityRepository` and 47 source/test files directly
 referencing retired types. Those builds require a coordinated downstream migration
 using the [Java extension migration guide](entity-module-migration.md).
+
+### Parallel integration and guided-tour follow-up
+
+At `0417b5c9e4`, all three parallel integration lanes reported the same 102 failures
+across 25 classes. `SessionMultiNodeCluster`, also used by `CsvExportMultiNodeIT`,
+started additional applications in the test JVM. Their startup replaced the static
+`Entity` Jdbi and DAO references while composed repositories retained the primary
+application's dependencies. SQL and commit probes consequently observed the wrong
+Jdbi, and cross-repository writes could leave the primary transaction boundary.
+
+Additional test servers now run in separate JVMs with separate temporary directories
+and the same database, search and cache configuration. The owning test process waits
+for startup and closes each child at suite shutdown; EOF also stops a child when the
+parent exits. Production transaction ownership and Redis implementations are unchanged.
+`SessionMultiNodeIsolationIT` reproduced both failures before the fix: two nested
+repository writes survived rollback, and a metadata read registered zero queries.
+Both regressions pass with process isolation. The first PostgreSQL/OpenSearch/Redis
+selection passed all 17 session, CSV, isolation and transaction tests.
+
+The expanded 31-class selection includes every class that failed in CI, plus session,
+CSV, single-transaction and post-commit recovery cases, using the parallel Failsafe
+execution with four workers. MySQL/Elasticsearch and PostgreSQL/OpenSearch each
+pass 158 tests with ten expected Redis-only skips and no failures or errors;
+PostgreSQL/Elasticsearch/Redis passes 157 tests with 11 expected cache-mode skips
+and no failures or errors. In total, the completed matrix has 473 passes and
+31 skips across 504 cases.
+
+The first Redis matrix run exposed four additional assertions in
+`EntityHardDeletionAtomicityIT`: they required negative-cache markers to remain
+present after deletion, although peer invalidation handlers can evict those shared
+markers. All 12 original deletion cases pass with one Redis-backed application.
+The tests now warm both ID and FQN aliases and assert HTTP 404 after successful
+deletion or deadlock replay, while retaining the row, metadata, commit and rollback
+assertions. The updated deletion suite also passes all 12 cases on both MySQL
+and PostgreSQL/OpenSearch in separate follow-ups. All 569 integration sources compile
+with Java 21, and repository pre-commit checks pass. The production cache invalidation
+behavior is unchanged.
+
+The Playwright guided-tour failure was a separate permission regression after the
+table page adopted `useEntityPermissions`: the demo table received the hook's default
+denials, so the profiler target for step 13 never appeared. The page now supplies the
+existing tour permissions locally and disables real permission requests during the
+tour, leaving real entities and their permission cache unchanged. `Tour.spec.ts`
+explicitly checks that the profiler target is visible before advancing.
+
+All three production-bundle tour flows pass, with recordings and traces retained under
+`.context/ci-fixes-2/tour-production-2-results/`; the profiler step was visually checked.
+The table page and permission-hook suites pass all 31 unit tests. The production UI
+build, changed-file formatting and full Playwright lint pass. The broad TypeScript
+check still fails, with identical diagnostics when the changed files are replaced
+by their `0417b5c9e4` versions; this fix adds no diagnostics. This functional regression
+evidence does not close the original coverage or API latency gates.
+
+The latest [Collate Maven build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34706402352)
+still fails before tests because its extensions reference the retired Java types;
+the companion migration remains required.
 
 ## Pre-merge verification provenance
 

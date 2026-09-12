@@ -33,13 +33,11 @@ import org.openmetadata.schema.entity.data.Metric;
  * downloaded from another, which is the shape that failed in production — the download is
  * load-balanced to whichever node is free, rarely the one that ran the job.
  *
- * <p><b>What this covers, and what it does not.</b> {@link SessionMultiNodeCluster} starts extra
- * Dropwizard instances inside this JVM, so the nodes share a database (the point of the test) but
- * also share a filesystem and JVM statics. That means this suite proves the job APIs and the
- * download are mediated entirely by shared state, but it would <em>not</em> fail if export payloads
- * were moved back onto local disk — both nodes would still see the same {@code java.io.tmpdir}.
- * {@code CsvAsyncJobResourceIT#test_exportResultIsInTheJobRowAndNotOnLocalDisk} is the test that
- * pins that down, by asserting no node-local file is produced at all.
+ * <p>{@link SessionMultiNodeCluster} starts each additional server in its own JVM and temporary
+ * directory. The export must be available through shared storage without relying on shared JVM
+ * statics or the originating node's temporary directory. The host filesystem is still shared;
+ * {@code CsvAsyncJobResourceIT#test_exportResultIsInTheJobRowAndNotOnLocalDisk} separately checks
+ * that export payloads are not written to disk.
  */
 @Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)

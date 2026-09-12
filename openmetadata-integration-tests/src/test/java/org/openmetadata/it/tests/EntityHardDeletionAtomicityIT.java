@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -27,6 +26,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.entity.write.EntityCommandActor;
@@ -133,11 +133,7 @@ class EntityHardDeletionAtomicityIT {
       assertEquals(1, transactions.commits());
       assertEquals(0, transactions.rollbacks());
     }
-    final var missing = CacheBundle.getNotFoundCache();
-    if (missing != null && missing.enabled()) {
-      assertTrue(missing.isMarkedNotFoundById(Entity.CHART, original.getId()));
-      assertTrue(missing.isMarkedNotFoundByName(Entity.CHART, original.getFullyQualifiedName()));
-    }
+    assertDeleted(original);
   }
 
   @ParameterizedTest
@@ -183,11 +179,20 @@ class EntityHardDeletionAtomicityIT {
       assertEquals(1, transactions.commits());
       assertEquals(1, transactions.rollbacks());
     }
-    final var missing = CacheBundle.getNotFoundCache();
-    if (missing != null && missing.enabled()) {
-      assertTrue(missing.isMarkedNotFoundById(Entity.CHART, original.getId()));
-      assertTrue(missing.isMarkedNotFoundByName(Entity.CHART, original.getFullyQualifiedName()));
-    }
+    assertDeleted(original);
+  }
+
+  private void assertDeleted(final Chart chart) {
+    // Peer invalidations can evict negative markers; both warmed aliases must still return 404.
+    final var charts = SdkClients.adminClient().charts();
+    assertEquals(
+        404,
+        assertThrows(OpenMetadataException.class, () -> charts.get(chart.getId())).getStatusCode());
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class, () -> charts.getByName(chart.getFullyQualifiedName()))
+            .getStatusCode());
   }
 
   private Chart fixture(TestNamespace ns, ChartRepository repository) {
@@ -208,6 +213,7 @@ class EntityHardDeletionAtomicityIT {
         .entityExtensionDAO()
         .insert(chart.getId(), EXTENSION, EXTENSION, "{}");
     SdkClients.adminClient().charts().get(chart.getId());
+    SdkClients.adminClient().charts().getByName(chart.getFullyQualifiedName());
     return chart;
   }
 

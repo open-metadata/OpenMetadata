@@ -140,6 +140,7 @@ const validateTourSteps = async (page: Page) => {
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
   await expectTourBadge(page, '13');
+  await expect(page.locator('#profilerDetails')).toBeVisible();
 
   // step 12
   await page.locator('[data-tour-elem="right-arrow"]').click();
