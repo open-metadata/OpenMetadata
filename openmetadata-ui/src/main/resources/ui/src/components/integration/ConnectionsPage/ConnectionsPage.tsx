@@ -16,6 +16,7 @@ import {
   ButtonGroup,
   ButtonGroupItem,
   Input,
+  PageLayout,
 } from '@openmetadata/ui-core-components';
 import { LayoutGrid01, List, SearchLg } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -28,7 +29,6 @@ import {
   EXTENSION_POINTS,
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { useSlotInset } from '../hooks/useSlotInset';
 import ConnectionsListView from './ConnectionsListView';
@@ -173,10 +173,10 @@ const ConnectionsPage: React.FC = () => {
   );
 
   return (
-    <div
-      className="tw:relative tw:flex tw:h-full tw:flex-col tw:overflow-hidden tw:p-2"
+    <PageLayout
+      className="tw:relative"
       style={{ fontFamily: 'Inter, sans-serif' }}>
-      <HeaderShell
+      <PageLayout.PageHeader
         actions={
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:w-[280px]">
@@ -210,36 +210,38 @@ const ConnectionsPage: React.FC = () => {
           </div>
         }
         className="tw:mb-0! tw:px-8! tw:py-[18px]!"
-        leading={<ConnectorsIcon className="tw:size-12" />}
-        padding="comfortable"
+        density="comfortable"
+        icon={<ConnectorsIcon className="tw:size-12" />}
         subtitle={t('message.connections-subtitle')}
         title={t('label.connection-plural')}
         variant="gradient"
       />
 
-      {/* The browse view owns its own scrolling so the secondary nav, page header and filter row
-          stay put; scrolling here would carry all three away with the list. */}
-      <div className="tw:relative tw:flex-1 tw:overflow-hidden">
-        <ConnectionsListView
-          bottomInset={footerInset}
-          category={selectedCategory}
-          searchTerm={searchInput}
-          viewMode={viewMode}
-          viewToggle={viewToggle}
-          onCategoryChange={handleCategoryChange}
-        />
-      </div>
-
-      {footerContributions.length > 0 && (
-        <div
-          className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
-          ref={footerRef}>
-          {footerContributions.map((contribution) => (
-            <contribution.component key={contribution.key} />
-          ))}
+      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:p-0!">
+        {/* The browse view owns its own scrolling so the secondary nav, page header and filter row
+            stay put; scrolling here would carry all three away with the list. */}
+        <div className="tw:relative tw:flex-1 tw:overflow-hidden">
+          <ConnectionsListView
+            bottomInset={footerInset}
+            category={selectedCategory}
+            searchTerm={searchInput}
+            viewMode={viewMode}
+            viewToggle={viewToggle}
+            onCategoryChange={handleCategoryChange}
+          />
         </div>
-      )}
-    </div>
+
+        {footerContributions.length > 0 && (
+          <div
+            className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
+            ref={footerRef}>
+            {footerContributions.map((contribution) => (
+              <contribution.component key={contribution.key} />
+            ))}
+          </div>
+        )}
+      </PageLayout.Content>
+    </PageLayout>
   );
 };
 

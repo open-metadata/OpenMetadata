@@ -16,6 +16,7 @@ import {
   Button,
   Dropdown,
   FeaturedIcon,
+  PageLayout,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -89,7 +90,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import Loader from '../../common/Loader/Loader';
 import TestConnection from '../../common/TestConnection/TestConnection';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -714,332 +714,332 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className="tw:relative tw:flex tw:h-full tw:flex-col tw:gap-0 tw:overflow-hidden">
-      {/* Header */}
-      <div className="tw:p-2 tw:pb-0">
-        <HeaderShell
-          actions={
-            <>
-              {pluginActions.map((action) =>
-                action.component ? (
-                  <action.component key={action.key} {...extensionContext} />
-                ) : (
-                  <Button
-                    color={getActionButtonColor(action)}
-                    iconLeading={
-                      action.icon as FC<{ className?: string }> | undefined
-                    }
-                    key={action.key}
-                    size="sm"
-                    onPress={() => action.onClick?.(extensionContext)}>
-                    {action.label}
-                  </Button>
-                )
-              )}
-              <Dropdown.Root>
-                <Button color="secondary" iconLeading={Settings01} size="sm">
-                  {t('label.setting-plural')}
-                </Button>
-                <Dropdown.Popover placement="bottom right">
-                  <Dropdown.Menu aria-label={t('label.setting-plural')}>
-                    {canEditAll && (
-                      <Dropdown.Item
-                        id="announcement"
-                        label={t('label.announcement-plural')}
-                        onAction={handleOpenAnnouncementDrawer}
-                      />
-                    )}
-                    {(canEditAll || canEditDisplayName) && (
-                      <Dropdown.Item
-                        id="rename"
-                        label={t('label.rename')}
-                        onAction={() => setIsDisplayNameEditing(true)}
-                      />
-                    )}
-                    {supportsImportExport &&
-                      canEditAll &&
-                      !isServiceDeleted && (
-                        <Dropdown.Item
-                          id="import"
-                          label={t('label.import')}
-                          onAction={handleImportClick}
-                        />
-                      )}
-                    {supportsImportExport &&
-                      canViewAll &&
-                      !isServiceDeleted && (
-                        <Dropdown.Item
-                          id="export"
-                          label={t('label.export')}
-                          onAction={handleExportClick}
-                        />
-                      )}
-                    {canDelete && !isServiceDeleted && (
-                      <Dropdown.Item
-                        id="delete"
-                        label={t('label.delete')}
-                        onAction={() => setIsDeleting(true)}
-                      />
-                    )}
-                    {/* A soft delete is meant to be reversible, but without this the page offers
-                        no way back — matching classic, where restore replaces delete once the
-                        service is deleted. */}
-                    {canEditAll && isServiceDeleted && (
-                      <Dropdown.Item
-                        id="restore"
-                        label={t('label.restore')}
-                        onAction={handleRestoreService}
-                      />
-                    )}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </>
-          }
-          breadcrumb={
-            <HeaderBreadcrumb
-              noMargin
-              items={[
-                getConnectionsRootBreadcrumb(t),
-                ...(categoryBreadcrumb ? [categoryBreadcrumb] : []),
-                {
-                  label: serviceDetails.displayName || serviceDetails.name,
-                  ariaLabel: serviceDetails.displayName || serviceDetails.name,
-                },
-              ]}
-              showHome={false}
-            />
-          }
-          className="tw:mb-0! tw:pb-0"
-          footer={
-            <Tabs
-              className="tw:mt-2"
-              selectedKey={activeTab}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List
-                aria-label={t('label.tab')}
-                className="tw:gap-7 tw:before:hidden"
-                size="sm"
-                type="underline">
-                {tabs.map((detailsTab) => (
-                  <Tabs.Item
-                    badge={detailsTab.badge}
-                    className={getTabItemClassName}
-                    data-testid={`${detailsTab.key}-tab`}
-                    id={detailsTab.key}
-                    key={detailsTab.key}
-                    label={
-                      detailsTab.badgeComponent ? (
-                        <span className="tw:inline-flex tw:items-center tw:gap-2">
-                          {detailsTab.label}
-                          <detailsTab.badgeComponent {...extensionContext} />
-                        </span>
-                      ) : (
-                        detailsTab.label
-                      )
-                    }
-                  />
-                ))}
-              </Tabs.List>
-            </Tabs>
-          }
-          leading={
-            <FeaturedIcon
-              className="tw:bg-[linear-gradient(180deg,#ffffff_0%,#f5f5f5_100%)]"
-              color="gray"
-              icon={getServiceLogo(
-                serviceDetails.serviceType,
-                'tw:h-6 tw:w-6 tw:object-contain'
-              )}
-              size="lg"
-              theme="modern"
-            />
-          }
-          meta={
-            <DataAssetHeaderDetailsRow
-              domains={
-                (serviceDetails as unknown as { domains?: EntityReference[] })
-                  .domains
-              }
-              hasEditPermission={canEditAll}
-              owners={serviceDetails.owners}
-              tags={serviceDetails.tags}
-              onUpdateDomain={onUpdateDomain}
-              onUpdateOwners={onUpdateOwners}
-              onUpdateTier={onUpdateTier}
-            />
-          }
-          padding="comfortable"
-          title={
-            <span className="tw:flex tw:items-center tw:gap-2">
-              <Typography
-                className="tw:text-primary"
-                data-testid="entity-header-display-name"
-                size="text-xl"
-                weight="semibold">
-                {serviceDetails.displayName || serviceDetails.name}
-              </Typography>
-              {/* Without this the page looks like any other service, which matters most here:
-                  the deleted switch is the only way in, so the state is easy to forget. Mirrors
-                  the classic service header, testid included. */}
-              {isServiceDeleted && (
-                <Badge
-                  color="error"
-                  data-testid="deleted-badge"
-                  size="sm"
-                  type="pill-color">
-                  {t('label.deleted')}
-                </Badge>
-              )}
-            </span>
-          }
-          variant="gradient"
-        />
-      </div>
-      {/* Tab Content */}
-      <div
-        className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:p-4"
-        data-testid="service-details-scroll-container"
-        ref={contentScrollRef}
-        // Reserve the contributed footer's height so the last of a tab's content can be scrolled
-        // clear of it. Falls back to the class's own padding when there is no footer contribution,
-        // so an empty slot costs no dead space. Applies to every tab because they all render into
-        // this container.
-        style={{ paddingBottom: footerInset || undefined }}>
-        {activeTab === 'dataAssets' && (
-          <DataAssetsTab
-            currentPage={currentPage}
-            data={data}
-            isServiceLoading={isServiceLoading}
-            paging={paging}
-            pagingInfo={pagingInfo}
-            saveUpdatedServiceData={saveUpdatedServiceData}
-            serviceCategory={serviceCategory as ServiceCategory}
-            serviceDetails={serviceDetails}
-            servicePermission={servicePermission}
-            setFilters={setFilters}
-            setIsServiceLoading={setIsServiceLoading}
-            showDeleted={showDeleted}
-            onDataProductUpdate={onDataProductUpdate}
-            onDescriptionUpdate={onDescriptionUpdate}
-            onShowDeletedChange={(val) =>
-              setFilters({ showDeletedTables: val ? 'true' : undefined })
-            }
-          />
-        )}
-
-        {activeTab === 'connection' && (
-          <div className="connection-tab-content">
-            <div className="tw:flex tw:items-center tw:justify-end tw:mb-4 tw:gap-2 tw:min-h-9">
-              {isServicePermissionLoading || isLoading ? (
-                <Loader size="small" />
+    <PageLayout className="tw:relative">
+      <PageLayout.PageHeader
+        actions={
+          <>
+            {pluginActions.map((action) =>
+              action.component ? (
+                <action.component key={action.key} {...extensionContext} />
               ) : (
-                <>
-                  <Button
-                    color="secondary-brand"
-                    data-testid="edit-connection-button"
-                    isDisabled={!canEditAll}
-                    size="sm"
-                    onPress={goToEditConnection}>
-                    {t('label.edit-entity', { entity: t('label.connection') })}
-                  </Button>
-                  {allowTestConn && (
-                    <TestConnection
-                      connectionType={serviceDetails?.serviceType ?? ''}
-                      getData={() => connectionDetails}
-                      isTestingDisabled={isTestingDisabled}
-                      serviceCategory={serviceCategory as ServiceCategory}
-                      serviceName={serviceDetails?.name}
-                      shouldValidateForm={false}
-                      showDetails={false}
+                <Button
+                  color={getActionButtonColor(action)}
+                  iconLeading={
+                    action.icon as FC<{ className?: string }> | undefined
+                  }
+                  key={action.key}
+                  size="sm"
+                  onPress={() => action.onClick?.(extensionContext)}>
+                  {action.label}
+                </Button>
+              )
+            )}
+            <Dropdown.Root>
+              <Button color="secondary" iconLeading={Settings01} size="sm">
+                {t('label.setting-plural')}
+              </Button>
+              <Dropdown.Popover placement="bottom right">
+                <Dropdown.Menu aria-label={t('label.setting-plural')}>
+                  {canEditAll && (
+                    <Dropdown.Item
+                      id="announcement"
+                      label={t('label.announcement-plural')}
+                      onAction={handleOpenAnnouncementDrawer}
                     />
                   )}
-                </>
+                  {(canEditAll || canEditDisplayName) && (
+                    <Dropdown.Item
+                      id="rename"
+                      label={t('label.rename')}
+                      onAction={() => setIsDisplayNameEditing(true)}
+                    />
+                  )}
+                  {supportsImportExport && canEditAll && !isServiceDeleted && (
+                    <Dropdown.Item
+                      id="import"
+                      label={t('label.import')}
+                      onAction={handleImportClick}
+                    />
+                  )}
+                  {supportsImportExport && canViewAll && !isServiceDeleted && (
+                    <Dropdown.Item
+                      id="export"
+                      label={t('label.export')}
+                      onAction={handleExportClick}
+                    />
+                  )}
+                  {canDelete && !isServiceDeleted && (
+                    <Dropdown.Item
+                      id="delete"
+                      label={t('label.delete')}
+                      onAction={() => setIsDeleting(true)}
+                    />
+                  )}
+                  {/* A soft delete is meant to be reversible, but without this the page offers
+                        no way back — matching classic, where restore replaces delete once the
+                        service is deleted. */}
+                  {canEditAll && isServiceDeleted && (
+                    <Dropdown.Item
+                      id="restore"
+                      label={t('label.restore')}
+                      onAction={handleRestoreService}
+                    />
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          </>
+        }
+        breadcrumb={
+          <HeaderBreadcrumb
+            noMargin
+            items={[
+              getConnectionsRootBreadcrumb(t),
+              ...(categoryBreadcrumb ? [categoryBreadcrumb] : []),
+              {
+                label: serviceDetails.displayName || serviceDetails.name,
+                ariaLabel: serviceDetails.displayName || serviceDetails.name,
+              },
+            ]}
+            showHome={false}
+          />
+        }
+        className="tw:mb-0! tw:pb-0"
+        density="comfortable"
+        footer={
+          <Tabs
+            className="tw:mt-2"
+            selectedKey={activeTab}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List
+              aria-label={t('label.tab')}
+              className="tw:gap-7 tw:before:hidden"
+              size="sm"
+              type="underline">
+              {tabs.map((detailsTab) => (
+                <Tabs.Item
+                  badge={detailsTab.badge}
+                  className={getTabItemClassName}
+                  data-testid={`${detailsTab.key}-tab`}
+                  id={detailsTab.key}
+                  key={detailsTab.key}
+                  label={
+                    detailsTab.badgeComponent ? (
+                      <span className="tw:inline-flex tw:items-center tw:gap-2">
+                        {detailsTab.label}
+                        <detailsTab.badgeComponent {...extensionContext} />
+                      </span>
+                    ) : (
+                      detailsTab.label
+                    )
+                  }
+                />
+              ))}
+            </Tabs.List>
+          </Tabs>
+        }
+        icon={
+          <FeaturedIcon
+            className="tw:bg-[linear-gradient(180deg,#ffffff_0%,#f5f5f5_100%)]"
+            color="gray"
+            icon={getServiceLogo(
+              serviceDetails.serviceType,
+              'tw:h-6 tw:w-6 tw:object-contain'
+            )}
+            size="lg"
+            theme="modern"
+          />
+        }
+        meta={
+          <DataAssetHeaderDetailsRow
+            domains={
+              (serviceDetails as unknown as { domains?: EntityReference[] })
+                .domains
+            }
+            hasEditPermission={canEditAll}
+            owners={serviceDetails.owners}
+            tags={serviceDetails.tags}
+            onUpdateDomain={onUpdateDomain}
+            onUpdateOwners={onUpdateOwners}
+            onUpdateTier={onUpdateTier}
+          />
+        }
+        title={
+          <span className="tw:flex tw:items-center tw:gap-2">
+            <Typography
+              className="tw:text-primary"
+              data-testid="entity-header-display-name"
+              size="text-xl"
+              weight="semibold">
+              {serviceDetails.displayName || serviceDetails.name}
+            </Typography>
+            {/* Without this the page looks like any other service, which matters most here:
+                  the deleted switch is the only way in, so the state is easy to forget. Mirrors
+                  the classic service header, testid included. */}
+            {isServiceDeleted && (
+              <Badge
+                color="error"
+                data-testid="deleted-badge"
+                size="sm"
+                type="pill-color">
+                {t('label.deleted')}
+              </Badge>
+            )}
+          </span>
+        }
+        variant="gradient"
+      />
+      <PageLayout.Content className="tw:relative tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden! tw:p-0!">
+        {/* Tab Content */}
+        <div
+          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:p-4"
+          data-testid="service-details-scroll-container"
+          ref={contentScrollRef}
+          // Reserve the contributed footer's height so the last of a tab's content can be scrolled
+          // clear of it. Falls back to the class's own padding when there is no footer contribution,
+          // so an empty slot costs no dead space. Applies to every tab because they all render into
+          // this container.
+          style={{ paddingBottom: footerInset || undefined }}>
+          {activeTab === 'dataAssets' && (
+            <DataAssetsTab
+              currentPage={currentPage}
+              data={data}
+              isServiceLoading={isServiceLoading}
+              paging={paging}
+              pagingInfo={pagingInfo}
+              saveUpdatedServiceData={saveUpdatedServiceData}
+              serviceCategory={serviceCategory as ServiceCategory}
+              serviceDetails={serviceDetails}
+              servicePermission={servicePermission}
+              setFilters={setFilters}
+              setIsServiceLoading={setIsServiceLoading}
+              showDeleted={showDeleted}
+              onDataProductUpdate={onDataProductUpdate}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onShowDeletedChange={(val) =>
+                setFilters({ showDeletedTables: val ? 'true' : undefined })
+              }
+            />
+          )}
+
+          {activeTab === 'connection' && (
+            <div className="connection-tab-content">
+              <div className="tw:flex tw:items-center tw:justify-end tw:mb-4 tw:gap-2 tw:min-h-9">
+                {isServicePermissionLoading || isLoading ? (
+                  <Loader size="small" />
+                ) : (
+                  <>
+                    <Button
+                      color="secondary-brand"
+                      data-testid="edit-connection-button"
+                      isDisabled={!canEditAll}
+                      size="sm"
+                      onPress={goToEditConnection}>
+                      {t('label.edit-entity', {
+                        entity: t('label.connection'),
+                      })}
+                    </Button>
+                    {allowTestConn && (
+                      <TestConnection
+                        connectionType={serviceDetails?.serviceType ?? ''}
+                        getData={() => connectionDetails}
+                        isTestingDisabled={isTestingDisabled}
+                        serviceCategory={serviceCategory as ServiceCategory}
+                        serviceName={serviceDetails?.name}
+                        shouldValidateForm={false}
+                        showDetails={false}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+              {connectionDetails ? (
+                <ServiceConnectionDetails
+                  connectionDetails={connectionDetails}
+                  serviceCategory={
+                    serviceCategory as unknown as Parameters<
+                      typeof ServiceConnectionDetails
+                    >[0]['serviceCategory']
+                  }
+                  serviceFQN={serviceDetails.serviceType ?? ''}
+                />
+              ) : (
+                <div className="tw:flex tw:h-48 tw:items-center tw:justify-center">
+                  <p className="tw:text-sm tw:text-gray-400">
+                    {t('label.no-connection-details')}
+                  </p>
+                </div>
               )}
             </div>
-            {connectionDetails ? (
-              <ServiceConnectionDetails
-                connectionDetails={connectionDetails}
-                serviceCategory={
-                  serviceCategory as unknown as Parameters<
-                    typeof ServiceConnectionDetails
-                  >[0]['serviceCategory']
-                }
-                serviceFQN={serviceDetails.serviceType ?? ''}
+          )}
+
+          {pluginTabs.map(
+            (pluginTab) =>
+              activeTab === pluginTab.key && (
+                <pluginTab.component
+                  key={pluginTab.key}
+                  {...extensionContext}
+                />
+              )
+          )}
+        </div>
+
+        {footerContributions.length > 0 && (
+          <div
+            className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
+            ref={footerRef}>
+            {footerContributions.map((contribution) => (
+              <contribution.component
+                key={contribution.key}
+                {...extensionContext}
               />
-            ) : (
-              <div className="tw:flex tw:h-48 tw:items-center tw:justify-center">
-                <p className="tw:text-sm tw:text-gray-400">
-                  {t('label.no-connection-details')}
-                </p>
-              </div>
-            )}
+            ))}
           </div>
         )}
 
-        {pluginTabs.map(
-          (pluginTab) =>
-            activeTab === pluginTab.key && (
-              <pluginTab.component key={pluginTab.key} {...extensionContext} />
-            )
+        {isAnnouncementDrawerOpen && (
+          <AnnouncementDrawer
+            createPermission={canEditAll}
+            entityFQN={serviceDetails.fullyQualifiedName ?? ''}
+            entityType={serviceEntityType}
+            open={isAnnouncementDrawerOpen}
+            onClose={handleCloseAnnouncementDrawer}
+          />
         )}
-      </div>
 
-      {footerContributions.length > 0 && (
-        <div
-          className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
-          ref={footerRef}>
-          {footerContributions.map((contribution) => (
-            <contribution.component
-              key={contribution.key}
-              {...extensionContext}
-            />
-          ))}
-        </div>
-      )}
+        {isDisplayNameEditing && (
+          <EntityNameModal
+            entity={{
+              displayName: serviceDetails.displayName,
+              name: serviceDetails.name ?? '',
+            }}
+            title={t('label.edit-entity', {
+              entity: t('label.display-name'),
+            })}
+            visible={isDisplayNameEditing}
+            onCancel={() => setIsDisplayNameEditing(false)}
+            onSave={async (data) => {
+              await handleDisplayNameUpdate(data);
+              setIsDisplayNameEditing(false);
+            }}
+          />
+        )}
 
-      {isAnnouncementDrawerOpen && (
-        <AnnouncementDrawer
-          createPermission={canEditAll}
-          entityFQN={serviceDetails.fullyQualifiedName ?? ''}
-          entityType={serviceEntityType}
-          open={isAnnouncementDrawerOpen}
-          onClose={handleCloseAnnouncementDrawer}
-        />
-      )}
-
-      {isDisplayNameEditing && (
-        <EntityNameModal
-          entity={{
-            displayName: serviceDetails.displayName,
-            name: serviceDetails.name ?? '',
-          }}
-          title={t('label.edit-entity', {
-            entity: t('label.display-name'),
-          })}
-          visible={isDisplayNameEditing}
-          onCancel={() => setIsDisplayNameEditing(false)}
-          onSave={async (data) => {
-            await handleDisplayNameUpdate(data);
-            setIsDisplayNameEditing(false);
-          }}
-        />
-      )}
-
-      {isDeleting && (
-        <DeleteEntityModal
-          isAsyncDelete
-          isRecursiveDelete
-          afterDeleteAction={afterServiceDeleteAction}
-          allowSoftDelete={!serviceDetails.deleted}
-          entityId={serviceDetails.id ?? ''}
-          entityName={getEntityName(serviceDetails)}
-          entityType={serviceEntityType}
-          visible={isDeleting}
-          onCancel={() => setIsDeleting(false)}
-        />
-      )}
-    </div>
+        {isDeleting && (
+          <DeleteEntityModal
+            isAsyncDelete
+            isRecursiveDelete
+            afterDeleteAction={afterServiceDeleteAction}
+            allowSoftDelete={!serviceDetails.deleted}
+            entityId={serviceDetails.id ?? ''}
+            entityName={getEntityName(serviceDetails)}
+            entityType={serviceEntityType}
+            visible={isDeleting}
+            onCancel={() => setIsDeleting(false)}
+          />
+        )}
+      </PageLayout.Content>
+    </PageLayout>
   );
 };
 

@@ -41,25 +41,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: ({
-    actions,
-    subtitle,
-    title,
-  }: {
-    actions?: React.ReactNode;
-    subtitle?: React.ReactNode;
-    title?: React.ReactNode;
-  }) => (
-    <header>
-      <span>{title}</span>
-      <span>{subtitle}</span>
-      {actions}
-    </header>
-  ),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: ({
     children,
@@ -118,6 +99,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       value={value ?? ''}
       onChange={(event) => onChange?.(event.target.value)}
     />
+  ),
+  PageLayout: Object.assign(
+    ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    {
+      PageHeader: ({
+        actions,
+        subtitle,
+        title,
+      }: {
+        actions?: React.ReactNode;
+        subtitle?: React.ReactNode;
+        title?: React.ReactNode;
+      }) => (
+        <header>
+          <span>{title}</span>
+          <span>{subtitle}</span>
+          {actions}
+        </header>
+      ),
+      Content: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+    }
   ),
 }));
 

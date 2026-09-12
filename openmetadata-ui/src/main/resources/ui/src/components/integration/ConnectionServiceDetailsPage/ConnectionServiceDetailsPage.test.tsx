@@ -255,36 +255,40 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     FeaturedIcon: ({ icon }: { icon?: React.ReactNode }) => <div>{icon}</div>,
     Tabs,
+    PageLayout: Object.assign(
+      ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      {
+        PageHeader: ({
+          icon,
+          title,
+          meta,
+          actions,
+          subtitle,
+          footer,
+        }: {
+          icon?: React.ReactNode;
+          title?: React.ReactNode;
+          meta?: React.ReactNode;
+          actions?: React.ReactNode;
+          subtitle?: React.ReactNode;
+          footer?: React.ReactNode;
+        }) => (
+          <div data-testid="service-header">
+            {icon}
+            {title}
+            {meta}
+            {actions}
+            {subtitle}
+            {footer}
+          </div>
+        ),
+        Content: ({ children }: { children: React.ReactNode }) => (
+          <div>{children}</div>
+        ),
+      }
+    ),
   };
 });
-
-jest.mock('../../common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: ({
-    leading,
-    title,
-    meta,
-    actions,
-    footer,
-    breadcrumb,
-  }: {
-    leading?: React.ReactNode;
-    title?: React.ReactNode;
-    meta?: React.ReactNode;
-    actions?: React.ReactNode;
-    footer?: React.ReactNode;
-    breadcrumb?: React.ReactNode;
-  }) => (
-    <div data-testid="service-header">
-      {breadcrumb}
-      {leading}
-      {title}
-      {meta}
-      {actions}
-      {footer}
-    </div>
-  ),
-}));
 
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () => ({
   __esModule: true,
