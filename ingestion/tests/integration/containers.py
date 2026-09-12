@@ -16,8 +16,6 @@ from testcontainers.core.network import Network
 from testcontainers.minio import MinioContainer
 from testcontainers.mysql import MySqlContainer
 
-MINIO_IMAGE = "quay.io/minio/minio:RELEASE.2022-12-02T19-19-22Z"
-
 
 # ------------------------------------------------------------
 # Container Configurations
@@ -42,7 +40,9 @@ class MySqlContainerConfigs:
 class MinioContainerConfigs:
     """MinIO Configurations"""
 
-    image: str = MINIO_IMAGE
+    # testcontainers defaults to minio/minio on Docker Hub, which MinIO has deleted.
+    # The same release is still published on quay.io.
+    image: str = "quay.io/minio/minio:RELEASE.2022-12-02T19-19-22Z"
     access_key: str = "minio"
     secret_key: str = "password"
     port: int = 9000
