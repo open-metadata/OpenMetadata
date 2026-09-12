@@ -159,7 +159,7 @@ Read `${CLAUDE_SKILL_DIR}/standards/registration.md` for detailed instructions. 
 | 1 | `openmetadata-spec/.../entity/services/{serviceType}Service.json` | Add to type enum + connection oneOf |
 | 2 | `ingestion/setup.py` | Add connector pip extras block |
 | 3 | `ingestion/src/metadata/examples/workflows/{name}.yaml` | Runnable CLI workflow example (`metadata ingest -c`) |
-| 4 | `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` | Import schema + add switch case |
+| 4 | `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` | Add schema loader entry |
 | 5 | `openmetadata-ui/.../assets/img/service-icon-{name}.png` | Add service logo asset |
 | 6 | `openmetadata-ui/.../utils/ServiceIconUtils.ts` | Import asset + register in `SERVICE_ICON_LOADERS` |
 | 7 | `openmetadata-ui/.../public/locales/en-US/{ServiceType}/{Name}.md` | Field-level docs rendered in the Add Service form |

@@ -71,7 +71,7 @@ To register a new connector, modify these files:
 
 1. **Service enum**: `openmetadata-spec/.../entity/services/{serviceType}Service.json` — add type to enum + connection `oneOf`
 2. **Test connection**: `openmetadata-service/.../testConnections/{serviceType}/{name}.json` — create file
-3. **UI utils**: `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` — import schema + add switch case
+3. **UI utils**: `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` — add schema loader entry
 4. **Localization**: `openmetadata-ui/.../locale/languages/` — add i18n display name keys
 
 ## Code Generation Commands
