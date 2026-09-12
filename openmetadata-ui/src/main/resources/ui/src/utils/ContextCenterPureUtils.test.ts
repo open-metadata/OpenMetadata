@@ -11,16 +11,37 @@
  *  limitations under the License.
  */
 import { PageType } from '../interface/knowledge-center.interface';
-import { knowledgePageToArticleItem } from './ContextCenterPureUtils';
+import {
+  getContextCenterHeaderPresentation,
+  knowledgePageToArticleItem,
+} from './ContextCenterPureUtils';
 
 jest.mock('./ContextCenterClassBase', () => ({
   __esModule: true,
   default: {
     getArticlePath: jest.fn((fqn: string) => `/article/${fqn}`),
+    isBreadcrumbInsideCard: jest.fn(() => false),
+    isEmbeddedMode: jest.fn(() => false),
   },
 }));
 
 const UNTITLED = 'Untitled';
+
+describe('getContextCenterHeaderPresentation', () => {
+  it('uses the embedded presentation in AI mode without downstream overrides', () => {
+    expect(getContextCenterHeaderPresentation(true)).toEqual({
+      breadcrumbInsideCard: true,
+      isEmbedded: true,
+    });
+  });
+
+  it('preserves the classic OSS presentation outside AI mode', () => {
+    expect(getContextCenterHeaderPresentation(false)).toEqual({
+      breadcrumbInsideCard: false,
+      isEmbedded: false,
+    });
+  });
+});
 
 describe('knowledgePageToArticleItem href branch', () => {
   it('uses the quick link url when the page type is QUICK_LINK', () => {
