@@ -25,11 +25,13 @@ export const SCREENSHOT_OPTS = {
   maxDiffPixelRatio: 0.01,
 };
 
+// Scroll behaviour only. `animation: none` used to live here too, but rc-motion
+// drives every Ant overlay off animationend: suppressing the animation leaves
+// the dropdown stuck with `pointer-events: none`, so a trusted click falls
+// through to whatever is underneath. toHaveScreenshot already pins animations
+// at capture time via SCREENSHOT_OPTS, so freezing them here bought nothing and
+// cost every interactive baseline a dispatchEvent workaround.
 const FREEZE_CSS = `
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
   * { scroll-behavior: auto !important; }
 `;
 
