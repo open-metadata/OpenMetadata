@@ -5,21 +5,22 @@
     "steps": [
       {
         "name": "CheckAccess",
-        "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to mysql, please validate the credentials",
+        "description": "Validate that we can reach the ServiceNow instance REST API and authenticate with the given credentials.",
+        "errorMessage": "Failed to connect to ServiceNow. Please validate the instance URL and that the credentials are correct and the account is active and not locked out.",
         "shortCircuit": true,
-        "mandatory": true
+        "mandatory": true,
+        "category": "ConnectionGate"
       },
       {
         "name": "GetTables",
-        "description": "List all the schemas available to the user.",
-        "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
+        "description": "Read the ServiceNow table dictionary (sys_db_object) to list the tables available to the user.",
+        "errorMessage": "Failed to read the table dictionary (sys_db_object). Please validate that the user has read access to the sys_db_object table.",
         "mandatory": true
       },
       {
         "name": "GetColumns",
-        "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
-        "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
+        "description": "Read the ServiceNow column dictionary (sys_dictionary) to list the columns of the tables to ingest.",
+        "errorMessage": "Failed to read the column dictionary (sys_dictionary). Please validate that the user has read access to the sys_dictionary table.",
         "mandatory": true
       }
     ]

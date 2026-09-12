@@ -104,43 +104,70 @@ BIGQUERY_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(InvalidPrivateKeyException)).diagnose(
         "Malformed service account private key",
-        fix="The private key in the GCP credentials could not be parsed as a PEM key. Paste the "
-        "full key from the service account JSON, including the BEGIN/END lines and real newlines.",
+        fix="The private key could not be read. Copy the private_key value straight out of the service account JSON file, "
+        "including the BEGIN and END lines, with its line breaks intact.",
     ),
     when(Matchers.contains("invalid_grant")).diagnose(
         "Invalid service account credentials",
-        fix="The service account key was rejected (invalid_grant). Verify the private key and "
-        "client email are correct and that the key has not been revoked, disabled, or expired.",
+        fix="Google rejected the service account key. Check the private key and client email are the ones from the same "
+        "JSON file, and that the key has not been deleted or disabled and the service account is still active.",
     ),
     when(Matchers.exception(DefaultCredentialsError)).diagnose(
         "Could not determine GCP credentials",
-        fix="No usable credentials were found. Provide a service account key, or configure "
-        "Application Default Credentials (ADC) in the environment where ingestion runs.",
+        fix="No Google Cloud credentials were found. Either paste a service account key into the connection, or set up "
+        "Application Default Credentials on the machine ingestion runs on.",
     ),
     when(Matchers.exception(RefreshError)).diagnose(
         "Failed to obtain a GCP access token",
-        fix="The credentials could not be exchanged for an access token. Check the service "
-        "account key, its client email, and that the account is enabled.",
+        fix="Google would not issue an access token for these credentials. Check the service account key and its client "
+        "email, and that the service account has not been disabled.",
     ),
     when(Matchers.contains("bigquery.jobs.create")).diagnose(
         "Missing permission to run BigQuery jobs",
-        fix="Grant the service account the BigQuery Job User role (bigquery.jobs.create) on the "
-        "billing project so it can run queries.",
+        fix="The service account is not allowed to run queries. Give it the BigQuery Job User role on the billing project "
+        "- that is what grants bigquery.jobs.create.",
+    ),
+    # BigQuery answers 403 for three unrelated causes and google-api-core raises
+    # Forbidden for all of them, so without these the generic rules below would
+    # tell a user to grant IAM roles for a quota breach or a disabled API -
+    # neither of which a role fixes. Keyed on the message tokens Google's error
+    # bodies carry (reasons quotaExceeded/rateLimitExceeded, accessNotConfigured),
+    # and ordered ahead of the "access denied" rule because a body can carry both
+    # that prefix and the sharper reason.
+    when(Matchers.any_of(Matchers.contains("quota exceeded"), Matchers.contains("exceeded rate limits"))).diagnose(
+        "BigQuery quota exceeded",
+        fix="This is a quota or rate limit, not a permission problem. Retry later, or raise the "
+        "affected BigQuery quota for the billing project in the Google Cloud console.",
+    ),
+    when(Matchers.contains("bigquery api has not been used in project")).diagnose(
+        "BigQuery API is not enabled",
+        fix="The BigQuery API is switched off for this project. Enable it in the Google Cloud console for the project you "
+        "configured - and for Billing Project ID as well if that is a different project. No IAM role grants access to "
+        "a disabled API.",
+    ),
+    # accessNotConfigured is not BigQuery-specific: with policy tags enabled the
+    # disabled API is Data Catalog, not BigQuery. Name no API the error did not.
+    when(Matchers.contains("has not been used in project")).diagnose(
+        "A required Google Cloud API is not enabled",
+        fix="A Google Cloud API that ingestion calls is switched off for this project - the error above names which one. "
+        "It is usually Data Catalog, which is only needed when Include Policy Tags is on. Enable it in the Google "
+        "Cloud console; no IAM role grants access to a disabled API.",
     ),
     when(Matchers.contains("access denied")).diagnose(
         "Access denied",
-        fix="The service account is authenticated but lacks permission for the requested "
-        "resource. Grant the appropriate BigQuery role (e.g. BigQuery Data Viewer / Metadata "
-        "Viewer), or, for query history, access to INFORMATION_SCHEMA.JOBS_BY_PROJECT.",
+        fix="The service account signed in but is not allowed to read this resource. Give it a BigQuery role that covers "
+        "it - BigQuery Data Viewer or Metadata Viewer for metadata, and access to INFORMATION_SCHEMA.JOBS_BY_PROJECT "
+        "for query history.",
     ),
     when(Matchers.exception(Forbidden)).diagnose(
         "Permission denied",
-        fix="The service account is authenticated but not authorized. Grant it the BigQuery "
-        "roles needed to read metadata (BigQuery Data Viewer / Metadata Viewer / Job User).",
+        fix="The service account signed in but Google refused the request. Give it the roles ingestion needs on this "
+        "project: BigQuery Data Viewer, BigQuery Metadata Viewer, and BigQuery Job User.",
     ),
     when(Matchers.exception(NotFound)).diagnose(
         "Project or dataset not found",
-        fix="Verify the configured project id (and dataset, if set) exist and that the service account can see them.",
+        fix="Google could not find the project, or a dataset inside it. Check the project id, and the dataset name if you "
+        "set one - Google also reports something the service account cannot see as missing.",
     ),
 ).including(NETWORK_ERRORS)
 

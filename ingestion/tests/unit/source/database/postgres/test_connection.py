@@ -184,7 +184,11 @@ def test_missing_query_history_source_holds_for_a_custom_source_name():
 
 def test_pg_hba_message_is_classified():
     error = Exception('FATAL: no pg_hba.conf entry for host "1.2.3.4", user "u", SSL off')
-    assert POSTGRES_ERRORS.classify(error).title == "Connection not permitted by pg_hba.conf"
+    diagnosis = POSTGRES_ERRORS.classify(error)
+    assert diagnosis.title == "The server is not configured to accept this connection"
+    # The title no longer names pg_hba.conf, so the remediation has to - it is the
+    # file an administrator must edit, and the user cannot act without knowing it.
+    assert "pg_hba.conf" in diagnosis.remediation
 
 
 def test_network_errors_classify_through_including():
