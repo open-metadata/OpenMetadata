@@ -212,6 +212,7 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
+  globalSetup: './playwright/globalSetup.ts',
   retries: 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI

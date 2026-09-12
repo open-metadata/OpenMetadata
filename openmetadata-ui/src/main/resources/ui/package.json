@@ -19,7 +19,7 @@
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "compress:brotli": "node scripts/compress-brotli.mjs",
     "preview": "vite preview",
-    "postinstall": "node scripts/patch-playwright-indexeddb.mjs && yarn run build-check",
+    "postinstall": "node scripts/patch-playwright-indexeddb.cjs && yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
     "test": "jest --passWithNoTests",
     "test:eslint-rules": "node --test eslint-rules/*.test.mjs 'playwright/eslint-rules/tests/**/*.test.mjs'",

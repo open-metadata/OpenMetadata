@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,21 +11,22 @@
  *  limitations under the License.
  */
 
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// CommonJS on purpose: the postinstall CLI loads this through plain `node`,
+// the Playwright globalSetup loads it through Playwright's TypeScript
+// transform, and that transform cannot evaluate `import.meta`.
 
-const require = createRequire(import.meta.url);
-const marker = 'OpenMetadata: wait for the IndexedDB restore transaction';
+const { readFileSync, writeFileSync, renameSync } = require('node:fs');
+const { dirname, join, resolve } = require('node:path');
+
+const MARKER = 'OpenMetadata: wait for the IndexedDB restore transaction';
 
 // Playwright 1.57 resolves restore after individual requests succeed, before
 // their transaction commits. Closing its temporary page can abort that write
 // and lose the auth record. Keep failures fatal and await commit exactly once.
 // Revalidate this correction when upgrading: even 1.63 resolves an aborted
-// transaction in the browser regression below.
-export function patchStorageSource(source) {
-  if (source.includes(marker)) return source;
+// transaction in the browser regression test.
+function patchStorageSource(source) {
+  if (source.includes(MARKER)) return source;
   const start = source.indexOf('  async _restoreDB(dbInfo) {');
   const end = source.indexOf('  async restore(originState)', start);
   if (start < 0 || end < 0)
@@ -49,7 +49,7 @@ export function patchStorageSource(source) {
       transaction,
       transaction +
         `
-    // ${marker}.
+    // ${MARKER}.
     const committed = new Promise((resolve, reject) => {
       transaction.oncomplete = resolve;
       transaction.onabort = () => reject(transaction.error || new Error("IndexedDB restore aborted"));
@@ -64,10 +64,13 @@ export function patchStorageSource(source) {
       finish,
       '    }))]);\n    } finally {\n      db.close();\n    }\n  }\n'
     );
+
   return source.slice(0, start) + updated + source.slice(end);
 }
 
-export function patchPlaywright(
+// Applies the correction to the installed playwright-core. Returns the outcome
+// so callers can distinguish "already correct" from "could not write".
+function patchPlaywright(
   packageRoot = dirname(require.resolve('playwright-core/package.json'))
 ) {
   const { version } = JSON.parse(
@@ -87,19 +90,33 @@ export function patchPlaywright(
   delete require.cache[require.resolve(file)];
   const { source } = require(file);
   const corrected = patchStorageSource(source);
-  if (corrected === source) return;
+  if (corrected === source) return 'already-corrected';
   const output = contents.replace(
     sourceLine[0],
     () => `const source = ${JSON.stringify(corrected)};`
   );
   const temporary = `${file}.${process.pid}.tmp`;
-  writeFileSync(temporary, output);
-  renameSync(temporary, file);
+  try {
+    writeFileSync(temporary, output);
+    renameSync(temporary, file);
+  } catch (error) {
+    // Some lanes mount node_modules read-only. Those lanes never restore
+    // application auth state, so report the skip instead of failing the run --
+    // a version mismatch, which is the failure worth shouting about, has
+    // already thrown above.
+    if (['EROFS', 'EACCES', 'EPERM'].includes(error.code)) {
+      return 'read-only';
+    }
+    throw error;
+  }
+
+  return 'corrected';
 }
 
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
-  patchPlaywright(process.argv[2]);
+if (require.main === module) {
+  process.stdout.write(
+    `playwright-core storage script: ${patchPlaywright(process.argv[2])}\n`
+  );
 }
+
+module.exports = { MARKER, patchStorageSource, patchPlaywright };

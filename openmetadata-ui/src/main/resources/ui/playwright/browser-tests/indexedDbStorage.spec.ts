@@ -44,10 +44,18 @@ const stateFor = (origin: string) => ({
   ],
 });
 
-const storageSource: string = require(join(
+// Correct the source here rather than reading whatever is on disk: the
+// browser-helper lane runs with node_modules mounted read-only, so the
+// installed copy may or may not carry the correction. Applying it in-process
+// keeps this a test of the correction itself, not of the install.
+const {
+  patchStorageSource,
+} = require('../../scripts/patch-playwright-indexeddb.cjs');
+const installedStorageSource: string = require(join(
   dirname(require.resolve('playwright-core/package.json')),
   'lib/generated/storageScriptSource.js'
 )).source;
+const storageSource: string = patchStorageSource(installedStorageSource);
 
 const storageTest = test.extend<{ origin: string }>({
   // eslint-disable-next-line no-empty-pattern -- The HTTP server fixture has no browser dependencies.
