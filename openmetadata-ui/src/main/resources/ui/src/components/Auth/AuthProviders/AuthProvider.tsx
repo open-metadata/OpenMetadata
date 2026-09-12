@@ -793,13 +793,7 @@ export const AuthProvider = ({
 
     // Axios response interceptor for statusCode 401,403
     responseInterceptor = axiosClient.interceptors.response.use(
-      (response) => {
-        // Any non-401 response proves the current token works, so a later unrelated
-        // expiry still gets the full refresh budget.
-        consecutiveRefreshCycles = 0;
-
-        return response;
-      },
+      (response) => response,
       (error) => {
         if (error.response) {
           const { status } = error.response;

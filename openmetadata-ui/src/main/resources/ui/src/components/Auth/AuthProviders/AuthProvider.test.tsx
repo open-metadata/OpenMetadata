@@ -647,6 +647,61 @@ describe('Test axios response interceptor', () => {
       timeoutExpiry: 0,
     });
   });
+
+  it('should not reset opaque-token refresh cycles for unrelated successful responses', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'recovered' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('opaqueToken');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: undefined,
+      isExpired: false,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [successHandler, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Expired token!' },
+      },
+      config: {
+        url: '/tables/name/foo',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    // Establish a recovered cycle so this assertion does not depend on module state
+    // left by an earlier test or login attempt.
+    await expect(errorHandler?.(mockError)).resolves.toEqual({
+      data: 'recovered',
+    });
+
+    mockAxios.mockClear();
+    mockRefreshToken.mockClear();
+
+    let retryAttempts = 0;
+    mockAxios.mockImplementation(() => {
+      successHandler?.({ data: 'unrelated' } as AxiosResponse);
+      retryAttempts += 1;
+
+      return retryAttempts < 4
+        ? errorHandler?.(mockError)
+        : Promise.reject(mockError);
+    });
+
+    await expect(errorHandler?.(mockError)).rejects.toBe(mockError);
+
+    expect(mockRefreshToken).toHaveBeenCalledTimes(3);
+    expect(mockAxios).toHaveBeenCalledTimes(3);
+  });
 });
 
 // Regression tests for the visibility handler. Before this branch every
