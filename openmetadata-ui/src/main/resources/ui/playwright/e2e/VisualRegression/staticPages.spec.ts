@@ -81,7 +81,15 @@ const PAGES: {
     maskColor: '#ffffff',
   },
   { name: 'users', route: '/settings/members/users' },
-  { name: 'teams', route: '/settings/members/teams' },
+  {
+    name: 'teams',
+    route: '/settings/members/teams',
+    // The Organization team list includes playwright-seeded teams with random
+    // name suffixes (PW Data Consumer Team <hex>), so the table body text and
+    // ordering shift every run while the header/chrome stay deterministic. A
+    // small ratio absorbs that name variance without re-minting the baseline.
+    maxDiffPixelRatio: 0.05,
+  },
   // 'roles' intentionally omitted: the roles listing renders seeded roles
   // with per-run random names, so it is non-deterministic run-to-run in CI
   // (no committed baseline can be stable). Re-add with a dedicated
