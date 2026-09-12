@@ -53,10 +53,11 @@ on:
       - 'openmetadata-spec/src/main/resources/json/schema/configuration/authorizerConfiguration.json'
       - 'openmetadata-spec/src/main/resources/json/schema/auth/**'
       - 'openmetadata-spec/src/main/resources/json/schema/security/**'
-      # Test-env plumbing: compose file wires the KC/OpenLDAP services the
-      # matrix depends on; the workflow's own edits should re-run itself.
+      # Test-env plumbing: `docker/development/docker-compose.yml` wires the
+      # OM stack + mock-oidc; `docker/local-sso/**` hosts the per-provider
+      # IdP fixtures (Keycloak SAML, OpenLDAP); the workflow's own edits
+      # should re-run itself.
       - 'docker/development/docker-compose.yml'
-      - 'docker/development/openldap/**'
       - 'docker/local-sso/**'
       - '.github/workflows/playwright-sso-login-nightly.yml'
   workflow_dispatch:
@@ -149,7 +150,12 @@ jobs:
           - name: 'auth0-mock'
             env_prefix: 'AUTH0_MOCK'
             filter: '--grep @auth0-mock'
-            needs_docker: ''
+            # Real @auth0/auth0-react SDK now drives the mock IdP via the
+            # Auth0-shape URL aliases (`/authorize`, `/oauth/token`, ...
+            # see docker/development/mock-oidc-provider/server.js). The
+            # in-page __omTestAuth0 shim is gone, so the leg genuinely
+            # requires the mock service to be running.
+            needs_docker: 'mock-oidc'
           - name: 'okta'
             env_prefix: 'OKTA'
             # Regex quoted so the `|` isn't a shell pipe when the string
@@ -234,7 +240,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /tmp/sso-docker-cache
-          key: sso-docker-images-${{ hashFiles('docker/development/docker-compose.yml', 'docker/local-sso/keycloak-saml/docker-compose.yml') }}-v1
+          key: sso-docker-images-${{ hashFiles('docker/development/docker-compose.yml', 'docker/local-sso/keycloak-saml/docker-compose.yml', 'docker/local-sso/openldap/docker-compose.yml') }}-v1
 
       - name: Load cached Docker images
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker != '' && hashFiles('/tmp/sso-docker-cache/*.tar') != '' }}
@@ -283,7 +289,10 @@ jobs:
       - name: Start OpenLDAP
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'ldap' }}
         run: |
-          docker compose -f docker/development/docker-compose.yml --profile sso-playwright up -d openldap
+          # Dedicated compose file, same pattern Keycloak-SAML uses — keeps
+          # the LDAP fixture (image, LDIF seed, healthcheck) off of the main
+          # OM stack's docker-compose.yml. See docker/local-sso/openldap/README.md.
+          docker compose -f docker/local-sso/openldap/docker-compose.yml up -d
           # Wait for the healthcheck to pass — LDIF seeding happens on first
           # boot and can take 10-20s on cold cache.
           timeout 120 bash -c 'until docker inspect --format="{{.State.Health.Status}}" openmetadata_openldap 2>/dev/null | grep -q healthy; do sleep 2; done'
@@ -291,6 +300,21 @@ jobs:
           # compose network; attach it to ometa_network so the LDAP bind
           # from the app container resolves.
           docker network connect ometa_network openmetadata_openldap || true
+
+      - name: Start Mock OIDC provider
+        if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'mock-oidc' }}
+        run: |
+          docker compose -f docker/development/docker-compose.yml --profile sso-test up -d mock-oidc-provider
+          # OM backend needs to reach the mock over the compose network by
+          # its container name (JWKS fetch during JWT validation); the
+          # SPA also needs it reachable from the browser under
+          # http://localhost:9090. `docker network connect` attaches the
+          # ad-hoc mock container to the shared network the OM stack is on.
+          docker network connect ometa_network mock_oidc_provider || true
+          # Wait for the mock's own /health rather than the compose
+          # healthcheck (the tag doesn't ship with one). 60s is generous
+          # for the tiny node service.
+          timeout 60 bash -c 'until curl -fsS http://localhost:9090/health >/dev/null; do sleep 2; done'
 
       - name: Start Keycloak SAML IdP
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'keycloak' }}
@@ -331,6 +355,13 @@ jobs:
           # drops the SameSite=Lax OM_SESSION cookie. This reproduces the production "No pending session"
           # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
           KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
+          # Browser-facing URL for the auth0-mock leg's fixture — Auth0
+          # SPA SDK talks here. `MOCK_OIDC_INTERNAL_URL` is what OM
+          # backend uses for JWKS fetch inside the compose network; two
+          # separate URLs because `localhost:9090` from inside a container
+          # is the container itself, not the host.
+          MOCK_OIDC_URL: ${{ matrix.provider.needs_docker == 'mock-oidc' && 'http://localhost:9090' || '' }}
+          MOCK_OIDC_INTERNAL_URL: ${{ matrix.provider.needs_docker == 'mock-oidc' && 'http://mock-oidc-provider:9090' || '' }}
           PLAYWRIGHT_IS_OSS: true
         run: npx playwright test --project=sso-auth --workers=1 ${{ matrix.provider.filter }}
 
@@ -359,7 +390,8 @@ jobs:
         if: ${{ always() && env.SKIP_LEG != 'true' }}
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans || true
-          docker compose -f docker/development/docker-compose.yml --profile sso-playwright down --remove-orphans || true
+          docker compose -f docker/local-sso/openldap/docker-compose.yml down --remove-orphans || true
+          docker compose -f docker/development/docker-compose.yml --profile sso-test down --remove-orphans || true
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
