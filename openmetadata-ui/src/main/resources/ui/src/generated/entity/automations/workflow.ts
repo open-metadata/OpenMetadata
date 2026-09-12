@@ -4547,18 +4547,10 @@ export enum Region {
  * Storage config to store sample data
  */
 export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
+    config?: NoSampleDataStorageConfig;
 }
 
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    storageConfig?: OpenMetadataStorage;
-    [property: string]: any;
-}
-
-export interface OpenMetadataStorage {
+export interface NoSampleDataStorageConfig {
 }
 
 /**
