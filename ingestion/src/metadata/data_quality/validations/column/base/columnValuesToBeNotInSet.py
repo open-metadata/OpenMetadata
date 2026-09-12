@@ -61,7 +61,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
 
             metric_values = {Metrics.countInSet.name: res}
 
-            if self.test_case.computePassedFailedRowCount:
+            if self._needs_row_count():
                 metric_values[Metrics.rowCount.name] = self.get_row_count()
 
         except (ValueError, RuntimeError) as exc:
@@ -117,17 +117,17 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             Metrics.countInSet.name: Metrics.countInSet,
         }
 
-        if self.test_case.computePassedFailedRowCount:
+        if self._needs_row_count():
             metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
-        """Evaluate the in-set test condition
+        """Evaluate the not-in-set test condition
 
-        For in-set test, behavior depends on match_enum flag:
-        - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+        Test passes if the forbidden values found (count_in_set) stay within the failure
+        threshold, counted against the table row count. With the default threshold, that
+        means count_in_set == 0.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -146,8 +146,8 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             raise ValueError("test_params is required for columnValuesToNotBeInSet._evaluate_test_condition")
         count_in_set = metric_values[Metrics.countInSet.name]
 
-        matched = count_in_set == 0
         total_rows = metric_values.get(Metrics.rowCount.name)
+        matched = self._apply_row_threshold(count_in_set, total_rows)
         failed_count = count_in_set
         if total_rows:
             passed_count = total_rows - failed_count

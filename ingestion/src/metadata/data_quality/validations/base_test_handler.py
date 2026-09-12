@@ -19,6 +19,7 @@ import reprlib
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -65,6 +66,17 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
+
+# Failure threshold parameters, declared on the test definitions that support them
+THRESHOLD_PARAM = "threshold"
+THRESHOLD_UNIT_PARAM = "thresholdUnit"
+
+
+class ThresholdUnit(str, Enum):
+    """How the `threshold` parameter reads the violation count"""
+
+    ABSOLUTE = "ABSOLUTE"
+    PERCENTAGE = "PERCENTAGE"
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -338,6 +350,76 @@ class BaseTestValidator(ABC):
             NotImplementedError: If child class doesn't override this method
         """
         raise NotImplementedError(f"{self.__class__.__name__} must implement _evaluate_test_condition()")
+
+    def get_row_threshold(self) -> tuple[float, ThresholdUnit]:
+        """Read the failure threshold and the unit it is expressed in
+
+        Both parameters are optional. A test case that does not set them tolerates no
+        violation at all (`0` ABSOLUTE), which is the verdict tests had before thresholds
+        were introduced.
+
+        Returns:
+            Tuple[float, ThresholdUnit]: the tolerated number of violations and its unit
+        """
+        param_values = self.test_case.parameterValues or []
+
+        try:
+            threshold = self.get_test_case_param_value(param_values, THRESHOLD_PARAM, float, default=0.0) or 0.0
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Unreadable {THRESHOLD_PARAM} for {self.test_case.fullyQualifiedName}. Tolerating no violation."
+            )
+            return 0.0, ThresholdUnit.ABSOLUTE
+
+        unit_value = self.get_test_case_param_value(
+            param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
+        )
+        try:
+            unit = ThresholdUnit(unit_value.upper())
+        except ValueError:
+            logger.warning(
+                f"Unknown {THRESHOLD_UNIT_PARAM} '{unit_value}' for {self.test_case.fullyQualifiedName}. "
+                f"Reading the threshold as {ThresholdUnit.ABSOLUTE.value}."
+            )
+            unit = ThresholdUnit.ABSOLUTE
+
+        return threshold, unit
+
+    def _needs_row_count(self) -> bool:
+        """Whether the total row count has to be computed
+
+        Row level reporting needs it, and so does a percentage threshold: without the
+        denominator there is nothing to compute the share of failing rows against.
+        """
+        if self.test_case.computePassedFailedRowCount:
+            return True
+        return self.get_row_threshold()[1] is ThresholdUnit.PERCENTAGE
+
+    def _apply_row_threshold(self, violations: int | None, denominator: int | None) -> bool:
+        """Check a violation count against the test case failure threshold
+
+        ABSOLUTE tolerates `threshold` violations. PERCENTAGE tolerates `threshold` percent
+        of `denominator`; an empty denominator has nothing to violate, so it passes instead
+        of dividing by zero.
+
+        Args:
+            violations: Number of rows that broke the test condition
+            denominator: Rows the violations are counted against. Validator specific: tests
+                         that only look at non-null values count against those, not the
+                         table row count.
+
+        Returns:
+            bool: True if the test passes
+        """
+        violations = violations or 0
+        threshold, unit = self.get_row_threshold()
+
+        if unit is ThresholdUnit.PERCENTAGE:
+            if not denominator:
+                return True
+            return violations / denominator * 100 <= threshold
+
+        return violations <= threshold
 
     def _format_result_message(
         self,

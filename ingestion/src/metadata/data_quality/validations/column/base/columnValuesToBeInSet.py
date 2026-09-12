@@ -139,7 +139,8 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         For in-set test, behavior depends on match_enum flag:
         - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+        - match_enum=True: Pass if the values outside the set (row_count - count_in_set)
+          stay within the failure threshold, counted against the table row count
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -162,7 +163,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         if match_enum:
             row_count = metric_values.get(Metrics.rowCount.name, 0)
             failed_count = row_count - count_in_set
-            matched = failed_count == 0
+            matched = self._apply_row_threshold(failed_count, row_count)
             total_rows = row_count
         else:
             matched = count_in_set > 0
