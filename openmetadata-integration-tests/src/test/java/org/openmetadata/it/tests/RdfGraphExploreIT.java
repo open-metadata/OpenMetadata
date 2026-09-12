@@ -40,6 +40,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -193,6 +195,24 @@ public class RdfGraphExploreIT {
 
     awaitTableInRdf(table);
 
+    final JsonNode rootOnly = explore(table.getId(), ENTITY_TYPE_TABLE, 0);
+    assertEquals(Set.of(table.getId().toString()), collectEntityIds(rootOnly));
+    assertEquals(0, rootOnly.path("edges").size());
+    assertFalse(rootOnly.path("truncated").asBoolean());
+
+    for (final String format : List.of(FORMAT_TURTLE, FORMAT_JSONLD)) {
+      final HttpResponse<String> exported =
+          exportRaw(table.getId(), ENTITY_TYPE_TABLE, 0, null, null, format);
+      assertEquals(200, exported.statusCode());
+      assertTrue(exported.body().contains(table.getId().toString()));
+      assertFalse(exported.body().contains(schema.getId().toString()));
+      assertFalse(exported.body().contains(database.getId().toString()));
+    }
+
+    createRequest.setName(ns.prefix("rdfSiblingTable"));
+    final Table sibling = Tables.create(createRequest);
+    awaitTableInRdf(sibling);
+
     JsonNode depthOneGraph = explore(table.getId(), ENTITY_TYPE_TABLE, 1);
     Set<String> depthOneIds = collectEntityIds(depthOneGraph);
     assertNoDuplicateNodeIds(depthOneGraph);
@@ -204,8 +224,8 @@ public class RdfGraphExploreIT {
         depthOneIds.contains(schema.getId().toString()),
         "depth=1 must contain the immediate schema neighbor (table belongsTo schema)");
     assertFalse(
-        depthOneIds.contains(database.getId().toString()),
-        "depth=1 must NOT reach the 2-hop database neighbor");
+        depthOneIds.contains(sibling.getId().toString()),
+        "depth=1 must not reach another table through the shared schema");
 
     JsonNode depthTwoGraph = explore(table.getId(), ENTITY_TYPE_TABLE, 2);
     Set<String> depthTwoIds = collectEntityIds(depthTwoGraph);
@@ -217,8 +237,8 @@ public class RdfGraphExploreIT {
         depthTwoIds.size() > depthOneIds.size(),
         "depth=2 node set must strictly grow beyond depth=1");
     assertTrue(
-        depthTwoIds.contains(database.getId().toString()),
-        "depth=2 must reach the 2-hop database neighbor");
+        depthTwoIds.contains(sibling.getId().toString()),
+        "depth=2 must reach another table through the shared schema");
   }
 
   @Test
@@ -383,9 +403,20 @@ public class RdfGraphExploreIT {
 
   @Test
   void nonAdminExportReturns403(TestNamespace ns) throws Exception {
+    final User nonAdmin = UserTestFactory.createUser(ns, "graphExportReader");
     HttpResponse<String> response =
         exportRawWithToken(
-            UUID.randomUUID(), ENTITY_TYPE_TABLE, 2, null, null, FORMAT_TURTLE, nonAdminToken());
+            UUID.randomUUID(),
+            ENTITY_TYPE_TABLE,
+            2,
+            null,
+            null,
+            FORMAT_TURTLE,
+            JwtAuthProvider.tokenFor(
+                nonAdmin.getName(),
+                nonAdmin.getEmail(),
+                new String[] {"DataConsumer"},
+                NON_ADMIN_TOKEN_TTL_SECONDS));
     assertEquals(
         403,
         response.statusCode(),
@@ -412,14 +443,6 @@ public class RdfGraphExploreIT {
     assertNotNull(table.getId());
     awaitTableInRdf(table);
     return table;
-  }
-
-  private String nonAdminToken() {
-    return JwtAuthProvider.tokenFor(
-        "data-consumer@open-metadata.org",
-        "data-consumer@open-metadata.org",
-        new String[] {"DataConsumer"},
-        NON_ADMIN_TOKEN_TTL_SECONDS);
   }
 
   private HttpResponse<String> exportRaw(

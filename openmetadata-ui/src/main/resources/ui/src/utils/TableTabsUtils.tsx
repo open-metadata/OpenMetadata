@@ -159,7 +159,7 @@ const TableConstraints = withSuspenseFallback(
 );
 
 const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D')),
+  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph')),
   TAB_CONTENT_FALLBACK
 );
 
@@ -415,7 +415,6 @@ export const getTableDetailPageBaseTabs = ({
       children: (
         <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <KnowledgeGraph
-            depth={1}
             entity={
               tableDetails
                 ? {

@@ -124,6 +124,7 @@ test.describe('SSO Configuration Tests', () => {
       ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
 
       await verifyProviderFields(page, OIDC_COMMON_FIELDS);
     });
@@ -147,6 +148,12 @@ test.describe('SSO Configuration Tests', () => {
       ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      // The OIDC fields now sit behind this toggle, so they are not on screen
+      // until it is expanded. OIDC Tenant stays hidden: it is Azure-specific and
+      // this provider has no such field. main asserted it visible but guarded on
+      // `count() > 0`, which skipped the check here rather than making it.
+      await page.getByText(/advanced config/i).click();
+
       await verifyProviderFields(page, OIDC_COMMON_FIELDS, ['OIDC Tenant']);
     });
 
@@ -169,6 +176,12 @@ test.describe('SSO Configuration Tests', () => {
       ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      // The OIDC fields now sit behind this toggle, so they are not on screen
+      // until it is expanded. OIDC Tenant stays hidden: it is Azure-specific and
+      // this provider has no such field. main asserted it visible but guarded on
+      // `count() > 0`, which skipped the check here rather than making it.
+      await page.getByText(/advanced config/i).click();
+
       await verifyProviderFields(page, OIDC_COMMON_FIELDS, ['OIDC Tenant']);
     });
   });
