@@ -77,6 +77,9 @@ public abstract class AbstractEventConsumer
   private Long startingTimestamp;
 
   private AlertMetrics alertMetrics;
+  // Set when a consumer that makes its own deliveries records one, so the tick still persists
+  // metrics even though no change_event offset moved.
+  private boolean metricsChanged;
 
   // Collect successful events during HTTP phase, batch write in commit phase.
   // This reduces connection pool contention from N connections to 1.
@@ -548,13 +551,40 @@ public abstract class AbstractEventConsumer
           e);
 
     } finally {
-      if (lastReadOffset > offset) {
-        offset = lastReadOffset;
-        commit(jobExecutionContext);
-      } else if (gapStateChanged) {
-        persistPendingGapState(jobExecutionContext);
-      }
+      persistTick(jobExecutionContext);
     }
+  }
+
+  private void persistTick(JobExecutionContext jobExecutionContext) {
+    boolean offsetMoved = lastReadOffset > offset;
+    boolean commitNeeded = offsetMoved || metricsChanged;
+    if (offsetMoved) {
+      offset = lastReadOffset;
+    }
+    if (commitNeeded) {
+      metricsChanged = false;
+      commit(jobExecutionContext);
+    }
+    if (!commitNeeded && gapStateChanged) {
+      persistPendingGapState(jobExecutionContext);
+    }
+  }
+
+  /**
+   * Records a delivery this consumer made itself, for a subclass that produces its own events
+   * instead of polling change events.
+   *
+   * <p>Metrics otherwise reach the subscription only through the poll-and-publish path, and
+   * {@link #executeTick} commits only when the change_event offset moves. A consumer with nothing
+   * to poll never moves it, so its total, success and failure counts stay at zero for the life of
+   * the subscription however much it has delivered, and the status and diagnostics endpoints
+   * report an alert that has never sent anything.
+   */
+  protected void recordDelivery(int successCount, int failedCount) {
+    alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + successCount + failedCount);
+    alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successCount);
+    alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedCount);
+    metricsChanged = true;
   }
 
   private void persistPendingGapState(JobExecutionContext jobExecutionContext) {
