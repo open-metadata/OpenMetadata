@@ -29,9 +29,10 @@
 }
 
 .assistant-content {
-  flex: 1;
+  grid-area: content;
   min-width: 0;
-  // Flex column + relative so pages fill the height and can dock elements
+  min-height: 0;
+  // Flex column + relative so pages fill the grid cell and can dock elements
   // (headers, footers) to the panel; the white surface + card radius (applied
   // via `border-radius-card` in the layout markup) make it a distinct panel.
   display: flex;
