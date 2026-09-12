@@ -217,6 +217,40 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
     assertShowcaseFields(fetched, remediation);
   }
 
+  @Test
+  void sdkUpsert_createOrUpdate_200_OK(TestNamespace ns) {
+    // Exercises the SDK LLMModelService.upsert(CreateLLMModel) path (PUT /v1/llmModels with the
+    // server's Create contract), rather than the raw HttpClient PUT used by putModel above.
+    final LLMService service = LLMServiceTestFactory.createOpenAI(ns);
+
+    final CreateLLMModel request = new CreateLLMModel();
+    request.setName(ns.prefix("llmmodel_sdk_upsert"));
+    request.setService(service.getFullyQualifiedName());
+    request.setBaseModel("gpt-3.5-turbo");
+    request.setModelProvider("OpenAI");
+
+    // Create path: upsert on a new name creates the model.
+    final LLMModel created = SdkClients.adminClient().llmModels().upsert(request);
+    assertNotNull(created);
+    assertEquals(request.getName(), created.getName());
+    assertNotNull(created.getService(), "LLMModel upserted via SDK must resolve a service");
+    assertEquals(request.getService(), created.getService().getFullyQualifiedName());
+    assertEquals("gpt-3.5-turbo", created.getBaseModel());
+    assertEquals("OpenAI", created.getModelProvider());
+
+    // Update path: mutate a field and upsert again; same id, updated field.
+    request.setBaseModel("gpt-4");
+    final LLMModel updated = SdkClients.adminClient().llmModels().upsert(request);
+    assertNotNull(updated);
+    assertEquals(created.getId(), updated.getId(), "Upsert on existing name should preserve id");
+    assertEquals("gpt-4", updated.getBaseModel());
+
+    // Confirm persisted state via a fresh GET.
+    final LLMModel fetched = getEntity(created.getId().toString());
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals("gpt-4", fetched.getBaseModel());
+  }
+
   private static LLMModel putModel(final CreateLLMModel request) {
     return SdkClients.adminClient()
         .getHttpClient()
