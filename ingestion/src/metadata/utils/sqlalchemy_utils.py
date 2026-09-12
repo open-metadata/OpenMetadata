@@ -25,6 +25,15 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Upper bound on how many column comments are cached for a single schema. Schemas
+# above it fall back to the per-table comments join, so no comment is ever lost --
+# only the optimisation is skipped.
+MAX_SCHEMA_COMMENTS = 1_000
+
+# Slot in the Inspector's info_cache holding (schema, comments) for the one schema
+# a worker is currently reflecting.
+SCHEMA_COLUMN_COMMENTS_CACHE_KEY = "_om_schema_column_comments"
+
 
 @reflection.cache
 def get_all_table_comments(self, connection, query):
@@ -43,6 +52,79 @@ def get_table_comment_wrapper(self, connection, query, table_name, schema=None):
     if not hasattr(self, "all_table_comments") or self.current_db != connection.engine.url.database:
         self.get_all_table_comments(connection, query)
     return {"text": self.all_table_comments.get((table_name, schema))}
+
+
+def get_schema_column_comments(  # pylint: disable=unused-argument
+    self,
+    connection,
+    query,
+    schema,
+    info_cache,
+    max_comments: int = MAX_SCHEMA_COMMENTS,
+):
+    """
+    Bulk-fetch the column comments of a single schema, cached per reflection worker.
+
+    Column comments live in a sparse catalog table (only commented columns have a
+    row), so fetching a schema's comments once and looking them up in memory avoids
+    the per-table catalog join that dominates ingestion time (issue #29429).
+
+    Scope and bound. The cache holds exactly one schema -- the one the worker is
+    currently reflecting -- and is replaced when the worker moves on, so schemas do
+    not accumulate. The size is bounded explicitly: the query asks for at most
+    ``max_comments + 1`` rows, and if the schema exceeds the limit the partial
+    result is discarded and ``None`` is returned so the caller falls back to the
+    per-table comments join. No comment is ever dropped -- only the optimisation is
+    skipped, which is why size-based eviction is not used here.
+
+    The cache lives in the ``Inspector.info_cache`` rather than on the dialect
+    because the dialect is shared across the worker threads that reflect schemas in
+    parallel, while each worker has its own ``info_cache``. That keeps workers
+    independent: no shared state, no lock, and no cross-worker thrashing when two
+    workers reflect different schemas at the same time.
+
+    Keys are lower-cased on both storage and lookup: the query returns the
+    catalog-original case from ``v_catalog.comments`` while reflection passes the
+    un-normalized ``schema``/``table_name``, so mixed-case identifiers would
+    otherwise miss the cache and silently drop comments that actually exist.
+
+    :return: ``{(table_name, column_name): comment}`` for the schema, or ``None``
+        when the caller should use the per-table comments join instead.
+    """
+    schema_key = (schema or "").lower()
+    cached_schema, cached_comments = info_cache.get(SCHEMA_COLUMN_COMMENTS_CACHE_KEY, (None, None))
+    if cached_schema == schema_key:
+        return cached_comments
+
+    # max_comments + 1 is a sentinel: reading one row beyond the limit is what tells
+    # us the schema is oversized, without materialising all of it.
+    rows = list(
+        connection.execute(
+            text(query) if isinstance(query, str) else query,
+            {"schema": schema, "limit": max_comments + 1},
+        )
+    )
+
+    comments: Optional[Dict[Tuple[str, str], str]] = None  # noqa: UP006, UP045
+    if len(rows) <= max_comments:
+        comments = {}
+        for row in rows:
+            row_dict = {k.lower(): v for k, v in dict(row._mapping).items()}
+            key = (
+                (row_dict["table_name"] or "").lower(),
+                (row_dict["column_name"] or "").lower(),
+            )
+            comments[key] = row_dict["column_comment"]
+    else:
+        logger.debug(
+            f"Schema {schema} has more than {max_comments} column comments; "
+            "falling back to the per-table comments join for it."
+        )
+
+    # Replace the previous schema instead of accumulating schemas. The oversized
+    # verdict is cached too, so the probe runs once per schema rather than per table.
+    info_cache[SCHEMA_COLUMN_COMMENTS_CACHE_KEY] = (schema_key, comments)
+    return comments
 
 
 @reflection.cache
