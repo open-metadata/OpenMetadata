@@ -842,6 +842,78 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   // ===================================================================
+  // FIELD DESCRIPTION CARRY-FORWARD ON dataType CHANGE (re-ingestion)
+  // ===================================================================
+  // Reproduces the production re-ingestion scenario: an ElasticSearch/OpenSearch
+  // connector always supplies description=null from the live index mapping, and
+  // when a field's dataType changes between two ingestion runs the field is
+  // routed through the deleted+added carry-forward branch in
+  // SearchIndexRepository.SearchIndexUpdater.updateSearchIndexFields. The user-
+  // curated description on the old (deleted) field must be carried forward onto
+  // the new (added) field rather than dropped to null. See the carry-forward unit
+  // test in openmetadata-service for the in-process pin.
+  @Test
+  void put_searchIndexFieldDescriptionCarriedForwardOnDataTypeChange_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+    String userDescription = "User-curated document title";
+
+    // 1. First ingestion: field "title" with dataType=TEXT and a user-curated description.
+    CreateSearchIndex firstRequest = new CreateSearchIndex();
+    firstRequest.setName(ns.prefix("searchindex_datatype_change"));
+    firstRequest.setService(service.getFullyQualifiedName());
+    firstRequest.setFields(
+        Arrays.asList(
+            new SearchIndexField()
+                .withName("title")
+                .withDataType(SearchIndexDataType.TEXT)
+                .withDescription(userDescription),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+
+    SearchIndex created = createEntity(firstRequest);
+    SearchIndex fetched = getEntityWithFields(created.getId().toString(), "tags,fields");
+    assertEquals(userDescription, fetched.getFields().get(0).getDescription());
+
+    // 2. Simulated re-ingestion after a mapping change: "title" is now KEYWORD and, as the
+    //    ES/OS parser emits, description is null (the live mapping has no description property).
+    //    We send the full updated entity through the PUT (update) path — the same path the
+    //    connector uses — so the field is routed through the deleted+added carry-forward branch.
+    SearchIndex update = new SearchIndex();
+    update.setId(fetched.getId());
+    update.setName(fetched.getName());
+    update.setService(fetched.getService());
+    update.setUpdatedBy("admin");
+    searchindexFieldsForReingest(update);
+    SearchIndex reUpdated = patchEntity(fetched.getId().toString(), update);
+
+    // 3. The re-added (KEYWORD) field must carry forward the user-curated description.
+    SearchIndex verified = getEntityWithFields(reUpdated.getId().toString(), "tags,fields");
+    SearchIndexField titleField =
+        verified.getFields().stream()
+            .filter(f -> "title".equals(f.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("title field missing after re-ingestion"));
+    assertEquals(
+        SearchIndexDataType.KEYWORD,
+        titleField.getDataType(),
+        "The re-added field must have the new dataType after re-ingestion");
+    assertEquals(
+        userDescription,
+        titleField.getDescription(),
+        "User-curated description must be carried forward from the deleted (old-datatype) "
+            + "field onto the added (new-datatype) field after re-ingestion — it must NOT be "
+            + "lost");
+  }
+
+  private void searchindexFieldsForReingest(SearchIndex update) {
+    // Mirror what the ES/OS parser emits on re-ingest after the index is recreated with a
+    // different mapping for "title" (TEXT -> KEYWORD): description is None for every field.
+    update.setFields(
+        Arrays.asList(
+            new SearchIndexField().withName("title").withDataType(SearchIndexDataType.KEYWORD),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+  }
+
+  // ===================================================================
   // BULK API SUPPORT
   // ===================================================================
 
