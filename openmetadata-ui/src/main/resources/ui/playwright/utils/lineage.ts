@@ -231,7 +231,17 @@ export const deleteEdge = async (
 ) => {
   const addPipeline = page.getByTestId('add-pipeline');
 
-  await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+  // clickEdgeBetweenNodes fires a synthetic click on a react-flow edge label,
+  // and that takes no actionability wait: when the graph re-lays out between
+  // resolving the label and firing the event the click lands on a node that is
+  // no longer wired up, the toolbar never opens, and the wait below burns the
+  // whole test timeout on an action that silently did nothing. main carries the
+  // same guard; this branch lost it. Retry the pair until the toolbar is there.
+  await expect(async () => {
+    await clickEdgeBetweenNodes(page, fromNode, toNode, true);
+    await expect(addPipeline).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
+
   await addPipeline.click();
 
   const edgeDialog = page.getByTestId('add-edge-modal').getByRole('dialog');
