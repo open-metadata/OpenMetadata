@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Owner,
   Skeleton,
   Tooltip,
   TooltipTrigger,
@@ -22,12 +23,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -76,6 +78,7 @@ const IncidentManagerPageHeader = ({
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const {
     testCaseData,
     testCaseStatusData,
@@ -143,20 +146,23 @@ const IncidentManagerPageHeader = ({
         />
         <HeaderDotSeparator />
         <div className="tw:min-w-0" data-testid="assignee">
-          <OwnerLabel
+          <Owner
             className="header-owner-heading"
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
-            multiple={{
-              user: false,
-              team: false,
-            }}
-            owners={details?.assignee ? [details.assignee] : []}
+            owners={toOwnersWithHref(
+              details?.assignee ? [details.assignee] : []
+            )}
             placeHolder={t('label.assignee')}
-            tooltipText={t('label.edit-entity', {
-              entity: t('label.assignee'),
-            })}
-            onUpdate={handleAssigneeUpdate}
+            renderOwnerContent={renderOwnerContent}
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(hasEditStatusPermission)}
+                multiple={{ user: false, team: false }}
+                owner={details?.assignee ? [details.assignee] : []}
+                onUpdate={handleAssigneeUpdate}
+              />
+            }
           />
         </div>
         <HeaderDotSeparator />
@@ -209,20 +215,27 @@ const IncidentManagerPageHeader = ({
         onUpdate={handleDomainUpdate}
       />
       <HeaderDotSeparator />
-      <OwnerLabel
+      <Owner
         showDashPlaceholder
         avatarSize={24}
         className="header-owner-heading"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        multiple={{
-          user: canAddMultipleUserOwners,
-          team: canAddMultipleTeamOwner,
-        }}
         ownerDisplayName={ownerDisplayName}
-        owners={testCaseData?.owners ?? ownerRef}
-        onUpdate={onOwnerUpdate}
+        owners={toOwnersWithHref(testCaseData?.owners ?? ownerRef)}
+        renderOwnerContent={renderOwnerContent}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasEditOwnerPermission)}
+            multiple={{
+              user: canAddMultipleUserOwners,
+              team: canAddMultipleTeamOwner,
+            }}
+            owner={testCaseData?.owners ?? ownerRef}
+            onUpdate={onOwnerUpdate}
+          />
+        }
       />
       {!isVersionPage && statusDetails}
       {tableFqn && (

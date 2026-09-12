@@ -555,9 +555,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const avatar = firstItem.getByTestId('item-avatar');
       await expect(avatar).toBeVisible();
 
-      const profilePic = avatar.locator(
-        '.profile-image-container, .ant-avatar'
-      );
+      const profilePic = avatar.locator('[data-avatar]');
       await expect(profilePic).toBeVisible();
     });
 

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
@@ -39,7 +38,20 @@ const AppLogo = ({
     fetchLogo();
   }, [appName]);
 
-  return <Avatar className="flex-center bg-grey-1" icon={appLogo} size={100} />;
+  return (
+    <div
+      className="flex-center bg-grey-1"
+      style={{
+        alignItems: 'center',
+        borderRadius: '50%',
+        display: 'inline-flex',
+        height: 100,
+        justifyContent: 'center',
+        width: 100,
+      }}>
+      {appLogo}
+    </div>
+  );
 };
 
 export default AppLogo;

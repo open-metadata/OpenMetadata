@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -79,6 +80,7 @@ import {
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import {
   Option,
@@ -154,7 +156,6 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -437,6 +438,7 @@ export const TaskTabNew = ({
   );
 
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [form] = Form.useForm();
   const editablePayload = Form.useWatch('payload', form) as
     | TaskPayload
@@ -1734,11 +1736,12 @@ export const TaskTabNew = ({
                       )}
                     </div>
                   ) : (
-                    <OwnerLabel
+                    <Owner
                       isAssignee
                       hasPermission={shouldEditAssignee}
                       isCompactView={false}
-                      owners={task?.assignees}
+                      owners={toOwnersWithHref(task?.assignees)}
+                      renderOwnerContent={renderOwnerContent}
                       showLabel={false}
                       onEditClick={handleEditClick}
                     />

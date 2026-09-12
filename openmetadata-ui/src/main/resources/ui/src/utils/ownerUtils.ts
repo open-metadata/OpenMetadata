@@ -18,7 +18,10 @@ import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
  * Returns the appropriate path for an owner link based on owner type
  */
 export const getOwnerPath = (owner: EntityReference): string => {
+  // A team's FQN equals its name; owner references frequently omit
+  // fullyQualifiedName, so fall back to name to avoid linking every team to
+  // the Organization page.
   return owner.type === OwnerType.TEAM
-    ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? '')
+    ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
     : getUserPath(owner.name ?? '');
 };

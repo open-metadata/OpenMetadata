@@ -35,15 +35,11 @@ jest.mock('../../../../common/ProfilePicture/ProfilePicture', () => {
   ));
 });
 
-jest.mock('../../../../common/OwnerItem/OwnerItem', () => ({
-  OwnerItem: jest.fn(({ owner }) => (
-    <div data-testid={`owner-item-${owner.id}`}>{owner.displayName}</div>
-  )),
-}));
-
-jest.mock('../../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn(({ owners }) => (
-    <div data-testid="owner-label">{owners.length} owners</div>
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
+  OwnerChip: jest.fn(({ owner }) => (
+    <div data-testid={`owner-chip-${owner.id}`}>{owner.displayName}</div>
   )),
 }));
 
@@ -201,7 +197,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(screen.getByTestId('owner-item-team-1')).toBeInTheDocument();
+      expect(screen.getByTestId('owner-chip-team-1')).toBeInTheDocument();
     });
 
     it('should render ProfilePicture for user type owners', () => {

@@ -17,6 +17,7 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
+  Owner,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -39,6 +40,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
@@ -63,7 +65,6 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import TagsViewer from '../Tag/TagsViewer/TagsViewer';
@@ -144,6 +145,7 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -244,11 +246,12 @@ const DataProductListPage = ({
           );
         case 'owners':
           return (
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.owners}
+              owners={toOwnersWithHref(entity.owners ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );
@@ -262,11 +265,12 @@ const DataProductListPage = ({
           );
         case 'experts':
           return (
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.experts}
+              owners={toOwnersWithHref(entity.experts ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );

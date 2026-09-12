@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
+import type { OwnerRef } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
@@ -27,7 +33,6 @@ import {
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -106,13 +111,19 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
 
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
-  showDashPlaceholder?: boolean
+  toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[],
+  renderOwnerContent: (
+    owner: { name?: string; type?: string },
+    chip: ReactNode
+  ) => ReactNode,
+  options?: { showDashPlaceholder?: boolean }
 ): ReactNode => (
-  <OwnerLabel
+  <Owner
     isCompactView={false}
     maxVisibleOwners={4}
-    owners={entity.owners}
-    showDashPlaceholder={showDashPlaceholder}
+    owners={toOwnersWithHref(entity.owners)}
+    renderOwnerContent={renderOwnerContent}
+    showDashPlaceholder={options?.showDashPlaceholder}
     showLabel={false}
   />
 );

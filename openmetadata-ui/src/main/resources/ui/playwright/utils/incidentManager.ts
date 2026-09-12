@@ -252,7 +252,10 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await searchUserResponse;
 
   const updateIncident = waitForTaskResolveResponse(page);
-  await page.click(`.ant-popover [title="${user.displayName}"]`);
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: user.displayName })
+    .click();
   await updateIncident;
 
   const taskHeaderAssignee = page.getByTestId(

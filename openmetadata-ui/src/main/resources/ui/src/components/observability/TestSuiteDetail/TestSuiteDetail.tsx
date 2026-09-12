@@ -17,6 +17,7 @@ import {
   DialogTrigger,
   Modal,
   ModalOverlay,
+  Owner,
   Tabs,
   Tooltip,
   Typography,
@@ -32,6 +33,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
@@ -45,7 +47,7 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
@@ -169,6 +171,7 @@ const getTabBadge = (count?: number) => toString(count) || undefined;
  */
 const TestSuiteDetail = () => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const {
     testSuite,
@@ -239,6 +242,11 @@ const TestSuiteDetail = () => {
   const handleCopyEntityUrl = useCallback(async () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
+
+  const getCopyTooltipTitle = () =>
+    hasCopied
+      ? t('message.link-copy-to-clipboard')
+      : t('label.copy-item', { item: t('label.url-uppercase') });
 
   const activeTabContent = useMemo(() => {
     const renderDescription = () => (
@@ -375,15 +383,7 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <Tooltip
-                    placement="top"
-                    title={
-                      hasCopied
-                        ? t('message.link-copy-to-clipboard')
-                        : t('label.copy-item', {
-                            item: t('label.url-uppercase'),
-                          })
-                    }>
+                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
                     <Button
                       aria-label={t('label.copy-item', {
                         item: t('label.url-uppercase'),
@@ -437,19 +437,26 @@ const TestSuiteDetail = () => {
                 onUpdate={handleDomainUpdate}
               />
               <HeaderDotSeparator />
-              <OwnerLabel
+              <Owner
                 showDashPlaceholder
                 avatarSize={24}
                 className="header-owner-heading"
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}
-                multiple={{
-                  user: canAddMultipleUserOwners,
-                  team: canAddMultipleTeamOwner,
-                }}
-                owners={testOwners}
-                onUpdate={onUpdateOwner}
+                owners={toOwnersWithHref(testOwners ?? [])}
+                renderOwnerContent={renderOwnerContent}
+                selectorContent={
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                    multiple={{
+                      user: canAddMultipleUserOwners,
+                      team: canAddMultipleTeamOwner,
+                    }}
+                    owner={testOwners}
+                    onUpdate={onUpdateOwner}
+                  />
+                }
               />
             </div>
           </Box>

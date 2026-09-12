@@ -349,7 +349,10 @@ export const addTeamAsReviewer = async (
   await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
   await teamsSearchResponse;
 
-  const ownerItem = page.locator(`.ant-popover [title="${teamName}"]`);
+  const ownerItem = page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: teamName });
+  await ownerItem.waitFor({ state: 'visible' });
 
   if (isSelectableInsideForm) {
     await ownerItem.click();
@@ -1872,10 +1875,9 @@ export const addMultiOwnerInDialog = async (data: {
     await searchOwner;
     await waitForAllLoadersToDisappear(page);
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     if (type === 'Teams') {
       if (isSelectableInsideForm) {

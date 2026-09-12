@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Directory } from '../../../generated/entity/data/directory';
@@ -38,10 +40,12 @@ import {
   EntityReference,
 } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getEntityVersionByField,
@@ -58,6 +62,11 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -136,13 +145,13 @@ const DomainLabelV2 = withSuspenseFallback(
   WIDGET_FALLBACK
 );
 
-const OwnerLabelV2 = withSuspenseFallback(
+const UserTeamSelectableList = withSuspenseFallback(
   lazy(() =>
-    import('../OwnerLabelV2/OwnerLabelV2').then((m) => ({
-      default: m.OwnerLabelV2,
-    }))
+    import(
+      '../../common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((m) => ({ default: m.UserTeamSelectableList }))
   ),
-  WIDGET_FALLBACK
+  null
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -199,7 +208,8 @@ export const CommonWidgets = ({
     isVersionView,
   } = useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
-
+  const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const updatedData = useMemo(() => {
     const updatedDescription = isVersionView
       ? getEntityVersionByField(
@@ -312,6 +322,7 @@ export const CommonWidgets = ({
 
   const {
     canEditAll: editDataProductPermission,
+    canEditOwners: editOwnerPermission,
     canEditTags: editTagsPermission,
     canEditGlossaryTerms: editGlossaryTermsPermission,
     canEditDescription: editDescriptionPermission,
@@ -476,6 +487,79 @@ export const CommonWidgets = ({
     isDescriptionExpanded,
   ]);
 
+  const ownerWidget = useMemo(() => {
+    const handleOwnerUpdate = async (updatedOwners?: EntityReference[]) => {
+      await onUpdate({ ...data, owners: updatedOwners });
+    };
+
+    return (
+      <WidgetCard
+        dataTestId="glossary-right-panel-owner-link"
+        headerExtra={
+          !isVersionView && editOwnerPermission ? (
+            <UserTeamSelectableList
+              hasPermission={Boolean(editOwnerPermission)}
+              listHeight={200}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
+              owner={owners}
+              onUpdate={handleOwnerUpdate}>
+              {isEmpty(owners) ? (
+                <WidgetPlusButton
+                  data-testid="add-owner"
+                  title={t('label.add-entity', {
+                    entity: t('label.owner-plural'),
+                  })}
+                />
+              ) : (
+                <WidgetEditButton
+                  data-testid="edit-owner"
+                  title={t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })}
+                />
+              )}
+            </UserTeamSelectableList>
+          ) : null
+        }
+        isExpandDisabled={isEmpty(owners)}
+        title={t('label.owner-plural')}>
+        {isVersionView ? (
+          // Version view needs the added/removed diff highlighting
+          // (data-testid="diff-added"/"diff-removed") that getOwnerVersionLabel
+          // computes from the changeDescription. The plain <Owner> below only
+          // renders the current owners with links/hover cards.
+          getOwnerVersionLabel(
+            data,
+            isVersionView,
+            TabSpecificField.OWNERS,
+            editOwnerPermission
+          )
+        ) : (
+          <Owner
+            isCompactView={false}
+            owners={toOwnersWithHref(owners ?? [])}
+            renderOwnerContent={renderOwnerContent}
+            showLabel={false}
+          />
+        )}
+      </WidgetCard>
+    );
+  }, [
+    data,
+    owners,
+    onUpdate,
+    permissions,
+    isVersionView,
+    editOwnerPermission,
+    entityRules,
+    t,
+    toOwnersWithHref,
+    renderOwnerContent,
+  ]);
+
   const widget = useMemo(() => {
     const widgetRenderersByPrefix: Array<[string, () => ReactNode]> = [
       [DetailPageWidgetKeys.DESCRIPTION, () => descriptionWidget],
@@ -494,7 +578,7 @@ export const CommonWidgets = ({
           />
         ),
       ],
-      [DetailPageWidgetKeys.OWNERS, () => <OwnerLabelV2 />],
+      [DetailPageWidgetKeys.OWNERS, () => ownerWidget],
       [GlossaryTermDetailPageWidgetKeys.REVIEWER, () => <ReviewerLabelV2 />],
       [DetailPageWidgetKeys.EXPERTS, () => <DomainExpertWidget />],
       [
@@ -539,6 +623,7 @@ export const CommonWidgets = ({
     glossaryWidget,
     tagsWidget,
     dataProductsWidget,
+    ownerWidget,
   ]);
 
   return (

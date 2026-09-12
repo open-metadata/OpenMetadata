@@ -15,6 +15,7 @@ import {
   ColorPickerField,
   FormSelectItem,
   IconPickerField,
+  Owner,
 } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
@@ -49,13 +50,13 @@ import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   AVAILABLE_ICONS,
   DEFAULT_GLOSSARY_TERM_ICON,
 } from '../../common/IconPicker/IconPicker.constants';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import {
   AddGlossaryTermFormProps,
   IntakeFieldsSectionProps,
@@ -166,7 +167,7 @@ const buildGlossaryTermSavePayload = ({
 const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
   Boolean(owners.length) && (
     <Space wrap data-testid={testId} size={[8, 8]}>
-      <OwnerLabel owners={owners} />
+      <Owner isCompactView={false} owners={toOwnerRefs(owners)} />
     </Space>
   );
 
